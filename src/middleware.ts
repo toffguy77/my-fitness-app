@@ -85,7 +85,7 @@ export async function middleware(request: NextRequest) {
 
   try {
     logger.debug('Middleware: пользователь авторизован', { userId: user.id, pathname })
-  } catch (logError) {
+  } catch {
     // Игнорируем ошибки логирования
   }
 
@@ -121,7 +121,7 @@ export async function middleware(request: NextRequest) {
       isSuperAdmin,
       pathname,
     })
-  } catch (logError) {
+  } catch {
     // Игнорируем ошибки логирования
   }
 
