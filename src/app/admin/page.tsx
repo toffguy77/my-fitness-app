@@ -3,14 +3,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { User } from '@supabase/supabase-js'
 import { LogOut, Search, Edit, User as UserIcon, Shield, Users } from 'lucide-react'
-import { getUserProfile, isSuperAdmin, type UserProfile, type UserRole, type SubscriptionStatus, type SubscriptionTier } from '@/utils/supabase/profile'
+import { isSuperAdmin, type UserProfile, type UserRole, type SubscriptionStatus, type SubscriptionTier } from '@/utils/supabase/profile'
 
 export default function AdminPage() {
   const supabase = createClient()
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -27,7 +25,6 @@ export default function AdminPage() {
           router.push('/login')
           return
         }
-        setUser(user)
 
         // Проверяем, что пользователь - супер-админ
         const isAdmin = await isSuperAdmin(user.id)

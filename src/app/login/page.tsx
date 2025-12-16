@@ -9,7 +9,7 @@ import { User } from '@supabase/supabase-js'
 export default function LoginPage() {
   const supabase = createClient()
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
+  const [, setUser] = useState<User | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)

@@ -1,12 +1,10 @@
 // Лендинг страница (публичная) - Absolute Style
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
 export default function LandingPage() {
-  const router = useRouter()
 
   return (
     <main className="min-h-screen bg-white">
@@ -42,7 +40,7 @@ export default function LandingPage() {
           <div className="bg-white p-8 border-2 border-black">
             <h3 className="text-2xl font-bold text-black mb-4">Иллюзия контроля</h3>
             <p className="text-gray-700 leading-relaxed">
-              Ты думаешь, что ешь мало, но не считаешь перекусы и "жидкие калории". 
+              Ты думаешь, что ешь мало, но не считаешь перекусы и &quot;жидкие калории&quot;. 
               Без жесткого учета ты слеп.
             </p>
           </div>

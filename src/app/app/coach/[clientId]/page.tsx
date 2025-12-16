@@ -12,7 +12,7 @@ export default function ClientViewPage() {
   const router = useRouter()
   const params = useParams()
   const clientId = params.clientId as string
-  const [user, setUser] = useState<User | null>(null)
+  const [, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [clientName, setClientName] = useState<string>('')
 

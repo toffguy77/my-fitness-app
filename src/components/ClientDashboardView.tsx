@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, Flame } from 'lucide-react'
+import { UtensilsCrossed, TrendingUp, ArrowRight } from 'lucide-react'
 import DayToggle from './DayToggle'
 
 type DailyLog = {
@@ -260,14 +260,12 @@ export default function ClientDashboardView({
                 label="Калории"
                 value={`${Math.round(nutritionSummary.calories.actual / nutritionSummary.daysLogged)}`}
                 target={currentTargets?.calories || 0}
-                diff={nutritionSummary.calories.diff}
                 unit="ккал/день"
               />
               <StatCard
                 label="Белки"
                 value={`${Math.round(nutritionSummary.protein.actual / nutritionSummary.daysLogged)}`}
                 target={currentTargets?.protein || 0}
-                diff={nutritionSummary.protein.diff}
                 unit="г/день"
               />
             </div>
@@ -430,7 +428,7 @@ export default function ClientDashboardView({
   )
 }
 
-function StatCard({ label, value, target, diff, unit }: { label: string; value: string; target: number; diff: number; unit: string }) {
+function StatCard({ label, value, target, unit }: { label: string; value: string; target: number; unit: string }) {
   return (
     <div className="rounded-lg bg-gray-50 p-3">
       <div className="text-xs text-gray-500 mb-1">{label}</div>

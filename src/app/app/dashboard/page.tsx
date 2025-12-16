@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { LogOut, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, Flame } from 'lucide-react'
+import { LogOut, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
 import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
 
@@ -29,7 +29,7 @@ type NutritionTarget = {
 export default function ClientDashboard() {
   const supabase = createClient()
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
+  const [, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [dayType, setDayType] = useState<'training' | 'rest'>('training')
   const [targetsTraining, setTargetsTraining] = useState<NutritionTarget | null>(null)
@@ -142,14 +142,7 @@ export default function ClientDashboard() {
     }
   }, [currentTargets, weekLogs])
 
-  // Расчет сводки по тренировкам (заглушка)
-  const workoutSummary = useMemo(() => {
-    return {
-      planned: 4,
-      completed: 3,
-      completionRate: 75
-    }
-  }, [])
+  // Removed unused workoutSummary
 
   if (loading) return <div className="p-8 text-center">Загрузка...</div>
 
@@ -246,14 +239,12 @@ export default function ClientDashboard() {
                 label="Калории"
                 value={`${Math.round(nutritionSummary.calories.actual / nutritionSummary.daysLogged)}`}
                 target={currentTargets?.calories || 0}
-                diff={nutritionSummary.calories.diff}
                 unit="ккал/день"
               />
               <StatCard
                 label="Белки"
                 value={`${Math.round(nutritionSummary.protein.actual / nutritionSummary.daysLogged)}`}
                 target={currentTargets?.protein || 0}
-                diff={nutritionSummary.protein.diff}
                 unit="г/день"
               />
             </div>
@@ -369,7 +360,7 @@ export default function ClientDashboard() {
   )
 }
 
-function StatCard({ label, value, target, diff, unit }: { label: string; value: string; target: number; diff: number; unit: string }) {
+function StatCard({ label, value, target, unit }: { label: string; value: string; target: number; unit: string }) {
   return (
     <div className="rounded-lg bg-gray-50 p-3">
       <div className="text-xs text-gray-500 mb-1">{label}</div>

@@ -19,6 +19,25 @@ type Meal = {
   photoName?: string
 }
 
+type Targets = {
+  calories: number
+  protein: number
+  fats: number
+  carbs: number
+}
+
+type DailyLog = {
+  actual_calories: number
+  actual_protein: number
+  actual_fats: number
+  actual_carbs: number
+  hunger_level: number
+  energy_level: number
+  weight: number | null
+  notes: string
+  target_type?: 'training' | 'rest'
+}
+
 export default function NutritionPage() {
   const supabase = createClient()
   const router = useRouter()
@@ -27,9 +46,9 @@ export default function NutritionPage() {
   
   // State для данных
   const [dayType, setDayType] = useState<'training' | 'rest'>('training')
-  const [targetsTraining, setTargetsTraining] = useState<any>(null)
-  const [targetsRest, setTargetsRest] = useState<any>(null)
-  const [log, setLog] = useState<any>({
+  const [targetsTraining, setTargetsTraining] = useState<Targets | null>(null)
+  const [targetsRest, setTargetsRest] = useState<Targets | null>(null)
+  const [log, setLog] = useState<DailyLog>({
     actual_calories: 0,
     actual_protein: 0,
     actual_fats: 0,
@@ -448,7 +467,14 @@ export default function NutritionPage() {
 }
 
 // Helper Components
-function MacroBar({ label, current, target, color }: any) {
+type MacroBarProps = {
+  label: string
+  current: number
+  target: number
+  color: string
+}
+
+function MacroBar({ label, current, target, color }: MacroBarProps) {
   const percent = Math.min((current / target) * 100, 100)
   return (
     <div>
@@ -466,7 +492,13 @@ function MacroBar({ label, current, target, color }: any) {
   )
 }
 
-function InputGroup({ label, value, onChange }: any) {
+type InputGroupProps = {
+  label: string
+  value: number | string | null
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+}
+
+function InputGroup({ label, value, onChange }: InputGroupProps) {
   const displayValue = value === 0 || value === null || value === undefined ? '' : value.toString()
   
   return (

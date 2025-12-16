@@ -64,8 +64,8 @@ export default function RegisterPage() {
         router.push('/app/dashboard')
         router.refresh()
       }, 1000)
-    } catch (err: any) {
-      setError(err.message || 'Произошла ошибка')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Произошла ошибка')
       setLoading(false)
     }
   }

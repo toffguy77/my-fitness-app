@@ -1,18 +1,15 @@
 'use client'
 
 import { Lock, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
 
 interface PaywallProps {
   title?: string
   message?: string
-  ctaText?: string
 }
 
 export default function Paywall({ 
   title = 'Доступно с Premium подпиской',
-  message = 'Подключите работу с тренером, чтобы получить доступ к расширенной аналитике, отчетам и персональным рекомендациям.',
-  ctaText = 'Активировать Premium'
+  message = 'Подключите работу с тренером, чтобы получить доступ к расширенной аналитике, отчетам и персональным рекомендациям.'
 }: PaywallProps) {
   return (
     <div className="relative">

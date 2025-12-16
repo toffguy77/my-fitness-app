@@ -18,7 +18,7 @@ type ClientWithStatus = UserProfile & {
 export default function CoachDashboard() {
   const supabase = createClient()
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
+  const [, setUser] = useState<User | null>(null)
   const [clients, setClients] = useState<ClientWithStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'red' | 'green' | 'grey'>('all')
