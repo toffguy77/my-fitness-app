@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { CheckCircle, Flame, Save } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
+import { logger } from '@/utils/logger'
 
 type Meal = {
   id: string
@@ -75,16 +76,20 @@ export default function NutritionPage() {
   // Загрузка данных при старте
   useEffect(() => {
     const fetchData = async () => {
+      logger.debug('Nutrition: начало загрузки данных')
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
+          logger.warn('Nutrition: пользователь не авторизован', { error: userError?.message })
           router.push('/login')
           return
         }
+        logger.debug('Nutrition: пользователь авторизован', { userId: user.id })
         setUser(user)
 
         // 1. Получаем цели для обоих типов дней
         const today = new Date().toISOString().split('T')[0]
+        logger.debug('Nutrition: загрузка целей и логов', { userId: user.id, date: today })
         const [trainingResult, restResult, logResult] = await Promise.all([
           supabase
             .from('nutrition_targets')
@@ -108,21 +113,36 @@ export default function NutritionPage() {
             .single(),
         ])
 
+        if (trainingResult.error && trainingResult.error.code !== 'PGRST116') {
+          logger.error('Nutrition: ошибка загрузки целей тренировок', trainingResult.error, { userId: user.id })
+        }
+        if (restResult.error && restResult.error.code !== 'PGRST116') {
+          logger.error('Nutrition: ошибка загрузки целей отдыха', restResult.error, { userId: user.id })
+        }
+        if (logResult.error && logResult.error.code !== 'PGRST116') {
+          logger.error('Nutrition: ошибка загрузки лога за сегодня', logResult.error, { userId: user.id, date: today })
+        }
+
         if (trainingResult.data) {
           setTargetsTraining(trainingResult.data)
+          logger.debug('Nutrition: цели тренировок загружены', { userId: user.id })
         }
         if (restResult.data) {
           setTargetsRest(restResult.data)
+          logger.debug('Nutrition: цели отдыха загружены', { userId: user.id })
         }
 
         // 2. Получаем лог за сегодня и устанавливаем тип дня из лога
         if (logResult.data) {
+          logger.debug('Nutrition: найден существующий лог за сегодня', { userId: user.id, date: today })
           setLog(logResult.data)
           // Если в логе есть target_type, используем его
           if (logResult.data.target_type) {
             setDayType(logResult.data.target_type as 'training' | 'rest')
+            logger.debug('Nutrition: тип дня установлен из лога', { dayType: logResult.data.target_type })
           }
         } else {
+          logger.debug('Nutrition: лог за сегодня не найден, используем дефолт', { userId: user.id })
           // Если лога нет, устанавливаем дефолт на основе наличия целей
           if (trainingResult.data && !restResult.data) {
             setDayType('training')
@@ -131,9 +151,10 @@ export default function NutritionPage() {
           }
         }
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('Nutrition: ошибка загрузки данных', error)
       } finally {
         setLoading(false)
+        logger.debug('Nutrition: загрузка данных завершена')
       }
     }
 
@@ -161,12 +182,14 @@ export default function NutritionPage() {
   // Функция сохранения
   const handleSave = async () => {
     if (!user) {
+      logger.warn('Nutrition: попытка сохранения без авторизованного пользователя')
       setSaveError('Нет активной сессии. Войдите или временно подставьте user_id для теста.')
       return
     }
 
     // Валидация: проверяем, что введены данные хотя бы об одном приеме пищи
     if (totals.calories === 0 && totals.protein === 0 && totals.fats === 0 && totals.carbs === 0) {
+      logger.warn('Nutrition: попытка сохранения без данных о питании', { userId: user.id })
       setSaveError('Введите данные хотя бы об одном приеме пищи')
       return
     }
@@ -190,6 +213,18 @@ export default function NutritionPage() {
       ...aggregatedLog
     }
 
+    logger.info('Nutrition: начало сохранения лога', {
+      userId: user.id,
+      date: today,
+      dayType,
+      totals: {
+        calories: totals.calories,
+        protein: totals.protein,
+        fats: totals.fats,
+        carbs: totals.carbs,
+      },
+    })
+
     try {
       // Upsert: Обновить если есть, создать если нет
       const { error } = await supabase
@@ -197,9 +232,18 @@ export default function NutritionPage() {
         .upsert(payload, { onConflict: 'user_id, date' })
 
       if (error) {
+        logger.error('Nutrition: ошибка сохранения лога', error, {
+          userId: user.id,
+          date: today,
+        })
         setSaveError('Ошибка сохранения: ' + error.message)
         setStatus('idle')
       } else {
+        logger.info('Nutrition: лог успешно сохранен', {
+          userId: user.id,
+          date: today,
+          dayType,
+        })
         setStatus('saved')
         setTimeout(() => {
           setStatus('idle')
@@ -208,7 +252,10 @@ export default function NutritionPage() {
         }, 1200)
       }
     } catch (error) {
-      console.error('Ошибка сохранения:', error)
+      logger.error('Nutrition: исключение при сохранении', error, {
+        userId: user.id,
+        date: today,
+      })
       setSaveError('Произошла ошибка при сохранении. Попробуйте еще раз.')
       setStatus('idle')
     }
@@ -500,7 +547,7 @@ type InputGroupProps = {
 
 function InputGroup({ label, value, onChange }: InputGroupProps) {
   const displayValue = value === 0 || value === null || value === undefined ? '' : value.toString()
-  
+
   return (
     <div>
       <label className="text-xs text-gray-400 block mb-1">{label}</label>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { LogOut, Search, Edit, User as UserIcon, Shield, Users } from 'lucide-react'
 import { isSuperAdmin, type UserProfile, type UserRole, type SubscriptionStatus, type SubscriptionTier } from '@/utils/supabase/profile'
+import { logger } from '@/utils/logger'
 
 export default function AdminPage() {
   const supabase = createClient()
@@ -19,35 +20,43 @@ export default function AdminPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      logger.debug('Admin: начало загрузки данных')
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
+          logger.warn('Admin: пользователь не авторизован', { error: userError?.message })
           router.push('/login')
           return
         }
+        logger.debug('Admin: пользователь авторизован', { userId: user.id })
 
         // Проверяем, что пользователь - супер-админ
         const isAdmin = await isSuperAdmin(user.id)
         if (!isAdmin) {
+          logger.warn('Admin: попытка доступа без прав super_admin', { userId: user.id })
           router.push('/app/dashboard')
           return
         }
+        logger.info('Admin: доступ разрешен (super_admin)', { userId: user.id })
 
         // Загружаем всех пользователей
+        logger.debug('Admin: загрузка списка пользователей')
         const { data: usersData, error: usersError } = await supabase
           .from('profiles')
           .select('*')
           .order('created_at', { ascending: false })
 
         if (usersError) {
-          console.error('Ошибка загрузки пользователей:', usersError)
+          logger.error('Admin: ошибка загрузки пользователей', usersError, { userId: user.id })
         } else if (usersData) {
           setUsers(usersData as UserProfile[])
+          logger.info('Admin: пользователи успешно загружены', { userId: user.id, count: usersData.length })
         }
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('Admin: ошибка загрузки данных', error)
       } finally {
         setLoading(false)
+        logger.debug('Admin: загрузка данных завершена')
       }
     }
 
@@ -61,7 +70,7 @@ export default function AdminPage() {
     // Поиск по email и имени
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(u => 
+      filtered = filtered.filter(u =>
         u.email?.toLowerCase().includes(query) ||
         u.full_name?.toLowerCase().includes(query)
       )
@@ -87,6 +96,7 @@ export default function AdminPage() {
   const handleSave = async () => {
     if (!editingUser) return
 
+    logger.info('Admin: начало сохранения пользователя', { userId: editingUser.id })
     setSaving(true)
     try {
       const { error } = await supabase
@@ -103,14 +113,30 @@ export default function AdminPage() {
         .eq('id', editingUser.id)
 
       if (error) {
+        logger.error('Admin: ошибка сохранения пользователя', error, {
+          userId: editingUser.id,
+          updates: {
+            role: editingUser.role,
+            subscription_status: editingUser.subscription_status,
+            subscription_tier: editingUser.subscription_tier,
+          },
+        })
         alert('Ошибка сохранения: ' + error.message)
       } else {
+        logger.info('Admin: пользователь успешно обновлен', {
+          userId: editingUser.id,
+          updates: {
+            role: editingUser.role,
+            subscription_status: editingUser.subscription_status,
+            subscription_tier: editingUser.subscription_tier,
+          },
+        })
         // Обновляем локальное состояние
         setUsers(users.map(u => u.id === editingUser.id ? editingUser : u))
         setEditingUser(null)
       }
     } catch (error) {
-      console.error('Ошибка:', error)
+      logger.error('Admin: исключение при сохранении пользователя', error, { userId: editingUser.id })
       alert('Произошла ошибка')
     } finally {
       setSaving(false)
@@ -226,25 +252,23 @@ export default function AdminPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      userProfile.role === 'super_admin' ? 'bg-purple-100 text-purple-700' :
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.role === 'super_admin' ? 'bg-purple-100 text-purple-700' :
                       userProfile.role === 'coach' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
+                        'bg-gray-100 text-gray-700'
+                      }`}>
                       {userProfile.role === 'super_admin' ? 'Супер-админ' :
-                       userProfile.role === 'coach' ? 'Тренер' : 'Клиент'}
+                        userProfile.role === 'coach' ? 'Тренер' : 'Клиент'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        userProfile.subscription_status === 'active' ? 'bg-green-100 text-green-700' :
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.subscription_status === 'active' ? 'bg-green-100 text-green-700' :
                         userProfile.subscription_status === 'free' ? 'bg-gray-100 text-gray-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
+                          'bg-red-100 text-red-700'
+                        }`}>
                         {userProfile.subscription_status === 'active' ? 'Активна' :
-                         userProfile.subscription_status === 'free' ? 'Бесплатно' :
-                         userProfile.subscription_status === 'cancelled' ? 'Отменена' : 'Просрочена'}
+                          userProfile.subscription_status === 'free' ? 'Бесплатно' :
+                            userProfile.subscription_status === 'cancelled' ? 'Отменена' : 'Просрочена'}
                       </span>
                       {userProfile.subscription_tier && (
                         <div className="text-xs text-gray-500 mt-1">
@@ -255,13 +279,13 @@ export default function AdminPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {userProfile.coach_id ? (
-                      coaches.find(c => c.id === userProfile.coach_id)?.full_name || 
-                      coaches.find(c => c.id === userProfile.coach_id)?.email || 
+                      coaches.find(c => c.id === userProfile.coach_id)?.full_name ||
+                      coaches.find(c => c.id === userProfile.coach_id)?.email ||
                       'Неизвестен'
                     ) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {userProfile.created_at 
+                    {userProfile.created_at
                       ? new Date(userProfile.created_at).toLocaleDateString('ru-RU')
                       : '-'}
                   </td>

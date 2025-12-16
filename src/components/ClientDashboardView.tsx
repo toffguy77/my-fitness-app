@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { UtensilsCrossed, TrendingUp, ArrowRight } from 'lucide-react'
 import DayToggle from './DayToggle'
+import { logger } from '@/utils/logger'
 
 type DailyLog = {
   date: string
@@ -47,6 +48,7 @@ export default function ClientDashboardView({
 
   useEffect(() => {
     const fetchData = async () => {
+      logger.debug('ClientDashboardView: начало загрузки данных', { clientId })
       try {
         // Получаем активные цели питания для обоих типов дней
         const [trainingResult, restResult] = await Promise.all([
@@ -66,11 +68,20 @@ export default function ClientDashboardView({
             .single(),
         ])
 
+        if (trainingResult.error && trainingResult.error.code !== 'PGRST116') {
+          logger.error('ClientDashboardView: ошибка загрузки целей тренировок', trainingResult.error, { clientId })
+        }
+        if (restResult.error && restResult.error.code !== 'PGRST116') {
+          logger.error('ClientDashboardView: ошибка загрузки целей отдыха', restResult.error, { clientId })
+        }
+
         if (trainingResult.data) {
           setTargetsTraining(trainingResult.data as NutritionTarget)
+          logger.debug('ClientDashboardView: цели тренировок загружены', { clientId })
         }
         if (restResult.data) {
           setTargetsRest(restResult.data as NutritionTarget)
+          logger.debug('ClientDashboardView: цели отдыха загружены', { clientId })
         }
 
         // Устанавливаем дефолтный тип дня
@@ -85,6 +96,7 @@ export default function ClientDashboardView({
         const weekAgo = new Date(today)
         weekAgo.setDate(today.getDate() - 7)
 
+        logger.debug('ClientDashboardView: загрузка логов за неделю', { clientId })
         const { data: logsData, error: logsError } = await supabase
           .from('daily_logs')
           .select('*')
@@ -94,14 +106,16 @@ export default function ClientDashboardView({
           .order('date', { ascending: false })
 
         if (logsError) {
-          console.error('Ошибка загрузки логов:', logsError)
+          logger.error('ClientDashboardView: ошибка загрузки логов', logsError, { clientId })
         } else if (logsData) {
           setWeekLogs(logsData as DailyLog[])
+          logger.info('ClientDashboardView: логи успешно загружены', { clientId, count: logsData.length })
         }
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('ClientDashboardView: ошибка загрузки данных', error, { clientId })
       } finally {
         setLoading(false)
+        logger.debug('ClientDashboardView: загрузка данных завершена', { clientId })
       }
     }
 
@@ -161,9 +175,16 @@ export default function ClientDashboardView({
         .eq('id', editingTargets.id)
 
       if (error) {
-        console.error('Ошибка сохранения целей:', error)
+        logger.error('ClientDashboardView: ошибка сохранения целей', error, {
+          clientId,
+          dayType: editingTargets.day_type,
+        })
         alert('Ошибка сохранения: ' + error.message)
       } else {
+        logger.info('ClientDashboardView: цели успешно сохранены', {
+          clientId,
+          dayType: editingTargets.day_type,
+        })
         // Обновляем локальное состояние
         const updated = { ...editingTargets }
         if (editingTargets.day_type === 'training') {
@@ -177,7 +198,7 @@ export default function ClientDashboardView({
         }
       }
     } catch (error) {
-      console.error('Ошибка:', error)
+      logger.error('ClientDashboardView: исключение при сохранении целей', error, { clientId })
     } finally {
       setSavingTargets(false)
     }

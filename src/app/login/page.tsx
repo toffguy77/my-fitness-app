@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
+import { logger } from '@/utils/logger'
 
 export default function LoginPage() {
   const supabase = createClient()
@@ -18,17 +19,29 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      logger.debug('Login: проверка существующей сессии')
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+      if (userError) {
+        logger.warn('Login: ошибка проверки сессии', { error: userError.message })
+        return
+      }
+
       if (user) {
+        logger.info('Login: найдена активная сессия', { userId: user.id })
         setUser(user)
-        
+
         // Загружаем профиль для определения роли
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single()
-        
+
+        if (profileError) {
+          logger.error('Login: ошибка загрузки профиля', profileError, { userId: user.id })
+        }
+
         const role = profile?.role || 'client'
         let redirectPath = '/app/dashboard'
         if (role === 'super_admin') {
@@ -36,6 +49,8 @@ export default function LoginPage() {
         } else if (role === 'coach') {
           redirectPath = '/app/coach'
         }
+
+        logger.info('Login: редирект авторизованного пользователя', { userId: user.id, role, redirectPath })
         router.push(redirectPath)
       }
     }
@@ -48,24 +63,32 @@ export default function LoginPage() {
     setError(null)
     setMessage(null)
 
+    logger.info('Login: попытка входа', { email })
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
+      logger.error('Login: ошибка входа', error, { email })
       setError(error.message)
       setLoading(false)
     } else if (data.user) {
+      logger.info('Login: успешный вход', { userId: data.user.id, email })
       setMessage('Успешный вход! Перенаправляем...')
-      
+
       // Определяем роль и редиректим
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
         .single()
-      
+
+      if (profileError) {
+        logger.error('Login: ошибка загрузки профиля после входа', profileError, { userId: data.user.id })
+      }
+
       const role = profile?.role || 'client'
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
@@ -73,7 +96,9 @@ export default function LoginPage() {
       } else if (role === 'coach') {
         redirectPath = '/app/coach'
       }
-      
+
+      logger.info('Login: редирект после успешного входа', { userId: data.user.id, role, redirectPath })
+
       setTimeout(() => {
         router.push(redirectPath)
         router.refresh()

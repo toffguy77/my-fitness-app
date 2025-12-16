@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { ArrowLeft } from 'lucide-react'
 import ClientDashboardView from '@/components/ClientDashboardView'
+import { logger } from '@/utils/logger'
 
 export default function ClientViewPage() {
   const supabase = createClient()
@@ -39,9 +40,10 @@ export default function ClientViewPage() {
         }
 
         setClientName(clientProfile.full_name || clientProfile.email || 'Клиент')
+        logger.debug('Coach: данные клиента загружены', { coachId: user.id, clientId })
         setLoading(false)
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('Coach: ошибка загрузки данных клиента', error, { clientId })
         router.push('/coach')
       }
     }
@@ -55,7 +57,7 @@ export default function ClientViewPage() {
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans">
       <header className="flex items-center gap-4 mb-6">
         <button
-            onClick={() => router.push('/app/coach')}
+          onClick={() => router.push('/app/coach')}
           className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -66,8 +68,8 @@ export default function ClientViewPage() {
         </div>
       </header>
 
-      <ClientDashboardView 
-        clientId={clientId} 
+      <ClientDashboardView
+        clientId={clientId}
         readOnly={true}
         onTargetsUpdate={() => {
           // Обновляем данные после изменения целей

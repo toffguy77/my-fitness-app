@@ -7,6 +7,7 @@ import { User } from '@supabase/supabase-js'
 import { LogOut, User as UserIcon, AlertCircle, CheckCircle, Circle, Filter, ArrowUpDown } from 'lucide-react'
 import type { UserProfile } from '@/utils/supabase/profile'
 import { getCoachClients } from '@/utils/supabase/profile'
+import { logger } from '@/utils/logger'
 
 type ClientWithStatus = UserProfile & {
   lastCheckin?: string
@@ -49,7 +50,7 @@ export default function CoachDashboard() {
 
         // Загружаем клиентов
         const coachClients = await getCoachClients(user.id)
-        
+
         // Для каждого клиента загружаем данные за сегодня
         const today = new Date().toISOString().split('T')[0]
         const clientsWithStatus = await Promise.all(
@@ -105,10 +106,12 @@ export default function CoachDashboard() {
         )
 
         setClients(clientsWithStatus)
+        logger.info('Coach: данные клиентов успешно загружены', { coachId: user.id, count: clientsWithStatus.length })
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('Coach: ошибка загрузки данных', error, { coachId: user?.id })
       } finally {
         setLoading(false)
+        logger.debug('Coach: загрузка данных завершена')
       }
     }
 
@@ -220,41 +223,37 @@ export default function CoachDashboard() {
               <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setStatusFilter('all')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    statusFilter === 'all'
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'all'
                       ? 'bg-white text-black shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   Все
                 </button>
                 <button
                   onClick={() => setStatusFilter('red')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    statusFilter === 'red'
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'red'
                       ? 'bg-white text-red-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   🔴 Требуют внимания
                 </button>
                 <button
                   onClick={() => setStatusFilter('green')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    statusFilter === 'green'
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'green'
                       ? 'bg-white text-green-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   🟢 В норме
                 </button>
                 <button
                   onClick={() => setStatusFilter('grey')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    statusFilter === 'grey'
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'grey'
                       ? 'bg-white text-gray-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   ⚪ Нет данных
                 </button>
@@ -267,31 +266,28 @@ export default function CoachDashboard() {
               <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => handleSort('name')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    sortBy === 'name'
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'name'
                       ? 'bg-white text-black shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   По имени {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </button>
                 <button
                   onClick={() => handleSort('lastCheckin')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    sortBy === 'lastCheckin'
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'lastCheckin'
                       ? 'bg-white text-black shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   По дате {sortBy === 'lastCheckin' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </button>
                 <button
                   onClick={() => handleSort('status')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    sortBy === 'status'
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'status'
                       ? 'bg-white text-black shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   По статусу {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </button>
@@ -330,7 +326,7 @@ export default function CoachDashboard() {
                       </div>
                       <div className="text-sm text-gray-500 space-y-1">
                         <p>
-                          Последний чекин: {client.lastCheckin 
+                          Последний чекин: {client.lastCheckin
                             ? new Date(client.lastCheckin).toLocaleDateString('ru-RU')
                             : 'Нет данных'}
                         </p>

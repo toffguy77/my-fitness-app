@@ -1,5 +1,6 @@
 import { createClient } from './client'
 import { User } from '@supabase/supabase-js'
+import { logger } from '@/utils/logger'
 
 export type UserRole = 'client' | 'coach' | 'super_admin'
 
@@ -24,6 +25,8 @@ export type UserProfile = {
 export async function getUserProfile(user: User): Promise<UserProfile | null> {
   const supabase = createClient()
   
+  logger.debug('Profile: загрузка профиля пользователя', { userId: user.id })
+  
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -31,15 +34,18 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
     .single()
 
   if (error) {
-    console.error('Ошибка загрузки профиля:', error)
+    logger.error('Profile: ошибка загрузки профиля', error, { userId: user.id })
     return null
   }
 
+  logger.debug('Profile: профиль успешно загружен', { userId: user.id, role: data?.role })
   return data as UserProfile
 }
 
 export async function getCoachClients(coachId: string): Promise<UserProfile[]> {
   const supabase = createClient()
+  
+  logger.debug('Profile: загрузка клиентов тренера', { coachId })
   
   const { data, error } = await supabase
     .from('profiles')
@@ -49,15 +55,18 @@ export async function getCoachClients(coachId: string): Promise<UserProfile[]> {
     .order('full_name', { ascending: true })
 
   if (error) {
-    console.error('Ошибка загрузки клиентов:', error)
+    logger.error('Profile: ошибка загрузки клиентов', error, { coachId })
     return []
   }
 
+  logger.info('Profile: клиенты успешно загружены', { coachId, count: data?.length || 0 })
   return (data || []) as UserProfile[]
 }
 
 export async function isSuperAdmin(userId: string): Promise<boolean> {
   const supabase = createClient()
+  
+  logger.debug('Profile: проверка прав super_admin', { userId })
   
   const { data, error } = await supabase
     .from('profiles')
@@ -66,14 +75,19 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
     .single()
 
   if (error || !data) {
+    logger.warn('Profile: ошибка проверки прав super_admin', { userId, error: error?.message })
     return false
   }
 
-  return data.role === 'super_admin'
+  const isAdmin = data.role === 'super_admin'
+  logger.debug('Profile: результат проверки super_admin', { userId, isAdmin })
+  return isAdmin
 }
 
 export async function isPremium(userId: string): Promise<boolean> {
   const supabase = createClient()
+  
+  logger.debug('Profile: проверка Premium статуса', { userId })
   
   const { data, error } = await supabase
     .from('profiles')
@@ -82,14 +96,22 @@ export async function isPremium(userId: string): Promise<boolean> {
     .single()
 
   if (error || !data) {
+    logger.warn('Profile: ошибка проверки Premium статуса', { userId, error: error?.message })
     return false
   }
 
-  return data.subscription_status === 'active' && data.subscription_tier === 'premium'
+  const isPremiumUser = data.subscription_status === 'active' && data.subscription_tier === 'premium'
+  logger.debug('Profile: результат проверки Premium', { userId, isPremium: isPremiumUser })
+  return isPremiumUser
 }
 
 export function hasActiveSubscription(profile: UserProfile | null): boolean {
-  if (!profile) return false
-  return profile.subscription_status === 'active'
+  if (!profile) {
+    logger.debug('Profile: проверка подписки - профиль отсутствует')
+    return false
+  }
+  const hasActive = profile.subscription_status === 'active'
+  logger.debug('Profile: проверка активной подписки', { userId: profile.id, hasActive })
+  return hasActive
 }
 

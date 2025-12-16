@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { LogOut } from 'lucide-react'
+import { logger } from '@/utils/logger'
 
 type DailyLog = {
   id: string
@@ -34,6 +35,7 @@ export default function ReportsPage() {
         }
         setUser(user)
 
+        logger.debug('Reports: загрузка отчетов', { userId: user.id })
         const { data, error } = await supabase
           .from('daily_logs')
           .select('*')
@@ -41,14 +43,16 @@ export default function ReportsPage() {
           .order('date', { ascending: false })
 
         if (error) {
-          console.error('Ошибка загрузки отчетов:', error)
+          logger.error('Reports: ошибка загрузки отчетов', error, { userId: user.id })
         } else if (data) {
           setLogs(data as DailyLog[])
+          logger.info('Reports: отчеты успешно загружены', { userId: user.id, count: data.length })
         }
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('Reports: ошибка загрузки данных', error)
       } finally {
         setLoading(false)
+        logger.debug('Reports: загрузка данных завершена')
       }
     }
 

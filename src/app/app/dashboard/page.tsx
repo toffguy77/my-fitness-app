@@ -8,6 +8,7 @@ import { User } from '@supabase/supabase-js'
 import { LogOut, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
 import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
+import { logger } from '@/utils/logger'
 
 type DailyLog = {
   date: string
@@ -39,19 +40,25 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
+      logger.debug('Dashboard: начало загрузки данных')
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
+          logger.warn('Dashboard: пользователь не авторизован', { error: userError?.message })
           router.push('/login')
           return
         }
+        logger.debug('Dashboard: пользователь авторизован', { userId: user.id })
         setUser(user)
 
         // Проверяем Premium статус
         const profile = await getUserProfile(user)
-        setIsPremium(hasActiveSubscription(profile))
+        const premiumStatus = hasActiveSubscription(profile)
+        setIsPremium(premiumStatus)
+        logger.debug('Dashboard: статус Premium', { userId: user.id, isPremium: premiumStatus })
 
         // Получаем активные цели питания для обоих типов дней
+        logger.debug('Dashboard: загрузка целей питания', { userId: user.id })
         const [trainingResult, restResult] = await Promise.all([
           supabase
             .from('nutrition_targets')
@@ -69,11 +76,20 @@ export default function ClientDashboard() {
             .single(),
         ])
 
+        if (trainingResult.error && trainingResult.error.code !== 'PGRST116') {
+          logger.error('Dashboard: ошибка загрузки целей тренировок', trainingResult.error, { userId: user.id })
+        }
+        if (restResult.error && restResult.error.code !== 'PGRST116') {
+          logger.error('Dashboard: ошибка загрузки целей отдыха', restResult.error, { userId: user.id })
+        }
+
         if (trainingResult.data) {
           setTargetsTraining(trainingResult.data as NutritionTarget)
+          logger.debug('Dashboard: цели тренировок загружены', { userId: user.id })
         }
         if (restResult.data) {
           setTargetsRest(restResult.data as NutritionTarget)
+          logger.debug('Dashboard: цели отдыха загружены', { userId: user.id })
         }
 
         // Устанавливаем дефолтный тип дня на основе наличия данных
@@ -88,6 +104,7 @@ export default function ClientDashboard() {
         const weekAgo = new Date(today)
         weekAgo.setDate(today.getDate() - 7)
 
+        logger.debug('Dashboard: загрузка логов за неделю', { userId: user.id })
         const { data: logsData, error: logsError } = await supabase
           .from('daily_logs')
           .select('*')
@@ -97,14 +114,16 @@ export default function ClientDashboard() {
           .order('date', { ascending: false })
 
         if (logsError) {
-          console.error('Ошибка загрузки логов:', logsError)
+          logger.error('Dashboard: ошибка загрузки логов', logsError, { userId: user.id })
         } else if (logsData) {
           setWeekLogs(logsData as DailyLog[])
+          logger.info('Dashboard: логи успешно загружены', { userId: user.id, count: logsData.length })
         }
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('Dashboard: ошибка загрузки данных', error)
       } finally {
         setLoading(false)
+        logger.debug('Dashboard: загрузка данных завершена')
       }
     }
 
@@ -157,7 +176,13 @@ export default function ClientDashboard() {
         </div>
         <button
           onClick={async () => {
-            await supabase.auth.signOut()
+            logger.info('Dashboard: выход из системы')
+            const { error } = await supabase.auth.signOut()
+            if (error) {
+              logger.error('Dashboard: ошибка выхода', error)
+            } else {
+              logger.info('Dashboard: успешный выход')
+            }
             router.push('/login')
             router.refresh()
           }}

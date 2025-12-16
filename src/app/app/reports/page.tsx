@@ -7,6 +7,7 @@ import { User } from '@supabase/supabase-js'
 import { LogOut } from 'lucide-react'
 import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
 import Paywall from '@/components/Paywall'
+import { logger } from '@/utils/logger'
 
 type DailyLog = {
   id: string
@@ -30,25 +31,31 @@ export default function ReportsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      logger.debug('Reports: начало загрузки данных')
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
+          logger.warn('Reports: пользователь не авторизован', { error: userError?.message })
           router.push('/login')
           return
         }
+        logger.debug('Reports: пользователь авторизован', { userId: user.id })
         setUser(user)
 
         // Проверяем Premium статус
         const profile = await getUserProfile(user)
         const premium = hasActiveSubscription(profile)
         setIsPremium(premium)
+        logger.debug('Reports: статус Premium', { userId: user.id, isPremium: premium })
 
         // Если не Premium, не загружаем данные
         if (!premium) {
+          logger.info('Reports: доступ запрещен (не Premium)', { userId: user.id })
           setLoading(false)
           return
         }
 
+        logger.debug('Reports: загрузка отчетов', { userId: user.id })
         const { data, error } = await supabase
           .from('daily_logs')
           .select('*')
@@ -56,14 +63,16 @@ export default function ReportsPage() {
           .order('date', { ascending: false })
 
         if (error) {
-          console.error('Ошибка загрузки отчетов:', error)
+          logger.error('Reports: ошибка загрузки отчетов', error, { userId: user.id })
         } else if (data) {
           setLogs(data as DailyLog[])
+          logger.info('Reports: отчеты успешно загружены', { userId: user.id, count: data.length })
         }
       } catch (error) {
-        console.error('Ошибка загрузки данных:', error)
+        logger.error('Reports: ошибка загрузки данных', error)
       } finally {
         setLoading(false)
+        logger.debug('Reports: загрузка данных завершена')
       }
     }
 
@@ -104,7 +113,7 @@ export default function ReportsPage() {
             ← Назад
           </button>
         </header>
-        <Paywall 
+        <Paywall
           title="Отчеты доступны с Premium подпиской"
           message="Подключите работу с тренером, чтобы получить доступ к детальным отчетам, аналитике прогресса и персональным рекомендациям."
         />
@@ -128,7 +137,13 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={async () => {
-              await supabase.auth.signOut()
+              logger.info('Reports: выход из системы')
+              const { error } = await supabase.auth.signOut()
+              if (error) {
+                logger.error('Reports: ошибка выхода', error)
+              } else {
+                logger.info('Reports: успешный выход')
+              }
               router.push('/login')
               router.refresh()
             }}
