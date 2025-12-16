@@ -343,7 +343,7 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.calories}
                   onChange={(e) => setEditingTargets({ ...editingTargets, calories: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
                 />
               </div>
               <div>
@@ -352,7 +352,7 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.protein}
                   onChange={(e) => setEditingTargets({ ...editingTargets, protein: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
                 />
               </div>
               <div>
@@ -361,7 +361,7 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.fats}
                   onChange={(e) => setEditingTargets({ ...editingTargets, fats: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
                 />
               </div>
               <div>
@@ -370,7 +370,7 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.carbs}
                   onChange={(e) => setEditingTargets({ ...editingTargets, carbs: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
                 />
               </div>
             </div>

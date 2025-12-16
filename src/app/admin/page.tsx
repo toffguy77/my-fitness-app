@@ -194,7 +194,7 @@ export default function AdminPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Поиск по email или имени..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                className="w-full pl-10 pr-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
               />
             </div>
           </div>
@@ -328,7 +328,7 @@ export default function AdminPage() {
                   type="text"
                   value={editingUser.full_name || ''}
                   onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                  className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
                 />
               </div>
 
@@ -401,7 +401,7 @@ export default function AdminPage() {
                     type="date"
                     value={editingUser.subscription_start_date ? editingUser.subscription_start_date.split('T')[0] : ''}
                     onChange={(e) => setEditingUser({ ...editingUser, subscription_start_date: e.target.value || null })}
-                    className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                    className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
                   />
                 </div>
                 <div>
@@ -410,7 +410,7 @@ export default function AdminPage() {
                     type="date"
                     value={editingUser.subscription_end_date ? editingUser.subscription_end_date.split('T')[0] : ''}
                     onChange={(e) => setEditingUser({ ...editingUser, subscription_end_date: e.target.value || null })}
-                    className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                    className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
                   />
                 </div>
               </div>

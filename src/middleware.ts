@@ -195,11 +195,11 @@ export async function middleware(request: NextRequest) {
     // Критические ошибки должны быть видны - возвращаем 500 ошибку
     console.error('Middleware: критическая ошибка', error)
     return new NextResponse(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Internal Server Error',
         message: error instanceof Error ? error.message : 'Unknown error'
       }),
-      { 
+      {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       }

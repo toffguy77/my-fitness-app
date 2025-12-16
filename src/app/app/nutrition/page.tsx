@@ -18,6 +18,8 @@ type Meal = {
   fats: number
   carbs: number
   photoName?: string
+  mealDate?: string // Дата приема пищи (для поправок)
+  createdAt?: string // Время создания для сортировки
 }
 
 type Targets = {
@@ -37,16 +39,29 @@ type DailyLog = {
   weight: number | null
   notes: string
   target_type?: 'training' | 'rest'
+  meals?: Meal[] // Массив приемов пищи
 }
 
 export default function NutritionPage() {
   const supabase = createClient()
   const router = useRouter()
+
+  // Функция для определения названия приема пищи по времени суток (объявляем до использования)
+  const getMealNameByTime = (hour: number = new Date().getHours()): string => {
+    if (hour >= 6 && hour < 10) return 'Завтрак'
+    if (hour >= 10 && hour < 13) return 'Второй завтрак'
+    if (hour >= 13 && hour < 16) return 'Обед'
+    if (hour >= 16 && hour < 20) return 'Полдник'
+    if (hour >= 20 || hour < 6) return 'Ужин'
+    return 'Прием пищи'
+  }
+
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   // State для данных
   const [dayType, setDayType] = useState<'training' | 'rest'>('training')
+  const [dayTypeLocked, setDayTypeLocked] = useState<boolean>(false) // Блокировка изменения типа дня после сохранения
   const [targetsTraining, setTargetsTraining] = useState<Targets | null>(null)
   const [targetsRest, setTargetsRest] = useState<Targets | null>(null)
   const [log, setLog] = useState<DailyLog>({
@@ -54,22 +69,28 @@ export default function NutritionPage() {
     actual_protein: 0,
     actual_fats: 0,
     actual_carbs: 0,
-    hunger_level: 5,
+    hunger_level: 3,
     energy_level: 5,
     weight: null,
     notes: ''
   })
-  const [meals, setMeals] = useState<Meal[]>([
-    {
+  const [meals, setMeals] = useState<Meal[]>(() => {
+    // По умолчанию создаем один прием пищи
+    const now = new Date()
+    const mealName = getMealNameByTime(now.getHours())
+    return [{
       id: crypto.randomUUID(),
-      title: 'Прием пищи 1',
+      title: mealName,
       weight: 100,
       calories: 0,
       protein: 0,
       fats: 0,
-      carbs: 0
-    }
-  ])
+      carbs: 0,
+      mealDate: new Date().toISOString().split('T')[0],
+      createdAt: now.toISOString()
+    }]
+  })
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -136,10 +157,16 @@ export default function NutritionPage() {
         if (logResult.data) {
           logger.debug('Nutrition: найден существующий лог за сегодня', { userId: user.id, date: today })
           setLog(logResult.data)
-          // Если в логе есть target_type, используем его
+          // Загружаем существующие приемы пищи
+          if (logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
+            setMeals(logResult.data.meals as Meal[])
+            logger.debug('Nutrition: загружены существующие приемы пищи', { count: logResult.data.meals.length })
+          }
+          // Если в логе есть target_type, используем его и блокируем редактирование
           if (logResult.data.target_type) {
             setDayType(logResult.data.target_type as 'training' | 'rest')
-            logger.debug('Nutrition: тип дня установлен из лога', { dayType: logResult.data.target_type })
+            setDayTypeLocked(true) // Блокируем изменение типа дня, если он уже сохранен
+            logger.debug('Nutrition: тип дня установлен из лога и заблокирован', { dayType: logResult.data.target_type })
           }
         } else {
           logger.debug('Nutrition: лог за сегодня не найден, используем дефолт', { userId: user.id })
@@ -149,6 +176,8 @@ export default function NutritionPage() {
           } else if (restResult.data && !trainingResult.data) {
             setDayType('rest')
           }
+          setDayTypeLocked(false) // Разрешаем изменение типа дня, если лога еще нет
+          // Оставляем дефолтный прием пищи, который уже создан в useState
         }
       } catch (error) {
         logger.error('Nutrition: ошибка загрузки данных', error)
@@ -198,18 +227,66 @@ export default function NutritionPage() {
     setSaveError(null)
 
     const today = new Date().toISOString().split('T')[0]
+
+    // Получаем существующий лог за сегодня (meals и target_type)
+    const { data: existingLog } = await supabase
+      .from('daily_logs')
+      .select('meals, target_type')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single()
+
+    // Объединяем существующие meals с новыми
+    const existingMeals: Meal[] = (existingLog?.meals as Meal[]) || []
+    const newMeals = meals.map(meal => ({
+      ...meal,
+      mealDate: meal.mealDate || today,
+      createdAt: meal.createdAt || new Date().toISOString()
+    }))
+
+    // Объединяем: обновляем существующие по id, добавляем новые
+    const mealIds = new Set(newMeals.map(m => m.id))
+    const allMeals = [
+      ...existingMeals.filter(m => !mealIds.has(m.id)), // Оставляем только те, которые не были изменены
+      ...newMeals // Добавляем/обновляем новые
+    ]
+
+    // Пересчитываем totals из всех meals за сегодня
+    const todayMeals = allMeals.filter(m => (m.mealDate || today) === today)
+    const aggregatedTotals = todayMeals.reduce(
+      (acc, meal) => ({
+        calories: acc.calories + (meal.calories || 0),
+        protein: acc.protein + (meal.protein || 0),
+        fats: acc.fats + (meal.fats || 0),
+        carbs: acc.carbs + (meal.carbs || 0)
+      }),
+      { calories: 0, protein: 0, fats: 0, carbs: 0 }
+    )
+
     const aggregatedLog = {
       ...log,
-      actual_calories: totals.calories,
-      actual_protein: totals.protein,
-      actual_fats: totals.fats,
-      actual_carbs: totals.carbs
+      actual_calories: aggregatedTotals.calories,
+      actual_protein: aggregatedTotals.protein,
+      actual_fats: aggregatedTotals.fats,
+      actual_carbs: aggregatedTotals.carbs
+    }
+
+    // Если лог существует и target_type уже установлен, сохраняем его
+    // Иначе используем текущий dayType
+    const targetTypeToSave = existingLog?.target_type || dayType
+
+    // Блокируем изменение типа дня после первого сохранения
+    if (existingLog?.target_type) {
+      setDayTypeLocked(true)
+    } else {
+      setDayTypeLocked(true) // Блокируем после сохранения
     }
 
     const payload = {
       user_id: user.id,
       date: today,
-      target_type: dayType,
+      target_type: targetTypeToSave, // Сохраняем тип дня (существующий или новый)
+      meals: allMeals, // Сохраняем все meals
       ...aggregatedLog
     }
 
@@ -217,6 +294,7 @@ export default function NutritionPage() {
       userId: user.id,
       date: today,
       dayType,
+      targetTypeToSave,
       totals: {
         calories: totals.calories,
         protein: totals.protein,
@@ -263,33 +341,44 @@ export default function NutritionPage() {
 
   if (loading) return <div className="p-8 text-center">Загрузка контекста...</div>
 
+  // Emoji для уровня голода (5 уровней)
+  const getHungerEmoji = (level: number): string => {
+    const emojis: Record<number, string> = {
+      1: '😋', // Совсем нет голода
+      2: '🙂', // Легкий голод
+      3: '😊', // Умеренный голод
+      4: '😟', // Сильный голод
+      5: '🤯' // Зверский голод
+    }
+    return emojis[level] || '😊'
+  }
+
   const getHungerLevelText = (level: number): string => {
     const levels: Record<number, string> = {
       1: 'Совсем нет голода',
-      2: 'Очень слабый голод',
-      3: 'Слабый голод',
-      4: 'Легкий голод',
-      5: 'Умеренный голод',
-      6: 'Заметный голод',
-      7: 'Сильный голод',
-      8: 'Очень сильный голод',
-      9: 'Нестерпимый голод',
-      10: 'Зверский голод'
+      2: 'Легкий голод',
+      3: 'Умеренный голод',
+      4: 'Сильный голод',
+      5: 'Зверский голод'
     }
     return levels[level] || 'Умеренный голод'
   }
 
   const addMeal = () => {
+    const now = new Date()
+    const mealName = getMealNameByTime(now.getHours())
     setMeals((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        title: `Прием пищи ${prev.length + 1}`,
+        title: mealName,
         weight: 100,
         calories: 0,
         protein: 0,
         fats: 0,
-        carbs: 0
+        carbs: 0,
+        mealDate: selectedDate,
+        createdAt: now.toISOString()
       }
     ])
   }
@@ -332,9 +421,36 @@ export default function NutritionPage() {
       {/* DAY TYPE TOGGLE */}
       {(targetsTraining || targetsRest) && (
         <div className="mb-6">
-          <DayToggle value={dayType} onChange={setDayType} />
+          <DayToggle
+            value={dayType}
+            onChange={(newType) => {
+              if (!dayTypeLocked) {
+                setDayType(newType)
+              }
+            }}
+            disabled={dayTypeLocked}
+          />
         </div>
       )}
+
+      {/* WEIGHT SECTION - ТОЛЬКО ВВОД */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm mb-6 border border-gray-100">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Вес тела</h2>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            step="0.1"
+            value={log.weight || ''}
+            onChange={(e) => setLog({ ...log, weight: e.target.value ? parseFloat(e.target.value) : null })}
+            placeholder="Введите вес"
+            className="flex-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+          />
+          <span className="text-sm text-gray-600">кг</span>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Укажите ваш текущий вес. Это поможет отслеживать прогресс.
+        </p>
+      </div>
 
       {/* TARGETS SUMMARY */}
       {currentTargets ? (
@@ -382,17 +498,28 @@ export default function NutritionPage() {
                   type="text"
                   value={meal.title}
                   onChange={(e) => updateMeal(meal.id, 'title', e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-black"
-                  placeholder={`Прием пищи ${idx + 1}`}
+                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-black outline-none focus:ring-2 focus:ring-black"
+                  placeholder={getMealNameByTime()}
                 />
-                <button
-                  type="button"
-                  onClick={() => removeMeal(meal.id)}
-                  className="text-xs text-gray-500 underline disabled:text-gray-300"
-                  disabled={meals.length === 1}
-                >
-                  Удалить
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <input
+                    type="date"
+                    value={meal.mealDate || selectedDate}
+                    onChange={(e) => updateMeal(meal.id, 'mealDate', e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="text-xs border border-gray-200 rounded px-2 py-1 text-black w-28"
+                    title="Дата приема пищи"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeMeal(meal.id)}
+                    className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={meals.length === 0}
+                    title="Удалить прием пищи"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -427,61 +554,63 @@ export default function NutritionPage() {
           ))}
         </div>
 
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-600">
-            Всего за день: {totals.calories} ккал, Б {totals.protein} / Ж {totals.fats} / У {totals.carbs} г
+        {/* КНОПКА ДОБАВЛЕНИЯ - ПЕРЕМЕЩЕНА ВВЕРХ */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500">Дата приема пищи:</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+              className="text-xs border border-gray-200 rounded px-2 py-1 text-black"
+            />
           </div>
           <button
             type="button"
             onClick={addMeal}
-            className="text-sm font-semibold text-white bg-black hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-colors"
+            className="w-full text-sm font-semibold text-white bg-black hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-colors"
           >
             + Добавить прием пищи
           </button>
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-gray-100">
-          {/* WEIGHT */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
-              Вес тела (кг)
-            </label>
-            <input
-              type="number"
-              step="0.1"
-              value={log.weight || ''}
-              onChange={(e) => setLog({ ...log, weight: e.target.value ? parseFloat(e.target.value) : null })}
-              placeholder="Введите вес"
-              className="w-full p-3 bg-white rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Укажите ваш текущий вес. Это поможет отслеживать прогресс.
-            </p>
+        {/* ВСЕГО ЗА ДЕНЬ - ПЕРЕМЕЩЕНО ВНИЗ */}
+        <div className="pt-4 border-t border-gray-200">
+          <div className="text-sm font-semibold text-gray-900 text-center">
+            Всего за день: {totals.calories} ккал, Б {totals.protein} / Ж {totals.fats} / У {totals.carbs} г
           </div>
+        </div>
 
+        <div className="space-y-4 pt-4 border-t border-gray-100">
+          {/* HUNGER LEVEL - EMOJI (5 уровней) */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">Уровень голода</label>
-              <span className="text-sm font-semibold text-gray-900">
-                {getHungerLevelText(log.hunger_level || 5)}
-              </span>
+            <label className="text-sm font-medium text-gray-700 mb-3 block">Уровень голода</label>
+            <div className="grid grid-cols-5 gap-2">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setLog({ ...log, hunger_level: level })}
+                  className={`p-3 rounded-lg text-2xl transition-all ${log.hunger_level === level
+                    ? 'bg-black text-white scale-110'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                  title={getHungerLevelText(level)}
+                >
+                  {getHungerEmoji(level)}
+                </button>
+              ))}
             </div>
-            <input
-              type="range" min="1" max="10"
-              value={log.hunger_level || 5}
-              onChange={(e) => setLog({ ...log, hunger_level: parseInt(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
-            />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>1</span>
-              <span>10</span>
-            </div>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              {getHungerLevelText(log.hunger_level || 3)}
+            </p>
           </div>
 
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 block">Комментарий</label>
             <textarea
-              className="w-full p-3 bg-gray-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-gray-50 rounded-xl border-none text-sm text-black focus:ring-2 focus:ring-black outline-none"
               rows={3}
               placeholder="Как прошел день? Были срывы?"
               value={log.notes || ''}
@@ -559,10 +688,11 @@ function InputGroup({ label, value, onChange }: InputGroupProps) {
           const numValue = inputValue === '' ? 0 : parseFloat(inputValue) || 0
           onChange(numValue)
         }}
-        className="w-full p-3 bg-white rounded-xl border border-gray-200 font-mono text-base font-medium focus:ring-2 focus:ring-black outline-none placeholder:text-gray-400 placeholder:text-sm"
+        className="w-full p-3 bg-white rounded-xl border border-gray-200 font-mono text-base font-medium text-black focus:ring-2 focus:ring-black outline-none placeholder:text-gray-400 placeholder:text-sm"
         placeholder="Введите значение"
       />
     </div>
   )
 }
+
 
