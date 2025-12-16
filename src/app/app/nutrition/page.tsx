@@ -491,7 +491,7 @@ export default function NutritionPage() {
         </div>
 
         <div className="space-y-4">
-          {meals.map((meal, idx) => (
+          {meals.map((meal) => (
             <div key={meal.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <input

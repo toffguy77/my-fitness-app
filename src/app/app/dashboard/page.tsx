@@ -52,7 +52,6 @@ export default function ClientDashboard() {
   const [weekLogs, setWeekLogs] = useState<DailyLog[]>([])
   const [isPremium, setIsPremium] = useState(false)
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
-  const [editingMeal, setEditingMeal] = useState<Meal | null>(null)
   const [editingWeight, setEditingWeight] = useState<boolean>(false)
   const [showAddMealModal, setShowAddMealModal] = useState<boolean>(false)
 
@@ -135,7 +134,7 @@ export default function ClientDashboard() {
 
         if (logsError) {
           // Если ошибка связана с отсутствием колонки meals, продолжаем работу без неё
-          const errorMessage = (logsError as any)?.message || ''
+          const errorMessage = (logsError as { message?: string })?.message || ''
           if (errorMessage.includes('column daily_logs.meals does not exist')) {
             logger.warn('Dashboard: колонка meals не существует, загружаем данные без meals', { userId: user.id })
             // Повторяем запрос без meals
@@ -150,8 +149,8 @@ export default function ClientDashboard() {
             if (logsErrorRetry) {
               const error = logsErrorRetry instanceof Error
                 ? logsErrorRetry
-                : new Error((logsErrorRetry as any)?.message || 'Ошибка загрузки логов')
-              logger.error('Dashboard: ошибка загрузки логов (повторная попытка)', error, { userId: user.id, code: (logsErrorRetry as any)?.code })
+                : new Error((logsErrorRetry as { message?: string })?.message || 'Ошибка загрузки логов')
+              logger.error('Dashboard: ошибка загрузки логов (повторная попытка)', error, { userId: user.id, code: (logsErrorRetry as { code?: string })?.code })
             } else if (logsDataWithoutMeals) {
               // Добавляем пустой массив meals к каждому логу
               const logsWithEmptyMeals = logsDataWithoutMeals.map(log => ({ ...log, meals: [] }))
@@ -169,7 +168,7 @@ export default function ClientDashboard() {
             const error = logsError instanceof Error
               ? logsError
               : new Error(errorMessage)
-            logger.error('Dashboard: ошибка загрузки логов', error, { userId: user.id, code: (logsError as any)?.code })
+            logger.error('Dashboard: ошибка загрузки логов', error, { userId: user.id, code: (logsError as { code?: string })?.code })
           }
         } else if (logsData) {
           setWeekLogs(logsData as DailyLog[])
@@ -281,7 +280,7 @@ export default function ClientDashboard() {
             if (error) {
               const errorObj = error instanceof Error
                 ? error
-                : new Error((error as any)?.message || 'Ошибка выхода')
+                : new Error((error as { message?: string })?.message || 'Ошибка выхода')
               logger.error('Dashboard: ошибка выхода', errorObj)
             } else {
               logger.info('Dashboard: успешный выход')
@@ -954,6 +953,7 @@ function AddMealModal({ onClose, onSave }: AddMealModalProps) {
     if (!mealData.title) {
       setMealData(prev => ({ ...prev, title: getMealNameByTime() }))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSave = async () => {
