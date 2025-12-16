@@ -55,6 +55,7 @@ export default function NutritionPage() {
     actual_carbs: 0,
     hunger_level: 5,
     energy_level: 5,
+    weight: null,
     notes: ''
   })
   const [meals, setMeals] = useState<Meal[]>([
@@ -476,7 +477,7 @@ function MacroBar({ label, current, target, color }: MacroBarProps) {
 type InputGroupProps = {
   label: string
   value: number | string | null
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onChange: (value: number) => void
 }
 
 function InputGroup({ label, value, onChange }: InputGroupProps) {
@@ -485,9 +486,9 @@ function InputGroup({ label, value, onChange }: InputGroupProps) {
   return (
     <div>
       <label className="text-xs text-gray-400 block mb-1">{label}</label>
-      <input 
-        type="number" 
-        value={displayValue} 
+      <input
+        type="number"
+        value={displayValue}
         onChange={(e) => {
           const inputValue = e.target.value
           const numValue = inputValue === '' ? 0 : parseFloat(inputValue) || 0

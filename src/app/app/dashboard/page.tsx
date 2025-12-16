@@ -68,14 +68,14 @@ export default function ClientDashboard() {
             .eq('day_type', 'rest')
             .single(),
         ])
-        
+
         if (trainingResult.data) {
           setTargetsTraining(trainingResult.data as NutritionTarget)
         }
         if (restResult.data) {
           setTargetsRest(restResult.data as NutritionTarget)
         }
-        
+
         // Устанавливаем дефолтный тип дня на основе наличия данных
         if (trainingResult.data && !restResult.data) {
           setDayType('training')
@@ -87,7 +87,7 @@ export default function ClientDashboard() {
         const today = new Date()
         const weekAgo = new Date(today)
         weekAgo.setDate(today.getDate() - 7)
-        
+
         const { data: logsData, error: logsError } = await supabase
           .from('daily_logs')
           .select('*')
@@ -148,7 +148,7 @@ export default function ClientDashboard() {
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans space-y-6">
-      
+
       {/* HEADER */}
       <header className="flex justify-between items-center">
         <div>
@@ -180,7 +180,7 @@ export default function ClientDashboard() {
         const weightLogs = weekLogs
           .filter(log => log.weight)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        
+
         if (weightLogs.length === 0) return null
 
         const firstWeight = weightLogs[0].weight!
@@ -203,9 +203,8 @@ export default function ClientDashboard() {
                 <div className="pt-3 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Изменение:</span>
-                    <span className={`text-sm font-semibold ${
-                      weightDiff < 0 ? 'text-green-600' : weightDiff > 0 ? 'text-red-600' : 'text-gray-600'
-                    }`}>
+                    <span className={`text-sm font-semibold ${weightDiff < 0 ? 'text-green-600' : weightDiff > 0 ? 'text-red-600' : 'text-gray-600'
+                      }`}>
                       {weightDiff !== 0 ? `${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} кг` : '0 кг'}
                     </span>
                   </div>
@@ -248,7 +247,7 @@ export default function ClientDashboard() {
                 unit="г/день"
               />
             </div>
-            
+
             <div className="pt-3 border-t border-gray-100">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Дней с отчетами:</span>
@@ -302,7 +301,7 @@ export default function ClientDashboard() {
       {/* АКТИВНЫЕ ПРОГРАММЫ */}
       <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Активные программы</h2>
-        
+
         {currentTargets ? (
           <div className="space-y-3">
             <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
@@ -336,7 +335,7 @@ export default function ClientDashboard() {
             </span>
             <ArrowRight size={20} />
           </button>
-          
+
           {isPremium ? (
             <button
               onClick={() => router.push('/app/reports')}

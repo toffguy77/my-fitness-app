@@ -7,8 +7,6 @@ import { User } from '@supabase/supabase-js'
 import { LogOut } from 'lucide-react'
 import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
 import Paywall from '@/components/Paywall'
-import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
-import Paywall from '@/components/Paywall'
 
 type DailyLog = {
   id: string

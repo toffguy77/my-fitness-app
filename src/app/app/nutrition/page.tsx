@@ -43,7 +43,7 @@ export default function NutritionPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  
+
   // State для данных
   const [dayType, setDayType] = useState<'training' | 'rest'>('training')
   const [targetsTraining, setTargetsTraining] = useState<Targets | null>(null)
@@ -107,7 +107,7 @@ export default function NutritionPage() {
             .eq('date', today)
             .single(),
         ])
-        
+
         if (trainingResult.data) {
           setTargetsTraining(trainingResult.data)
         }
@@ -173,7 +173,7 @@ export default function NutritionPage() {
 
     setStatus('saving')
     setSaveError(null)
-    
+
     const today = new Date().toISOString().split('T')[0]
     const aggregatedLog = {
       ...log,
@@ -182,7 +182,7 @@ export default function NutritionPage() {
       actual_fats: totals.fats,
       actual_carbs: totals.carbs
     }
-    
+
     const payload = {
       user_id: user.id,
       date: today,
@@ -252,10 +252,10 @@ export default function NutritionPage() {
       prev.map((meal) =>
         meal.id === id
           ? {
-              ...meal,
-              [field]: typeof value === 'number' ? value : typeof value === 'string' ? value : meal[field],
-              photoName: fileName ?? meal.photoName
-            }
+            ...meal,
+            [field]: typeof value === 'number' ? value : typeof value === 'string' ? value : meal[field],
+            photoName: fileName ?? meal.photoName
+          }
           : meal
       )
     )
@@ -267,7 +267,7 @@ export default function NutritionPage() {
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans">
-      
+
       {/* HEADER */}
       <header className="mb-6 flex justify-between items-center">
         <div>
@@ -296,7 +296,7 @@ export default function NutritionPage() {
             <div>
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Калории</span>
               <div className="text-3xl font-black text-gray-900 flex items-baseline gap-1">
-                {totals.calories || 0} 
+                {totals.calories || 0}
                 <span className="text-lg text-gray-400 font-normal">/ {currentTargets.calories}</span>
               </div>
             </div>
@@ -419,10 +419,10 @@ export default function NutritionPage() {
                 {getHungerLevelText(log.hunger_level || 5)}
               </span>
             </div>
-            <input 
-              type="range" min="1" max="10" 
-              value={log.hunger_level || 5} 
-              onChange={(e) => setLog({...log, hunger_level: parseInt(e.target.value)})}
+            <input
+              type="range" min="1" max="10"
+              value={log.hunger_level || 5}
+              onChange={(e) => setLog({ ...log, hunger_level: parseInt(e.target.value) })}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -430,20 +430,20 @@ export default function NutritionPage() {
               <span>10</span>
             </div>
           </div>
-          
+
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1 block">Комментарий</label>
-            <textarea 
+            <textarea
               className="w-full p-3 bg-gray-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-black outline-none"
               rows={3}
               placeholder="Как прошел день? Были срывы?"
               value={log.notes || ''}
-              onChange={(e) => setLog({...log, notes: e.target.value})}
+              onChange={(e) => setLog({ ...log, notes: e.target.value })}
             />
           </div>
         </div>
 
-        <button 
+        <button
           onClick={handleSave}
           disabled={status === 'saving'}
           className={`w-full py-4 rounded-xl font-bold text-white flex justify-center items-center gap-2 transition-all
@@ -451,8 +451,8 @@ export default function NutritionPage() {
           `}
         >
           {status === 'saving' && 'Сохраняем...'}
-          {status === 'saved' && <><CheckCircle size={20}/> Сохранено</>}
-          {status === 'idle' && <><Save size={20}/> Сохранить отчет</>}
+          {status === 'saved' && <><CheckCircle size={20} /> Сохранено</>}
+          {status === 'idle' && <><Save size={20} /> Сохранить отчет</>}
         </button>
 
         {saveError && (
@@ -483,8 +483,8 @@ function MacroBar({ label, current, target, color }: MacroBarProps) {
         <span className="font-medium">{current} / {target}</span>
       </div>
       <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-        <div 
-          className={`h-full ${color} transition-all duration-500`} 
+        <div
+          className={`h-full ${color} transition-all duration-500`}
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -495,7 +495,7 @@ function MacroBar({ label, current, target, color }: MacroBarProps) {
 type InputGroupProps = {
   label: string
   value: number | string | null
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onChange: (value: number) => void
 }
 
 function InputGroup({ label, value, onChange }: InputGroupProps) {
@@ -504,9 +504,9 @@ function InputGroup({ label, value, onChange }: InputGroupProps) {
   return (
     <div>
       <label className="text-xs text-gray-400 block mb-1">{label}</label>
-      <input 
-        type="number" 
-        value={displayValue} 
+      <input
+        type="number"
+        value={displayValue}
         onChange={(e) => {
           const inputValue = e.target.value
           const numValue = inputValue === '' ? 0 : parseFloat(inputValue) || 0

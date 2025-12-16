@@ -30,10 +30,10 @@ interface ClientDashboardViewProps {
   onTargetsUpdate?: () => void
 }
 
-export default function ClientDashboardView({ 
-  clientId, 
+export default function ClientDashboardView({
+  clientId,
   readOnly = false,
-  onTargetsUpdate 
+  onTargetsUpdate
 }: ClientDashboardViewProps) {
   const supabase = createClient()
   const router = useRouter()
@@ -65,14 +65,14 @@ export default function ClientDashboardView({
             .eq('day_type', 'rest')
             .single(),
         ])
-        
+
         if (trainingResult.data) {
           setTargetsTraining(trainingResult.data as NutritionTarget)
         }
         if (restResult.data) {
           setTargetsRest(restResult.data as NutritionTarget)
         }
-        
+
         // Устанавливаем дефолтный тип дня
         if (trainingResult.data && !restResult.data) {
           setDayType('training')
@@ -84,7 +84,7 @@ export default function ClientDashboardView({
         const today = new Date()
         const weekAgo = new Date(today)
         weekAgo.setDate(today.getDate() - 7)
-        
+
         const { data: logsData, error: logsError } = await supabase
           .from('daily_logs')
           .select('*')
@@ -147,7 +147,7 @@ export default function ClientDashboardView({
 
   const handleSaveTargets = async () => {
     if (!editingTargets) return
-    
+
     setSavingTargets(true)
     try {
       const { error } = await supabase
@@ -199,7 +199,7 @@ export default function ClientDashboardView({
         const weightLogs = weekLogs
           .filter(log => log.weight)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        
+
         if (weightLogs.length === 0) return null
 
         const firstWeight = weightLogs[0].weight!
@@ -222,9 +222,8 @@ export default function ClientDashboardView({
                 <div className="pt-3 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Изменение:</span>
-                    <span className={`text-sm font-semibold ${
-                      weightDiff < 0 ? 'text-green-600' : weightDiff > 0 ? 'text-red-600' : 'text-gray-600'
-                    }`}>
+                    <span className={`text-sm font-semibold ${weightDiff < 0 ? 'text-green-600' : weightDiff > 0 ? 'text-red-600' : 'text-gray-600'
+                      }`}>
                       {weightDiff !== 0 ? `${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} кг` : '0 кг'}
                     </span>
                   </div>
@@ -269,7 +268,7 @@ export default function ClientDashboardView({
                 unit="г/день"
               />
             </div>
-            
+
             <div className="pt-3 border-t border-gray-100">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Дней с отчетами:</span>
@@ -310,7 +309,7 @@ export default function ClientDashboardView({
             </button>
           )}
         </div>
-        
+
         {editingTargets ? (
           <div className="space-y-4">
             <div className="text-sm text-gray-600 mb-2">
