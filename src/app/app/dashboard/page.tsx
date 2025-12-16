@@ -510,7 +510,6 @@ export default function ClientDashboard() {
                     key={meal.id}
                     className="flex items-start justify-between p-4 bg-gray-50 rounded-lg gap-3 hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-gray-200"
                     onClick={() => {
-                      setEditingMeal(meal)
                       router.push(`/app/nutrition?edit=${meal.id}`)
                     }}
                   >
@@ -538,7 +537,6 @@ export default function ClientDashboard() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setEditingMeal(meal)
                           router.push(`/app/nutrition?edit=${meal.id}`)
                         }}
                         className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
