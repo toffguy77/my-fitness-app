@@ -32,7 +32,7 @@ docker-compose up -d
 
 ```bash
 docker run -d \
-  -p 3000:3000 \
+  -p 3069:3069 \
   --env-file .env.production \
   --name my-fitness-app \
   my-fitness-app
@@ -40,7 +40,7 @@ docker run -d \
 
 ### 4. Проверка
 
-Откройте браузер: http://localhost:3000
+Откройте браузер: http://localhost:3069
 
 ## Production Deployment
 
@@ -97,7 +97,7 @@ Next.js настроен на `output: 'standalone'` для создания м�
 
 1. Проверьте логи: `docker-compose logs app`
 2. Убедитесь, что переменные окружения установлены
-3. Проверьте, что порт 3000 свободен
+3. Проверьте, что порт 3069 свободен
 
 ### Проблема: Ошибки подключения к Supabase
 
@@ -121,7 +121,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3069;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';

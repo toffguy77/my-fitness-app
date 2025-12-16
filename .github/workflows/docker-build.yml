@@ -1,4 +1,4 @@
-name: Docker Build
+name: CI/CD Pipeline
 
 on:
   push:
@@ -7,11 +7,43 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  lint-and-build:
+    name: Lint & Build
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run ESLint
+      run: npm run lint
+    
+    - name: Check TypeScript types
+      run: npm run type-check
+    
+    - name: Build Next.js application
+      run: npm run build
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key' }}
+
+  docker-build:
+    name: Docker Build & Test
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -21,12 +53,12 @@ jobs:
     
     - name: Test Docker image
       run: |
-        docker run -d -p 3000:3000 --name test-app \
-          -e NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
-          -e NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+        docker run -d -p 3069:3069 --name test-app \
+          -e NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }} \
+          -e NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key' }} \
           my-fitness-app:latest
-        sleep 10
-        curl -f http://localhost:3000 || exit 1
+        sleep 15
+        curl -f http://localhost:3069 || exit 1
         docker stop test-app
         docker rm test-app
 

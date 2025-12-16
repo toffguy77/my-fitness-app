@@ -47,7 +47,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 npm run dev
 ```
 
-Откройте [http://localhost:3000](http://localhost:3000)
+Откройте [http://localhost:3069](http://localhost:3069)
 
 ## 🐳 Docker Deployment
 
