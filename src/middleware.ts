@@ -14,156 +14,167 @@ export async function middleware(request: NextRequest) {
       // Игнорируем ошибки логирования
     }
 
-    // Проверка переменных окружения
+    // Проверка переменных окружения - приложение должно падать, если они не настроены
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('Middleware: отсутствуют переменные окружения Supabase')
-      // Разрешаем доступ к публичным маршрутам даже без Supabase
-      const publicRoutes = ['/', '/login', '/register']
-      if (publicRoutes.includes(pathname) || pathname.startsWith('/api')) {
-        return response
-      }
-      return NextResponse.redirect(new URL('/login', request.url))
+      const error = new Error('Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY')
+      console.error('Middleware: критическая ошибка - отсутствуют переменные окружения Supabase', error)
+      throw error
     }
 
     const supabase = createServerClient(
       supabaseUrl,
       supabaseKey,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value)
+              response.cookies.set(name, value, options)
+            })
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
-    }
-  )
+      }
+    )
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-  if (authError) {
-    try {
-      logger.error('Middleware: ошибка получения пользователя', authError, { pathname })
-    } catch {
-      // Игнорируем ошибки логирования
-    }
-  }
-
-  // Публичные маршруты (не требуют авторизации)
-  const publicRoutes = ['/', '/login', '/register']
-  const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
-
-  // Если пользователь не авторизован
-  if (!user) {
-    // Разрешаем доступ к публичным маршрутам
-    if (isPublicRoute) {
+    if (authError) {
       try {
-        logger.debug('Middleware: доступ к публичному маршруту разрешен', { pathname })
+        logger.error('Middleware: ошибка получения пользователя', authError, { pathname })
       } catch {
         // Игнорируем ошибки логирования
       }
-      return response
     }
-    // Редирект на логин для защищенных маршрутов
+
+    // Публичные маршруты (не требуют авторизации)
+    const publicRoutes = ['/', '/login', '/register']
+    const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
+
+    // Если пользователь не авторизован
+    if (!user) {
+      // Разрешаем доступ к публичным маршрутам
+      if (isPublicRoute) {
+        try {
+          logger.debug('Middleware: доступ к публичному маршруту разрешен', { pathname })
+        } catch {
+          // Игнорируем ошибки логирования
+        }
+        return response
+      }
+      // Редирект на логин для защищенных маршрутов
+      try {
+        logger.info('Middleware: редирект на логин (неавторизованный пользователь)', { pathname })
+      } catch {
+        // Игнорируем ошибки логирования
+      }
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
     try {
-      logger.info('Middleware: редирект на логин (неавторизованный пользователь)', { pathname })
+      logger.debug('Middleware: пользователь авторизован', { userId: user.id, pathname })
     } catch {
       // Игнорируем ошибки логирования
     }
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
 
-  try {
-    logger.debug('Middleware: пользователь авторизован', { userId: user.id, pathname })
-  } catch {
-    // Игнорируем ошибки логирования
-  }
+    // Если пользователь авторизован
+    // Загружаем профиль
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, subscription_status, subscription_tier')
+      .eq('id', user.id)
+      .single()
 
-  // Если пользователь авторизован
-  // Загружаем профиль
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role, subscription_status, subscription_tier')
-    .eq('id', user.id)
-    .single()
-
-  if (profileError) {
-    try {
-      logger.error('Middleware: ошибка загрузки профиля', profileError, { userId: user.id, pathname })
-    } catch {
-      // Игнорируем ошибки логирования
+    if (profileError) {
+      try {
+        logger.error('Middleware: ошибка загрузки профиля', profileError, { userId: user.id, pathname })
+      } catch {
+        // Игнорируем ошибки логирования
+      }
     }
-  }
 
-  const role = profile?.role || 'client'
-  const subscriptionStatus = profile?.subscription_status || 'free'
-  const subscriptionTier = profile?.subscription_tier || 'basic'
-  const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
-  const isSuperAdmin = role === 'super_admin'
+    const role = profile?.role || 'client'
+    const subscriptionStatus = profile?.subscription_status || 'free'
+    const subscriptionTier = profile?.subscription_tier || 'basic'
+    const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
+    const isSuperAdmin = role === 'super_admin'
 
-  try {
-    logger.debug('Middleware: данные профиля', {
-      userId: user.id,
-      role,
-      subscriptionStatus,
-      subscriptionTier,
-      isPremium,
-      isSuperAdmin,
-      pathname,
-    })
-  } catch {
-    // Игнорируем ошибки логирования
-  }
-
-  // Если авторизованный пользователь на лендинге - редирект в приложение
-  if (pathname === '/') {
-    let redirectPath = '/app/dashboard'
-    if (isSuperAdmin) {
-      redirectPath = '/admin'
-    } else if (role === 'coach') {
-      redirectPath = '/app/coach'
-    }
     try {
-      logger.info('Middleware: редирект авторизованного пользователя', {
+      logger.debug('Middleware: данные профиля', {
         userId: user.id,
         role,
-        redirectPath,
+        subscriptionStatus,
+        subscriptionTier,
+        isPremium,
+        isSuperAdmin,
+        pathname,
       })
     } catch {
       // Игнорируем ошибки логирования
     }
-    return NextResponse.redirect(new URL(redirectPath, request.url))
-  }
 
-  // Защита маршрутов /app/*
-  if (pathname.startsWith('/app')) {
-    // Проверка доступа к отчетам (только Premium)
-    if (pathname.startsWith('/app/reports') && !isPremium) {
+    // Если авторизованный пользователь на лендинге - редирект в приложение
+    if (pathname === '/') {
+      let redirectPath = '/app/dashboard'
+      if (isSuperAdmin) {
+        redirectPath = '/admin'
+      } else if (role === 'coach') {
+        redirectPath = '/app/coach'
+      }
       try {
-        logger.warn('Middleware: попытка доступа к отчетам без Premium', {
+        logger.info('Middleware: редирект авторизованного пользователя', {
           userId: user.id,
-          pathname,
+          role,
+          redirectPath,
         })
       } catch {
         // Игнорируем ошибки логирования
       }
-      return NextResponse.redirect(new URL('/app/dashboard', request.url))
+      return NextResponse.redirect(new URL(redirectPath, request.url))
     }
 
-    // Проверка доступа к кабинету тренера
-    if (pathname.startsWith('/app/coach') && role !== 'coach') {
+    // Защита маршрутов /app/*
+    if (pathname.startsWith('/app')) {
+      // Проверка доступа к отчетам (только Premium)
+      if (pathname.startsWith('/app/reports') && !isPremium) {
+        try {
+          logger.warn('Middleware: попытка доступа к отчетам без Premium', {
+            userId: user.id,
+            pathname,
+          })
+        } catch {
+          // Игнорируем ошибки логирования
+        }
+        return NextResponse.redirect(new URL('/app/dashboard', request.url))
+      }
+
+      // Проверка доступа к кабинету тренера
+      if (pathname.startsWith('/app/coach') && role !== 'coach') {
+        try {
+          logger.warn('Middleware: попытка доступа к кабинету тренера без прав', {
+            userId: user.id,
+            role,
+            pathname,
+          })
+        } catch {
+          // Игнорируем ошибки логирования
+        }
+        return NextResponse.redirect(new URL('/app/dashboard', request.url))
+      }
+    }
+
+    // Защита маршрутов /admin (только super_admin)
+    if (pathname.startsWith('/admin') && !isSuperAdmin) {
       try {
-        logger.warn('Middleware: попытка доступа к кабинету тренера без прав', {
+        logger.warn('Middleware: попытка доступа к админ-панели без прав', {
           userId: user.id,
           role,
           pathname,
@@ -173,21 +184,6 @@ export async function middleware(request: NextRequest) {
       }
       return NextResponse.redirect(new URL('/app/dashboard', request.url))
     }
-  }
-
-  // Защита маршрутов /admin (только super_admin)
-  if (pathname.startsWith('/admin') && !isSuperAdmin) {
-    try {
-      logger.warn('Middleware: попытка доступа к админ-панели без прав', {
-        userId: user.id,
-        role,
-        pathname,
-      })
-    } catch {
-      // Игнорируем ошибки логирования
-    }
-    return NextResponse.redirect(new URL('/app/dashboard', request.url))
-  }
 
     try {
       logger.debug('Middleware: доступ разрешен', { userId: user.id, pathname })
@@ -196,14 +192,18 @@ export async function middleware(request: NextRequest) {
     }
     return response
   } catch (error) {
-    // Обработка критических ошибок в middleware
+    // Критические ошибки должны быть видны - возвращаем 500 ошибку
     console.error('Middleware: критическая ошибка', error)
-    const pathname = request.nextUrl.pathname
-    const publicRoutes = ['/', '/login', '/register']
-    if (publicRoutes.includes(pathname) || pathname.startsWith('/api')) {
-      return NextResponse.next()
-    }
-    return NextResponse.redirect(new URL('/login', request.url))
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Internal Server Error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   }
 }
 
