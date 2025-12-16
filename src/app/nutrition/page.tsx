@@ -270,7 +270,7 @@ export default function NutritionPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
 
       {/* HEADER */}
       <header className="mb-6 flex justify-between items-center">

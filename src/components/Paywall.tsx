@@ -20,7 +20,7 @@ export default function Paywall({
       
       {/* Paywall overlay */}
       <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95 rounded-xl">
-        <div className="text-center p-8 max-w-md">
+        <div className="text-center p-4 sm:p-8 w-full sm:max-w-md sm:mx-auto">
           <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock size={24} className="text-white" />
           </div>

@@ -9,11 +9,11 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="max-w-4xl mx-auto px-6 py-32 text-center">
-        <h1 className="text-6xl md:text-7xl font-black text-black mb-8 leading-tight">
+      <section className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-32 text-center">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-black mb-6 sm:mb-8 leading-tight">
           Твое тело — это математика, а не магия.
         </h1>
-        <p className="text-xl md:text-2xl text-gray-700 mb-12 max-w-3xl mx-auto leading-relaxed">
+        <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-4">
           Перестань надеяться на интуицию. Интуиция привела тебя к тому весу, который есть сейчас. 
           Чтобы изменить результат, нужно изменить данные.
         </p>
@@ -32,11 +32,11 @@ export default function LandingPage() {
       </section>
 
       {/* The Problem */}
-      <section className="max-w-6xl mx-auto px-6 py-24 bg-gray-50">
-        <h2 className="text-4xl md:text-5xl font-black text-black mb-16 text-center">
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-24 bg-gray-50">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black mb-8 sm:mb-16 text-center px-4">
           Почему ты срываешься?
         </h2>
-        <div className="grid md:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 md:gap-12">
           <div className="bg-white p-8 border-2 border-black">
             <h3 className="text-2xl font-bold text-black mb-4">Иллюзия контроля</h3>
             <p className="text-gray-700 leading-relaxed">
@@ -64,8 +64,8 @@ export default function LandingPage() {
       </section>
 
       {/* The Solution */}
-      <section className="max-w-4xl mx-auto px-6 py-24">
-        <h2 className="text-4xl md:text-5xl font-black text-black mb-16 text-center">
+      <section className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-24">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-black mb-8 sm:mb-16 text-center px-4">
           Система управления пищевым поведением.
         </h2>
         <div className="space-y-8">
@@ -103,11 +103,11 @@ export default function LandingPage() {
       </section>
 
       {/* The Hook */}
-      <section className="max-w-6xl mx-auto px-6 py-24 bg-black text-white">
-        <h2 className="text-4xl md:text-5xl font-black mb-8 text-center">
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-24 bg-black text-white">
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-6 sm:mb-8 text-center px-4">
           Начни один. Продолжи с профессионалом.
         </h2>
-        <p className="text-xl text-gray-300 mb-16 text-center max-w-3xl mx-auto leading-relaxed">
+        <p className="text-lg sm:text-xl text-gray-300 mb-8 sm:mb-16 text-center max-w-3xl mx-auto leading-relaxed px-4">
           Используй приложение как бесплатный дневник столько, сколько нужно.
           Когда поймешь, что уперся в потолок — активируй режим работы с тренером.
         </p>
@@ -163,8 +163,8 @@ export default function LandingPage() {
       </section>
 
       {/* Footer CTA */}
-      <section className="max-w-4xl mx-auto px-6 py-32 text-center">
-        <p className="text-3xl md:text-4xl font-bold text-black mb-12 leading-relaxed">
+      <section className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-32 text-center">
+        <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-black mb-8 sm:mb-12 leading-relaxed px-4">
           Хаос нельзя улучшить. Его можно только упорядочить.<br />
           Сделай первый шаг к системе.
         </p>
@@ -178,7 +178,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="max-w-6xl mx-auto px-6 py-12 border-t-2 border-black">
+      <footer className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 border-t-2 border-black">
         <div className="text-center text-sm text-gray-500">
           <p>© 2025 Fitness App. Все права защищены.</p>
         </div>

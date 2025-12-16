@@ -402,7 +402,7 @@ export default function NutritionPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
 
       {/* HEADER */}
       <header className="mb-6 flex justify-between items-center">
@@ -522,7 +522,7 @@ export default function NutritionPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
                 <InputGroup label="Калории" value={meal.calories} onChange={(v) => updateMeal(meal.id, 'calories', v)} />
                 <InputGroup label="Белки (г)" value={meal.protein} onChange={(v) => updateMeal(meal.id, 'protein', v)} />
@@ -586,7 +586,7 @@ export default function NutritionPage() {
           {/* HUNGER LEVEL - EMOJI (5 уровней) */}
           <div>
             <label className="text-sm font-medium text-gray-700 mb-3 block">Уровень голода</label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-2 sm:gap-3">
               {[1, 2, 3, 4, 5].map((level) => (
                 <button
                   key={level}

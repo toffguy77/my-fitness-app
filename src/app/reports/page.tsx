@@ -78,7 +78,7 @@ export default function ReportsPage() {
   if (!user) return null
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans space-y-6">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans space-y-6">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Сводка</h1>

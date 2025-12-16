@@ -107,7 +107,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans flex items-center justify-center">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans flex items-center justify-center">
       <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Вход в систему</h1>

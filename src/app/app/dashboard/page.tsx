@@ -266,7 +266,7 @@ export default function ClientDashboard() {
   if (loading) return <div className="p-8 text-center">Загрузка...</div>
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-gray-50 p-4 font-sans space-y-6">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans space-y-6">
 
       {/* HEADER */}
       <header className="flex justify-between items-center">
@@ -320,7 +320,7 @@ export default function ClientDashboard() {
           </div>
 
           {/* КБЖУ за сегодня */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {(() => {
               // Определяем текущие цели в зависимости от типа дня
               const currentTargets = todayLog.target_type === 'rest' ? targetsRest : targetsTraining
@@ -362,7 +362,7 @@ export default function ClientDashboard() {
           </div>
 
           {/* БЫСТРЫЕ ДЕЙСТВИЯ */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {/* Вес - кликабельный блок */}
             {(() => {
               const today = new Date().toISOString().split('T')[0]
@@ -775,7 +775,7 @@ export default function ClientDashboard() {
 
         {nutritionSummary && nutritionSummary.daysLogged > 0 ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <StatCard
                 label="Калории"
                 value={`${Math.round(nutritionSummary.calories.actual / nutritionSummary.daysLogged)}`}
@@ -974,7 +974,7 @@ function AddMealModal({ onClose, onSave }: AddMealModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-lg w-full sm:max-w-md sm:mx-auto p-4 sm:p-6 space-y-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">Добавить прием пищи</h2>
           <button
@@ -1008,7 +1008,7 @@ function AddMealModal({ onClose, onSave }: AddMealModalProps) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs text-gray-500 mb-1">Вес (г)</label>
             <input

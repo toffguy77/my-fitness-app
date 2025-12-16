@@ -275,7 +275,7 @@ export default function ClientDashboardView({
 
         {nutritionSummary && nutritionSummary.daysLogged > 0 ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <StatCard
                 label="Калории"
                 value={`${Math.round(nutritionSummary.calories.actual / nutritionSummary.daysLogged)}`}
@@ -336,7 +336,7 @@ export default function ClientDashboardView({
             <div className="text-sm text-gray-600 mb-2">
               Редактирование плана для: <span className="font-semibold">{editingTargets.day_type === 'training' ? 'Тренировка' : 'Отдых'}</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Калории</label>
                 <input

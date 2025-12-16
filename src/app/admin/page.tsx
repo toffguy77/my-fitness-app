@@ -151,7 +151,7 @@ export default function AdminPage() {
   if (loading) return <div className="p-8 text-center">Загрузка...</div>
 
   return (
-    <main className="max-w-7xl mx-auto min-h-screen bg-gray-50 p-4 font-sans">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-7xl md:mx-auto font-sans">
       {/* HEADER */}
       <header className="flex justify-between items-center mb-6">
         <div>
@@ -314,8 +314,8 @@ export default function AdminPage() {
       {/* EDIT MODAL */}
       {editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-2xl sm:mx-auto max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900">Редактирование пользователя</h2>
               <p className="text-sm text-gray-500 mt-1">{editingUser.email}</p>
             </div>
