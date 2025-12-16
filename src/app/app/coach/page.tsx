@@ -28,19 +28,21 @@ export default function CoachDashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
+      let user: User | null = null
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
+        const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
+        if (userError || !authUser) {
           router.push('/login')
           return
         }
-        setUser(user)
+        user = authUser
+        setUser(authUser)
 
         // Проверяем, что пользователь - тренер
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
-          .eq('id', user.id)
+          .eq('id', authUser.id)
           .single()
 
         if (profile?.role !== 'coach') {
@@ -49,7 +51,7 @@ export default function CoachDashboard() {
         }
 
         // Загружаем клиентов
-        const coachClients = await getCoachClients(user.id)
+        const coachClients = await getCoachClients(authUser.id)
 
         // Для каждого клиента загружаем данные за сегодня
         const today = new Date().toISOString().split('T')[0]
@@ -106,9 +108,9 @@ export default function CoachDashboard() {
         )
 
         setClients(clientsWithStatus)
-        logger.info('Coach: данные клиентов успешно загружены', { coachId: user.id, count: clientsWithStatus.length })
+        logger.info('Coach: данные клиентов успешно загружены', { coachId: user?.id || 'unknown', count: clientsWithStatus.length })
       } catch (error) {
-        logger.error('Coach: ошибка загрузки данных', error, { coachId: user?.id })
+        logger.error('Coach: ошибка загрузки данных', error, { coachId: user?.id || 'unknown' })
       } finally {
         setLoading(false)
         logger.debug('Coach: загрузка данных завершена')
