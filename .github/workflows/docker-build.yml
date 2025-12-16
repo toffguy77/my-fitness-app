@@ -1,0 +1,32 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: docker build -t my-fitness-app:latest .
+    
+    - name: Test Docker image
+      run: |
+        docker run -d -p 3000:3000 --name test-app \
+          -e NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }} \
+          -e NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }} \
+          my-fitness-app:latest
+        sleep 10
+        curl -f http://localhost:3000 || exit 1
+        docker stop test-app
+        docker rm test-app
+
