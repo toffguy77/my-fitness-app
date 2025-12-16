@@ -45,6 +45,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# documentation and migrations
+docs/
+*.md
+!README.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
