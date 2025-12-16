@@ -226,8 +226,8 @@ export default function CoachDashboard() {
                 <button
                   onClick={() => setStatusFilter('all')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'all'
-                      ? 'bg-white text-black shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   Все
@@ -235,8 +235,8 @@ export default function CoachDashboard() {
                 <button
                   onClick={() => setStatusFilter('red')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'red'
-                      ? 'bg-white text-red-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-red-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   🔴 Требуют внимания
@@ -244,8 +244,8 @@ export default function CoachDashboard() {
                 <button
                   onClick={() => setStatusFilter('green')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'green'
-                      ? 'bg-white text-green-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-green-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   🟢 В норме
@@ -253,8 +253,8 @@ export default function CoachDashboard() {
                 <button
                   onClick={() => setStatusFilter('grey')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'grey'
-                      ? 'bg-white text-gray-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-gray-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   ⚪ Нет данных
@@ -269,8 +269,8 @@ export default function CoachDashboard() {
                 <button
                   onClick={() => handleSort('name')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'name'
-                      ? 'bg-white text-black shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   По имени {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -278,8 +278,8 @@ export default function CoachDashboard() {
                 <button
                   onClick={() => handleSort('lastCheckin')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'lastCheckin'
-                      ? 'bg-white text-black shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   По дате {sortBy === 'lastCheckin' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -287,8 +287,8 @@ export default function CoachDashboard() {
                 <button
                   onClick={() => handleSort('status')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'status'
-                      ? 'bg-white text-black shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                     }`}
                 >
                   По статусу {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
