@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { LogOut, Search, Edit, User as UserIcon, Shield, Users } from 'lucide-react'
 import { isSuperAdmin, type UserProfile, type UserRole, type SubscriptionStatus, type SubscriptionTier } from '@/utils/supabase/profile'
 import { logger } from '@/utils/logger'
+import toast from 'react-hot-toast'
 
 export default function AdminPage() {
   const supabase = createClient()
@@ -121,7 +122,7 @@ export default function AdminPage() {
             subscription_tier: editingUser.subscription_tier,
           },
         })
-        alert('Ошибка сохранения: ' + error.message)
+        toast.error('Ошибка сохранения: ' + error.message)
       } else {
         logger.info('Admin: пользователь успешно обновлен', {
           userId: editingUser.id,
@@ -137,7 +138,7 @@ export default function AdminPage() {
       }
     } catch (error) {
       logger.error('Admin: исключение при сохранении пользователя', error, { userId: editingUser.id })
-      alert('Произошла ошибка')
+      toast.error('Произошла ошибка')
     } finally {
       setSaving(false)
     }
@@ -365,33 +366,38 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Статус подписки */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Статус подписки</label>
-                <select
-                  value={editingUser.subscription_status || 'free'}
-                  onChange={(e) => setEditingUser({ ...editingUser, subscription_status: e.target.value as SubscriptionStatus })}
-                  className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
-                >
-                  <option value="free">Бесплатно</option>
-                  <option value="active">Активна</option>
-                  <option value="cancelled">Отменена</option>
-                  <option value="past_due">Просрочена</option>
-                </select>
-              </div>
+              {/* Статус подписки (только для клиентов) */}
+              {editingUser.role === 'client' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Статус подписки</label>
+                    <select
+                      value={editingUser.subscription_status || 'free'}
+                      onChange={(e) => setEditingUser({ ...editingUser, subscription_status: e.target.value as SubscriptionStatus })}
+                      className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                    >
+                      <option value="free">Бесплатно</option>
+                      <option value="active">Активна</option>
+                      <option value="cancelled">Отменена</option>
+                      <option value="past_due">Просрочена</option>
+                      <option value="expired">Истекла</option>
+                    </select>
+                  </div>
 
-              {/* Уровень подписки */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Уровень подписки</label>
-                <select
-                  value={editingUser.subscription_tier || 'basic'}
-                  onChange={(e) => setEditingUser({ ...editingUser, subscription_tier: e.target.value as SubscriptionTier })}
-                  className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
-                >
-                  <option value="basic">Basic</option>
-                  <option value="premium">Premium</option>
-                </select>
-              </div>
+                  {/* Уровень подписки */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Уровень подписки</label>
+                    <select
+                      value={editingUser.subscription_tier || 'basic'}
+                      onChange={(e) => setEditingUser({ ...editingUser, subscription_tier: e.target.value as SubscriptionTier })}
+                      className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                    >
+                      <option value="basic">Basic</option>
+                      <option value="premium">Premium</option>
+                    </select>
+                  </div>
+                </>
+              )}
 
               {/* Даты подписки */}
               <div className="grid grid-cols-2 gap-4">

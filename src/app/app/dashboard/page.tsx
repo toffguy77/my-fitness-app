@@ -5,10 +5,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { LogOut, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight } from 'lucide-react'
+import { Settings, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
+import ValidationWarning from '@/components/ValidationWarning'
+import ProgressBar from '@/components/ProgressBar'
 import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
+import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
+import { validateMeal } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
+import toast from 'react-hot-toast'
 
 type Meal = {
   id: string
@@ -31,6 +36,8 @@ type DailyLog = {
   weight?: number | null
   meals?: Meal[]
   target_type?: 'training' | 'rest'
+  is_completed?: boolean
+  completed_at?: string | null
 }
 
 type NutritionTarget = {
@@ -54,6 +61,9 @@ export default function ClientDashboard() {
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
   const [editingWeight, setEditingWeight] = useState<boolean>(false)
   const [showAddMealModal, setShowAddMealModal] = useState<boolean>(false)
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]) // Навигация по датам
+  const [coachNote, setCoachNote] = useState<{ content: string; date: string } | null>(null) // Заметка тренера
+  const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,11 +78,23 @@ export default function ClientDashboard() {
         logger.debug('Dashboard: пользователь авторизован', { userId: user.id })
         setUser(user)
 
-        // Проверяем Premium статус
-        const profile = await getUserProfile(user)
-        const premiumStatus = hasActiveSubscription(profile)
-        setIsPremium(premiumStatus)
-        logger.debug('Dashboard: статус Premium', { userId: user.id, isPremium: premiumStatus })
+        // Проверяем Premium статус с автоматическим обновлением
+        const userProfile = await getUserProfile(user)
+        if (userProfile) {
+          // Автоматически проверяем и обновляем статус подписки
+          const subscriptionInfo = await checkSubscriptionStatus(user.id)
+          // Обновляем профиль с актуальным статусом
+          const updatedProfile = { ...userProfile, subscription_status: subscriptionInfo.status }
+          setProfile(updatedProfile)
+          const premiumStatus = subscriptionInfo.isActive
+          setIsPremium(premiumStatus)
+          logger.debug('Dashboard: статус Premium', { 
+            userId: user.id, 
+            isPremium: premiumStatus,
+            subscriptionStatus: subscriptionInfo.status,
+            isExpired: subscriptionInfo.isExpired
+          })
+        }
 
         // Получаем активные цели питания для обоих типов дней
         logger.debug('Dashboard: загрузка целей питания', { userId: user.id })
@@ -111,6 +133,13 @@ export default function ClientDashboard() {
           logger.debug('Dashboard: цели отдыха загружены', { userId: user.id })
         }
 
+        // Проверяем, есть ли хотя бы одна цель - если нет, редиректим на onboarding
+        if (!trainingResult.data && !restResult.data) {
+          logger.info('Dashboard: цели не найдены, редирект на onboarding', { userId: user.id })
+          router.push('/onboarding')
+          return
+        }
+
         // Устанавливаем дефолтный тип дня на основе наличия данных
         if (trainingResult.data && !restResult.data) {
           setDayType('training')
@@ -122,6 +151,7 @@ export default function ClientDashboard() {
         const today = new Date()
         const weekAgo = new Date(today)
         weekAgo.setDate(today.getDate() - 7)
+        const todayStr = today.toISOString().split('T')[0]
 
         logger.debug('Dashboard: загрузка логов за неделю', { userId: user.id })
         const { data: logsData, error: logsError } = await supabase
@@ -129,7 +159,7 @@ export default function ClientDashboard() {
           .select('*, meals') // Явно указываем meals для корректной загрузки JSONB
           .eq('user_id', user.id)
           .gte('date', weekAgo.toISOString().split('T')[0])
-          .lte('date', today.toISOString().split('T')[0])
+          .lte('date', todayStr)
           .order('date', { ascending: false })
 
         if (logsError) {
@@ -143,7 +173,7 @@ export default function ClientDashboard() {
               .select('date, actual_calories, actual_protein, actual_fats, actual_carbs, weight, hunger_level, energy_level, notes, target_type')
               .eq('user_id', user.id)
               .gte('date', weekAgo.toISOString().split('T')[0])
-              .lte('date', today.toISOString().split('T')[0])
+              .lte('date', todayStr)
               .order('date', { ascending: false })
 
             if (logsErrorRetry) {
@@ -155,8 +185,7 @@ export default function ClientDashboard() {
               // Добавляем пустой массив meals к каждому логу
               const logsWithEmptyMeals = logsDataWithoutMeals.map(log => ({ ...log, meals: [] }))
               setWeekLogs(logsWithEmptyMeals as DailyLog[])
-              const today = new Date().toISOString().split('T')[0]
-              const todayData = logsWithEmptyMeals.find(log => log.date === today)
+              const todayData = logsWithEmptyMeals.find(log => log.date === selectedDate)
               if (todayData) {
                 setTodayLog({ ...todayData, meals: [] } as DailyLog)
               } else {
@@ -172,9 +201,8 @@ export default function ClientDashboard() {
           }
         } else if (logsData) {
           setWeekLogs(logsData as DailyLog[])
-          // Находим лог за сегодня
-          const today = new Date().toISOString().split('T')[0]
-          const todayData = logsData.find(log => log.date === today)
+          // Находим лог за выбранную дату
+          const todayData = logsData.find(log => log.date === selectedDate)
           if (todayData) {
             // Убеждаемся, что meals всегда массив (не null/undefined)
             // Обрабатываем разные случаи: null, undefined, массив, строка JSON
@@ -198,9 +226,9 @@ export default function ClientDashboard() {
               meals: mealsArray
             } as DailyLog
             setTodayLog(todayLogData)
-            logger.debug('Dashboard: лог за сегодня загружен', {
+            logger.debug('Dashboard: лог за выбранную дату загружен', {
               userId: user.id,
-              date: today,
+              date: selectedDate,
               mealsCount: mealsArray.length,
               hasMeals: mealsArray.length > 0,
               mealsType: typeof todayData.meals,
@@ -209,9 +237,9 @@ export default function ClientDashboard() {
               actualProtein: todayData.actual_protein
             })
           } else {
-            // Если нет лога за сегодня, не создаем пустой - секция просто не покажется
+            // Если нет лога за выбранную дату, не создаем пустой - секция просто не покажется
             setTodayLog(null)
-            logger.debug('Dashboard: лог за сегодня не найден', { userId: user.id, date: today })
+            logger.debug('Dashboard: лог за выбранную дату не найден', { userId: user.id, date: selectedDate })
           }
           logger.info('Dashboard: логи успешно загружены', { userId: user.id, count: logsData.length })
         }
@@ -227,7 +255,83 @@ export default function ClientDashboard() {
     }
 
     fetchData()
-  }, [router, supabase])
+  }, [router, supabase, selectedDate]) // Добавляем selectedDate в зависимости
+
+  // Функция для загрузки данных за выбранную дату
+  useEffect(() => {
+    const fetchDateData = async () => {
+      if (!user) return
+
+      try {
+        // Загружаем профиль для проверки Premium и coach_id
+        const profile = await getUserProfile(user)
+        const isPremiumUser = hasActiveSubscription(profile)
+
+        const { data: logData, error: logError } = await supabase
+          .from('daily_logs')
+          .select('*, meals')
+          .eq('user_id', user.id)
+          .eq('date', selectedDate)
+          .single()
+
+        if (logError && logError.code !== 'PGRST116') {
+          logger.error('Dashboard: ошибка загрузки лога за дату', logError, { userId: user.id, date: selectedDate })
+          setTodayLog(null)
+          setCoachNote(null)
+          return
+        }
+
+        if (logData) {
+          let mealsArray: Meal[] = []
+          if (logData.meals !== null && logData.meals !== undefined) {
+            if (Array.isArray(logData.meals)) {
+              mealsArray = logData.meals
+            } else if (typeof logData.meals === 'string') {
+              try {
+                mealsArray = JSON.parse(logData.meals)
+              } catch (e) {
+                logger.warn('Dashboard: ошибка парсинга meals', { error: e })
+                mealsArray = []
+              }
+            }
+          }
+
+          setTodayLog({
+            ...logData,
+            meals: mealsArray
+          } as DailyLog)
+
+          // Загружаем заметку тренера для выбранной даты (только для Premium)
+          if (isPremiumUser && profile?.coach_id) {
+            const { data: noteData } = await supabase
+              .from('coach_notes')
+              .select('content, date')
+              .eq('client_id', user.id)
+              .eq('coach_id', profile.coach_id)
+              .eq('date', selectedDate)
+              .single()
+
+            if (noteData) {
+              setCoachNote({ content: noteData.content, date: noteData.date })
+            } else {
+              setCoachNote(null)
+            }
+          } else {
+            setCoachNote(null)
+          }
+        } else {
+          setTodayLog(null)
+          setCoachNote(null)
+        }
+      } catch (error) {
+        logger.error('Dashboard: ошибка загрузки данных за дату', error, { userId: user.id, date: selectedDate })
+        setTodayLog(null)
+        setCoachNote(null)
+      }
+    }
+
+    fetchDateData()
+  }, [user, selectedDate, supabase, isPremium])
 
   // Текущие цели в зависимости от выбранного типа дня
   const currentTargets = useMemo(() => {
@@ -269,29 +373,68 @@ export default function ClientDashboard() {
 
       {/* HEADER */}
       <header className="flex justify-between items-center">
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Дашборд</h1>
-          <p className="text-sm text-gray-500">{new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          {/* Date Navigation */}
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={() => {
+                const date = new Date(selectedDate)
+                date.setDate(date.getDate() - 1)
+                setSelectedDate(date.toISOString().split('T')[0])
+              }}
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
+              title="Предыдущий день"
+            >
+              <ChevronLeft size={16} className="text-gray-600" />
+            </button>
+            <button
+              onClick={() => {
+                const input = document.createElement('input')
+                input.type = 'date'
+                input.max = new Date().toISOString().split('T')[0]
+                input.value = selectedDate
+                input.onchange = (e) => {
+                  const target = e.target as HTMLInputElement
+                  if (target.value) {
+                    setSelectedDate(target.value)
+                  }
+                }
+                input.click()
+              }}
+              className="text-sm text-gray-700 hover:text-gray-900 font-medium flex items-center gap-1"
+            >
+              <Calendar size={14} />
+              {selectedDate === new Date().toISOString().split('T')[0] ? (
+                <span>Сегодня, {new Date(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span>
+              ) : (
+                <span>{new Date(selectedDate).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })}</span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0]
+                const date = new Date(selectedDate)
+                date.setDate(date.getDate() + 1)
+                const nextDate = date.toISOString().split('T')[0]
+                if (nextDate <= today) {
+                  setSelectedDate(nextDate)
+                }
+              }}
+              disabled={selectedDate >= new Date().toISOString().split('T')[0]}
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Следующий день"
+            >
+              <ChevronRight size={16} className="text-gray-600" />
+            </button>
+          </div>
         </div>
         <button
-          onClick={async () => {
-            logger.info('Dashboard: выход из системы')
-            const { error } = await supabase.auth.signOut()
-            if (error) {
-              const errorObj = error instanceof Error
-                ? error
-                : new Error((error as { message?: string })?.message || 'Ошибка выхода')
-              logger.error('Dashboard: ошибка выхода', errorObj)
-            } else {
-              logger.info('Dashboard: успешный выход')
-            }
-            router.push('/login')
-            router.refresh()
-          }}
+          onClick={() => router.push('/app/settings')}
           className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
-          title="Выйти"
+          title="Настройки"
         >
-          <LogOut size={16} className="text-gray-600" />
+          <Settings size={16} className="text-gray-600" />
         </button>
       </header>
 
@@ -302,71 +445,100 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* СВОДКА ЗА СЕГОДНЯ */}
+      {/* СВОДКА ЗА ВЫБРАННУЮ ДАТУ */}
       {todayLog && (
         <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <UtensilsCrossed size={20} />
-              Сегодня
+              {selectedDate === new Date().toISOString().split('T')[0] ? 'Сегодня' : new Date(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
             </h2>
-            <button
-              onClick={() => router.push('/app/nutrition')}
-              className="text-sm text-black underline decoration-dotted"
-            >
-              Редактировать
-            </button>
+            {!todayLog.is_completed ? (
+              <button
+                onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
+                className="text-sm text-black underline decoration-dotted"
+              >
+                Редактировать
+              </button>
+            ) : (
+              <span className="text-xs text-gray-500">День завершен</span>
+            )}
           </div>
 
           {/* КБЖУ за сегодня */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            {(() => {
-              // Определяем текущие цели в зависимости от типа дня
-              const currentTargets = todayLog.target_type === 'rest' ? targetsRest : targetsTraining
-              const showTargets = isPremium && currentTargets
+          {(() => {
+            // Определяем текущие цели в зависимости от типа дня
+            const currentTargets = todayLog.target_type === 'rest' ? targetsRest : targetsTraining
+            const showTargets = isPremium && currentTargets
 
+            if (showTargets && currentTargets) {
               return (
-                <>
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <div className="text-xs text-gray-500 mb-1">Калории</div>
-                    <div className="text-lg font-bold text-gray-900">
-                      {todayLog.actual_calories || 0}
-                      {showTargets && ` / ${currentTargets.calories}`}
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <div className="text-xs text-gray-500 mb-1">Белки</div>
-                    <div className="text-lg font-bold text-gray-900">
-                      {todayLog.actual_protein || 0} г
-                      {showTargets && ` / ${currentTargets.protein}г`}
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <div className="text-xs text-gray-500 mb-1">Жиры</div>
-                    <div className="text-lg font-bold text-gray-900">
-                      {todayLog.actual_fats || 0} г
-                      {showTargets && ` / ${currentTargets.fats}г`}
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <div className="text-xs text-gray-500 mb-1">Углеводы</div>
-                    <div className="text-lg font-bold text-gray-900">
-                      {todayLog.actual_carbs || 0} г
-                      {showTargets && ` / ${currentTargets.carbs}г`}
-                    </div>
-                  </div>
-                </>
+                <div className="space-y-3 mb-4">
+                  <ProgressBar
+                    label="Калории"
+                    current={todayLog.actual_calories || 0}
+                    target={currentTargets.calories}
+                    unit="ккал"
+                  />
+                  <ProgressBar
+                    label="Белки"
+                    current={todayLog.actual_protein || 0}
+                    target={currentTargets.protein}
+                    unit="г"
+                  />
+                  <ProgressBar
+                    label="Жиры"
+                    current={todayLog.actual_fats || 0}
+                    target={currentTargets.fats}
+                    unit="г"
+                  />
+                  <ProgressBar
+                    label="Углеводы"
+                    current={todayLog.actual_carbs || 0}
+                    target={currentTargets.carbs}
+                    unit="г"
+                  />
+                </div>
               )
-            })()}
-          </div>
+            }
+
+            // Если нет целей, показываем просто значения
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500 mb-1">Калории</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {todayLog.actual_calories || 0} ккал
+                  </div>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500 mb-1">Белки</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {todayLog.actual_protein || 0} г
+                  </div>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500 mb-1">Жиры</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {todayLog.actual_fats || 0} г
+                  </div>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <div className="text-xs text-gray-500 mb-1">Углеводы</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    {todayLog.actual_carbs || 0} г
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* БЫСТРЫЕ ДЕЙСТВИЯ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             {/* Вес - кликабельный блок */}
             {(() => {
-              const today = new Date().toISOString().split('T')[0]
               const lastWeightLog = weekLogs
-                .filter(log => log.date === today && log.weight !== null)
+                .filter(log => log.date === selectedDate && log.weight !== null)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
 
               const currentWeight = todayLog.weight || lastWeightLog?.weight || null
@@ -387,12 +559,11 @@ export default function ClientDashboard() {
                         onBlur={async (e) => {
                           const newWeight = e.target.value ? parseFloat(e.target.value) : null
                           if (newWeight !== null && newWeight !== currentWeight) {
-                            const today = new Date().toISOString().split('T')[0]
                             const { data: existingLog } = await supabase
                               .from('daily_logs')
                               .select('*')
                               .eq('user_id', user?.id)
-                              .eq('date', today)
+                              .eq('date', selectedDate)
                               .single()
 
                             if (existingLog) {
@@ -400,13 +571,13 @@ export default function ClientDashboard() {
                                 .from('daily_logs')
                                 .update({ weight: newWeight })
                                 .eq('user_id', user?.id)
-                                .eq('date', today)
+                                .eq('date', selectedDate)
                             } else {
                               await supabase
                                 .from('daily_logs')
                                 .insert({
                                   user_id: user?.id,
-                                  date: today,
+                                  date: selectedDate,
                                   weight: newWeight,
                                   actual_calories: todayLog?.actual_calories || 0,
                                   actual_protein: todayLog?.actual_protein || 0,
@@ -423,12 +594,11 @@ export default function ClientDashboard() {
                           if (e.key === 'Enter') {
                             const newWeight = (e.target as HTMLInputElement).value ? parseFloat((e.target as HTMLInputElement).value) : null
                             if (newWeight !== null && newWeight !== currentWeight) {
-                              const today = new Date().toISOString().split('T')[0]
                               const { data: existingLog } = await supabase
                                 .from('daily_logs')
                                 .select('*')
                                 .eq('user_id', user?.id)
-                                .eq('date', today)
+                                .eq('date', selectedDate)
                                 .single()
 
                               if (existingLog) {
@@ -436,13 +606,13 @@ export default function ClientDashboard() {
                                   .from('daily_logs')
                                   .update({ weight: newWeight })
                                   .eq('user_id', user?.id)
-                                  .eq('date', today)
+                                  .eq('date', selectedDate)
                               } else {
                                 await supabase
                                   .from('daily_logs')
                                   .insert({
                                     user_id: user?.id,
-                                    date: today,
+                                    date: selectedDate,
                                     weight: newWeight,
                                     actual_calories: todayLog?.actual_calories || 0,
                                     actual_protein: todayLog?.actual_protein || 0,
@@ -472,15 +642,24 @@ export default function ClientDashboard() {
             })()}
 
             {/* Добавить прием пищи - большая кнопка */}
-            <button
-              onClick={() => setShowAddMealModal(true)}
-              className="rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
-            >
-              <div className="text-xs text-gray-500 mb-1">Прием пищи</div>
-              <div className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span>+ Добавить</span>
+            {!todayLog.is_completed ? (
+              <button
+                onClick={() => setShowAddMealModal(true)}
+                className="rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="text-xs text-gray-500 mb-1">Прием пищи</div>
+                <div className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span>+ Добавить</span>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-lg border-2 border-dashed border-gray-200 p-4 bg-gray-50 text-left opacity-50">
+                <div className="text-xs text-gray-500 mb-1">Прием пищи</div>
+                <div className="text-lg font-bold text-gray-600">
+                  День завершен
+                </div>
               </div>
-            </button>
+            )}
           </div>
 
           {/* Приемы пищи за сегодня */}
@@ -510,7 +689,9 @@ export default function ClientDashboard() {
                     key={meal.id}
                     className="flex items-start justify-between p-4 bg-gray-50 rounded-lg gap-3 hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-gray-200"
                     onClick={() => {
-                      router.push(`/app/nutrition?edit=${meal.id}`)
+                      if (!todayLog.is_completed) {
+                        router.push(`/app/nutrition?edit=${meal.id}&date=${selectedDate}`)
+                      }
                     }}
                   >
                     <div className="flex-1 min-w-0">
@@ -537,7 +718,9 @@ export default function ClientDashboard() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          router.push(`/app/nutrition?edit=${meal.id}`)
+                          if (!todayLog.is_completed) {
+                            router.push(`/app/nutrition?edit=${meal.id}&date=${selectedDate}`)
+                          }
                         }}
                         className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
                         title="Редактировать прием пищи"
@@ -547,14 +730,17 @@ export default function ClientDashboard() {
                       <button
                         onClick={async (e) => {
                           e.stopPropagation()
+                          if (todayLog.is_completed) {
+                            toast.error('День завершен. Редактирование недоступно.')
+                            return
+                          }
                           if (!confirm('Удалить этот прием пищи?')) return
 
-                          const today = new Date().toISOString().split('T')[0]
                           const updatedMeals = (todayLog.meals || []).filter(m => m.id !== meal.id)
 
-                          // Пересчитываем totals из оставшихся meals за сегодня
-                          const todayMeals = updatedMeals.filter(m => (m.mealDate || today) === today)
-                          const newTotals = todayMeals.reduce(
+                          // Пересчитываем totals из оставшихся meals за выбранную дату
+                          const dateMeals = updatedMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
+                          const newTotals = dateMeals.reduce(
                             (acc, m) => ({
                               calories: acc.calories + (m.calories || 0),
                               protein: acc.protein + (m.protein || 0),
@@ -568,7 +754,7 @@ export default function ClientDashboard() {
                             .from('daily_logs')
                             .select('*')
                             .eq('user_id', user?.id)
-                            .eq('date', today)
+                            .eq('date', selectedDate)
                             .single()
 
                           if (existingLog) {
@@ -582,7 +768,7 @@ export default function ClientDashboard() {
                                 actual_carbs: newTotals.carbs
                               })
                               .eq('user_id', user?.id)
-                              .eq('date', today)
+                              .eq('date', selectedDate)
                           }
                           router.refresh()
                         }}
@@ -594,27 +780,181 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                 ))}
-                <div className="pt-2 text-center">
-                  <button
-                    onClick={() => setShowAddMealModal(true)}
-                    className="text-sm font-medium text-gray-600 hover:text-gray-900 underline"
-                  >
-                    + Добавить еще один прием пищи
-                  </button>
-                </div>
+                {!todayLog.is_completed && (
+                  <div className="pt-2 text-center">
+                    <button
+                      onClick={() => setShowAddMealModal(true)}
+                      className="text-sm font-medium text-gray-600 hover:text-gray-900 underline"
+                    >
+                      + Добавить еще один прием пищи
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-                <p className="text-gray-500 text-sm mb-3">Нет приемов пищи за сегодня</p>
-                <button
-                  onClick={() => setShowAddMealModal(true)}
-                  className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
-                >
-                  + Добавить первый прием пищи
-                </button>
-              </div>
+              !todayLog.is_completed ? (
+                <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+                  <p className="text-gray-500 text-sm mb-3">Нет приемов пищи за сегодня</p>
+                  <button
+                    onClick={() => setShowAddMealModal(true)}
+                    className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                  >
+                    + Добавить первый прием пищи
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+                  <p className="text-gray-500 text-sm">День завершен. Редактирование недоступно.</p>
+                </div>
+              )
             )}
           </div>
+        </section>
+      )}
+
+      {/* ЗАМЕТКА ТРЕНЕРА (Premium) */}
+      {isPremium && coachNote && (
+        <section className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-xl">💬</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-blue-900 mb-1">Сообщение от тренера</h3>
+              <p className="text-sm text-blue-800 whitespace-pre-line">{coachNote.content}</p>
+              <p className="text-xs text-blue-600 mt-2">
+                {new Date(coachNote.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ЗАГЛУШКА ДЛЯ ИСТЕКШЕЙ ПОДПИСКИ */}
+      {!isPremium && profile?.subscription_status === 'expired' && (
+        <section className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-xl">🔒</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Заметки от тренера</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Эта функция доступна только с активной Premium подпиской.
+              </p>
+              <button
+                onClick={() => router.push('/app/settings?tab=subscription')}
+                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                Продлить подписку
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* КНОПКА ЗАВЕРШЕНИЯ ДНЯ */}
+      {todayLog && selectedDate <= new Date().toISOString().split('T')[0] && (
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          {todayLog.is_completed ? (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-2">
+                <CheckCircle size={16} />
+                День завершен
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                {todayLog.completed_at && `Завершен: ${new Date(todayLog.completed_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                if (!user) return
+
+                // Валидация: проверяем, что есть вес и хотя бы один прием пищи
+                const hasWeight = todayLog.weight !== null && todayLog.weight !== undefined
+                const hasMeals = Array.isArray(todayLog.meals) && todayLog.meals.length > 0
+                const hasCalories = todayLog.actual_calories > 0
+
+                if (!hasWeight) {
+                  toast.error('Пожалуйста, введите вес перед завершением дня')
+                  return
+                }
+
+                if (!hasMeals && !hasCalories) {
+                  toast.error('Пожалуйста, добавьте хотя бы один прием пищи перед завершением дня')
+                  return
+                }
+
+                setCompletingDay(true)
+                try {
+                  const { error } = await supabase
+                    .from('daily_logs')
+                    .update({
+                      is_completed: true,
+                      completed_at: new Date().toISOString()
+                    })
+                    .eq('user_id', user.id)
+                    .eq('date', selectedDate)
+
+                  if (error) {
+                    throw error
+                  }
+
+                  // Обновляем локальное состояние
+                  setTodayLog(prev => prev ? { ...prev, is_completed: true, completed_at: new Date().toISOString() } : null)
+
+                  // Показываем сообщение
+                  if (isPremium) {
+                    toast.success('День завершен! Тренер получит уведомление.')
+                  } else {
+                    // Подсчитываем стрик (дни подряд)
+                    const completedDates = weekLogs
+                      .filter(log => log.is_completed)
+                      .map(log => log.date)
+                      .sort()
+                      .reverse()
+
+                    let streak = 1
+                    const today = new Date().toISOString().split('T')[0]
+                    for (let i = 0; i < completedDates.length; i++) {
+                      const date = new Date(completedDates[i])
+                      date.setDate(date.getDate() + 1)
+                      const nextDate = date.toISOString().split('T')[0]
+                      if (nextDate === (i === 0 ? today : completedDates[i - 1])) {
+                        streak++
+                      } else {
+                        break
+                      }
+                    }
+
+                    toast.success(`День завершен! Вы молодец! 🎉 Стрик: ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}`)
+                  }
+
+                  router.refresh()
+                } catch (error) {
+                  logger.error('Dashboard: ошибка завершения дня', error, { userId: user.id, date: selectedDate })
+                  toast.error('Ошибка при завершении дня. Попробуйте еще раз.')
+                } finally {
+                  setCompletingDay(false)
+                }
+              }}
+              disabled={completingDay || todayLog.is_completed}
+              className="w-full py-4 bg-black text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {completingDay ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Завершение...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={20} />
+                  Завершить день
+                </>
+              )}
+            </button>
+          )}
         </section>
       )}
 
@@ -622,9 +962,10 @@ export default function ClientDashboard() {
       {showAddMealModal && (
         <AddMealModal
           onClose={() => setShowAddMealModal(false)}
+          selectedDate={selectedDate}
+          userId={user?.id}
           onSave={async (mealData) => {
-            const today = new Date().toISOString().split('T')[0]
-            const mealDate = mealData.mealDate || today
+            const mealDate = mealData.mealDate || selectedDate
 
             // Получаем существующие meals для выбранной даты
             const { data: existingLog } = await supabase
@@ -811,7 +1152,7 @@ export default function ClientDashboard() {
           <div className="text-center py-6 text-gray-500 text-sm">
             <p className="mb-3">Нет данных за неделю</p>
             <button
-              onClick={() => router.push('/app/nutrition')}
+              onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
               className="text-sm text-black underline decoration-dotted"
             >
               Начать вводить данные
@@ -865,7 +1206,7 @@ export default function ClientDashboard() {
         <h2 className="text-lg font-bold text-gray-900 mb-4">Быстрые действия</h2>
         <div className="space-y-3">
           <button
-            onClick={() => router.push('/app/nutrition')}
+            onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
             className="w-full p-4 bg-black text-white rounded-xl font-bold flex items-center justify-between hover:bg-gray-800 transition-colors"
           >
             <span className="flex items-center gap-2">
@@ -923,9 +1264,12 @@ type AddMealModalProps = {
     carbs: number
     mealDate: string
   }) => Promise<void>
+  selectedDate?: string
+  userId?: string
 }
 
-function AddMealModal({ onClose, onSave }: AddMealModalProps) {
+function AddMealModal({ onClose, onSave, selectedDate, userId }: AddMealModalProps) {
+  const supabase = createClient()
   const [mealData, setMealData] = useState({
     title: '',
     weight: 100,
@@ -933,9 +1277,24 @@ function AddMealModal({ onClose, onSave }: AddMealModalProps) {
     protein: 0,
     fats: 0,
     carbs: 0,
-    mealDate: new Date().toISOString().split('T')[0]
+    mealDate: selectedDate || new Date().toISOString().split('T')[0]
   })
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<'new' | 'recent' | 'copy'>('new')
+  const [recentMeals, setRecentMeals] = useState<Meal[]>([])
+  const [yesterdayMeals, setYesterdayMeals] = useState<Meal[]>([])
+  const [loadingRecent, setLoadingRecent] = useState(false)
+
+  // Валидация приема пищи
+  const mealValidation = useMemo(() => {
+    return validateMeal({
+      calories: mealData.calories,
+      protein: mealData.protein,
+      fats: mealData.fats,
+      carbs: mealData.carbs,
+      weight: mealData.weight,
+    })
+  }, [mealData])
 
   const getMealNameByTime = (hour: number = new Date().getHours()): string => {
     if (hour >= 6 && hour < 10) return 'Завтрак'
@@ -946,33 +1305,122 @@ function AddMealModal({ onClose, onSave }: AddMealModalProps) {
     return 'Прием пищи'
   }
 
+  // Загружаем недавние приемы пищи и вчерашние
+  useEffect(() => {
+    const loadData = async () => {
+      if (!userId) return
+
+      setLoadingRecent(true)
+      try {
+        // Загружаем логи за последние 7 дней для получения недавних приемов пищи
+        const weekAgo = new Date()
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        const { data: logs } = await supabase
+          .from('daily_logs')
+          .select('meals')
+          .eq('user_id', userId)
+          .gte('date', weekAgo.toISOString().split('T')[0])
+          .order('date', { ascending: false })
+          .limit(7)
+
+        // Собираем уникальные приемы пищи (по названию)
+        const uniqueMeals = new Map<string, Meal>()
+        logs?.forEach(log => {
+          if (log.meals && Array.isArray(log.meals)) {
+            (log.meals as Meal[]).forEach(meal => {
+              if (!uniqueMeals.has(meal.title.toLowerCase())) {
+                uniqueMeals.set(meal.title.toLowerCase(), meal)
+              }
+            })
+          }
+        })
+        setRecentMeals(Array.from(uniqueMeals.values()).slice(0, 10))
+
+        // Загружаем вчерашние приемы пищи
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = yesterday.toISOString().split('T')[0]
+        const { data: yesterdayLog } = await supabase
+          .from('daily_logs')
+          .select('meals')
+          .eq('user_id', userId)
+          .eq('date', yesterdayStr)
+          .single()
+
+        if (yesterdayLog?.meals && Array.isArray(yesterdayLog.meals)) {
+          setYesterdayMeals(yesterdayLog.meals as Meal[])
+        }
+      } catch (error) {
+        logger.error('AddMealModal: ошибка загрузки данных', error)
+      } finally {
+        setLoadingRecent(false)
+      }
+    }
+
+    loadData()
+  }, [userId, supabase])
+
   useEffect(() => {
     // Устанавливаем дефолтное название по времени
-    if (!mealData.title) {
+    if (!mealData.title && activeTab === 'new') {
       setMealData(prev => ({ ...prev, title: getMealNameByTime() }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [activeTab])
 
   const handleSave = async () => {
     if (!mealData.title.trim()) {
-      alert('Введите название приема пищи')
+      toast.error('Введите название приема пищи')
       return
     }
+
+    // Проверка валидации перед сохранением
+    if (!mealValidation.valid) {
+      const errorMessage = mealValidation.errors.join('; ')
+      toast.error(`Ошибки валидации: ${errorMessage}`)
+      return
+    }
+
     setSaving(true)
     try {
       await onSave(mealData)
     } catch (error) {
       console.error('Ошибка сохранения приема пищи:', error)
-      alert('Ошибка сохранения. Попробуйте еще раз.')
+        toast.error('Ошибка сохранения. Попробуйте еще раз.')
     } finally {
       setSaving(false)
     }
   }
 
+  const handleCopyFromYesterday = (meal: Meal) => {
+    setMealData({
+      title: meal.title,
+      weight: meal.weight,
+      calories: meal.calories,
+      protein: meal.protein,
+      fats: meal.fats,
+      carbs: meal.carbs,
+      mealDate: selectedDate || new Date().toISOString().split('T')[0]
+    })
+    setActiveTab('new')
+  }
+
+  const handleSelectRecent = (meal: Meal) => {
+    setMealData({
+      title: meal.title,
+      weight: meal.weight,
+      calories: meal.calories,
+      protein: meal.protein,
+      fats: meal.fats,
+      carbs: meal.carbs,
+      mealDate: selectedDate || new Date().toISOString().split('T')[0]
+    })
+    setActiveTab('new')
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full sm:max-w-md sm:mx-auto p-4 sm:p-6 space-y-4">
+      <div className="bg-white rounded-2xl shadow-lg w-full sm:max-w-md sm:mx-auto p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">Добавить прием пищи</h2>
           <button
@@ -983,92 +1431,182 @@ function AddMealModal({ onClose, onSave }: AddMealModalProps) {
           </button>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Дата приема пищи</label>
-          <input
-            type="date"
-            value={mealData.mealDate}
-            onChange={(e) => setMealData({ ...mealData, mealDate: e.target.value })}
-            max={new Date().toISOString().split('T')[0]}
-            className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-          />
-          <p className="text-xs text-gray-500 mt-1">Выберите дату, если забыли внести ранее</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
-          <input
-            type="text"
-            value={mealData.title}
-            onChange={(e) => setMealData({ ...mealData, title: e.target.value })}
-            placeholder={getMealNameByTime()}
-            className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Вес (г)</label>
-            <input
-              type="number"
-              value={mealData.weight}
-              onChange={(e) => setMealData({ ...mealData, weight: parseFloat(e.target.value) || 0 })}
-              className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Калории</label>
-            <input
-              type="number"
-              value={mealData.calories}
-              onChange={(e) => setMealData({ ...mealData, calories: parseFloat(e.target.value) || 0 })}
-              className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Белки (г)</label>
-            <input
-              type="number"
-              value={mealData.protein}
-              onChange={(e) => setMealData({ ...mealData, protein: parseFloat(e.target.value) || 0 })}
-              className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Жиры (г)</label>
-            <input
-              type="number"
-              value={mealData.fats}
-              onChange={(e) => setMealData({ ...mealData, fats: parseFloat(e.target.value) || 0 })}
-              className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Углеводы (г)</label>
-            <input
-              type="number"
-              value={mealData.carbs}
-              onChange={(e) => setMealData({ ...mealData, carbs: parseFloat(e.target.value) || 0 })}
-              className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-3 pt-4">
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-gray-200 mb-4">
           <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={() => setActiveTab('new')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'new'
+              ? 'border-black text-black'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
-            Отмена
+            Новый
           </button>
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setActiveTab('recent')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'recent'
+              ? 'border-black text-black'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            Недавние ({recentMeals.length})
           </button>
+          {yesterdayMeals.length > 0 && (
+            <button
+              onClick={() => setActiveTab('copy')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'copy'
+                ? 'border-black text-black'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              Вчера ({yesterdayMeals.length})
+            </button>
+          )}
         </div>
+
+        {/* Tab Content */}
+        {activeTab === 'new' && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Дата приема пищи</label>
+              <input
+                type="date"
+                value={mealData.mealDate}
+                onChange={(e) => setMealData({ ...mealData, mealDate: e.target.value })}
+                max={new Date().toISOString().split('T')[0]}
+                className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+              />
+              <p className="text-xs text-gray-500 mt-1">Выберите дату, если забыли внести ранее</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+              <input
+                type="text"
+                value={mealData.title}
+                onChange={(e) => setMealData({ ...mealData, title: e.target.value })}
+                placeholder={getMealNameByTime()}
+                className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Вес (г)</label>
+                <input
+                  type="number"
+                  value={mealData.weight}
+                  onChange={(e) => setMealData({ ...mealData, weight: parseFloat(e.target.value) || 0 })}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Калории</label>
+                <input
+                  type="number"
+                  value={mealData.calories}
+                  onChange={(e) => setMealData({ ...mealData, calories: parseFloat(e.target.value) || 0 })}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Белки (г)</label>
+                <input
+                  type="number"
+                  value={mealData.protein}
+                  onChange={(e) => setMealData({ ...mealData, protein: parseFloat(e.target.value) || 0 })}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Жиры (г)</label>
+                <input
+                  type="number"
+                  value={mealData.fats}
+                  onChange={(e) => setMealData({ ...mealData, fats: parseFloat(e.target.value) || 0 })}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Углеводы (г)</label>
+                <input
+                  type="number"
+                  value={mealData.carbs}
+                  onChange={(e) => setMealData({ ...mealData, carbs: parseFloat(e.target.value) || 0 })}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+                />
+              </div>
+            </div>
+
+            {/* Валидация приема пищи */}
+            {mealValidation.errors.length > 0 || mealValidation.warnings.length > 0 ? (
+              <ValidationWarning
+                errors={mealValidation.errors}
+                warnings={mealValidation.warnings}
+              />
+            ) : null}
+
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !mealValidation.valid}
+                className="flex-1 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'recent' && (
+          <div className="space-y-2">
+            {loadingRecent ? (
+              <div className="text-center py-4 text-gray-500 text-sm">Загрузка...</div>
+            ) : recentMeals.length > 0 ? (
+              recentMeals.map((meal, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectRecent(meal)}
+                  className="w-full p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="font-medium text-gray-900">{meal.title}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {meal.calories} ккал • Б {meal.protein}г / Ж {meal.fats}г / У {meal.carbs}г
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500 text-sm">Нет недавних приемов пищи</div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'copy' && (
+          <div className="space-y-2">
+            {yesterdayMeals.length > 0 ? (
+              yesterdayMeals.map((meal, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleCopyFromYesterday(meal)}
+                  className="w-full p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="font-medium text-gray-900">{meal.title}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {meal.calories} ккал • Б {meal.protein}г / Ж {meal.fats}г / У {meal.carbs}г
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500 text-sm">Нет приемов пищи за вчера</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

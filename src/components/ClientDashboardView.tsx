@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { UtensilsCrossed, TrendingUp, ArrowRight } from 'lucide-react'
 import DayToggle from './DayToggle'
+import ValidationWarning from './ValidationWarning'
+import { validateNutritionTargets } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
+import toast from 'react-hot-toast'
 
 type DailyLog = {
   date: string
@@ -159,27 +162,51 @@ export default function ClientDashboardView({
     }
   }
 
+  // Валидация редактируемых целей
+  const targetsValidation = useMemo(() => {
+    if (!editingTargets) return null
+    return validateNutritionTargets({
+      calories: editingTargets.calories,
+      protein: editingTargets.protein,
+      fats: editingTargets.fats,
+      carbs: editingTargets.carbs
+    })
+  }, [editingTargets])
+
   const handleSaveTargets = async () => {
-    if (!editingTargets) return
+    if (!editingTargets || !editingTargets.id) return
 
     setSavingTargets(true)
     try {
-      const { error } = await supabase
-        .from('nutrition_targets')
-        .update({
+      // Используем новый API endpoint с валидацией
+      const response = await fetch('/api/nutrition-targets/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetId: editingTargets.id,
+          clientId: clientId,
           calories: editingTargets.calories,
           protein: editingTargets.protein,
           fats: editingTargets.fats,
           carbs: editingTargets.carbs,
-        })
-        .eq('id', editingTargets.id)
+        }),
+      })
 
-      if (error) {
-        logger.error('ClientDashboardView: ошибка сохранения целей', error, {
+      const data = await response.json()
+
+      if (!response.ok) {
+        const errorMessage = data.details
+          ? `Ошибка валидации: ${Array.isArray(data.details) ? data.details.map((d: any) => d.message).join(', ') : data.details}`
+          : data.error || 'Ошибка сохранения'
+        logger.error('ClientDashboardView: ошибка сохранения целей', {
           clientId,
           dayType: editingTargets.day_type,
+          error: errorMessage,
+          status: response.status
         })
-        alert('Ошибка сохранения: ' + error.message)
+        toast.error(errorMessage)
       } else {
         logger.info('ClientDashboardView: цели успешно сохранены', {
           clientId,
@@ -199,6 +226,7 @@ export default function ClientDashboardView({
       }
     } catch (error) {
       logger.error('ClientDashboardView: исключение при сохранении целей', error, { clientId })
+      toast.error('Произошла ошибка при сохранении. Попробуйте еще раз.')
     } finally {
       setSavingTargets(false)
     }
@@ -343,7 +371,10 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.calories}
                   onChange={(e) => setEditingTargets({ ...editingTargets, calories: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('калорий'))
+                    ? 'border-red-500'
+                    : 'border-gray-200'
+                    }`}
                 />
               </div>
               <div>
@@ -352,7 +383,10 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.protein}
                   onChange={(e) => setEditingTargets({ ...editingTargets, protein: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('белк'))
+                    ? 'border-red-500'
+                    : 'border-gray-200'
+                    }`}
                 />
               </div>
               <div>
@@ -361,7 +395,10 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.fats}
                   onChange={(e) => setEditingTargets({ ...editingTargets, fats: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('жир'))
+                    ? 'border-red-500'
+                    : 'border-gray-200'
+                    }`}
                 />
               </div>
               <div>
@@ -370,15 +407,28 @@ export default function ClientDashboardView({
                   type="number"
                   value={editingTargets.carbs}
                   onChange={(e) => setEditingTargets({ ...editingTargets, carbs: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('углевод'))
+                    ? 'border-red-500'
+                    : 'border-gray-200'
+                    }`}
                 />
               </div>
             </div>
+            {/* Валидация целей */}
+            {targetsValidation && (targetsValidation.errors.length > 0 || targetsValidation.warnings.length > 0) && (
+              <ValidationWarning
+                errors={targetsValidation.errors}
+                warnings={targetsValidation.warnings}
+              />
+            )}
             <div className="flex gap-2">
               <button
                 onClick={handleSaveTargets}
-                disabled={savingTargets}
-                className="flex-1 py-2 px-4 bg-black text-white rounded-lg font-medium text-sm hover:bg-gray-800 disabled:bg-gray-400"
+                disabled={savingTargets || (targetsValidation !== null && !targetsValidation.valid)}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm ${targetsValidation !== null && !targetsValidation.valid
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-black text-white hover:bg-gray-800'
+                  } disabled:bg-gray-400 disabled:cursor-not-allowed`}
               >
                 {savingTargets ? 'Сохранение...' : 'Сохранить'}
               </button>

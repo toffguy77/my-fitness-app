@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Send } from 'lucide-react'
 import ClientDashboardView from '@/components/ClientDashboardView'
 import { logger } from '@/utils/logger'
+import toast from 'react-hot-toast'
 
 export default function ClientViewPage() {
   const supabase = createClient()
@@ -16,6 +17,10 @@ export default function ClientViewPage() {
   const [, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [clientName, setClientName] = useState<string>('')
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [coachNote, setCoachNote] = useState<string>('')
+  const [existingNote, setExistingNote] = useState<{ content: string; date: string } | null>(null)
+  const [savingNote, setSavingNote] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,6 +46,21 @@ export default function ClientViewPage() {
 
         setClientName(clientProfile.full_name || clientProfile.email || 'Клиент')
         logger.debug('Coach: данные клиента загружены', { coachId: user.id, clientId })
+        
+        // Загружаем существующую заметку за выбранную дату
+        const { data: noteData } = await supabase
+          .from('coach_notes')
+          .select('content, date')
+          .eq('client_id', clientId)
+          .eq('coach_id', user.id)
+          .eq('date', selectedDate)
+          .single()
+
+        if (noteData) {
+          setExistingNote({ content: noteData.content, date: noteData.date })
+          setCoachNote(noteData.content)
+        }
+        
         setLoading(false)
       } catch (error) {
         logger.error('Coach: ошибка загрузки данных клиента', error, { clientId })
@@ -49,7 +69,132 @@ export default function ClientViewPage() {
     }
 
     fetchData()
-  }, [router, supabase, clientId])
+  }, [router, supabase, clientId, selectedDate])
+
+  const handleSaveNote = async () => {
+    if (!coachNote.trim()) {
+      toast.error('Введите текст заметки')
+      return
+    }
+
+    // Сохраняем текущее состояние для отката при ошибке (оптимистичное обновление)
+    const previousNote = existingNote ? { ...existingNote } : null
+    const noteContent = coachNote.trim()
+
+    // Оптимистичное обновление: сразу показываем сохраненную заметку
+    setExistingNote({ content: noteContent, date: selectedDate })
+    setSavingNote(true)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        // Откатываем изменения если нет пользователя
+        setExistingNote(previousNote)
+        setSavingNote(false)
+        return
+      }
+
+      const { error } = await supabase
+        .from('coach_notes')
+        .upsert({
+          client_id: clientId,
+          coach_id: user.id,
+          date: selectedDate,
+          content: noteContent,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'client_id,coach_id,date' })
+
+      if (error) {
+        // Откатываем изменения при ошибке
+        setExistingNote(previousNote)
+        throw error
+      }
+
+      logger.info('Coach: заметка сохранена', { coachId: user.id, clientId, date: selectedDate })
+      toast.success('Заметка сохранена')
+
+      // Проверяем настройки уведомлений клиента перед отправкой
+      const { data: notificationSettings } = await supabase
+        .from('notification_settings')
+        .select('email_realtime_alerts, email_daily_digest')
+        .eq('user_id', clientId)
+        .single()
+
+      const shouldSendRealtime = notificationSettings?.email_realtime_alerts === true
+      const shouldAddToDigest = notificationSettings?.email_daily_digest === true && !shouldSendRealtime
+
+      if (shouldSendRealtime) {
+        // Отправляем мгновенное уведомление через Edge Function
+        try {
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          if (supabaseUrl) {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+              // Получаем имя тренера из профиля
+              const { data: coachProfile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', user.id)
+                .single()
+
+              await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  userId: clientId,
+                  template: 'coach_note_notification',
+                  data: {
+                    date: selectedDate,
+                    noteContent: coachNote.trim(),
+                    coachName: coachProfile?.full_name || undefined,
+                  },
+                }),
+              }).catch((err) => {
+                logger.warn('Coach: ошибка отправки email уведомления', { error: err, clientId })
+              })
+            }
+          }
+        } catch (emailError) {
+          logger.warn('Coach: ошибка отправки email уведомления', { error: emailError, clientId })
+        }
+      } else if (shouldAddToDigest) {
+        // Добавляем в очередь для дайджеста
+        try {
+          const { error: queueError } = await supabase
+            .from('pending_notifications')
+            .insert({
+              user_id: clientId,
+              notification_type: 'coach_note',
+              content: {
+                date: selectedDate,
+                noteContent: coachNote.trim(),
+                coachId: user.id
+              }
+            })
+
+          if (queueError) {
+            logger.warn('Coach: ошибка добавления в очередь уведомлений', { error: queueError, clientId })
+          } else {
+            logger.info('Coach: уведомление добавлено в очередь дайджеста', { clientId, date: selectedDate })
+          }
+        } catch (queueError) {
+          logger.warn('Coach: ошибка добавления в очередь', { error: queueError, clientId })
+        }
+      }
+
+    } catch (error) {
+      // Откатываем изменения при ошибке
+      setExistingNote(previousNote)
+      const errorMessage = error instanceof Error ? error.message : 'Ошибка сохранения заметки'
+      logger.error('Coach: ошибка сохранения заметки', error, { clientId, date: selectedDate })
+      toast.error(errorMessage)
+    } finally {
+      setSavingNote(false)
+    }
+  }
 
   if (loading) return <div className="p-8 text-center">Загрузка...</div>
 
@@ -62,11 +207,55 @@ export default function ClientViewPage() {
         >
           <ArrowLeft size={16} />
         </button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">{clientName}</h1>
           <p className="text-sm text-gray-500">Режим просмотра</p>
         </div>
       </header>
+
+      {/* Date Picker для тренера */}
+      <div className="bg-white p-4 rounded-xl border border-gray-100 mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Дата для заметки</label>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => {
+            setSelectedDate(e.target.value)
+            setCoachNote('')
+            setExistingNote(null)
+          }}
+          max={new Date().toISOString().split('T')[0]}
+          className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+        />
+      </div>
+
+      {/* Feedback Input для тренера */}
+      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <MessageSquare size={20} className="text-gray-600" />
+          <h2 className="text-lg font-bold text-gray-900">Заметка для клиента</h2>
+        </div>
+        {existingNote && (
+          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            Существующая заметка за {new Date(existingNote.date).toLocaleDateString('ru-RU')}
+          </div>
+        )}
+        <textarea
+          value={coachNote}
+          onChange={(e) => setCoachNote(e.target.value)}
+          placeholder="Напишите заметку для клиента на эту дату..."
+          rows={4}
+          className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none resize-none"
+        />
+        <button
+          onClick={handleSaveNote}
+          disabled={savingNote || !coachNote.trim()}
+          className="mt-3 w-full py-2 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <Send size={16} />
+          {savingNote ? 'Сохранение...' : 'Сохранить заметку'}
+        </button>
+      </section>
 
       <ClientDashboardView
         clientId={clientId}

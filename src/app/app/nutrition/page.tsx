@@ -2,12 +2,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { CheckCircle, Flame, Save } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
+import ValidationWarning, { InlineValidationWarning } from '@/components/ValidationWarning'
+import ProgressBar from '@/components/ProgressBar'
+import { validateMeal, validateDailyTotals } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
+import toast from 'react-hot-toast'
 
 type Meal = {
   id: string
@@ -45,6 +49,7 @@ type DailyLog = {
 export default function NutritionPage() {
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Функция для определения названия приема пищи по времени суток (объявляем до использования)
   const getMealNameByTime = (hour: number = new Date().getHours()): string => {
@@ -61,7 +66,6 @@ export default function NutritionPage() {
 
   // State для данных
   const [dayType, setDayType] = useState<'training' | 'rest'>('training')
-  const [dayTypeLocked, setDayTypeLocked] = useState<boolean>(false) // Блокировка изменения типа дня после сохранения
   const [targetsTraining, setTargetsTraining] = useState<Targets | null>(null)
   const [targetsRest, setTargetsRest] = useState<Targets | null>(null)
   const [log, setLog] = useState<DailyLog>({
@@ -90,7 +94,12 @@ export default function NutritionPage() {
       createdAt: now.toISOString()
     }]
   })
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
+  // Получаем дату из URL параметра или используем сегодня
+  const dateParam = searchParams.get('date')
+  const editMealId = searchParams.get('edit')
+  const [selectedDate, setSelectedDate] = useState<string>(
+    dateParam || new Date().toISOString().split('T')[0]
+  )
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -109,8 +118,7 @@ export default function NutritionPage() {
         setUser(user)
 
         // 1. Получаем цели для обоих типов дней
-        const today = new Date().toISOString().split('T')[0]
-        logger.debug('Nutrition: загрузка целей и логов', { userId: user.id, date: today })
+        logger.debug('Nutrition: загрузка целей и логов', { userId: user.id, date: selectedDate })
         const [trainingResult, restResult, logResult] = await Promise.all([
           supabase
             .from('nutrition_targets')
@@ -130,7 +138,7 @@ export default function NutritionPage() {
             .from('daily_logs')
             .select('*')
             .eq('user_id', user.id)
-            .eq('date', today)
+            .eq('date', selectedDate)
             .single(),
         ])
 
@@ -141,7 +149,7 @@ export default function NutritionPage() {
           logger.error('Nutrition: ошибка загрузки целей отдыха', restResult.error, { userId: user.id })
         }
         if (logResult.error && logResult.error.code !== 'PGRST116') {
-          logger.error('Nutrition: ошибка загрузки лога за сегодня', logResult.error, { userId: user.id, date: today })
+          logger.error('Nutrition: ошибка загрузки лога за выбранную дату', logResult.error, { userId: user.id, date: selectedDate })
         }
 
         if (trainingResult.data) {
@@ -153,30 +161,52 @@ export default function NutritionPage() {
           logger.debug('Nutrition: цели отдыха загружены', { userId: user.id })
         }
 
-        // 2. Получаем лог за сегодня и устанавливаем тип дня из лога
+        // 2. Получаем лог за выбранную дату и устанавливаем тип дня из лога
         if (logResult.data) {
-          logger.debug('Nutrition: найден существующий лог за сегодня', { userId: user.id, date: today })
+          logger.debug('Nutrition: найден существующий лог за выбранную дату', { userId: user.id, date: selectedDate })
+
+          // Проверяем, завершен ли день
+          if (logResult.data.is_completed) {
+            logger.warn('Nutrition: попытка редактирования завершенного дня', { userId: user.id, date: selectedDate })
+            toast.error('Этот день завершен. Редактирование недоступно.')
+            router.push(`/app/dashboard?date=${selectedDate}`)
+            return
+          }
+
           setLog(logResult.data)
           // Загружаем существующие приемы пищи
+          let mealsToSet: Meal[] = []
           if (logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
-            setMeals(logResult.data.meals as Meal[])
-            logger.debug('Nutrition: загружены существующие приемы пищи', { count: logResult.data.meals.length })
+            mealsToSet = logResult.data.meals as Meal[]
+
+            // Если есть editMealId, находим этот meal и устанавливаем его для редактирования
+            if (editMealId) {
+              const mealToEdit = mealsToSet.find(m => m.id === editMealId)
+              if (mealToEdit) {
+                mealsToSet = [mealToEdit]
+              }
+            }
+
+            setMeals(mealsToSet)
+            logger.debug('Nutrition: загружены существующие приемы пищи', { count: mealsToSet.length, editMealId })
           }
-          // Если в логе есть target_type, используем его и блокируем редактирование
+          // Если в логе есть target_type, используем его
           if (logResult.data.target_type) {
             setDayType(logResult.data.target_type as 'training' | 'rest')
-            setDayTypeLocked(true) // Блокируем изменение типа дня, если он уже сохранен
-            logger.debug('Nutrition: тип дня установлен из лога и заблокирован', { dayType: logResult.data.target_type })
+            logger.debug('Nutrition: тип дня установлен из лога', { dayType: logResult.data.target_type })
+          }
+          // Устанавливаем вес из лога, если есть
+          if (logResult.data.weight) {
+            setLog(prev => ({ ...prev, weight: logResult.data.weight }))
           }
         } else {
-          logger.debug('Nutrition: лог за сегодня не найден, используем дефолт', { userId: user.id })
+          logger.debug('Nutrition: лог за выбранную дату не найден, используем дефолт', { userId: user.id, date: selectedDate })
           // Если лога нет, устанавливаем дефолт на основе наличия целей
           if (trainingResult.data && !restResult.data) {
             setDayType('training')
           } else if (restResult.data && !trainingResult.data) {
             setDayType('rest')
           }
-          setDayTypeLocked(false) // Разрешаем изменение типа дня, если лога еще нет
           // Оставляем дефолтный прием пищи, который уже создан в useState
         }
       } catch (error) {
@@ -188,7 +218,7 @@ export default function NutritionPage() {
     }
 
     fetchData()
-  }, [router, supabase])
+  }, [router, supabase, selectedDate, editMealId])
 
   // Текущие цели в зависимости от выбранного типа дня
   const currentTargets = useMemo(() => {
@@ -208,6 +238,16 @@ export default function NutritionPage() {
     )
   }, [meals])
 
+  // Валидация дневных totals
+  const dailyValidation = useMemo(() => {
+    return validateDailyTotals(totals.calories, totals.protein, totals.fats, totals.carbs)
+  }, [totals])
+
+  // Валидация каждого приема пищи
+  const mealValidations = useMemo(() => {
+    return meals.map(meal => validateMeal(meal))
+  }, [meals])
+
   // Функция сохранения
   const handleSave = async () => {
     if (!user) {
@@ -223,119 +263,148 @@ export default function NutritionPage() {
       return
     }
 
+    // Проверка валидации перед сохранением
+    if (!dailyValidation.valid) {
+      logger.warn('Nutrition: ошибки валидации перед сохранением', { 
+        userId: user.id, 
+        errors: dailyValidation.errors 
+      })
+      setSaveError(dailyValidation.errors.join('; '))
+      return
+    }
+
+    // Проверка валидации приемов пищи
+    const invalidMeals = mealValidations.filter(v => !v.valid)
+    if (invalidMeals.length > 0) {
+      const allErrors = invalidMeals.flatMap(v => v.errors)
+      logger.warn('Nutrition: ошибки валидации приемов пищи', { 
+        userId: user.id, 
+        errors: allErrors 
+      })
+      setSaveError(`Ошибки в приемах пищи: ${allErrors.join('; ')}`)
+      return
+    }
+
+    // Сохраняем текущее состояние для отката при ошибке (оптимистичное обновление)
+    const previousMeals = [...meals]
+    const previousLog = { ...log }
+    const previousStatus = status
+
     setStatus('saving')
     setSaveError(null)
 
-    const today = new Date().toISOString().split('T')[0]
-
-    // Получаем существующий лог за сегодня (meals и target_type)
-    const { data: existingLog } = await supabase
-      .from('daily_logs')
-      .select('meals, target_type')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .single()
-
-    // Объединяем существующие meals с новыми
-    const existingMeals: Meal[] = (existingLog?.meals as Meal[]) || []
-    const newMeals = meals.map(meal => ({
-      ...meal,
-      mealDate: meal.mealDate || today,
-      createdAt: meal.createdAt || new Date().toISOString()
-    }))
-
-    // Объединяем: обновляем существующие по id, добавляем новые
-    const mealIds = new Set(newMeals.map(m => m.id))
-    const allMeals = [
-      ...existingMeals.filter(m => !mealIds.has(m.id)), // Оставляем только те, которые не были изменены
-      ...newMeals // Добавляем/обновляем новые
-    ]
-
-    // Пересчитываем totals из всех meals за сегодня
-    const todayMeals = allMeals.filter(m => (m.mealDate || today) === today)
-    const aggregatedTotals = todayMeals.reduce(
-      (acc, meal) => ({
-        calories: acc.calories + (meal.calories || 0),
-        protein: acc.protein + (meal.protein || 0),
-        fats: acc.fats + (meal.fats || 0),
-        carbs: acc.carbs + (meal.carbs || 0)
-      }),
-      { calories: 0, protein: 0, fats: 0, carbs: 0 }
-    )
-
-    const aggregatedLog = {
-      ...log,
-      actual_calories: aggregatedTotals.calories,
-      actual_protein: aggregatedTotals.protein,
-      actual_fats: aggregatedTotals.fats,
-      actual_carbs: aggregatedTotals.carbs
-    }
-
-    // Если лог существует и target_type уже установлен, сохраняем его
-    // Иначе используем текущий dayType
-    const targetTypeToSave = existingLog?.target_type || dayType
-
-    // Блокируем изменение типа дня после первого сохранения
-    if (existingLog?.target_type) {
-      setDayTypeLocked(true)
-    } else {
-      setDayTypeLocked(true) // Блокируем после сохранения
-    }
-
-    const payload = {
-      user_id: user.id,
-      date: today,
-      target_type: targetTypeToSave, // Сохраняем тип дня (существующий или новый)
-      meals: allMeals, // Сохраняем все meals
-      ...aggregatedLog
-    }
-
-    logger.info('Nutrition: начало сохранения лога', {
-      userId: user.id,
-      date: today,
-      dayType,
-      targetTypeToSave,
-      totals: {
-        calories: totals.calories,
-        protein: totals.protein,
-        fats: totals.fats,
-        carbs: totals.carbs,
-      },
-    })
+    // Оптимистичное обновление: сразу показываем сохраненные данные
+    // (UI уже показывает текущие значения, поэтому ничего не меняем визуально)
 
     try {
+      // Получаем существующий лог за выбранную дату (meals и target_type)
+      const { data: existingLog } = await supabase
+        .from('daily_logs')
+        .select('meals, target_type')
+        .eq('user_id', user.id)
+        .eq('date', selectedDate)
+        .single()
+
+      // Объединяем существующие meals с новыми
+      const existingMeals: Meal[] = (existingLog?.meals as Meal[]) || []
+      const newMeals = meals.map(meal => ({
+        ...meal,
+        mealDate: meal.mealDate || selectedDate,
+        createdAt: meal.createdAt || new Date().toISOString()
+      }))
+
+      // Объединяем: обновляем существующие по id, добавляем новые
+      const mealIds = new Set(newMeals.map(m => m.id))
+      const allMeals = [
+        ...existingMeals.filter(m => !mealIds.has(m.id)), // Оставляем только те, которые не были изменены
+        ...newMeals // Добавляем/обновляем новые
+      ]
+
+      // Пересчитываем totals из всех meals за выбранную дату
+      const dateMeals = allMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
+      const aggregatedTotals = dateMeals.reduce(
+        (acc, meal) => ({
+          calories: acc.calories + (meal.calories || 0),
+          protein: acc.protein + (meal.protein || 0),
+          fats: acc.fats + (meal.fats || 0),
+          carbs: acc.carbs + (meal.carbs || 0)
+        }),
+        { calories: 0, protein: 0, fats: 0, carbs: 0 }
+      )
+
+      const aggregatedLog = {
+        ...log,
+        actual_calories: aggregatedTotals.calories,
+        actual_protein: aggregatedTotals.protein,
+        actual_fats: aggregatedTotals.fats,
+        actual_carbs: aggregatedTotals.carbs
+      }
+
+      // Сохраняем текущий выбранный тип дня
+      const payload = {
+        user_id: user.id,
+        date: selectedDate,
+        target_type: dayType, // Сохраняем текущий выбранный тип дня
+        meals: allMeals, // Сохраняем все meals
+        ...aggregatedLog
+      }
+
+      logger.info('Nutrition: начало сохранения лога', {
+        userId: user.id,
+        date: selectedDate,
+        dayType,
+        totals: {
+          calories: totals.calories,
+          protein: totals.protein,
+          fats: totals.fats,
+          carbs: totals.carbs,
+        },
+      })
+
       // Upsert: Обновить если есть, создать если нет
       const { error } = await supabase
         .from('daily_logs')
         .upsert(payload, { onConflict: 'user_id, date' })
 
       if (error) {
+        // Откатываем изменения при ошибке
+        setMeals(previousMeals)
+        setLog(previousLog)
+        setStatus(previousStatus)
+        
         logger.error('Nutrition: ошибка сохранения лога', error, {
           userId: user.id,
-          date: today,
+          date: selectedDate,
         })
         setSaveError('Ошибка сохранения: ' + error.message)
-        setStatus('idle')
+        toast.error('Ошибка сохранения: ' + error.message)
       } else {
         logger.info('Nutrition: лог успешно сохранен', {
           userId: user.id,
-          date: today,
+          date: selectedDate,
           dayType,
         })
         setStatus('saved')
+        toast.success('Данные сохранены')
         setTimeout(() => {
           setStatus('idle')
-          router.push('/app/dashboard')
+          router.push(`/app/dashboard?date=${selectedDate}`)
           router.refresh() // Обновляем данные на дашборде
         }, 1200)
       }
     } catch (error) {
+      // Откатываем изменения при исключении
+      setMeals(previousMeals)
+      setLog(previousLog)
+      setStatus(previousStatus)
+      
       logger.error('Nutrition: исключение при сохранении', error, {
         userId: user.id,
-        date: today,
+        date: selectedDate,
       })
-      setSaveError('Произошла ошибка при сохранении. Попробуйте еще раз.')
-      setStatus('idle')
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при сохранении. Попробуйте еще раз.'
+      setSaveError(errorMessage)
+      toast.error(errorMessage)
     }
   }
 
@@ -424,12 +493,15 @@ export default function NutritionPage() {
           <DayToggle
             value={dayType}
             onChange={(newType) => {
-              if (!dayTypeLocked) {
-                setDayType(newType)
-              }
+              setDayType(newType)
+              // При смене типа дня таргеты уже загружены, прогресс-бары пересчитаются автоматически через useMemo
             }}
-            disabled={dayTypeLocked}
           />
+          {!currentTargets && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+              Цели для этого типа дня не установлены. Обратитесь к тренеру.
+            </div>
+          )}
         </div>
       )}
 
@@ -468,9 +540,9 @@ export default function NutritionPage() {
 
           {/* Macro Bars */}
           <div className="space-y-3">
-            <MacroBar label="Белки" current={totals.protein} target={currentTargets.protein} color="bg-blue-500" />
-            <MacroBar label="Жиры" current={totals.fats} target={currentTargets.fats} color="bg-yellow-500" />
-            <MacroBar label="Углеводы" current={totals.carbs} target={currentTargets.carbs} color="bg-orange-500" />
+            <ProgressBar label="Белки" current={totals.protein} target={currentTargets.protein} unit="г" />
+            <ProgressBar label="Жиры" current={totals.fats} target={currentTargets.fats} unit="г" />
+            <ProgressBar label="Углеводы" current={totals.carbs} target={currentTargets.carbs} unit="г" />
           </div>
         </div>
       ) : (
@@ -491,67 +563,78 @@ export default function NutritionPage() {
         </div>
 
         <div className="space-y-4">
-          {meals.map((meal) => (
-            <div key={meal.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-4">
-              <div className="flex items-center justify-between gap-2">
-                <input
-                  type="text"
-                  value={meal.title}
-                  onChange={(e) => updateMeal(meal.id, 'title', e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-black outline-none focus:ring-2 focus:ring-black"
-                  placeholder={getMealNameByTime()}
-                />
-                <div className="flex items-center gap-2 flex-shrink-0">
+          {meals.map((meal, index) => {
+            const mealValidation = mealValidations[index]
+            return (
+              <div key={meal.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-4">
+                <div className="flex items-center justify-between gap-2">
                   <input
-                    type="date"
-                    value={meal.mealDate || selectedDate}
-                    onChange={(e) => updateMeal(meal.id, 'mealDate', e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    className="text-xs border border-gray-200 rounded px-2 py-1 text-black w-28"
-                    title="Дата приема пищи"
+                    type="text"
+                    value={meal.title}
+                    onChange={(e) => updateMeal(meal.id, 'title', e.target.value)}
+                    className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-black outline-none focus:ring-2 focus:ring-black"
+                    placeholder={getMealNameByTime()}
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeMeal(meal.id)}
-                    className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={meals.length === 0}
-                    title="Удалить прием пищи"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <input
+                      type="date"
+                      value={meal.mealDate || selectedDate}
+                      onChange={(e) => updateMeal(meal.id, 'mealDate', e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="text-xs border border-gray-200 rounded px-2 py-1 text-black w-28"
+                      title="Дата приема пищи"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeMeal(meal.id)}
+                      className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={meals.length === 0}
+                      title="Удалить прием пищи"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
+                  <InputGroup label="Калории" value={meal.calories} onChange={(v) => updateMeal(meal.id, 'calories', v)} />
+                  <InputGroup label="Белки (г)" value={meal.protein} onChange={(v) => updateMeal(meal.id, 'protein', v)} />
+                  <InputGroup label="Жиры (г)" value={meal.fats} onChange={(v) => updateMeal(meal.id, 'fats', v)} />
+                  <InputGroup label="Углеводы (г)" value={meal.carbs} onChange={(v) => updateMeal(meal.id, 'carbs', v)} />
+                </div>
+                {/* Валидация приема пищи */}
+                {mealValidation && (mealValidation.errors.length > 0 || mealValidation.warnings.length > 0) && (
+                  <ValidationWarning
+                    errors={mealValidation.errors}
+                    warnings={mealValidation.warnings}
+                    className="mt-2"
+                  />
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-500">Фото (этикетка/блюдо/продукт)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          updateMeal(meal.id, 'title', meal.title, file.name)
+                        }
+                      }}
+                      className="text-xs text-gray-600"
+                    />
+                    {meal.photoName && <span className="text-xs text-gray-500 truncate">{meal.photoName}</span>}
+                  </div>
+                  <p className="text-[11px] text-gray-500">
+                    Автоподстановка КБЖУ по фото будет подключена (OCR/поиск продуктов). Пока что заполните поля вручную.
+                  </p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
-                <InputGroup label="Калории" value={meal.calories} onChange={(v) => updateMeal(meal.id, 'calories', v)} />
-                <InputGroup label="Белки (г)" value={meal.protein} onChange={(v) => updateMeal(meal.id, 'protein', v)} />
-                <InputGroup label="Жиры (г)" value={meal.fats} onChange={(v) => updateMeal(meal.id, 'fats', v)} />
-                <InputGroup label="Углеводы (г)" value={meal.carbs} onChange={(v) => updateMeal(meal.id, 'carbs', v)} />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500">Фото (этикетка/блюдо/продукт)</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        updateMeal(meal.id, 'title', meal.title, file.name)
-                      }
-                    }}
-                    className="text-xs text-gray-600"
-                  />
-                  {meal.photoName && <span className="text-xs text-gray-500 truncate">{meal.photoName}</span>}
-                </div>
-                <p className="text-[11px] text-gray-500">
-                  Автоподстановка КБЖУ по фото будет подключена (OCR/поиск продуктов). Пока что заполните поля вручную.
-                </p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* КНОПКА ДОБАВЛЕНИЯ - ПЕРЕМЕЩЕНА ВВЕРХ */}
@@ -577,9 +660,16 @@ export default function NutritionPage() {
 
         {/* ВСЕГО ЗА ДЕНЬ - ПЕРЕМЕЩЕНО ВНИЗ */}
         <div className="pt-4 border-t border-gray-200">
-          <div className="text-sm font-semibold text-gray-900 text-center">
+          <div className="text-sm font-semibold text-gray-900 text-center mb-2">
             Всего за день: {totals.calories} ккал, Б {totals.protein} / Ж {totals.fats} / У {totals.carbs} г
           </div>
+          {/* Валидация дневных totals */}
+          {dailyValidation.errors.length > 0 || dailyValidation.warnings.length > 0 ? (
+            <ValidationWarning
+              errors={dailyValidation.errors}
+              warnings={dailyValidation.warnings}
+            />
+          ) : null}
         </div>
 
         <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -643,31 +733,6 @@ export default function NutritionPage() {
 }
 
 // Helper Components
-type MacroBarProps = {
-  label: string
-  current: number
-  target: number
-  color: string
-}
-
-function MacroBar({ label, current, target, color }: MacroBarProps) {
-  const percent = Math.min((current / target) * 100, 100)
-  return (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-500">{label}</span>
-        <span className="font-medium">{current} / {target}</span>
-      </div>
-      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${color} transition-all duration-500`}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
 type InputGroupProps = {
   label: string
   value: number | string | null

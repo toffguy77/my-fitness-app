@@ -11,9 +11,10 @@ import { logger } from '@/utils/logger'
 
 type ClientWithStatus = UserProfile & {
   lastCheckin?: string
-  todayStatus?: 'red' | 'green' | 'grey'
+  todayStatus?: 'red' | 'green' | 'yellow' | 'grey'
   todayCalories?: number
   targetCalories?: number
+  isCompleted?: boolean
 }
 
 export default function CoachDashboard() {
@@ -22,9 +23,9 @@ export default function CoachDashboard() {
   const [, setUser] = useState<User | null>(null)
   const [clients, setClients] = useState<ClientWithStatus[]>([])
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<'all' | 'red' | 'green' | 'grey'>('all')
-  const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'status'>('name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'red' | 'green' | 'yellow' | 'grey'>('all')
+  const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'status'>('status') // По умолчанию сортировка по статусу
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // По умолчанию Red (1) сверху
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,18 +85,68 @@ export default function CoachDashboard() {
               .limit(1)
               .single()
 
-            // Определяем статус
-            let status: 'red' | 'green' | 'grey' = 'grey'
+            // Определяем статус (Traffic Light System v2)
+            let status: 'red' | 'green' | 'yellow' | 'grey' = 'grey'
+
+            // Проверяем, есть ли отчет за последние 24 часа
+            const now = new Date()
+            const lastCheckinDate = lastLog?.date ? new Date(lastLog.date) : null
+            const hoursSinceLastCheckin = lastCheckinDate
+              ? (now.getTime() - lastCheckinDate.getTime()) / (1000 * 60 * 60)
+              : null
+
             if (todayLog && target) {
-              const diff = Math.abs((todayLog.actual_calories - target.calories) / target.calories)
-              if (diff > 0.15) {
+              // Есть данные за сегодня
+              const isCompleted = todayLog.is_completed === true
+              // Защита от деления на ноль
+              const diff = target.calories > 0
+                ? Math.abs((todayLog.actual_calories - target.calories) / target.calories)
+                : todayLog.actual_calories > 0 ? 1 : 0
+
+              if (isCompleted && diff <= 0.15) {
+                // День закрыт, попадание в цели
+                status = 'green'
+              } else if (isCompleted && diff > 0.15) {
+                // День закрыт, но отклонение > 15%
+                status = 'yellow'
+              } else if (!isCompleted && diff > 0.15) {
+                // День не закрыт, отклонение > 15%
                 status = 'red'
+              } else if (!isCompleted) {
+                // День не закрыт, но в пределах нормы
+                status = 'yellow'
               } else {
                 status = 'green'
               }
             } else if (!todayLog) {
-              status = 'red' // Нет отчета за сегодня
+              // Нет отчета за сегодня
+              if (hoursSinceLastCheckin === null) {
+                // Никогда не было чекина - нет данных
+                status = 'grey'
+              } else if (hoursSinceLastCheckin > 48) {
+                // Нет отчета > 48 часов
+                status = 'red'
+              } else if (hoursSinceLastCheckin > 24) {
+                // Нет отчета > 24 часов
+                status = 'yellow'
+              } else {
+                // Нет данных, но недавно был чекин
+                status = 'grey'
+              }
+            } else {
+              // Нет данных вообще
+              status = 'grey'
             }
+
+            // Проверяем статус подписки клиента
+            const { data: clientProfile } = await supabase
+              .from('profiles')
+              .select('subscription_status, subscription_end_date')
+              .eq('id', client.id)
+              .single()
+
+            const isExpired = clientProfile?.subscription_status === 'expired' || 
+              (clientProfile?.subscription_end_date && new Date(clientProfile.subscription_end_date) < new Date())
 
             return {
               ...client,
@@ -103,6 +154,9 @@ export default function CoachDashboard() {
               todayStatus: status,
               todayCalories: todayLog?.actual_calories,
               targetCalories: target?.calories,
+              isCompleted: todayLog?.is_completed || false,
+              subscription_status: clientProfile?.subscription_status,
+              isExpired: isExpired || false,
             }
           })
         )
@@ -120,10 +174,12 @@ export default function CoachDashboard() {
     fetchData()
   }, [router, supabase])
 
-  const getStatusIcon = (status: 'red' | 'green' | 'grey') => {
+  const getStatusIcon = (status: 'red' | 'green' | 'yellow' | 'grey') => {
     switch (status) {
       case 'red':
         return <AlertCircle size={20} className="text-red-500" />
+      case 'yellow':
+        return <Circle size={20} className="text-yellow-500 fill-yellow-500" />
       case 'green':
         return <CheckCircle size={20} className="text-green-500" />
       case 'grey':
@@ -131,10 +187,12 @@ export default function CoachDashboard() {
     }
   }
 
-  const getStatusText = (status: 'red' | 'green' | 'grey') => {
+  const getStatusText = (status: 'red' | 'green' | 'yellow' | 'grey') => {
     switch (status) {
       case 'red':
         return 'Требует внимания'
+      case 'yellow':
+        return 'В процессе'
       case 'green':
         return 'В норме'
       case 'grey':
@@ -151,7 +209,7 @@ export default function CoachDashboard() {
       filtered = filtered.filter(client => client.todayStatus === statusFilter)
     }
 
-    // Сортировка
+    // Сортировка с приоритетом по статусу
     const sorted = [...filtered].sort((a, b) => {
       let comparison = 0
 
@@ -167,9 +225,15 @@ export default function CoachDashboard() {
           comparison = dateA - dateB
           break
         case 'status':
-          const statusOrder = { 'red': 1, 'green': 2, 'grey': 3 }
+          // Приоритетная сортировка: Red (1) > Yellow (2) > Grey (3) > Green (4)
+          const statusOrder = { 'red': 1, 'yellow': 2, 'grey': 3, 'green': 4 }
           comparison = (statusOrder[a.todayStatus!] || 0) - (statusOrder[b.todayStatus!] || 0)
           break
+      }
+
+      // Если сортировка по статусу, всегда по возрастанию (Red сверху)
+      if (sortBy === 'status') {
+        return comparison
       }
 
       return sortOrder === 'asc' ? comparison : -comparison
@@ -240,6 +304,15 @@ export default function CoachDashboard() {
                     }`}
                 >
                   🔴 Требуют внимания
+                </button>
+                <button
+                  onClick={() => setStatusFilter('yellow')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'yellow'
+                    ? 'bg-white text-yellow-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                >
+                  🟡 В процессе
                 </button>
                 <button
                   onClick={() => setStatusFilter('green')}
@@ -321,9 +394,14 @@ export default function CoachDashboard() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className={`font-semibold ${client.isExpired ? 'text-gray-400' : 'text-gray-900'}`}>
                           {client.full_name || client.email || 'Без имени'}
                         </h3>
+                        {client.isExpired && (
+                          <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded font-medium">
+                            Expired
+                          </span>
+                        )}
                         {getStatusIcon(client.todayStatus!)}
                       </div>
                       <div className="text-sm text-gray-500 space-y-1">
@@ -335,10 +413,12 @@ export default function CoachDashboard() {
                         {client.todayCalories && client.targetCalories && (
                           <p>
                             Сегодня: {client.todayCalories} / {client.targetCalories} ккал
+                            {client.isCompleted && <span className="ml-2 text-green-600">✅</span>}
                           </p>
                         )}
                         <p className="text-xs">
                           Статус: {getStatusText(client.todayStatus!)}
+                          {client.isCompleted && <span className="ml-1 text-green-600">(День завершен)</span>}
                         </p>
                       </div>
                     </div>

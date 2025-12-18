@@ -58,6 +58,11 @@ export async function middleware(request: NextRequest) {
     // Публичные маршруты (не требуют авторизации)
     const publicRoutes = ['/', '/login', '/register']
     const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
+    
+    // Onboarding доступен только авторизованным пользователям
+    if (pathname === '/onboarding' && !user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
 
     // Если пользователь не авторизован
     if (!user) {
@@ -104,7 +109,17 @@ export async function middleware(request: NextRequest) {
     const role = profile?.role || 'client'
     const subscriptionStatus = profile?.subscription_status || 'free'
     const subscriptionTier = profile?.subscription_tier || 'basic'
-    const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
+    const subscriptionEndDate = profile?.subscription_end_date
+    
+    // Проверка Premium только для клиентов (тренеры не имеют подписки)
+    let isPremium = false
+    if (role === 'client') {
+      const isActive = subscriptionStatus === 'active'
+      const isPremiumTier = subscriptionTier === 'premium'
+      const isNotExpired = !subscriptionEndDate || new Date(subscriptionEndDate) > new Date()
+      isPremium = isActive && isPremiumTier && isNotExpired
+    }
+    
     const isSuperAdmin = role === 'super_admin'
 
     try {
