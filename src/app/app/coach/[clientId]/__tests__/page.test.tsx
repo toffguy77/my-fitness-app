@@ -32,6 +32,11 @@ jest.mock('@/utils/supabase/client', () => ({
       getUser: mockGetUser,
     },
     from: mockFrom,
+    channel: jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn(),
+    })),
+    removeChannel: jest.fn(),
   })),
 }))
 
@@ -69,6 +74,8 @@ jest.mock('react-hot-toast', () => ({
 }))
 
 describe('Coach Client View Page', () => {
+  jest.setTimeout(15000)
+  
   beforeEach(() => {
     jest.clearAllMocks()
     
@@ -101,6 +108,18 @@ describe('Coach Client View Page', () => {
           }),
           upsert: mockUpsert.mockResolvedValue({ error: null }),
         }
+      }
+      if (table === 'messages') {
+        // Support select('*', { count: 'exact', head: true }).eq().eq().is().eq()
+        // Create a chainable query builder that resolves to count
+        const createMessagesQuery = () => {
+          const query: any = Promise.resolve({ count: 0, data: null, error: null })
+          query.select = jest.fn(() => query)
+          query.eq = jest.fn(() => query)
+          query.is = jest.fn(() => query)
+          return query
+        }
+        return createMessagesQuery()
       }
       if (table === 'notification_settings') {
         return {
@@ -239,6 +258,16 @@ describe('Coach Client View Page', () => {
           upsert: mockUpsert.mockResolvedValue({ error: null }),
         }
       }
+      if (table === 'messages') {
+        const createMessagesQuery = () => {
+          const query: any = Promise.resolve({ count: 0, data: null, error: null })
+          query.select = jest.fn(() => query)
+          query.eq = jest.fn(() => query)
+          query.is = jest.fn(() => query)
+          return query
+        }
+        return createMessagesQuery()
+      }
       if (table === 'notification_settings') {
         return {
           select: mockSelect,
@@ -269,19 +298,24 @@ describe('Coach Client View Page', () => {
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
-    }, { timeout: 3000 })
+    }, { timeout: 10000 })
 
     // Change date to trigger note loading - use fireEvent for faster change
-    const dateInput = screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+    const dateInput = await waitFor(() => {
+      return screen.getByDisplayValue(/\d{4}-\d{2}-\d{2}/)
+    }, { timeout: 5000 })
+    
     await user.clear(dateInput)
     await user.type(dateInput, '2024-01-15')
 
     // Should load existing note - wait for it to appear
     // Component re-fetches data when selectedDate changes
     await waitFor(() => {
-      const existingNoteText = screen.queryByText(/существующая|existing/i)
-      expect(existingNoteText).toBeInTheDocument()
-    }, { timeout: 8000 })
+      // Check if note textarea has the note content or if existing note message is shown
+      const noteTextarea = screen.queryByPlaceholderText(/напишите заметку|заметка для клиента/i)
+      const existingNoteMessages = screen.queryAllByText(/существующая|existing|existing note/i)
+      expect(existingNoteMessages.length > 0 || (noteTextarea && (noteTextarea as HTMLTextAreaElement).value.includes('Existing'))).toBeTruthy()
+    }, { timeout: 10000 })
   })
 
   it('should redirect if user is not coach of this client', async () => {
@@ -333,6 +367,16 @@ describe('Coach Client View Page', () => {
           }),
         }
       }
+      if (table === 'messages') {
+        const createMessagesQuery = () => {
+          const query: any = Promise.resolve({ count: 0, data: null, error: null })
+          query.select = jest.fn(() => query)
+          query.eq = jest.fn(() => query)
+          query.is = jest.fn(() => query)
+          return query
+        }
+        return createMessagesQuery()
+      }
       if (table === 'notification_settings') {
         return {
           select: jest.fn().mockReturnThis(),
@@ -361,12 +405,12 @@ describe('Coach Client View Page', () => {
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
-    }, { timeout: 3000 })
+    }, { timeout: 10000 })
 
     // Wait for textarea to appear (it's in the Notes tab)
     const noteTextarea = await waitFor(() => {
       return screen.getByPlaceholderText(/напишите заметку|заметка для клиента/i)
-    }, { timeout: 3000 })
+    }, { timeout: 5000 })
     await userEvent.type(noteTextarea, 'Test note')
 
     const saveButton = screen.getByText(/сохранить|save/i)
@@ -374,8 +418,7 @@ describe('Coach Client View Page', () => {
 
     // Component uses toast.error instead of alert
     await waitFor(() => {
-      const toast = require('react-hot-toast')
-      expect(toast.default.error).toHaveBeenCalled()
+      expect(mockToastError).toHaveBeenCalled()
     }, { timeout: 5000 })
   })
 

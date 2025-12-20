@@ -3,7 +3,7 @@
  * Tests routing logic and role-based access control
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 // Mock Next.js modules
 jest.mock('next/server', () => ({
@@ -29,7 +29,7 @@ describe('Middleware', () => {
       const request = {
         url: 'http://localhost:3069/',
         nextUrl: { pathname: '/' },
-      } as any
+      } as { url: string; nextUrl: { pathname: string } }
 
       // Middleware should allow public routes
       expect(request.nextUrl.pathname).toBe('/')
@@ -39,7 +39,7 @@ describe('Middleware', () => {
       const request = {
         url: 'http://localhost:3069/login',
         nextUrl: { pathname: '/login' },
-      } as any
+      } as { url: string; nextUrl: { pathname: string } }
 
       expect(request.nextUrl.pathname).toBe('/login')
     })
@@ -48,7 +48,7 @@ describe('Middleware', () => {
       const request = {
         url: 'http://localhost:3069/register',
         nextUrl: { pathname: '/register' },
-      } as any
+      } as { url: string; nextUrl: { pathname: string } }
 
       expect(request.nextUrl.pathname).toBe('/register')
     })
@@ -59,7 +59,7 @@ describe('Middleware', () => {
       const request = {
         url: 'http://localhost:3069/app/dashboard',
         nextUrl: { pathname: '/app/dashboard' },
-      } as any
+      } as { url: string; nextUrl: { pathname: string } }
 
       // Without auth, should redirect
       const isPublicRoute = ['/', '/login', '/register'].includes(request.nextUrl.pathname)

@@ -15,6 +15,9 @@ jest.mock('next/navigation', () => ({
     push: mockPush,
     refresh: jest.fn(),
   }),
+  useSearchParams: () => ({
+    get: jest.fn(() => null),
+  }),
 }))
 
 // Mock profile utils
@@ -28,6 +31,15 @@ jest.mock('@/utils/supabase/profile', () => ({
     phone: '+1234567890',
   }),
   hasActiveSubscription: jest.fn(() => false),
+}))
+
+// Mock subscription utils
+jest.mock('@/utils/supabase/subscription', () => ({
+  checkSubscriptionStatus: jest.fn().mockResolvedValue({
+    status: 'free',
+    isExpired: false,
+    endDate: null,
+  }),
 }))
 
 // Mock Supabase
@@ -93,9 +105,9 @@ describe('Settings Page Extended Tests', () => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
 
-    // Should display profile section
-    const profileSection = screen.queryByText(/профиль|profile/i)
-    expect(profileSection || screen.getByRole('main')).toBeInTheDocument()
+    // Should display profile section - use getAllByText to handle multiple matches
+    const profileSections = screen.queryAllByText(/профиль|profile/i)
+    expect(profileSections.length > 0 || screen.getByRole('main')).toBeTruthy()
   })
 
   it('should handle profile save errors', async () => {

@@ -171,19 +171,26 @@ describe('Products API', () => {
         source: 'user',
       }
 
+      // Mock for checking existing product (by source_id) - returns not found
+      const mockSingle = jest.fn().mockResolvedValue({
+        data: null,
+        error: { code: 'PGRST116' },
+      })
+
+      // Mock for insert().select('id').single() - returns new product
+      const mockInsertSelect = jest.fn().mockResolvedValue({
+        data: { id: 'new-id' },
+        error: null,
+      })
+
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        single: jest.fn()
-          .mockResolvedValueOnce({
-            data: null,
-            error: { code: 'PGRST116' },
-          })
-          .mockResolvedValueOnce({
-            data: { id: 'new-id' },
-            error: null,
-          }),
-        insert: jest.fn().mockReturnThis(),
+        single: mockSingle,
+        insert: jest.fn().mockImplementation(() => ({
+          select: jest.fn().mockReturnThis(),
+          single: mockInsertSelect,
+        })),
       })
 
       const result = await saveProductToDB(product)

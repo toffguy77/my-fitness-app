@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Trophy, Filter } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Trophy, Filter, TrendingUp, Share2 } from 'lucide-react'
 import AchievementBadge from './AchievementBadge'
 import type { AchievementWithProgress, AchievementCategory } from '@/types/achievements'
 import { logger } from '@/utils/logger'
+import Link from 'next/link'
 
 const categoryLabels: Record<AchievementCategory, string> = {
   nutrition: 'Питание',
@@ -14,6 +16,7 @@ const categoryLabels: Record<AchievementCategory, string> = {
 }
 
 export default function AchievementsPage() {
+  const router = useRouter()
   const [achievements, setAchievements] = useState<AchievementWithProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<AchievementCategory | 'all'>('all')
@@ -100,6 +103,17 @@ export default function AchievementsPage() {
             </p>
           </div>
         )}
+
+        {/* Ссылки на лидерборд и публичный профиль */}
+        <div className="mt-4 flex gap-2">
+          <Link
+            href="/leaderboard"
+            className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <TrendingUp size={16} />
+            Лидерборд
+          </Link>
+        </div>
       </div>
 
       {/* Фильтры */}

@@ -199,7 +199,8 @@ describe('Critical User Flows Integration Tests', () => {
       // 4. Check against targets
       const currentTargets = targets.training
       const caloriesDiff = totals.calories - currentTargets.calories
-      const proteinDiff = totals.protein - currentTargets.protein
+      // proteinDiff is calculated but not used in this test
+      // const proteinDiff = totals.protein - currentTargets.protein
 
       expect(totals.calories).toBe(2000)
       expect(Math.abs(caloriesDiff)).toBeLessThanOrEqual(currentTargets.calories * 0.15) // Within 15%

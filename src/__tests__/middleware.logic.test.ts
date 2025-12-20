@@ -70,7 +70,6 @@ describe('Middleware Logic', () => {
   describe('Role-based Routing', () => {
     it('should route client to dashboard', () => {
       const role = 'client' as 'client' | 'coach' | 'super_admin'
-      const pathname = '/'
       
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
@@ -84,7 +83,6 @@ describe('Middleware Logic', () => {
 
     it('should route coach to coach dashboard', () => {
       const role = 'coach' as 'client' | 'coach' | 'super_admin'
-      const pathname = '/'
       
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
@@ -98,7 +96,6 @@ describe('Middleware Logic', () => {
 
     it('should route super_admin to admin panel', () => {
       const role = 'super_admin'
-      const pathname = '/'
       
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {

@@ -4,7 +4,6 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import AdminPage from '../page'
 
 // Mock Next.js modules
@@ -157,6 +156,7 @@ describe('Admin Page Extended Tests', () => {
   })
 
   it('should redirect non-admin users', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { isSuperAdmin } = require('@/utils/supabase/profile')
     isSuperAdmin.mockResolvedValue(false)
 

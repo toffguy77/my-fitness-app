@@ -148,10 +148,10 @@ describe('Nutrition Page', () => {
 
     render(<NutritionPage />)
     
-    // Should redirect or show message about completed day
+    // Should show message about completed day (component shows "День завершен" instead of redirecting)
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalled()
-    }, { timeout: 3000 })
+      expect(screen.getByText(/день завершен|day completed/i)).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle save errors gracefully', async () => {

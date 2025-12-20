@@ -69,6 +69,7 @@ describe('ChatWindow Component', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     
+    // Default mock returns empty array (no messages)
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -82,8 +83,45 @@ describe('ChatWindow Component', () => {
       }),
     })
   })
+  
+  const setupMockWithMessages = () => {
+    const mockMessage = {
+      id: 'msg-1',
+      content: 'Test message',
+      sender_id: 'user-1',
+      receiver_id: 'user-2',
+      created_at: new Date().toISOString(),
+      read_at: null,
+      is_deleted: false,
+    }
+    
+    // Create a chainable query that returns a promise when awaited
+    const createQuery = () => {
+      const promise = Promise.resolve({
+        data: [mockMessage],
+        error: null,
+      })
+      
+      const query: any = promise
+      query.select = jest.fn(() => query)
+      query.eq = jest.fn(() => query)
+      query.limit = jest.fn(() => promise)
+      
+      return query
+    }
+    
+    mockFrom.mockReturnValue({
+      ...createQuery(),
+      insert: jest.fn().mockResolvedValue({
+        data: [{ id: 'msg-1' }],
+        error: null,
+      }),
+    })
+  }
 
   it('should render chat window', async () => {
+    setupMockWithMessages()
+
     render(
       <ChatWindow
         userId="user-1"
@@ -94,13 +132,18 @@ describe('ChatWindow Component', () => {
 
     await waitFor(() => {
       expect(screen.queryByText(/загрузка/i)).not.toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
 
-    expect(screen.getByTestId('message-list')).toBeInTheDocument()
+    // MessageList should be rendered when there are messages
+    await waitFor(() => {
+      expect(screen.getByTestId('message-list')).toBeInTheDocument()
+    }, { timeout: 3000 })
     expect(screen.getByTestId('message-input')).toBeInTheDocument()
   })
 
   it('should display other user name', async () => {
+    setupMockWithMessages()
+    
     render(
       <ChatWindow
         userId="user-1"
@@ -111,10 +154,13 @@ describe('ChatWindow Component', () => {
 
     await waitFor(() => {
       expect(screen.queryByText(/загрузка/i)).not.toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
 
     // User name should be displayed in header
-    expect(screen.getByTestId('message-list')).toBeInTheDocument()
+    expect(screen.getByText('Test User')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('message-list')).toBeInTheDocument()
+    }, { timeout: 3000 })
   })
 
   it('should call onClose when close button is clicked', async () => {
@@ -176,6 +222,8 @@ describe('ChatWindow Component', () => {
   })
 
   it('should handle connection status', async () => {
+    setupMockWithMessages()
+    
     render(
       <ChatWindow
         userId="user-1"
@@ -186,10 +234,12 @@ describe('ChatWindow Component', () => {
 
     await waitFor(() => {
       expect(screen.queryByText(/загрузка/i)).not.toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
 
     // Connection status indicator may be present
-    expect(screen.getByTestId('message-list')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('message-list')).toBeInTheDocument()
+    }, { timeout: 3000 })
   })
 })
 

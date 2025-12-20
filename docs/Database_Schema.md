@@ -61,6 +61,10 @@ CREATE TABLE profiles (
   -- Активность
   activity_level TEXT CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
   
+  -- Приватность профиля
+  profile_visibility TEXT DEFAULT 'private' 
+    CHECK (profile_visibility IN ('private', 'public')),
+  
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -77,11 +81,13 @@ CREATE TABLE profiles (
 **Индексы:**
 - `idx_profiles_role` — по роли
 - `idx_profiles_coach_id` — по тренеру
+- `idx_profiles_public` — по публичным профилям (WHERE profile_visibility = 'public')
 
 **RLS политики:**
 - Пользователи могут читать и обновлять свой профиль
 - Тренеры могут читать профили своих клиентов
 - Super Admin имеет полный доступ
+- Публичные профили доступны всем пользователям
 
 ---
 

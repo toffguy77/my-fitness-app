@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Search, Loader2, Plus, Clock, Star, Scan } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { searchProducts, getProductByBarcode } from '@/utils/products/api'
+import { getFavoriteProducts, addToFavorites, removeFromFavorites, isFavorite } from '@/utils/products/favorites'
 import { productSearchCache } from '@/utils/products/cache'
 import ProductCard from './ProductCard'
 import type { Product, UserProduct } from '@/types/products'
@@ -37,6 +38,7 @@ export default function ProductSearch({
   const [activeTab, setActiveTab] = useState<'search' | 'history' | 'favorites'>('search')
   const [historyProducts, setHistoryProducts] = useState<Product[]>([])
   const [favoriteProducts, setFavoriteProducts] = useState<Product[]>([])
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [showBarcodeInput, setShowBarcodeInput] = useState(false)
@@ -123,63 +125,36 @@ export default function ProductSearch({
     const loadFavorites = async () => {
       setLoadingHistory(true)
       try {
-        const { data: favoritesData, error } = await supabase
-          .from('favorite_products')
-          .select(`
-            product_id,
-            user_product_id,
-            products (*),
-            user_products (*)
-          `)
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          throw error
-        }
-
-        const products: Product[] = []
-
-        for (const item of favoritesData || []) {
-          if (item.product_id && item.products) {
-            const p = item.products as any
-            products.push({
-              id: p.id,
-              name: p.name,
-              brand: p.brand,
-              barcode: p.barcode,
-              calories_per_100g: p.calories_per_100g,
-              protein_per_100g: p.protein_per_100g,
-              fats_per_100g: p.fats_per_100g,
-              carbs_per_100g: p.carbs_per_100g,
-              source: p.source,
-              source_id: p.source_id,
-              image_url: p.image_url,
-            })
-          } else if (item.user_product_id && item.user_products) {
-            const up = item.user_products as any
-            products.push({
-              id: up.id,
-              name: up.name,
-              calories_per_100g: up.calories_per_100g,
-              protein_per_100g: up.protein_per_100g,
-              fats_per_100g: up.fats_per_100g,
-              carbs_per_100g: up.carbs_per_100g,
-              source: 'user',
-            })
-          }
-        }
-
+        const products = await getFavoriteProducts(userId)
         setFavoriteProducts(products)
+        // Обновляем множество ID избранных продуктов для быстрой проверки
+        setFavoriteIds(new Set(products.map(p => p.id || '').filter(Boolean)))
       } catch (error) {
         logger.error('ProductSearch: ошибка загрузки избранного', error, { userId })
+        toast.error('Ошибка загрузки избранных продуктов')
       } finally {
         setLoadingHistory(false)
       }
     }
 
     loadFavorites()
-  }, [supabase, userId, activeTab])
+  }, [userId, activeTab])
+
+  // Загрузка избранных ID при монтировании (для отображения иконок в результатах поиска)
+  useEffect(() => {
+    if (!userId) return
+
+    const loadFavoriteIds = async () => {
+      try {
+        const products = await getFavoriteProducts(userId)
+        setFavoriteIds(new Set(products.map(p => p.id || '').filter(Boolean)))
+      } catch (error) {
+        logger.debug('ProductSearch: ошибка загрузки ID избранных продуктов', { error })
+      }
+    }
+
+    loadFavoriteIds()
+  }, [userId])
 
   // Закрытие результатов при клике вне компонента
   useEffect(() => {
@@ -224,10 +199,10 @@ export default function ProductSearch({
 
         // Поиск через API
         const apiResults = await searchProducts(query, 20)
-        
+
         // Сохраняем в кэш
         productSearchCache.set(query, apiResults)
-        
+
         setResults(apiResults)
       } catch (error) {
         logger.error('ProductSearch: ошибка поиска продуктов', error, { query })
@@ -277,7 +252,7 @@ export default function ProductSearch({
     try {
       // Ищем продукт по штрих-коду
       const product = await getProductByBarcode(barcodeValue.trim())
-      
+
       if (product) {
         setResults([product])
         toast.success('Продукт найден по штрих-коду')
@@ -328,11 +303,10 @@ export default function ProductSearch({
               setActiveTab('search')
               setShowResults(query.length >= 2)
             }}
-            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              activeTab === 'search'
+            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${activeTab === 'search'
                 ? 'bg-black text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <Search size={14} className="inline mr-1" />
             Поиск
@@ -342,11 +316,10 @@ export default function ProductSearch({
               setActiveTab('history')
               setShowResults(true)
             }}
-            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              activeTab === 'history'
+            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${activeTab === 'history'
                 ? 'bg-black text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <Clock size={14} className="inline mr-1" />
             Недавние
@@ -356,11 +329,10 @@ export default function ProductSearch({
               setActiveTab('favorites')
               setShowResults(true)
             }}
-            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              activeTab === 'favorites'
+            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${activeTab === 'favorites'
                 ? 'bg-black text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <Star size={14} className="inline mr-1" />
             Избранное
@@ -473,13 +445,114 @@ export default function ProductSearch({
             </div>
           )}
 
-          {results.map((product) => (
+          {/* Результаты поиска */}
+          {activeTab === 'search' && results.map((product) => (
             <div key={product.id || product.name} className="border-b border-gray-100 last:border-b-0">
               <ProductCard
                 product={product}
                 onSelect={() => handleSelect(product)}
                 selectedWeight={selectedWeight[product.id || ''] || 100}
                 onWeightChange={(weight) => handleWeightChange(product.id, weight)}
+                showFavorite={!!userId}
+                isFavorite={product.id ? favoriteIds.has(product.id) : false}
+                onFavorite={async () => {
+                  if (!userId || !product.id) return
+                  try {
+                    const isCurrentlyFavorite = favoriteIds.has(product.id)
+                    if (isCurrentlyFavorite) {
+                      await removeFromFavorites(userId, product.id)
+                      setFavoriteIds(prev => {
+                        const newSet = new Set(prev)
+                        newSet.delete(product.id!)
+                        return newSet
+                      })
+                      toast.success('Удалено из избранного')
+                    } else {
+                      await addToFavorites(userId, product.id)
+                      setFavoriteIds(prev => new Set(prev).add(product.id!))
+                      toast.success('Добавлено в избранное')
+                    }
+                  } catch (error) {
+                    logger.error('ProductSearch: ошибка изменения избранного', error, { userId, productId: product.id })
+                    toast.error('Ошибка изменения избранного')
+                  }
+                }}
+              />
+            </div>
+          ))}
+
+          {/* История использования */}
+          {activeTab === 'history' && historyProducts.length === 0 && !loadingHistory && (
+            <div className="p-4 text-center text-gray-500 text-sm">
+              Нет недавно использованных продуктов
+            </div>
+          )}
+          {activeTab === 'history' && historyProducts.map((product) => (
+            <div key={product.id || product.name} className="border-b border-gray-100 last:border-b-0">
+              <ProductCard
+                product={product}
+                onSelect={() => handleSelect(product)}
+                selectedWeight={selectedWeight[product.id || ''] || 100}
+                onWeightChange={(weight) => handleWeightChange(product.id, weight)}
+                showFavorite={!!userId}
+                isFavorite={product.id ? favoriteIds.has(product.id) : false}
+                onFavorite={async () => {
+                  if (!userId || !product.id) return
+                  try {
+                    const isCurrentlyFavorite = favoriteIds.has(product.id)
+                    if (isCurrentlyFavorite) {
+                      await removeFromFavorites(userId, product.id)
+                      setFavoriteIds(prev => {
+                        const newSet = new Set(prev)
+                        newSet.delete(product.id!)
+                        return newSet
+                      })
+                      toast.success('Удалено из избранного')
+                    } else {
+                      await addToFavorites(userId, product.id)
+                      setFavoriteIds(prev => new Set(prev).add(product.id!))
+                      toast.success('Добавлено в избранное')
+                    }
+                  } catch (error) {
+                    logger.error('ProductSearch: ошибка изменения избранного', error, { userId, productId: product.id })
+                    toast.error('Ошибка изменения избранного')
+                  }
+                }}
+              />
+            </div>
+          ))}
+
+          {/* Избранные продукты */}
+          {activeTab === 'favorites' && favoriteProducts.length === 0 && !loadingHistory && (
+            <div className="p-4 text-center text-gray-500 text-sm">
+              Нет избранных продуктов
+            </div>
+          )}
+          {activeTab === 'favorites' && favoriteProducts.map((product) => (
+            <div key={product.id || product.name} className="border-b border-gray-100 last:border-b-0">
+              <ProductCard
+                product={product}
+                onSelect={() => handleSelect(product)}
+                selectedWeight={selectedWeight[product.id || ''] || 100}
+                onWeightChange={(weight) => handleWeightChange(product.id, weight)}
+                showFavorite={!!userId}
+                isFavorite={true}
+                onFavorite={async () => {
+                  if (!userId || !product.id) return
+                  try {
+                    await removeFromFavorites(userId, product.id)
+                    setFavoriteIds(prev => {
+                      const newSet = new Set(prev)
+                      newSet.delete(product.id!)
+                      return newSet
+                    })
+                    setFavoriteProducts(prev => prev.filter(p => p.id !== product.id))
+                    toast.success('Удалено из избранного')
+                  } catch (error) {
+                    logger.error('ProductSearch: ошибка удаления из избранного', error, { userId, productId: product.id })
+                    toast.error('Ошибка удаления из избранного')
+                  }
+                }}
               />
             </div>
           ))}

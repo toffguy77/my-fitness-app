@@ -75,6 +75,12 @@ const mockFrom = jest.fn()
 const mockGetUser = jest.fn()
 
 jest.mock('@/utils/supabase/server', () => ({
+  createClient: jest.fn(async () => ({
+    from: mockFrom,
+    auth: {
+      getUser: mockGetUser,
+    },
+  })),
   createServerClient: jest.fn(async () => ({
     from: mockFrom,
     auth: {
@@ -94,6 +100,7 @@ jest.mock('@/utils/logger', () => ({
 }))
 
 // Mock validation - export mock so we can control it in tests
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockValidateNutritionTargets = jest.fn((input: any) => ({
   valid: true,
   errors: [],
@@ -101,15 +108,12 @@ const mockValidateNutritionTargets = jest.fn((input: any) => ({
 }))
 
 jest.mock('@/utils/validation/nutrition', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   validateNutritionTargets: (input: any) => mockValidateNutritionTargets(input),
 }))
 
 describe('Nutrition Targets Update API', () => {
   let profileCallCount: number
-  let mockSelect: jest.Mock
-  let mockEq: jest.Mock
-  let mockSingle: jest.Mock
-  let mockUpdate: jest.Mock
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -128,9 +132,6 @@ describe('Nutrition Targets Update API', () => {
     })
 
     // Setup chainable mock for Supabase queries
-    mockSelect = jest.fn().mockReturnThis()
-    mockEq = jest.fn().mockReturnThis()
-    
     // Setup mock to handle different table calls
     let profilesCallCount = 0
     mockFrom.mockImplementation((table: string) => {
@@ -152,7 +153,7 @@ describe('Nutrition Targets Update API', () => {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: 'client-123', coach_id: 'coach-123' },
+            data: { id: '123e4567-e89b-12d3-a456-426614174001', coach_id: 'coach-123' },
             error: null,
           }),
         }
@@ -171,12 +172,13 @@ describe('Nutrition Targets Update API', () => {
             // Create a new chain for each update call
             let eqCallCount = 0
             const chain = {
-              eq: jest.fn().mockImplementation(function(this: any, ...args: any[]) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              eq: jest.fn().mockImplementation(function(this: any) {
                 eqCallCount++
                 // After second eq call, return the result (this is the terminal operation)
                 if (eqCallCount >= 2) {
                   return Promise.resolve({
-                    data: [{ id: 'target-1' }],
+                    data: [{ id: '123e4567-e89b-12d3-a456-426614174000' }],
                     error: null,
                   })
                 }
@@ -198,12 +200,12 @@ describe('Nutrition Targets Update API', () => {
 
   it('should update nutrition targets successfully', async () => {
     const requestBody = {
-      targetId: 'target-1',
+      targetId: '123e4567-e89b-12d3-a456-426614174000',
       calories: 2000,
       protein: 150,
       fats: 60,
       carbs: 200,
-      clientId: 'client-123',
+      clientId: '123e4567-e89b-12d3-a456-426614174001',
     }
 
     const request = new NextRequest('http://localhost/api/nutrition-targets/update', {
@@ -228,12 +230,12 @@ describe('Nutrition Targets Update API', () => {
     })
 
     const requestBody = {
-      targetId: 'target-1',
+      targetId: '123e4567-e89b-12d3-a456-426614174000',
       calories: 2000,
       protein: 150,
       fats: 60,
       carbs: 200,
-      clientId: 'client-123',
+      clientId: '123e4567-e89b-12d3-a456-426614174001',
     }
 
     const request = new NextRequest('http://localhost/api/nutrition-targets/update', {
@@ -253,12 +255,12 @@ describe('Nutrition Targets Update API', () => {
 
   it('should return 400 for invalid input', async () => {
     const requestBody = {
-      targetId: 'target-1',
+      targetId: '123e4567-e89b-12d3-a456-426614174000',
       calories: 100, // Too low (min 1000)
       protein: 150,
       fats: 60,
       carbs: 200,
-      clientId: 'client-123',
+      clientId: '123e4567-e89b-12d3-a456-426614174001',
     }
 
     const request = new NextRequest('http://localhost/api/nutrition-targets/update', {
@@ -277,32 +279,77 @@ describe('Nutrition Targets Update API', () => {
   })
 
   it('should return 500 on database error', async () => {
-    // Reset mocks for this test
+    // Reset mocks to ensure coach profile is returned
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'coach-123' } },
       error: null,
     })
     
-    const createChainableMock = () => {
+    // Setup profiles mock to return coach profile
+    let profilesCallCount = 0
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        profilesCallCount++
+        if (profilesCallCount === 1) {
+          return {
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue({
+              data: { id: 'coach-123', role: 'coach', coach_id: null },
+              error: null,
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { id: '123e4567-e89b-12d3-a456-426614174001', coach_id: 'coach-123' },
+            error: null,
+          }),
+        }
+      }
+      if (table === 'nutrition_targets') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { id: '123e4567-e89b-12d3-a456-426614174000', user_id: '123e4567-e89b-12d3-a456-426614174001' },
+            error: null,
+          }),
+          update: jest.fn().mockImplementation(() => {
+            let eqCallCount = 0
+            const chain = {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              eq: jest.fn().mockImplementation(function(this: any) {
+                eqCallCount++
+                if (eqCallCount >= 2) {
+                  return Promise.resolve({
+                    data: null,
+                    error: { message: 'Database error' },
+                  })
+                }
+                return chain
+              }),
+            }
+            return chain
+          }),
+        }
+      }
       return {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: null,
-          error: { message: 'Database error' },
-        }),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
       }
-    }
-    
-    mockFrom.mockReturnValue(createChainableMock())
+    })
 
     const requestBody = {
-      targetId: 'target-1',
+      targetId: '123e4567-e89b-12d3-a456-426614174000',
       calories: 2000,
       protein: 150,
       fats: 60,
       carbs: 200,
-      clientId: 'client-123',
+      clientId: '123e4567-e89b-12d3-a456-426614174001',
     }
 
     const request = new NextRequest('http://localhost/api/nutrition-targets/update', {

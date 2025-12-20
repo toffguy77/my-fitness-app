@@ -75,7 +75,7 @@ export function subscribeToMessages(
                     event: 'INSERT',
                     schema: 'public',
                     table: 'messages',
-                    filter: `sender_id=eq.${otherUserId},receiver_id=eq.${userId}`,
+                    filter: `sender_id=eq.${otherUserId}.and.receiver_id=eq.${userId}`,
                 },
                 (payload) => {
                     logger.debug('Chat Realtime: новое сообщение получено', { messageId: payload.new.id })
@@ -94,13 +94,13 @@ export function subscribeToMessages(
                 } else if (status === 'CHANNEL_ERROR') {
                     logger.error('Chat Realtime: ошибка канала', null, { channelName })
                     updateStatus({ connected: false, reconnecting: false, error: 'Ошибка подключения' })
-                    
+
                     // Пытаемся переподключиться
                     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && !reconnectTimeout) {
                         reconnectAttempts++
                         const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1) // Экспоненциальная задержка
                         updateStatus({ reconnecting: true, error: `Переподключение через ${Math.ceil(delay / 1000)} сек...` })
-                        
+
                         reconnectTimeout = setTimeout(() => {
                             reconnectTimeout = null
                             subscribe()
@@ -111,12 +111,12 @@ export function subscribeToMessages(
                 } else if (status === 'TIMED_OUT') {
                     logger.warn('Chat Realtime: таймаут подключения', { channelName })
                     updateStatus({ connected: false, reconnecting: true, error: 'Переподключение...' })
-                    
+
                     // Пытаемся переподключиться
                     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && !reconnectTimeout) {
                         reconnectAttempts++
                         const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1)
-                        
+
                         reconnectTimeout = setTimeout(() => {
                             reconnectTimeout = null
                             subscribe()

@@ -28,6 +28,7 @@ function SettingsPageContent() {
     // Форма редактирования профиля
     const [fullName, setFullName] = useState('')
     const [phone, setPhone] = useState('')
+    const [profileVisibility, setProfileVisibility] = useState<'private' | 'public'>('private')
 
     // Форма смены пароля
     const [currentPassword, setCurrentPassword] = useState('')
@@ -155,6 +156,7 @@ function SettingsPageContent() {
                 .update({
                     full_name: fullName || null,
                     phone: phone || null,
+                    profile_visibility: profileVisibility,
                 })
                 .eq('id', user.id)
 
@@ -165,7 +167,12 @@ function SettingsPageContent() {
                 logger.info('Settings: профиль успешно сохранен', { userId: user.id })
                 setMessage('Профиль успешно обновлен')
                 // Обновляем локальный профиль
-                setProfile({ ...profile, full_name: fullName || null, phone: phone || null })
+                setProfile({ 
+                  ...profile, 
+                  full_name: fullName || null, 
+                  phone: phone || null,
+                  profile_visibility: profileVisibility as any
+                })
                 setTimeout(() => setMessage(null), 3000)
             }
         } catch (err) {
@@ -316,6 +323,45 @@ function SettingsPageContent() {
                             className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
                             placeholder="+7 (999) 123-45-67"
                         />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">Приватность профиля</label>
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                                <input
+                                    type="radio"
+                                    name="profileVisibility"
+                                    value="private"
+                                    checked={profileVisibility === 'private'}
+                                    onChange={(e) => setProfileVisibility(e.target.value as 'private' | 'public')}
+                                    className="w-4 h-4 text-black focus:ring-2 focus:ring-black"
+                                />
+                                <div>
+                                    <span className="text-sm font-medium text-gray-900">Приватный</span>
+                                    <p className="text-xs text-gray-500">Только вы и ваш тренер могут видеть ваш профиль</p>
+                                </div>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                                <input
+                                    type="radio"
+                                    name="profileVisibility"
+                                    value="public"
+                                    checked={profileVisibility === 'public'}
+                                    onChange={(e) => setProfileVisibility(e.target.value as 'private' | 'public')}
+                                    className="w-4 h-4 text-black focus:ring-2 focus:ring-black"
+                                />
+                                <div>
+                                    <span className="text-sm font-medium text-gray-900">Публичный</span>
+                                    <p className="text-xs text-gray-500">Ваши достижения видны всем по ссылке</p>
+                                    {profileVisibility === 'public' && user && (
+                                        <p className="text-xs text-gray-400 mt-1 font-mono break-all">
+                                            {typeof window !== 'undefined' ? `${window.location.origin}/profile/${user.id}` : '/profile/[userId]'}
+                                        </p>
+                                    )}
+                                </div>
+                            </label>
+                        </div>
                     </div>
 
                     <button

@@ -107,6 +107,10 @@ CREATE TABLE IF NOT EXISTS profiles (
     -- Активность
     activity_level TEXT CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
     
+    -- Приватность профиля
+    profile_visibility TEXT DEFAULT 'private' 
+        CHECK (profile_visibility IN ('private', 'public')),
+    
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -121,6 +125,7 @@ COMMENT ON COLUMN profiles.gender IS 'Пол пользователя (male, fem
 COMMENT ON COLUMN profiles.birth_date IS 'Дата рождения для расчета возраста';
 COMMENT ON COLUMN profiles.height IS 'Рост в сантиметрах';
 COMMENT ON COLUMN profiles.activity_level IS 'Уровень активности: sedentary (1.2), light (1.375), moderate (1.55), active (1.725), very_active (1.9)';
+COMMENT ON COLUMN profiles.profile_visibility IS 'Видимость профиля: private (приватный) или public (публичный)';
 
 -- 3.2 Таблица nutrition_targets (цели питания)
 CREATE TABLE IF NOT EXISTS nutrition_targets (
@@ -474,6 +479,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_coach_id ON profiles(coach_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_subscription_status ON profiles(subscription_status);
 CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone) WHERE phone IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_profiles_birth_date ON profiles(birth_date);
+CREATE INDEX IF NOT EXISTS idx_profiles_public ON profiles(profile_visibility) WHERE profile_visibility = 'public';
 
 -- Индексы для nutrition_targets
 CREATE INDEX IF NOT EXISTS idx_nutrition_targets_user_id ON nutrition_targets(user_id);
@@ -1054,6 +1060,19 @@ USING (
         is_coach(auth.uid())
         AND coach_id = auth.uid()
     )
+);
+
+DROP POLICY IF EXISTS "Anyone can read public profiles" ON profiles;
+CREATE POLICY "Anyone can read public profiles"
+ON profiles FOR SELECT
+USING (
+  profile_visibility = 'public' OR
+  auth.uid() = id OR
+  (role = 'coach' AND EXISTS (
+    SELECT 1 FROM profiles p 
+    WHERE p.id = profiles.id 
+    AND p.coach_id = auth.uid()
+  ))
 );
 
 DROP POLICY IF EXISTS "Users can update profiles" ON profiles;
