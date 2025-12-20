@@ -5,6 +5,7 @@
 
 import { createClient } from '@/utils/supabase/client'
 import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
+import type { User } from '@supabase/supabase-js'
 
 // Mock Supabase
 jest.mock('@/utils/supabase/client')
