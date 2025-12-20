@@ -12,7 +12,7 @@ import { logger } from '@/utils/logger'
  */
 export async function checkAchievements(
   triggerType: AchievementTriggerType,
-  triggerData?: Record<string, any>
+  triggerData?: Record<string, unknown>
 ): Promise<Array<{ achievement_id: string; achievement_code: string; achievement_name: string }>> {
   try {
     const response = await fetch('/api/achievements/check', {

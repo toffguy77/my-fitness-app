@@ -45,7 +45,7 @@ export interface EmailData {
   date?: string
   coachName?: string
   daysRemaining?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**
