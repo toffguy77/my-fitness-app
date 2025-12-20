@@ -27,6 +27,7 @@ const eslintConfig = defineConfig([
     rules: {
       "react/display-name": "warn",
       "react-hooks/exhaustive-deps": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
 ]);
