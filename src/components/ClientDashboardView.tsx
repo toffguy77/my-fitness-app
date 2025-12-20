@@ -377,7 +377,7 @@ export default function ClientDashboardView({
                 const meals = Array.isArray(log.meals) ? log.meals : []
                 const date = new Date(log.date)
                 const isToday = log.date === new Date().toISOString().split('T')[0]
-                
+
                 return (
                   <div key={log.date} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-3">
@@ -441,11 +441,11 @@ export default function ClientDashboardView({
                                 <span className="font-medium">Голод:</span>{' '}
                                 <span className="font-semibold text-gray-900">
                                   {log.hunger_level === 1 ? '😋 Совсем нет' :
-                                   log.hunger_level === 2 ? '🙂 Легкий' :
-                                   log.hunger_level === 3 ? '😊 Умеренный' :
-                                   log.hunger_level === 4 ? '😟 Сильный' :
-                                   log.hunger_level === 5 ? '🤯 Зверский' :
-                                   `${log.hunger_level}/5`}
+                                    log.hunger_level === 2 ? '🙂 Легкий' :
+                                      log.hunger_level === 3 ? '😊 Умеренный' :
+                                        log.hunger_level === 4 ? '😟 Сильный' :
+                                          log.hunger_level === 5 ? '🤯 Зверский' :
+                                            `${log.hunger_level}/5`}
                                 </span>
                               </div>
                             )}

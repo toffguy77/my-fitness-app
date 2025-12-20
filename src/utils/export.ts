@@ -110,17 +110,17 @@ export async function exportToPDF(
 
     targets.forEach(target => {
       const targetText = `${target.day_type === 'training' ? 'Тренировочный день' : 'День отдыха'}: ${target.calories} ккал, Б: ${target.protein}г, Ж: ${target.fats}г, У: ${target.carbs}г`
-      
+
       if (yPosition > pageHeight - margin - lineHeight) {
         doc.addPage()
         yPosition = margin
       }
-      
+
       doc.setFontSize(10)
       doc.text(targetText, margin + 5, yPosition)
       yPosition += lineHeight
     })
-    
+
     yPosition += lineHeight
   }
 
@@ -149,7 +149,7 @@ export async function exportToPDF(
     if (yPosition > pageHeight - margin - lineHeight) {
       doc.addPage()
       yPosition = margin
-      
+
       // Повторяем заголовки
       xPosition = margin
       doc.setFont('helvetica', 'bold')

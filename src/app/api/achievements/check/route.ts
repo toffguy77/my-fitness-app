@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       })
       // Не возвращаем ошибку клиенту, чтобы не блокировать основной процесс
       // Достижения - это дополнительная функция, её ошибка не должна влиять на сохранение данных
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
         error: 'Ошибка проверки достижений',
         newAchievements: []
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       errorDetails: error
     })
     // Возвращаем успешный ответ, чтобы не блокировать основной процесс
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       error: 'Внутренняя ошибка сервера',
       newAchievements: []

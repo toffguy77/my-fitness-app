@@ -29,9 +29,9 @@ describe('Integration Tests', () => {
         })),
       }
 
-      ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
+        ; (createClient as jest.Mock).mockReturnValue(mockSupabase)
 
-      const mockUser = { 
+      const mockUser = {
         id: 'user-123',
         app_metadata: {},
         user_metadata: {},
@@ -169,9 +169,9 @@ describe('Integration Tests', () => {
         })),
       }
 
-      ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
+        ; (createClient as jest.Mock).mockReturnValue(mockSupabase)
 
-      const mockUser = { 
+      const mockUser = {
         id: 'user-123',
         app_metadata: {},
         user_metadata: {},

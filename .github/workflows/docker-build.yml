@@ -3,6 +3,8 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
 
@@ -14,12 +16,33 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Получаем все теги для проверки версии
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
+    
+    - name: Get version from package.json
+      id: package-version
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Package version: $VERSION"
+    
+    - name: Check version consistency
+      run: |
+        PACKAGE_VERSION=$(node -p "require('./package.json').version")
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -n "$LATEST_TAG" ]; then
+          TAG_VERSION=${LATEST_TAG#v}
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "⚠️ Warning: Package version ($PACKAGE_VERSION) doesn't match latest tag ($LATEST_TAG)"
+            echo "Consider updating package.json version to match the latest tag"
+          fi
+        fi
     
     - name: Install dependencies
       run: npm ci
@@ -44,16 +67,28 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get version from package.json
+      id: package-version
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building Docker image with version: $VERSION"
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
     - name: Build Docker image
       run: |
+        VERSION=${{ steps.package-version.outputs.version }}
         docker build \
           --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }} \
           --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key' }} \
+          -t my-fitness-app:${{ steps.package-version.outputs.version }} \
           -t my-fitness-app:latest .
+        echo "Built images: my-fitness-app:${{ steps.package-version.outputs.version }} and my-fitness-app:latest"
     
     - name: Test Docker image
       run: |

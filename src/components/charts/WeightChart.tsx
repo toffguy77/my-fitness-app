@@ -17,10 +17,10 @@ type WeightChartProps = {
 export default function WeightChart({ data, period, onPeriodChange }: WeightChartProps) {
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return []
-    
+
     const now = new Date()
     const cutoffDate = new Date()
-    
+
     switch (period) {
       case '7days':
         cutoffDate.setDate(now.getDate() - 7)
@@ -34,7 +34,7 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
       case 'all':
         return data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     }
-    
+
     return data
       .filter(point => new Date(point.date) >= cutoffDate)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -43,19 +43,19 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
   // Вычисляем трендовую линию (линейная регрессия)
   const trendData = useMemo(() => {
     if (filteredData.length < 2) return []
-    
+
     const n = filteredData.length
     const dates = filteredData.map((_, i) => i)
     const weights = filteredData.map(d => d.weight)
-    
+
     const sumX = dates.reduce((a, b) => a + b, 0)
     const sumY = weights.reduce((a, b) => a + b, 0)
     const sumXY = dates.reduce((sum, x, i) => sum + x * weights[i], 0)
     const sumXX = dates.reduce((sum, x) => sum + x * x, 0)
-    
+
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
     const intercept = (sumY - slope * sumX) / n
-    
+
     return filteredData.map((point, i) => ({
       date: point.date,
       weight: point.weight,
@@ -84,18 +84,17 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
             <button
               key={p}
               onClick={() => onPeriodChange(p)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                period === p
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${period === p
                   ? 'bg-black text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               {p === '7days' ? '7 дней' : p === '30days' ? '30 дней' : p === '3months' ? '3 месяца' : 'Все время'}
             </button>
           ))}
         </div>
       )}
-      
+
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={trendData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

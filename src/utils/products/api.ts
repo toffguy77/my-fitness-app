@@ -60,7 +60,7 @@ export function transformProduct(product: OpenFoodFactsProduct): Product {
 export async function searchProductsInDB(query: string, limit: number = 20): Promise<Product[]> {
     try {
         const supabase = createClient()
-        
+
         // Используем полнотекстовый поиск PostgreSQL
         const { data, error } = await supabase
             .from('products')
@@ -165,7 +165,7 @@ export async function saveProductToDB(product: Product): Promise<string | null> 
 export async function incrementProductUsage(productId: string): Promise<void> {
     try {
         const supabase = createClient()
-        
+
         // Получаем текущее значение и увеличиваем
         const { data: product } = await supabase
             .from('products')
@@ -236,7 +236,7 @@ export async function searchProducts(query: string, limit: number = 20): Promise
     try {
         // Сначала ищем в БД
         const dbResults = await searchProductsInDB(query, limit)
-        
+
         if (dbResults.length >= limit) {
             // Если нашли достаточно в БД, возвращаем их
             return dbResults
@@ -244,7 +244,7 @@ export async function searchProducts(query: string, limit: number = 20): Promise
 
         // Если в БД недостаточно результатов, ищем через API
         const apiResults = await searchProductsInAPI(query, limit - dbResults.length)
-        
+
         // Сохраняем результаты из API в БД (асинхронно, не блокируем ответ)
         apiResults.forEach(product => {
             saveProductToDB(product).then(productId => {
@@ -321,7 +321,7 @@ export async function getProductByBarcode(barcode: string): Promise<Product | nu
         }
 
         const product = transformProduct(data.product)
-        
+
         // Сохраняем в БД (асинхронно)
         saveProductToDB(product).then(productId => {
             if (productId) {

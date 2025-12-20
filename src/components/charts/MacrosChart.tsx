@@ -25,10 +25,10 @@ type MacrosChartProps = {
 export default function MacrosChart({ data, period, showTargets = true, chartType = 'line' }: MacrosChartProps) {
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return []
-    
+
     const now = new Date()
     const cutoffDate = new Date()
-    
+
     switch (period) {
       case '7days':
         cutoffDate.setDate(now.getDate() - 7)
@@ -42,7 +42,7 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
       case 'all':
         return data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     }
-    
+
     return data
       .filter(point => new Date(point.date) >= cutoffDate)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
