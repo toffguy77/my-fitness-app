@@ -84,7 +84,7 @@ export async function searchProductsInDB(query: string, limit: number = 20): Pro
             protein_per_100g: p.protein_per_100g as number,
             fats_per_100g: p.fats_per_100g as number,
             carbs_per_100g: p.carbs_per_100g as number,
-            source: p.source as string | undefined,
+            source: (p.source as 'openfoodfacts' | 'usda' | 'user' | undefined) || 'user',
             source_id: p.source_id as string | undefined,
             image_url: p.image_url as string | undefined,
         }))
