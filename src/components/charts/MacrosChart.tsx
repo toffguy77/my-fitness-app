@@ -81,7 +81,7 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
                 borderRadius: '8px',
                 padding: '8px 12px',
               }}
-              labelFormatter={(value) => `Дата: ${formatDate(value)}`}
+              labelFormatter={(value: string | number) => `Дата: ${formatDate(String(value))}`}
             />
             <Legend />
             <Bar dataKey="protein" fill="#3b82f6" name="Белки (г)" />
@@ -114,7 +114,7 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
                   borderRadius: '8px',
                   padding: '8px 12px',
                 }}
-                labelFormatter={(value) => `Дата: ${formatDate(value)}`}
+                labelFormatter={(value: string | number) => `Дата: ${formatDate(String(value))}`}
               />
               <Legend />
               <Line
@@ -160,7 +160,7 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
                   borderRadius: '8px',
                   padding: '8px 12px',
                 }}
-                labelFormatter={(value) => `Дата: ${formatDate(value)}`}
+                labelFormatter={(value: string | number) => `Дата: ${formatDate(String(value))}`}
               />
               <Legend />
               <Line
