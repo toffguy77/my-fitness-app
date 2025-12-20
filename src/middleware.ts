@@ -94,7 +94,7 @@ export async function middleware(request: NextRequest) {
     // Загружаем профиль
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role, subscription_status, subscription_tier')
+      .select('role, subscription_status, subscription_tier, subscription_end_date')
       .eq('id', user.id)
       .single()
 

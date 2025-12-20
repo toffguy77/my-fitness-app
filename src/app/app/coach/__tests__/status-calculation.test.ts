@@ -201,7 +201,8 @@ describe('Coach Status Calculation (Traffic Light System v2)', () => {
       const hoursSinceLastCheckin = 24
 
       const status = calculateClientStatus(todayLog, target, lastLog, hoursSinceLastCheckin)
-      expect(status).toBe('yellow') // > 24 hours
+      // Exactly 24 hours is not > 24, so should be grey
+      expect(status).toBe('grey')
     })
 
     it('should handle exactly 48 hours since last check-in', () => {
@@ -211,7 +212,8 @@ describe('Coach Status Calculation (Traffic Light System v2)', () => {
       const hoursSinceLastCheckin = 48
 
       const status = calculateClientStatus(todayLog, target, lastLog, hoursSinceLastCheckin)
-      expect(status).toBe('yellow') // <= 48 hours, but > 24
+      // Exactly 48 hours is not > 48, so should be yellow (> 24 but <= 48)
+      expect(status).toBe('yellow')
     })
 
     it('should handle very high calorie deviation', () => {

@@ -118,7 +118,7 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
               padding: '8px 12px',
             }}
             labelFormatter={(value) => `Дата: ${formatDate(value)}`}
-            formatter={(value: number) => [`${value.toFixed(1)} кг`, '']}
+            formatter={(value: number | undefined) => value !== undefined ? [`${value.toFixed(1)} кг`, ''] : ['', '']}
           />
           <Legend />
           <Line

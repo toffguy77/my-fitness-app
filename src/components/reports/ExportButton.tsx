@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, FileText, FileJson, FilePdf, Loader2 } from 'lucide-react'
+import { Download, FileText, FileJson, File, Loader2 } from 'lucide-react'
 import { exportToCSV, exportToJSON, exportToPDF, type DailyLog } from '@/utils/export'
 import toast from 'react-hot-toast'
 import type { NutritionTarget } from '@/utils/export'
@@ -93,7 +93,7 @@ export default function ExportButton({ data, targets, filename }: ExportButtonPr
                 onClick={() => handleExport('pdf')}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
               >
-                <FilePdf size={16} />
+                <File size={16} />
                 PDF
               </button>
             </div>

@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { ArrowRight, ArrowLeft, User as UserIcon, Activity, Target } from 'lucide-react'
 import { logger } from '@/utils/logger'
+import DateInput from '@/components/DateInput'
 
 type OnboardingStep = 'biometrics' | 'activity' | 'goal'
 
@@ -22,8 +23,8 @@ export default function OnboardingPage() {
   // Step 1: Биометрия
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male')
   const [birthDate, setBirthDate] = useState<string>('')
-  const [height, setHeight] = useState<number>(170)
-  const [weight, setWeight] = useState<number>(70)
+  const [height, setHeight] = useState<number | ''>(170)
+  const [weight, setWeight] = useState<number | ''>(70)
 
   // Step 2: Активность
   const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'>('moderate')
@@ -112,7 +113,7 @@ export default function OnboardingPage() {
   const handleNext = () => {
     if (currentStep === 'biometrics') {
       // Валидация биометрии
-      if (!birthDate || height < 100 || height > 250 || weight < 30 || weight > 300) {
+      if (!birthDate || !height || typeof height !== 'number' || height < 100 || height > 250 || !weight || typeof weight !== 'number' || weight < 30 || weight > 300) {
         setError('Пожалуйста, заполните все поля корректно')
         return
       }
@@ -143,9 +144,16 @@ export default function OnboardingPage() {
       // Рассчитываем возраст
       const birth = new Date(birthDate)
       const today = new Date()
-      const age = today.getFullYear() - birth.getFullYear() - 
-        (today.getMonth() < birth.getMonth() || 
-         (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0)
+      const age = today.getFullYear() - birth.getFullYear() -
+        (today.getMonth() < birth.getMonth() ||
+          (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0)
+
+      // Проверяем, что height и weight - числа (не пустые строки)
+      if (typeof height !== 'number' || typeof weight !== 'number') {
+        setError('Пожалуйста, заполните все поля корректно')
+        setSaving(false)
+        return
+      }
 
       // Рассчитываем BMR и TDEE
       const bmr = calculateBMR(gender, weight, height, age)
@@ -215,12 +223,12 @@ export default function OnboardingPage() {
       }
 
       // Сохраняем начальный вес в daily_logs
-      const today = new Date().toISOString().split('T')[0]
+      const todayDate = new Date().toISOString().split('T')[0]
       const { error: weightError } = await supabase
         .from('daily_logs')
         .upsert({
           user_id: user.id,
-          date: today,
+          date: todayDate,
           weight: weight,
           actual_calories: 0,
           actual_protein: 0,
@@ -230,7 +238,7 @@ export default function OnboardingPage() {
         }, { onConflict: 'user_id, date' })
 
       if (weightError) {
-        logger.warn('Onboarding: ошибка сохранения веса', weightError)
+        logger.warn('Onboarding: ошибка сохранения веса', { error: weightError.message })
         // Не критично, продолжаем
       }
 
@@ -304,11 +312,10 @@ export default function OnboardingPage() {
                     key={g}
                     type="button"
                     onClick={() => setGender(g)}
-                    className={`p-4 rounded-xl border-2 transition-colors ${
-                      gender === g
+                    className={`p-4 rounded-xl border-2 transition-colors ${gender === g
                         ? 'border-black bg-black text-white'
                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     {g === 'male' ? 'Мужской' : g === 'female' ? 'Женский' : 'Другое'}
                   </button>
@@ -316,19 +323,14 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Дата рождения
-              </label>
-              <input
-                type="date"
-                id="birthDate"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
-              />
-            </div>
+            <DateInput
+              id="birthDate"
+              label="Дата рождения"
+              value={birthDate}
+              onChange={setBirthDate}
+              maxDate={new Date().toISOString().split('T')[0]}
+              className="w-full"
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -338,8 +340,18 @@ export default function OnboardingPage() {
                 <input
                   type="number"
                   id="height"
-                  value={height}
-                  onChange={(e) => setHeight(parseInt(e.target.value) || 170)}
+                  value={height === '' ? '' : height}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '') {
+                      setHeight('')
+                    } else {
+                      const num = parseInt(val, 10)
+                      if (!isNaN(num)) {
+                        setHeight(num)
+                      }
+                    }
+                  }}
                   min={100}
                   max={250}
                   className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
@@ -353,8 +365,18 @@ export default function OnboardingPage() {
                 <input
                   type="number"
                   id="weight"
-                  value={weight}
-                  onChange={(e) => setWeight(parseFloat(e.target.value) || 70)}
+                  value={weight === '' ? '' : weight}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '') {
+                      setWeight('')
+                    } else {
+                      const num = parseFloat(val)
+                      if (!isNaN(num)) {
+                        setWeight(num)
+                      }
+                    }
+                  }}
                   min={30}
                   max={300}
                   step="0.1"
@@ -390,11 +412,10 @@ export default function OnboardingPage() {
                   key={activity.value}
                   type="button"
                   onClick={() => setActivityLevel(activity.value)}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${
-                    activityLevel === activity.value
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${activityLevel === activity.value
                       ? 'border-black bg-black text-white'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <div className="font-semibold">{activity.label}</div>
                   <div className={`text-sm ${activityLevel === activity.value ? 'text-gray-200' : 'text-gray-500'}`}>
@@ -429,11 +450,10 @@ export default function OnboardingPage() {
                   key={g.value}
                   type="button"
                   onClick={() => setGoal(g.value)}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${
-                    goal === g.value
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${goal === g.value
                       ? 'border-black bg-black text-white'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <div className="font-semibold">{g.label}</div>
                   <div className={`text-sm ${goal === g.value ? 'text-gray-200' : 'text-gray-500'}`}>
@@ -444,15 +464,15 @@ export default function OnboardingPage() {
             </div>
 
             {/* Preview расчетов */}
-            {birthDate && (
+            {birthDate && typeof height === 'number' && typeof weight === 'number' && (
               <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
                 <div className="text-sm font-medium text-gray-700 mb-2">Предварительный расчет:</div>
                 {(() => {
                   const birth = new Date(birthDate)
                   const today = new Date()
-                  const age = today.getFullYear() - birth.getFullYear() - 
-                    (today.getMonth() < birth.getMonth() || 
-                     (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0)
+                  const age = today.getFullYear() - birth.getFullYear() -
+                    (today.getMonth() < birth.getMonth() ||
+                      (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate()) ? 1 : 0)
                   const bmr = calculateBMR(gender, weight, height, age)
                   const tdee = calculateTDEE(bmr, activityLevel)
                   const targetCalories = calculateTargetCalories(tdee, goal)

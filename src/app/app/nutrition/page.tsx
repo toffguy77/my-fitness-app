@@ -1,7 +1,7 @@
 // Страница ввода питания
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
@@ -12,6 +12,12 @@ import ProgressBar from '@/components/ProgressBar'
 import { validateMeal, validateDailyTotals } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
+import ProductSearch from '@/components/products/ProductSearch'
+import { incrementProductUsage } from '@/utils/products/api'
+import type { Product } from '@/types/products'
+import OCRModal from '@/components/ocr/OCRModal'
+import type { ExtractedNutritionData } from '@/types/ocr'
+import { checkAchievementsAfterMealSave, checkAchievementsAfterOCR } from '@/utils/achievements/check'
 
 type Meal = {
   id: string
@@ -46,7 +52,7 @@ type DailyLog = {
   meals?: Meal[] // Массив приемов пищи
 }
 
-export default function NutritionPage() {
+function NutritionPageContent() {
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -94,14 +100,17 @@ export default function NutritionPage() {
       createdAt: now.toISOString()
     }]
   })
+  const [ocrModalOpen, setOcrModalOpen] = useState(false)
+  const [ocrModalMealId, setOcrModalMealId] = useState<string | null>(null)
   // Получаем дату из URL параметра или используем сегодня
   const dateParam = searchParams.get('date')
   const editMealId = searchParams.get('edit')
   const [selectedDate, setSelectedDate] = useState<string>(
     dateParam || new Date().toISOString().split('T')[0]
   )
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [status, setStatus] = useState<'idle' | 'saving_draft' | 'draft_saved' | 'submitting' | 'submitted'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [isCompleted, setIsCompleted] = useState<boolean>(false)
 
   // Загрузка данных при старте
   useEffect(() => {
@@ -167,9 +176,11 @@ export default function NutritionPage() {
 
           // Проверяем, завершен ли день
           if (logResult.data.is_completed) {
+            setIsCompleted(true)
             logger.warn('Nutrition: попытка редактирования завершенного дня', { userId: user.id, date: selectedDate })
             toast.error('Этот день завершен. Редактирование недоступно.')
-            router.push(`/app/dashboard?date=${selectedDate}`)
+            // Не делаем редирект сразу, покажем блокирующий экран
+            setLoading(false)
             return
           }
 
@@ -238,18 +249,19 @@ export default function NutritionPage() {
     )
   }, [meals])
 
-  // Валидация дневных totals
-  const dailyValidation = useMemo(() => {
+  // Валидация дневных totals - используется только при сохранении, не показывается во время ввода
+  // Во время ввода валидируются только отдельные приемы пищи
+  const getDailyValidation = () => {
     return validateDailyTotals(totals.calories, totals.protein, totals.fats, totals.carbs)
-  }, [totals])
+  }
 
   // Валидация каждого приема пищи
   const mealValidations = useMemo(() => {
     return meals.map(meal => validateMeal(meal))
   }, [meals])
 
-  // Функция сохранения
-  const handleSave = async () => {
+  // Функция сохранения черновика (без завершения дня)
+  const handleSaveDraft = async () => {
     if (!user) {
       logger.warn('Nutrition: попытка сохранения без авторизованного пользователя')
       setSaveError('Нет активной сессии. Войдите или временно подставьте user_id для теста.')
@@ -263,34 +275,184 @@ export default function NutritionPage() {
       return
     }
 
-    // Проверка валидации перед сохранением
-    if (!dailyValidation.valid) {
-      logger.warn('Nutrition: ошибки валидации перед сохранением', { 
-        userId: user.id, 
-        errors: dailyValidation.errors 
-      })
-      setSaveError(dailyValidation.errors.join('; '))
-      return
-    }
-
-    // Проверка валидации приемов пищи
+    // Проверка валидации только приемов пищи (не дневных норм)
     const invalidMeals = mealValidations.filter(v => !v.valid)
     if (invalidMeals.length > 0) {
       const allErrors = invalidMeals.flatMap(v => v.errors)
-      logger.warn('Nutrition: ошибки валидации приемов пищи', { 
-        userId: user.id, 
-        errors: allErrors 
+      logger.warn('Nutrition: ошибки валидации приемов пищи', {
+        userId: user.id,
+        errors: allErrors
       })
       setSaveError(`Ошибки в приемах пищи: ${allErrors.join('; ')}`)
       return
     }
 
-    // Сохраняем текущее состояние для отката при ошибке (оптимистичное обновление)
+    // Сохраняем текущее состояние для отката при ошибке
     const previousMeals = [...meals]
     const previousLog = { ...log }
     const previousStatus = status
 
-    setStatus('saving')
+    setStatus('saving_draft')
+    setSaveError(null)
+
+    try {
+      // Получаем существующий лог за выбранную дату
+      const { data: existingLog } = await supabase
+        .from('daily_logs')
+        .select('meals, target_type')
+        .eq('user_id', user.id)
+        .eq('date', selectedDate)
+        .single()
+
+      // Объединяем существующие meals с новыми
+      const existingMeals: Meal[] = (existingLog?.meals as Meal[]) || []
+      const newMeals = meals.map(meal => ({
+        ...meal,
+        mealDate: meal.mealDate || selectedDate,
+        createdAt: meal.createdAt || new Date().toISOString()
+      }))
+
+      // Объединяем: обновляем существующие по id, добавляем новые
+      const mealIds = new Set(newMeals.map(m => m.id))
+      const allMeals = [
+        ...existingMeals.filter(m => !mealIds.has(m.id)),
+        ...newMeals
+      ]
+
+      // Пересчитываем totals из всех meals за выбранную дату
+      const dateMeals = allMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
+      const aggregatedTotals = dateMeals.reduce(
+        (acc, meal) => ({
+          calories: acc.calories + (meal.calories || 0),
+          protein: acc.protein + (meal.protein || 0),
+          fats: acc.fats + (meal.fats || 0),
+          carbs: acc.carbs + (meal.carbs || 0)
+        }),
+        { calories: 0, protein: 0, fats: 0, carbs: 0 }
+      )
+
+      const aggregatedLog = {
+        ...log,
+        actual_calories: aggregatedTotals.calories,
+        actual_protein: aggregatedTotals.protein,
+        actual_fats: aggregatedTotals.fats,
+        actual_carbs: aggregatedTotals.carbs
+      }
+
+      // Сохраняем без is_completed (черновик)
+      const payload = {
+        user_id: user.id,
+        date: selectedDate,
+        target_type: dayType,
+        meals: allMeals,
+        ...aggregatedLog,
+        // Явно не устанавливаем is_completed, чтобы не завершить день
+        is_completed: false
+      }
+
+      logger.info('Nutrition: начало сохранения черновика', {
+        userId: user.id,
+        date: selectedDate,
+        dayType,
+      })
+
+      // Upsert: Обновить если есть, создать если нет
+      const { error } = await supabase
+        .from('daily_logs')
+        .upsert(payload, { onConflict: 'user_id, date' })
+
+      if (error) {
+        // Откатываем изменения при ошибке
+        setMeals(previousMeals)
+        setLog(previousLog)
+        setStatus(previousStatus)
+
+        logger.error('Nutrition: ошибка сохранения черновика', error, {
+          userId: user.id,
+          date: selectedDate,
+        })
+        setSaveError('Ошибка сохранения: ' + error.message)
+        toast.error('Ошибка сохранения: ' + error.message)
+      } else {
+        logger.info('Nutrition: черновик успешно сохранен', {
+          userId: user.id,
+          date: selectedDate,
+        })
+        setStatus('draft_saved')
+        toast.success('Черновик сохранен')
+
+        // Проверяем достижения после успешного сохранения
+        checkAchievementsAfterMealSave(user.id).catch((error) => {
+          logger.warn('Nutrition: ошибка проверки достижений', { error })
+        })
+
+        // Остаемся на странице, не делаем редирект
+        setTimeout(() => {
+          setStatus('idle')
+        }, 1500)
+      }
+    } catch (error) {
+      // Откатываем изменения при исключении
+      setMeals(previousMeals)
+      setLog(previousLog)
+      setStatus(previousStatus)
+
+      logger.error('Nutrition: исключение при сохранении черновика', error, {
+        userId: user.id,
+        date: selectedDate,
+      })
+      const errorMessage = error instanceof Error ? error.message : 'Произошла ошибка при сохранении. Попробуйте еще раз.'
+      setSaveError(errorMessage)
+      toast.error(errorMessage)
+    }
+  }
+
+  // Функция отправки тренеру (завершение дня)
+  const handleSubmit = async () => {
+    if (!user) {
+      logger.warn('Nutrition: попытка сохранения без авторизованного пользователя')
+      setSaveError('Нет активной сессии. Войдите или временно подставьте user_id для теста.')
+      return
+    }
+
+    // Валидация: проверяем, что введены данные хотя бы об одном приеме пищи
+    if (totals.calories === 0 && totals.protein === 0 && totals.fats === 0 && totals.carbs === 0) {
+      logger.warn('Nutrition: попытка отправки без данных о питании', { userId: user.id })
+      setSaveError('Введите данные хотя бы об одном приеме пищи')
+      return
+    }
+
+    // 1. Сначала проверка валидации приемов пищи
+    const invalidMeals = mealValidations.filter(v => !v.valid)
+    if (invalidMeals.length > 0) {
+      const allErrors = invalidMeals.flatMap(v => v.errors)
+      logger.warn('Nutrition: ошибки валидации приемов пищи', {
+        userId: user.id,
+        errors: allErrors
+      })
+      setSaveError(`Ошибки в приемах пищи: ${allErrors.join('; ')}`)
+      return
+    }
+
+    // 2. Затем проверка валидации дневных норм
+    const dailyValidation = getDailyValidation()
+    if (!dailyValidation.valid) {
+      logger.warn('Nutrition: ошибки валидации дневных норм перед отправкой', {
+        userId: user.id,
+        errors: dailyValidation.errors,
+        warnings: dailyValidation.warnings
+      })
+      const allMessages = [...dailyValidation.errors, ...dailyValidation.warnings]
+      setSaveError(allMessages.join('; '))
+      return
+    }
+
+    // Сохраняем текущее состояние для отката при ошибке
+    const previousMeals = [...meals]
+    const previousLog = { ...log }
+    const previousStatus = status
+
+    setStatus('submitting')
     setSaveError(null)
 
     // Оптимистичное обновление: сразу показываем сохраненные данные
@@ -340,16 +502,18 @@ export default function NutritionPage() {
         actual_carbs: aggregatedTotals.carbs
       }
 
-      // Сохраняем текущий выбранный тип дня
+      // Сохраняем с завершением дня
       const payload = {
         user_id: user.id,
         date: selectedDate,
-        target_type: dayType, // Сохраняем текущий выбранный тип дня
-        meals: allMeals, // Сохраняем все meals
-        ...aggregatedLog
+        target_type: dayType,
+        meals: allMeals,
+        ...aggregatedLog,
+        is_completed: true,
+        completed_at: new Date().toISOString()
       }
 
-      logger.info('Nutrition: начало сохранения лога', {
+      logger.info('Nutrition: начало отправки отчета тренеру', {
         userId: user.id,
         date: selectedDate,
         dayType,
@@ -371,7 +535,7 @@ export default function NutritionPage() {
         setMeals(previousMeals)
         setLog(previousLog)
         setStatus(previousStatus)
-        
+
         logger.error('Nutrition: ошибка сохранения лога', error, {
           userId: user.id,
           date: selectedDate,
@@ -379,15 +543,21 @@ export default function NutritionPage() {
         setSaveError('Ошибка сохранения: ' + error.message)
         toast.error('Ошибка сохранения: ' + error.message)
       } else {
-        logger.info('Nutrition: лог успешно сохранен', {
+        logger.info('Nutrition: отчет успешно отправлен тренеру', {
           userId: user.id,
           date: selectedDate,
           dayType,
         })
-        setStatus('saved')
-        toast.success('Данные сохранены')
+        setIsCompleted(true)
+        setStatus('submitted')
+        toast.success('Отчет отправлен тренеру')
+
+        // Проверяем достижения после успешной отправки
+        checkAchievementsAfterMealSave(user.id).catch((error) => {
+          logger.warn('Nutrition: ошибка проверки достижений', { error })
+        })
+
         setTimeout(() => {
-          setStatus('idle')
           router.push(`/app/dashboard?date=${selectedDate}`)
           router.refresh() // Обновляем данные на дашборде
         }, 1200)
@@ -397,7 +567,7 @@ export default function NutritionPage() {
       setMeals(previousMeals)
       setLog(previousLog)
       setStatus(previousStatus)
-      
+
       logger.error('Nutrition: исключение при сохранении', error, {
         userId: user.id,
         date: selectedDate,
@@ -409,6 +579,27 @@ export default function NutritionPage() {
   }
 
   if (loading) return <div className="p-8 text-center">Загрузка контекста...</div>
+
+  // Блокировка редактирования если день завершен
+  if (isCompleted) {
+    return (
+      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="text-center py-8">
+            <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">День завершен</h2>
+            <p className="text-gray-600 mb-4">Редактирование недоступно.</p>
+            <button
+              onClick={() => router.push(`/app/dashboard?date=${selectedDate}`)}
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+            >
+              Вернуться на дашборд
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   // Emoji для уровня голода (5 уровней)
   const getHungerEmoji = (level: number): string => {
@@ -468,6 +659,115 @@ export default function NutritionPage() {
 
   const removeMeal = (id: string) => {
     setMeals((prev) => (prev.length === 1 ? prev : prev.filter((meal) => meal.id !== id)))
+  }
+
+  // Обработка выбора продукта из ProductSearch
+  const handleProductSelect = async (mealId: string, product: Product, weight: number) => {
+    if (!user) return
+
+    // Пересчитываем КБЖУ на основе веса порции
+    const calories = Math.round((product.calories_per_100g * weight) / 100)
+    const protein = Math.round((product.protein_per_100g * weight) / 100)
+    const fats = Math.round((product.fats_per_100g * weight) / 100)
+    const carbs = Math.round((product.carbs_per_100g * weight) / 100)
+
+    // Обновляем прием пищи
+    setMeals(prev => prev.map(meal => {
+      if (meal.id === mealId) {
+        return {
+          ...meal,
+          title: product.name,
+          weight: weight,
+          calories: calories,
+          protein: protein,
+          fats: fats,
+          carbs: carbs,
+        }
+      }
+      return meal
+    }))
+
+    // Сохраняем в историю использования продуктов и увеличиваем счетчик использования
+    try {
+      // Проверяем, существует ли продукт в базе (глобальный или пользовательский)
+      if (product.id && product.source !== 'user') {
+        // Глобальный продукт - увеличиваем счетчик использования
+        await incrementProductUsage(product.id)
+
+        // Сохраняем в историю использования
+        await supabase
+          .from('product_usage_history')
+          .insert({
+            user_id: user.id,
+            product_id: product.id,
+          })
+      } else if (product.source === 'user') {
+        // Пользовательский продукт - нужно найти или создать
+        const { data: userProduct } = await supabase
+          .from('user_products')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('name', product.name)
+          .single()
+
+        if (userProduct) {
+          await supabase
+            .from('product_usage_history')
+            .insert({
+              user_id: user.id,
+              user_product_id: userProduct.id,
+            })
+        }
+      }
+    } catch (error) {
+      // Игнорируем ошибки сохранения истории (не критично)
+      logger.warn('Nutrition: ошибка сохранения истории использования продукта', { error })
+    }
+
+    toast.success('Продукт добавлен')
+  }
+
+  // Обработка результатов OCR
+  const handleOCRConfirm = async (mealId: string, data: ExtractedNutritionData) => {
+    if (!user) return
+
+    // Определяем вес порции (по умолчанию 100г если не указан)
+    const weight = data.weight || 100
+
+    // Если данные указаны на 100г, используем их напрямую
+    // Если указан вес порции, пересчитываем
+    const calories = data.calories || 0
+    const protein = data.protein || 0
+    const fats = data.fats || 0
+    const carbs = data.carbs || 0
+
+    // Обновляем прием пищи
+    setMeals(prev => prev.map(meal => {
+      if (meal.id === mealId) {
+        return {
+          ...meal,
+          title: data.productName || meal.title,
+          weight: weight,
+          calories: Math.round(calories),
+          protein: Math.round(protein),
+          fats: Math.round(fats),
+          carbs: Math.round(carbs),
+        }
+      }
+      return meal
+    }))
+
+    toast.success('Данные из этикетки добавлены')
+
+    // Проверяем достижения после использования OCR
+    checkAchievementsAfterOCR().catch((error) => {
+      logger.warn('Nutrition: ошибка проверки достижений после OCR', { error })
+    })
+  }
+
+  const handleOCRScanClick = (mealId: string) => {
+    setOcrModalMealId(mealId)
+    setOcrModalOpen(true)
   }
 
   return (
@@ -596,6 +896,22 @@ export default function NutritionPage() {
                   </div>
                 </div>
 
+                {/* ProductSearch для автозаполнения */}
+                <div>
+                  <label className="text-xs text-gray-500 mb-2 block">Поиск продукта (автозаполнение КБЖУ)</label>
+                  <ProductSearch
+                    onSelect={(product, weight) => handleProductSelect(meal.id, product, weight)}
+                    placeholder="Начните вводить название продукта..."
+                    className="mb-3"
+                    showAddCustom={true}
+                    userId={user?.id}
+                    onAddCustom={() => {
+                      router.push('/app/settings')
+                      toast('Добавление пользовательского продукта доступно в настройках', { icon: 'ℹ️' })
+                    }}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
                   <InputGroup label="Калории" value={meal.calories} onChange={(v) => updateMeal(meal.id, 'calories', v)} />
@@ -614,7 +930,14 @@ export default function NutritionPage() {
 
                 <div className="space-y-2">
                   <label className="text-xs text-gray-500">Фото (этикетка/блюдо/продукт)</label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOCRScanClick(meal.id)}
+                      className="px-3 py-1.5 bg-black text-white text-xs rounded hover:bg-gray-800 transition-colors flex items-center gap-1"
+                    >
+                      📷 Сканировать этикетку
+                    </button>
                     <input
                       type="file"
                       accept="image/*"
@@ -624,12 +947,12 @@ export default function NutritionPage() {
                           updateMeal(meal.id, 'title', meal.title, file.name)
                         }
                       }}
-                      className="text-xs text-gray-600"
+                      className="text-xs text-gray-600 flex-1"
                     />
                     {meal.photoName && <span className="text-xs text-gray-500 truncate">{meal.photoName}</span>}
                   </div>
                   <p className="text-[11px] text-gray-500">
-                    Автоподстановка КБЖУ по фото будет подключена (OCR/поиск продуктов). Пока что заполните поля вручную.
+                    Используйте сканирование этикетки для автоматического заполнения КБЖУ
                   </p>
                 </div>
               </div>
@@ -663,13 +986,8 @@ export default function NutritionPage() {
           <div className="text-sm font-semibold text-gray-900 text-center mb-2">
             Всего за день: {totals.calories} ккал, Б {totals.protein} / Ж {totals.fats} / У {totals.carbs} г
           </div>
-          {/* Валидация дневных totals */}
-          {dailyValidation.errors.length > 0 || dailyValidation.warnings.length > 0 ? (
-            <ValidationWarning
-              errors={dailyValidation.errors}
-              warnings={dailyValidation.warnings}
-            />
-          ) : null}
+          {/* Валидация дневных норм не показывается во время ввода - только при сохранении */}
+          {/* Во время ввода валидируются только отдельные приемы пищи */}
         </div>
 
         <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -709,26 +1027,75 @@ export default function NutritionPage() {
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={status === 'saving'}
-          className={`w-full py-4 rounded-xl font-bold text-white flex justify-center items-center gap-2 transition-all
-            ${status === 'saved' ? 'bg-green-600' : 'bg-black active:scale-95'}
-          `}
-        >
-          {status === 'saving' && 'Сохраняем...'}
-          {status === 'saved' && <><CheckCircle size={20} /> Сохранено</>}
-          {status === 'idle' && <><Save size={20} /> Сохранить отчет</>}
-        </button>
-
+        {/* Сообщения об ошибках и предупреждения - показываем прямо над кнопками для лучшей видимости */}
         {saveError && (
-          <div className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200">
             {saveError}
           </div>
         )}
+
+        {/* Две кнопки: Сохранить черновик и Отправить тренеру */}
+        <div className="flex gap-3">
+          <button
+            onClick={handleSaveDraft}
+            disabled={status === 'saving_draft' || status === 'submitting' || status === 'submitted'}
+            className={`px-4 py-4 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+              ${status === 'draft_saved' ? 'bg-green-100 text-green-700' : ''}
+            `}
+          >
+            {status === 'saving_draft' && 'Сохранение...'}
+            {status === 'draft_saved' && <><CheckCircle size={18} /> Сохранено</>}
+            {(status === 'idle' || status === 'submitting' || status === 'submitted') && <><Save size={18} /> Сохранить</>}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={status === 'saving_draft' || status === 'submitting' || status === 'submitted'}
+            className={`flex-1 py-4 rounded-xl font-bold text-white flex justify-center items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+              ${status === 'submitted' ? 'bg-green-600' : 'bg-black active:scale-95'}
+            `}
+          >
+            {status === 'submitting' && 'Отправка...'}
+            {status === 'submitted' && <><CheckCircle size={20} /> Отправлено</>}
+            {(status === 'idle' || status === 'saving_draft' || status === 'draft_saved') && 'Отправить тренеру'}
+          </button>
+        </div>
       </div>
 
+      {/* OCR Modal */}
+      {ocrModalOpen && ocrModalMealId && (
+        <OCRModal
+          isOpen={ocrModalOpen}
+          onClose={() => {
+            setOcrModalOpen(false)
+            setOcrModalMealId(null)
+          }}
+          onConfirm={(data) => {
+            handleOCRConfirm(ocrModalMealId, data)
+            setOcrModalOpen(false)
+            setOcrModalMealId(null)
+          }}
+          preferredTier="balanced"
+          openRouterApiKey={process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}
+        />
+      )}
     </main>
+  )
+}
+
+export default function NutritionPage() {
+  return (
+    <Suspense fallback={
+      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+            <p className="text-gray-600">Загрузка...</p>
+          </div>
+        </div>
+      </main>
+    }>
+      <NutritionPageContent />
+    </Suspense>
   )
 }
 

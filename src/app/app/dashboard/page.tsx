@@ -5,15 +5,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { Settings, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
+import { Settings, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle, Trophy } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
 import ValidationWarning from '@/components/ValidationWarning'
 import ProgressBar from '@/components/ProgressBar'
-import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
+import { getUserProfile, hasActiveSubscription, type UserProfile } from '@/utils/supabase/profile'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import { validateMeal } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
+import ChatWidget from '@/components/chat/ChatWidget'
+import { checkAchievementsAfterWeightLog } from '@/utils/achievements/check'
 
 type Meal = {
   id: string
@@ -58,6 +60,7 @@ export default function ClientDashboard() {
   const [targetsRest, setTargetsRest] = useState<NutritionTarget | null>(null)
   const [weekLogs, setWeekLogs] = useState<DailyLog[]>([])
   const [isPremium, setIsPremium] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
   const [editingWeight, setEditingWeight] = useState<boolean>(false)
   const [showAddMealModal, setShowAddMealModal] = useState<boolean>(false)
@@ -88,8 +91,8 @@ export default function ClientDashboard() {
           setProfile(updatedProfile)
           const premiumStatus = subscriptionInfo.isActive
           setIsPremium(premiumStatus)
-          logger.debug('Dashboard: статус Premium', { 
-            userId: user.id, 
+          logger.debug('Dashboard: статус Premium', {
+            userId: user.id,
             isPremium: premiumStatus,
             subscriptionStatus: subscriptionInfo.status,
             isExpired: subscriptionInfo.isExpired
@@ -429,13 +432,22 @@ export default function ClientDashboard() {
             </button>
           </div>
         </div>
-        <button
-          onClick={() => router.push('/app/settings')}
-          className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
-          title="Настройки"
-        >
-          <Settings size={16} className="text-gray-600" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push('/app/achievements')}
+            className="h-8 w-8 flex items-center justify-center bg-yellow-100 rounded-full hover:bg-yellow-200 transition-colors"
+            title="Достижения"
+          >
+            <Trophy size={16} className="text-yellow-700" />
+          </button>
+          <button
+            onClick={() => router.push('/app/settings')}
+            className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
+            title="Настройки"
+          >
+            <Settings size={16} className="text-gray-600" />
+          </button>
+        </div>
       </header>
 
       {/* DAY TYPE TOGGLE */}
@@ -567,13 +579,20 @@ export default function ClientDashboard() {
                               .single()
 
                             if (existingLog) {
-                              await supabase
+                              const { error } = await supabase
                                 .from('daily_logs')
                                 .update({ weight: newWeight })
                                 .eq('user_id', user?.id)
                                 .eq('date', selectedDate)
+
+                              if (!error) {
+                                // Проверяем достижения после успешного сохранения веса
+                                checkAchievementsAfterWeightLog().catch((err) => {
+                                  logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
+                                })
+                              }
                             } else {
-                              await supabase
+                              const { error } = await supabase
                                 .from('daily_logs')
                                 .insert({
                                   user_id: user?.id,
@@ -585,6 +604,13 @@ export default function ClientDashboard() {
                                   actual_carbs: todayLog?.actual_carbs || 0,
                                   meals: todayLog?.meals || []
                                 })
+
+                              if (!error) {
+                                // Проверяем достижения после успешного сохранения веса
+                                checkAchievementsAfterWeightLog().catch((err) => {
+                                  logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
+                                })
+                              }
                             }
                             router.refresh()
                           }
@@ -602,13 +628,20 @@ export default function ClientDashboard() {
                                 .single()
 
                               if (existingLog) {
-                                await supabase
+                                const { error } = await supabase
                                   .from('daily_logs')
                                   .update({ weight: newWeight })
                                   .eq('user_id', user?.id)
                                   .eq('date', selectedDate)
+
+                                if (!error) {
+                                  // Проверяем достижения после успешного сохранения веса
+                                  checkAchievementsAfterWeightLog().catch((err) => {
+                                    logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
+                                  })
+                                }
                               } else {
-                                await supabase
+                                const { error } = await supabase
                                   .from('daily_logs')
                                   .insert({
                                     user_id: user?.id,
@@ -620,6 +653,13 @@ export default function ClientDashboard() {
                                     actual_carbs: todayLog?.actual_carbs || 0,
                                     meals: todayLog?.meals || []
                                   })
+
+                                if (!error) {
+                                  // Проверяем достижения после успешного сохранения веса
+                                  checkAchievementsAfterWeightLog().catch((err) => {
+                                    logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
+                                  })
+                                }
                               }
                               router.refresh()
                             }
@@ -641,22 +681,26 @@ export default function ClientDashboard() {
               )
             })()}
 
-            {/* Добавить прием пищи - большая кнопка */}
+            {/* Кнопка "Ввести питание" */}
             {!todayLog.is_completed ? (
               <button
-                onClick={() => setShowAddMealModal(true)}
-                className="rounded-lg border-2 border-dashed border-gray-300 p-4 hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
+                onClick={() => {
+                  router.push(`/app/nutrition?date=${selectedDate}`)
+                }}
+                className="rounded-lg border-2 border-dashed border-gray-300 p-4 text-left hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                title="Ввести питание"
               >
-                <div className="text-xs text-gray-500 mb-1">Прием пищи</div>
+                <div className="text-xs text-gray-500 mb-1">Ввести питание</div>
                 <div className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span>+ Добавить</span>
+                  <UtensilsCrossed size={18} />
+                  <span>Открыть</span>
                 </div>
               </button>
             ) : (
               <div className="rounded-lg border-2 border-dashed border-gray-200 p-4 bg-gray-50 text-left opacity-50">
-                <div className="text-xs text-gray-500 mb-1">Прием пищи</div>
+                <div className="text-xs text-gray-500 mb-1">Ввести питание</div>
                 <div className="text-lg font-bold text-gray-600">
-                  День завершен
+                  Недоступно
                 </div>
               </div>
             )}
@@ -809,6 +853,131 @@ export default function ClientDashboard() {
               )
             )}
           </div>
+
+          {/* БЛОК ЗАВЕРШЕНИЯ ДНЯ - показываем только для сегодняшней даты */}
+          {selectedDate <= new Date().toISOString().split('T')[0] && (() => {
+            // Проверяем условия для блокировки кнопки
+            const hasWeight = todayLog.weight !== null && todayLog.weight !== undefined
+            const hasMeals = Array.isArray(todayLog.meals) && todayLog.meals.length > 0
+            const hasCalories = todayLog.actual_calories > 0
+            const canComplete = hasWeight && (hasMeals || hasCalories)
+
+            return (
+              <div className="pt-4 border-t border-gray-100 mt-4">
+                {todayLog.is_completed ? (
+                  <div className="text-center py-4">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-2">
+                      <CheckCircle size={16} />
+                      День завершен
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {todayLog.completed_at && `Завершен: ${new Date(todayLog.completed_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={async () => {
+                        if (!user) return
+
+                        if (!hasWeight) {
+                          toast.error('Пожалуйста, введите вес перед завершением дня')
+                          return
+                        }
+
+                        if (!hasMeals && !hasCalories) {
+                          toast.error('Пожалуйста, добавьте хотя бы один прием пищи перед завершением дня')
+                          return
+                        }
+
+                        setCompletingDay(true)
+                        try {
+                          const { error } = await supabase
+                            .from('daily_logs')
+                            .update({
+                              is_completed: true,
+                              completed_at: new Date().toISOString()
+                            })
+                            .eq('user_id', user.id)
+                            .eq('date', selectedDate)
+
+                          if (error) {
+                            throw error
+                          }
+
+                          // Обновляем локальное состояние
+                          setTodayLog(prev => prev ? { ...prev, is_completed: true, completed_at: new Date().toISOString() } : null)
+
+                          // Показываем сообщение
+                          if (isPremium) {
+                            toast.success('День завершен! Тренер получит уведомление.')
+                          } else {
+                            // Подсчитываем стрик (дни подряд)
+                            const completedDates = weekLogs
+                              .filter(log => log.is_completed)
+                              .map(log => log.date)
+                              .sort()
+                              .reverse()
+
+                            let streak = 1
+                            const today = new Date().toISOString().split('T')[0]
+                            for (let i = 0; i < completedDates.length; i++) {
+                              const date = new Date(completedDates[i])
+                              date.setDate(date.getDate() + 1)
+                              const nextDate = date.toISOString().split('T')[0]
+                              if (nextDate === (i === 0 ? today : completedDates[i - 1])) {
+                                streak++
+                              } else {
+                                break
+                              }
+                            }
+
+                            toast.success(`День завершен! Вы молодец! 🎉 Стрик: ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}`)
+                          }
+
+                          router.refresh()
+                        } catch (error) {
+                          logger.error('Dashboard: ошибка завершения дня', error, { userId: user.id, date: selectedDate })
+                          toast.error('Ошибка при завершении дня. Попробуйте еще раз.')
+                        } finally {
+                          setCompletingDay(false)
+                        }
+                      }}
+                      disabled={completingDay || todayLog.is_completed || !canComplete}
+                      className="w-full py-4 bg-black text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {completingDay ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          Завершение...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={20} />
+                          Завершить день
+                        </>
+                      )}
+                    </button>
+                    {!canComplete && !todayLog.is_completed && (
+                      <div className="mt-3 text-center">
+                        <p className="text-sm text-gray-500">
+                          {!hasWeight && !hasMeals && !hasCalories && (
+                            <>Введите вес и добавьте хотя бы один прием пищи для завершения дня</>
+                          )}
+                          {hasWeight && !hasMeals && !hasCalories && (
+                            <>Добавьте хотя бы один прием пищи для завершения дня</>
+                          )}
+                          {!hasWeight && (hasMeals || hasCalories) && (
+                            <>Введите вес для завершения дня</>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })()}
         </section>
       )}
 
@@ -850,111 +1019,6 @@ export default function ClientDashboard() {
               </button>
             </div>
           </div>
-        </section>
-      )}
-
-      {/* КНОПКА ЗАВЕРШЕНИЯ ДНЯ */}
-      {todayLog && selectedDate <= new Date().toISOString().split('T')[0] && (
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          {todayLog.is_completed ? (
-            <div className="text-center py-4">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-2">
-                <CheckCircle size={16} />
-                День завершен
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {todayLog.completed_at && `Завершен: ${new Date(todayLog.completed_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
-              </p>
-            </div>
-          ) : (
-            <button
-              onClick={async () => {
-                if (!user) return
-
-                // Валидация: проверяем, что есть вес и хотя бы один прием пищи
-                const hasWeight = todayLog.weight !== null && todayLog.weight !== undefined
-                const hasMeals = Array.isArray(todayLog.meals) && todayLog.meals.length > 0
-                const hasCalories = todayLog.actual_calories > 0
-
-                if (!hasWeight) {
-                  toast.error('Пожалуйста, введите вес перед завершением дня')
-                  return
-                }
-
-                if (!hasMeals && !hasCalories) {
-                  toast.error('Пожалуйста, добавьте хотя бы один прием пищи перед завершением дня')
-                  return
-                }
-
-                setCompletingDay(true)
-                try {
-                  const { error } = await supabase
-                    .from('daily_logs')
-                    .update({
-                      is_completed: true,
-                      completed_at: new Date().toISOString()
-                    })
-                    .eq('user_id', user.id)
-                    .eq('date', selectedDate)
-
-                  if (error) {
-                    throw error
-                  }
-
-                  // Обновляем локальное состояние
-                  setTodayLog(prev => prev ? { ...prev, is_completed: true, completed_at: new Date().toISOString() } : null)
-
-                  // Показываем сообщение
-                  if (isPremium) {
-                    toast.success('День завершен! Тренер получит уведомление.')
-                  } else {
-                    // Подсчитываем стрик (дни подряд)
-                    const completedDates = weekLogs
-                      .filter(log => log.is_completed)
-                      .map(log => log.date)
-                      .sort()
-                      .reverse()
-
-                    let streak = 1
-                    const today = new Date().toISOString().split('T')[0]
-                    for (let i = 0; i < completedDates.length; i++) {
-                      const date = new Date(completedDates[i])
-                      date.setDate(date.getDate() + 1)
-                      const nextDate = date.toISOString().split('T')[0]
-                      if (nextDate === (i === 0 ? today : completedDates[i - 1])) {
-                        streak++
-                      } else {
-                        break
-                      }
-                    }
-
-                    toast.success(`День завершен! Вы молодец! 🎉 Стрик: ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}`)
-                  }
-
-                  router.refresh()
-                } catch (error) {
-                  logger.error('Dashboard: ошибка завершения дня', error, { userId: user.id, date: selectedDate })
-                  toast.error('Ошибка при завершении дня. Попробуйте еще раз.')
-                } finally {
-                  setCompletingDay(false)
-                }
-              }}
-              disabled={completingDay || todayLog.is_completed}
-              className="w-full py-4 bg-black text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {completingDay ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Завершение...
-                </>
-              ) : (
-                <>
-                  <CheckCircle size={20} />
-                  Завершить день
-                </>
-              )}
-            </button>
-          )}
         </section>
       )}
 
@@ -1205,17 +1269,6 @@ export default function ClientDashboard() {
       <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Быстрые действия</h2>
         <div className="space-y-3">
-          <button
-            onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
-            className="w-full p-4 bg-black text-white rounded-xl font-bold flex items-center justify-between hover:bg-gray-800 transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <UtensilsCrossed size={20} />
-              Ввести питание
-            </span>
-            <ArrowRight size={20} />
-          </button>
-
           {isPremium ? (
             <button
               onClick={() => router.push('/app/reports')}
@@ -1230,11 +1283,22 @@ export default function ClientDashboard() {
           ) : (
             <div className="w-full p-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-center">
               <p className="text-sm text-gray-600 mb-2">Отчеты и аналитика</p>
-              <p className="text-xs text-gray-500">Доступно с Premium подпиской</p>
+              <p className="text-xs text-gray-500 mb-3">Доступно с Premium подпиской</p>
+              <button
+                onClick={() => router.push('/app/settings?tab=subscription')}
+                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                Перейти на Premium
+              </button>
             </div>
           )}
         </div>
       </section>
+
+      {/* Chat Widget для Premium клиентов с назначенным тренером */}
+      {isPremium && profile?.coach_id && user && (
+        <ChatWidget userId={user.id} coachId={profile.coach_id || null} />
+      )}
     </main>
   )
 }
@@ -1386,7 +1450,7 @@ function AddMealModal({ onClose, onSave, selectedDate, userId }: AddMealModalPro
       await onSave(mealData)
     } catch (error) {
       console.error('Ошибка сохранения приема пищи:', error)
-        toast.error('Ошибка сохранения. Попробуйте еще раз.')
+      toast.error('Ошибка сохранения. Попробуйте еще раз.')
     } finally {
       setSaving(false)
     }
@@ -1608,6 +1672,7 @@ function AddMealModal({ onClose, onSave, selectedDate, userId }: AddMealModalPro
           </div>
         )}
       </div>
+
     </div>
   )
 }

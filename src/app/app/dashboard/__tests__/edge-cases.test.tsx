@@ -369,10 +369,9 @@ describe('Dashboard Edge Cases', () => {
 
   describe('State Edge Cases', () => {
     it('should handle rapid state changes', async () => {
-      render(<DashboardPage />)
+      const { rerender } = render(<DashboardPage />)
       
       // Rapidly change state
-      const { rerender } = render(<DashboardPage />)
       rerender(<DashboardPage />)
       rerender(<DashboardPage />)
 

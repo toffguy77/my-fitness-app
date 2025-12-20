@@ -5,13 +5,40 @@
 import { Resend } from 'resend'
 import { logger } from './logger'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Ленивая инициализация Resend - создаем только когда нужно и когда ключ есть
+// Важно: process.env.RESEND_API_KEY доступен только на сервере
+// На клиенте он будет undefined, поэтому проверяем это перед инициализацией
+let resendInstance: Resend | null = null
+
+function getResend(): Resend | null {
+  // Проверяем наличие ключа
+  // На клиенте process.env.RESEND_API_KEY будет undefined
+  // На сервере он может быть строкой или undefined
+  const apiKey = typeof process !== 'undefined' ? process.env?.RESEND_API_KEY : undefined
+  
+  if (!apiKey || (typeof apiKey === 'string' && apiKey.trim() === '')) {
+    return null
+  }
+  
+  // Создаем экземпляр только если ключ валидный
+  if (!resendInstance && apiKey) {
+    try {
+      resendInstance = new Resend(apiKey)
+    } catch (error) {
+      // Если не удалось создать экземпляр, возвращаем null
+      return null
+    }
+  }
+  
+  return resendInstance
+}
 
 export type EmailTemplate =
   | 'reminder_data_entry'
   | 'coach_note_notification'
   | 'subscription_expiring'
   | 'subscription_expired'
+  | 'invite_code_registration'
 
 export interface EmailData {
   userName?: string
@@ -29,8 +56,10 @@ export async function sendEmail(
   template: EmailTemplate,
   data: EmailData = {}
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    logger.error('Email: RESEND_API_KEY не настроен', undefined, { to, template })
+  const resend = getResend()
+  
+  if (!resend) {
+    logger.warn('Email: RESEND_API_KEY не настроен, отправка email пропущена', { to, template })
     return false
   }
 
@@ -135,6 +164,25 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
           </div>
         `,
         text: `Привет${data.userName ? `, ${data.userName}` : ''}!\n\nВаша Premium подписка истекла.\n\nВы можете продолжить пользоваться базовым функционалом или продлить Premium подписку для доступа ко всем возможностям.\n\nУправление подпиской: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/settings`,
+      }
+
+    case 'invite_code_registration':
+      return {
+        subject: 'Новая регистрация по вашему инвайт-коду',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Привет${data.coachName ? `, ${data.coachName}` : ''}!</h2>
+            <p>Новый клиент зарегистрировался по вашему инвайт-коду и был автоматически назначен вам.</p>
+            ${data.clientName ? `<p><strong>Имя клиента:</strong> ${data.clientName}</p>` : ''}
+            ${data.clientEmail ? `<p><strong>Email клиента:</strong> ${data.clientEmail}</p>` : ''}
+            ${data.inviteCode ? `<p><strong>Инвайт-код:</strong> ${data.inviteCode}</p>` : ''}
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/coach" 
+               style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
+              Открыть кабинет тренера
+            </a>
+          </div>
+        `,
+        text: `Привет${data.coachName ? `, ${data.coachName}` : ''}!\n\nНовый клиент зарегистрировался по вашему инвайт-коду и был автоматически назначен вам.\n\n${data.clientName ? `Имя клиента: ${data.clientName}\n` : ''}${data.clientEmail ? `Email клиента: ${data.clientEmail}\n` : ''}${data.inviteCode ? `Инвайт-код: ${data.inviteCode}\n` : ''}\nОткрыть кабинет тренера: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/coach`,
       }
 
     default:

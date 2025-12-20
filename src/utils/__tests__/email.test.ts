@@ -1,89 +1,165 @@
 /**
- * Unit тесты для email утилиты
+ * Unit Tests: Email Utilities
+ * Tests email sending and template functions
  * 
- * Примечание: Эти тесты используют моки, так как Resend API требует реальный API ключ
+ * Note: Email tests are skipped due to Resend mocking complexity.
+ * In production, these would be tested with integration tests.
  */
 
 import { sendEmail, type EmailTemplate, type EmailData } from '../email'
 
-// Мокаем Resend
+// Mock Resend
+const mockSend = jest.fn()
+
 jest.mock('resend', () => {
-  return {
-    Resend: jest.fn().mockImplementation(() => ({
-      emails: {
-        send: jest.fn().mockResolvedValue({
-          data: { id: 'test-email-id' },
-          error: null,
-        }),
-      },
-    })),
-  }
+  const MockResend = jest.fn().mockImplementation(() => ({
+    emails: {
+      send: (...args: any[]) => mockSend(...args),
+    },
+  }))
+  return { Resend: MockResend }
 })
 
-// Мокаем logger
+// Mock logger
 jest.mock('../logger', () => ({
   logger: {
-    error: jest.fn(),
+    debug: jest.fn(),
     info: jest.fn(),
     warn: jest.fn(),
-    debug: jest.fn(),
+    error: jest.fn(),
   },
 }))
 
-describe('Email Utils', () => {
+describe('Email Utilities', () => {
   beforeEach(() => {
-    // Устанавливаем переменные окружения для тестов
-    process.env.RESEND_API_KEY = 'test-api-key'
+    jest.clearAllMocks()
+    process.env.RESEND_API_KEY = 'test-key'
     process.env.RESEND_FROM_EMAIL = 'test@example.com'
-    process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com'
   })
 
   afterEach(() => {
-    jest.clearAllMocks()
+    delete process.env.RESEND_API_KEY
+    delete process.env.RESEND_FROM_EMAIL
+    delete process.env.NEXT_PUBLIC_APP_URL
   })
 
   describe('sendEmail', () => {
     it('should send email successfully', async () => {
+      mockSend.mockResolvedValue({
+        data: { id: 'email-id' },
+        error: null,
+      })
+
       const result = await sendEmail('test@example.com', 'reminder_data_entry', {
         userName: 'Test User',
       })
+
       expect(result).toBe(true)
+      expect(mockSend).toHaveBeenCalled()
     })
 
-    it('should return false when RESEND_API_KEY is not set', async () => {
+    it('should return false if API key is missing', async () => {
       delete process.env.RESEND_API_KEY
+
       const result = await sendEmail('test@example.com', 'reminder_data_entry')
+
+      expect(result).toBe(false)
+      expect(mockSend).not.toHaveBeenCalled()
+    })
+
+    it('should return false on send error', async () => {
+      mockSend.mockResolvedValue({
+        data: null,
+        error: { message: 'Send failed' },
+      })
+
+      const result = await sendEmail('test@example.com', 'reminder_data_entry')
+
       expect(result).toBe(false)
     })
 
-    it('should handle different email templates', async () => {
-      const templates: EmailTemplate[] = [
-        'reminder_data_entry',
-        'coach_note_notification',
-        'subscription_expiring',
-        'subscription_expired',
-      ]
+    it('should handle exceptions', async () => {
+      mockSend.mockRejectedValue(new Error('Network error'))
 
-      for (const template of templates) {
-        const result = await sendEmail('test@example.com', template, {
-          userName: 'Test User',
-          date: '2025-01-01',
-        })
-        expect(result).toBe(true)
-      }
+      const result = await sendEmail('test@example.com', 'reminder_data_entry')
+
+      expect(result).toBe(false)
     })
 
-    it('should include user data in email', async () => {
-      const data: EmailData = {
-        userName: 'John Doe',
-        date: '2025-01-15',
-        coachName: 'Coach Smith',
-        daysRemaining: 3,
-      }
+    it('should send reminder_data_entry email', async () => {
+      mockSend.mockResolvedValue({
+        data: { id: 'email-id' },
+        error: null,
+      })
 
-      const result = await sendEmail('test@example.com', 'coach_note_notification', data)
-      expect(result).toBe(true)
+      await sendEmail('test@example.com', 'reminder_data_entry', {
+        userName: 'Test User',
+      })
+
+      const callArgs = mockSend.mock.calls[0][0]
+      expect(callArgs.subject).toContain('Не забудьте')
+      expect(callArgs.html).toContain('Test User')
+    })
+
+    it('should send coach_note_notification email', async () => {
+      mockSend.mockResolvedValue({
+        data: { id: 'email-id' },
+        error: null,
+      })
+
+      await sendEmail('test@example.com', 'coach_note_notification', {
+        userName: 'Test User',
+        coachName: 'Coach Name',
+        date: '2024-01-15',
+        noteContent: 'Test note',
+      })
+
+      const callArgs = mockSend.mock.calls[0][0]
+      expect(callArgs.subject).toContain('заметка')
+      expect(callArgs.html).toContain('Coach Name')
+    })
+
+    it('should send subscription_expiring email', async () => {
+      mockSend.mockResolvedValue({
+        data: { id: 'email-id' },
+        error: null,
+      })
+
+      await sendEmail('test@example.com', 'subscription_expiring', {
+        userName: 'Test User',
+        daysRemaining: 3,
+      })
+
+      const callArgs = mockSend.mock.calls[0][0]
+      expect(callArgs.subject).toContain('истекает')
+      expect(callArgs.html).toContain('3')
+    })
+
+    it('should send subscription_expired email', async () => {
+      mockSend.mockResolvedValue({
+        data: { id: 'email-id' },
+        error: null,
+      })
+
+      await sendEmail('test@example.com', 'subscription_expired', {
+        userName: 'Test User',
+      })
+
+      const callArgs = mockSend.mock.calls[0][0]
+      expect(callArgs.subject).toContain('истекла')
+    })
+
+    it('should handle missing userName in templates', async () => {
+      mockSend.mockResolvedValue({
+        data: { id: 'email-id' },
+        error: null,
+      })
+
+      await sendEmail('test@example.com', 'reminder_data_entry', {})
+
+      const callArgs = mockSend.mock.calls[0][0]
+      expect(callArgs.html).not.toContain('undefined')
     })
   })
 })
-

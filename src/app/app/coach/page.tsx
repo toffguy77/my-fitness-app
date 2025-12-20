@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { LogOut, User as UserIcon, AlertCircle, CheckCircle, Circle, Filter, ArrowUpDown } from 'lucide-react'
+import { LogOut, User as UserIcon, AlertCircle, CheckCircle, Circle, Filter, ArrowUpDown, MessageSquare, UserPlus } from 'lucide-react'
+import Link from 'next/link'
 import type { UserProfile } from '@/utils/supabase/profile'
 import { getCoachClients } from '@/utils/supabase/profile'
 import { logger } from '@/utils/logger'
@@ -15,6 +16,8 @@ type ClientWithStatus = UserProfile & {
   todayCalories?: number
   targetCalories?: number
   isCompleted?: boolean
+  isExpired?: boolean
+  unreadMessagesCount?: number
 }
 
 export default function CoachDashboard() {
@@ -24,7 +27,8 @@ export default function CoachDashboard() {
   const [clients, setClients] = useState<ClientWithStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'red' | 'green' | 'yellow' | 'grey'>('all')
-  const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'status'>('status') // По умолчанию сортировка по статусу
+  const [unreadFilter, setUnreadFilter] = useState<boolean>(false) // Фильтр по непрочитанным сообщениям
+  const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'status' | 'unread'>('status') // По умолчанию сортировка по статусу
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // По умолчанию Red (1) сверху
 
   useEffect(() => {
@@ -148,9 +152,19 @@ export default function CoachDashboard() {
             const isExpired = clientProfile?.subscription_status === 'expired' || 
               (clientProfile?.subscription_end_date && new Date(clientProfile.subscription_end_date) < new Date())
 
+            // Загружаем количество непрочитанных сообщений от клиента
+            const { count: unreadCount } = await supabase
+              .from('messages')
+              .select('id', { count: 'exact', head: true })
+              .eq('sender_id', client.id)
+              .eq('receiver_id', authUser.id)
+              .is('read_at', null)
+              .eq('is_deleted', false)
+
             return {
               ...client,
               lastCheckin: lastLog?.date,
+              unreadMessagesCount: unreadCount || 0,
               todayStatus: status,
               todayCalories: todayLog?.actual_calories,
               targetCalories: target?.calories,
@@ -209,6 +223,11 @@ export default function CoachDashboard() {
       filtered = filtered.filter(client => client.todayStatus === statusFilter)
     }
 
+    // Фильтр по непрочитанным сообщениям
+    if (unreadFilter) {
+      filtered = filtered.filter(client => (client.unreadMessagesCount || 0) > 0)
+    }
+
     // Сортировка с приоритетом по статусу
     const sorted = [...filtered].sort((a, b) => {
       let comparison = 0
@@ -229,25 +248,38 @@ export default function CoachDashboard() {
           const statusOrder = { 'red': 1, 'yellow': 2, 'grey': 3, 'green': 4 }
           comparison = (statusOrder[a.todayStatus!] || 0) - (statusOrder[b.todayStatus!] || 0)
           break
+        case 'unread':
+          // Сортировка по количеству непрочитанных сообщений (больше = выше)
+          const unreadA = a.unreadMessagesCount || 0
+          const unreadB = b.unreadMessagesCount || 0
+          comparison = unreadB - unreadA // По убыванию (больше непрочитанных сверху)
+          break
       }
 
-      // Если сортировка по статусу, всегда по возрастанию (Red сверху)
+      // Если сортировка по статусу или непрочитанным, всегда по возрастанию/убыванию соответственно
       if (sortBy === 'status') {
         return comparison
+      }
+      if (sortBy === 'unread') {
+        return comparison // Уже по убыванию
       }
 
       return sortOrder === 'asc' ? comparison : -comparison
     })
 
     return sorted
-  }, [clients, statusFilter, sortBy, sortOrder])
+  }, [clients, statusFilter, unreadFilter, sortBy, sortOrder])
 
-  const handleSort = (field: 'name' | 'lastCheckin' | 'status') => {
+  const handleSort = (field: 'name' | 'lastCheckin' | 'status' | 'unread') => {
     if (sortBy === field) {
+      // Для непрочитанных всегда по убыванию, для остальных переключаем
+      if (field === 'unread') {
+        return // Не переключаем порядок для непрочитанных
+      }
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
       setSortBy(field)
-      setSortOrder('asc')
+      setSortOrder(field === 'unread' ? 'desc' : 'asc')
     }
   }
 
@@ -260,17 +292,26 @@ export default function CoachDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Кабинет тренера</h1>
           <p className="text-sm text-gray-500">Управление клиентами</p>
         </div>
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut()
-            router.push('/login')
-            router.refresh()
-          }}
-          className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
-          title="Выйти"
-        >
-          <LogOut size={16} className="text-gray-600" />
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/app/coach/invites"
+            className="px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm"
+          >
+            <UserPlus size={16} />
+            Инвайт-коды
+          </Link>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut()
+              router.push('/login')
+              router.refresh()
+            }}
+            className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
+            title="Выйти"
+          >
+            <LogOut size={16} className="text-gray-600" />
+          </button>
+        </div>
       </header>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -335,6 +376,21 @@ export default function CoachDashboard() {
               </div>
             </div>
 
+            {/* Фильтр по непрочитанным сообщениям */}
+            <div className="flex items-center gap-2">
+              <MessageSquare size={16} className="text-gray-400" />
+              <button
+                onClick={() => setUnreadFilter(!unreadFilter)}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                  unreadFilter
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                С непрочитанными
+              </button>
+            </div>
+
             {/* Сортировка */}
             <div className="flex items-center gap-2">
               <ArrowUpDown size={16} className="text-gray-400" />
@@ -365,6 +421,15 @@ export default function CoachDashboard() {
                     }`}
                 >
                   По статусу {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </button>
+                <button
+                  onClick={() => handleSort('unread')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'unread'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                >
+                  По сообщениям {sortBy === 'unread' && '↓'}
                 </button>
               </div>
             </div>
@@ -400,6 +465,11 @@ export default function CoachDashboard() {
                         {client.isExpired && (
                           <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded font-medium">
                             Expired
+                          </span>
+                        )}
+                        {client.unreadMessagesCount && client.unreadMessagesCount > 0 && (
+                          <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full font-bold min-w-[20px] text-center">
+                            {client.unreadMessagesCount > 9 ? '9+' : client.unreadMessagesCount}
                           </span>
                         )}
                         {getStatusIcon(client.todayStatus!)}

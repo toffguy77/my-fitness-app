@@ -86,9 +86,9 @@ describe('Reports Page Extended Tests', () => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
 
-    // Should show paywall or redirect
-    const paywall = screen.queryByText(/premium|премиум/i)
-    expect(paywall || screen.getByRole('main')).toBeInTheDocument()
+    // Should show paywall or redirect (may be multiple elements)
+    const paywallElements = screen.queryAllByText(/premium|премиум/i)
+    expect(paywallElements.length > 0 || screen.getByRole('main')).toBeDefined()
   })
 
   it('should handle database errors gracefully', async () => {

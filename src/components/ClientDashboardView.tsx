@@ -10,6 +10,18 @@ import { validateNutritionTargets } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
 
+type Meal = {
+  id: string
+  title: string
+  weight: number
+  calories: number
+  protein: number
+  fats: number
+  carbs: number
+  mealDate?: string
+  createdAt?: string
+}
+
 type DailyLog = {
   date: string
   actual_calories: number
@@ -17,6 +29,12 @@ type DailyLog = {
   actual_fats: number
   actual_carbs: number
   weight?: number | null
+  meals?: Meal[] | null
+  is_completed?: boolean
+  completed_at?: string | null
+  hunger_level?: number | null
+  energy_level?: number | null
+  notes?: string | null
 }
 
 type NutritionTarget = {
@@ -94,7 +112,7 @@ export default function ClientDashboardView({
           setDayType('rest')
         }
 
-        // Получаем логи за последние 7 дней
+        // Получаем логи за последние 7 дней с приемами пищи
         const today = new Date()
         const weekAgo = new Date(today)
         weekAgo.setDate(today.getDate() - 7)
@@ -344,6 +362,120 @@ export default function ClientDashboardView({
           </div>
         )}
       </section>
+
+      {/* ДЕТАЛИЗАЦИЯ ПИТАНИЯ ПО ДНЯМ */}
+      {weekLogs.length > 0 && (
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <UtensilsCrossed size={20} />
+            Питание по дням
+          </h2>
+          <div className="space-y-4">
+            {weekLogs
+              .filter(log => log.actual_calories > 0 || (Array.isArray(log.meals) && log.meals.length > 0))
+              .map((log) => {
+                const meals = Array.isArray(log.meals) ? log.meals : []
+                const date = new Date(log.date)
+                const isToday = log.date === new Date().toISOString().split('T')[0]
+                
+                return (
+                  <div key={log.date} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {isToday ? 'Сегодня' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}
+                        </h3>
+                        {log.is_completed && (
+                          <span className="text-xs text-green-600 font-medium mt-1 inline-block">
+                            ✓ День завершен
+                            {log.completed_at && ` (${new Date(log.completed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})`}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-gray-900">{log.actual_calories || 0} ккал</div>
+                        <div className="text-xs text-gray-600">
+                          Б: {log.actual_protein || 0}г • Ж: {log.actual_fats || 0}г • У: {log.actual_carbs || 0}г
+                        </div>
+                      </div>
+                    </div>
+
+                    {meals.length > 0 ? (
+                      <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
+                        <div className="text-xs font-medium text-gray-500 mb-2">Приемы пищи ({meals.length}):</div>
+                        {meals.map((meal, index) => (
+                          <div key={meal.id} className="bg-white rounded-lg p-3 border border-gray-100">
+                            <div className="flex items-start justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                                  #{index + 1}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-900">{meal.title}</span>
+                              </div>
+                              <span className="text-sm font-bold text-gray-900">{meal.calories} ккал</span>
+                            </div>
+                            <div className="text-xs text-gray-600 ml-7">
+                              Б: {meal.protein}г • Ж: {meal.fats}г • У: {meal.carbs}г
+                              {meal.weight > 0 && <span className="ml-2 text-gray-500">({meal.weight}г)</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-500 italic">
+                        Приемы пищи не детализированы
+                      </div>
+                    )}
+
+                    {(log.weight || log.hunger_level || log.energy_level || log.notes) && (
+                      <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                        {log.weight && (
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Вес:</span> {log.weight} кг
+                          </div>
+                        )}
+                        {(log.hunger_level || log.energy_level) && (
+                          <div className="flex items-center gap-4 text-sm">
+                            {log.hunger_level && (
+                              <div className="text-gray-600">
+                                <span className="font-medium">Голод:</span>{' '}
+                                <span className="font-semibold text-gray-900">
+                                  {log.hunger_level === 1 ? '😋 Совсем нет' :
+                                   log.hunger_level === 2 ? '🙂 Легкий' :
+                                   log.hunger_level === 3 ? '😊 Умеренный' :
+                                   log.hunger_level === 4 ? '😟 Сильный' :
+                                   log.hunger_level === 5 ? '🤯 Зверский' :
+                                   `${log.hunger_level}/5`}
+                                </span>
+                              </div>
+                            )}
+                            {log.energy_level && (
+                              <div className="text-gray-600">
+                                <span className="font-medium">Энергия:</span>{' '}
+                                <span className="font-semibold text-gray-900">{log.energy_level}/10</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {log.notes && log.notes.trim() && (
+                          <div className="text-sm text-gray-700 bg-white rounded-lg p-3 border border-gray-200">
+                            <div className="font-medium text-gray-900 mb-1">Комментарий:</div>
+                            <div className="text-gray-700 whitespace-pre-wrap">{log.notes}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            {weekLogs.filter(log => log.actual_calories > 0 || (Array.isArray(log.meals) && log.meals.length > 0)).length === 0 && (
+              <div className="text-center py-6 text-gray-500 text-sm">
+                Нет данных о питании за неделю
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* АКТИВНЫЕ ПРОГРАММЫ */}
       <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">

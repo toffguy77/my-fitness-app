@@ -69,3 +69,32 @@ if (typeof global !== 'undefined') {
   })
 }
 
+// Polyfill for Next.js Request/Response (needed for API route tests)
+if (typeof global.Request === 'undefined') {
+  global.Request = class Request {
+    constructor(input, init) {
+      this.input = input
+      this.init = init
+    }
+  }
+}
+
+if (typeof global.Response === 'undefined') {
+  global.Response = class Response {
+    constructor(body, init) {
+      this.body = body
+      this.init = init
+    }
+    static json(data, init) {
+      return new Response(JSON.stringify(data), { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } })
+    }
+  }
+}
+
+// Polyfill for TextEncoder/TextDecoder (needed for jspdf)
+if (typeof global.TextEncoder === 'undefined') {
+  const { TextEncoder, TextDecoder } = require('util')
+  global.TextEncoder = TextEncoder
+  global.TextDecoder = TextDecoder
+}
+

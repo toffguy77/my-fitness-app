@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
     if (!validationResult.success) {
       logger.warn('NutritionTargets: ошибка валидации Zod', {
         userId: user.id,
-        errors: validationResult.error.errors
+        errors: validationResult.error.issues
       })
       return NextResponse.json(
-        { error: 'Invalid input', details: validationResult.error.errors },
+        { error: 'Invalid input', details: validationResult.error.issues },
         { status: 400 }
       )
     }

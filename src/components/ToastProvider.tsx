@@ -35,24 +35,6 @@ export default function ToastProvider() {
             border: '1px solid #ef4444',
           },
         },
-        warning: {
-          iconTheme: {
-            primary: '#f59e0b',
-            secondary: '#fff',
-          },
-          style: {
-            border: '1px solid #f59e0b',
-          },
-        },
-        info: {
-          iconTheme: {
-            primary: '#3b82f6',
-            secondary: '#fff',
-          },
-          style: {
-            border: '1px solid #3b82f6',
-          },
-        },
       }}
     />
   )

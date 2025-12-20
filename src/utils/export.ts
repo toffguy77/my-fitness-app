@@ -136,13 +136,13 @@ export async function exportToPDF(
   let xPosition = margin
 
   doc.setFontSize(10)
-  doc.setFont(undefined, 'bold')
+  doc.setFont('helvetica', 'bold')
   headers.forEach((header, index) => {
     doc.text(header, xPosition, yPosition)
     xPosition += colWidths[index]
   })
   yPosition += lineHeight
-  doc.setFont(undefined, 'normal')
+  doc.setFont('helvetica', 'normal')
 
   // Данные таблицы
   data.forEach(log => {
@@ -152,13 +152,13 @@ export async function exportToPDF(
       
       // Повторяем заголовки
       xPosition = margin
-      doc.setFont(undefined, 'bold')
+      doc.setFont('helvetica', 'bold')
       headers.forEach((header, index) => {
         doc.text(header, xPosition, yPosition)
         xPosition += colWidths[index]
       })
       yPosition += lineHeight
-      doc.setFont(undefined, 'normal')
+      doc.setFont('helvetica', 'normal')
     }
 
     xPosition = margin

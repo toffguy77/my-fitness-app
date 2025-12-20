@@ -304,7 +304,7 @@ describe('Dashboard Interactive Elements', () => {
 
     it('should handle network errors gracefully', async () => {
       mockGetUser.mockResolvedValue({
-        data: null,
+        data: { user: null },
         error: { message: 'Network error' },
       })
 

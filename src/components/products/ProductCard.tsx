@@ -1,0 +1,127 @@
+'use client'
+
+import { useState } from 'react'
+import { Check } from 'lucide-react'
+import type { Product } from '@/types/products'
+
+interface ProductCardProps {
+  product: Product
+  onSelect: () => void
+  selectedWeight?: number
+  onWeightChange?: (weight: number) => void
+  showFavorite?: boolean
+  isFavorite?: boolean
+  onFavorite?: () => void
+}
+
+export default function ProductCard({
+  product,
+  onSelect,
+  selectedWeight = 100,
+  onWeightChange,
+  showFavorite = false,
+  isFavorite = false,
+  onFavorite,
+}: ProductCardProps) {
+  const [weight, setWeight] = useState(selectedWeight)
+
+  const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newWeight = parseInt(e.target.value) || 100
+    setWeight(newWeight)
+    onWeightChange?.(newWeight)
+  }
+
+  // Пересчет КБЖУ на основе веса
+  const calculateMacros = (baseValue: number, weight: number) => {
+    return Math.round((baseValue * weight) / 100)
+  }
+
+  const calories = calculateMacros(product.calories_per_100g, weight)
+  const protein = calculateMacros(product.protein_per_100g, weight)
+  const fats = calculateMacros(product.fats_per_100g, weight)
+  const carbs = calculateMacros(product.carbs_per_100g, weight)
+
+  return (
+    <div className="p-3 hover:bg-gray-50 transition-colors">
+      <div className="flex items-start gap-3">
+        {product.image_url && (
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="w-16 h-16 object-cover rounded-lg"
+            onError={(e) => {
+              // Скрываем изображение при ошибке загрузки
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        )}
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1">
+              <h4 className="font-medium text-gray-900 text-sm truncate">{product.name}</h4>
+              {product.brand && (
+                <p className="text-xs text-gray-500 truncate">{product.brand}</p>
+              )}
+            </div>
+            {showFavorite && onFavorite && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onFavorite()
+                }}
+                className={`p-1 ${isFavorite ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-500 transition-colors`}
+                title={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+              >
+                ⭐
+              </button>
+            )}
+          </div>
+
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600">Вес (г):</label>
+              <input
+                type="number"
+                value={weight}
+                onChange={handleWeightChange}
+                min="1"
+                max="10000"
+                className="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-black focus:ring-1 focus:ring-black outline-none"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 text-xs">
+              <div>
+                <span className="text-gray-500">К:</span>
+                <span className="ml-1 font-medium">{calories}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Б:</span>
+                <span className="ml-1 font-medium">{protein}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Ж:</span>
+                <span className="ml-1 font-medium">{fats}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">У:</span>
+                <span className="ml-1 font-medium">{carbs}</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={onSelect}
+            className="mt-2 w-full px-3 py-1.5 bg-black text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-1"
+          >
+            <Check size={14} />
+            Выбрать
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+

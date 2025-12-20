@@ -37,7 +37,8 @@ cp env.example .env.local
 ```
 
 4. Заполните переменные окружения:
-```
+```bash
+# Supabase (обязательно)
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
@@ -45,6 +46,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 RESEND_API_KEY=re_xxxxx
 RESEND_FROM_EMAIL=Fitness App <noreply@yourdomain.com>
 NEXT_PUBLIC_APP_URL=http://localhost:3069
+
+# OCR Configuration (опционально, для улучшения точности распознавания)
+# Без этого ключа будет работать только Tesseract.js (клиентская обработка)
+NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1-xxxxx
 ```
 
 5. Запустите dev сервер:

@@ -180,9 +180,6 @@ describe('Nutrition Edge Cases', () => {
 
   describe('Date Edge Cases', () => {
     it('should handle date parameter in URL', async () => {
-      const { useSearchParams } = require('next/navigation')
-      useSearchParams.mockReturnValue(new URLSearchParams('?date=2024-01-15'))
-
       render(<NutritionPage />)
       
       await waitFor(() => {
@@ -193,9 +190,6 @@ describe('Nutrition Edge Cases', () => {
     })
 
     it('should handle invalid date parameter', async () => {
-      const { useSearchParams } = require('next/navigation')
-      useSearchParams.mockReturnValue(new URLSearchParams('?date=invalid-date'))
-
       render(<NutritionPage />)
       
       await waitFor(() => {

@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { ArrowLeft, MessageSquare, Send } from 'lucide-react'
 import ClientDashboardView from '@/components/ClientDashboardView'
+import ChatWindow from '@/components/chat/ChatWindow'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
 
@@ -21,6 +22,9 @@ export default function ClientViewPage() {
   const [coachNote, setCoachNote] = useState<string>('')
   const [existingNote, setExistingNote] = useState<{ content: string; date: string } | null>(null)
   const [savingNote, setSavingNote] = useState(false)
+  const [coachUserId, setCoachUserId] = useState<string | null>(null)
+  const [showChatTab, setShowChatTab] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,7 +49,29 @@ export default function ClientViewPage() {
         }
 
         setClientName(clientProfile.full_name || clientProfile.email || 'Клиент')
+        setCoachUserId(user.id)
         logger.debug('Coach: данные клиента загружены', { coachId: user.id, clientId })
+        
+        // Загружаем количество непрочитанных сообщений от клиента
+        const { count: unreadMessagesCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('sender_id', clientId)
+          .eq('receiver_id', user.id)
+          .is('read_at', null)
+          .eq('is_deleted', false)
+        
+        setUnreadCount(unreadMessagesCount || 0)
+        
+        // Если есть непрочитанные сообщения, открываем чат по умолчанию
+        // Но тренер всегда может открыть чат вручную, даже если нет сообщений
+        if ((unreadMessagesCount || 0) > 0) {
+          logger.debug('Coach: открываем чат автоматически из-за непрочитанных сообщений', { 
+            unreadCount: unreadMessagesCount,
+            clientId 
+          })
+          setShowChatTab(true)
+        }
         
         // Загружаем существующую заметку за выбранную дату
         const { data: noteData } = await supabase
@@ -71,15 +97,57 @@ export default function ClientViewPage() {
     fetchData()
   }, [router, supabase, clientId, selectedDate])
 
+  // Подписка на новые сообщения для обновления счетчика
+  useEffect(() => {
+    if (!coachUserId || !clientId) return
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!supabaseUrl) return
+
+    const channel = supabase
+      .channel(`unread-messages-${coachUserId}-${clientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `sender_id=eq.${clientId} AND receiver_id=eq.${coachUserId}`,
+        },
+        () => {
+          // Обновляем счетчик при новом сообщении
+          supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('sender_id', clientId)
+            .eq('receiver_id', coachUserId)
+            .is('read_at', null)
+            .eq('is_deleted', false)
+            .then(({ count }) => {
+              setUnreadCount(count || 0)
+              // Если есть новые непрочитанные сообщения, открываем чат
+              if ((count || 0) > 0 && !showChatTab) {
+                setShowChatTab(true)
+              }
+            })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [coachUserId, clientId, supabase, showChatTab])
+
   const handleSaveNote = async () => {
-    if (!coachNote.trim()) {
+    if (!coachNote || !coachNote.trim()) {
       toast.error('Введите текст заметки')
       return
     }
 
     // Сохраняем текущее состояние для отката при ошибке (оптимистичное обновление)
     const previousNote = existingNote ? { ...existingNote } : null
-    const noteContent = coachNote.trim()
+    const noteContent = (coachNote || '').trim()
 
     // Оптимистичное обновление: сразу показываем сохраненную заметку
     setExistingNote({ content: noteContent, date: selectedDate })
@@ -148,7 +216,7 @@ export default function ClientViewPage() {
                   template: 'coach_note_notification',
                   data: {
                     date: selectedDate,
-                    noteContent: coachNote.trim(),
+                    noteContent: (coachNote || '').trim(),
                     coachName: coachProfile?.full_name || undefined,
                   },
                 }),
@@ -170,7 +238,7 @@ export default function ClientViewPage() {
               notification_type: 'coach_note',
               content: {
                 date: selectedDate,
-                noteContent: coachNote.trim(),
+                noteContent: (coachNote || '').trim(),
                 coachId: user.id
               }
             })
@@ -229,19 +297,53 @@ export default function ClientViewPage() {
         />
       </div>
 
-      {/* Feedback Input для тренера */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <MessageSquare size={20} className="text-gray-600" />
-          <h2 className="text-lg font-bold text-gray-900">Заметка для клиента</h2>
+      {/* Tabs: Заметки и Чат */}
+      <div className="bg-white rounded-xl border border-gray-100 mb-6 overflow-hidden">
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setShowChatTab(false)}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              !showChatTab
+                ? 'bg-black text-white'
+                : 'bg-white text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Заметка
+          </button>
+          <button
+            onClick={() => setShowChatTab(true)}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
+              showChatTab
+                ? 'bg-black text-white'
+                : 'bg-white text-gray-600 hover:text-gray-900'
+            }`}
+            title={unreadCount > 0 ? `${unreadCount} непрочитанных сообщений` : 'Открыть чат с клиентом'}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <MessageSquare size={16} />
+              Чат
+            </span>
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
         </div>
+
+        {!showChatTab ? (
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquare size={20} className="text-gray-600" />
+              <h2 className="text-lg font-bold text-gray-900">Заметка для клиента</h2>
+            </div>
         {existingNote && (
           <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
             Существующая заметка за {new Date(existingNote.date).toLocaleDateString('ru-RU')}
           </div>
         )}
         <textarea
-          value={coachNote}
+          value={coachNote || ''}
           onChange={(e) => setCoachNote(e.target.value)}
           placeholder="Напишите заметку для клиента на эту дату..."
           rows={4}
@@ -249,13 +351,42 @@ export default function ClientViewPage() {
         />
         <button
           onClick={handleSaveNote}
-          disabled={savingNote || !coachNote.trim()}
+          disabled={savingNote || !coachNote || !coachNote.trim()}
           className="mt-3 w-full py-2 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Send size={16} />
           {savingNote ? 'Сохранение...' : 'Сохранить заметку'}
         </button>
-      </section>
+          </div>
+        ) : (
+          <div className="p-6">
+            {coachUserId ? (
+              <ChatWindow
+                userId={coachUserId}
+                otherUserId={clientId}
+                otherUserName={clientName}
+                onMessageRead={() => {
+                  // Обновляем счетчик непрочитанных при прочтении сообщений
+                  supabase
+                    .from('messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('sender_id', clientId)
+                    .eq('receiver_id', coachUserId)
+                    .is('read_at', null)
+                    .eq('is_deleted', false)
+                    .then(({ count }) => {
+                      setUnreadCount(count || 0)
+                    })
+                }}
+              />
+            ) : (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                Загрузка чата...
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <ClientDashboardView
         clientId={clientId}

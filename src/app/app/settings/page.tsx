@@ -1,13 +1,14 @@
 // Страница настроек профиля
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { LogOut, Settings, User as UserIcon, Shield, Mail, Phone, Lock, ArrowLeft, Target, Calculator } from 'lucide-react'
 import { getUserProfile, hasActiveSubscription, type UserProfile } from '@/utils/supabase/profile'
 import NotificationSettings from '@/components/NotificationSettings'
+import UserProductsManager from '@/components/products/UserProductsManager'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
@@ -15,6 +16,8 @@ import toast from 'react-hot-toast'
 export default function SettingsPage() {
     const supabase = createClient()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const subscriptionSectionRef = useRef<HTMLDivElement>(null)
     const [user, setUser] = useState<User | null>(null)
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
@@ -37,9 +40,22 @@ export default function SettingsPage() {
     // Данные тренера (для Premium)
     const [coach, setCoach] = useState<UserProfile | null>(null)
 
+    // Статус подписки
+    const [subscriptionInfo, setSubscriptionInfo] = useState<{ status: string; isExpired: boolean; endDate: string | null } | null>(null)
+
     // Цели питания
     const [targets, setTargets] = useState<{ rest: { calories: number; protein: number; fats: number; carbs: number } | null; training: { calories: number; protein: number; fats: number; carbs: number } | null }>({ rest: null, training: null })
     const [recalculating, setRecalculating] = useState(false)
+
+    // Автоматический скролл к секции подписки при переходе с tab=subscription
+    useEffect(() => {
+        const tab = searchParams.get('tab')
+        if (tab === 'subscription' && subscriptionSectionRef.current && !loading) {
+            setTimeout(() => {
+                subscriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }, 100)
+        }
+    }, [searchParams, loading])
 
     useEffect(() => {
         const fetchData = async () => {
@@ -82,16 +98,16 @@ export default function SettingsPage() {
                     }
                 }
 
-        // Проверяем статус подписки
-        const subInfo = await checkSubscriptionStatus(user.id)
-        setSubscriptionInfo({
-          status: subInfo.status,
-          isExpired: subInfo.isExpired,
-          endDate: subInfo.endDate
-        })
+                // Проверяем статус подписки
+                const subInfo = await checkSubscriptionStatus(user.id)
+                setSubscriptionInfo({
+                    status: subInfo.status,
+                    isExpired: subInfo.isExpired,
+                    endDate: subInfo.endDate
+                })
 
-        // Загружаем текущие цели питания
-        const [restResult, trainingResult] = await Promise.all([
+                // Загружаем текущие цели питания
+                const [restResult, trainingResult] = await Promise.all([
                     supabase
                         .from('nutrition_targets')
                         .select('calories, protein, fats, carbs')
@@ -314,54 +330,53 @@ export default function SettingsPage() {
 
             {/* SUBSCRIPTION SECTION (только для клиентов) */}
             {profile?.role === 'client' && (
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <Shield size={20} className="text-gray-600" />
-                    <h2 className="text-lg font-bold text-gray-900">Подписка</h2>
-                </div>
-
-                <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Тариф:</span>
-                        <span className={`text-sm font-semibold ${isPremium ? 'text-green-600' : 'text-gray-600'}`}>
-                            {isPremium ? 'Premium' : 'Free'}
-                        </span>
+                <section ref={subscriptionSectionRef} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                    <div className="flex items-center gap-3 mb-4">
+                        <Shield size={20} className="text-gray-600" />
+                        <h2 className="text-lg font-bold text-gray-900">Подписка</h2>
                     </div>
 
-                    {profile.subscription_start_date && (
+                    <div className="space-y-3">
                         <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Начало подписки:</span>
-                            <span className="text-sm text-gray-900">
-                                {new Date(profile.subscription_start_date).toLocaleDateString('ru-RU')}
+                            <span className="text-sm text-gray-600">Тариф:</span>
+                            <span className={`text-sm font-semibold ${isPremium ? 'text-green-600' : 'text-gray-600'}`}>
+                                {isPremium ? 'Premium' : 'Free'}
                             </span>
                         </div>
-                    )}
 
-                    {profile.subscription_end_date && (
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Окончание подписки:</span>
-                            <span className={`text-sm font-semibold ${
-                                subscriptionInfo?.isExpired ? 'text-red-600' : 'text-gray-900'
-                            }`}>
-                                {new Date(profile.subscription_end_date).toLocaleDateString('ru-RU')}
-                                {subscriptionInfo?.isExpired && ' (Истекла)'}
-                            </span>
-                        </div>
-                    )}
+                        {profile.subscription_start_date && (
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Начало подписки:</span>
+                                <span className="text-sm text-gray-900">
+                                    {new Date(profile.subscription_start_date).toLocaleDateString('ru-RU')}
+                                </span>
+                            </div>
+                        )}
 
-                    {subscriptionInfo?.isExpired && (
-                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-                            Подписка истекла. Доступ к Premium функциям ограничен.
-                        </div>
-                    )}
+                        {profile.subscription_end_date && (
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">Окончание подписки:</span>
+                                <span className={`text-sm font-semibold ${subscriptionInfo?.isExpired ? 'text-red-600' : 'text-gray-900'
+                                    }`}>
+                                    {new Date(profile.subscription_end_date).toLocaleDateString('ru-RU')}
+                                    {subscriptionInfo?.isExpired && ' (Истекла)'}
+                                </span>
+                            </div>
+                        )}
 
-                    {!isPremium && !subscriptionInfo?.isExpired && (
-                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                            Для активации Premium подписки обратитесь к администратору или вашему тренеру.
-                        </div>
-                    )}
-                </div>
-            </section>
+                        {subscriptionInfo?.isExpired && (
+                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                                Подписка истекла. Доступ к Premium функциям ограничен.
+                            </div>
+                        )}
+
+                        {!isPremium && !subscriptionInfo?.isExpired && (
+                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                                Для активации Premium подписки обратитесь к администратору или вашему тренеру.
+                            </div>
+                        )}
+                    </div>
+                </section>
             )}
 
             {/* COACH SECTION (Premium only) */}
@@ -466,21 +481,21 @@ export default function SettingsPage() {
                 {targets.rest && targets.training ? (
                     <div className="space-y-4">
                         <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                            <div className="text-sm font-semibold text-gray-700 mb-2">День отдыха</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>Калории: <span className="font-bold">{targets.rest.calories}</span></div>
-                                <div>Белки: <span className="font-bold">{targets.rest.protein}г</span></div>
-                                <div>Жиры: <span className="font-bold">{targets.rest.fats}г</span></div>
-                                <div>Углеводы: <span className="font-bold">{targets.rest.carbs}г</span></div>
+                            <div className="text-sm font-semibold text-gray-900 mb-2">День отдыха</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-900">
+                                <div><span className="text-gray-700">Калории:</span> <span className="font-bold text-gray-900">{targets.rest.calories}</span></div>
+                                <div><span className="text-gray-700">Белки:</span> <span className="font-bold text-gray-900">{targets.rest.protein}г</span></div>
+                                <div><span className="text-gray-700">Жиры:</span> <span className="font-bold text-gray-900">{targets.rest.fats}г</span></div>
+                                <div><span className="text-gray-700">Углеводы:</span> <span className="font-bold text-gray-900">{targets.rest.carbs}г</span></div>
                             </div>
                         </div>
                         <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                            <div className="text-sm font-semibold text-gray-700 mb-2">Тренировочный день</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>Калории: <span className="font-bold">{targets.training.calories}</span></div>
-                                <div>Белки: <span className="font-bold">{targets.training.protein}г</span></div>
-                                <div>Жиры: <span className="font-bold">{targets.training.fats}г</span></div>
-                                <div>Углеводы: <span className="font-bold">{targets.training.carbs}г</span></div>
+                            <div className="text-sm font-semibold text-gray-900 mb-2">Тренировочный день</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-900">
+                                <div><span className="text-gray-700">Калории:</span> <span className="font-bold text-gray-900">{targets.training.calories}</span></div>
+                                <div><span className="text-gray-700">Белки:</span> <span className="font-bold text-gray-900">{targets.training.protein}г</span></div>
+                                <div><span className="text-gray-700">Жиры:</span> <span className="font-bold text-gray-900">{targets.training.fats}г</span></div>
+                                <div><span className="text-gray-700">Углеводы:</span> <span className="font-bold text-gray-900">{targets.training.carbs}г</span></div>
                             </div>
                         </div>
                         <button
@@ -619,6 +634,18 @@ export default function SettingsPage() {
                         Цели не найдены. Пройдите onboarding для их создания.
                     </div>
                 )}
+            </section>
+
+            {/* USER PRODUCTS SECTION */}
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <Target size={20} className="text-gray-600" />
+                    <h2 className="text-lg font-bold text-gray-900">Мои продукты</h2>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                    Управляйте своими пользовательскими продуктами. Они будут доступны в поиске при вводе питания.
+                </p>
+                {user && <UserProductsManager userId={user.id} />}
             </section>
 
             {/* LOGOUT SECTION */}

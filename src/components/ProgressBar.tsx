@@ -41,7 +41,7 @@ export default function ProgressBar({
       <div className="flex justify-between items-center text-sm">
         <span className="font-medium text-gray-700">{label}</span>
         <span className={`font-semibold ${textColor}`}>
-          {current.toFixed(0)} / {target.toFixed(0)} {unit}
+          {(current ?? 0).toFixed(0)} / {(target ?? 0).toFixed(0)} {unit}
           {showPercentage && ` (${percentage.toFixed(0)}%)`}
         </span>
       </div>
