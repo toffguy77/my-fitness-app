@@ -93,6 +93,7 @@ if (typeof global.Response === 'undefined') {
 
 // Polyfill for TextEncoder/TextDecoder (needed for jspdf)
 if (typeof global.TextEncoder === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { TextEncoder, TextDecoder } = require('util')
   global.TextEncoder = TextEncoder
   global.TextDecoder = TextDecoder

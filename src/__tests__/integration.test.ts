@@ -30,7 +30,7 @@ describe('Integration Tests', () => {
 
       ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
 
-      const mockUser = { id: 'user-123' } as any
+      const mockUser = { id: 'user-123' } as { id: string }
 
       // This would normally be called in a component
       const profile = await getUserProfile(mockUser)
@@ -164,7 +164,7 @@ describe('Integration Tests', () => {
 
       ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
 
-      const mockUser = { id: 'user-123' } as any
+      const mockUser = { id: 'user-123' } as { id: string }
       const profile = await getUserProfile(mockUser)
       const isPremium = hasActiveSubscription(profile)
 

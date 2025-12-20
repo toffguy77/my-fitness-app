@@ -18,8 +18,10 @@ export function generateInviteCode(): string {
 /**
  * Создает уникальный инвайт-код, проверяя его в базе данных
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 export async function createUniqueInviteCode(
-    supabase: any,
+    supabase: SupabaseClient,
     maxAttempts: number = 10
 ): Promise<string> {
     let code = generateInviteCode()

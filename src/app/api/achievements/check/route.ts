@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { triggerType, triggerData }: { triggerType: AchievementTriggerType; triggerData?: Record<string, any> } = body
+    const { triggerType, triggerData }: { triggerType: AchievementTriggerType; triggerData?: Record<string, unknown> } = body
 
     if (!triggerType) {
       return NextResponse.json({ error: 'triggerType обязателен' }, { status: 400 })

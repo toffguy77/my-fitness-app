@@ -82,7 +82,7 @@ test.describe('Performance Tests', () => {
     
     // Check memory usage (basic check)
     const memory = await page.evaluate(() => {
-      // @ts-ignore
+      // @ts-expect-error - performance.memory is not in standard types
       return performance.memory ? performance.memory.usedJSHeapSize : 0
     })
     

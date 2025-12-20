@@ -14,6 +14,7 @@ const baseConfig: NextConfig = {
 // Only apply PWA plugin if not in test environment
 let nextConfig: NextConfig;
 if (!isTest) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const withPWA = require('next-pwa')({
     dest: 'public',
     register: true,

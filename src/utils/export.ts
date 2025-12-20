@@ -53,7 +53,7 @@ export function exportToCSV(data: DailyLog[], filename?: string): void {
 /**
  * Экспорт данных в JSON формат
  */
-export function exportToJSON(data: any, filename?: string): void {
+export function exportToJSON(data: unknown, filename?: string): void {
   if (!data || (Array.isArray(data) && data.length === 0)) {
     throw new Error('Нет данных для экспорта')
   }

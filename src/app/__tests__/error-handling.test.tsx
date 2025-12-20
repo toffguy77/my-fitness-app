@@ -130,14 +130,14 @@ describe('Error Handling', () => {
     })
 
     it('should handle empty arrays', () => {
-      const data: any[] = []
+      const data: unknown[] = []
       const hasData = Array.isArray(data) && data.length > 0
       expect(hasData).toBe(false)
     })
 
     it('should handle malformed JSON', () => {
       const jsonString = '{ invalid json }'
-      let parsed: any = null
+      let parsed: unknown = null
       try {
         parsed = JSON.parse(jsonString)
       } catch (e) {
@@ -219,7 +219,7 @@ describe('Error Handling', () => {
     })
 
     it('should handle missing error messages', () => {
-      const error = { message: null as any, code: 'UNKNOWN' }
+      const error = { message: null as string | null, code: 'UNKNOWN' }
       const message = error.message || 'Unknown error occurred'
       expect(message).toBe('Unknown error occurred')
     })

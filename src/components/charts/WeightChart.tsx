@@ -19,7 +19,7 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
     if (!data || data.length === 0) return []
     
     const now = new Date()
-    let cutoffDate = new Date()
+    const cutoffDate = new Date()
     
     switch (period) {
       case '7days':

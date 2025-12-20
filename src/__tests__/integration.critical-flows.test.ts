@@ -72,7 +72,7 @@ describe('Critical User Flows Integration Tests', () => {
       }
 
       // 2. Add meals
-      const addMeals = (meals: any[]) => {
+      const addMeals = (meals: Array<{ calories?: number; protein?: number; fats?: number; carbs?: number }>) => {
         return meals.reduce(
           (acc, meal) => ({
             calories: acc.calories + (meal.calories || 0),
@@ -85,7 +85,7 @@ describe('Critical User Flows Integration Tests', () => {
       }
 
       // 3. Save daily log
-      const saveDailyLog = async (userId: string, date: string, log: any) => {
+      const saveDailyLog = async (userId: string, date: string, log: Record<string, unknown>) => {
         return { success: true, data: { ...log, user_id: userId, date } }
       }
 
@@ -124,7 +124,11 @@ describe('Critical User Flows Integration Tests', () => {
       }
 
       // 2. Calculate client status
-      const calculateStatus = (todayLog: any, target: any, hoursSinceLastCheckin: number | null) => {
+      const calculateStatus = (
+        todayLog: { is_completed?: boolean; actual_calories?: number } | null,
+        target: { calories?: number } | null,
+        hoursSinceLastCheckin: number | null
+      ) => {
         if (todayLog && target) {
           const isCompleted = todayLog.is_completed === true
           const diff = target.calories > 0
@@ -227,7 +231,7 @@ describe('Critical User Flows Integration Tests', () => {
   describe('Premium Features Flow', () => {
     it('should handle premium subscription and reports access', async () => {
       // 1. Check subscription status
-      const checkSubscription = (profile: any) => {
+      const checkSubscription = (profile: { subscription_status?: string; subscription_tier?: string }) => {
         return profile.subscription_status === 'active' && profile.subscription_tier === 'premium'
       }
 

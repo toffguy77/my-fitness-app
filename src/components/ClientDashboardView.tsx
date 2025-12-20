@@ -216,7 +216,7 @@ export default function ClientDashboardView({
 
       if (!response.ok) {
         const errorMessage = data.details
-          ? `Ошибка валидации: ${Array.isArray(data.details) ? data.details.map((d: any) => d.message).join(', ') : data.details}`
+          ? `Ошибка валидации: ${Array.isArray(data.details) ? data.details.map((d: { message?: string }) => d.message).join(', ') : data.details}`
           : data.error || 'Ошибка сохранения'
         logger.error('ClientDashboardView: ошибка сохранения целей', {
           clientId,

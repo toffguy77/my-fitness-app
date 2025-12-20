@@ -4,14 +4,14 @@
  * Note: These tests mock Next.js server environment
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { middleware } from '../middleware'
 
 // Mock Next.js server modules
 jest.mock('next/server', () => {
   // Use global Response if available, otherwise create a mock
   const GlobalResponse = typeof Response !== 'undefined' ? Response : class MockResponse {
-    constructor(public body?: any, public init?: any) {}
+    constructor(public body?: unknown, public init?: Record<string, unknown>) {}
     status = 200
     headers = new Map()
   }
@@ -78,6 +78,7 @@ describe('Middleware Integration Tests', () => {
       single: jest.fn(),
     }))
 
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { createServerClient } = require('@supabase/ssr')
     createServerClient.mockReturnValue({
       auth: { getUser: mockGetUser },
@@ -109,7 +110,7 @@ describe('Middleware Integration Tests', () => {
       
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
-      const status = result.status || (result as any).statusCode || 200
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
       expect(status).toBe(200)
     })
 
@@ -121,7 +122,7 @@ describe('Middleware Integration Tests', () => {
       
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
-      const status = result.status || (result as any).statusCode || 200
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
       expect(status).toBe(200)
     })
 
@@ -133,7 +134,7 @@ describe('Middleware Integration Tests', () => {
       
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
-      const status = result.status || (result as any).statusCode || 200
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
       expect(status).toBe(200)
     })
   })
@@ -149,7 +150,7 @@ describe('Middleware Integration Tests', () => {
       expect(result).toBeDefined()
       // Middleware should redirect unauthenticated users
       // Mock may not work perfectly, so just verify result exists and is a Response
-      const status = result?.status || (result as any)?.statusCode || 0
+      const status = result?.status || (result as Response & { statusCode?: number })?.statusCode || 0
       // Accept redirect (307, 302, 301) or next (200) as valid responses
       // Also accept undefined if mock doesn't work perfectly
       expect(status === 307 || status === 302 || status === 301 || status === 200 || status === 0).toBe(true)
@@ -165,7 +166,7 @@ describe('Middleware Integration Tests', () => {
       expect(result).toBeDefined()
       // Middleware should redirect unauthenticated users from onboarding
       // Check status - could be 307 (redirect) or 200 (next) depending on mock implementation
-      const status = result?.status || (result as any)?.statusCode || 200
+      const status = result?.status || (result as Response & { statusCode?: number })?.statusCode || 200
       // Accept either redirect (307) or next (200) as valid responses
       // Also accept undefined if mock doesn't set status properly
       expect(status === 307 || status === 200 || status === undefined).toBe(true)
@@ -189,7 +190,7 @@ describe('Middleware Integration Tests', () => {
       
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
-      const status = result.status || (result as any).statusCode || 200
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
       expect(status).toBe(200)
     })
 
@@ -210,7 +211,7 @@ describe('Middleware Integration Tests', () => {
       // Should redirect non-coach users
       expect(result).toBeDefined()
       // Middleware should redirect non-coach users
-      const status = result.status || (result as any).statusCode
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode
       if (status === 307) {
         expect(status).toBe(307)
       } else {
@@ -234,7 +235,7 @@ describe('Middleware Integration Tests', () => {
       
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
-      const status = result.status || (result as any).statusCode || 200
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
       expect(status).toBe(200)
     })
 
@@ -280,7 +281,7 @@ describe('Middleware Integration Tests', () => {
       
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
-      const status = result.status || (result as any).statusCode || 200
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
       expect(status).toBe(200)
     })
 
@@ -305,7 +306,7 @@ describe('Middleware Integration Tests', () => {
       // NextResponse.redirect() returns a Response with Location header
       expect(result).toBeDefined()
       // Middleware should redirect free users from reports
-      const status = result.status || (result as any).statusCode
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode
       if (status === 307) {
         expect(status).toBe(307)
       } else {
@@ -327,7 +328,7 @@ describe('Middleware Integration Tests', () => {
       // Should redirect on auth error
       expect(result).toBeDefined()
       // Middleware should redirect on auth error
-      const status = result.status || (result as any).statusCode
+      const status = result.status || (result as Response & { statusCode?: number }).statusCode
       if (status === 307) {
         expect(status).toBe(307)
       } else {

@@ -75,7 +75,7 @@ export async function searchProductsInDB(query: string, limit: number = 20): Pro
             return []
         }
 
-        return (data || []).map((p: any) => ({
+        return (data || []).map((p: Record<string, unknown>) => ({
             id: p.id,
             name: p.name,
             brand: p.brand,
