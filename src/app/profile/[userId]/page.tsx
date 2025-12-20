@@ -69,7 +69,12 @@ export default function PublicProfilePage() {
               code,
               name,
               description,
-              icon
+              category,
+              icon_name,
+              condition_type,
+              condition_value,
+              is_active,
+              created_at
             )
           `)
           .eq('user_id', userId)
@@ -84,11 +89,15 @@ export default function PublicProfilePage() {
             code: item.achievements.code,
             name: item.achievements.name,
             description: item.achievements.description,
-            icon_name: item.achievements.icon || 'trophy',
-            isUnlocked: item.progress === 100,
-            progress: item.progress || 0,
+            category: item.achievements.category || 'nutrition',
+            icon_name: item.achievements.icon_name || 'trophy',
             condition_type: item.achievements.condition_type || '',
             condition_value: item.achievements.condition_value || 0,
+            is_active: item.achievements.is_active !== undefined ? item.achievements.is_active : true,
+            created_at: item.achievements.created_at || new Date().toISOString(),
+            isUnlocked: item.progress === 100,
+            unlockedAt: item.unlocked_at || undefined,
+            progress: item.progress || 0,
           }))
           setAchievements(formattedAchievements)
         }
@@ -200,9 +209,9 @@ export default function PublicProfilePage() {
                 {achievement.description && (
                   <p className="text-xs text-gray-500 mt-1">{achievement.description}</p>
                 )}
-                {achievement.unlocked_at && (
+                {achievement.unlockedAt && (
                   <p className="text-xs text-gray-400 mt-2">
-                    {new Date(achievement.unlocked_at).toLocaleDateString('ru-RU')}
+                    {new Date(achievement.unlockedAt).toLocaleDateString('ru-RU')}
                   </p>
                 )}
               </div>
