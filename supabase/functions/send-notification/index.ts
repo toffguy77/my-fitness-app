@@ -16,7 +16,7 @@ const APP_URL = Deno.env.get('NEXT_PUBLIC_APP_URL') || 'https://app.fitnessapp.c
 interface RequestBody {
   userId: string
   template: 'reminder_data_entry' | 'coach_note_notification' | 'subscription_expiring' | 'subscription_expired'
-  data?: Record<string, any>
+  data?: Record<string, unknown>
 }
 
 serve(async (req) => {
@@ -117,7 +117,7 @@ serve(async (req) => {
   }
 })
 
-function getEmailSubject(template: string, data: Record<string, any>): string {
+function getEmailSubject(template: string, data: Record<string, unknown>): string {
   switch (template) {
     case 'reminder_data_entry':
       return 'Не забудьте внести данные о питании'
@@ -132,7 +132,7 @@ function getEmailSubject(template: string, data: Record<string, any>): string {
   }
 }
 
-function getEmailHtml(template: string, data: Record<string, any>): string {
+function getEmailHtml(template: string, data: Record<string, unknown>): string {
   const userName = data.userName ? `, ${data.userName}` : ''
   
   switch (template) {
@@ -191,7 +191,7 @@ function getEmailHtml(template: string, data: Record<string, any>): string {
   }
 }
 
-function getEmailText(template: string, data: Record<string, any>): string {
+function getEmailText(template: string, data: Record<string, unknown>): string {
   const userName = data.userName ? `, ${data.userName}` : ''
   
   switch (template) {

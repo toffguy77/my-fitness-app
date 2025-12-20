@@ -16,7 +16,7 @@ export function useAchievements() {
    */
   const checkAndShowAchievements = async (
     triggerType: 'streak_days' | 'total_meals' | 'ocr_used' | 'weight_logged' | 'days_active',
-    triggerData?: Record<string, any>
+    triggerData?: Record<string, unknown>
   ) => {
     try {
       const achievements = await checkAchievements(triggerType, triggerData)
