@@ -129,7 +129,7 @@ describe('Critical User Flows Integration Tests', () => {
         target: { calories?: number } | null,
         hoursSinceLastCheckin: number | null
       ) => {
-        if (todayLog && target) {
+        if (todayLog && target && todayLog.actual_calories !== undefined && target.calories !== undefined) {
           const isCompleted = todayLog.is_completed === true
           const diff = target.calories > 0
             ? Math.abs((todayLog.actual_calories - target.calories) / target.calories)
