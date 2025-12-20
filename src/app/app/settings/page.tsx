@@ -83,6 +83,7 @@ function SettingsPageContent() {
                 setProfile(userProfile)
                 setFullName(userProfile.full_name || '')
                 setPhone((userProfile as { phone?: string })?.phone || '')
+                setProfileVisibility(userProfile.profile_visibility || 'private')
                 logger.debug('Settings: профиль загружен', { userId: user.id, role: userProfile.role })
 
                 // Если Premium и есть тренер, загружаем данные тренера
@@ -167,11 +168,11 @@ function SettingsPageContent() {
                 logger.info('Settings: профиль успешно сохранен', { userId: user.id })
                 setMessage('Профиль успешно обновлен')
                 // Обновляем локальный профиль
-                setProfile({ 
-                  ...profile, 
-                  full_name: fullName || null, 
-                  phone: phone || null,
-                  profile_visibility: profileVisibility as any
+                setProfile({
+                    ...profile,
+                    full_name: fullName || null,
+                    phone: phone || null,
+                    profile_visibility: profileVisibility as any
                 })
                 setTimeout(() => setMessage(null), 3000)
             }
@@ -719,4 +720,3 @@ export default function SettingsPage() {
         </Suspense>
     )
 }
-

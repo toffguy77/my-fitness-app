@@ -23,10 +23,10 @@ ON profiles FOR SELECT
 USING (
   profile_visibility = 'public' OR
   auth.uid() = id OR
-  (role = 'coach' AND EXISTS (
+  (profiles.coach_id = auth.uid() AND EXISTS (
     SELECT 1 FROM profiles p 
-    WHERE p.id = profiles.id 
-    AND p.coach_id = auth.uid()
+    WHERE p.id = auth.uid()
+    AND p.role = 'coach'
   ))
 );
 

@@ -23,6 +23,7 @@ export type UserProfile = {
   birth_date?: string | null
   height?: number | null
   activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null
+  profile_visibility?: 'private' | 'public' | null
   created_at?: string
   updated_at?: string
 }
