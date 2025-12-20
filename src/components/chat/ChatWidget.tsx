@@ -21,7 +21,7 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
   const [coachProfile, setCoachProfile] = useState<UserProfile | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const messageChannelRef = useRef<BroadcastChannel | null>(null)
+  const messageChannelRef = useRef<any>(null)
   const notificationSoundRef = useRef<{ play: () => void } | null>(null)
   const lastNotificationRef = useRef<string>('')
 
