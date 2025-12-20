@@ -1,7 +1,7 @@
 // Страница настроек профиля
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
@@ -13,7 +13,7 @@ import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
 
-export default function SettingsPage() {
+function SettingsPageContent() {
     const supabase = createClient()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -659,6 +659,18 @@ export default function SettingsPage() {
                 </button>
             </section>
         </main>
+    )
+}
+
+export default function SettingsPage() {
+    return (
+        <Suspense fallback={
+            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
+                <div className="p-8 text-center">Загрузка...</div>
+            </main>
+        }>
+            <SettingsPageContent />
+        </Suspense>
     )
 }
 
