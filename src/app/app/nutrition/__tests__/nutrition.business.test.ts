@@ -352,9 +352,9 @@ describe('Nutrition Page Business Logic', () => {
         it('should aggregate meals for specific date correctly', () => {
             const selectedDate = '2024-01-15'
             const allMeals = [
-                { id: '1', mealDate: '2024-01-15', calories: 300 },
-                { id: '2', mealDate: '2024-01-14', calories: 200 },
-                { id: '3', mealDate: '2024-01-15', calories: 400 },
+                { id: '1', mealDate: '2024-01-15', calories: 300, protein: 20, fats: 10, carbs: 30 },
+                { id: '2', mealDate: '2024-01-14', calories: 200, protein: 15, fats: 8, carbs: 20 },
+                { id: '3', mealDate: '2024-01-15', calories: 400, protein: 30, fats: 15, carbs: 40 },
             ]
 
             const dateMeals = allMeals.filter((m) => (m.mealDate || selectedDate) === selectedDate)

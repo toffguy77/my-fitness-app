@@ -69,7 +69,7 @@ describe('Middleware Logic', () => {
 
   describe('Role-based Routing', () => {
     it('should route client to dashboard', () => {
-      const role: 'client' | 'coach' | 'super_admin' = 'client'
+      const role = 'client' as 'client' | 'coach' | 'super_admin'
       const pathname = '/'
       
       let redirectPath = '/app/dashboard'
@@ -83,7 +83,7 @@ describe('Middleware Logic', () => {
     })
 
     it('should route coach to coach dashboard', () => {
-      const role = 'coach'
+      const role = 'coach' as 'client' | 'coach' | 'super_admin'
       const pathname = '/'
       
       let redirectPath = '/app/dashboard'
@@ -132,7 +132,7 @@ describe('Middleware Logic', () => {
   describe('Coach Route Protection', () => {
     it('should require coach role for coach dashboard', () => {
       const pathname = '/app/coach'
-      const role = 'client'
+      const role = 'client' as 'client' | 'coach' | 'super_admin'
       
       const shouldRedirect = pathname.startsWith('/app/coach') && role !== 'coach'
       expect(shouldRedirect).toBe(true)
@@ -175,16 +175,16 @@ describe('Middleware Logic', () => {
     })
 
     it('should return false for inactive premium', () => {
-      const subscriptionStatus = 'cancelled'
-      const subscriptionTier = 'premium'
+      const subscriptionStatus = 'cancelled' as 'free' | 'active' | 'cancelled' | 'past_due'
+      const subscriptionTier = 'premium' as 'basic' | 'premium'
       
       const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
       expect(isPremium).toBe(false)
     })
 
     it('should return false for active basic', () => {
-      const subscriptionStatus = 'active'
-      const subscriptionTier = 'basic'
+      const subscriptionStatus = 'active' as 'free' | 'active' | 'cancelled' | 'past_due'
+      const subscriptionTier = 'basic' as 'basic' | 'premium'
       
       const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
       expect(isPremium).toBe(false)

@@ -354,7 +354,7 @@ describe('Nutrition Interactive Elements', () => {
         btn.textContent?.includes('Save')
       )
       
-      if (saveButton && !saveButton.disabled) {
+      if (saveButton && !(saveButton as HTMLButtonElement).disabled) {
         await userEvent.click(saveButton)
         
         // Component may show validation error or toast
@@ -367,7 +367,7 @@ describe('Nutrition Interactive Elements', () => {
         }, { timeout: 3000 })
       } else {
         // Save button may be disabled when no meals
-        expect(saveButton?.disabled || true).toBe(true)
+        expect((saveButton as HTMLButtonElement | null)?.disabled || true).toBe(true)
       }
     })
 

@@ -174,16 +174,16 @@ describe('Products API', () => {
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116' },
-        }),
+        single: jest.fn()
+          .mockResolvedValueOnce({
+            data: null,
+            error: { code: 'PGRST116' },
+          })
+          .mockResolvedValueOnce({
+            data: { id: 'new-id' },
+            error: null,
+          }),
         insert: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: { id: 'new-id' },
-          error: null,
-        }),
       })
 
       const result = await saveProductToDB(product)
@@ -229,16 +229,16 @@ describe('Products API', () => {
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116' },
-        }),
+        single: jest.fn()
+          .mockResolvedValueOnce({
+            data: null,
+            error: { code: 'PGRST116' },
+          })
+          .mockResolvedValueOnce({
+            data: null,
+            error: { message: 'Save error' },
+          }),
         insert: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: null,
-          error: { message: 'Save error' },
-        }),
       })
 
       const result = await saveProductToDB(product)
@@ -257,7 +257,6 @@ describe('Products API', () => {
           error: null,
         }),
         update: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockResolvedValue({ error: null }),
       })
 
       await incrementProductUsage('product-id')
@@ -274,7 +273,6 @@ describe('Products API', () => {
           error: null,
         }),
         update: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockResolvedValue({ error: null }),
       })
 
       await incrementProductUsage('product-id')
