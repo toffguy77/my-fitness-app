@@ -76,17 +76,17 @@ export async function searchProductsInDB(query: string, limit: number = 20): Pro
         }
 
         return (data || []).map((p: Record<string, unknown>) => ({
-            id: p.id,
-            name: p.name,
-            brand: p.brand,
-            barcode: p.barcode,
-            calories_per_100g: p.calories_per_100g,
-            protein_per_100g: p.protein_per_100g,
-            fats_per_100g: p.fats_per_100g,
-            carbs_per_100g: p.carbs_per_100g,
-            source: p.source,
-            source_id: p.source_id,
-            image_url: p.image_url,
+            id: p.id as string | undefined,
+            name: p.name as string,
+            brand: p.brand as string | undefined,
+            barcode: p.barcode as string | null | undefined,
+            calories_per_100g: p.calories_per_100g as number,
+            protein_per_100g: p.protein_per_100g as number,
+            fats_per_100g: p.fats_per_100g as number,
+            carbs_per_100g: p.carbs_per_100g as number,
+            source: p.source as string | undefined,
+            source_id: p.source_id as string | undefined,
+            image_url: p.image_url as string | undefined,
         }))
     } catch (error) {
         logger.error('Products DB: ошибка поиска в БД', error, { query })
