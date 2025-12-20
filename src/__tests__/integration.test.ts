@@ -31,7 +31,13 @@ describe('Integration Tests', () => {
 
       ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
 
-      const mockUser = { id: 'user-123' } as Partial<User> & { id: string }
+      const mockUser = { 
+        id: 'user-123',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString()
+      } as User
 
       // This would normally be called in a component
       const profile = await getUserProfile(mockUser)
@@ -165,7 +171,13 @@ describe('Integration Tests', () => {
 
       ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
 
-      const mockUser = { id: 'user-123' } as Partial<User> & { id: string }
+      const mockUser = { 
+        id: 'user-123',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString()
+      } as User
       const profile = await getUserProfile(mockUser)
       const isPremium = hasActiveSubscription(profile)
 
