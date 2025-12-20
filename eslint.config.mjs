@@ -18,8 +18,9 @@ const eslintConfig = defineConfig([
   {
     files: ["**/__tests__/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "warn",
+      "react-hooks/exhaustive-deps": "off",
     },
   },
   {
