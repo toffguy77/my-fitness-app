@@ -21,6 +21,13 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "warn",
       "react-hooks/exhaustive-deps": "off",
+      "react-hooks/rules-of-hooks": "warn",
+    },
+  },
+  {
+    files: ["**/DateInput.tsx", "**/InstallPrompt.tsx", "**/OfflineIndicator.tsx"],
+    rules: {
+      "react-hooks/exhaustive-deps": "warn",
     },
   },
   {
