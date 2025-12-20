@@ -2,7 +2,7 @@
  * Error Handling Tests
  * Tests all error states and error handling scenarios across the application
  */
-/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable react-hooks/rules-of-hooks, react-hooks/exhaustive-deps */
 
 describe('Error Handling', () => {
   describe('Authentication Errors', () => {
