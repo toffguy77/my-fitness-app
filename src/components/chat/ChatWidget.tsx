@@ -22,7 +22,7 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const messageChannelRef = useRef<BroadcastChannel | null>(null)
-  const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
+  const notificationSoundRef = useRef<{ play: () => void } | null>(null)
   const lastNotificationRef = useRef<string>('')
 
   // Вычисляем имя тренера из профиля
@@ -31,8 +31,8 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
   // Инициализация звука уведомления
   useEffect(() => {
     // Создаем простой звук уведомления (beep)
-    // @ts-expect-error - webkitAudioContext is not in standard types
-    const audioContext = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)()
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    const audioContext = new AudioContextClass()
     const oscillator = audioContext.createOscillator()
     const gainNode = audioContext.createGain()
 
