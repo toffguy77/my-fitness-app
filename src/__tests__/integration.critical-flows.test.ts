@@ -77,8 +77,8 @@ describe('Critical User Flows Integration Tests', () => {
           (acc, meal) => ({
             calories: acc.calories + (meal.calories || 0),
             protein: acc.protein + (meal.protein || 0),
-            fats: acc.fats + (meal.fats || 0),
-            carbs: acc.carbs + (meal.carbs || 0),
+            fats: (acc.fats || 0) + (meal.fats || 0),
+            carbs: (acc.carbs || 0) + (meal.carbs || 0),
           }),
           { calories: 0, protein: 0, fats: 0, carbs: 0 }
         )
@@ -86,7 +86,7 @@ describe('Critical User Flows Integration Tests', () => {
 
       // 3. Save daily log
       const saveDailyLog = async (userId: string, date: string, log: Record<string, unknown>) => {
-        return { success: true, data: { ...log, user_id: userId, date } }
+        return { success: true, data: { ...log, user_id: userId, date } as Record<string, unknown> }
       }
 
       // Execute flow
@@ -109,7 +109,7 @@ describe('Critical User Flows Integration Tests', () => {
       })
 
       expect(saved.success).toBe(true)
-      expect(saved.data.is_completed).toBe(true)
+      expect((saved.data as { is_completed?: boolean }).is_completed).toBe(true)
     })
   })
 
