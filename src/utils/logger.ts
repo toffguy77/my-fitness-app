@@ -133,7 +133,26 @@ class Logger {
         if (error instanceof Error) {
             errorObj = error;
         } else if (error) {
-            errorObj = new Error(String(error));
+            // Обрабатываем объекты ошибок (например, из Supabase)
+            if (typeof error === 'object' && error !== null) {
+                try {
+                    const errorMessage = 'message' in error && typeof error.message === 'string' 
+                        ? error.message 
+                        : JSON.stringify(error);
+                    errorObj = new Error(errorMessage);
+                    // Копируем дополнительные свойства если они есть
+                    if ('code' in error) {
+                        (errorObj as any).code = error.code;
+                    }
+                    if ('details' in error) {
+                        (errorObj as any).details = error.details;
+                    }
+                } catch {
+                    errorObj = new Error('Unknown error');
+                }
+            } else {
+                errorObj = new Error(String(error));
+            }
         }
 
         this.log(LogLevel.ERROR, 'ERROR', message, context, errorObj);

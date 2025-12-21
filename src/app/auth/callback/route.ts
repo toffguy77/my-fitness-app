@@ -2,10 +2,38 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { logger } from '@/utils/logger'
 
+/**
+ * Валидирует параметр next для предотвращения open redirect атак
+ * Разрешает только относительные пути, начинающиеся с /
+ */
+function validateNextPath(next: string | null): string {
+  if (!next) {
+    return '/app/dashboard'
+  }
+
+  // Разрешаем только пути, начинающиеся с /
+  if (!next.startsWith('/')) {
+    logger.warn('Auth callback: попытка редиректа на внешний домен', { next })
+    return '/app/dashboard'
+  }
+
+  // Дополнительная проверка: не разрешаем протоколы (http://, https://, //)
+  if (next.includes('://') || next.startsWith('//')) {
+    logger.warn('Auth callback: попытка редиректа с протоколом', { next })
+    return '/app/dashboard'
+  }
+
+  return next
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const next = requestUrl.searchParams.get('next') || '/app/dashboard'
+  const nextParam = requestUrl.searchParams.get('next')
+  const next = validateNextPath(nextParam)
+
+  // Создаем response объект для установки cookies
+  const response = NextResponse.next()
 
   if (code) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -25,8 +53,11 @@ export async function GET(request: NextRequest) {
             return request.cookies.getAll()
           },
           setAll(cookiesToSet) {
+            // ВАЖНО: устанавливаем cookies и на request, и на response
+            // чтобы они были отправлены клиенту
             cookiesToSet.forEach(({ name, value, options }) => {
               request.cookies.set(name, value)
+              response.cookies.set(name, value, options)
             })
           },
         },
@@ -52,7 +83,21 @@ export async function GET(request: NextRequest) {
       logger.info('Auth callback: успешное подтверждение email', { userId: user.id })
 
       // Редиректим на указанную страницу или дашборд
-      return NextResponse.redirect(new URL(next, requestUrl))
+      // Создаем redirect response и копируем cookies из response объекта
+      const redirectResponse = NextResponse.redirect(new URL(next, requestUrl))
+      // Копируем все cookies из response в redirect response
+      response.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, {
+          path: cookie.path,
+          domain: cookie.domain,
+          maxAge: cookie.maxAge,
+          expires: cookie.expires,
+          httpOnly: cookie.httpOnly,
+          secure: cookie.secure,
+          sameSite: cookie.sameSite,
+        })
+      })
+      return redirectResponse
     } catch (error) {
       logger.error('Auth callback: неожиданная ошибка', error)
       return NextResponse.redirect(new URL('/login?error=unexpected', requestUrl))

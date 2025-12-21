@@ -100,7 +100,9 @@ export async function middleware(request: NextRequest) {
 
     if (profileError) {
       try {
-        logger.error('Middleware: ошибка загрузки профиля', profileError, { userId: user.id, pathname })
+        // Безопасное логирование ошибки профиля
+        const errorMessage = profileError.message || JSON.stringify(profileError);
+        logger.error('Middleware: ошибка загрузки профиля', new Error(errorMessage), { userId: user.id, pathname })
       } catch {
         // Игнорируем ошибки логирования
       }

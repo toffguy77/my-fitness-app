@@ -9,6 +9,10 @@ const baseConfig: NextConfig = {
   output: 'standalone',
   // Turbopack configuration (empty config to silence webpack warning from next-pwa)
   turbopack: {},
+  // Исправление проблемы со шрифтами в Turbopack
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
 };
 
 // Only apply PWA plugin if not in test environment
