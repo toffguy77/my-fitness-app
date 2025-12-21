@@ -943,6 +943,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 COMMENT ON FUNCTION check_message_rate_limit() IS 'Проверяет rate limit: максимум 10 сообщений в минуту от одного пользователя';
 
 -- 5.12 Функция для безопасного создания профиля при регистрации
+-- Функция проверяет наличие колонки profile_visibility для совместимости
 CREATE OR REPLACE FUNCTION create_user_profile(
   user_id UUID,
   user_email TEXT,
@@ -955,36 +956,71 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  has_profile_visibility BOOLEAN;
 BEGIN
   -- Проверяем, что профиль еще не существует
   IF EXISTS (SELECT 1 FROM profiles WHERE id = user_id) THEN
     RETURN;
   END IF;
 
-  -- Создаем профиль
-  INSERT INTO profiles (
-    id,
-    email,
-    full_name,
-    role,
-    coach_id,
-    subscription_status,
-    subscription_tier,
-    profile_visibility,
-    created_at,
-    updated_at
-  ) VALUES (
-    user_id,
-    user_email,
-    user_full_name,
-    user_role,
-    user_coach_id,
-    'free',
-    'basic',
-    'private',
-    NOW(),
-    NOW()
-  );
+  -- Проверяем наличие колонки profile_visibility
+  SELECT EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_name = 'profiles' 
+    AND column_name = 'profile_visibility'
+  ) INTO has_profile_visibility;
+
+  -- Создаем профиль с учетом наличия колонки profile_visibility
+  IF has_profile_visibility THEN
+    INSERT INTO profiles (
+      id,
+      email,
+      full_name,
+      role,
+      coach_id,
+      subscription_status,
+      subscription_tier,
+      profile_visibility,
+      created_at,
+      updated_at
+    ) VALUES (
+      user_id,
+      user_email,
+      user_full_name,
+      user_role,
+      user_coach_id,
+      'free',
+      'basic',
+      'private',
+      NOW(),
+      NOW()
+    );
+  ELSE
+    -- Для баз данных без колонки profile_visibility (обратная совместимость)
+    INSERT INTO profiles (
+      id,
+      email,
+      full_name,
+      role,
+      coach_id,
+      subscription_status,
+      subscription_tier,
+      created_at,
+      updated_at
+    ) VALUES (
+      user_id,
+      user_email,
+      user_full_name,
+      user_role,
+      user_coach_id,
+      'free',
+      'basic',
+      NOW(),
+      NOW()
+    );
+  END IF;
 END;
 $$;
 

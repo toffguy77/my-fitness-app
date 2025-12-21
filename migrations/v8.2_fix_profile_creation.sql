@@ -63,4 +63,3 @@ WITH CHECK (
 );
 
 COMMENT ON POLICY "Users can insert profiles" ON profiles IS 'Пользователи могут создавать свой профиль сразу после регистрации';
-
