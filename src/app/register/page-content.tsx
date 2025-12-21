@@ -22,6 +22,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
+  const [resendingEmail, setResendingEmail] = useState(false)
 
   // Извлекаем код из URL при загрузке
   useEffect(() => {
@@ -77,6 +79,9 @@ export default function RegisterPage() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+        },
       })
 
       if (authError) {
@@ -92,6 +97,8 @@ export default function RegisterPage() {
       }
 
       // 2. Создаем профиль с ролью 'client' и статусом 'free'
+      // ВАЖНО: Профиль создается всегда, даже если email не подтвержден,
+      // чтобы пользователь мог войти после подтверждения email
       let coachId: string | null = null
 
       // Если есть валидный инвайт-код, используем его
@@ -193,15 +200,55 @@ export default function RegisterPage() {
         }
       }
 
-      setMessage('Регистрация успешна! Перенаправляем...')
+      // Проверяем, требуется ли подтверждение email
+      if (authData.user && !authData.user.email_confirmed_at) {
+        // Email не подтвержден - показываем сообщение и предлагаем отправить письмо повторно
+        setNeedsEmailConfirmation(true)
+        setMessage(
+          'Регистрация успешна! Пожалуйста, проверьте вашу почту и подтвердите email адрес. ' +
+          'Если письмо не пришло, вы можете запросить его повторно.'
+        )
+        setLoading(false)
+      } else {
+        // Email подтвержден - перенаправляем
+        setMessage('Регистрация успешна! Перенаправляем...')
 
-      setTimeout(() => {
-        router.push('/app/dashboard')
-        router.refresh()
-      }, 1000)
+        setTimeout(() => {
+          router.push('/app/dashboard')
+          router.refresh()
+        }, 1000)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка')
       setLoading(false)
+    }
+  }
+
+  const handleResendConfirmationEmail = async () => {
+    if (!email) return
+
+    setResendingEmail(true)
+    setError(null)
+
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+        },
+      })
+
+      if (resendError) {
+        setError('Ошибка отправки письма: ' + resendError.message)
+      } else {
+        setMessage('Письмо с подтверждением отправлено! Проверьте вашу почту.')
+        setNeedsEmailConfirmation(false)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Произошла ошибка при отправке письма')
+    } finally {
+      setResendingEmail(false)
     }
   }
 
@@ -224,6 +271,27 @@ export default function RegisterPage() {
         {message && (
           <div className="mb-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200">
             {message}
+          </div>
+        )}
+
+        {needsEmailConfirmation && (
+          <div className="mb-4 p-4 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-200">
+            <p className="font-medium mb-2">Требуется подтверждение email</p>
+            <p className="mb-3">
+              Мы отправили письмо с подтверждением на адрес <strong>{email}</strong>.
+              Пожалуйста, проверьте вашу почту и перейдите по ссылке в письме.
+            </p>
+            <p className="mb-3 text-xs text-blue-600">
+              Не получили письмо? Проверьте папку "Спам" или запросите отправку повторно.
+            </p>
+            <button
+              type="button"
+              onClick={handleResendConfirmationEmail}
+              disabled={resendingEmail}
+              className="w-full py-2 px-4 rounded-lg font-medium text-blue-800 bg-blue-100 hover:bg-blue-200 disabled:bg-blue-50 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors text-sm"
+            >
+              {resendingEmail ? 'Отправка...' : 'Отправить письмо повторно'}
+            </button>
           </div>
         )}
 

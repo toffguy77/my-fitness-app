@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Публичные маршруты (не требуют авторизации)
-    const publicRoutes = ['/', '/login', '/register']
+    const publicRoutes = ['/', '/login', '/register', '/auth/callback']
     const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
     
     // Onboarding доступен только авторизованным пользователям
