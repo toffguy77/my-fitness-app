@@ -121,17 +121,15 @@ export default function RegisterPage() {
         }
       }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: fullName || null,
-          role: 'client',
-          subscription_status: 'free',
-          subscription_tier: 'basic',
-          coach_id: coachId || null,
-        })
+      // Используем функцию create_user_profile для безопасного создания профиля
+      // Эта функция обходит RLS, так как использует SECURITY DEFINER
+      const { error: profileError } = await supabase.rpc('create_user_profile', {
+        user_id: authData.user.id,
+        user_email: email,
+        user_full_name: fullName || null,
+        user_role: 'client',
+        user_coach_id: coachId || null,
+      })
 
       if (profileError) {
         setError('Ошибка создания профиля: ' + profileError.message)

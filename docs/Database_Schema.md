@@ -707,32 +707,37 @@ CREATE POLICY "Super admin can view all"
 
 ### Функции
 
-1. **check_achievements(user_id, trigger_type, trigger_data)**
+1. **create_user_profile(user_id, user_email, user_full_name, user_role, user_coach_id)**
+   - Безопасно создает профиль пользователя при регистрации
+   - Обходит RLS используя SECURITY DEFINER
+   - Проверяет, что профиль еще не существует
+
+2. **check_achievements(user_id, trigger_type, trigger_data)**
    - Проверяет и присваивает достижения пользователю
 
-2. **use_invite_code(code, user_id)**
+3. **use_invite_code(code, user_id)**
    - Использует инвайт-код и возвращает ID тренера
 
-3. **update_product_usage_count()**
+4. **update_product_usage_count()**
    - Обновляет счетчик использования продукта
 
-4. **check_and_update_subscription_status()**
+5. **check_and_update_subscription_status()**
    - Автоматически обновляет статус подписки при истечении
 
-5. **validate_calories_match_macros(calories, protein, fats, carbs)**
+6. **validate_calories_match_macros(calories, protein, fats, carbs)**
    - Валидирует соответствие калорий макронутриентам
 
-6. **validate_nutrition_limits(calories, protein, fats, carbs)**
+7. **validate_nutrition_limits(calories, protein, fats, carbs)**
    - Валидирует лимиты КБЖУ
 
-7. **get_expired_subscriptions()**
+8. **get_expired_subscriptions()**
    - Возвращает список истекших подписок
 
-8. **get_expiring_subscriptions(days_ahead)**
+9. **get_expiring_subscriptions(days_ahead)**
    - Возвращает список подписок, истекающих через N дней
 
-9. **deactivate_expired_subscriptions()**
-   - Деактивирует истекшие подписки
+10. **deactivate_expired_subscriptions()**
+    - Деактивирует истекшие подписки
 
 ### Триггеры
 
@@ -766,6 +771,8 @@ CREATE POLICY "Super admin can view all"
 - `v6.2_add_invite_codes_table.sql`
 - `v7.1_add_ocr_scans_table.sql`
 - `v7.2_add_achievements_tables.sql`
+- `v8.1_add_public_profiles.sql`
+- `v8.2_fix_profile_creation.sql`
 
 Подробнее см. [migrations/README.md](../migrations/README.md)
 
