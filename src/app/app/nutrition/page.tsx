@@ -193,15 +193,8 @@ function NutritionPageContent() {
           let mealsToSet: Meal[] = []
           if (logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
             mealsToSet = logResult.data.meals as Meal[]
-
-            // Если есть editMealId, находим этот meal и устанавливаем его для редактирования
-            if (editMealId) {
-              const mealToEdit = mealsToSet.find(m => m.id === editMealId)
-              if (mealToEdit) {
-                mealsToSet = [mealToEdit]
-              }
-            }
-
+            // Важно: при редактировании оставляем все приемы пищи,
+            // чтобы изменения сохранялись в конкретной записи без потери остальных.
             setMeals(mealsToSet)
             logger.debug('Nutrition: загружены существующие приемы пищи', { count: mealsToSet.length, editMealId })
           }
@@ -561,9 +554,9 @@ function NutritionPageContent() {
           logger.warn('Nutrition: ошибка проверки достижений', { error })
         })
 
+        // Остаемся на странице ввода; отправка тренеру доступна с дашборда
         setTimeout(() => {
-          router.push(`/app/dashboard?date=${selectedDate}`)
-          router.refresh() // Обновляем данные на дашборде
+          setStatus('idle')
         }, 1200)
       }
     } catch (error) {
@@ -1076,7 +1069,7 @@ function NutritionPageContent() {
           </div>
         )}
 
-        {/* Две кнопки: Сохранить черновик и Отправить тренеру */}
+        {/* Кнопка сохранения черновика. Отправка тренеру доступна только с дашборда */}
         <div className="flex gap-3">
           <button
             onClick={handleSaveDraft}
@@ -1088,17 +1081,6 @@ function NutritionPageContent() {
             {status === 'saving_draft' && 'Сохранение...'}
             {status === 'draft_saved' && <><CheckCircle size={18} /> Сохранено</>}
             {(status === 'idle' || status === 'submitting' || status === 'submitted') && <><Save size={18} /> Сохранить</>}
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={status === 'saving_draft' || status === 'submitting' || status === 'submitted'}
-            className={`flex-1 py-4 rounded-xl font-bold text-white flex justify-center items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-              ${status === 'submitted' ? 'bg-green-600' : 'bg-black active:scale-95'}
-            `}
-          >
-            {status === 'submitting' && 'Отправка...'}
-            {status === 'submitted' && <><CheckCircle size={20} /> Отправлено</>}
-            {(status === 'idle' || status === 'saving_draft' || status === 'draft_saved') && 'Отправить тренеру'}
           </button>
         </div>
       </div>
