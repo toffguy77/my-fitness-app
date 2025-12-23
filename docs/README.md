@@ -279,6 +279,10 @@
 - [migrations/setup_database.sql](../migrations/setup_database.sql) - Единый скрипт для создания БД с нуля
 - [migrations/README.md](../migrations/README.md) - Документация по миграциям
 
+### Email шаблоны
+- [email-templates/README.md](./email-templates/README.md) - Документация по email шаблонам
+- [email-templates/signup-confirmation-ru.md](./email-templates/signup-confirmation-ru.md) - Шаблон подтверждения регистрации (русский)
+
 ---
 
 ## 📝 Формат документации

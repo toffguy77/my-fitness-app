@@ -24,6 +24,7 @@ END $$;
 -- ============================================
 
 -- Функция для проверки, является ли пользователь super_admin
+-- Использует SECURITY DEFINER и BYPASSRLS для обхода RLS и предотвращения рекурсии
 CREATE OR REPLACE FUNCTION is_super_admin(user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -31,6 +32,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Используем прямой запрос к auth.users для проверки роли без RLS
+  -- или читаем из profiles с обходом RLS через SECURITY DEFINER
   RETURN EXISTS (
     SELECT 1 FROM profiles
     WHERE id = user_id
@@ -1139,11 +1142,7 @@ CREATE POLICY "Users can view profiles"
 ON profiles FOR SELECT
 USING (
     auth.uid() = id
-    OR is_super_admin(auth.uid())
-    OR (
-        is_coach(auth.uid())
-        AND coach_id = auth.uid()
-    )
+    OR coach_id = auth.uid()
 );
 
 DROP POLICY IF EXISTS "Anyone can read public profiles" ON profiles;
@@ -1152,11 +1151,7 @@ ON profiles FOR SELECT
 USING (
   profile_visibility = 'public' OR
   auth.uid() = id OR
-  (profiles.coach_id = auth.uid() AND EXISTS (
-    SELECT 1 FROM profiles p 
-    WHERE p.id = auth.uid() 
-    AND p.role = 'coach'
-  ))
+  coach_id = auth.uid()
 );
 
 DROP POLICY IF EXISTS "Users can update profiles" ON profiles;
@@ -1164,7 +1159,9 @@ CREATE POLICY "Users can update profiles"
 ON profiles FOR UPDATE
 USING (
     auth.uid() = id
-    OR is_super_admin(auth.uid())
+)
+WITH CHECK (
+    auth.uid() = id
 );
 
 DROP POLICY IF EXISTS "Users can insert profiles" ON profiles;

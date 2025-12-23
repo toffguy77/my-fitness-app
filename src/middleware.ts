@@ -42,22 +42,32 @@ export async function middleware(request: NextRequest) {
       }
     )
 
+    // Публичные маршруты (не требуют авторизации)
+    const publicRoutes = ['/', '/login', '/register', '/auth/callback']
+    const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
+
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError) {
+    // Логируем ошибки аутентификации только для защищенных маршрутов
+    // Для публичных маршрутов отсутствие сессии - это нормально
+    if (authError && !isPublicRoute) {
       try {
-        logger.error('Middleware: ошибка получения пользователя', authError, { pathname })
+        // Проверяем, является ли это обычной ошибкой отсутствия сессии
+        const isSessionMissing = authError.message?.includes('session missing') || 
+                                 authError.message?.includes('Auth session missing') ||
+                                 (authError as any)?.__isAuthError
+        if (!isSessionMissing) {
+          logger.error('Middleware: ошибка получения пользователя', authError, { pathname })
+        } else {
+          logger.debug('Middleware: сессия отсутствует (нормально для неавторизованных пользователей)', { pathname })
+        }
       } catch {
         // Игнорируем ошибки логирования
       }
     }
-
-    // Публичные маршруты (не требуют авторизации)
-    const publicRoutes = ['/', '/login', '/register', '/auth/callback']
-    const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
     
     // Onboarding доступен только авторизованным пользователям
     if (pathname === '/onboarding' && !user) {

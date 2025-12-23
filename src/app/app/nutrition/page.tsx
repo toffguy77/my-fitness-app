@@ -23,10 +23,14 @@ type Meal = {
   id: string
   title: string
   weight: number
-  calories: number
-  protein: number
-  fats: number
-  carbs: number
+  calories: number           // Итоговые калории по порции
+  protein: number            // Итоговые белки по порции
+  fats: number               // Итоговые жиры по порции
+  carbs: number              // Итоговые углеводы по порции
+  caloriesPer100?: number    // Калории на 100 г (ввод пользователя/из продукта)
+  proteinPer100?: number     // Белки на 100 г
+  fatsPer100?: number        // Жиры на 100 г
+  carbsPer100?: number       // Углеводы на 100 г
   photoName?: string
   mealDate?: string // Дата приема пищи (для поправок)
   createdAt?: string // Время создания для сортировки
@@ -637,6 +641,10 @@ function NutritionPageContent() {
         protein: 0,
         fats: 0,
         carbs: 0,
+        caloriesPer100: 0,
+        proteinPer100: 0,
+        fatsPer100: 0,
+        carbsPer100: 0,
         mealDate: selectedDate,
         createdAt: now.toISOString()
       }
@@ -644,14 +652,44 @@ function NutritionPageContent() {
   }
 
   const updateMeal = (id: string, field: keyof Meal, value: string | number | undefined, fileName?: string) => {
+    const numericOrZero = (v: string | number | undefined) => {
+      if (typeof v === 'number') return v
+      if (typeof v === 'string') return Number(v) || 0
+      return 0
+    }
+
+    const recalcPortion = (meal: Meal): Meal => {
+      const weight = meal.weight || 0
+      const caloriesPer100 = meal.caloriesPer100 || 0
+      const proteinPer100 = meal.proteinPer100 || 0
+      const fatsPer100 = meal.fatsPer100 || 0
+      const carbsPer100 = meal.carbsPer100 || 0
+
+      return {
+        ...meal,
+        calories: Math.round((caloriesPer100 * weight) / 100),
+        protein: Math.round((proteinPer100 * weight) / 100),
+        fats: Math.round((fatsPer100 * weight) / 100),
+        carbs: Math.round((carbsPer100 * weight) / 100),
+      }
+    }
+
     setMeals((prev) =>
       prev.map((meal) =>
         meal.id === id
           ? {
-            ...meal,
-            [field]: typeof value === 'number' ? value : typeof value === 'string' ? value : meal[field],
-            photoName: fileName ?? meal.photoName
-          }
+              ...recalcPortion({
+                ...meal,
+                [field]: ['caloriesPer100', 'proteinPer100', 'fatsPer100', 'carbsPer100', 'weight'].includes(field)
+                  ? numericOrZero(value)
+                  : typeof value === 'number'
+                    ? value
+                    : typeof value === 'string'
+                      ? value
+                      : meal[field],
+                photoName: fileName ?? meal.photoName,
+              })
+            }
           : meal
       )
     )
@@ -682,6 +720,10 @@ function NutritionPageContent() {
           protein: protein,
           fats: fats,
           carbs: carbs,
+          caloriesPer100: product.calories_per_100g,
+          proteinPer100: product.protein_per_100g,
+          fatsPer100: product.fats_per_100g,
+          carbsPer100: product.carbs_per_100g,
         }
       }
       return meal
@@ -914,10 +956,10 @@ function NutritionPageContent() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
-                  <InputGroup label="Калории" value={meal.calories} onChange={(v) => updateMeal(meal.id, 'calories', v)} />
-                  <InputGroup label="Белки (г)" value={meal.protein} onChange={(v) => updateMeal(meal.id, 'protein', v)} />
-                  <InputGroup label="Жиры (г)" value={meal.fats} onChange={(v) => updateMeal(meal.id, 'fats', v)} />
-                  <InputGroup label="Углеводы (г)" value={meal.carbs} onChange={(v) => updateMeal(meal.id, 'carbs', v)} />
+                  <InputGroup label="Калории (на 100 г)" value={meal.caloriesPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'caloriesPer100', v)} />
+                  <InputGroup label="Белки (г на 100 г)" value={meal.proteinPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'proteinPer100', v)} />
+                  <InputGroup label="Жиры (г на 100 г)" value={meal.fatsPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'fatsPer100', v)} />
+                  <InputGroup label="Углеводы (г на 100 г)" value={meal.carbsPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'carbsPer100', v)} />
                 </div>
                 {/* Валидация приема пищи */}
                 {mealValidation && (mealValidation.errors.length > 0 || mealValidation.warnings.length > 0) && (
