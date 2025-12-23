@@ -259,25 +259,62 @@ export default function NutritionPage() {
         id: crypto.randomUUID(),
         title: `Прием пищи ${prev.length + 1}`,
         weight: 100,
-        calories: 0,
-        protein: 0,
-        fats: 0,
-        carbs: 0
+        per100: {
+          calories: 0,
+          protein: 0,
+          fats: 0,
+          carbs: 0
+        },
+        totals: {
+          calories: 0,
+          protein: 0,
+          fats: 0,
+          carbs: 0
+        }
       }
     ])
   }
 
-  const updateMeal = (id: string, field: keyof Meal, value: string | number | undefined, fileName?: string) => {
+  const updateMeal = (id: string, field: string, value: string | number | undefined, fileName?: string) => {
     setMeals((prev) =>
-      prev.map((meal) =>
-        meal.id === id
-          ? {
-            ...meal,
-            [field]: typeof value === 'number' ? value : typeof value === 'string' ? value : meal[field],
-            photoName: fileName ?? meal.photoName
+      prev.map((meal) => {
+        if (meal.id !== id) return meal
+        
+        const updatedMeal = { ...meal }
+        
+        // Обработка вложенных полей per100
+        if (field.startsWith('per100.')) {
+          const subField = field.replace('per100.', '') as keyof typeof meal.per100
+          updatedMeal.per100 = {
+            ...meal.per100,
+            [subField]: typeof value === 'number' ? value : meal.per100[subField]
           }
-          : meal
-      )
+          // Пересчитываем totals при изменении per100
+          updatedMeal.totals = {
+            calories: (updatedMeal.per100.calories * updatedMeal.weight) / 100,
+            protein: (updatedMeal.per100.protein * updatedMeal.weight) / 100,
+            fats: (updatedMeal.per100.fats * updatedMeal.weight) / 100,
+            carbs: (updatedMeal.per100.carbs * updatedMeal.weight) / 100
+          }
+        } else if (field === 'weight') {
+          updatedMeal.weight = typeof value === 'number' ? value : meal.weight
+          // Пересчитываем totals при изменении weight
+          updatedMeal.totals = {
+            calories: (meal.per100.calories * updatedMeal.weight) / 100,
+            protein: (meal.per100.protein * updatedMeal.weight) / 100,
+            fats: (meal.per100.fats * updatedMeal.weight) / 100,
+            carbs: (meal.per100.carbs * updatedMeal.weight) / 100
+          }
+        } else if (field in updatedMeal) {
+          (updatedMeal as any)[field] = typeof value === 'number' ? value : typeof value === 'string' ? value : (updatedMeal as any)[field]
+        }
+        
+        if (fileName !== undefined) {
+          updatedMeal.photoName = fileName
+        }
+        
+        return updatedMeal
+      })
     )
   }
 

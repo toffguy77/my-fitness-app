@@ -15,17 +15,10 @@ export default function Paywall({
   const router = useRouter()
 
   const handleBack = () => {
-    // Используем router.push; если вернётся промис — ловим reject, иначе fallback только при sync ошибке
     try {
-      const result = router.push('/app/dashboard' as string)
-      if (result && typeof (result as Promise<unknown>).catch === 'function') {
-        ;(result as Promise<unknown>).catch(() => {
-          if (typeof window !== 'undefined') {
-            window.location.href = '/app/dashboard'
-          }
-        })
-      }
+      router.push('/app/dashboard')
     } catch {
+      // Fallback на прямой переход, если router.push не работает
       if (typeof window !== 'undefined') {
         window.location.href = '/app/dashboard'
       }
