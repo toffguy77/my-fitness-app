@@ -67,6 +67,20 @@ export default function ClientDashboard() {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]) // Навигация по датам
   const [coachNote, setCoachNote] = useState<{ content: string; date: string } | null>(null) // Заметка тренера
   const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
+  const [reloadKey, setReloadKey] = useState<number>(0) // Триггер перезагрузки данных при возврате на страницу
+
+  // Перезагружаем данные, когда пользователь возвращается на вкладку/страницу
+  useEffect(() => {
+    const handleFocus = () => setReloadKey((k) => k + 1)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -258,7 +272,7 @@ export default function ClientDashboard() {
     }
 
     fetchData()
-  }, [router, supabase, selectedDate]) // Добавляем selectedDate в зависимости
+  }, [router, supabase, selectedDate, reloadKey]) // reloadKey перезагружает данные при возврате на страницу
 
   // Функция для загрузки данных за выбранную дату
   useEffect(() => {
@@ -334,7 +348,7 @@ export default function ClientDashboard() {
     }
 
     fetchDateData()
-  }, [user, selectedDate, supabase, isPremium])
+  }, [user, selectedDate, supabase, isPremium, reloadKey])
 
   // Текущие цели в зависимости от выбранного типа дня
   const currentTargets = useMemo(() => {
