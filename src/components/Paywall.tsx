@@ -1,6 +1,7 @@
 'use client'
 
 import { Lock, ArrowRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface PaywallProps {
   title?: string
@@ -11,6 +12,19 @@ export default function Paywall({
   title = 'Доступно с Premium подпиской',
   message = 'Подключите работу с тренером, чтобы получить доступ к расширенной аналитике, отчетам и персональным рекомендациям.'
 }: PaywallProps) {
+  const router = useRouter()
+
+  const handleBack = () => {
+    // Используем router.push, чтобы избежать навигационных ошибок jsdom в тестах
+    try {
+      router.push('/app/dashboard')
+    } catch {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/app/dashboard'
+      }
+    }
+  }
+
   return (
     <div className="relative">
       {/* Размытый контент */}
@@ -32,7 +46,7 @@ export default function Paywall({
             </p>
           </div>
           <button
-            onClick={() => window.location.href = '/app/dashboard'}
+            onClick={handleBack}
             className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
           >
             Вернуться на дашборд

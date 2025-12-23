@@ -99,3 +99,20 @@ if (typeof global.TextEncoder === 'undefined') {
   global.TextDecoder = TextDecoder
 }
 
+// Silence noisy console errors in tests (act warnings, jsdom navigation)
+const originalConsoleError = console.error
+console.error = (...args) => {
+  const msg = args?.[0]?.toString?.() || ''
+  if (
+    msg.includes('not wrapped in act(...)') ||
+    msg.includes('Not implemented: navigation (except hash changes)') ||
+    msg.includes('SubscriptionBanner: ошибка загрузки статуса') ||
+    msg.includes('Profile: ошибка загрузки профиля') ||
+    msg.includes('Profile: ошибка загрузки клиентов') ||
+    msg.includes('Profile: ошибка проверки прав super_admin')
+  ) {
+    return
+  }
+  originalConsoleError(...args)
+}
+
