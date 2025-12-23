@@ -115,6 +115,7 @@ function NutritionPageContent() {
   const [status, setStatus] = useState<'idle' | 'saving_draft' | 'draft_saved' | 'submitting' | 'submitted'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isCompleted, setIsCompleted] = useState<boolean>(false)
+  const isEditMode = Boolean(editMealId)
 
   // Загрузка данных при старте
   useEffect(() => {
@@ -192,7 +193,23 @@ function NutritionPageContent() {
           // Загружаем существующие приемы пищи
           let mealsToSet: Meal[] = []
           if (logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
-            mealsToSet = logResult.data.meals as Meal[]
+            // Нормализуем данные приемов: восстанавливаем значения на 100 г, если их нет, чтобы поля были предзаполнены
+            mealsToSet = (logResult.data.meals as Meal[]).map((m) => {
+              const safeWeight = m.weight || 0
+              const calcPer100 = (total?: number) =>
+                safeWeight > 0 && (total ?? 0) > 0 ? Math.round(((total ?? 0) * 100) / safeWeight) : 0
+              return {
+                ...m,
+                caloriesPer100: m.caloriesPer100 ?? calcPer100(m.calories),
+                proteinPer100: m.proteinPer100 ?? calcPer100(m.protein),
+                fatsPer100: m.fatsPer100 ?? calcPer100(m.fats),
+                carbsPer100: m.carbsPer100 ?? calcPer100(m.carbs),
+                calories: m.calories ?? 0,
+                protein: m.protein ?? 0,
+                fats: m.fats ?? 0,
+                carbs: m.carbs ?? 0,
+              }
+            })
             // Важно: при редактировании оставляем все приемы пищи,
             // чтобы изменения сохранялись в конкретной записи без потери остальных.
             setMeals(mealsToSet)
@@ -995,26 +1012,28 @@ function NutritionPageContent() {
           })}
         </div>
 
-        {/* КНОПКА ДОБАВЛЕНИЯ - ПЕРЕМЕЩЕНА ВВЕРХ */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500">Дата приема пищи:</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              className="text-xs border border-gray-200 rounded px-2 py-1 text-black"
-            />
+        {/* КНОПКА ДОБАВЛЕНИЯ - скрыта в режиме редактирования конкретного приема */}
+        {!isEditMode && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500">Дата приема пищи:</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className="text-xs border border-gray-200 rounded px-2 py-1 text-black"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addMeal}
+              className="w-full text-sm font-semibold text-white bg-black hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-colors"
+            >
+              + Добавить прием пищи
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={addMeal}
-            className="w-full text-sm font-semibold text-white bg-black hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-colors"
-          >
-            + Добавить прием пищи
-          </button>
-        </div>
+        )}
 
         {/* ВСЕГО ЗА ДЕНЬ - ПЕРЕМЕЩЕНО ВНИЗ */}
         <div className="pt-4 border-t border-gray-200">
