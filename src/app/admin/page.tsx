@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
   const [subscriptionFilter, setSubscriptionFilter] = useState<SubscriptionStatus | 'all'>('all')
+  const [activeStatFilter, setActiveStatFilter] = useState<'all' | 'clients' | 'coaches' | 'premium'>('all')
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -100,17 +101,38 @@ export default function AdminPage() {
     logger.info('Admin: начало сохранения пользователя', { userId: editingUser.id })
     setSaving(true)
     try {
+      // Подготовка данных для обновления
+      const updateData: {
+        role: UserRole
+        coach_id: string | null
+        subscription_status?: SubscriptionStatus
+        subscription_tier?: SubscriptionTier
+        subscription_start_date?: string | null
+        subscription_end_date?: string | null
+        full_name: string | null
+      } = {
+        role: editingUser.role,
+        coach_id: editingUser.coach_id || null,
+        full_name: editingUser.full_name || null,
+      }
+
+      // Поля подписки только для клиентов
+      if (editingUser.role === 'client') {
+        updateData.subscription_status = editingUser.subscription_status
+        updateData.subscription_tier = editingUser.subscription_tier
+        updateData.subscription_start_date = editingUser.subscription_start_date || null
+        updateData.subscription_end_date = editingUser.subscription_end_date || null
+      } else {
+        // Для тренеров и админов очищаем поля подписки
+        updateData.subscription_status = 'free'
+        updateData.subscription_tier = 'basic'
+        updateData.subscription_start_date = null
+        updateData.subscription_end_date = null
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          role: editingUser.role,
-          coach_id: editingUser.coach_id || null,
-          subscription_status: editingUser.subscription_status,
-          subscription_tier: editingUser.subscription_tier,
-          subscription_start_date: editingUser.subscription_start_date || null,
-          subscription_end_date: editingUser.subscription_end_date || null,
-          full_name: editingUser.full_name || null,
-        })
+        .update(updateData)
         .eq('id', editingUser.id)
 
       if (error) {
@@ -175,12 +197,52 @@ export default function AdminPage() {
         </button>
       </header>
 
-      {/* STATS */}
+      {/* STATS / FILTERS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Всего пользователей" value={users.length} icon={<Users size={20} />} />
-        <StatCard label="Клиенты" value={users.filter(u => u.role === 'client').length} icon={<UserIcon size={20} />} />
-        <StatCard label="Тренеры" value={users.filter(u => u.role === 'coach').length} icon={<Shield size={20} />} />
-        <StatCard label="Premium подписки" value={users.filter(u => u.subscription_status === 'active').length} icon={<Shield size={20} />} />
+        <StatCard 
+          label="Всего пользователей" 
+          value={users.length} 
+          icon={<Users size={20} />}
+          isActive={activeStatFilter === 'all'}
+          onClick={() => {
+            setActiveStatFilter('all')
+            setRoleFilter('all')
+            setSubscriptionFilter('all')
+          }}
+        />
+        <StatCard 
+          label="Клиенты" 
+          value={users.filter(u => u.role === 'client').length} 
+          icon={<UserIcon size={20} />}
+          isActive={activeStatFilter === 'clients'}
+          onClick={() => {
+            setActiveStatFilter('clients')
+            setRoleFilter('client')
+            setSubscriptionFilter('all')
+          }}
+        />
+        <StatCard 
+          label="Тренеры" 
+          value={users.filter(u => u.role === 'coach').length} 
+          icon={<Shield size={20} />}
+          isActive={activeStatFilter === 'coaches'}
+          onClick={() => {
+            setActiveStatFilter('coaches')
+            setRoleFilter('coach')
+            setSubscriptionFilter('all')
+          }}
+        />
+        <StatCard 
+          label="Premium подписки" 
+          value={users.filter(u => u.subscription_status === 'active').length} 
+          icon={<Shield size={20} />}
+          isActive={activeStatFilter === 'premium'}
+          onClick={() => {
+            setActiveStatFilter('premium')
+            setRoleFilter('all')
+            setSubscriptionFilter('active')
+          }}
+        />
       </div>
 
       {/* FILTERS */}
@@ -203,7 +265,20 @@ export default function AdminPage() {
           {/* Фильтр по роли */}
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')}
+            onChange={(e) => {
+              const newRole = e.target.value as UserRole | 'all'
+              setRoleFilter(newRole)
+              // Сбрасываем активный фильтр статистики, если пользователь меняет фильтр вручную
+              if (newRole === 'all' && subscriptionFilter === 'all') {
+                setActiveStatFilter('all')
+              } else if (newRole === 'client' && subscriptionFilter === 'all') {
+                setActiveStatFilter('clients')
+              } else if (newRole === 'coach' && subscriptionFilter === 'all') {
+                setActiveStatFilter('coaches')
+              } else {
+                setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
+              }
+            }}
             className="px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
           >
             <option value="all">Все роли</option>
@@ -215,7 +290,22 @@ export default function AdminPage() {
           {/* Фильтр по подписке */}
           <select
             value={subscriptionFilter}
-            onChange={(e) => setSubscriptionFilter(e.target.value as SubscriptionStatus | 'all')}
+            onChange={(e) => {
+              const newSubscription = e.target.value as SubscriptionStatus | 'all'
+              setSubscriptionFilter(newSubscription)
+              // Сбрасываем активный фильтр статистики, если пользователь меняет фильтр вручную
+              if (newSubscription === 'active' && roleFilter === 'all') {
+                setActiveStatFilter('premium')
+              } else if (newSubscription === 'all' && roleFilter === 'all') {
+                setActiveStatFilter('all')
+              } else if (newSubscription === 'all' && roleFilter === 'client') {
+                setActiveStatFilter('clients')
+              } else if (newSubscription === 'all' && roleFilter === 'coach') {
+                setActiveStatFilter('coaches')
+              } else {
+                setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
+              }
+            }}
             className="px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
           >
             <option value="all">Все подписки</option>
@@ -224,6 +314,21 @@ export default function AdminPage() {
             <option value="cancelled">Отмененные</option>
             <option value="past_due">Просроченные</option>
           </select>
+
+          {/* Кнопка сброса фильтров */}
+          {(searchQuery || roleFilter !== 'all' || subscriptionFilter !== 'all' || activeStatFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setRoleFilter('all')
+                setSubscriptionFilter('all')
+                setActiveStatFilter('all')
+              }}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
+            >
+              Сбросить фильтры
+            </button>
+          )}
         </div>
       </div>
 
@@ -262,21 +367,25 @@ export default function AdminPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.subscription_status === 'active' ? 'bg-green-100 text-green-700' :
-                        userProfile.subscription_status === 'free' ? 'bg-gray-100 text-gray-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                        {userProfile.subscription_status === 'active' ? 'Активна' :
-                          userProfile.subscription_status === 'free' ? 'Бесплатно' :
-                            userProfile.subscription_status === 'cancelled' ? 'Отменена' : 'Просрочена'}
-                      </span>
-                      {userProfile.subscription_tier && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {userProfile.subscription_tier === 'premium' ? 'Premium' : 'Basic'}
-                        </div>
-                      )}
-                    </div>
+                    {userProfile.role === 'client' ? (
+                      <div className="text-sm">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.subscription_status === 'active' ? 'bg-green-100 text-green-700' :
+                          userProfile.subscription_status === 'free' ? 'bg-gray-100 text-gray-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                          {userProfile.subscription_status === 'active' ? 'Активна' :
+                            userProfile.subscription_status === 'free' ? 'Бесплатно' :
+                              userProfile.subscription_status === 'cancelled' ? 'Отменена' : 'Просрочена'}
+                        </span>
+                        {userProfile.subscription_tier && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {userProfile.subscription_tier === 'premium' ? 'Premium' : 'Basic'}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {userProfile.coach_id ? (
@@ -291,13 +400,27 @@ export default function AdminPage() {
                       : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => handleEdit(userProfile)}
-                      className="text-black hover:text-gray-700 flex items-center gap-1"
-                    >
-                      <Edit size={16} />
-                      Редактировать
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(userProfile)}
+                        className="text-black hover:text-gray-700 flex items-center gap-1"
+                      >
+                        <Edit size={16} />
+                        Редактировать
+                      </button>
+                      {userProfile.role === 'client' && (
+                        <button
+                          onClick={() => {
+                            const updatedUser = { ...userProfile, role: 'coach' as UserRole, coach_id: null, subscription_status: 'free' as SubscriptionStatus, subscription_tier: 'basic' as SubscriptionTier, subscription_start_date: null, subscription_end_date: null }
+                            setEditingUser(updatedUser)
+                          }}
+                          className="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                          title="Быстро превратить в тренера"
+                        >
+                          → Тренер
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -324,37 +447,57 @@ export default function AdminPage() {
             <div className="p-6 space-y-4">
               {/* Имя */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+                <label className="block text-sm font-medium text-gray-900 mb-1">Имя</label>
                 <input
                   type="text"
                   value={editingUser.full_name || ''}
                   onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                  className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
                 />
               </div>
 
               {/* Роль */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Роль</label>
+                <label className="block text-sm font-medium text-gray-900 mb-1">Роль</label>
                 <select
                   value={editingUser.role}
-                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
-                  className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                  onChange={(e) => {
+                    const newRole = e.target.value as UserRole
+                    const updatedUser = { ...editingUser, role: newRole }
+                    
+                    // Если пользователь становится тренером или супер-админом, очищаем поля клиента
+                    if (newRole === 'coach' || newRole === 'super_admin') {
+                      updatedUser.coach_id = null
+                      // Очищаем подписку при превращении в тренера
+                      updatedUser.subscription_status = 'free'
+                      updatedUser.subscription_tier = 'basic'
+                      updatedUser.subscription_start_date = null
+                      updatedUser.subscription_end_date = null
+                    }
+                    
+                    setEditingUser(updatedUser)
+                  }}
+                  className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
                 >
                   <option value="client">Клиент</option>
                   <option value="coach">Тренер</option>
                   <option value="super_admin">Супер-админ</option>
                 </select>
+                {(editingUser.role === 'client' && (editingUser.coach_id || editingUser.subscription_status !== 'free')) && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    При изменении роли на "Тренер" будут очищены: назначенный тренер и подписка
+                  </p>
+                )}
               </div>
 
               {/* Тренер (только для клиентов) */}
               {editingUser.role === 'client' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Тренер</label>
+                  <label className="block text-sm font-medium text-gray-900 mb-1">Тренер</label>
                   <select
                     value={editingUser.coach_id || ''}
                     onChange={(e) => setEditingUser({ ...editingUser, coach_id: e.target.value || null })}
-                    className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                    className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
                   >
                     <option value="">Не назначен</option>
                     {coaches.map(coach => (
@@ -370,11 +513,11 @@ export default function AdminPage() {
               {editingUser.role === 'client' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Статус подписки</label>
+                    <label className="block text-sm font-medium text-gray-900 mb-1">Статус подписки</label>
                     <select
                       value={editingUser.subscription_status || 'free'}
                       onChange={(e) => setEditingUser({ ...editingUser, subscription_status: e.target.value as SubscriptionStatus })}
-                      className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                      className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
                     >
                       <option value="free">Бесплатно</option>
                       <option value="active">Активна</option>
@@ -386,40 +529,59 @@ export default function AdminPage() {
 
                   {/* Уровень подписки */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Уровень подписки</label>
+                    <label className="block text-sm font-medium text-gray-900 mb-1">Уровень подписки</label>
                     <select
                       value={editingUser.subscription_tier || 'basic'}
-                      onChange={(e) => setEditingUser({ ...editingUser, subscription_tier: e.target.value as SubscriptionTier })}
-                      className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+                      onChange={(e) => {
+                        const newTier = e.target.value as SubscriptionTier
+                        const updatedUser = { ...editingUser, subscription_tier: newTier }
+                        
+                        // Если выбран Premium, автоматически устанавливаем даты: начало = сегодня, окончание = +30 дней
+                        if (newTier === 'premium') {
+                          const today = new Date()
+                          const endDate = new Date(today)
+                          endDate.setDate(endDate.getDate() + 30) // +30 календарных дней
+                          
+                          updatedUser.subscription_start_date = today.toISOString().split('T')[0]
+                          updatedUser.subscription_end_date = endDate.toISOString().split('T')[0]
+                        } else if (newTier === 'basic') {
+                          // Если выбран Basic, сбрасываем даты подписки
+                          updatedUser.subscription_start_date = null
+                          updatedUser.subscription_end_date = null
+                        }
+                        
+                        setEditingUser(updatedUser)
+                      }}
+                      className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
                     >
                       <option value="basic">Basic</option>
                       <option value="premium">Premium</option>
                     </select>
                   </div>
+
+                  {/* Даты подписки */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Начало подписки</label>
+                      <input
+                        type="date"
+                        value={editingUser.subscription_start_date ? editingUser.subscription_start_date.split('T')[0] : ''}
+                        onChange={(e) => setEditingUser({ ...editingUser, subscription_start_date: e.target.value || null })}
+                        className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Окончание подписки</label>
+                      <input
+                        type="date"
+                        value={editingUser.subscription_end_date ? editingUser.subscription_end_date.split('T')[0] : ''}
+                        onChange={(e) => setEditingUser({ ...editingUser, subscription_end_date: e.target.value || null })}
+                        className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                      />
+                    </div>
+                  </div>
                 </>
               )}
-
-              {/* Даты подписки */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Начало подписки</label>
-                  <input
-                    type="date"
-                    value={editingUser.subscription_start_date ? editingUser.subscription_start_date.split('T')[0] : ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, subscription_start_date: e.target.value || null })}
-                    className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Окончание подписки</label>
-                  <input
-                    type="date"
-                    value={editingUser.subscription_end_date ? editingUser.subscription_end_date.split('T')[0] : ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, subscription_end_date: e.target.value || null })}
-                    className="w-full p-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="p-6 border-t border-gray-200 flex gap-3">
@@ -444,19 +606,38 @@ export default function AdminPage() {
   )
 }
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+function StatCard({ 
+  label, 
+  value, 
+  icon, 
+  isActive = false, 
+  onClick 
+}: { 
+  label: string
+  value: number
+  icon: React.ReactNode
+  isActive?: boolean
+  onClick?: () => void
+}) {
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+    <button
+      onClick={onClick}
+      className={`bg-white p-4 rounded-xl shadow-sm border-2 transition-all w-full text-left hover:shadow-md ${
+        isActive 
+          ? 'border-black bg-gray-50' 
+          : 'border-gray-100 hover:border-gray-300'
+      }`}
+    >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className={`text-sm ${isActive ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>{label}</p>
+          <p className={`text-2xl font-bold mt-1 ${isActive ? 'text-black' : 'text-gray-900'}`}>{value}</p>
         </div>
-        <div className="text-gray-400">
+        <div className={isActive ? 'text-black' : 'text-gray-400'}>
           {icon}
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 
