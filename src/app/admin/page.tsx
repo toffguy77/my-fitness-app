@@ -485,7 +485,7 @@ export default function AdminPage() {
                 </select>
                 {(editingUser.role === 'client' && (editingUser.coach_id || editingUser.subscription_status !== 'free')) && (
                   <p className="text-xs text-gray-500 mt-1">
-                    При изменении роли на "Тренер" будут очищены: назначенный тренер и подписка
+                    При изменении роли на &quot;Тренер&quot; будут очищены: назначенный тренер и подписка
                   </p>
                 )}
               </div>
