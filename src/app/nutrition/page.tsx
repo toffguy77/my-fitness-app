@@ -13,10 +13,18 @@ type Meal = {
   id: string
   title: string
   weight: number
-  calories: number
-  protein: number
-  fats: number
-  carbs: number
+  per100: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
+  totals: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
   photoName?: string
 }
 
@@ -64,10 +72,18 @@ export default function NutritionPage() {
       id: crypto.randomUUID(),
       title: 'Прием пищи 1',
       weight: 100,
-      calories: 0,
-      protein: 0,
-      fats: 0,
-      carbs: 0
+      per100: {
+        calories: 0,
+        protein: 0,
+        fats: 0,
+        carbs: 0
+      },
+      totals: {
+        calories: 0,
+        protein: 0,
+        fats: 0,
+        carbs: 0
+      }
     }
   ])
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -150,10 +166,10 @@ export default function NutritionPage() {
   const totals = useMemo(() => {
     return meals.reduce(
       (acc, meal) => ({
-        calories: acc.calories + (meal.calories || 0),
-        protein: acc.protein + (meal.protein || 0),
-        fats: acc.fats + (meal.fats || 0),
-        carbs: acc.carbs + (meal.carbs || 0)
+        calories: acc.calories + (meal.totals?.calories || 0),
+        protein: acc.protein + (meal.totals?.protein || 0),
+        fats: acc.fats + (meal.totals?.fats || 0),
+        carbs: acc.carbs + (meal.totals?.carbs || 0)
       }),
       { calories: 0, protein: 0, fats: 0, carbs: 0 }
     )
@@ -354,10 +370,10 @@ export default function NutritionPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
-                <InputGroup label="Калории" value={meal.calories} onChange={(v) => updateMeal(meal.id, 'calories', v)} />
-                <InputGroup label="Белки (г)" value={meal.protein} onChange={(v) => updateMeal(meal.id, 'protein', v)} />
-                <InputGroup label="Жиры (г)" value={meal.fats} onChange={(v) => updateMeal(meal.id, 'fats', v)} />
-                <InputGroup label="Углеводы (г)" value={meal.carbs} onChange={(v) => updateMeal(meal.id, 'carbs', v)} />
+                <InputGroup label="Калории (на 100 г)" value={meal.per100?.calories ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.calories', v)} />
+                <InputGroup label="Белки (г на 100 г)" value={meal.per100?.protein ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.protein', v)} />
+                <InputGroup label="Жиры (г на 100 г)" value={meal.per100?.fats ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.fats', v)} />
+                <InputGroup label="Углеводы (г на 100 г)" value={meal.per100?.carbs ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.carbs', v)} />
               </div>
 
               <div className="space-y-2">

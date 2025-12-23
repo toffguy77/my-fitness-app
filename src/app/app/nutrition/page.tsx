@@ -23,14 +23,18 @@ type Meal = {
   id: string
   title: string
   weight: number
-  calories: number           // Итоговые калории по порции
-  protein: number            // Итоговые белки по порции
-  fats: number               // Итоговые жиры по порции
-  carbs: number              // Итоговые углеводы по порции
-  caloriesPer100?: number    // Калории на 100 г (ввод пользователя/из продукта)
-  proteinPer100?: number     // Белки на 100 г
-  fatsPer100?: number        // Жиры на 100 г
-  carbsPer100?: number       // Углеводы на 100 г
+  per100: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
+  totals: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
   photoName?: string
   mealDate?: string // Дата приема пищи (для поправок)
   createdAt?: string // Время создания для сортировки
@@ -96,14 +100,24 @@ function NutritionPageContent() {
       id: crypto.randomUUID(),
       title: mealName,
       weight: 100,
-      calories: 0,
-      protein: 0,
-      fats: 0,
-      carbs: 0,
+      per100: {
+        calories: 0,
+        protein: 0,
+        fats: 0,
+        carbs: 0
+      },
+      totals: {
+        calories: 0,
+        protein: 0,
+        fats: 0,
+        carbs: 0
+      },
       mealDate: new Date().toISOString().split('T')[0],
       createdAt: now.toISOString()
     }]
   })
+  // Существующие meals за день из базы данных (для расчета totals)
+  const [existingMeals, setExistingMeals] = useState<Meal[]>([])
   const [ocrModalOpen, setOcrModalOpen] = useState(false)
   const [ocrModalMealId, setOcrModalMealId] = useState<string | null>(null)
   // Получаем дату из URL параметра или используем сегодня
@@ -190,30 +204,28 @@ function NutritionPageContent() {
           }
 
           setLog(logResult.data)
-          // Загружаем существующие приемы пищи
-          let mealsToSet: Meal[] = []
+          
+          // Данные уже нормализованы триггером БД, просто загружаем их
+          // Всегда загружаем существующие meals для расчета totals
           if (logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
-            // Нормализуем данные приемов: восстанавливаем значения на 100 г, если их нет, чтобы поля были предзаполнены
-            mealsToSet = (logResult.data.meals as Meal[]).map((m) => {
-              const safeWeight = m.weight || 0
-              const calcPer100 = (total?: number) =>
-                safeWeight > 0 && (total ?? 0) > 0 ? Math.round(((total ?? 0) * 100) / safeWeight) : 0
-              return {
-                ...m,
-                caloriesPer100: m.caloriesPer100 ?? calcPer100(m.calories),
-                proteinPer100: m.proteinPer100 ?? calcPer100(m.protein),
-                fatsPer100: m.fatsPer100 ?? calcPer100(m.fats),
-                carbsPer100: m.carbsPer100 ?? calcPer100(m.carbs),
-                calories: m.calories ?? 0,
-                protein: m.protein ?? 0,
-                fats: m.fats ?? 0,
-                carbs: m.carbs ?? 0,
-              }
-            })
-            // Важно: при редактировании оставляем все приемы пищи,
-            // чтобы изменения сохранялись в конкретной записи без потери остальных.
+            const existingMealsData = logResult.data.meals as Meal[]
+            setExistingMeals(existingMealsData)
+            logger.debug('Nutrition: загружены существующие приемы пищи для расчета totals', { count: existingMealsData.length })
+          } else {
+            setExistingMeals([])
+          }
+          
+          // Загружаем существующие приемы пищи в форму только в режиме редактирования
+          // При добавлении нового приема пищи оставляем пустую форму
+          if (isEditMode && logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
+            // В режиме редактирования загружаем все существующие meals в форму
+            const mealsToSet = logResult.data.meals as Meal[]
             setMeals(mealsToSet)
-            logger.debug('Nutrition: загружены существующие приемы пищи', { count: mealsToSet.length, editMealId })
+            logger.debug('Nutrition: загружены существующие приемы пищи для редактирования', { count: mealsToSet.length, editMealId })
+          } else if (!isEditMode) {
+            // При добавлении нового приема пищи оставляем дефолтный пустой прием пищи
+            // (он уже создан в useState, ничего не делаем)
+            logger.debug('Nutrition: режим добавления нового приема пищи, поля пустые', { date: selectedDate })
           }
           // Если в логе есть target_type, используем его
           if (logResult.data.target_type) {
@@ -226,6 +238,8 @@ function NutritionPageContent() {
           }
         } else {
           logger.debug('Nutrition: лог за выбранную дату не найден, используем дефолт', { userId: user.id, date: selectedDate })
+          // Если лога нет, очищаем существующие meals
+          setExistingMeals([])
           // Если лога нет, устанавливаем дефолт на основе наличия целей
           if (trainingResult.data && !restResult.data) {
             setDayType('training')
@@ -250,18 +264,27 @@ function NutritionPageContent() {
     return dayType === 'training' ? targetsTraining : targetsRest
   }, [dayType, targetsTraining, targetsRest])
 
-  // Суммарные значения по всем приемам пищи
+  // Суммарные значения по всем приемам пищи за день
+  // Учитываем существующие meals из базы + текущие meals в форме
   const totals = useMemo(() => {
-    return meals.reduce(
+    // Объединяем существующие meals и текущие meals в форме
+    // Исключаем дубликаты по id (если meal редактируется, берем версию из формы)
+    const mealIdsInForm = new Set(meals.map(m => m.id))
+    const allMealsForDate = [
+      ...existingMeals.filter(m => !mealIdsInForm.has(m.id)), // Существующие meals, которые не редактируются
+      ...meals // Текущие meals в форме (включая новые и редактируемые)
+    ].filter(m => (m.mealDate || selectedDate) === selectedDate) // Только meals за выбранную дату
+    
+    return allMealsForDate.reduce(
       (acc, meal) => ({
-        calories: acc.calories + (meal.calories || 0),
-        protein: acc.protein + (meal.protein || 0),
-        fats: acc.fats + (meal.fats || 0),
-        carbs: acc.carbs + (meal.carbs || 0)
+        calories: acc.calories + (meal.totals?.calories || 0),
+        protein: acc.protein + (meal.totals?.protein || 0),
+        fats: acc.fats + (meal.totals?.fats || 0),
+        carbs: acc.carbs + (meal.totals?.carbs || 0)
       }),
       { calories: 0, protein: 0, fats: 0, carbs: 0 }
     )
-  }, [meals])
+  }, [meals, existingMeals, selectedDate])
 
   // Валидация дневных totals - используется только при сохранении, не показывается во время ввода
   // Во время ввода валидируются только отдельные приемы пищи
@@ -271,7 +294,13 @@ function NutritionPageContent() {
 
   // Валидация каждого приема пищи
   const mealValidations = useMemo(() => {
-    return meals.map(meal => validateMeal(meal))
+    return meals.map(meal => validateMeal({
+      calories: meal.totals?.calories,
+      protein: meal.totals?.protein,
+      fats: meal.totals?.fats,
+      carbs: meal.totals?.carbs,
+      weight: meal.weight
+    }))
   }, [meals])
 
   // Функция сохранения черновика (без завершения дня)
@@ -333,14 +362,25 @@ function NutritionPageContent() {
         ...newMeals
       ]
 
+      // Пересчитываем итоговые значения КБЖУ для всех meals перед сохранением
+      const recalculatedMeals = allMeals.map(meal => recalcPortion(meal))
+
+      // Фильтруем только meals за выбранную дату для сохранения
+      // Также фильтруем пустые meals (без названия или без данных)
+      const dateMeals = recalculatedMeals.filter(m => {
+        const hasDate = (m.mealDate || selectedDate) === selectedDate
+        const hasTitle = m.title && m.title.trim().length > 0
+        const hasData = (m.totals?.calories || 0) > 0 || (m.totals?.protein || 0) > 0 || (m.totals?.fats || 0) > 0 || (m.totals?.carbs || 0) > 0
+        return hasDate && hasTitle && hasData
+      })
+      
       // Пересчитываем totals из всех meals за выбранную дату
-      const dateMeals = allMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
       const aggregatedTotals = dateMeals.reduce(
         (acc, meal) => ({
-          calories: acc.calories + (meal.calories || 0),
-          protein: acc.protein + (meal.protein || 0),
-          fats: acc.fats + (meal.fats || 0),
-          carbs: acc.carbs + (meal.carbs || 0)
+          calories: acc.calories + (meal.totals?.calories || 0),
+          protein: acc.protein + (meal.totals?.protein || 0),
+          fats: acc.fats + (meal.totals?.fats || 0),
+          carbs: acc.carbs + (meal.totals?.carbs || 0)
         }),
         { calories: 0, protein: 0, fats: 0, carbs: 0 }
       )
@@ -352,14 +392,16 @@ function NutritionPageContent() {
         actual_fats: aggregatedTotals.fats,
         actual_carbs: aggregatedTotals.carbs
       }
+      // Удаляем meals из aggregatedLog, чтобы не перезаписать наши dateMeals
+      const { meals: _, ...aggregatedLogWithoutMeals } = aggregatedLog as any
 
       // Сохраняем без is_completed (черновик)
       const payload = {
         user_id: user.id,
         date: selectedDate,
         target_type: dayType,
-        meals: allMeals,
-        ...aggregatedLog,
+        ...aggregatedLogWithoutMeals,
+        meals: dateMeals, // Сохраняем только meals за выбранную дату (должно быть после spread)
         // Явно не устанавливаем is_completed, чтобы не завершить день
         is_completed: false
       }
@@ -368,12 +410,25 @@ function NutritionPageContent() {
         userId: user.id,
         date: selectedDate,
         dayType,
+        mealsCount: dateMeals.length,
+        meals: dateMeals.map(m => ({ 
+          id: m.id, 
+          title: m.title, 
+          weight: m.weight, 
+          totals: m.totals, 
+          per100: m.per100,
+          mealDate: m.mealDate 
+        })),
+        payloadMeals: payload.meals,
+        payloadMealsLength: Array.isArray(payload.meals) ? payload.meals.length : 'not array'
       })
 
       // Upsert: Обновить если есть, создать если нет
-      const { error } = await supabase
+      const { error, data: savedData } = await supabase
         .from('daily_logs')
         .upsert(payload, { onConflict: 'user_id, date' })
+        .select('meals')
+        .single()
 
       if (error) {
         // Откатываем изменения при ошибке
@@ -391,6 +446,10 @@ function NutritionPageContent() {
         logger.info('Nutrition: черновик успешно сохранен', {
           userId: user.id,
           date: selectedDate,
+          mealsCount: dateMeals.length,
+          mealsSaved: dateMeals.map(m => ({ id: m.id, title: m.title, weight: m.weight, totals: m.totals, per100: m.per100 })),
+          savedMealsFromDB: savedData?.meals,
+          savedMealsCount: Array.isArray(savedData?.meals) ? savedData.meals.length : 0
         })
         setStatus('draft_saved')
         toast.success('Черновик сохранен')
@@ -400,9 +459,8 @@ function NutritionPageContent() {
           logger.warn('Nutrition: ошибка проверки достижений', { error })
         })
 
-        // Возвращаем пользователя на дашборд после успешного сохранения и сбрасываем статус
+        // Возвращаем пользователя на дашборд после успешного сохранения
         setTimeout(() => {
-          setStatus('idle')
           router.push(`/app/dashboard?date=${selectedDate}`)
           router.refresh()
         }, 300)
@@ -498,14 +556,25 @@ function NutritionPageContent() {
         ...newMeals // Добавляем/обновляем новые
       ]
 
+      // Пересчитываем итоговые значения КБЖУ для всех meals перед сохранением
+      const recalculatedMeals = allMeals.map(meal => recalcPortion(meal))
+
+      // Фильтруем только meals за выбранную дату для сохранения
+      // Также фильтруем пустые meals (без названия или без данных)
+      const dateMeals = recalculatedMeals.filter(m => {
+        const hasDate = (m.mealDate || selectedDate) === selectedDate
+        const hasTitle = m.title && m.title.trim().length > 0
+        const hasData = (m.totals?.calories || 0) > 0 || (m.totals?.protein || 0) > 0 || (m.totals?.fats || 0) > 0 || (m.totals?.carbs || 0) > 0
+        return hasDate && hasTitle && hasData
+      })
+      
       // Пересчитываем totals из всех meals за выбранную дату
-      const dateMeals = allMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
       const aggregatedTotals = dateMeals.reduce(
         (acc, meal) => ({
-          calories: acc.calories + (meal.calories || 0),
-          protein: acc.protein + (meal.protein || 0),
-          fats: acc.fats + (meal.fats || 0),
-          carbs: acc.carbs + (meal.carbs || 0)
+          calories: acc.calories + (meal.totals?.calories || 0),
+          protein: acc.protein + (meal.totals?.protein || 0),
+          fats: acc.fats + (meal.totals?.fats || 0),
+          carbs: acc.carbs + (meal.totals?.carbs || 0)
         }),
         { calories: 0, protein: 0, fats: 0, carbs: 0 }
       )
@@ -517,14 +586,16 @@ function NutritionPageContent() {
         actual_fats: aggregatedTotals.fats,
         actual_carbs: aggregatedTotals.carbs
       }
+      // Удаляем meals из aggregatedLog, чтобы не перезаписать наши dateMeals
+      const { meals: _, ...aggregatedLogWithoutMeals } = aggregatedLog as any
 
       // Сохраняем с завершением дня
       const payload = {
         user_id: user.id,
         date: selectedDate,
         target_type: dayType,
-        meals: allMeals,
-        ...aggregatedLog,
+        ...aggregatedLogWithoutMeals,
+        meals: dateMeals, // Сохраняем только meals за выбранную дату (должно быть после spread)
         is_completed: true,
         completed_at: new Date().toISOString()
       }
@@ -649,61 +720,91 @@ function NutritionPageContent() {
         id: crypto.randomUUID(),
         title: mealName,
         weight: 100,
-        calories: 0,
-        protein: 0,
-        fats: 0,
-        carbs: 0,
-        caloriesPer100: 0,
-        proteinPer100: 0,
-        fatsPer100: 0,
-        carbsPer100: 0,
+        per100: {
+          calories: 0,
+          protein: 0,
+          fats: 0,
+          carbs: 0
+        },
+        totals: {
+          calories: 0,
+          protein: 0,
+          fats: 0,
+          carbs: 0
+        },
         mealDate: selectedDate,
         createdAt: now.toISOString()
       }
     ])
   }
 
-  const updateMeal = (id: string, field: keyof Meal, value: string | number | undefined, fileName?: string) => {
+  // Функция пересчета итоговых значений КБЖУ на основе веса порции и значений на 100г
+  const recalcPortion = (meal: Meal): Meal => {
+    const weight = meal.weight || 0
+    const per100 = meal.per100 || { calories: 0, protein: 0, fats: 0, carbs: 0 }
+
+    // Пересчитываем итоговые значения на основе веса порции и значений на 100г
+    const recalcTotal = (per100Value: number) =>
+      weight > 0 && per100Value > 0 ? Math.round((per100Value * weight) / 100) : 0
+
+    return {
+      ...meal,
+      totals: {
+        calories: recalcTotal(per100.calories),
+        protein: recalcTotal(per100.protein),
+        fats: recalcTotal(per100.fats),
+        carbs: recalcTotal(per100.carbs),
+      }
+    }
+  }
+
+  const updateMeal = (id: string, field: keyof Meal | 'per100.calories' | 'per100.protein' | 'per100.fats' | 'per100.carbs', value: string | number | undefined, fileName?: string) => {
     const numericOrZero = (v: string | number | undefined) => {
       if (typeof v === 'number') return v
-      if (typeof v === 'string') return Number(v) || 0
+      if (typeof v === 'string') {
+        const trimmed = v.trim()
+        return trimmed === '' ? 0 : parseFloat(trimmed) || 0
+      }
       return 0
     }
 
-    const recalcPortion = (meal: Meal): Meal => {
-      const weight = meal.weight || 0
-      const caloriesPer100 = meal.caloriesPer100 || 0
-      const proteinPer100 = meal.proteinPer100 || 0
-      const fatsPer100 = meal.fatsPer100 || 0
-      const carbsPer100 = meal.carbsPer100 || 0
-
-      return {
-        ...meal,
-        calories: Math.round((caloriesPer100 * weight) / 100),
-        protein: Math.round((proteinPer100 * weight) / 100),
-        fats: Math.round((fatsPer100 * weight) / 100),
-        carbs: Math.round((carbsPer100 * weight) / 100),
-      }
-    }
-
     setMeals((prev) =>
-      prev.map((meal) =>
-        meal.id === id
-          ? {
-              ...recalcPortion({
-                ...meal,
-                [field]: ['caloriesPer100', 'proteinPer100', 'fatsPer100', 'carbsPer100', 'weight'].includes(field)
-                  ? numericOrZero(value)
-                  : typeof value === 'number'
-                    ? value
-                    : typeof value === 'string'
-                      ? value
-                      : meal[field],
-                photoName: fileName ?? meal.photoName,
-              })
+      prev.map((meal) => {
+        if (meal.id !== id) return meal
+
+        // Создаем обновленный объект приема пищи
+        let updatedMeal: Meal = { ...meal }
+
+        // Обрабатываем поля per100
+        if (field === 'per100.calories' || field === 'per100.protein' || field === 'per100.fats' || field === 'per100.carbs') {
+          const per100Field = field.split('.')[1] as 'calories' | 'protein' | 'fats' | 'carbs'
+          updatedMeal = {
+            ...updatedMeal,
+            per100: {
+              ...updatedMeal.per100,
+              [per100Field]: numericOrZero(value)
             }
-          : meal
-      )
+          }
+        } else if (field === 'weight') {
+          updatedMeal = {
+            ...updatedMeal,
+            weight: numericOrZero(value)
+          }
+        } else if (field === 'title' || field === 'mealDate' || field === 'createdAt') {
+          updatedMeal = {
+            ...updatedMeal,
+            [field]: typeof value === 'string' ? value : meal[field]
+          }
+        }
+
+        // Добавляем photoName, если передан
+        if (fileName !== undefined) {
+          updatedMeal.photoName = fileName
+        }
+
+        // Пересчитываем итоговые значения КБЖУ
+        return recalcPortion(updatedMeal)
+      })
     )
   }
 
@@ -715,28 +816,28 @@ function NutritionPageContent() {
   const handleProductSelect = async (mealId: string, product: Product, weight: number) => {
     if (!user) return
 
-    // Пересчитываем КБЖУ на основе веса порции
-    const calories = Math.round((product.calories_per_100g * weight) / 100)
-    const protein = Math.round((product.protein_per_100g * weight) / 100)
-    const fats = Math.round((product.fats_per_100g * weight) / 100)
-    const carbs = Math.round((product.carbs_per_100g * weight) / 100)
-
-    // Обновляем прием пищи
+    // Обновляем прием пищи с данными продукта
     setMeals(prev => prev.map(meal => {
       if (meal.id === mealId) {
-        return {
+        const updatedMeal: Meal = {
           ...meal,
           title: product.name,
           weight: weight,
-          calories: calories,
-          protein: protein,
-          fats: fats,
-          carbs: carbs,
-          caloriesPer100: product.calories_per_100g,
-          proteinPer100: product.protein_per_100g,
-          fatsPer100: product.fats_per_100g,
-          carbsPer100: product.carbs_per_100g,
+          per100: {
+            calories: product.calories_per_100g,
+            protein: product.protein_per_100g,
+            fats: product.fats_per_100g,
+            carbs: product.carbs_per_100g
+          },
+          totals: {
+            calories: 0,
+            protein: 0,
+            fats: 0,
+            carbs: 0
+          }
         }
+        // Пересчитываем totals
+        return recalcPortion(updatedMeal)
       }
       return meal
     }))
@@ -788,25 +889,52 @@ function NutritionPageContent() {
     // Определяем вес порции (по умолчанию 100г если не указан)
     const weight = data.weight || 100
 
-    // Если данные указаны на 100г, используем их напрямую
-    // Если указан вес порции, пересчитываем
-    const calories = data.calories || 0
-    const protein = data.protein || 0
-    const fats = data.fats || 0
-    const carbs = data.carbs || 0
+    // Определяем, указаны ли данные на 100г или для порции
+    // Если weight = 100, скорее всего данные на 100г
+    // Если weight != 100, данные для порции
+    const isPer100g = weight === 100 || !data.weight
+
+    let per100Calories = 0
+    let per100Protein = 0
+    let per100Fats = 0
+    let per100Carbs = 0
+
+    if (isPer100g) {
+      // Данные на 100г, используем напрямую
+      per100Calories = Math.round(data.calories || 0)
+      per100Protein = Math.round(data.protein || 0)
+      per100Fats = Math.round(data.fats || 0)
+      per100Carbs = Math.round(data.carbs || 0)
+    } else {
+      // Данные для порции, вычисляем значения на 100г
+      per100Calories = weight > 0 && data.calories ? Math.round((data.calories * 100) / weight) : 0
+      per100Protein = weight > 0 && data.protein ? Math.round((data.protein * 100) / weight) : 0
+      per100Fats = weight > 0 && data.fats ? Math.round((data.fats * 100) / weight) : 0
+      per100Carbs = weight > 0 && data.carbs ? Math.round((data.carbs * 100) / weight) : 0
+    }
 
     // Обновляем прием пищи
     setMeals(prev => prev.map(meal => {
       if (meal.id === mealId) {
-        return {
+        const updatedMeal: Meal = {
           ...meal,
           title: data.productName || meal.title,
           weight: weight,
-          calories: Math.round(calories),
-          protein: Math.round(protein),
-          fats: Math.round(fats),
-          carbs: Math.round(carbs),
+          per100: {
+            calories: per100Calories,
+            protein: per100Protein,
+            fats: per100Fats,
+            carbs: per100Carbs
+          },
+          totals: {
+            calories: 0,
+            protein: 0,
+            fats: 0,
+            carbs: 0
+          }
         }
+        // Пересчитываем totals
+        return recalcPortion(updatedMeal)
       }
       return meal
     }))
@@ -968,11 +1096,32 @@ function NutritionPageContent() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
-                  <InputGroup label="Калории (на 100 г)" value={meal.caloriesPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'caloriesPer100', v)} />
-                  <InputGroup label="Белки (г на 100 г)" value={meal.proteinPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'proteinPer100', v)} />
-                  <InputGroup label="Жиры (г на 100 г)" value={meal.fatsPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'fatsPer100', v)} />
-                  <InputGroup label="Углеводы (г на 100 г)" value={meal.carbsPer100 ?? 0} onChange={(v) => updateMeal(meal.id, 'carbsPer100', v)} />
+                  <InputGroup label="Калории (на 100 г)" value={meal.per100?.calories ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.calories', v)} />
+                  <InputGroup label="Белки (г на 100 г)" value={meal.per100?.protein ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.protein', v)} />
+                  <InputGroup label="Жиры (г на 100 г)" value={meal.per100?.fats ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.fats', v)} />
+                  <InputGroup label="Углеводы (г на 100 г)" value={meal.per100?.carbs ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.carbs', v)} />
                 </div>
+                
+                {/* Отображение итоговых значений КБЖУ для порции */}
+                {(meal.totals?.calories > 0 || meal.totals?.protein > 0 || meal.totals?.fats > 0 || meal.totals?.carbs > 0) && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="text-xs font-semibold text-blue-800 mb-2">Итого для порции ({meal.weight}г):</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="text-blue-700">
+                        <span className="font-medium">Калории:</span> {meal.totals?.calories ?? 0} ккал
+                      </div>
+                      <div className="text-blue-700">
+                        <span className="font-medium">Белки:</span> {meal.totals?.protein ?? 0} г
+                      </div>
+                      <div className="text-blue-700">
+                        <span className="font-medium">Жиры:</span> {meal.totals?.fats ?? 0} г
+                      </div>
+                      <div className="text-blue-700">
+                        <span className="font-medium">Углеводы:</span> {meal.totals?.carbs ?? 0} г
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Валидация приема пищи */}
                 {mealValidation && (mealValidation.errors.length > 0 || mealValidation.warnings.length > 0) && (
                   <ValidationWarning

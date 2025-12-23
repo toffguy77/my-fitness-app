@@ -5,13 +5,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { Settings, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle, Trophy } from 'lucide-react'
+import { Settings, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle, Trophy, Flame } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
 import ValidationWarning from '@/components/ValidationWarning'
 import ProgressBar from '@/components/ProgressBar'
 import { getUserProfile, hasActiveSubscription, type UserProfile } from '@/utils/supabase/profile'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
-import { validateMeal } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
 import ChatWidget from '@/components/chat/ChatWidget'
@@ -21,13 +20,22 @@ type Meal = {
   id: string
   title: string
   weight: number
-  calories: number
-  protein: number
-  fats: number
-  carbs: number
+  per100: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
+  totals: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
   mealDate?: string
   createdAt?: string
 }
+
 
 type DailyLog = {
   date: string
@@ -63,7 +71,6 @@ export default function ClientDashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
   const [editingWeight, setEditingWeight] = useState<boolean>(false)
-  const [showAddMealModal, setShowAddMealModal] = useState<boolean>(false)
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]) // Навигация по датам
   const [coachNote, setCoachNote] = useState<{ content: string; date: string } | null>(null) // Заметка тренера
   const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
@@ -217,20 +224,153 @@ export default function ClientDashboard() {
             logger.error('Dashboard: ошибка загрузки логов', error, { userId: user.id, code: (logsError as { code?: string })?.code })
           }
         } else if (logsData) {
-          setWeekLogs(logsData as DailyLog[])
+          // Данные уже нормализованы триггером БД, используем напрямую
+          const processedLogs = logsData.map(log => {
+            let mealsArray: Meal[] = []
+            if (log.meals !== null && log.meals !== undefined) {
+              if (Array.isArray(log.meals)) {
+                // Проверяем структуру meals - если это старая структура, нормализуем
+                mealsArray = (log.meals as any[]).map((m: any) => {
+                  // Если это новая структура (есть per100 и totals), используем как есть
+                  if (m && typeof m === 'object' && m.per100 && m.totals) {
+                    return m as Meal
+                  }
+                  // Если это старая структура, преобразуем
+                  return {
+                    id: m.id,
+                    title: m.title || '',
+                    weight: m.weight || 0,
+                    per100: {
+                      calories: m.caloriesPer100 || 0,
+                      protein: m.proteinPer100 || 0,
+                      fats: m.fatsPer100 || 0,
+                      carbs: m.carbsPer100 || 0
+                    },
+                    totals: {
+                      calories: m.calories || 0,
+                      protein: m.protein || 0,
+                      fats: m.fats || 0,
+                      carbs: m.carbs || 0
+                    },
+                    photoName: m.photoName,
+                    mealDate: m.mealDate,
+                    createdAt: m.createdAt
+                  } as Meal
+                }).filter((m: Meal) => m && m.id) // Фильтруем только по наличию id
+              } else if (typeof log.meals === 'string') {
+                try {
+                  const parsed = JSON.parse(log.meals)
+                  if (Array.isArray(parsed)) {
+                    mealsArray = parsed.map((m: any) => {
+                      if (m && typeof m === 'object' && m.per100 && m.totals) {
+                        return m as Meal
+                      }
+                      return {
+                        id: m.id,
+                        title: m.title || '',
+                        weight: m.weight || 0,
+                        per100: {
+                          calories: m.caloriesPer100 || 0,
+                          protein: m.proteinPer100 || 0,
+                          fats: m.fatsPer100 || 0,
+                          carbs: m.carbsPer100 || 0
+                        },
+                        totals: {
+                          calories: m.calories || 0,
+                          protein: m.protein || 0,
+                          fats: m.fats || 0,
+                          carbs: m.carbs || 0
+                        },
+                        photoName: m.photoName,
+                        mealDate: m.mealDate,
+                        createdAt: m.createdAt
+                      } as Meal
+                    }).filter((m: Meal) => m && m.id && m.title)
+                  }
+                } catch (e) {
+                  logger.warn('Dashboard: ошибка парсинга meals в weekLogs', { error: e, rawMeals: log.meals })
+                  mealsArray = []
+                }
+              }
+            }
+            logger.debug('Dashboard: обработка лога', { 
+              date: log.date, 
+              mealsCount: mealsArray.length,
+              rawMealsType: typeof log.meals,
+              rawMealsIsArray: Array.isArray(log.meals),
+              rawMeals: log.meals,
+              processedMeals: mealsArray.map(m => ({ id: m.id, title: m.title }))
+            })
+            return { ...log, meals: mealsArray } as DailyLog
+          })
+          setWeekLogs(processedLogs)
           // Находим лог за выбранную дату
-          const todayData = logsData.find(log => log.date === selectedDate)
+          const todayData = processedLogs.find(log => log.date === selectedDate)
           if (todayData) {
             // Убеждаемся, что meals всегда массив (не null/undefined)
             // Обрабатываем разные случаи: null, undefined, массив, строка JSON
             let mealsArray: Meal[] = []
             if (todayData.meals !== null && todayData.meals !== undefined) {
               if (Array.isArray(todayData.meals)) {
-                mealsArray = todayData.meals
+                // Проверяем структуру meals - если это старая структура, нормализуем
+                mealsArray = (todayData.meals as any[]).map((m: any) => {
+                  // Если это новая структура (есть per100 и totals), используем как есть
+                  if (m.per100 && m.totals) {
+                    return m as Meal
+                  }
+                  // Если это старая структура, преобразуем
+                  return {
+                    id: m.id,
+                    title: m.title,
+                    weight: m.weight || 0,
+                    per100: {
+                      calories: m.caloriesPer100 || 0,
+                      protein: m.proteinPer100 || 0,
+                      fats: m.fatsPer100 || 0,
+                      carbs: m.carbsPer100 || 0
+                    },
+                    totals: {
+                      calories: m.calories || 0,
+                      protein: m.protein || 0,
+                      fats: m.fats || 0,
+                      carbs: m.carbs || 0
+                    },
+                    photoName: m.photoName,
+                    mealDate: m.mealDate,
+                    createdAt: m.createdAt
+                  } as Meal
+                })
               } else if (typeof todayData.meals === 'string') {
                 // Если meals пришло как строка (JSON), парсим
                 try {
-                  mealsArray = JSON.parse(todayData.meals)
+                  const parsed = JSON.parse(todayData.meals)
+                  if (Array.isArray(parsed)) {
+                    mealsArray = parsed.map((m: any) => {
+                      if (m && typeof m === 'object' && m.per100 && m.totals) {
+                        return m as Meal
+                      }
+                      return {
+                        id: m.id,
+                        title: m.title || '',
+                        weight: m.weight || 0,
+                        per100: {
+                          calories: m.caloriesPer100 || 0,
+                          protein: m.proteinPer100 || 0,
+                          fats: m.fatsPer100 || 0,
+                          carbs: m.carbsPer100 || 0
+                        },
+                        totals: {
+                          calories: m.calories || 0,
+                          protein: m.protein || 0,
+                          fats: m.fats || 0,
+                          carbs: m.carbs || 0
+                        },
+                        photoName: m.photoName,
+                        mealDate: m.mealDate,
+                        createdAt: m.createdAt
+                      } as Meal
+                    }).filter((m: Meal) => m && m.id) // Фильтруем только по наличию id
+                  }
                 } catch (e) {
                   logger.warn('Dashboard: ошибка парсинга meals', { error: e, meals: todayData.meals })
                   mealsArray = []
@@ -238,6 +378,7 @@ export default function ClientDashboard() {
               }
             }
 
+            // Данные уже нормализованы триггером БД
             const todayLogData: DailyLog = {
               ...todayData,
               meals: mealsArray
@@ -251,7 +392,9 @@ export default function ClientDashboard() {
               mealsType: typeof todayData.meals,
               mealsIsArray: Array.isArray(todayData.meals),
               actualCalories: todayData.actual_calories,
-              actualProtein: todayData.actual_protein
+              actualProtein: todayData.actual_protein,
+              rawMeals: todayData.meals,
+              parsedMeals: mealsArray.map(m => ({ id: m.id, title: m.title, weight: m.weight, totals: m.totals, per100: m.per100 }))
             })
           } else {
             // Если нет лога за выбранную дату, не создаем пустой - секция просто не покажется
@@ -302,17 +445,81 @@ export default function ClientDashboard() {
           let mealsArray: Meal[] = []
           if (logData.meals !== null && logData.meals !== undefined) {
             if (Array.isArray(logData.meals)) {
-              mealsArray = logData.meals
+              // Проверяем структуру meals - если это старая структура, нормализуем
+              mealsArray = (logData.meals as any[]).map((m: any) => {
+                // Если это новая структура (есть per100 и totals), используем как есть
+                if (m.per100 && m.totals) {
+                  return m as Meal
+                }
+                // Если это старая структура, преобразуем
+                return {
+                  id: m.id,
+                  title: m.title,
+                  weight: m.weight || 0,
+                  per100: {
+                    calories: m.caloriesPer100 || 0,
+                    protein: m.proteinPer100 || 0,
+                    fats: m.fatsPer100 || 0,
+                    carbs: m.carbsPer100 || 0
+                  },
+                  totals: {
+                    calories: m.calories || 0,
+                    protein: m.protein || 0,
+                    fats: m.fats || 0,
+                    carbs: m.carbs || 0
+                  },
+                  photoName: m.photoName,
+                  mealDate: m.mealDate,
+                  createdAt: m.createdAt
+                } as Meal
+              })
             } else if (typeof logData.meals === 'string') {
               try {
-                mealsArray = JSON.parse(logData.meals)
+                const parsed = JSON.parse(logData.meals)
+                if (Array.isArray(parsed)) {
+                  mealsArray = parsed.map((m: any) => {
+                    if (m.per100 && m.totals) {
+                      return m as Meal
+                    }
+                    return {
+                      id: m.id,
+                      title: m.title,
+                      weight: m.weight || 0,
+                      per100: {
+                        calories: m.caloriesPer100 || 0,
+                        protein: m.proteinPer100 || 0,
+                        fats: m.fatsPer100 || 0,
+                        carbs: m.carbsPer100 || 0
+                      },
+                      totals: {
+                        calories: m.calories || 0,
+                        protein: m.protein || 0,
+                        fats: m.fats || 0,
+                        carbs: m.carbs || 0
+                      },
+                      photoName: m.photoName,
+                      mealDate: m.mealDate,
+                      createdAt: m.createdAt
+                    } as Meal
+                  })
+                }
               } catch (e) {
-                logger.warn('Dashboard: ошибка парсинга meals', { error: e })
+                logger.warn('Dashboard: ошибка парсинга meals', { error: e, rawMeals: logData.meals })
                 mealsArray = []
               }
             }
           }
 
+          // Данные уже нормализованы триггером БД
+          logger.debug('Dashboard: загрузка данных за дату', {
+            userId: user.id,
+            date: selectedDate,
+            mealsCount: mealsArray.length,
+            rawMeals: logData.meals,
+            rawMealsType: typeof logData.meals,
+            rawMealsIsArray: Array.isArray(logData.meals),
+            parsedMeals: mealsArray.map(m => ({ id: m.id, title: m.title, weight: m.weight, totals: m.totals, per100: m.per100 }))
+          })
           setTodayLog({
             ...logData,
             meals: mealsArray
@@ -495,35 +702,28 @@ export default function ClientDashboard() {
           {(() => {
             // Определяем текущие цели в зависимости от типа дня
             const currentTargets = todayLog.target_type === 'rest' ? targetsRest : targetsTraining
-            const showTargets = isPremium && currentTargets
 
-            if (showTargets && currentTargets) {
+            if (currentTargets) {
               return (
-                <div className="space-y-3 mb-4">
-                  <ProgressBar
-                    label="Калории"
-                    current={todayLog.actual_calories || 0}
-                    target={currentTargets.calories}
-                    unit="ккал"
-                  />
-                  <ProgressBar
-                    label="Белки"
-                    current={todayLog.actual_protein || 0}
-                    target={currentTargets.protein}
-                    unit="г"
-                  />
-                  <ProgressBar
-                    label="Жиры"
-                    current={todayLog.actual_fats || 0}
-                    target={currentTargets.fats}
-                    unit="г"
-                  />
-                  <ProgressBar
-                    label="Углеводы"
-                    current={todayLog.actual_carbs || 0}
-                    target={currentTargets.carbs}
-                    unit="г"
-                  />
+                <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 border border-gray-100">
+                  {/* Калории - большой формат как на странице nutrition */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">КАЛОРИИ</div>
+                      <div className="text-3xl font-black text-gray-900 flex items-baseline gap-1">
+                        {todayLog.actual_calories || 0}
+                        <span className="text-lg text-gray-400 font-normal">/ {currentTargets.calories}</span>
+                      </div>
+                    </div>
+                    <Flame className={(todayLog.actual_calories || 0) > currentTargets.calories ? "text-red-500" : "text-green-500"} />
+                  </div>
+
+                  {/* Macro Bars */}
+                  <div className="space-y-3">
+                    <ProgressBar label="Белки" current={todayLog.actual_protein || 0} target={currentTargets.protein} unit="г" />
+                    <ProgressBar label="Жиры" current={todayLog.actual_fats || 0} target={currentTargets.fats} unit="г" />
+                    <ProgressBar label="Углеводы" current={todayLog.actual_carbs || 0} target={currentTargets.carbs} unit="г" />
+                  </div>
                 </div>
               )
             }
@@ -765,8 +965,8 @@ export default function ClientDashboard() {
                         </div>
                       )}
                       <div className="text-xs text-gray-600 space-y-0.5">
-                        <div className="font-medium">{meal.calories} ккал</div>
-                        <div>Белки: {meal.protein}г • Жиры: {meal.fats}г • Углеводы: {meal.carbs}г</div>
+                        <div className="font-medium">{meal.totals?.calories ?? 0} ккал</div>
+                        <div>Белки: {meal.totals?.protein ?? 0}г • Жиры: {meal.totals?.fats ?? 0}г • Углеводы: {meal.totals?.carbs ?? 0}г</div>
                         {meal.weight > 0 && (
                           <div className="text-gray-500">Вес порции: {meal.weight}г</div>
                         )}
@@ -800,10 +1000,10 @@ export default function ClientDashboard() {
                           const dateMeals = updatedMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
                           const newTotals = dateMeals.reduce(
                             (acc, m) => ({
-                              calories: acc.calories + (m.calories || 0),
-                              protein: acc.protein + (m.protein || 0),
-                              fats: acc.fats + (m.fats || 0),
-                              carbs: acc.carbs + (m.carbs || 0)
+                              calories: acc.calories + (m.totals?.calories || 0),
+                              protein: acc.protein + (m.totals?.protein || 0),
+                              fats: acc.fats + (m.totals?.fats || 0),
+                              carbs: acc.carbs + (m.totals?.carbs || 0)
                             }),
                             { calories: 0, protein: 0, fats: 0, carbs: 0 }
                           )
@@ -841,7 +1041,7 @@ export default function ClientDashboard() {
                 {!todayLog.is_completed && (
                   <div className="pt-2 text-center">
                     <button
-                      onClick={() => setShowAddMealModal(true)}
+                      onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
                       className="text-sm font-medium text-gray-600 hover:text-gray-900 underline"
                     >
                       + Добавить еще один прием пищи
@@ -854,7 +1054,7 @@ export default function ClientDashboard() {
                 <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
                   <p className="text-gray-500 text-sm mb-3">Нет приемов пищи за сегодня</p>
                   <button
-                    onClick={() => setShowAddMealModal(true)}
+                    onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
                     className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
                   >
                     + Добавить первый прием пищи
@@ -1037,92 +1237,6 @@ export default function ClientDashboard() {
       )}
 
       {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ ПРИЕМА ПИЩИ */}
-      {showAddMealModal && (
-        <AddMealModal
-          onClose={() => setShowAddMealModal(false)}
-          selectedDate={selectedDate}
-          userId={user?.id}
-          onSave={async (mealData) => {
-            const mealDate = mealData.mealDate || selectedDate
-
-            // Получаем существующие meals для выбранной даты
-            const { data: existingLog } = await supabase
-              .from('daily_logs')
-              .select('meals')
-              .eq('user_id', user?.id)
-              .eq('date', mealDate)
-              .single()
-
-            const existingMeals: Meal[] = (existingLog?.meals as Meal[]) || []
-            const newMeal: Meal = {
-              id: crypto.randomUUID(),
-              title: mealData.title,
-              weight: mealData.weight,
-              calories: mealData.calories,
-              protein: mealData.protein,
-              fats: mealData.fats,
-              carbs: mealData.carbs,
-              mealDate: mealDate,
-              createdAt: new Date().toISOString()
-            }
-
-            const allMeals = [...existingMeals, newMeal]
-
-            // Пересчитываем totals для выбранной даты
-            const dateMeals = allMeals.filter(m => (m.mealDate || mealDate) === mealDate)
-            const totals = dateMeals.reduce(
-              (acc, m) => ({
-                calories: acc.calories + (m.calories || 0),
-                protein: acc.protein + (m.protein || 0),
-                fats: acc.fats + (m.fats || 0),
-                carbs: acc.carbs + (m.carbs || 0)
-              }),
-              { calories: 0, protein: 0, fats: 0, carbs: 0 }
-            )
-
-            // Проверяем, существует ли лог за эту дату
-            const { data: dateLog } = await supabase
-              .from('daily_logs')
-              .select('*')
-              .eq('user_id', user?.id)
-              .eq('date', mealDate)
-              .single()
-
-            if (dateLog) {
-              await supabase
-                .from('daily_logs')
-                .update({
-                  meals: allMeals,
-                  actual_calories: totals.calories,
-                  actual_protein: totals.protein,
-                  actual_fats: totals.fats,
-                  actual_carbs: totals.carbs
-                })
-                .eq('user_id', user?.id)
-                .eq('date', mealDate)
-            } else {
-              await supabase
-                .from('daily_logs')
-                .insert({
-                  user_id: user?.id,
-                  date: mealDate,
-                  meals: allMeals,
-                  actual_calories: totals.calories,
-                  actual_protein: totals.protein,
-                  actual_fats: totals.fats,
-                  actual_carbs: totals.carbs,
-                  weight: null,
-                  hunger_level: 3,
-                  energy_level: 5,
-                  notes: ''
-                })
-            }
-
-            setShowAddMealModal(false)
-            router.refresh()
-          }}
-        />
-      )}
 
       {/* ВЕС */}
       {(() => {
@@ -1331,363 +1445,4 @@ function StatCard({ label, value, target, unit }: { label: string; value: string
 }
 
 // Компонент модального окна для добавления приема пищи
-type AddMealModalProps = {
-  onClose: () => void
-  onSave: (meal: {
-    title: string
-    weight: number
-    calories: number
-    protein: number
-    fats: number
-    carbs: number
-    mealDate: string
-  }) => Promise<void>
-  selectedDate?: string
-  userId?: string
-}
-
-function AddMealModal({ onClose, onSave, selectedDate, userId }: AddMealModalProps) {
-  const supabase = createClient()
-  const [mealData, setMealData] = useState({
-    title: '',
-    weight: 100,
-    calories: 0,
-    protein: 0,
-    fats: 0,
-    carbs: 0,
-    mealDate: selectedDate || new Date().toISOString().split('T')[0]
-  })
-  const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'new' | 'recent' | 'copy'>('new')
-  const [recentMeals, setRecentMeals] = useState<Meal[]>([])
-  const [yesterdayMeals, setYesterdayMeals] = useState<Meal[]>([])
-  const [loadingRecent, setLoadingRecent] = useState(false)
-
-  // Валидация приема пищи
-  const mealValidation = useMemo(() => {
-    return validateMeal({
-      calories: mealData.calories,
-      protein: mealData.protein,
-      fats: mealData.fats,
-      carbs: mealData.carbs,
-      weight: mealData.weight,
-    })
-  }, [mealData])
-
-  const getMealNameByTime = (hour: number = new Date().getHours()): string => {
-    if (hour >= 6 && hour < 10) return 'Завтрак'
-    if (hour >= 10 && hour < 13) return 'Второй завтрак'
-    if (hour >= 13 && hour < 16) return 'Обед'
-    if (hour >= 16 && hour < 20) return 'Полдник'
-    if (hour >= 20 || hour < 6) return 'Ужин'
-    return 'Прием пищи'
-  }
-
-  // Загружаем недавние приемы пищи и вчерашние
-  useEffect(() => {
-    const loadData = async () => {
-      if (!userId) return
-
-      setLoadingRecent(true)
-      try {
-        // Загружаем логи за последние 7 дней для получения недавних приемов пищи
-        const weekAgo = new Date()
-        weekAgo.setDate(weekAgo.getDate() - 7)
-        const { data: logs } = await supabase
-          .from('daily_logs')
-          .select('meals')
-          .eq('user_id', userId)
-          .gte('date', weekAgo.toISOString().split('T')[0])
-          .order('date', { ascending: false })
-          .limit(7)
-
-        // Собираем уникальные приемы пищи (по названию)
-        const uniqueMeals = new Map<string, Meal>()
-        logs?.forEach(log => {
-          if (log.meals && Array.isArray(log.meals)) {
-            (log.meals as Meal[]).forEach(meal => {
-              if (!uniqueMeals.has(meal.title.toLowerCase())) {
-                uniqueMeals.set(meal.title.toLowerCase(), meal)
-              }
-            })
-          }
-        })
-        setRecentMeals(Array.from(uniqueMeals.values()).slice(0, 10))
-
-        // Загружаем вчерашние приемы пищи
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const yesterdayStr = yesterday.toISOString().split('T')[0]
-        const { data: yesterdayLog } = await supabase
-          .from('daily_logs')
-          .select('meals')
-          .eq('user_id', userId)
-          .eq('date', yesterdayStr)
-          .single()
-
-        if (yesterdayLog?.meals && Array.isArray(yesterdayLog.meals)) {
-          setYesterdayMeals(yesterdayLog.meals as Meal[])
-        }
-      } catch (error) {
-        logger.error('AddMealModal: ошибка загрузки данных', error)
-      } finally {
-        setLoadingRecent(false)
-      }
-    }
-
-    loadData()
-  }, [userId, supabase])
-
-  useEffect(() => {
-    // Устанавливаем дефолтное название по времени
-    if (!mealData.title && activeTab === 'new') {
-      setMealData(prev => ({ ...prev, title: getMealNameByTime() }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
-
-  const handleSave = async () => {
-    if (!mealData.title.trim()) {
-      toast.error('Введите название приема пищи')
-      return
-    }
-
-    // Проверка валидации перед сохранением
-    if (!mealValidation.valid) {
-      const errorMessage = mealValidation.errors.join('; ')
-      toast.error(`Ошибки валидации: ${errorMessage}`)
-      return
-    }
-
-    setSaving(true)
-    try {
-      await onSave(mealData)
-    } catch (error) {
-      console.error('Ошибка сохранения приема пищи:', error)
-      toast.error('Ошибка сохранения. Попробуйте еще раз.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleCopyFromYesterday = (meal: Meal) => {
-    setMealData({
-      title: meal.title,
-      weight: meal.weight,
-      calories: meal.calories,
-      protein: meal.protein,
-      fats: meal.fats,
-      carbs: meal.carbs,
-      mealDate: selectedDate || new Date().toISOString().split('T')[0]
-    })
-    setActiveTab('new')
-  }
-
-  const handleSelectRecent = (meal: Meal) => {
-    setMealData({
-      title: meal.title,
-      weight: meal.weight,
-      calories: meal.calories,
-      protein: meal.protein,
-      fats: meal.fats,
-      carbs: meal.carbs,
-      mealDate: selectedDate || new Date().toISOString().split('T')[0]
-    })
-    setActiveTab('new')
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full sm:max-w-md sm:mx-auto p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Добавить прием пищи</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-gray-200 mb-4">
-          <button
-            onClick={() => setActiveTab('new')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'new'
-              ? 'border-black text-black'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-          >
-            Новый
-          </button>
-          <button
-            onClick={() => setActiveTab('recent')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'recent'
-              ? 'border-black text-black'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-          >
-            Недавние ({recentMeals.length})
-          </button>
-          {yesterdayMeals.length > 0 && (
-            <button
-              onClick={() => setActiveTab('copy')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'copy'
-                ? 'border-black text-black'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              Вчера ({yesterdayMeals.length})
-            </button>
-          )}
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'new' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Дата приема пищи</label>
-              <input
-                type="date"
-                value={mealData.mealDate}
-                onChange={(e) => setMealData({ ...mealData, mealDate: e.target.value })}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-              />
-              <p className="text-xs text-gray-500 mt-1">Выберите дату, если забыли внести ранее</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
-              <input
-                type="text"
-                value={mealData.title}
-                onChange={(e) => setMealData({ ...mealData, title: e.target.value })}
-                placeholder={getMealNameByTime()}
-                className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Вес (г)</label>
-                <input
-                  type="number"
-                  value={mealData.weight}
-                  onChange={(e) => setMealData({ ...mealData, weight: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Калории</label>
-                <input
-                  type="number"
-                  value={mealData.calories}
-                  onChange={(e) => setMealData({ ...mealData, calories: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Белки (г)</label>
-                <input
-                  type="number"
-                  value={mealData.protein}
-                  onChange={(e) => setMealData({ ...mealData, protein: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Жиры (г)</label>
-                <input
-                  type="number"
-                  value={mealData.fats}
-                  onChange={(e) => setMealData({ ...mealData, fats: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Углеводы (г)</label>
-                <input
-                  type="number"
-                  value={mealData.carbs}
-                  onChange={(e) => setMealData({ ...mealData, carbs: parseFloat(e.target.value) || 0 })}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
-                />
-              </div>
-            </div>
-
-            {/* Валидация приема пищи */}
-            {mealValidation.errors.length > 0 || mealValidation.warnings.length > 0 ? (
-              <ValidationWarning
-                errors={mealValidation.errors}
-                warnings={mealValidation.warnings}
-              />
-            ) : null}
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !mealValidation.valid}
-                className="flex-1 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {saving ? 'Сохранение...' : 'Сохранить'}
-              </button>
-            </div>
-          </>
-        )}
-
-        {activeTab === 'recent' && (
-          <div className="space-y-2">
-            {loadingRecent ? (
-              <div className="text-center py-4 text-gray-500 text-sm">Загрузка...</div>
-            ) : recentMeals.length > 0 ? (
-              recentMeals.map((meal, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSelectRecent(meal)}
-                  className="w-full p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="font-medium text-gray-900">{meal.title}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {meal.calories} ккал • Б {meal.protein}г / Ж {meal.fats}г / У {meal.carbs}г
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="text-center py-4 text-gray-500 text-sm">Нет недавних приемов пищи</div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'copy' && (
-          <div className="space-y-2">
-            {yesterdayMeals.length > 0 ? (
-              yesterdayMeals.map((meal, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleCopyFromYesterday(meal)}
-                  className="w-full p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="font-medium text-gray-900">{meal.title}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {meal.calories} ккал • Б {meal.protein}г / Ж {meal.fats}г / У {meal.carbs}г
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="text-center py-4 text-gray-500 text-sm">Нет приемов пищи за вчера</div>
-            )}
-          </div>
-        )}
-      </div>
-
-    </div>
-  )
-}
 

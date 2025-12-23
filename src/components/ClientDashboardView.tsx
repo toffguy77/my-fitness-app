@@ -14,10 +14,18 @@ type Meal = {
   id: string
   title: string
   weight: number
-  calories: number
-  protein: number
-  fats: number
-  carbs: number
+  per100: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
+  totals: {
+    calories: number
+    protein: number
+    fats: number
+    carbs: number
+  }
   mealDate?: string
   createdAt?: string
 }
@@ -412,10 +420,10 @@ export default function ClientDashboardView({
                                 </span>
                                 <span className="text-sm font-semibold text-gray-900">{meal.title}</span>
                               </div>
-                              <span className="text-sm font-bold text-gray-900">{meal.calories} ккал</span>
+                              <span className="text-sm font-bold text-gray-900">{meal.totals?.calories ?? 0} ккал</span>
                             </div>
                             <div className="text-xs text-gray-600 ml-7">
-                              Б: {meal.protein}г • Ж: {meal.fats}г • У: {meal.carbs}г
+                              Б: {meal.totals?.protein ?? 0}г • Ж: {meal.totals?.fats ?? 0}г • У: {meal.totals?.carbs ?? 0}г
                               {meal.weight > 0 && <span className="ml-2 text-gray-500">({meal.weight}г)</span>}
                             </div>
                           </div>
