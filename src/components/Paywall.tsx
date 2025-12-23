@@ -14,10 +14,10 @@ export default function Paywall({
 }: PaywallProps) {
   const router = useRouter()
 
-  const handleBack = () => {
-    // Используем router.push, чтобы избежать навигационных ошибок jsdom в тестах
+  const handleBack = async () => {
+    // Используем router.push и дожидаемся промиса; при ошибке падать в fallback на href
     try {
-      router.push('/app/dashboard')
+      await Promise.resolve(router.push('/app/dashboard'))
     } catch {
       if (typeof window !== 'undefined') {
         window.location.href = '/app/dashboard'
