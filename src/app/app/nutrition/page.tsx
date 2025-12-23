@@ -400,10 +400,11 @@ function NutritionPageContent() {
           logger.warn('Nutrition: ошибка проверки достижений', { error })
         })
 
-        // Остаемся на странице, не делаем редирект
+        // Возвращаем пользователя на дашборд после успешного сохранения
         setTimeout(() => {
-          setStatus('idle')
-        }, 1500)
+          router.push(`/app/dashboard?date=${selectedDate}`)
+          router.refresh()
+        }, 300)
       }
     } catch (error) {
       // Откатываем изменения при исключении
