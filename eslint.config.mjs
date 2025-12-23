@@ -35,6 +35,7 @@ const eslintConfig = defineConfig([
       "react/display-name": "warn",
       "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
+      "react/no-unescaped-entities": "off",
     },
   },
 ]);
