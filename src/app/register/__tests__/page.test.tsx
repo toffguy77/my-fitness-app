@@ -27,6 +27,7 @@ jest.mock('next/link', () => {
 // Mock Supabase
 const mockSignUp = jest.fn()
 const mockFrom = jest.fn()
+const mockRpc = jest.fn()
 
 jest.mock('@/utils/supabase/client', () => ({
   createClient: jest.fn(() => ({
@@ -34,12 +35,14 @@ jest.mock('@/utils/supabase/client', () => ({
       signUp: mockSignUp,
     },
     from: mockFrom,
+    rpc: mockRpc,
   })),
 }))
 
 describe('Register Page', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockRpc.mockResolvedValue({ data: null, error: null })
     mockFrom.mockReturnValue({
       insert: jest.fn().mockResolvedValue({
         data: null,
