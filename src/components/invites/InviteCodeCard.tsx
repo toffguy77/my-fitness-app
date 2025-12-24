@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Copy, Trash2, Power, PowerOff, Calendar, Users, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
+import ConfirmModal from '@/components/modals/ConfirmModal'
 import type { InviteCode } from '@/types/invites'
 
 interface InviteCodeCardProps {
@@ -20,6 +21,8 @@ export default function InviteCodeCard({
 }: InviteCodeCardProps) {
     const [deleting, setDeleting] = useState(false)
     const [deactivating, setDeactivating] = useState(false)
+    const [deactivateModal, setDeactivateModal] = useState(false)
+    const [deleteModal, setDeleteModal] = useState(false)
 
     const handleCopy = () => {
         navigator.clipboard.writeText(code.link)
@@ -27,12 +30,13 @@ export default function InviteCodeCard({
         onCopy?.(code.code, code.link)
     }
 
-    const handleDeactivate = async () => {
-        if (!confirm('Вы уверены, что хотите деактивировать этот код?')) {
-            return
-        }
+    const handleDeactivate = () => {
+        setDeactivateModal(true)
+    }
 
+    const confirmDeactivate = async () => {
         setDeactivating(true)
+        setDeactivateModal(false)
         try {
             const response = await fetch(`/api/invite-codes/${code.id}/deactivate`, {
                 method: 'POST',
@@ -52,12 +56,13 @@ export default function InviteCodeCard({
         }
     }
 
-    const handleDelete = async () => {
-        if (!confirm('Вы уверены, что хотите удалить этот код? Это действие нельзя отменить.')) {
-            return
-        }
+    const handleDelete = () => {
+        setDeleteModal(true)
+    }
 
+    const confirmDelete = async () => {
         setDeleting(true)
+        setDeleteModal(false)
         try {
             const response = await fetch(`/api/invite-codes/${code.id}`, {
                 method: 'DELETE',
@@ -176,6 +181,34 @@ export default function InviteCodeCard({
                     )}
                 </div>
             </div>
+
+            {/* Модальное окно деактивации */}
+            <ConfirmModal
+                isOpen={deactivateModal}
+                onClose={() => setDeactivateModal(false)}
+                onConfirm={confirmDeactivate}
+                title={code.is_active ? "Деактивировать код" : "Активировать код"}
+                message={code.is_active 
+                    ? "Вы уверены, что хотите деактивировать этот код? После деактивации его нельзя будет использовать для регистрации."
+                    : "Вы уверены, что хотите активировать этот код?"}
+                variant={code.is_active ? "warning" : "info"}
+                confirmText={code.is_active ? "Деактивировать" : "Активировать"}
+                cancelText="Отмена"
+                isLoading={deactivating}
+            />
+
+            {/* Модальное окно удаления */}
+            <ConfirmModal
+                isOpen={deleteModal}
+                onClose={() => setDeleteModal(false)}
+                onConfirm={confirmDelete}
+                title="Удалить код"
+                message="Вы уверены, что хотите удалить этот код? Это действие нельзя отменить."
+                variant="danger"
+                confirmText="Удалить"
+                cancelText="Отмена"
+                isLoading={deleting}
+            />
         </div>
     )
 }

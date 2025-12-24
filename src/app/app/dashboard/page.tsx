@@ -1,19 +1,28 @@
 // Дашборд клиента
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { Settings, UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle, Trophy, Flame } from 'lucide-react'
+import { UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle, Flame, Inbox, X } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
 import ValidationWarning from '@/components/ValidationWarning'
 import ProgressBar from '@/components/ProgressBar'
+import { getMotivationalMessage } from '@/utils/progress/motivationalMessages'
+// Lazy load chart component for code splitting
+const MiniProgressChart = lazy(() => import('@/components/charts/MiniProgressChart'))
+import ConfirmModal from '@/components/modals/ConfirmModal'
+import EmptyState from '@/components/EmptyState'
+import SkeletonLoader from '@/components/SkeletonLoader'
+import WelcomeTour from '@/components/WelcomeTour'
+import DateNavigation from '@/components/DateNavigation'
 import { getUserProfile, hasActiveSubscription, type UserProfile } from '@/utils/supabase/profile'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
 import { checkAchievementsAfterWeightLog } from '@/utils/achievements/check'
+import { usePageView } from '@/hooks/useAnalytics'
 
 type Meal = {
   id: string
@@ -60,6 +69,9 @@ type NutritionTarget = {
 export default function ClientDashboard() {
   const supabase = createClient()
   const router = useRouter()
+  
+  // Отслеживаем просмотр страницы
+  usePageView('dashboard')
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [dayType, setDayType] = useState<'training' | 'rest'>('training')
@@ -74,6 +86,9 @@ export default function ClientDashboard() {
   const [coachNote, setCoachNote] = useState<{ content: string; date: string } | null>(null) // Заметка тренера
   const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
   const [reloadKey, setReloadKey] = useState<number>(0) // Триггер перезагрузки данных при возврате на страницу
+  const [deleteMealModal, setDeleteMealModal] = useState<{ isOpen: boolean; mealId: string | null }>({ isOpen: false, mealId: null })
+  const [showWelcomeTour, setShowWelcomeTour] = useState(false)
+  const [showQuickStart, setShowQuickStart] = useState(false)
 
   // Перезагружаем данные, когда пользователь возвращается на вкладку/страницу
   useEffect(() => {
@@ -589,85 +604,29 @@ export default function ClientDashboard() {
 
   // Removed unused workoutSummary
 
-  if (loading) return <div className="p-8 text-center">Загрузка...</div>
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6">
+        <SkeletonLoader variant="card" count={3} />
+      </div>
+    )
+  }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans space-y-6">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
 
       {/* HEADER */}
-      <header className="flex justify-between items-center">
-        <div className="flex-1">
+      <header className="mb-6">
+        <div className="mb-4">
           <h1 className="text-2xl font-bold text-gray-900">Дашборд</h1>
-          {/* Date Navigation */}
-          <div className="flex items-center gap-2 mt-1">
-            <button
-              onClick={() => {
-                const date = new Date(selectedDate)
-                date.setDate(date.getDate() - 1)
-                setSelectedDate(date.toISOString().split('T')[0])
-              }}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
-              title="Предыдущий день"
-            >
-              <ChevronLeft size={16} className="text-gray-600" />
-            </button>
-            <button
-              onClick={() => {
-                const input = document.createElement('input')
-                input.type = 'date'
-                input.max = new Date().toISOString().split('T')[0]
-                input.value = selectedDate
-                input.onchange = (e) => {
-                  const target = e.target as HTMLInputElement
-                  if (target.value) {
-                    setSelectedDate(target.value)
-                  }
-                }
-                input.click()
-              }}
-              className="text-sm text-gray-700 hover:text-gray-900 font-medium flex items-center gap-1"
-            >
-              <Calendar size={14} />
-              {selectedDate === new Date().toISOString().split('T')[0] ? (
-                <span>Сегодня, {new Date(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</span>
-              ) : (
-                <span>{new Date(selectedDate).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })}</span>
-              )}
-            </button>
-            <button
-              onClick={() => {
-                const today = new Date().toISOString().split('T')[0]
-                const date = new Date(selectedDate)
-                date.setDate(date.getDate() + 1)
-                const nextDate = date.toISOString().split('T')[0]
-                if (nextDate <= today) {
-                  setSelectedDate(nextDate)
-                }
-              }}
-              disabled={selectedDate >= new Date().toISOString().split('T')[0]}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Следующий день"
-            >
-              <ChevronRight size={16} className="text-gray-600" />
-            </button>
-          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push('/app/achievements')}
-            className="h-8 w-8 flex items-center justify-center bg-yellow-100 rounded-full hover:bg-yellow-200 transition-colors"
-            title="Достижения"
-          >
-            <Trophy size={16} className="text-yellow-700" />
-          </button>
-          <button
-            onClick={() => router.push('/app/settings')}
-            className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
-            title="Настройки"
-          >
-            <Settings size={16} className="text-gray-600" />
-          </button>
-        </div>
+        {/* Date Navigation */}
+        <DateNavigation
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          maxDate={new Date().toISOString().split('T')[0]}
+          showTodayButton={true}
+        />
       </header>
 
       {/* DAY TYPE TOGGLE */}
@@ -717,11 +676,67 @@ export default function ClientDashboard() {
                     <Flame className={(todayLog.actual_calories || 0) > currentTargets.calories ? "text-red-500" : "text-green-500"} />
                   </div>
 
+                  {/* Мини-график прогресса за неделю */}
+                  {weekLogs.length > 0 && (
+                    <div className="mb-4">
+                      <Suspense fallback={<div className="h-10 w-full bg-gray-100 rounded animate-pulse" />}>
+                        <MiniProgressChart
+                          data={weekLogs.slice(0, 7).map(log => log.actual_calories || 0).reverse()}
+                          target={currentTargets.calories}
+                          label="Калории за неделю"
+                          unit="ккал"
+                        />
+                      </Suspense>
+                    </div>
+                  )}
+
                   {/* Macro Bars */}
                   <div className="space-y-3">
-                    <ProgressBar label="Белки" current={todayLog.actual_protein || 0} target={currentTargets.protein} unit="г" />
-                    <ProgressBar label="Жиры" current={todayLog.actual_fats || 0} target={currentTargets.fats} unit="г" />
-                    <ProgressBar label="Углеводы" current={todayLog.actual_carbs || 0} target={currentTargets.carbs} unit="г" />
+                    {(() => {
+                      // Вычисляем данные для сравнения
+                      const yesterdayDate = new Date(selectedDate)
+                      yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+                      const yesterdayLog = weekLogs.find(log => log.date === yesterdayDate.toISOString().split('T')[0])
+                      
+                      const proteinPercentage = currentTargets.protein > 0
+                        ? Math.min(Math.max(((todayLog.actual_protein || 0) / currentTargets.protein) * 100, 0), 100)
+                        : 0
+                      const fatsPercentage = currentTargets.fats > 0
+                        ? Math.min(Math.max(((todayLog.actual_fats || 0) / currentTargets.fats) * 100, 0), 100)
+                        : 0
+                      const carbsPercentage = currentTargets.carbs > 0
+                        ? Math.min(Math.max(((todayLog.actual_carbs || 0) / currentTargets.carbs) * 100, 0), 100)
+                        : 0
+                      
+                      return (
+                        <>
+                          <ProgressBar
+                            label="Белки"
+                            current={todayLog.actual_protein || 0}
+                            target={currentTargets.protein}
+                            unit="г"
+                            comparison={yesterdayLog ? { yesterday: yesterdayLog.actual_protein || 0 } : undefined}
+                            motivationalMessage={getMotivationalMessage('protein', proteinPercentage, todayLog.actual_protein || 0, currentTargets.protein) || undefined}
+                          />
+                          <ProgressBar
+                            label="Жиры"
+                            current={todayLog.actual_fats || 0}
+                            target={currentTargets.fats}
+                            unit="г"
+                            comparison={yesterdayLog ? { yesterday: yesterdayLog.actual_fats || 0 } : undefined}
+                            motivationalMessage={getMotivationalMessage('fats', fatsPercentage, todayLog.actual_fats || 0, currentTargets.fats) || undefined}
+                          />
+                          <ProgressBar
+                            label="Углеводы"
+                            current={todayLog.actual_carbs || 0}
+                            target={currentTargets.carbs}
+                            unit="г"
+                            comparison={yesterdayLog ? { yesterday: yesterdayLog.actual_carbs || 0 } : undefined}
+                            motivationalMessage={getMotivationalMessage('carbs', carbsPercentage, todayLog.actual_carbs || 0, currentTargets.carbs) || undefined}
+                          />
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
               )
@@ -729,7 +744,7 @@ export default function ClientDashboard() {
 
             // Если нет целей, показываем просто значения
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 mb-4">
                 <div className="rounded-lg bg-gray-50 p-3">
                   <div className="text-xs text-gray-500 mb-1">Калории</div>
                   <div className="text-lg font-bold text-gray-900">
@@ -985,49 +1000,13 @@ export default function ClientDashboard() {
                         ✏️
                       </button>
                       <button
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation()
                           if (todayLog.is_completed) {
                             toast.error('День завершен. Редактирование недоступно.')
                             return
                           }
-                          if (!confirm('Удалить этот прием пищи?')) return
-
-                          const updatedMeals = (todayLog.meals || []).filter(m => m.id !== meal.id)
-
-                          // Пересчитываем totals из оставшихся meals за выбранную дату
-                          const dateMeals = updatedMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
-                          const newTotals = dateMeals.reduce(
-                            (acc, m) => ({
-                              calories: acc.calories + (m.totals?.calories || 0),
-                              protein: acc.protein + (m.totals?.protein || 0),
-                              fats: acc.fats + (m.totals?.fats || 0),
-                              carbs: acc.carbs + (m.totals?.carbs || 0)
-                            }),
-                            { calories: 0, protein: 0, fats: 0, carbs: 0 }
-                          )
-
-                          const { data: existingLog } = await supabase
-                            .from('daily_logs')
-                            .select('*')
-                            .eq('user_id', user?.id)
-                            .eq('date', selectedDate)
-                            .single()
-
-                          if (existingLog) {
-                            await supabase
-                              .from('daily_logs')
-                              .update({
-                                meals: updatedMeals,
-                                actual_calories: newTotals.calories,
-                                actual_protein: newTotals.protein,
-                                actual_fats: newTotals.fats,
-                                actual_carbs: newTotals.carbs
-                              })
-                              .eq('user_id', user?.id)
-                              .eq('date', selectedDate)
-                          }
-                          router.refresh()
+                          setDeleteMealModal({ isOpen: true, mealId: meal.id })
                         }}
                         className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
                         title="Удалить прием пищи"
@@ -1037,6 +1016,98 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                 ))}
+              {/* Модальное окно подтверждения удаления */}
+              {deleteMealModal.isOpen && todayLog && (
+                <ConfirmModal
+                  isOpen={deleteMealModal.isOpen}
+                  onClose={() => setDeleteMealModal({ isOpen: false, mealId: null })}
+                  onConfirm={async () => {
+                    if (!deleteMealModal.mealId || !todayLog || !user) return
+                    
+                    const mealToDelete = todayLog.meals?.find(m => m.id === deleteMealModal.mealId)
+                    if (!mealToDelete) return
+
+                    // Сохраняем текущее состояние для отката
+                    const previousMeals = [...(todayLog.meals || [])]
+                    const previousTotals = {
+                      calories: todayLog.actual_calories || 0,
+                      protein: todayLog.actual_protein || 0,
+                      fats: todayLog.actual_fats || 0,
+                      carbs: todayLog.actual_carbs || 0,
+                    }
+
+                    // Оптимистичное обновление: сразу обновляем UI
+                    const updatedMeals = previousMeals.filter(m => m.id !== deleteMealModal.mealId)
+                    const dateMeals = updatedMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
+                    const newTotals = dateMeals.reduce(
+                      (acc, m) => ({
+                        calories: acc.calories + (m.totals?.calories || 0),
+                        protein: acc.protein + (m.totals?.protein || 0),
+                        fats: acc.fats + (m.totals?.fats || 0),
+                        carbs: acc.carbs + (m.totals?.carbs || 0)
+                      }),
+                      { calories: 0, protein: 0, fats: 0, carbs: 0 }
+                    )
+
+                    // Обновляем локальное состояние
+                    setTodayLog(prev => prev ? {
+                      ...prev,
+                      meals: updatedMeals,
+                      actual_calories: newTotals.calories,
+                      actual_protein: newTotals.protein,
+                      actual_fats: newTotals.fats,
+                      actual_carbs: newTotals.carbs,
+                    } : null)
+
+                    setDeleteMealModal({ isOpen: false, mealId: null })
+
+                    try {
+                      const { data: existingLog } = await supabase
+                        .from('daily_logs')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('date', selectedDate)
+                        .single()
+
+                      if (existingLog) {
+                        const { error } = await supabase
+                          .from('daily_logs')
+                          .update({
+                            meals: updatedMeals,
+                            actual_calories: newTotals.calories,
+                            actual_protein: newTotals.protein,
+                            actual_fats: newTotals.fats,
+                            actual_carbs: newTotals.carbs
+                          })
+                          .eq('user_id', user.id)
+                          .eq('date', selectedDate)
+
+                        if (error) throw error
+                      }
+
+                      toast.success('Прием пищи удален')
+                      router.refresh()
+                    } catch (error) {
+                      // Откатываем изменения при ошибке
+                      setTodayLog(prev => prev ? {
+                        ...prev,
+                        meals: previousMeals,
+                        actual_calories: previousTotals.calories,
+                        actual_protein: previousTotals.protein,
+                        actual_fats: previousTotals.fats,
+                        actual_carbs: previousTotals.carbs,
+                      } : null)
+                      logger.error('Dashboard: ошибка удаления приема пищи', error)
+                      toast.error('Ошибка удаления приема пищи')
+                    }
+                  }}
+                  title="Удалить прием пищи"
+                  message={`Вы уверены, что хотите удалить "${todayLog.meals?.find(m => m.id === deleteMealModal.mealId)?.title || 'этот прием пищи'}"? Это действие нельзя отменить.`}
+                  variant="danger"
+                  confirmText="Удалить"
+                  cancelText="Отмена"
+                />
+              )}
                 {!todayLog.is_completed && (
                   <div className="pt-2 text-center">
                     <button
@@ -1050,15 +1121,21 @@ export default function ClientDashboard() {
               </div>
             ) : (
               !todayLog.is_completed ? (
-                <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-                  <p className="text-gray-500 text-sm mb-3">Нет приемов пищи за сегодня</p>
-                  <button
-                    onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
-                    className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
-                  >
-                    + Добавить первый прием пищи
-                  </button>
-                </div>
+                <EmptyState
+                  icon={UtensilsCrossed}
+                  title="Нет приемов пищи за сегодня"
+                  description="Начните отслеживать свое питание, добавив первый прием пищи"
+                  action={
+                    <button
+                      onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
+                      className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                    >
+                      + Добавить первый прием пищи
+                    </button>
+                  }
+                  variant="default"
+                  className="border-2 border-dashed border-gray-300 rounded-lg"
+                />
               ) : (
                 <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
                   <p className="text-gray-500 text-sm">День завершен. Редактирование недоступно.</p>
@@ -1304,7 +1381,7 @@ export default function ClientDashboard() {
 
         {nutritionSummary && nutritionSummary.daysLogged > 0 ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
               <StatCard
                 label="Калории"
                 value={`${Math.round(nutritionSummary.calories.actual / nutritionSummary.daysLogged)}`}
@@ -1340,15 +1417,20 @@ export default function ClientDashboard() {
             </div>
           </div>
         ) : (
-          <div className="text-center py-6 text-gray-500 text-sm">
-            <p className="mb-3">Нет данных за неделю</p>
-            <button
-              onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
-              className="text-sm text-black underline decoration-dotted"
-            >
-              Начать вводить данные
-            </button>
-          </div>
+          <EmptyState
+            icon={Calendar}
+            title="Нет данных за неделю"
+            description="Начните отслеживать свое питание и вес, чтобы видеть прогресс"
+            action={
+              <button
+                onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
+                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                Начать вводить данные
+              </button>
+            }
+            variant="default"
+          />
         )}
       </section>
 

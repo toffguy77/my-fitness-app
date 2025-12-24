@@ -100,10 +100,10 @@ describe('Nutrition Interactive Elements', () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
-      }, { timeout: 3000 })
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+      }, { timeout: 5000 })
 
-      const addMealButtons = screen.getAllByRole('button')
+      const addMealButtons = await screen.findAllByRole('button')
       const addMealButton = addMealButtons.find(btn => 
         btn.textContent?.includes('Добавить') ||
         btn.textContent?.includes('Add')

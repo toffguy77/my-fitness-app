@@ -12,6 +12,7 @@ import UserProductsManager from '@/components/products/UserProductsManager'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
+import SkeletonLoader from '@/components/SkeletonLoader'
 
 function SettingsPageContent() {
     const supabase = createClient()
@@ -250,8 +251,10 @@ function SettingsPageContent() {
 
     if (loading) {
         return (
-            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
-                <div className="p-8 text-center">Загрузка...</div>
+            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+                <div className="space-y-6">
+                    <SkeletonLoader variant="card" count={3} />
+                </div>
             </main>
         )
     }
@@ -263,20 +266,11 @@ function SettingsPageContent() {
     const isPremium = hasActiveSubscription(profile) && !subscriptionInfo?.isExpired
 
     return (
-        <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
+        <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
             {/* HEADER */}
-            <header className="flex items-center gap-4 mb-6">
-                <button
-                    onClick={() => router.push('/app/dashboard')}
-                    className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
-                    title="Назад"
-                >
-                    <ArrowLeft size={16} className="text-gray-600" />
-                </button>
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
-                    <p className="text-sm text-gray-500">Управление профилем</p>
-                </div>
+            <header className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
+                <p className="text-sm text-gray-500">Управление профилем</p>
             </header>
 
             {/* PROFILE SECTION */}
@@ -712,8 +706,10 @@ function SettingsPageContent() {
 export default function SettingsPage() {
     return (
         <Suspense fallback={
-            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
-                <div className="p-8 text-center">Загрузка...</div>
+            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+                <div className="space-y-6 p-4 sm:p-6">
+                    <SkeletonLoader variant="card" count={3} />
+                </div>
             </main>
         }>
             <SettingsPageContent />

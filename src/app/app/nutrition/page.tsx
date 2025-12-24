@@ -1,11 +1,11 @@
 // Страница ввода питания
 'use client'
 
-import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useEffect, useMemo, useState, Suspense, lazy } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { CheckCircle, Flame, Save } from 'lucide-react'
+import { CheckCircle, Flame, Save, UtensilsCrossed, Copy } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
 import ValidationWarning, { InlineValidationWarning } from '@/components/ValidationWarning'
 import ProgressBar from '@/components/ProgressBar'
@@ -15,11 +15,19 @@ import toast from 'react-hot-toast'
 import ProductSearch from '@/components/products/ProductSearch'
 import { incrementProductUsage } from '@/utils/products/api'
 import type { Product } from '@/types/products'
-import OCRModal from '@/components/ocr/OCRModal'
 import type { ExtractedNutritionData } from '@/types/ocr'
-import { checkAchievementsAfterMealSave, checkAchievementsAfterOCR } from '@/utils/achievements/check'
 
-type Meal = {
+// Lazy load heavy components for code splitting
+const OCRModal = lazy(() => import('@/components/ocr/OCRModal'))
+import { checkAchievementsAfterMealSave, checkAchievementsAfterOCR } from '@/utils/achievements/check'
+import SkeletonLoader from '@/components/SkeletonLoader'
+import InputHint from '@/components/InputHint'
+import { useDraftAutosave } from '@/hooks/useDraftAutosave'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { deleteDraft } from '@/utils/draft/autosave'
+import { trackTTFVStart, trackTTFVComplete, trackFeatureAdoption } from '@/utils/analytics/metrics'
+
+export type Meal = {
   id: string
   title: string
   weight: number
@@ -129,7 +137,13 @@ function NutritionPageContent() {
   const [status, setStatus] = useState<'idle' | 'saving_draft' | 'draft_saved' | 'submitting' | 'submitted'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isCompleted, setIsCompleted] = useState<boolean>(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const isEditMode = Boolean(editMealId)
+
+  // Отслеживание TTFV - начало
+  useEffect(() => {
+    trackTTFVStart()
+  }, [])
 
   // Загрузка данных при старте
   useEffect(() => {
@@ -204,7 +218,7 @@ function NutritionPageContent() {
           }
 
           setLog(logResult.data)
-          
+
           // Данные уже нормализованы триггером БД, просто загружаем их
           // Всегда загружаем существующие meals для расчета totals
           if (logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
@@ -214,7 +228,7 @@ function NutritionPageContent() {
           } else {
             setExistingMeals([])
           }
-          
+
           // Загружаем существующие приемы пищи в форму только в режиме редактирования
           // При добавлении нового приема пищи оставляем пустую форму
           if (isEditMode && logResult.data.meals && Array.isArray(logResult.data.meals) && logResult.data.meals.length > 0) {
@@ -259,6 +273,56 @@ function NutritionPageContent() {
     fetchData()
   }, [router, supabase, selectedDate, editMealId])
 
+  // Автосохранение черновиков
+  const { clearDraft } = useDraftAutosave({
+    date: selectedDate,
+    meals,
+    weight: log.weight,
+    hungerLevel: log.hunger_level,
+    energyLevel: log.energy_level,
+    comments: log.notes,
+    enabled: !loading && !isCompleted,
+    onRestore: (draft) => {
+      if (draft.meals && draft.meals.length > 0) {
+        setMeals(draft.meals)
+      }
+      if (draft.weight !== undefined) {
+        setLog(prev => ({ ...prev, weight: draft.weight ?? null }))
+      }
+      if (draft.hungerLevel !== undefined) {
+        setLog(prev => ({ ...prev, hunger_level: draft.hungerLevel ?? 0 }))
+      }
+      if (draft.energyLevel !== undefined) {
+        setLog(prev => ({ ...prev, energy_level: draft.energyLevel ?? 0 }))
+      }
+      if (draft.comments !== undefined) {
+        setLog(prev => ({ ...prev, notes: draft.comments || '' }))
+      }
+      toast.success('Черновик восстановлен', { duration: 3000 })
+    },
+  })
+
+  // Очистка черновика после успешного сохранения
+  useEffect(() => {
+    if (status === 'draft_saved') {
+      clearDraft()
+    }
+  }, [status, clearDraft])
+
+  // Keyboard shortcuts - Ctrl+S / Cmd+S для сохранения
+  useKeyboardShortcuts([
+    {
+      key: 's',
+      ctrlKey: true,
+      metaKey: true, // Поддержка Cmd+S на Mac
+      handler: () => {
+        if (status !== 'saving_draft' && status !== 'submitting' && status !== 'submitted' && !isCompleted) {
+          handleSaveDraft()
+        }
+      },
+    },
+  ], !loading && !isCompleted)
+
   // Текущие цели в зависимости от выбранного типа дня
   const currentTargets = useMemo(() => {
     return dayType === 'training' ? targetsTraining : targetsRest
@@ -274,7 +338,7 @@ function NutritionPageContent() {
       ...existingMeals.filter(m => !mealIdsInForm.has(m.id)), // Существующие meals, которые не редактируются
       ...meals // Текущие meals в форме (включая новые и редактируемые)
     ].filter(m => (m.mealDate || selectedDate) === selectedDate) // Только meals за выбранную дату
-    
+
     return allMealsForDate.reduce(
       (acc, meal) => ({
         calories: acc.calories + (meal.totals?.calories || 0),
@@ -373,7 +437,7 @@ function NutritionPageContent() {
         const hasData = (m.totals?.calories || 0) > 0 || (m.totals?.protein || 0) > 0 || (m.totals?.fats || 0) > 0 || (m.totals?.carbs || 0) > 0
         return hasDate && hasTitle && hasData
       })
-      
+
       // Пересчитываем totals из всех meals за выбранную дату
       const aggregatedTotals = dateMeals.reduce(
         (acc, meal) => ({
@@ -411,13 +475,13 @@ function NutritionPageContent() {
         date: selectedDate,
         dayType,
         mealsCount: dateMeals.length,
-        meals: dateMeals.map(m => ({ 
-          id: m.id, 
-          title: m.title, 
-          weight: m.weight, 
-          totals: m.totals, 
+        meals: dateMeals.map(m => ({
+          id: m.id,
+          title: m.title,
+          weight: m.weight,
+          totals: m.totals,
           per100: m.per100,
-          mealDate: m.mealDate 
+          mealDate: m.mealDate
         })),
         payloadMeals: payload.meals,
         payloadMealsLength: Array.isArray(payload.meals) ? payload.meals.length : 'not array'
@@ -451,6 +515,11 @@ function NutritionPageContent() {
           savedMealsFromDB: savedData?.meals,
           savedMealsCount: Array.isArray(savedData?.meals) ? savedData.meals.length : 0
         })
+
+        // Отслеживаем TTFV при первом сохранении
+        trackTTFVComplete('meal_saved')
+        trackFeatureAdoption('meal_saving', { mealsCount: dateMeals.length })
+
         setStatus('draft_saved')
         toast.success('Черновик сохранен')
 
@@ -567,7 +636,7 @@ function NutritionPageContent() {
         const hasData = (m.totals?.calories || 0) > 0 || (m.totals?.protein || 0) > 0 || (m.totals?.fats || 0) > 0 || (m.totals?.carbs || 0) > 0
         return hasDate && hasTitle && hasData
       })
-      
+
       // Пересчитываем totals из всех meals за выбранную дату
       const aggregatedTotals = dateMeals.reduce(
         (acc, meal) => ({
@@ -665,12 +734,19 @@ function NutritionPageContent() {
     }
   }
 
-  if (loading) return <div className="p-8 text-center">Загрузка контекста...</div>
+  if (loading) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6">
+        <SkeletonLoader variant="card" count={2} />
+        <SkeletonLoader variant="list" count={3} />
+      </div>
+    )
+  }
 
   // Блокировка редактирования если день завершен
   if (isCompleted) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
+      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="text-center py-8">
             <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
@@ -953,20 +1029,12 @@ function NutritionPageContent() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
 
       {/* HEADER */}
-      <header className="mb-6 flex justify-between items-center">
-        <div>
-          <button
-            onClick={() => router.push('/app/dashboard')}
-            className="text-sm text-gray-500 mb-2 block"
-          >
-            ← Назад
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">Ввод питания</h1>
-          <p className="text-sm text-gray-500">{new Date().toLocaleDateString('ru-RU')}</p>
-        </div>
+      <header className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Ввод питания</h1>
+        <p className="text-sm text-gray-500">{new Date().toLocaleDateString('ru-RU')}</p>
       </header>
 
       {/* DAY TYPE TOGGLE */}
@@ -995,15 +1063,26 @@ function NutritionPageContent() {
             type="number"
             step="0.1"
             value={log.weight || ''}
-            onChange={(e) => setLog({ ...log, weight: e.target.value ? parseFloat(e.target.value) : null })}
+            onChange={(e) => {
+              const value = e.target.value ? parseFloat(e.target.value) : null
+              setLog({ ...log, weight: value })
+            }}
             placeholder="Введите вес"
-            className="flex-1 p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+            min={30}
+            max={300}
+            className={`flex-1 p-3 bg-gray-50 rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${log.weight !== null && log.weight !== undefined && (log.weight < 30 || log.weight > 300)
+              ? 'border-red-300 focus:ring-red-500'
+              : 'border-gray-200'
+              }`}
           />
           <span className="text-sm text-gray-600">кг</span>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Укажите ваш текущий вес. Это поможет отслеживать прогресс.
-        </p>
+        <InputHint hint="Допустимый диапазон: 30-300 кг" />
+        {log.weight !== null && log.weight !== undefined && (log.weight < 30 || log.weight > 300) && (
+          <div className="text-xs text-red-600 mt-1">
+            Вес должен быть в диапазоне 30-300 кг
+          </div>
+        )}
       </div>
 
       {/* TARGETS SUMMARY */}
@@ -1094,14 +1173,54 @@ function NutritionPageContent() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <InputGroup label="Вес (г)" value={meal.weight} onChange={(v) => updateMeal(meal.id, 'weight', v)} />
-                  <InputGroup label="Калории (на 100 г)" value={meal.per100?.calories ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.calories', v)} />
-                  <InputGroup label="Белки (г на 100 г)" value={meal.per100?.protein ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.protein', v)} />
-                  <InputGroup label="Жиры (г на 100 г)" value={meal.per100?.fats ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.fats', v)} />
-                  <InputGroup label="Углеводы (г на 100 г)" value={meal.per100?.carbs ?? 0} onChange={(v) => updateMeal(meal.id, 'per100.carbs', v)} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <InputGroup
+                    label="Вес (г)"
+                    value={meal.weight}
+                    onChange={(v) => updateMeal(meal.id, 'weight', v)}
+                    hint="Обычно 50-500 г"
+                    min={1}
+                    max={10000}
+                    validation={mealValidation && meal.weight !== undefined && meal.weight !== null && meal.weight <= 0 ? { valid: false, error: 'Вес должен быть больше 0' } : undefined}
+                  />
+                  <InputGroup
+                    label="Калории (на 100 г)"
+                    value={meal.per100?.calories ?? 0}
+                    onChange={(v) => updateMeal(meal.id, 'per100.calories', v)}
+                    hint="Обычно 0-900 ккал/100г"
+                    min={0}
+                    max={5000}
+                    validation={mealValidation && meal.per100?.calories !== undefined && meal.per100?.calories !== null && meal.per100.calories < 0 ? { valid: false, error: 'Калории не могут быть отрицательными' } : undefined}
+                  />
+                  <InputGroup
+                    label="Белки (г на 100 г)"
+                    value={meal.per100?.protein ?? 0}
+                    onChange={(v) => updateMeal(meal.id, 'per100.protein', v)}
+                    hint="Обычно 0-100 г/100г"
+                    min={0}
+                    max={500}
+                    validation={mealValidation && meal.per100?.protein !== undefined && meal.per100?.protein !== null && meal.per100.protein < 0 ? { valid: false, error: 'Белки не могут быть отрицательными' } : undefined}
+                  />
+                  <InputGroup
+                    label="Жиры (г на 100 г)"
+                    value={meal.per100?.fats ?? 0}
+                    onChange={(v) => updateMeal(meal.id, 'per100.fats', v)}
+                    hint="Обычно 0-100 г/100г"
+                    min={0}
+                    max={500}
+                    validation={mealValidation && meal.per100?.fats !== undefined && meal.per100?.fats !== null && meal.per100.fats < 0 ? { valid: false, error: 'Жиры не могут быть отрицательными' } : undefined}
+                  />
+                  <InputGroup
+                    label="Углеводы (г на 100 г)"
+                    value={meal.per100?.carbs ?? 0}
+                    onChange={(v) => updateMeal(meal.id, 'per100.carbs', v)}
+                    hint="Обычно 0-100 г/100г"
+                    min={0}
+                    max={1000}
+                    validation={mealValidation && meal.per100?.carbs !== undefined && meal.per100?.carbs !== null && meal.per100.carbs < 0 ? { valid: false, error: 'Углеводы не могут быть отрицательными' } : undefined}
+                  />
                 </div>
-                
+
                 {/* Отображение итоговых значений КБЖУ для порции */}
                 {(meal.totals?.calories > 0 || meal.totals?.protein > 0 || meal.totals?.fats > 0 || meal.totals?.carbs > 0) && (
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1257,20 +1376,22 @@ function NutritionPageContent() {
 
       {/* OCR Modal */}
       {ocrModalOpen && ocrModalMealId && (
-        <OCRModal
-          isOpen={ocrModalOpen}
-          onClose={() => {
-            setOcrModalOpen(false)
-            setOcrModalMealId(null)
-          }}
-          onConfirm={(data) => {
-            handleOCRConfirm(ocrModalMealId, data)
-            setOcrModalOpen(false)
-            setOcrModalMealId(null)
-          }}
-          preferredTier="balanced"
-          openRouterApiKey={process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}
-        />
+        <Suspense fallback={null}>
+          <OCRModal
+            isOpen={ocrModalOpen}
+            onClose={() => {
+              setOcrModalOpen(false)
+              setOcrModalMealId(null)
+            }}
+            onConfirm={(data) => {
+              handleOCRConfirm(ocrModalMealId, data)
+              setOcrModalOpen(false)
+              setOcrModalMealId(null)
+            }}
+            preferredTier="balanced"
+            openRouterApiKey={process.env.NEXT_PUBLIC_OPENROUTER_API_KEY}
+          />
+        </Suspense>
       )}
     </main>
   )
@@ -1279,12 +1400,10 @@ function NutritionPageContent() {
 export default function NutritionPage() {
   return (
     <Suspense fallback={
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-gray-600">Загрузка...</p>
-          </div>
+      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+        <div className="space-y-6">
+          <SkeletonLoader variant="card" count={2} />
+          <SkeletonLoader variant="list" count={3} />
         </div>
       </main>
     }>
@@ -1298,10 +1417,15 @@ type InputGroupProps = {
   label: string
   value: number | string | null
   onChange: (value: number) => void
+  hint?: string
+  min?: number
+  max?: number
+  validation?: { valid: boolean; error?: string }
 }
 
-function InputGroup({ label, value, onChange }: InputGroupProps) {
+function InputGroup({ label, value, onChange, hint, min, max, validation }: InputGroupProps) {
   const displayValue = value === 0 || value === null || value === undefined ? '' : value.toString()
+  const hasError = validation && !validation.valid
 
   return (
     <div>
@@ -1314,9 +1438,18 @@ function InputGroup({ label, value, onChange }: InputGroupProps) {
           const numValue = inputValue === '' ? 0 : parseFloat(inputValue) || 0
           onChange(numValue)
         }}
-        className="w-full p-3 bg-white rounded-xl border border-gray-200 font-mono text-base font-medium text-black focus:ring-2 focus:ring-black outline-none placeholder:text-gray-400 placeholder:text-sm"
+        min={min}
+        max={max}
+        className={`w-full p-3 bg-white rounded-xl border font-mono text-base font-medium text-black focus:ring-2 outline-none placeholder:text-gray-400 placeholder:text-sm ${hasError
+          ? 'border-red-300 focus:ring-red-500'
+          : 'border-gray-200 focus:ring-black'
+          }`}
         placeholder="Введите значение"
       />
+      {hint && <InputHint hint={hint} />}
+      {hasError && validation?.error && (
+        <div className="text-xs text-red-600 mt-1">{validation.error}</div>
+      )}
     </div>
   )
 }

@@ -56,9 +56,9 @@ export async function middleware(request: NextRequest) {
     if (authError && !isPublicRoute) {
       try {
         // Проверяем, является ли это обычной ошибкой отсутствия сессии
-        const isSessionMissing = authError.message?.includes('session missing') || 
-                                 authError.message?.includes('Auth session missing') ||
-                                 (authError as any)?.__isAuthError
+        const isSessionMissing = authError.message?.includes('session missing') ||
+          authError.message?.includes('Auth session missing') ||
+          (authError as any)?.__isAuthError
         if (!isSessionMissing) {
           logger.error('Middleware: ошибка получения пользователя', authError, { pathname })
         } else {
@@ -68,9 +68,19 @@ export async function middleware(request: NextRequest) {
         // Игнорируем ошибки логирования
       }
     }
-    
+
     // Onboarding доступен только авторизованным пользователям
     if (pathname === '/onboarding' && !user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // Лидерборд доступен только авторизованным пользователям
+    if (pathname === '/leaderboard' && !user) {
+      try {
+        logger.info('Middleware: редирект на логин (попытка доступа к лидерборду без авторизации)', { pathname })
+      } catch {
+        // Игнорируем ошибки логирования
+      }
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
@@ -122,7 +132,7 @@ export async function middleware(request: NextRequest) {
     const subscriptionStatus = profile?.subscription_status || 'free'
     const subscriptionTier = profile?.subscription_tier || 'basic'
     const subscriptionEndDate = profile?.subscription_end_date
-    
+
     // Проверка Premium только для клиентов (тренеры не имеют подписки)
     let isPremium = false
     if (role === 'client') {
@@ -131,7 +141,7 @@ export async function middleware(request: NextRequest) {
       const isNotExpired = !subscriptionEndDate || new Date(subscriptionEndDate) > new Date()
       isPremium = isActive && isPremiumTier && isNotExpired
     }
-    
+
     const isSuperAdmin = role === 'super_admin'
 
     try {
@@ -187,6 +197,20 @@ export async function middleware(request: NextRequest) {
       if (pathname.startsWith('/app/coach') && role !== 'coach') {
         try {
           logger.warn('Middleware: попытка доступа к кабинету тренера без прав', {
+            userId: user.id,
+            role,
+            pathname,
+          })
+        } catch {
+          // Игнорируем ошибки логирования
+        }
+        return NextResponse.redirect(new URL('/app/dashboard', request.url))
+      }
+
+      // Проверка доступа к metrics dashboard (только super_admin и coach)
+      if (pathname.startsWith('/app/admin/metrics') && role !== 'super_admin' && role !== 'coach') {
+        try {
+          logger.warn('Middleware: попытка доступа к metrics dashboard без прав', {
             userId: user.id,
             role,
             pathname,

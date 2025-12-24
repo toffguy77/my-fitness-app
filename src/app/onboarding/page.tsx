@@ -8,6 +8,8 @@ import { User } from '@supabase/supabase-js'
 import { ArrowRight, ArrowLeft, User as UserIcon, Activity, Target } from 'lucide-react'
 import { logger } from '@/utils/logger'
 import DateInput from '@/components/DateInput'
+import OnboardingTooltip from '@/components/onboarding/OnboardingTooltip'
+import { trackOnboardingStart, trackOnboardingComplete } from '@/utils/analytics/metrics'
 
 type OnboardingStep = 'biometrics' | 'activity' | 'goal'
 
@@ -41,6 +43,9 @@ export default function OnboardingPage() {
           return
         }
         setUser(user)
+        
+        // Отслеживаем начало онбординга
+        trackOnboardingStart()
 
         // Проверяем, есть ли уже цели
         const { data: targets } = await supabase
@@ -269,19 +274,51 @@ export default function OnboardingPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
         {/* Progress Bar */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-gray-900">
               Шаг {currentStep === 'biometrics' ? '1' : currentStep === 'activity' ? '2' : '3'} из 3
             </span>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm font-medium text-gray-600">
               {currentStep === 'biometrics' ? 'Биометрия' : currentStep === 'activity' ? 'Активность' : 'Цель'}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
             <div
-              className="bg-black h-2 rounded-full transition-all duration-300"
+              className="bg-black h-3 rounded-full transition-all duration-500 ease-out flex items-center justify-end pr-2"
               style={{ width: `${(currentStep === 'biometrics' ? 1 : currentStep === 'activity' ? 2 : 3) * 33.33}%` }}
-            />
+            >
+              <span className="text-xs font-medium text-white">
+                {Math.round((currentStep === 'biometrics' ? 1 : currentStep === 'activity' ? 2 : 3) * 33.33)}%
+              </span>
+            </div>
+          </div>
+          {/* Step indicators */}
+          <div className="flex items-center justify-between mt-3">
+            {(['biometrics', 'activity', 'goal'] as OnboardingStep[]).map((step, index) => {
+              const stepNumber = index + 1
+              const isActive = currentStep === step
+              const isCompleted = (currentStep === 'activity' && step === 'biometrics') || 
+                                  (currentStep === 'goal' && (step === 'biometrics' || step === 'activity'))
+              
+              return (
+                <div key={step} className="flex flex-col items-center flex-1">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                    isActive 
+                      ? 'bg-black text-white scale-110' 
+                      : isCompleted 
+                        ? 'bg-gray-600 text-white' 
+                        : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {isCompleted ? '✓' : stepNumber}
+                  </div>
+                  <span className={`text-xs mt-1 text-center ${
+                    isActive ? 'text-gray-900 font-medium' : 'text-gray-500'
+                  }`}>
+                    {step === 'biometrics' ? 'Биометрия' : step === 'activity' ? 'Активность' : 'Цель'}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -298,14 +335,27 @@ export default function OnboardingPage() {
               <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
                 <UserIcon size={24} className="text-gray-600" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Расскажите о себе</h1>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900">Расскажите о себе</h1>
+                  <OnboardingTooltip
+                    title="Зачем нужны эти данные?"
+                    content="Биометрические данные используются для точного расчета вашего базового метаболизма (BMR) и ежедневного расхода энергии (TDEE). Это позволяет создать персональный план питания, который поможет достичь ваших целей."
+                    position="top"
+                  />
+                </div>
                 <p className="text-sm text-gray-500">Эти данные нужны для расчета ваших целей</p>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Пол</label>
+              <div className="flex items-center gap-2 mb-2">
+                <label className="block text-sm font-medium text-gray-700">Пол</label>
+                <OnboardingTooltip
+                  content="Пол влияет на расчет базового метаболизма, так как у мужчин и женщин разный уровень метаболизма."
+                  position="top"
+                />
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 {(['male', 'female', 'other'] as const).map((g) => (
                   <button
@@ -394,8 +444,15 @@ export default function OnboardingPage() {
               <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
                 <Activity size={24} className="text-gray-600" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Уровень активности</h1>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900">Уровень активности</h1>
+                  <OnboardingTooltip
+                    title="Что такое уровень активности?"
+                    content="Уровень активности определяет коэффициент, на который умножается ваш базовый метаболизм. Чем выше активность, тем больше калорий вам нужно для поддержания веса."
+                    position="top"
+                  />
+                </div>
                 <p className="text-sm text-gray-500">Как часто вы тренируетесь?</p>
               </div>
             </div>
@@ -434,8 +491,15 @@ export default function OnboardingPage() {
               <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
                 <Target size={24} className="text-gray-600" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Ваша цель</h1>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900">Ваша цель</h1>
+                  <OnboardingTooltip
+                    title="Как работает расчет целей?"
+                    content="В зависимости от выбранной цели система автоматически корректирует калорийность: для похудения создается дефицит 15%, для набора веса - профицит 10%, для поддержания - баланс."
+                    position="top"
+                  />
+                </div>
                 <p className="text-sm text-gray-500">Что вы хотите достичь?</p>
               </div>
             </div>

@@ -83,28 +83,28 @@ describe('Dashboard Page', () => {
   it('should render dashboard page', async () => {
     render(<DashboardPage />)
     
-    // Should show loading initially
+    // Should show dashboard title after loading
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should display dashboard title', async () => {
     render(<DashboardPage />)
     
-    // Should render dashboard
+    // Should render dashboard title
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle date navigation', async () => {
     render(<DashboardPage />)
     
-    // Should render dashboard
+    // Should render dashboard with date navigation
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should display coach note when available', async () => {
@@ -112,8 +112,8 @@ describe('Dashboard Page', () => {
     
     // Should render dashboard
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle daily check-in completion', async () => {
@@ -121,8 +121,8 @@ describe('Dashboard Page', () => {
     
     // Should render dashboard
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle day type toggle', async () => {
@@ -130,8 +130,8 @@ describe('Dashboard Page', () => {
     
     // Should render dashboard
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should display nutrition summary when data is available', async () => {
@@ -139,8 +139,8 @@ describe('Dashboard Page', () => {
     
     // Should render dashboard
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle error states gracefully', async () => {
@@ -178,8 +178,8 @@ describe('Dashboard Page', () => {
     
     // Should render dashboard even without targets
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 })
 

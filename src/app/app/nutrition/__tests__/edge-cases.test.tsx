@@ -75,60 +75,60 @@ describe('Nutrition Edge Cases', () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle meals with very large values', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle meals with negative values', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle meals with decimal values', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle empty meal titles', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle very long meal titles', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
   })
 
@@ -137,30 +137,30 @@ describe('Nutrition Edge Cases', () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle save with incomplete meal data', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle concurrent save attempts', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle save timeout', async () => {
@@ -171,10 +171,10 @@ describe('Nutrition Edge Cases', () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
   })
 
@@ -183,20 +183,20 @@ describe('Nutrition Edge Cases', () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle invalid date parameter', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
   })
 
@@ -205,21 +205,21 @@ describe('Nutrition Edge Cases', () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
       // Should handle levels 1-5
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
 
     it('should handle undefined hunger level', async () => {
       render(<NutritionPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     })
   })
 })

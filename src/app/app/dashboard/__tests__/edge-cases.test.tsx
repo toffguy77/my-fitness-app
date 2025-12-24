@@ -82,10 +82,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
 
     it('should handle empty week logs', async () => {
@@ -114,10 +114,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
 
     it('should handle logs with null values', async () => {
@@ -155,10 +155,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
 
     it('should handle very large numbers', async () => {
@@ -187,10 +187,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
 
     it('should handle zero values', async () => {
@@ -219,10 +219,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
   })
 
@@ -257,10 +257,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
 
     it('should handle very old dates', async () => {
@@ -295,10 +295,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
   })
 
@@ -323,10 +323,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
 
     it('should handle partial data loading', async () => {
@@ -360,10 +360,10 @@ describe('Dashboard Edge Cases', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
   })
 
@@ -376,10 +376,10 @@ describe('Dashboard Edge Cases', () => {
       rerender(<DashboardPage />)
 
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByText('Дашборд')).toBeInTheDocument()
     })
   })
 })

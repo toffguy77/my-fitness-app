@@ -1,5 +1,4 @@
-'use client'
-
+// Server Component - не требует клиентского состояния
 type SkeletonLoaderProps = {
   variant?: 'card' | 'list' | 'table' | 'text'
   count?: number

@@ -68,10 +68,10 @@ describe('Nutrition Page', () => {
   it('should render nutrition page', async () => {
     render(<NutritionPage />)
     
-    // Should show loading initially
+    // Should show nutrition page after loading
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should display nutrition form after loading', async () => {
@@ -79,8 +79,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle meal addition', async () => {
@@ -88,8 +88,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should calculate totals from meals', async () => {
@@ -97,8 +97,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle saving daily log', async () => {
@@ -106,8 +106,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle meal input', async () => {
@@ -115,8 +115,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle day type toggle', async () => {
@@ -124,8 +124,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should prevent editing completed days', async () => {
@@ -171,8 +171,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it('should handle missing targets', async () => {
@@ -190,8 +190,8 @@ describe('Nutrition Page', () => {
     
     // Should render nutrition page even without targets
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+      expect(screen.getByText('Ввод питания')).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 })
 

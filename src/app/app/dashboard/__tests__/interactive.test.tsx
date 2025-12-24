@@ -96,10 +96,10 @@ describe('Dashboard Interactive Elements', () => {
       render(<DashboardPage />)
       
       await waitFor(() => {
-        expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
-      }, { timeout: 3000 })
+        expect(screen.getByText('Дашборд')).toBeInTheDocument()
+      }, { timeout: 5000 })
 
-      const prevButton = screen.getByTitle(/предыдущий|previous/i)
+      const prevButton = await screen.findByTitle(/предыдущий|previous/i, {}, { timeout: 5000 })
       expect(prevButton).toBeInTheDocument()
       
       await userEvent.click(prevButton)

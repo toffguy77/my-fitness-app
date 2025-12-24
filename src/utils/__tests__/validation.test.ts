@@ -44,7 +44,7 @@ describe('Nutrition Validation', () => {
         weight: 15000, // Очень большой вес
       }
       const result = validateMeal(meal)
-      expect(result.warnings.some(w => w.includes('Вес очень большой'))).toBe(true)
+      expect(result.warnings.some(w => w.includes('Вес порции очень большой'))).toBe(true)
     })
 
     it('should return errors for negative values', () => {

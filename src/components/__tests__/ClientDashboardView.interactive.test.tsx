@@ -258,7 +258,10 @@ describe('ClientDashboardView Interactive Tests', () => {
       }, { timeout: 3000 })
 
       // Should display weight data (component should render)
-      expect(screen.queryByText(/вес|weight/i) || screen.queryByText(/80|79/i)).toBeDefined()
+      // Check that weight-related text is present (may be multiple matches)
+      const weightTexts = screen.queryAllByText(/вес|weight/i)
+      const numberTexts = screen.queryAllByText(/80|79/i)
+      expect(weightTexts.length > 0 || numberTexts.length > 0).toBe(true)
     })
 
     it('should calculate weight difference correctly', async () => {
@@ -269,7 +272,10 @@ describe('ClientDashboardView Interactive Tests', () => {
       }, { timeout: 3000 })
 
       // Weight diff should be calculated (80 - 79.5 = -0.5) (component should render)
-      expect(screen.queryByText(/вес|weight/i) || screen.queryByText(/80|79/i)).toBeDefined()
+      // Check that weight-related text is present (may be multiple matches)
+      const weightTexts = screen.queryAllByText(/вес|weight/i)
+      const numberTexts = screen.queryAllByText(/80|79/i)
+      expect(weightTexts.length > 0 || numberTexts.length > 0).toBe(true)
     })
 
     it('should handle missing weight data', async () => {

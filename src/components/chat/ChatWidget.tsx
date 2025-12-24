@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { MessageSquare, X } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import ChatWindow from './ChatWindow'
@@ -104,28 +104,30 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
   }, [supabase, coachId])
 
   // Загрузка количества непрочитанных сообщений
-  useEffect(() => {
+  const loadUnreadCount = useCallback(async () => {
     if (!coachId || loading) return
 
-    const loadUnreadCount = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('messages')
-          .select('id', { count: 'exact' })
-          .eq('receiver_id', userId)
-          .eq('sender_id', coachId)
-          .is('read_at', null)
-          .eq('is_deleted', false)
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact' })
+        .eq('receiver_id', userId)
+        .eq('sender_id', coachId)
+        .is('read_at', null)
+        .eq('is_deleted', false)
 
-        if (error) {
-          throw error
-        }
-
-        setUnreadCount(data?.length || 0)
-      } catch (error) {
-        logger.error('ChatWidget: ошибка загрузки непрочитанных сообщений', error, { userId, coachId })
+      if (error) {
+        throw error
       }
+
+      setUnreadCount(data?.length || 0)
+    } catch (error) {
+      logger.error('ChatWidget: ошибка загрузки непрочитанных сообщений', error, { userId, coachId })
     }
+  }, [coachId, loading, supabase, userId])
+
+  useEffect(() => {
+    if (!coachId || loading) return
 
     loadUnreadCount()
 
@@ -222,7 +224,15 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
             userId={userId}
             otherUserId={coachId}
             otherUserName={coachName}
-            onClose={() => setIsOpen(false)}
+            onClose={() => {
+              setIsOpen(false)
+              // Обновляем счетчик при закрытии
+              loadUnreadCount()
+            }}
+            onMessageRead={() => {
+              // Обновляем счетчик при прочтении сообщений
+              loadUnreadCount()
+            }}
             className="h-full"
           />
         </div>
@@ -239,8 +249,8 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
         >
           <MessageSquare size={20} className="sm:w-6 sm:h-6" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] sm:min-w-[24px] h-5 sm:h-6 flex items-center justify-center px-1 sm:px-1.5 animate-pulse text-[10px] sm:text-xs">
-              {unreadCount > 9 ? '9+' : unreadCount}
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] sm:min-w-[24px] h-5 sm:h-6 flex items-center justify-center px-1 sm:px-1.5 ring-2 ring-white text-[10px] sm:text-xs">
+              {unreadCount > 99 ? '99+' : unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>

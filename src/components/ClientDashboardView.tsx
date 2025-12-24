@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { UtensilsCrossed, TrendingUp, ArrowRight } from 'lucide-react'
+import { UtensilsCrossed, TrendingUp, ArrowRight, Calendar } from 'lucide-react'
 import DayToggle from './DayToggle'
 import ValidationWarning from './ValidationWarning'
+import EmptyState from './EmptyState'
 import { validateNutritionTargets } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
@@ -446,9 +447,12 @@ export default function ClientDashboardView({
             </div>
           </div>
         ) : (
-          <div className="text-center py-6 text-gray-500 text-sm">
-            <p className="mb-3">Нет данных за неделю</p>
-          </div>
+          <EmptyState
+            icon={Calendar}
+            title="Нет данных за неделю"
+            description="Начните отслеживать свое питание и вес, чтобы видеть прогресс"
+            variant="minimal"
+          />
         )}
       </section>
 
@@ -572,9 +576,12 @@ export default function ClientDashboardView({
                 )
               })}
             {weekLogs.filter(log => log.actual_calories > 0 || (Array.isArray(log.meals) && log.meals.length > 0)).length === 0 && (
-              <div className="text-center py-6 text-gray-500 text-sm">
-                Нет данных о питании за неделю
-              </div>
+              <EmptyState
+                icon={UtensilsCrossed}
+                title="Нет данных о питании за неделю"
+                description="Начните вводить данные о питании, чтобы видеть детализацию по дням"
+                variant="minimal"
+              />
             )}
           </div>
         </section>

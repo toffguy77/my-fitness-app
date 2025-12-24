@@ -1,22 +1,25 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { LogOut, BarChart3, Table, TrendingUp } from 'lucide-react'
+import { LogOut, BarChart3, Table, TrendingUp, Inbox, BarChart } from 'lucide-react'
+import EmptyState from '@/components/EmptyState'
 import { getUserProfile, hasActiveSubscription } from '@/utils/supabase/profile'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import Paywall from '@/components/Paywall'
 import PremiumFeatureModal from '@/components/PremiumFeatureModal'
 import { logger } from '@/utils/logger'
-import WeightChart from '@/components/charts/WeightChart'
-import MacrosChart from '@/components/charts/MacrosChart'
+import SkeletonLoader from '@/components/SkeletonLoader'
+
+// Lazy load heavy chart components for code splitting
+const WeightChart = lazy(() => import('@/components/charts/WeightChart'))
+const MacrosChart = lazy(() => import('@/components/charts/MacrosChart'))
 import ExportButton from '@/components/reports/ExportButton'
 import ReportFilters from '@/components/reports/ReportFilters'
 import Pagination from '@/components/Pagination'
 import LoadingSpinner from '@/components/LoadingSpinner'
-import SkeletonLoader from '@/components/SkeletonLoader'
 import toast from 'react-hot-toast'
 import type { DailyLog, NutritionTarget } from '@/utils/export'
 
@@ -265,9 +268,10 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
-        <div className="flex items-center justify-center h-64">
-          <LoadingSpinner size="lg" />
+      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+        <div className="space-y-6">
+          <SkeletonLoader variant="card" count={2} />
+          <SkeletonLoader variant="table" count={1} />
         </div>
       </main>
     )
@@ -278,18 +282,10 @@ export default function ReportsPage() {
   // Показываем paywall или модальное окно для бесплатных пользователей
   if (!isPremium) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
-        <header className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Отчеты и аналитика</h1>
-            <p className="text-sm text-gray-500">История и статистика</p>
-          </div>
-          <button
-            onClick={() => router.push('/app/dashboard')}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            ← Назад
-          </button>
+      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+        <header className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">Отчеты и аналитика</h1>
+          <p className="text-sm text-gray-500">История и статистика</p>
         </header>
         <Paywall
           title="Отчеты доступны с Premium подпиской"
@@ -308,39 +304,10 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Отчеты и аналитика</h1>
-          <p className="text-sm text-gray-500">Детальная статистика и графики</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/app/dashboard')}
-            className="text-sm text-black underline decoration-dotted"
-          >
-            ← Назад
-          </button>
-          <button
-            onClick={async () => {
-              logger.info('Reports: выход из системы')
-              const { error } = await supabase.auth.signOut()
-              if (error) {
-                logger.error('Reports: ошибка выхода', error)
-                toast.error('Ошибка выхода')
-              } else {
-                logger.info('Reports: успешный выход')
-                toast.success('Вы вышли из системы')
-              }
-              router.push('/login')
-              router.refresh()
-            }}
-            className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
-            title="Выйти"
-          >
-            <LogOut size={16} className="text-gray-600" />
-          </button>
-        </div>
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
+      <header className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Отчеты и аналитика</h1>
+        <p className="text-sm text-gray-500">Детальная статистика и графики</p>
       </header>
 
       {/* Вкладки */}
@@ -391,21 +358,29 @@ export default function ReportsPage() {
           {weightData.length > 0 && (
             <section className="bg-white rounded-xl border border-gray-200 p-4">
               <h3 className="text-sm font-semibold text-gray-800 mb-4">Динамика веса</h3>
-              <WeightChart data={weightData} period={chartPeriod} onPeriodChange={setChartPeriod} />
+              <Suspense fallback={<SkeletonLoader variant="card" count={1} />}>
+                <WeightChart data={weightData} period={chartPeriod} onPeriodChange={setChartPeriod} />
+              </Suspense>
             </section>
           )}
 
           {chartData.length > 0 && (
             <section className="bg-white rounded-xl border border-gray-200 p-4">
               <h3 className="text-sm font-semibold text-gray-800 mb-4">Калории и макронутриенты</h3>
-              <MacrosChart data={chartData} period={chartPeriod} showTargets={targets.length > 0} />
+              <Suspense fallback={<SkeletonLoader variant="card" count={1} />}>
+                <MacrosChart data={chartData} period={chartPeriod} showTargets={targets.length > 0} />
+              </Suspense>
             </section>
           )}
 
           {chartData.length === 0 && weightData.length === 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-              <p className="text-gray-500 text-sm">Нет данных для отображения графиков</p>
-              <p className="text-gray-400 text-xs mt-2">Начните вводить данные о питании и весе</p>
+            <div className="bg-white rounded-xl border border-gray-200">
+              <EmptyState
+                icon={BarChart}
+                title="Нет данных для отображения графиков"
+                description="Начните вводить данные о питании и весе, чтобы видеть графики и аналитику"
+                variant="default"
+              />
             </div>
           )}
         </div>
@@ -472,8 +447,13 @@ export default function ReportsPage() {
               />
             </>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-              <p className="text-gray-500 text-sm">Нет данных для отображения</p>
+            <div className="bg-white rounded-xl border border-gray-200">
+              <EmptyState
+                icon={Table}
+                title="Нет данных для отображения"
+                description="Начните вводить данные о питании, чтобы видеть таблицу"
+                variant="default"
+              />
             </div>
           )}
         </div>
@@ -528,8 +508,13 @@ export default function ReportsPage() {
               </section>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-              <p className="text-gray-500 text-sm">Нет данных для расчета статистики</p>
+            <div className="bg-white rounded-xl border border-gray-200">
+              <EmptyState
+                icon={TrendingUp}
+                title="Нет данных для расчета статистики"
+                description="Начните вводить данные о питании и весе, чтобы видеть статистику"
+                variant="default"
+              />
             </div>
           )}
         </div>

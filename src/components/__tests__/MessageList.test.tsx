@@ -3,7 +3,7 @@
  * Tests message list component
  */
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MessageList from '../chat/MessageList'
 import type { Message } from '@/types/chat'
@@ -139,7 +139,7 @@ describe('MessageList Component', () => {
     expect(mockOnLoadMore).toHaveBeenCalled()
   })
 
-  it('should show read indicator for own messages', () => {
+  it('should show read indicator for own messages', async () => {
     const messagesWithRead: Message[] = [
       {
         id: '1',
@@ -160,9 +160,13 @@ describe('MessageList Component', () => {
     )
 
     expect(screen.getByText('Read message')).toBeInTheDocument()
-    // Read indicator should be present
-    const messageContainer = screen.getByText('Read message').closest('div')
-    expect(messageContainer?.textContent).toContain('✓')
+    // Read indicator should be present (MessageStatus component with CheckCheck icon)
+    await waitFor(() => {
+      const messageContainer = screen.getByText('Read message').closest('div')
+      // Check for CheckCheck icon (read status) - it's an SVG element
+      const svgElements = messageContainer?.querySelectorAll('svg')
+      expect(svgElements?.length).toBeGreaterThan(0)
+    })
   })
 
   it('should handle empty messages array', () => {

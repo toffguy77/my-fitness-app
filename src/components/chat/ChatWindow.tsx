@@ -325,6 +325,54 @@ export default function ChatWindow({
                     onLoadMore={handleLoadMore}
                     hasMore={hasMore}
                     loading={loading}
+                    onEditMessage={async (messageId, newContent) => {
+                        try {
+                            const { error } = await supabase
+                                .from('messages')
+                                .update({ content: newContent })
+                                .eq('id', messageId)
+                                .eq('sender_id', userId) // Только свои сообщения можно редактировать
+
+                            if (error) throw error
+
+                            // Обновляем локальное состояние
+                            setMessages((prev) =>
+                                prev.map((m) =>
+                                    m.id === messageId ? { ...m, content: newContent } : m
+                                )
+                            )
+
+                            toast.success('Сообщение отредактировано')
+                        } catch (error) {
+                            logger.error('ChatWindow: ошибка редактирования сообщения', error)
+                            toast.error('Ошибка редактирования сообщения')
+                            throw error
+                        }
+                    }}
+                    onDeleteMessage={async (messageId) => {
+                        try {
+                            const { error } = await supabase
+                                .from('messages')
+                                .update({ is_deleted: true })
+                                .eq('id', messageId)
+                                .eq('sender_id', userId) // Только свои сообщения можно удалять
+
+                            if (error) throw error
+
+                            // Обновляем локальное состояние
+                            setMessages((prev) =>
+                                prev.map((m) =>
+                                    m.id === messageId ? { ...m, is_deleted: true } : m
+                                )
+                            )
+
+                            toast.success('Сообщение удалено')
+                        } catch (error) {
+                            logger.error('ChatWindow: ошибка удаления сообщения', error)
+                            toast.error('Ошибка удаления сообщения')
+                            throw error
+                        }
+                    }}
                 />
             )}
 

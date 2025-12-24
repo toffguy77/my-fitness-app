@@ -1,6 +1,9 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { Message } from '@/types/chat'
+import MessageStatus, { getMessageStatus } from './MessageStatus'
+import { Edit2, Trash2, X, Check } from 'lucide-react'
 // Форматирование дат без внешних библиотек
 const formatDate = (date: Date): string => {
     const today = new Date()
@@ -30,7 +33,6 @@ const formatTime = (date: Date): string => {
     const minutes = date.getMinutes().toString().padStart(2, '0')
     return `${hours}:${minutes}`
 }
-import type { Message } from '@/types/chat'
 
 interface MessageListProps {
     messages: Message[]
@@ -38,6 +40,8 @@ interface MessageListProps {
     onLoadMore?: () => void
     hasMore?: boolean
     loading?: boolean
+    onEditMessage?: (messageId: string, newContent: string) => Promise<void>
+    onDeleteMessage?: (messageId: string) => Promise<void>
 }
 
 export default function MessageList({
@@ -46,9 +50,14 @@ export default function MessageList({
     onLoadMore,
     hasMore = false,
     loading = false,
+    onEditMessage,
+    onDeleteMessage,
 }: MessageListProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const listRef = useRef<HTMLDivElement>(null)
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+    const [editingContent, setEditingContent] = useState<string>('')
+    const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
 
     // Автоскролл к последнему сообщению
     useEffect(() => {
@@ -107,30 +116,125 @@ export default function MessageList({
                     {dateMessages.map((message) => {
                         const isOwn = message.sender_id === currentUserId
                         const date = new Date(message.created_at)
+                        const isEditing = editingMessageId === message.id
+                        const isDeleting = deletingMessageId === message.id
+                        const messageStatus = getMessageStatus(message, isOwn, message.id.startsWith('temp-'))
+
+                        const handleEditStart = () => {
+                            setEditingMessageId(message.id)
+                            setEditingContent(message.content)
+                        }
+
+                        const handleEditCancel = () => {
+                            setEditingMessageId(null)
+                            setEditingContent('')
+                        }
+
+                        const handleEditSave = async () => {
+                            if (!onEditMessage || !editingContent.trim()) return
+                            try {
+                                await onEditMessage(message.id, editingContent.trim())
+                                setEditingMessageId(null)
+                                setEditingContent('')
+                            } catch (error) {
+                                console.error('Error editing message:', error)
+                            }
+                        }
+
+                        const handleDelete = async () => {
+                            if (!onDeleteMessage) return
+                            try {
+                                await onDeleteMessage(message.id)
+                                setDeletingMessageId(null)
+                            } catch (error) {
+                                console.error('Error deleting message:', error)
+                            }
+                        }
 
                         return (
                             <div
                                 key={message.id}
-                                className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                                className={`flex ${isOwn ? 'justify-end' : 'justify-start'} group`}
                             >
-                                <div
-                                    className={`max-w-[70%] rounded-lg px-3 py-2 ${isOwn
-                                            ? 'bg-black text-white'
-                                            : 'bg-gray-100 text-gray-900'
-                                        }`}
-                                >
-                                    <p className="text-sm whitespace-pre-wrap break-words">
-                                        {message.content}
-                                    </p>
-                                    <p
-                                        className={`text-xs mt-1 ${isOwn ? 'text-gray-300' : 'text-gray-500'
-                                            }`}
-                                    >
-                                        {formatTime(date)}
-                                        {message.read_at && isOwn && (
-                                            <span className="ml-1">✓</span>
-                                        )}
-                                    </p>
+                                <div className={`relative max-w-[70%] ${isOwn ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
+                                    {isEditing ? (
+                                        <div className="w-full bg-white border-2 border-black rounded-lg p-3">
+                                            <textarea
+                                                value={editingContent}
+                                                onChange={(e) => setEditingContent(e.target.value)}
+                                                className="w-full p-2 border border-gray-300 rounded text-sm text-black focus:ring-2 focus:ring-black outline-none resize-none"
+                                                rows={3}
+                                                autoFocus
+                                            />
+                                            <div className="flex items-center justify-end gap-2 mt-2">
+                                                <button
+                                                    onClick={handleEditCancel}
+                                                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={handleEditSave}
+                                                    disabled={!editingContent.trim()}
+                                                    className="px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <Check size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className={`rounded-lg px-3 py-2 ${isOwn
+                                                    ? 'bg-black text-white'
+                                                    : 'bg-gray-100 text-gray-900'
+                                                }`}
+                                        >
+                                            {isDeleting ? (
+                                                <p className="text-sm italic text-gray-400">Сообщение удалено</p>
+                                            ) : (
+                                                <>
+                                                    <p className="text-sm whitespace-pre-wrap break-words">
+                                                        {message.content}
+                                                    </p>
+                                                    <div className={`flex items-center justify-between gap-2 mt-1 ${isOwn ? 'text-gray-300' : 'text-gray-500'}`}>
+                                                        <p className="text-xs">
+                                                            {formatTime(date)}
+                                                        </p>
+                                                        {isOwn && (
+                                                            <MessageStatus
+                                                                status={messageStatus}
+                                                                readAt={message.read_at}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                    
+                                    {/* Кнопки редактирования/удаления (только для своих сообщений) */}
+                                    {isOwn && !isEditing && !isDeleting && onEditMessage && onDeleteMessage && (
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mt-1">
+                                            <button
+                                                onClick={handleEditStart}
+                                                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                                title="Редактировать"
+                                            >
+                                                <Edit2 size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('Удалить это сообщение?')) {
+                                                        handleDelete()
+                                                    }
+                                                }}
+                                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                                title="Удалить"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )

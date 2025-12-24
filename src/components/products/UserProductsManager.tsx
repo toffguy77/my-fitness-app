@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import type { UserProduct } from '@/types/products'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
+import ConfirmModal from '@/components/modals/ConfirmModal'
 
 interface UserProductsManagerProps {
   userId: string
@@ -19,6 +20,7 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<UserProduct | null>(null)
   const [saving, setSaving] = useState(false)
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; productId: string | null }>({ isOpen: false, productId: null })
 
   // Форма для добавления/редактирования продукта
   const [formData, setFormData] = useState({
@@ -175,26 +177,29 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
   }
 
   // Удаление продукта
-  const handleDelete = async (productId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить этот продукт?')) {
-      return
-    }
+  const handleDelete = (productId: string) => {
+    setDeleteModal({ isOpen: true, productId })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteModal.productId) return
 
     try {
       const { error } = await supabase
         .from('user_products')
         .delete()
-        .eq('id', productId)
+        .eq('id', deleteModal.productId)
         .eq('user_id', userId)
 
       if (error) {
         throw error
       }
 
-      setProducts(prev => prev.filter(p => p.id !== productId))
+      setProducts(prev => prev.filter(p => p.id !== deleteModal.productId))
       toast.success('Продукт удален')
+      setDeleteModal({ isOpen: false, productId: null })
     } catch (error) {
-      logger.error('UserProductsManager: ошибка удаления продукта', error, { userId, productId })
+      logger.error('UserProductsManager: ошибка удаления продукта', error, { userId, productId: deleteModal.productId })
       toast.error('Ошибка удаления продукта')
     }
   }
@@ -408,6 +413,20 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
             </div>
           </div>
         </div>
+      )}
+
+      {/* Модальное окно подтверждения удаления */}
+      {deleteModal.isOpen && (
+        <ConfirmModal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, productId: null })}
+          onConfirm={confirmDelete}
+          title="Удалить продукт"
+          message={`Вы уверены, что хотите удалить "${products.find(p => p.id === deleteModal.productId)?.name || 'этот продукт'}"? Это действие нельзя отменить.`}
+          variant="danger"
+          confirmText="Удалить"
+          cancelText="Отмена"
+        />
       )}
     </div>
   )

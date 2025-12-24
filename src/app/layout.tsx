@@ -4,6 +4,8 @@ import "./globals.css";
 import ToastProvider from '@/components/ToastProvider';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
 import OfflineIndicator from '@/components/pwa/OfflineIndicator';
+import AppShell from '@/components/AppShell';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,10 +36,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ToastProvider />
-        <OfflineIndicator />
-        {children}
-        <InstallPrompt />
+        <ErrorBoundary>
+          <ToastProvider />
+          <OfflineIndicator />
+          <AppShell>
+            {children}
+          </AppShell>
+          <InstallPrompt />
+        </ErrorBoundary>
       </body>
     </html>
   );

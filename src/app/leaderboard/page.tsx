@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { User } from '@supabase/supabase-js'
 import { Trophy, Medal, Award, TrendingUp } from 'lucide-react'
 import { logger } from '@/utils/logger'
-import LoadingSpinner from '@/components/LoadingSpinner'
+import SkeletonLoader from '@/components/SkeletonLoader'
 import Link from 'next/link'
 
 interface LeaderboardEntry {
@@ -22,12 +23,32 @@ interface LeaderboardEntry {
 export default function LeaderboardPage() {
   const router = useRouter()
   const supabase = createClient()
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [activeTab, setActiveTab] = useState<'achievements' | 'streak' | 'meals' | 'ocr'>('achievements')
 
+  // Проверка авторизации
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user) {
+        logger.warn('Leaderboard: пользователь не авторизован', { error: error?.message })
+        router.push('/login')
+        return
+      }
+      setUser(user)
+    }
+    checkAuth()
+  }, [router, supabase])
+
   useEffect(() => {
     const fetchLeaderboard = async () => {
+      // Не загружаем данные, если пользователь не авторизован
+      if (!user) {
+        return
+      }
+
       try {
         setLoading(true)
 
@@ -161,7 +182,7 @@ export default function LeaderboardPage() {
     }
 
     fetchLeaderboard()
-  }, [supabase, activeTab])
+  }, [supabase, activeTab, user])
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="text-yellow-500" size={20} />
@@ -190,20 +211,29 @@ export default function LeaderboardPage() {
     }
   }
 
-  return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans space-y-6">
-      {/* Заголовок */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.back()}
-          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-        >
-          ←
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Лидерборд</h1>
-          <p className="text-sm text-gray-500">Рейтинг пользователей</p>
+  // Показываем загрузку, если пользователь еще не проверен
+  if (!user && loading) {
+    return (
+      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+        <div className="space-y-6">
+          <SkeletonLoader variant="card" count={1} />
+          <SkeletonLoader variant="list" count={5} />
         </div>
+      </main>
+    )
+  }
+
+  // Если пользователь не авторизован, не показываем контент (редирект уже произошел)
+  if (!user) {
+    return null
+  }
+
+  return (
+    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
+      {/* Заголовок */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Лидерборд</h1>
+        <p className="text-sm text-gray-500">Рейтинг пользователей</p>
       </div>
 
       {/* Вкладки */}
@@ -257,7 +287,7 @@ export default function LeaderboardPage() {
       {/* Лидерборд */}
       {loading ? (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <LoadingSpinner />
+          <SkeletonLoader variant="list" count={5} />
         </div>
       ) : leaderboard.length === 0 ? (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
