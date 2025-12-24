@@ -160,7 +160,7 @@ export default function ClientViewPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [coachUserId, clientId, supabase, showChatTab])
+  }, [coachUserId, clientId, supabase, showChatTab, clientName])
 
   const handleSaveNote = async () => {
     if (!coachNote || !coachNote.trim()) {
