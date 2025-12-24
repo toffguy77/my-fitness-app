@@ -9,6 +9,9 @@ import Link from 'next/link'
 import type { UserProfile } from '@/utils/supabase/profile'
 import { getCoachClients } from '@/utils/supabase/profile'
 import { logger } from '@/utils/logger'
+import { playNotificationSound } from '@/utils/chat/sound'
+import { subscribeToMessages, unsubscribeFromChannel, type Message } from '@/utils/chat/realtime'
+import { showNotification, isNotificationSupported } from '@/utils/chat/notifications'
 
 type ClientWithStatus = UserProfile & {
   lastCheckin?: string
@@ -30,6 +33,8 @@ export default function CoachDashboard() {
   const [unreadFilter, setUnreadFilter] = useState<boolean>(false) // Фильтр по непрочитанным сообщениям
   const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'status' | 'unread'>('status') // По умолчанию сортировка по статусу
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // По умолчанию Red (1) сверху
+  const [coachUserId, setCoachUserId] = useState<string | null>(null)
+  const messageChannelsRef = useRef<any[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +47,7 @@ export default function CoachDashboard() {
         }
         user = authUser
         setUser(authUser)
+        setCoachUserId(authUser.id)
 
         // Проверяем, что пользователь - тренер
         const { data: profile } = await supabase
@@ -187,6 +193,61 @@ export default function CoachDashboard() {
 
     fetchData()
   }, [router, supabase])
+
+  // Подписка на новые сообщения от всех клиентов для звуковых уведомлений
+  useEffect(() => {
+    if (!coachUserId || clients.length === 0) return
+
+    // Очищаем предыдущие подписки
+    messageChannelsRef.current.forEach((channel) => {
+      unsubscribeFromChannel(channel)
+    })
+    messageChannelsRef.current = []
+
+    // Подписываемся на сообщения от каждого клиента
+    clients.forEach((client) => {
+      const channel = subscribeToMessages(
+        coachUserId,
+        client.id,
+        (message: Message) => {
+          // Воспроизводим звук при получении нового сообщения
+          playNotificationSound()
+          
+          // Показываем браузерное уведомление, если страница не в фокусе
+          if (isNotificationSupported() && document.hidden) {
+            const clientName = client.full_name || client.email || 'Клиент'
+            showNotification(`Новое сообщение от ${clientName}`, {
+              body: message.content.length > 100 
+                ? message.content.substring(0, 100) + '...' 
+                : message.content,
+              tag: `coach-message-${client.id}`,
+              requireInteraction: false,
+            }).catch((error) => {
+              logger.warn('Coach: ошибка показа браузерного уведомления', { error })
+            })
+          }
+          
+          // Обновляем счетчик непрочитанных для этого клиента
+          setClients((prevClients) =>
+            prevClients.map((c) =>
+              c.id === client.id
+                ? { ...c, unreadMessagesCount: (c.unreadMessagesCount || 0) + 1 }
+                : c
+            )
+          )
+        }
+      )
+      messageChannelsRef.current.push(channel)
+    })
+
+    return () => {
+      // Отписываемся от всех каналов при размонтировании
+      messageChannelsRef.current.forEach((channel) => {
+        unsubscribeFromChannel(channel)
+      })
+      messageChannelsRef.current = []
+    }
+  }, [coachUserId, clients])
 
   const getStatusIcon = (status: 'red' | 'green' | 'yellow' | 'grey') => {
     switch (status) {
@@ -449,7 +510,7 @@ export default function CoachDashboard() {
             {filteredAndSortedClients.map((client) => (
               <button
                 key={client.id}
-                onClick={() => router.push(`/coach/${client.id}`)}
+                onClick={() => router.push(`/app/coach/${client.id}`)}
                 className="w-full p-6 hover:bg-gray-50 transition-colors text-left"
               >
                 <div className="flex items-center justify-between">

@@ -8,6 +8,7 @@ import { subscribeToMessages, unsubscribeFromChannel, type Message } from '@/uti
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
 import type { UserProfile } from '@/utils/supabase/profile'
+import { showNotification, isNotificationSupported } from '@/utils/chat/notifications'
 
 interface ChatWidgetProps {
   userId: string
@@ -149,6 +150,19 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
                 icon: '💬',
               }
             )
+
+            // Показываем браузерное уведомление, если поддерживается и разрешено
+            if (isNotificationSupported() && document.hidden) {
+              showNotification(`Новое сообщение от ${coachName}`, {
+                body: message.content.length > 100 
+                  ? message.content.substring(0, 100) + '...' 
+                  : message.content,
+                tag: `message-${message.id}`,
+                requireInteraction: false,
+              }).catch((error) => {
+                logger.warn('ChatWidget: ошибка показа браузерного уведомления', { error })
+              })
+            }
             // Открываем чат при клике на toast
             setTimeout(() => {
               const toastElement = document.querySelector('[data-hot-toast]')
@@ -201,14 +215,15 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
   }
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 ${className}`}>
+    <div className={`fixed bottom-4 right-4 z-50 ${className} sm:bottom-6 sm:right-6`}>
       {isOpen ? (
-        <div className="w-96">
+        <div className="w-full sm:w-96 max-w-[calc(100vw-2rem)] sm:max-w-none h-[calc(100vh-8rem)] sm:h-[600px]">
           <ChatWindow
             userId={userId}
             otherUserId={coachId}
             otherUserName={coachName}
             onClose={() => setIsOpen(false)}
+            className="h-full"
           />
         </div>
       ) : (
@@ -218,12 +233,13 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
             // Сбрасываем счетчик при открытии чата
             setUnreadCount(0)
           }}
-          className="relative p-4 bg-black text-white rounded-full shadow-lg hover:bg-gray-800 transition-all hover:scale-110 active:scale-95"
+          className="relative p-3 sm:p-4 bg-black text-white rounded-full shadow-lg hover:bg-gray-800 transition-all hover:scale-110 active:scale-95 touch-manipulation"
           title={`Чат с ${coachName}${unreadCount > 0 ? ` (${unreadCount} непрочитанных)` : ''}`}
+          aria-label={`Открыть чат с ${coachName}${unreadCount > 0 ? `, ${unreadCount} непрочитанных сообщений` : ''}`}
         >
-          <MessageSquare size={24} />
+          <MessageSquare size={20} className="sm:w-6 sm:h-6" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[24px] h-6 flex items-center justify-center px-1.5 animate-pulse">
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] sm:min-w-[24px] h-5 sm:h-6 flex items-center justify-center px-1 sm:px-1.5 animate-pulse text-[10px] sm:text-xs">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

@@ -9,6 +9,8 @@ import ClientDashboardView from '@/components/ClientDashboardView'
 import ChatWindow from '@/components/chat/ChatWindow'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
+import { playNotificationSound } from '@/utils/chat/sound'
+import { showNotification, isNotificationSupported } from '@/utils/chat/notifications'
 
 export default function ClientViewPage() {
   const supabase = createClient()
@@ -90,7 +92,7 @@ export default function ClientViewPage() {
         setLoading(false)
       } catch (error) {
         logger.error('Coach: ошибка загрузки данных клиента', error, { clientId })
-        router.push('/coach')
+        router.push('/app/coach')
       }
     }
 
@@ -114,22 +116,43 @@ export default function ClientViewPage() {
           table: 'messages',
           filter: `sender_id=eq.${clientId} AND receiver_id=eq.${coachUserId}`,
         },
-        () => {
-          // Обновляем счетчик при новом сообщении
-          supabase
+        async () => {
+          // Воспроизводим звук уведомления, если чат закрыт
+          if (!showChatTab) {
+            playNotificationSound()
+          }
+          
+          // Обновляем счетчик при новом сообщении и получаем последнее сообщение
+          const { data: messageData, count } = await supabase
             .from('messages')
-            .select('*', { count: 'exact', head: true })
+            .select('content', { count: 'exact', head: true })
             .eq('sender_id', clientId)
             .eq('receiver_id', coachUserId)
             .is('read_at', null)
             .eq('is_deleted', false)
-            .then(({ count }) => {
-              setUnreadCount(count || 0)
-              // Если есть новые непрочитанные сообщения, открываем чат
-              if ((count || 0) > 0 && !showChatTab) {
-                setShowChatTab(true)
-              }
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          setUnreadCount(count || 0)
+          
+          // Показываем браузерное уведомление, если чат закрыт и страница не в фокусе
+          if (!showChatTab && isNotificationSupported() && document.hidden && messageData) {
+            showNotification(`Новое сообщение от ${clientName}`, {
+              body: messageData.content.length > 100 
+                ? messageData.content.substring(0, 100) + '...' 
+                : messageData.content,
+              tag: `coach-message-${clientId}`,
+              requireInteraction: false,
+            }).catch((error) => {
+              logger.warn('Coach: ошибка показа браузерного уведомления', { error })
             })
+          }
+          
+          // Если есть новые непрочитанные сообщения, открываем чат
+          if ((count || 0) > 0 && !showChatTab) {
+            setShowChatTab(true)
+          }
         }
       )
       .subscribe()

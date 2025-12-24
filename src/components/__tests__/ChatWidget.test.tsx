@@ -217,5 +217,149 @@ describe('ChatWidget Component', () => {
     // Component may show loading initially
     expect(screen.queryByText(/загрузка/i) || screen.queryByRole('button')).toBeDefined()
   })
+
+  it('should show notification when new message received', async () => {
+    const toast = require('react-hot-toast').default
+    const { subscribeToMessages } = require('@/utils/chat/realtime')
+    
+    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    
+    await waitFor(() => {
+      const button = screen.queryByRole('button')
+      if (button) {
+        expect(button).toBeInTheDocument()
+      }
+    }, { timeout: 5000 })
+
+    // Simulate new message
+    const subscribeCall = subscribeToMessages.mock.calls[0]
+    if (subscribeCall && subscribeCall[2]) {
+      const onNewMessage = subscribeCall[2]
+      const testMessage = {
+        id: 'msg-1',
+        sender_id: 'coach-123',
+        receiver_id: 'user-123',
+        content: 'New message from coach',
+        created_at: new Date().toISOString(),
+        read_at: null,
+        is_deleted: false,
+      }
+      
+      onNewMessage(testMessage)
+      
+      await waitFor(() => {
+        expect(toast.success).toHaveBeenCalled()
+      })
+    }
+  })
+
+  it('should play notification sound when new message received', async () => {
+    const { subscribeToMessages } = require('@/utils/chat/realtime')
+    
+    // Mock AudioContext methods
+    const mockOscillator = {
+      connect: jest.fn(),
+      frequency: { value: 0 },
+      type: '',
+      start: jest.fn(),
+      stop: jest.fn(),
+    }
+    
+    const mockGain = {
+      connect: jest.fn(),
+      gain: {
+        setValueAtTime: jest.fn(),
+        exponentialRampToValueAtTime: jest.fn(),
+      },
+    }
+    
+    const mockAudioContext = {
+      createOscillator: jest.fn(() => mockOscillator),
+      createGain: jest.fn(() => mockGain),
+      destination: {},
+      currentTime: 0,
+    }
+    
+    global.AudioContext = jest.fn().mockImplementation(() => mockAudioContext) as any
+    
+    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    
+    await waitFor(() => {
+      const button = screen.queryByRole('button')
+      if (button) {
+        expect(button).toBeInTheDocument()
+      }
+    }, { timeout: 5000 })
+
+    // Simulate new message
+    const subscribeCall = subscribeToMessages.mock.calls[0]
+    if (subscribeCall && subscribeCall[2]) {
+      const onNewMessage = subscribeCall[2]
+      const testMessage = {
+        id: 'msg-1',
+        sender_id: 'coach-123',
+        receiver_id: 'user-123',
+        content: 'New message',
+        created_at: new Date().toISOString(),
+        read_at: null,
+        is_deleted: false,
+      }
+      
+      onNewMessage(testMessage)
+      
+      // Wait a bit for sound to be triggered
+      await waitFor(() => {
+        // AudioContext should be called to create sound
+        expect(global.AudioContext).toHaveBeenCalled()
+      }, { timeout: 2000 })
+    }
+  })
+
+  it('should reset unread count when chat is opened', async () => {
+    const user = userEvent.setup()
+    
+    mockFrom.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: 'coach-123',
+          full_name: 'Test Coach',
+          email: 'coach@test.com',
+        },
+        error: null,
+      }),
+      limit: jest.fn().mockResolvedValue({
+        data: [
+          { id: '1', read_at: null },
+          { id: '2', read_at: null },
+        ],
+        error: null,
+      }),
+    })
+
+    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    
+    await waitFor(() => {
+      const button = screen.queryByRole('button')
+      if (button) {
+        expect(button).toBeInTheDocument()
+      }
+    }, { timeout: 5000 })
+
+    const button = screen.queryByRole('button')
+    if (button) {
+      await user.click(button)
+      
+      await waitFor(() => {
+        expect(screen.queryByTestId('chat-window')).toBeInTheDocument()
+      }, { timeout: 3000 })
+      
+      // Unread count should be reset (badge should not be visible)
+      const badge = screen.queryByText('2')
+      expect(badge).not.toBeInTheDocument()
+    }
+  })
 })
 

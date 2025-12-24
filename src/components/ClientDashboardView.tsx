@@ -43,6 +43,7 @@ type DailyLog = {
   hunger_level?: number | null
   energy_level?: number | null
   notes?: string | null
+  target_type?: 'training' | 'rest' | null
 }
 
 type NutritionTarget = {
@@ -68,7 +69,6 @@ export default function ClientDashboardView({
   const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [dayType, setDayType] = useState<'training' | 'rest'>('training')
   const [targetsTraining, setTargetsTraining] = useState<NutritionTarget | null>(null)
   const [targetsRest, setTargetsRest] = useState<NutritionTarget | null>(null)
   const [weekLogs, setWeekLogs] = useState<DailyLog[]>([])
@@ -113,13 +113,6 @@ export default function ClientDashboardView({
           logger.debug('ClientDashboardView: цели отдыха загружены', { clientId })
         }
 
-        // Устанавливаем дефолтный тип дня
-        if (trainingResult.data && !restResult.data) {
-          setDayType('training')
-        } else if (restResult.data && !trainingResult.data) {
-          setDayType('rest')
-        }
-
         // Получаем логи за последние 7 дней с приемами пищи
         const today = new Date()
         const weekAgo = new Date(today)
@@ -137,6 +130,14 @@ export default function ClientDashboardView({
         if (logsError) {
           logger.error('ClientDashboardView: ошибка загрузки логов', logsError, { clientId })
         } else if (logsData) {
+          // Логируем target_type для отладки
+          logsData.forEach((log: any) => {
+            logger.debug('ClientDashboardView: лог загружен', {
+              date: log.date,
+              target_type: log.target_type,
+              hasTargetType: !!log.target_type
+            })
+          })
           setWeekLogs(logsData as DailyLog[])
           logger.info('ClientDashboardView: логи успешно загружены', { clientId, count: logsData.length })
         }
@@ -151,40 +152,69 @@ export default function ClientDashboardView({
     fetchData()
   }, [clientId, supabase])
 
-  // Текущие цели в зависимости от выбранного типа дня
-  const currentTargets = useMemo(() => {
-    return dayType === 'training' ? targetsTraining : targetsRest
-  }, [dayType, targetsTraining, targetsRest])
-
-  // Расчет сводки по питанию за неделю
+  // Расчет сводки по питанию за неделю на основе фактических типов дней
   const nutritionSummary = useMemo(() => {
-    if (!currentTargets || weekLogs.length === 0) return null
+    if (weekLogs.length === 0) return null
 
     const daysLogged = weekLogs.length
     if (daysLogged === 0) return null
 
-    const totalCalories = weekLogs.reduce((sum, log) => sum + (log.actual_calories || 0), 0)
-    const totalProtein = weekLogs.reduce((sum, log) => sum + (log.actual_protein || 0), 0)
-    const totalFats = weekLogs.reduce((sum, log) => sum + (log.actual_fats || 0), 0)
-    const totalCarbs = weekLogs.reduce((sum, log) => sum + (log.actual_carbs || 0), 0)
+    // Считаем фактические и целевые значения только для дней с определенными целями
+    // Это обеспечивает корректное сравнение фактических и целевых значений
+    let actualCalories = 0
+    let actualProtein = 0
+    let actualFats = 0
+    let actualCarbs = 0
+    let targetCalories = 0
+    let targetProtein = 0
+    let targetFats = 0
+    let targetCarbs = 0
+    let daysWithTargets = 0 // Количество дней, для которых есть цели
 
-    const targetCalories = currentTargets.calories * daysLogged
-    const targetProtein = currentTargets.protein * daysLogged
-    const targetFats = currentTargets.fats * daysLogged
-    const targetCarbs = currentTargets.carbs * daysLogged
+    weekLogs.forEach((log) => {
+      // Определяем цели для каждого дня на основе его target_type
+      // Явно проверяем наличие целей для каждого типа, чтобы избежать использования null
+      let dayTargets: NutritionTarget | null = null
+
+      if (log.target_type === 'rest' && targetsRest) {
+        dayTargets = targetsRest
+      } else if (log.target_type === 'training' && targetsTraining) {
+        dayTargets = targetsTraining
+      }
+      // Если target_type не указан или имеет другое значение, dayTargets остается null
+
+      if (dayTargets) {
+        // Считаем фактические значения только для дней с целями
+        actualCalories += log.actual_calories || 0
+        actualProtein += log.actual_protein || 0
+        actualFats += log.actual_fats || 0
+        actualCarbs += log.actual_carbs || 0
+
+        // Считаем целевые значения
+        targetCalories += dayTargets.calories
+        targetProtein += dayTargets.protein
+        targetFats += dayTargets.fats
+        targetCarbs += dayTargets.carbs
+        daysWithTargets++
+      }
+    })
 
     return {
-      calories: { actual: totalCalories, target: targetCalories, diff: totalCalories - targetCalories },
-      protein: { actual: totalProtein, target: targetProtein, diff: totalProtein - targetProtein },
-      fats: { actual: totalFats, target: targetFats, diff: totalFats - targetFats },
-      carbs: { actual: totalCarbs, target: targetCarbs, diff: totalCarbs - targetCarbs },
-      daysLogged
+      calories: { actual: actualCalories, target: targetCalories, diff: actualCalories - targetCalories },
+      protein: { actual: actualProtein, target: targetProtein, diff: actualProtein - targetProtein },
+      fats: { actual: actualFats, target: targetFats, diff: actualFats - targetFats },
+      carbs: { actual: actualCarbs, target: targetCarbs, diff: actualCarbs - targetCarbs },
+      daysLogged,
+      daysWithTargets // Количество дней с определенными целями
     }
-  }, [currentTargets, weekLogs])
+  }, [targetsTraining, targetsRest, weekLogs])
 
   const handleEditTargets = () => {
-    if (currentTargets) {
-      setEditingTargets({ ...currentTargets, day_type: dayType })
+    // Начинаем редактирование с тренировочных целей по умолчанию, если они есть
+    if (targetsTraining) {
+      setEditingTargets({ ...targetsTraining, day_type: 'training' })
+    } else if (targetsRest) {
+      setEditingTargets({ ...targetsRest, day_type: 'rest' })
     }
   }
 
@@ -200,11 +230,56 @@ export default function ClientDashboardView({
   }, [editingTargets])
 
   const handleSaveTargets = async () => {
-    if (!editingTargets || !editingTargets.id) return
+    if (!editingTargets) return
 
     setSavingTargets(true)
     try {
-      // Используем новый API endpoint с валидацией
+      // Если id отсутствует, создаем новую цель
+      if (!editingTargets.id) {
+        const { data: newTarget, error: createError } = await supabase
+          .from('nutrition_targets')
+          .insert({
+            user_id: clientId,
+            day_type: editingTargets.day_type,
+            calories: editingTargets.calories,
+            protein: editingTargets.protein,
+            fats: editingTargets.fats,
+            carbs: editingTargets.carbs,
+            is_active: true,
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          logger.error('ClientDashboardView: ошибка создания целей', createError, {
+            clientId,
+            dayType: editingTargets.day_type,
+          })
+          toast.error('Ошибка создания целей: ' + createError.message)
+          return
+        }
+
+        logger.info('ClientDashboardView: цели успешно созданы', {
+          clientId,
+          dayType: editingTargets.day_type,
+          targetId: newTarget.id,
+        })
+
+        // Обновляем локальное состояние
+        const created = newTarget as NutritionTarget
+        if (editingTargets.day_type === 'training') {
+          setTargetsTraining(created)
+        } else {
+          setTargetsRest(created)
+        }
+        setEditingTargets(null)
+        if (onTargetsUpdate) {
+          onTargetsUpdate()
+        }
+        return
+      }
+
+      // Если id есть, обновляем существующую цель через API endpoint с валидацией
       const response = await fetch('/api/nutrition-targets/update', {
         method: 'POST',
         headers: {
@@ -262,13 +337,6 @@ export default function ClientDashboardView({
 
   return (
     <div className="space-y-6">
-      {/* DAY TYPE TOGGLE */}
-      {(targetsTraining || targetsRest) && (
-        <div>
-          <DayToggle value={dayType} onChange={setDayType} />
-        </div>
-      )}
-
       {/* ВЕС */}
       {(() => {
         const weightLogs = weekLogs
@@ -332,14 +400,22 @@ export default function ClientDashboardView({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <StatCard
                 label="Калории"
-                value={`${Math.round(nutritionSummary.calories.actual / nutritionSummary.daysLogged)}`}
-                target={currentTargets?.calories || 0}
+                value={nutritionSummary.daysWithTargets > 0
+                  ? `${Math.round(nutritionSummary.calories.actual / nutritionSummary.daysWithTargets)}`
+                  : '—'}
+                target={nutritionSummary.daysWithTargets > 0
+                  ? Math.round(nutritionSummary.calories.target / nutritionSummary.daysWithTargets)
+                  : 0}
                 unit="ккал/день"
               />
               <StatCard
                 label="Белки"
-                value={`${Math.round(nutritionSummary.protein.actual / nutritionSummary.daysLogged)}`}
-                target={currentTargets?.protein || 0}
+                value={nutritionSummary.daysWithTargets > 0
+                  ? `${Math.round(nutritionSummary.protein.actual / nutritionSummary.daysWithTargets)}`
+                  : '—'}
+                target={nutritionSummary.daysWithTargets > 0
+                  ? Math.round(nutritionSummary.protein.target / nutritionSummary.daysWithTargets)
+                  : 0}
                 unit="г/день"
               />
             </div>
@@ -349,19 +425,24 @@ export default function ClientDashboardView({
                 <span className="text-gray-600">Дней с отчетами:</span>
                 <span className="font-semibold text-gray-900">{nutritionSummary.daysLogged} из 7</span>
               </div>
-              {nutritionSummary.calories.diff > 0 ? (
+              {nutritionSummary.daysWithTargets < nutritionSummary.daysLogged && (
+                <div className="mt-2 text-sm text-yellow-600 flex items-center gap-1">
+                  ⚠️ Не все дни имеют установленные цели питания
+                </div>
+              )}
+              {nutritionSummary.daysWithTargets > 0 && nutritionSummary.calories.diff > 0 ? (
                 <div className="mt-2 text-sm text-red-600 flex items-center gap-1">
                   <TrendingUp size={14} />
-                  Профицит: +{Math.round(nutritionSummary.calories.diff / nutritionSummary.daysLogged)} ккал/день
+                  Профицит: +{Math.round(nutritionSummary.calories.diff / nutritionSummary.daysWithTargets)} ккал/день
                 </div>
-              ) : nutritionSummary.calories.diff < 0 ? (
+              ) : nutritionSummary.daysWithTargets > 0 && nutritionSummary.calories.diff < 0 ? (
                 <div className="mt-2 text-sm text-green-600 flex items-center gap-1">
                   <TrendingUp size={14} className="rotate-180" />
-                  Дефицит: {Math.round(nutritionSummary.calories.diff / nutritionSummary.daysLogged)} ккал/день
+                  Дефицит: {Math.round(nutritionSummary.calories.diff / nutritionSummary.daysWithTargets)} ккал/день
                 </div>
-              ) : (
+              ) : nutritionSummary.daysWithTargets > 0 ? (
                 <div className="mt-2 text-sm text-gray-600">В норме</div>
-              )}
+              ) : null}
             </div>
           </div>
         ) : (
@@ -390,9 +471,23 @@ export default function ClientDashboardView({
                   <div key={log.date} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {isToday ? 'Сегодня' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900">
+                            {isToday ? 'Сегодня' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}
+                          </h3>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${log.target_type === 'training'
+                            ? 'bg-blue-100 text-blue-700'
+                            : log.target_type === 'rest'
+                              ? 'bg-gray-100 text-gray-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                            {log.target_type === 'training'
+                              ? '🏋️ Тренировка'
+                              : log.target_type === 'rest'
+                                ? '😴 Отдых'
+                                : '❓ Не указано'}
+                          </span>
+                        </div>
                         {log.is_completed && (
                           <span className="text-xs text-green-600 font-medium mt-1 inline-block">
                             ✓ День завершен
@@ -489,7 +584,7 @@ export default function ClientDashboardView({
       <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">Активные программы</h2>
-          {readOnly && currentTargets && !editingTargets && (
+          {readOnly && (targetsTraining || targetsRest) && !editingTargets && (
             <button
               onClick={handleEditTargets}
               className="text-sm text-black underline decoration-dotted"
@@ -501,8 +596,45 @@ export default function ClientDashboardView({
 
         {editingTargets ? (
           <div className="space-y-4">
-            <div className="text-sm text-gray-600 mb-2">
-              Редактирование плана для: <span className="font-semibold">{editingTargets.day_type === 'training' ? 'Тренировка' : 'Отдых'}</span>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-900 mb-2">Тип дня</label>
+              <DayToggle
+                value={editingTargets.day_type as 'training' | 'rest'}
+                onChange={(newDayType) => {
+                  // При смене типа дня переключаемся на соответствующие цели
+                  const newTargets = newDayType === 'training' ? targetsTraining : targetsRest
+                  if (newTargets) {
+                    // Если цели для нового типа дня существуют, используем их
+                    setEditingTargets({ ...newTargets, day_type: newDayType })
+                  } else {
+                    // Если целей для нового типа дня нет, создаем новый объект с дефолтными значениями
+                    // Используем значения из другого типа дня как отправную точку, если они есть
+                    const fallbackTargets = newDayType === 'training' ? targetsRest : targetsTraining
+                    const defaultValues = fallbackTargets
+                      ? {
+                        // Используем значения из другого типа дня как базу
+                        calories: fallbackTargets.calories,
+                        protein: fallbackTargets.protein,
+                        fats: fallbackTargets.fats,
+                        carbs: fallbackTargets.carbs,
+                      }
+                      : {
+                        // Дефолтные значения, если нет ни одного типа целей
+                        calories: 2000,
+                        protein: 150,
+                        fats: 65,
+                        carbs: 250,
+                      }
+
+                    // Создаем новый объект целей без id (будет создан при сохранении)
+                    setEditingTargets({
+                      ...defaultValues,
+                      day_type: newDayType,
+                      // id не устанавливаем, чтобы API создал новую запись
+                    } as NutritionTarget)
+                  }
+                }}
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -594,7 +726,6 @@ export default function ClientDashboardView({
                 {readOnly && (
                   <button
                     onClick={() => {
-                      setDayType('training')
                       setEditingTargets({ ...targetsTraining, day_type: 'training' })
                     }}
                     className="mt-2 text-xs text-black underline decoration-dotted"
@@ -616,7 +747,6 @@ export default function ClientDashboardView({
                 {readOnly && (
                   <button
                     onClick={() => {
-                      setDayType('rest')
                       setEditingTargets({ ...targetsRest, day_type: 'rest' })
                     }}
                     className="mt-2 text-xs text-black underline decoration-dotted"

@@ -108,17 +108,38 @@ export default function ChatWindow({
     const handleSend = useCallback(async (content: string) => {
         if (!content.trim() || sending) return
 
+        const trimmedContent = content.trim()
+        
+        // Создаем временное сообщение для оптимистичного обновления
+        const tempMessage: Message = {
+            id: `temp-${Date.now()}-${Math.random()}`,
+            sender_id: userId,
+            receiver_id: otherUserId,
+            content: trimmedContent,
+            created_at: new Date().toISOString(),
+            read_at: null,
+            is_deleted: false,
+        }
+
+        // Оптимистично добавляем сообщение в UI
+        setMessages((prev) => [...prev, tempMessage])
         setSending(true)
+
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('messages')
                 .insert({
                     sender_id: userId,
                     receiver_id: otherUserId,
-                    content: content.trim(),
+                    content: trimmedContent,
                 })
+                .select()
+                .single()
 
             if (error) {
+                // Удаляем временное сообщение при ошибке
+                setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id))
+                
                 // Проверяем, не является ли это ошибкой rate limit
                 if (error.message && error.message.includes('Rate limit exceeded')) {
                     toast.error('Слишком много сообщений. Подождите минуту.')
@@ -128,15 +149,24 @@ export default function ChatWindow({
                 throw error
             }
 
-            // Перезагружаем сообщения для получения нового сообщения с ID
-            await loadMessages(0, false)
+            // Заменяем временное сообщение на реальное
+            if (data) {
+                setMessages((prev) => {
+                    const filtered = prev.filter((m) => m.id !== tempMessage.id)
+                    // Проверяем, нет ли уже этого сообщения (на случай, если оно пришло через Realtime)
+                    if (!filtered.some((m) => m.id === data.id)) {
+                        return [...filtered, data as Message]
+                    }
+                    return filtered
+                })
+            }
         } catch (error) {
             logger.error('ChatWindow: ошибка отправки сообщения', error, { userId, otherUserId })
             throw error
         } finally {
             setSending(false)
         }
-    }, [supabase, userId, otherUserId, loadMessages])
+    }, [supabase, userId, otherUserId])
 
     // Отметка сообщений как прочитанных
     const markAsRead = useCallback(async () => {
@@ -172,9 +202,15 @@ export default function ChatWindow({
             otherUserId,
             (newMessage) => {
                 setMessages((prev) => {
-                    // Проверяем, нет ли уже этого сообщения
+                    // Проверяем, нет ли уже этого сообщения (включая временные)
                     if (prev.some((m) => m.id === newMessage.id)) {
                         return prev
+                    }
+                    // Если это сообщение от текущего пользователя, заменяем временное сообщение
+                    if (newMessage.sender_id === userId) {
+                        // Удаляем временное сообщение и добавляем реальное
+                        const filtered = prev.filter((m) => !m.id.startsWith('temp-') || m.content !== newMessage.content)
+                        return [...filtered, newMessage]
                     }
                     return [...prev, newMessage]
                 })
@@ -224,8 +260,12 @@ export default function ChatWindow({
         }
     }
 
+    const heightStyle = className.includes('h-full') 
+        ? { height: '100%' } 
+        : { height: '600px', maxHeight: 'calc(100vh - 2rem)' }
+    
     return (
-        <div className={`flex flex-col bg-white rounded-lg shadow-lg border border-gray-200 ${className}`} style={{ height: '600px' }}>
+        <div className={`flex flex-col bg-white rounded-lg shadow-lg border border-gray-200 ${className}`} style={heightStyle}>
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <div className="flex items-center gap-2 flex-1">

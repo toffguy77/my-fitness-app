@@ -129,6 +129,60 @@ describe('Chat Realtime', () => {
       // Should attempt reconnection
       expect(mockSupabase.channel).toHaveBeenCalledTimes(2)
     })
+
+    it('should handle TIMED_OUT status', () => {
+      const onNewMessage = jest.fn()
+      const onStatusChange = jest.fn()
+      subscribeToMessages('user-1', 'user-2', onNewMessage, onStatusChange)
+
+      const statusCallback = mockChannel.subscribe.mock.calls[0][0]
+      statusCallback('TIMED_OUT')
+
+      expect(onStatusChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          connected: false,
+          reconnecting: true,
+          error: 'Переподключение...',
+        })
+      )
+    })
+
+    it('should handle CLOSED status', () => {
+      const onNewMessage = jest.fn()
+      const onStatusChange = jest.fn()
+      subscribeToMessages('user-1', 'user-2', onNewMessage, onStatusChange)
+
+      const statusCallback = mockChannel.subscribe.mock.calls[0][0]
+      statusCallback('CLOSED')
+
+      expect(onStatusChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          connected: false,
+          reconnecting: false,
+        })
+      )
+    })
+
+    it('should stop reconnecting after max attempts', () => {
+      const onNewMessage = jest.fn()
+      const onStatusChange = jest.fn()
+      subscribeToMessages('user-1', 'user-2', onNewMessage, onStatusChange)
+
+      const statusCallback = mockChannel.subscribe.mock.calls[0][0]
+      
+      // Simulate multiple errors to reach max attempts
+      for (let i = 0; i < 6; i++) {
+        statusCallback('CHANNEL_ERROR')
+        jest.advanceTimersByTime(2000)
+      }
+
+      // Should eventually stop trying and show error
+      expect(onStatusChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: 'Не удалось подключиться. Обновите страницу.',
+        })
+      )
+    })
   })
 
   describe('subscribeToTyping', () => {

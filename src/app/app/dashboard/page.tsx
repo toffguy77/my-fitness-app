@@ -13,7 +13,6 @@ import { getUserProfile, hasActiveSubscription, type UserProfile } from '@/utils
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
-import ChatWidget from '@/components/chat/ChatWidget'
 import { checkAchievementsAfterWeightLog } from '@/utils/achievements/check'
 
 type Meal = {
@@ -1423,10 +1422,6 @@ export default function ClientDashboard() {
         </div>
       </section>
 
-      {/* Chat Widget для Premium клиентов с назначенным тренером */}
-      {isPremium && profile?.coach_id && user && (
-        <ChatWidget userId={user.id} coachId={profile.coach_id || null} />
-      )}
     </main>
   )
 }

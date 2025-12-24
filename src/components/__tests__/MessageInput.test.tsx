@@ -213,5 +213,71 @@ describe('MessageInput Component', () => {
     const textarea = screen.getByPlaceholderText('Введите сообщение...')
     expect(textarea).toHaveAttribute('maxLength', '1000')
   })
+
+  it('should enforce rate limiting (10 messages per minute)', async () => {
+    const toast = require('react-hot-toast').default
+    const user = userEvent.setup({ delay: null })
+    render(
+      <MessageInput
+        onSend={mockOnSend}
+        currentUserId="user-1"
+        otherUserId="user-2"
+      />
+    )
+
+    const textarea = screen.getByPlaceholderText('Введите сообщение...')
+    const sendButton = screen.getByRole('button')
+
+    // Send 10 messages quickly (within same minute)
+    for (let i = 0; i < 10; i++) {
+      await user.clear(textarea)
+      await user.type(textarea, `Message ${i}`)
+      await user.click(sendButton)
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledTimes(i + 1)
+      })
+      // Advance time slightly but stay within 1 minute window
+      jest.advanceTimersByTime(100)
+    }
+
+    // Try to send 11th message - should be rate limited
+    await user.clear(textarea)
+    await user.type(textarea, 'Message 11')
+    await user.click(sendButton)
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining('Слишком много сообщений')
+      )
+    }, { timeout: 1000 })
+
+    // Should not have sent the 11th message
+    expect(mockOnSend).toHaveBeenCalledTimes(10)
+  })
+
+  it('should restore message content on send error', async () => {
+    const user = userEvent.setup({ delay: null })
+    const failingOnSend = jest.fn().mockRejectedValue(new Error('Send failed'))
+    
+    render(
+      <MessageInput
+        onSend={failingOnSend}
+        currentUserId="user-1"
+        otherUserId="user-2"
+      />
+    )
+
+    const textarea = screen.getByPlaceholderText('Введите сообщение...')
+    await user.type(textarea, 'Test message')
+    
+    const sendButton = screen.getByRole('button')
+    await user.click(sendButton)
+
+    await waitFor(() => {
+      expect(failingOnSend).toHaveBeenCalled()
+      // Message should be restored in textarea
+      expect(textarea).toHaveValue('Test message')
+    })
+  })
 })
 
