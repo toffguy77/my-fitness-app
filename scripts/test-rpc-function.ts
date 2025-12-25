@@ -1,5 +1,6 @@
 /**
- * Скрипт для проверки существования функции create_user_profile в БД
+ * Скрипт для проверки функции create_user_profile в БД
+ * Версия: v9.5 (упрощенная версия без проверок и задержек)
  * Запуск: npx tsx scripts/test-rpc-function.ts
  */
 
@@ -15,46 +16,131 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-async function checkFunction() {
-  console.log('Проверка существования функции create_user_profile...\n')
+// Генерируем валидный UUID для тестирования
+function generateTestUserId(): string {
+  // Генерируем валидный UUID v4
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
 
-  // Пробуем вызвать функцию с тестовыми параметрами
-  // Если функция не существует, получим ошибку
-  const { data, error } = await supabase.rpc('create_user_profile', {
-    user_id: 'test-user-id',
-    user_email: 'test@example.com',
-    user_full_name: 'Test User',
+async function testFunction() {
+  console.log('='.repeat(60))
+  console.log('Проверка функции create_user_profile (v9.5)')
+  console.log('='.repeat(60))
+  console.log()
+
+  // Тест 1: Проверка существования функции
+  console.log('1️⃣  Проверка существования функции...')
+  const testUserId1 = generateTestUserId()
+  
+  const { error: error1 } = await supabase.rpc('create_user_profile', {
+    user_id: testUserId1,
+    user_email: 'test-check@example.com',
+    user_full_name: 'Test User Check',
     user_role: 'client',
     user_coordinator_id: null,
   })
 
-  if (error) {
-    if (error.message?.includes('Could not find the function') || 
-        error.message?.includes('function') && error.message?.includes('not found')) {
+  if (error1) {
+    if (error1.message?.includes('Could not find the function') || 
+        error1.message?.includes('function') && error1.message?.includes('not found') ||
+        error1.message?.includes('schema cache')) {
       console.error('❌ Функция create_user_profile НЕ найдена в базе данных')
-      console.error('Ошибка:', error.message)
+      console.error('Ошибка:', error1.message)
       console.log('\n💡 Решение:')
-      console.log('1. Проверьте SQL скрипт в scripts/check-db-function.sql')
-      console.log('2. Убедитесь, что функция создана в Supabase Dashboard -> SQL Editor')
-      console.log('3. Или используйте прямой insert (код уже поддерживает это)')
+      console.log('1. Примените миграцию v9.5_simplify_create_user_profile_no_checks.sql')
+      console.log('2. Или выполните SQL скрипт из scripts/check-db-function.sql для проверки')
+      process.exit(1)
+    } else if (error1.message?.includes('does not exist in auth.users')) {
+      console.log('✅ Функция существует (это нормальная ошибка для несуществующего пользователя)')
+      console.log('   Ошибка:', error1.message)
     } else {
-      console.log('✅ Функция найдена, но вернула ошибку (это нормально для тестового вызова)')
-      console.log('Ошибка:', error.message)
-      console.log('Это означает, что функция существует, но параметры неверны или есть другие проблемы')
+      console.log('⚠️  Функция найдена, но вернула неожиданную ошибку:')
+      console.log('   Ошибка:', error1.message)
     }
   } else {
     console.log('✅ Функция существует и может быть вызвана')
-    console.log('Результат:', data)
   }
+  console.log()
+
+  // Тест 2: Проверка скорости выполнения
+  console.log('2️⃣  Проверка скорости выполнения...')
+  const testUserId2 = generateTestUserId()
+  const startTime = Date.now()
+  
+  const { error: error2 } = await supabase.rpc('create_user_profile', {
+    user_id: testUserId2,
+    user_email: 'test-speed@example.com',
+    user_full_name: 'Test Speed',
+    user_role: 'client',
+    user_coordinator_id: null,
+  })
+  
+  const duration = Date.now() - startTime
+  
+  if (error2) {
+    if (error2.message?.includes('does not exist in auth.users')) {
+      // Это ожидаемая ошибка - пользователь не существует
+      console.log(`✅ Функция выполняется быстро: ${duration}ms`)
+    } else if (error2.message?.includes('invalid input syntax for type uuid')) {
+      // Ошибка валидации - функция работает корректно
+      console.log(`✅ Функция выполняется быстро: ${duration}ms (ошибка валидации UUID - нормально)`)
+    } else {
+      console.log(`⚠️  Функция вернула ошибку: ${error2.message}`)
+      console.log(`   Время выполнения: ${duration}ms`)
+    }
+  } else {
+    console.log(`✅ Функция выполнена успешно за ${duration}ms`)
+  }
+  
+  if (duration < 100) {
+    console.log(`✅ Скорость выполнения в норме: ${duration}ms (< 100ms)`)
+  } else if (duration < 500) {
+    console.log(`⚠️  Скорость выполнения приемлемая: ${duration}ms (рекомендуется < 100ms)`)
+  } else {
+    console.log(`❌ Функция выполняется медленно: ${duration}ms (ожидается < 100ms)`)
+  }
+  console.log()
+
+  // Тест 3: Проверка idempotency (нельзя протестировать без реального пользователя)
+  console.log('3️⃣  Проверка idempotency...')
+  console.log('   ⚠️  Требуется реальный пользователь в auth.users')
+  console.log('   💡 Для полной проверки создайте тестового пользователя через signUp')
+  console.log()
+
+  // Итоги
+  console.log('='.repeat(60))
+  console.log('ИТОГИ ПРОВЕРКИ:')
+  console.log('='.repeat(60))
+  
+  if (error1 && (error1.message?.includes('Could not find the function') || 
+                 error1.message?.includes('not found'))) {
+    console.log('❌ Функция НЕ найдена - примените миграцию v9.5')
+  } else {
+    console.log('✅ Функция существует')
+    if (duration < 100) {
+      console.log('✅ Функция выполняется быстро')
+    }
+    console.log('✅ Функция готова к использованию')
+  }
+  
+  console.log('\n💡 Для полной проверки:')
+  console.log('   1. Создайте тестового пользователя через signUp')
+  console.log('   2. Вызовите функцию с реальным user_id')
+  console.log('   3. Проверьте, что профиль создан корректно')
+  console.log('   4. Повторный вызов должен быть idempotent (ON CONFLICT DO NOTHING)')
 }
 
-checkFunction()
+testFunction()
   .then(() => {
-    console.log('\nПроверка завершена')
+    console.log('\n✅ Проверка завершена')
     process.exit(0)
   })
   .catch((err) => {
-    console.error('Ошибка при проверке:', err)
+    console.error('\n❌ Ошибка при проверке:', err)
     process.exit(1)
   })
 

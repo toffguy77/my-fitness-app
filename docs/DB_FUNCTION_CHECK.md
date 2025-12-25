@@ -1,34 +1,39 @@
 # Проверка функции create_user_profile в базе данных
 
-## Проблема
+## Текущая версия: v9.5 (упрощенная)
 
-Функция `create_user_profile` в базе данных может иметь устаревшую сигнатуру с параметром `user_coach_id` вместо `user_coordinator_id`.
+Функция `create_user_profile` была упрощена для избежания timeout:
+- Убраны все проверки существования пользователя
+- Убраны задержки (`pg_sleep`)
+- Используется `ON CONFLICT DO NOTHING` для idempotency
+- Функция должна выполняться быстро (< 100ms)
 
 ## Способы проверки
 
 ### 1. Через Supabase Dashboard (SQL Editor)
 
-Выполните SQL запрос:
+Выполните SQL скрипт из `scripts/check-db-function.sql` в Supabase SQL Editor.
 
-```sql
-SELECT 
-    p.proname as function_name,
-    pg_get_function_arguments(p.oid) as arguments,
-    pg_get_function_result(p.oid) as return_type
-FROM pg_proc p
-JOIN pg_namespace n ON p.pronamespace = n.oid
-WHERE n.nspname = 'public' 
-  AND p.proname = 'create_user_profile';
-```
+Скрипт проверит:
+- ✅ Существование функции
+- ✅ Правильность сигнатуры (должна содержать `user_coordinator_id`)
+- ✅ Использование `SECURITY DEFINER` (для обхода RLS)
+- ✅ Наличие `ON CONFLICT DO NOTHING`
+- ✅ Отсутствие `pg_sleep` (задержек)
+- ✅ Отсутствие проверок существования пользователя
 
-**Правильная сигнатура:**
+**Правильная сигнатура (v9.5):**
 ```
-user_id uuid, user_email text, user_full_name text DEFAULT NULL::text, user_role user_role DEFAULT 'client'::user_role, user_coordinator_id uuid DEFAULT NULL::uuid
+user_id uuid, user_email text, user_full_name text DEFAULT NULL::text, 
+user_role user_role DEFAULT 'client'::user_role, 
+user_coordinator_id uuid DEFAULT NULL::uuid
 ```
 
 **Неправильная сигнатура (устаревшая):**
 ```
-user_id uuid, user_email text, user_full_name text DEFAULT NULL::text, user_role user_role DEFAULT 'client'::user_role, user_coach_id uuid DEFAULT NULL::uuid
+user_id uuid, user_email text, user_full_name text DEFAULT NULL::text, 
+user_role user_role DEFAULT 'client'::user_role, 
+user_coach_id uuid DEFAULT NULL::uuid
 ```
 
 ### 2. Через TypeScript скрипт
@@ -39,16 +44,17 @@ user_id uuid, user_email text, user_full_name text DEFAULT NULL::text, user_role
 npx tsx scripts/test-rpc-function.ts
 ```
 
-### 3. Через SQL скрипт
-
-Выполните SQL скрипт из `scripts/check-db-function.sql` в Supabase SQL Editor.
+Скрипт проверит:
+- Существование функции
+- Скорость выполнения (должна быть < 100ms)
+- Обработку ошибок
 
 ## Решение
 
-Если функция имеет неправильную сигнатуру (`user_coach_id` вместо `user_coordinator_id`):
+Если функция не существует или имеет неправильную сигнатуру:
 
-1. **Примените миграцию:**
-   - Откройте файл `migrations/v9.1_update_create_user_profile.sql`
+1. **Примените миграцию v9.5:**
+   - Откройте файл `migrations/v9.5_simplify_create_user_profile_no_checks.sql`
    - Скопируйте содержимое
    - Выполните в Supabase Dashboard -> SQL Editor
 
@@ -68,10 +74,6 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM profiles WHERE id = user_id) THEN
-    RETURN;
-  END IF;
-
   INSERT INTO profiles (
     id,
     email,
@@ -94,17 +96,37 @@ BEGIN
     'private',
     NOW(),
     NOW()
-  );
+  )
+  ON CONFLICT (id) DO NOTHING;
+EXCEPTION
+  WHEN unique_violation THEN
+    NULL;
+  WHEN foreign_key_violation THEN
+    RAISE EXCEPTION 'User with id % does not exist in auth.users', user_id;
 END;
 $$;
 ```
 
-## Fallback механизм
+## Ключевые особенности версии v9.5
 
-Код регистрации автоматически использует прямой `INSERT` в таблицу `profiles`, если:
-- RPC функция не найдена
-- RPC функция имеет неправильную сигнатуру
-- Возникает ошибка "schema cache"
+1. **Нет проверок существования пользователя** - функция вызывается сразу после `signUp`, когда пользователь уже должен существовать
+2. **Нет задержек** - убран `pg_sleep`, который вызывал timeout
+3. **ON CONFLICT DO NOTHING** - идемпотентность, можно вызывать несколько раз
+4. **SECURITY DEFINER** - обходит RLS политики
+5. **Быстрое выполнение** - должно выполняться < 100ms
 
-Это обеспечивает работоспособность регистрации даже при отсутствии или неправильной версии функции.
+## Retry механизм
+
+Код регистрации (`src/app/register/page-content.tsx`) содержит retry механизм на клиентской стороне:
+- До 3 попыток с увеличивающейся задержкой (200ms, 400ms, 600ms)
+- Обрабатывает race condition, когда пользователь еще не появился в `auth.users`
+- Функция в БД остается простой и быстрой
+
+## Fallback механизм (устаревший)
+
+~~Код регистрации автоматически использует прямой `INSERT` в таблицу `profiles`, если:~~
+- ~~RPC функция не найдена~~
+- ~~RPC функция имеет неправильную сигнатуру~~
+
+**Примечание:** Прямой INSERT блокируется RLS, поэтому всегда используйте RPC функцию `create_user_profile`.
 
