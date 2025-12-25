@@ -62,7 +62,7 @@ export default function ReportsPage() {
         const subscriptionInfo = await checkSubscriptionStatus(user.id)
         const premium = subscriptionInfo.isActive
         setIsPremium(premium)
-        
+
         // Record report view metric
         try {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -96,9 +96,9 @@ export default function ReportsPage() {
         logger.debug('Reports: загрузка отчетов', { userId: user.id })
         const [logsResult, targetsResult] = await Promise.all([
           supabase
-            .from('daily_logs')
-            .select('*')
-            .eq('user_id', user.id)
+          .from('daily_logs')
+          .select('*')
+          .eq('user_id', user.id)
             .order('date', { ascending: false }),
           supabase
             .from('nutrition_targets')
@@ -338,7 +338,7 @@ export default function ReportsPage() {
           <BarChart3 size={16} />
           Графики
         </button>
-        <button
+          <button
           onClick={() => setActiveTab('table')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'table'
               ? 'border-white text-zinc-100'
@@ -347,8 +347,8 @@ export default function ReportsPage() {
         >
           <Table size={16} />
           Таблица
-        </button>
-        <button
+          </button>
+          <button
           onClick={() => setActiveTab('statistics')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'statistics'
               ? 'border-white text-zinc-100'
@@ -357,8 +357,8 @@ export default function ReportsPage() {
         >
           <TrendingUp size={16} />
           Статистика
-        </button>
-      </div>
+          </button>
+        </div>
 
       {/* Контент вкладок */}
       {activeTab === 'graphs' && (
@@ -486,7 +486,7 @@ export default function ReportsPage() {
                   <StatCard label="Средние белки" value={`${statistics.avgProtein} г`} />
                   <StatCard label="Средние жиры" value={`${statistics.avgFats} г`} />
                   <StatCard label="Средние углеводы" value={`${statistics.avgCarbs} г`} />
-                </div>
+            </div>
               </section>
 
               {statistics.weightChange !== null && (
@@ -530,7 +530,7 @@ export default function ReportsPage() {
               />
             </div>
           )}
-        </div>
+          </div>
       )}
 
       <PremiumFeatureModal

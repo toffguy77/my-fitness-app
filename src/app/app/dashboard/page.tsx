@@ -1192,8 +1192,8 @@ export default function ClientDashboard() {
                   </div>
                 ) : (
                   <>
-                    <button
-                      onClick={async () => {
+        <button
+          onClick={async () => {
                         if (!user) return
 
                         if (!hasWeight) {
@@ -1251,7 +1251,7 @@ export default function ClientDashboard() {
                             toast.success(`День завершен! Вы молодец! 🎉 Стрик: ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}`)
                           }
 
-                          router.refresh()
+            router.refresh()
                         } catch (error) {
                           logger.error('Dashboard: ошибка завершения дня', error, { userId: user.id, date: selectedDate })
                           toast.error('Ошибка при завершении дня. Попробуйте еще раз.')
@@ -1273,7 +1273,7 @@ export default function ClientDashboard() {
                           Завершить день
                         </>
                       )}
-                    </button>
+        </button>
                     {!canComplete && !todayLog.is_completed && (
                       <div className="mt-3 text-center">
                         <p className="text-sm text-zinc-500">
@@ -1303,7 +1303,7 @@ export default function ClientDashboard() {
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 bg-zinc-800 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💬</span>
-            </div>
+        </div>
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-zinc-100 mb-1">Сообщение от координатора</h3>
               <p className="text-sm text-zinc-100 whitespace-pre-line">{coordinatorNote.content}</p>
@@ -1448,12 +1448,12 @@ export default function ClientDashboard() {
             title="Нет данных за неделю"
             description="Начните отслеживать свое питание и вес, чтобы видеть прогресс"
             action={
-              <button
+            <button
                 onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
                 className="px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
-              >
-                Начать вводить данные
-              </button>
+            >
+              Начать вводить данные
+            </button>
             }
             variant="default"
           />

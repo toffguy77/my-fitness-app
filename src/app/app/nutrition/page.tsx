@@ -32,10 +32,10 @@ export type Meal = {
   title: string
   weight: number
   per100: {
-    calories: number
-    protein: number
-    fats: number
-    carbs: number
+  calories: number
+  protein: number
+  fats: number
+  carbs: number
   }
   totals: {
     calories: number
@@ -109,10 +109,10 @@ function NutritionPageContent() {
       title: mealName,
       weight: 100,
       per100: {
-        calories: 0,
-        protein: 0,
-        fats: 0,
-        carbs: 0
+      calories: 0,
+      protein: 0,
+      fats: 0,
+      carbs: 0
       },
       totals: {
         calories: 0,
@@ -456,8 +456,8 @@ function NutritionPageContent() {
         { calories: 0, protein: 0, fats: 0, carbs: 0 }
       )
 
-      const aggregatedLog = {
-        ...log,
+    const aggregatedLog = {
+      ...log,
         actual_calories: aggregatedTotals.calories,
         actual_protein: aggregatedTotals.protein,
         actual_fats: aggregatedTotals.fats,
@@ -467,10 +467,10 @@ function NutritionPageContent() {
       const { meals: _, ...aggregatedLogWithoutMeals } = aggregatedLog as any
 
       // Сохраняем без is_completed (черновик)
-      const payload = {
-        user_id: user.id,
+    const payload = {
+      user_id: user.id,
         date: selectedDate,
-        target_type: dayType,
+      target_type: dayType,
         ...aggregatedLogWithoutMeals,
         meals: dateMeals, // Сохраняем только meals за выбранную дату (должно быть после spread)
         // Явно не устанавливаем is_completed, чтобы не завершить день
@@ -845,10 +845,10 @@ function NutritionPageContent() {
         title: mealName,
         weight: 100,
         per100: {
-          calories: 0,
-          protein: 0,
-          fats: 0,
-          carbs: 0
+        calories: 0,
+        protein: 0,
+        fats: 0,
+        carbs: 0
         },
         totals: {
           calories: 0,
@@ -872,7 +872,7 @@ function NutritionPageContent() {
       weight > 0 && per100Value > 0 ? Math.round((per100Value * weight) / 100) : 0
 
     return {
-      ...meal,
+            ...meal,
       totals: {
         calories: recalcTotal(per100.calories),
         protein: recalcTotal(per100.protein),
@@ -1176,11 +1176,11 @@ function NutritionPageContent() {
             const mealValidation = mealValidations[index]
             return (
               <div key={meal.id} className="rounded-xl border border-zinc-800 bg-zinc-800 p-4 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <input
-                    type="text"
-                    value={meal.title}
-                    onChange={(e) => updateMeal(meal.id, 'title', e.target.value)}
+              <div className="flex items-center justify-between gap-2">
+                <input
+                  type="text"
+                  value={meal.title}
+                  onChange={(e) => updateMeal(meal.id, 'title', e.target.value)}
                     className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-100 outline-none focus:ring-2 focus:ring-white placeholder:text-zinc-500"
                     placeholder={getMealNameByTime()}
                   />
@@ -1192,18 +1192,18 @@ function NutritionPageContent() {
                       max={new Date().toISOString().split('T')[0]}
                       className="text-xs border border-zinc-700 rounded px-2 py-1 text-zinc-100 bg-zinc-900 w-28"
                       title="Дата приема пищи"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeMeal(meal.id)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeMeal(meal.id)}
                       className="px-2 py-1 text-xs font-medium text-rose-400 bg-rose-950/20 hover:bg-rose-950/30 rounded border border-rose-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={meals.length === 0}
                       title="Удалить прием пищи"
-                    >
+                >
                       ✕
-                    </button>
+                </button>
                   </div>
-                </div>
+              </div>
 
                 {/* ProductSearch для автозаполнения */}
                 <div>
@@ -1219,7 +1219,7 @@ function NutritionPageContent() {
                       toast('Добавление пользовательского продукта доступно в настройках', { icon: 'ℹ️' })
                     }}
                   />
-                </div>
+              </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <InputGroup
@@ -1298,7 +1298,7 @@ function NutritionPageContent() {
                   />
                 )}
 
-                <div className="space-y-2">
+              <div className="space-y-2">
                   <label className="text-xs text-zinc-400">Фото (этикетка/блюдо/продукт)</label>
                   <div className="flex items-center gap-2">
                     <button
@@ -1308,24 +1308,24 @@ function NutritionPageContent() {
                     >
                       📷 Сканировать этикетку
                     </button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          updateMeal(meal.id, 'title', meal.title, file.name)
-                        }
-                      }}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        updateMeal(meal.id, 'title', meal.title, file.name)
+                      }
+                    }}
                       className="text-xs text-zinc-400 flex-1"
-                    />
+                  />
                     {meal.photoName && <span className="text-xs text-zinc-500 truncate">{meal.photoName}</span>}
-                  </div>
+                </div>
                   <p className="text-[11px] text-zinc-500">
                     Используйте сканирование этикетки для автоматического заполнения КБЖУ
-                  </p>
-                </div>
+                </p>
               </div>
+            </div>
             )
           })}
         </div>
@@ -1342,15 +1342,15 @@ function NutritionPageContent() {
                 max={new Date().toISOString().split('T')[0]}
                 className="text-xs border border-zinc-700 rounded px-2 py-1 text-zinc-100 bg-zinc-900"
               />
-            </div>
-            <button
-              type="button"
-              onClick={addMeal}
-              className="w-full text-sm font-semibold text-zinc-950 bg-white hover:bg-zinc-200 px-4 py-2 rounded-lg shadow-sm transition-colors"
-            >
-              + Добавить прием пищи
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={addMeal}
+              className="w-full text-sm font-semibold text-zinc-950 bg-white hover:bg-zinc-200 px-4 py-2 rounded-lg shadow-sm transition-colors"
+          >
+            + Добавить прием пищи
+          </button>
+        </div>
         )}
 
         {/* ВСЕГО ЗА ДЕНЬ - ПЕРЕМЕЩЕНО ВНИЗ */}
@@ -1360,7 +1360,7 @@ function NutritionPageContent() {
           </div>
           {/* Валидация дневных норм не показывается во время ввода - только при сохранении */}
           {/* Во время ввода валидируются только отдельные приемы пищи */}
-        </div>
+          </div>
 
         <div className="space-y-4 pt-4 border-t border-zinc-800">
           {/* HUNGER LEVEL - EMOJI (5 уровней) */}
@@ -1408,7 +1408,7 @@ function NutritionPageContent() {
 
         {/* Кнопка сохранения черновика. Отправка координатору доступна только с дашборда */}
         <div className="flex gap-3">
-          <button
+        <button
             onClick={handleSaveDraft}
             disabled={status === 'saving_draft' || status === 'submitting' || status === 'submitted'}
             className={`px-4 py-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
@@ -1418,8 +1418,8 @@ function NutritionPageContent() {
             {status === 'saving_draft' && 'Сохранение...'}
             {status === 'draft_saved' && <><CheckCircle size={18} /> Сохранено</>}
             {(status === 'idle' || status === 'submitting' || status === 'submitted') && <><Save size={18} /> Сохранить</>}
-          </button>
-        </div>
+        </button>
+          </div>
       </div>
 
       {/* OCR Modal */}
@@ -1452,7 +1452,7 @@ export default function NutritionPage() {
         <div className="space-y-6">
           <SkeletonLoader variant="card" count={2} />
           <SkeletonLoader variant="list" count={3} />
-        </div>
+      </div>
       </main>
     }>
       <NutritionPageContent />
