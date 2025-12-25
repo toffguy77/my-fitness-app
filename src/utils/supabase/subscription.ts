@@ -80,6 +80,7 @@ export async function checkSubscriptionStatus(userId: string): Promise<Subscript
 
   // Record subscription metrics
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { metricsCollector } = require('../metrics/collector')
     metricsCollector.counter(
       'subscriptions_total',

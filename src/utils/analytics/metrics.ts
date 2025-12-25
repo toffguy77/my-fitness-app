@@ -51,6 +51,7 @@ export function trackTTFVComplete(action: string) {
     
     // Record TTFV metric
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { metricsCollector } = require('../metrics/collector')
       metricsCollector.histogram(
         'ttfv_seconds',
@@ -77,6 +78,7 @@ export function trackDAU() {
   
   // Record DAU metric
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { metricsCollector } = require('../metrics/collector')
     metricsCollector.gaugeInc(
       'users_dau_gauge',
@@ -104,6 +106,7 @@ export function trackOnboardingStart() {
   
   // Record onboarding start metric
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { metricsCollector } = require('../metrics/collector')
     metricsCollector.counter(
       'onboarding_started_total',
@@ -129,6 +132,7 @@ export function trackOnboardingComplete(step: number, totalSteps: number) {
     
     // Record onboarding metrics
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { metricsCollector } = require('../metrics/collector')
       metricsCollector.counter(
         'onboarding_completed_total',
@@ -160,6 +164,7 @@ export function trackFeatureAdoption(featureName: string, properties?: Record<st
   
   // Record feature usage metric
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { metricsCollector } = require('../metrics/collector')
     const userType = properties?.user_type || properties?.isPremium ? 'premium' : 'free'
     metricsCollector.counter(
@@ -211,6 +216,7 @@ export function trackSessionEnd() {
     
     // Record session duration metric
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { metricsCollector } = require('../metrics/collector')
       metricsCollector.histogram(
         'session_duration_seconds',

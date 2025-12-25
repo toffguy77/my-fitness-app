@@ -107,6 +107,7 @@ export function trackEvent(
 
   // Record metrics
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { metricsCollector } = require('../metrics/collector')
     const role = properties?.role || 'unknown'
     

@@ -65,6 +65,7 @@ export default function ReportsPage() {
         
         // Record report view metric
         try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
           const { metricsCollector } = require('@/utils/metrics/collector')
           metricsCollector.counter(
             'reports_viewed_total',

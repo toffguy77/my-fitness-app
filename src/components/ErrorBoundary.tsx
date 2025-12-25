@@ -43,6 +43,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     // Record error metrics
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { metricsCollector } = require('@/utils/metrics/collector')
       metricsCollector.counter(
         'errors_total',

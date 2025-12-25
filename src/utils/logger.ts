@@ -198,6 +198,7 @@ class Logger {
     error(message: string, error?: Error | unknown, context?: LogContext): void {
         // Record error metrics
         try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             const { metricsCollector } = require('./metrics/collector')
             const errorType = error instanceof Error ? error.constructor.name : 'unknown'
             const errorCode = (error as any)?.code || (error as any)?.status || 'unknown'

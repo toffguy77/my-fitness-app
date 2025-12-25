@@ -49,8 +49,8 @@ export default function RegisterPage() {
       const data: InviteCodeValidation = await response.json()
       setCodeValidation(data)
       if (data.valid) {
-        logger.registration('Register: инвайт-код валиден', { 
-          code: code.toUpperCase(), 
+        logger.registration('Register: инвайт-код валиден', {
+          code: code.toUpperCase(),
           coordinatorName: data.coordinator_name,
           expiresAt: data.expires_at,
           remainingUses: data.remaining_uses
@@ -87,15 +87,16 @@ export default function RegisterPage() {
     setError(null)
     setMessage(null)
 
-    logger.registration('Register: начало регистрации', { 
-      email, 
+    logger.registration('Register: начало регистрации', {
+      email,
       hasInviteCode: !!inviteCode,
       inviteCodeValid: codeValidation?.valid || false,
       hasFullName: !!fullName
     })
-    
+
     // Record registration start metric
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { metricsCollector } = require('@/utils/metrics/collector')
       metricsCollector.counter(
         'registrations_total',
@@ -120,9 +121,9 @@ export default function RegisterPage() {
       })
 
       if (authError) {
-        logger.registration('Register: ошибка создания пользователя в auth', { 
+        logger.registration('Register: ошибка создания пользователя в auth', {
           error: authError.message,
-          email 
+          email
         })
         setError(authError.message)
         setLoading(false)
@@ -136,7 +137,7 @@ export default function RegisterPage() {
         return
       }
 
-      logger.registration('Register: пользователь создан в auth', { 
+      logger.registration('Register: пользователь создан в auth', {
         userId: authData.user.id,
         email: authData.user.email,
         emailConfirmed: !!authData.user.email_confirmed_at
@@ -149,7 +150,7 @@ export default function RegisterPage() {
 
       // Если есть валидный инвайт-код, используем его
       if (inviteCode && codeValidation?.valid) {
-        logger.userFlow('Register: использование инвайт-кода', { 
+        logger.userFlow('Register: использование инвайт-кода', {
           code: inviteCode.toUpperCase(),
           userId: authData.user.id
         })
@@ -188,21 +189,68 @@ export default function RegisterPage() {
         logger.userFlow('Register: регистрация без инвайт-кода', { userId: authData.user.id })
       }
 
-      // Используем функцию create_user_profile для безопасного создания профиля
-      // Эта функция обходит RLS, так как использует SECURITY DEFINER
+      // Создаем профиль пользователя
+      // Сначала пробуем RPC функцию create_user_profile (если она существует в БД)
+      // Если функция не найдена, используем прямой insert
       logger.userFlow('Register: создание профиля пользователя', {
         userId: authData.user.id,
         email,
         fullName: fullName || null,
         coordinatorId: coordinatorId || null
       })
-      const { error: profileError } = await supabase.rpc('create_user_profile', {
+
+      let profileError = null
+      
+      // Пробуем вызвать RPC функцию с user_coordinator_id
+      const { error: rpcError } = await supabase.rpc('create_user_profile', {
         user_id: authData.user.id,
         user_email: email,
         user_full_name: fullName || null,
         user_role: 'client',
         user_coordinator_id: coordinatorId || null,
       })
+
+      // Если RPC функция не найдена или имеет неправильную сигнатуру (например, user_coach_id),
+      // пробуем прямой insert
+      if (rpcError && (
+        rpcError.message?.includes('Could not find the function') || 
+        rpcError.message?.includes('function') && rpcError.message?.includes('not found') ||
+        rpcError.message?.includes('schema cache') ||
+        rpcError.message?.includes('user_coordinator_id')
+      )) {
+        logger.warn('Register: RPC функция create_user_profile не найдена или имеет неправильную сигнатуру, используем прямой insert', {
+          error: rpcError.message,
+          userId: authData.user.id,
+          hint: 'Возможно, функция использует user_coach_id вместо user_coordinator_id. Примените миграцию v9.1_update_create_user_profile.sql'
+        })
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { metricsCollector } = require('@/utils/metrics/collector')
+          metricsCollector.counter('errors_total', 'Total number of errors', { type: 'profile_creation', error_code: rpcError.message, severity: 'warning' })
+        } catch {
+          // Ignore metrics errors
+        }
+
+        // Если RPC не сработал, пробуем прямой insert
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: email,
+            full_name: fullName || null,
+            role: 'client',
+            coordinator_id: coordinatorId || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+
+        if (insertError) {
+          profileError = insertError
+        }
+      } else if (rpcError) {
+        // Другие ошибки RPC (не связанные с отсутствием функции)
+        profileError = rpcError
+      }
 
       if (profileError) {
         logger.error('Register: ошибка создания профиля', profileError, {
@@ -295,9 +343,10 @@ export default function RegisterPage() {
           userId: authData.user.id,
           email
         })
-        
+
         // Record completed registration metric
         try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
           const { metricsCollector } = require('@/utils/metrics/collector')
           metricsCollector.counter(
             'registrations_completed_total',
@@ -309,7 +358,7 @@ export default function RegisterPage() {
         } catch {
           // Ignore metrics errors
         }
-        
+
         setMessage('Регистрация успешна! Перенаправляем...')
 
         setTimeout(() => {

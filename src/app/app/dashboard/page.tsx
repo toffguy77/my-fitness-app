@@ -866,6 +866,7 @@ export default function ClientDashboard() {
                                   
                                   // Record weight logged metric
                                   try {
+                                    // eslint-disable-next-line @typescript-eslint/no-require-imports
                                     const { metricsCollector } = require('@/utils/metrics/collector')
                                     metricsCollector.counter(
                                       'weight_logged_total',
@@ -900,6 +901,7 @@ export default function ClientDashboard() {
                                   
                                   // Record weight logged metric
                                   try {
+                                    // eslint-disable-next-line @typescript-eslint/no-require-imports
                                     const { metricsCollector } = require('@/utils/metrics/collector')
                                     metricsCollector.counter(
                                       'weight_logged_total',
