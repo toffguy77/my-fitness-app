@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
-import packageJson from './package.json';
 
 // Disable PWA in test environment to avoid Babel plugin issues
 const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
 
 // Get version from package.json
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const packageJson = require('./package.json');
 const appVersion = packageJson.version;
 
 const baseConfig: NextConfig = {
