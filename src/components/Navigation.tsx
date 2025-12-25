@@ -92,11 +92,10 @@ export default function Navigation() {
                 onClick={() => router.push(item.path)}
                 onMouseEnter={() => router.prefetch(item.path)}
                 onFocus={() => router.prefetch(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-black text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                  ? 'bg-black text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+                  }`}
               >
                 <Icon size={20} />
                 <span className="font-medium">{item.label}</span>
@@ -126,9 +125,8 @@ export default function Navigation() {
               id={item.id}
               onClick={() => router.push(item.path)}
               onTouchStart={() => router.prefetch(item.path)}
-              className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
-                isActive ? 'text-black' : 'text-gray-500'
-              }`}
+              className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${isActive ? 'text-black' : 'text-gray-500'
+                }`}
             >
               <Icon size={22} />
               <span className="text-xs font-medium">{item.label}</span>

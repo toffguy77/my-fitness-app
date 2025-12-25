@@ -102,10 +102,11 @@ describe('Navigation', () => {
     expect(mockPrefetch).toHaveBeenCalled()
   })
 
-  it('prefetches route on focus (desktop)', () => {
+  it('prefetches route on focus (desktop)', async () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
     
+    await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
     
@@ -115,7 +116,7 @@ describe('Navigation', () => {
     expect(mockPrefetch).toHaveBeenCalled()
   })
 
-  it('prefetches route on touch (mobile)', () => {
+  it('prefetches route on touch (mobile)', async () => {
     // Mock mobile viewport
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
@@ -126,6 +127,7 @@ describe('Navigation', () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
     
+    await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
     
@@ -135,12 +137,13 @@ describe('Navigation', () => {
     expect(mockPrefetch).toHaveBeenCalled()
   })
 
-  it('highlights active route', () => {
+  it('highlights active route', async () => {
     ;(usePathname as jest.Mock).mockReturnValue('/app/nutrition')
     
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
     
+    await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toHaveClass('bg-black', 'text-white')
   })
