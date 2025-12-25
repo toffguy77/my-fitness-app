@@ -1,6 +1,6 @@
 /**
  * E2E Tests: Dashboard Flow
- * Critical scenarios: View dashboard, check-in, view coach notes
+ * Critical scenarios: View dashboard, check-in, view coordinator notes
  */
 
 import { test, expect } from '@playwright/test'
@@ -59,9 +59,9 @@ test.describe('Dashboard Flow', () => {
     }
   })
 
-  test('should display coach note if available', async ({ page }) => {
-    // Coach note widget should be visible if note exists
-    const coachNote = page.locator('text=/заметка|note|тренер|coach/i')
+  test('should display coordinator note if available', async ({ page }) => {
+    // Coordinator note widget should be visible if note exists
+    const coordinatorNote = page.locator('text=/заметка|note|координатор|coordinator/i')
     
     // Either note is visible or widget is hidden (both are valid)
     // This test just ensures the page doesn't crash

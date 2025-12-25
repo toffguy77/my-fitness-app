@@ -10,7 +10,7 @@ import { logger } from '@/utils/logger'
 
 /**
  * Глобальный виджет чата, который показывается на всех страницах приложения
- * для Premium клиентов с назначенным тренером
+ * для Premium клиентов с назначенным координатором
  */
 export default function GlobalChatWidget() {
   const supabase = createClient()
@@ -44,7 +44,7 @@ export default function GlobalChatWidget() {
 
         logger.debug('GlobalChatWidget: данные пользователя загружены', {
           userId: authUser.id,
-          hasCoach: !!userProfile?.coach_id,
+          hasCoordinator: !!userProfile?.coordinator_id,
           isPremium: premium,
         })
       } catch (error) {
@@ -57,11 +57,11 @@ export default function GlobalChatWidget() {
     loadUserData()
   }, [supabase])
 
-  // Показываем виджет только для Premium клиентов с назначенным тренером
-  if (loading || !isPremium || !profile?.coach_id || !user) {
+  // Показываем виджет только для Premium клиентов с назначенным координатором
+  if (loading || !isPremium || !profile?.coordinator_id || !user) {
     return null
   }
 
-  return <ChatWidget userId={user.id} coachId={profile.coach_id || null} />
+  return <ChatWidget userId={user.id} coordinatorId={profile.coordinator_id || null} />
 }
 

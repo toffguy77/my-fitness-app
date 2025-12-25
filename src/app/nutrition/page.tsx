@@ -279,9 +279,9 @@ export default function NutritionPage() {
     setMeals((prev) =>
       prev.map((meal) => {
         if (meal.id !== id) return meal
-        
+
         const updatedMeal = { ...meal }
-        
+
         // Обработка вложенных полей per100
         if (field.startsWith('per100.')) {
           const subField = field.replace('per100.', '') as keyof typeof meal.per100
@@ -308,11 +308,11 @@ export default function NutritionPage() {
         } else if (field in updatedMeal) {
           (updatedMeal as any)[field] = typeof value === 'number' ? value : typeof value === 'string' ? value : (updatedMeal as any)[field]
         }
-        
+
         if (fileName !== undefined) {
           updatedMeal.photoName = fileName
         }
-        
+
         return updatedMeal
       })
     )
@@ -369,7 +369,7 @@ export default function NutritionPage() {
         </div>
       ) : (
         <div className="p-4 bg-yellow-50 text-yellow-800 rounded-xl mb-6 text-sm">
-          Тренер еще не назначил план питания.
+          Координатор еще не назначил план питания.
         </div>
       )}
 

@@ -21,10 +21,10 @@ export default function ClientViewPage() {
   const [loading, setLoading] = useState(true)
   const [clientName, setClientName] = useState<string>('')
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
-  const [coachNote, setCoachNote] = useState<string>('')
+  const [coordinatorNote, setCoordinatorNote] = useState<string>('')
   const [existingNote, setExistingNote] = useState<{ content: string; date: string } | null>(null)
   const [savingNote, setSavingNote] = useState(false)
-  const [coachUserId, setCoachUserId] = useState<string | null>(null)
+  const [coordinatorUserId, setCoordinatorUserId] = useState<string | null>(null)
   const [showChatTab, setShowChatTab] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -38,22 +38,22 @@ export default function ClientViewPage() {
         }
         setUser(user)
 
-        // Проверяем, что текущий пользователь - тренер этого клиента
+        // Проверяем, что текущий пользователь - координатор этого клиента
         const { data: clientProfile } = await supabase
           .from('profiles')
-          .select('coach_id, full_name, email')
+          .select('coordinator_id, full_name, email')
           .eq('id', clientId)
           .single()
 
-        if (!clientProfile || clientProfile.coach_id !== user.id) {
-          router.push('/app/coach')
+        if (!clientProfile || clientProfile.coordinator_id !== user.id) {
+          router.push('/app/coordinator')
           return
         }
 
         setClientName(clientProfile.full_name || clientProfile.email || 'Клиент')
-        setCoachUserId(user.id)
-        logger.debug('Coach: данные клиента загружены', { coachId: user.id, clientId })
-        
+        setCoordinatorUserId(user.id)
+        logger.debug('Coordinator: данные клиента загружены', { coordinatorId: user.id, clientId })
+
         // Загружаем количество непрочитанных сообщений от клиента
         const { count: unreadMessagesCount } = await supabase
           .from('messages')
@@ -62,37 +62,37 @@ export default function ClientViewPage() {
           .eq('receiver_id', user.id)
           .is('read_at', null)
           .eq('is_deleted', false)
-        
+
         setUnreadCount(unreadMessagesCount || 0)
-        
+
         // Если есть непрочитанные сообщения, открываем чат по умолчанию
-        // Но тренер всегда может открыть чат вручную, даже если нет сообщений
+        // Но координатор всегда может открыть чат вручную, даже если нет сообщений
         if ((unreadMessagesCount || 0) > 0) {
-          logger.debug('Coach: открываем чат автоматически из-за непрочитанных сообщений', { 
+          logger.debug('Coordinator: открываем чат автоматически из-за непрочитанных сообщений', {
             unreadCount: unreadMessagesCount,
-            clientId 
+            clientId
           })
           setShowChatTab(true)
         }
-        
+
         // Загружаем существующую заметку за выбранную дату
         const { data: noteData } = await supabase
-          .from('coach_notes')
+          .from('coordinator_notes')
           .select('content, date')
           .eq('client_id', clientId)
-          .eq('coach_id', user.id)
+          .eq('coordinator_id', user.id)
           .eq('date', selectedDate)
           .single()
 
         if (noteData) {
           setExistingNote({ content: noteData.content, date: noteData.date })
-          setCoachNote(noteData.content)
+          setCoordinatorNote(noteData.content)
         }
-        
+
         setLoading(false)
       } catch (error) {
-        logger.error('Coach: ошибка загрузки данных клиента', error, { clientId })
-        router.push('/app/coach')
+        logger.error('Coordinator: ошибка загрузки данных клиента', error, { clientId })
+        router.push('/app/coordinator')
       }
     }
 
@@ -101,33 +101,33 @@ export default function ClientViewPage() {
 
   // Подписка на новые сообщения для обновления счетчика
   useEffect(() => {
-    if (!coachUserId || !clientId) return
+    if (!coordinatorUserId || !clientId) return
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     if (!supabaseUrl) return
 
     const channel = supabase
-      .channel(`unread-messages-${coachUserId}-${clientId}`)
+      .channel(`unread-messages-${coordinatorUserId}-${clientId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `sender_id=eq.${clientId} AND receiver_id=eq.${coachUserId}`,
+          filter: `sender_id=eq.${clientId} AND receiver_id=eq.${coordinatorUserId}`,
         },
         async () => {
           // Воспроизводим звук уведомления, если чат закрыт
           if (!showChatTab) {
             playNotificationSound()
           }
-          
+
           // Обновляем счетчик при новом сообщении и получаем последнее сообщение
           const { data: messageData, count } = await supabase
             .from('messages')
             .select('content', { count: 'exact', head: true })
             .eq('sender_id', clientId)
-            .eq('receiver_id', coachUserId)
+            .eq('receiver_id', coordinatorUserId)
             .is('read_at', null)
             .eq('is_deleted', false)
             .order('created_at', { ascending: false })
@@ -135,20 +135,20 @@ export default function ClientViewPage() {
             .maybeSingle()
 
           setUnreadCount(count || 0)
-          
+
           // Показываем браузерное уведомление, если чат закрыт и страница не в фокусе
           if (!showChatTab && isNotificationSupported() && document.hidden && messageData) {
             showNotification(`Новое сообщение от ${clientName}`, {
-              body: messageData.content.length > 100 
-                ? messageData.content.substring(0, 100) + '...' 
+              body: messageData.content.length > 100
+                ? messageData.content.substring(0, 100) + '...'
                 : messageData.content,
-              tag: `coach-message-${clientId}`,
+              tag: `coordinator-message-${clientId}`,
               requireInteraction: false,
             }).catch((error) => {
-              logger.warn('Coach: ошибка показа браузерного уведомления', { error })
+              logger.warn('Coordinator: ошибка показа браузерного уведомления', { error })
             })
           }
-          
+
           // Если есть новые непрочитанные сообщения, открываем чат
           if ((count || 0) > 0 && !showChatTab) {
             setShowChatTab(true)
@@ -160,17 +160,17 @@ export default function ClientViewPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [coachUserId, clientId, supabase, showChatTab, clientName])
+  }, [coordinatorUserId, clientId, supabase, showChatTab, clientName])
 
   const handleSaveNote = async () => {
-    if (!coachNote || !coachNote.trim()) {
+    if (!coordinatorNote || !coordinatorNote.trim()) {
       toast.error('Введите текст заметки')
       return
     }
 
     // Сохраняем текущее состояние для отката при ошибке (оптимистичное обновление)
     const previousNote = existingNote ? { ...existingNote } : null
-    const noteContent = (coachNote || '').trim()
+    const noteContent = (coordinatorNote || '').trim()
 
     // Оптимистичное обновление: сразу показываем сохраненную заметку
     setExistingNote({ content: noteContent, date: selectedDate })
@@ -186,14 +186,14 @@ export default function ClientViewPage() {
       }
 
       const { error } = await supabase
-        .from('coach_notes')
+        .from('coordinator_notes')
         .upsert({
           client_id: clientId,
-          coach_id: user.id,
+          coordinator_id: user.id,
           date: selectedDate,
           content: noteContent,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'client_id,coach_id,date' })
+        }, { onConflict: 'client_id,coordinator_id,date' })
 
       if (error) {
         // Откатываем изменения при ошибке
@@ -201,7 +201,7 @@ export default function ClientViewPage() {
         throw error
       }
 
-      logger.info('Coach: заметка сохранена', { coachId: user.id, clientId, date: selectedDate })
+      logger.info('Coordinator: заметка сохранена', { coordinatorId: user.id, clientId, date: selectedDate })
       toast.success('Заметка сохранена')
 
       // Проверяем настройки уведомлений клиента перед отправкой
@@ -221,8 +221,8 @@ export default function ClientViewPage() {
           if (supabaseUrl) {
             const { data: { session } } = await supabase.auth.getSession()
             if (session) {
-              // Получаем имя тренера из профиля
-              const { data: coachProfile } = await supabase
+              // Получаем имя координатора из профиля
+              const { data: coordinatorProfile } = await supabase
                 .from('profiles')
                 .select('full_name')
                 .eq('id', user.id)
@@ -236,20 +236,20 @@ export default function ClientViewPage() {
                 },
                 body: JSON.stringify({
                   userId: clientId,
-                  template: 'coach_note_notification',
+                  template: 'coordinator_note_notification',
                   data: {
                     date: selectedDate,
-                    noteContent: (coachNote || '').trim(),
-                    coachName: coachProfile?.full_name || undefined,
+                    noteContent: (coordinatorNote || '').trim(),
+                    coordinatorName: coordinatorProfile?.full_name || undefined,
                   },
                 }),
               }).catch((err) => {
-                logger.warn('Coach: ошибка отправки email уведомления', { error: err, clientId })
+                logger.warn('Coordinator: ошибка отправки email уведомления', { error: err, clientId })
               })
             }
           }
         } catch (emailError) {
-          logger.warn('Coach: ошибка отправки email уведомления', { error: emailError, clientId })
+          logger.warn('Coordinator: ошибка отправки email уведомления', { error: emailError, clientId })
         }
       } else if (shouldAddToDigest) {
         // Добавляем в очередь для дайджеста
@@ -258,21 +258,21 @@ export default function ClientViewPage() {
             .from('pending_notifications')
             .insert({
               user_id: clientId,
-              notification_type: 'coach_note',
+              notification_type: 'coordinator_note',
               content: {
                 date: selectedDate,
-                noteContent: (coachNote || '').trim(),
-                coachId: user.id
+                noteContent: (coordinatorNote || '').trim(),
+                coordinatorId: user.id
               }
             })
 
           if (queueError) {
-            logger.warn('Coach: ошибка добавления в очередь уведомлений', { error: queueError, clientId })
+            logger.warn('Coordinator: ошибка добавления в очередь уведомлений', { error: queueError, clientId })
           } else {
-            logger.info('Coach: уведомление добавлено в очередь дайджеста', { clientId, date: selectedDate })
+            logger.info('Coordinator: уведомление добавлено в очередь дайджеста', { clientId, date: selectedDate })
           }
         } catch (queueError) {
-          logger.warn('Coach: ошибка добавления в очередь', { error: queueError, clientId })
+          logger.warn('Coordinator: ошибка добавления в очередь', { error: queueError, clientId })
         }
       }
 
@@ -280,7 +280,7 @@ export default function ClientViewPage() {
       // Откатываем изменения при ошибке
       setExistingNote(previousNote)
       const errorMessage = error instanceof Error ? error.message : 'Ошибка сохранения заметки'
-      logger.error('Coach: ошибка сохранения заметки', error, { clientId, date: selectedDate })
+      logger.error('Coordinator: ошибка сохранения заметки', error, { clientId, date: selectedDate })
       toast.error(errorMessage)
     } finally {
       setSavingNote(false)
@@ -293,7 +293,7 @@ export default function ClientViewPage() {
     <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
       <header className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => router.push('/app/coach')}
+          onClick={() => router.push('/app/coordinator')}
           className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
         >
           <ArrowLeft size={16} />
@@ -304,7 +304,7 @@ export default function ClientViewPage() {
         </div>
       </header>
 
-      {/* Date Picker для тренера */}
+      {/* Date Picker для координатора */}
       <div className="bg-white p-4 rounded-xl border border-gray-100 mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">Дата для заметки</label>
         <input
@@ -312,7 +312,7 @@ export default function ClientViewPage() {
           value={selectedDate}
           onChange={(e) => {
             setSelectedDate(e.target.value)
-            setCoachNote('')
+            setCoordinatorNote('')
             setExistingNote(null)
           }}
           max={new Date().toISOString().split('T')[0]}
@@ -325,21 +325,19 @@ export default function ClientViewPage() {
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => setShowChatTab(false)}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              !showChatTab
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${!showChatTab
                 ? 'bg-black text-white'
                 : 'bg-white text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
           >
             Заметка
           </button>
           <button
             onClick={() => setShowChatTab(true)}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
-              showChatTab
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${showChatTab
                 ? 'bg-black text-white'
                 : 'bg-white text-gray-600 hover:text-gray-900'
-            }`}
+              }`}
             title={unreadCount > 0 ? `${unreadCount} непрочитанных сообщений` : 'Открыть чат с клиентом'}
           >
             <span className="flex items-center justify-center gap-2">
@@ -360,32 +358,32 @@ export default function ClientViewPage() {
               <MessageSquare size={20} className="text-gray-600" />
               <h2 className="text-lg font-bold text-gray-900">Заметка для клиента</h2>
             </div>
-        {existingNote && (
-          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-            Существующая заметка за {new Date(existingNote.date).toLocaleDateString('ru-RU')}
-          </div>
-        )}
-        <textarea
-          value={coachNote || ''}
-          onChange={(e) => setCoachNote(e.target.value)}
-          placeholder="Напишите заметку для клиента на эту дату..."
-          rows={4}
-          className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none resize-none"
-        />
-        <button
-          onClick={handleSaveNote}
-          disabled={savingNote || !coachNote || !coachNote.trim()}
-          className="mt-3 w-full py-2 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          <Send size={16} />
-          {savingNote ? 'Сохранение...' : 'Сохранить заметку'}
-        </button>
+            {existingNote && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                Существующая заметка за {new Date(existingNote.date).toLocaleDateString('ru-RU')}
+              </div>
+            )}
+            <textarea
+              value={coordinatorNote || ''}
+              onChange={(e) => setCoordinatorNote(e.target.value)}
+              placeholder="Напишите заметку для клиента на эту дату..."
+              rows={4}
+              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none resize-none"
+            />
+            <button
+              onClick={handleSaveNote}
+              disabled={savingNote || !coordinatorNote || !coordinatorNote.trim()}
+              className="mt-3 w-full py-2 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Send size={16} />
+              {savingNote ? 'Сохранение...' : 'Сохранить заметку'}
+            </button>
           </div>
         ) : (
           <div className="p-6">
-            {coachUserId ? (
+            {coordinatorUserId ? (
               <ChatWindow
-                userId={coachUserId}
+                userId={coordinatorUserId}
                 otherUserId={clientId}
                 otherUserName={clientName}
                 onMessageRead={() => {
@@ -394,7 +392,7 @@ export default function ClientViewPage() {
                     .from('messages')
                     .select('*', { count: 'exact', head: true })
                     .eq('sender_id', clientId)
-                    .eq('receiver_id', coachUserId)
+                    .eq('receiver_id', coordinatorUserId)
                     .is('read_at', null)
                     .eq('is_deleted', false)
                     .then(({ count }) => {

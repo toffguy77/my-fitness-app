@@ -37,13 +37,13 @@
 Скрипт создает следующие таблицы:
 
 ### Основные таблицы
-- `profiles` — профили пользователей (клиенты, тренеры, админы)
+- `profiles` — профили пользователей (клиенты, координаторы, админы)
 - `nutrition_targets` — цели питания (тренировочные дни и дни отдыха)
 - `daily_logs` — дневные логи питания и веса
 
 ### Функциональные таблицы
-- `coach_notes` — заметки тренера для клиентов
-- `messages` — сообщения чата между тренером и клиентом
+- `coordinator_notes` — заметки координатора для клиентов
+- `messages` — сообщения чата между координатором и клиентом
 - `products` — кэш продуктов из внешних API
 - `user_products` — пользовательские продукты
 - `product_usage_history` — история использования продуктов
@@ -58,8 +58,8 @@
 
 ### Функции
 - `is_super_admin()` — проверка роли super_admin
-- `is_coach()` — проверка роли coach
-- `is_client_coach()` — проверка связи тренер-клиент
+- `is_coordinator()` — проверка роли coordinator
+- `is_client_coordinator()` — проверка связи координатор-клиент
 - `validate_calories_match_macros()` — валидация КБЖУ
 - `validate_nutrition_limits()` — проверка лимитов
 - `get_expired_subscriptions()` — получение истекших подписок
@@ -106,8 +106,8 @@ SELECT
          THEN 'nutrition_targets ✓' ELSE 'nutrition_targets ✗' END as nutrition_targets,
     CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'daily_logs') 
          THEN 'daily_logs ✓' ELSE 'daily_logs ✗' END as daily_logs,
-    CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'coach_notes') 
-         THEN 'coach_notes ✓' ELSE 'coach_notes ✗' END as coach_notes,
+    CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'coordinator_notes') 
+         THEN 'coordinator_notes ✓' ELSE 'coordinator_notes ✗' END as coordinator_notes,
     CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'messages') 
          THEN 'messages ✓' ELSE 'messages ✗' END as messages,
     CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'products') 

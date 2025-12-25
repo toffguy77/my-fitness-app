@@ -8,10 +8,10 @@ import InviteCodeCard from './InviteCodeCard'
 import type { InviteCode } from '@/types/invites'
 
 interface InviteCodeManagerProps {
-    coachId: string
+    coordinatorId: string
 }
 
-export default function InviteCodeManager({ coachId }: InviteCodeManagerProps) {
+export default function InviteCodeManager({ coordinatorId }: InviteCodeManagerProps) {
     const [codes, setCodes] = useState<InviteCode[]>([])
     const [loading, setLoading] = useState(true)
     const [showCreateModal, setShowCreateModal] = useState(false)
@@ -68,7 +68,7 @@ export default function InviteCodeManager({ coachId }: InviteCodeManagerProps) {
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-1">Инвайт-коды</h2>
                     <p className="text-sm text-gray-600">
-                        Создавайте коды для приглашения клиентов. Они автоматически будут назначены вам как тренеру.
+                        Создавайте коды для приглашения клиентов. Они автоматически будут назначены вам как координатору.
                     </p>
                 </div>
                 <button
@@ -105,7 +105,7 @@ export default function InviteCodeManager({ coachId }: InviteCodeManagerProps) {
 
             {showCreateModal && (
                 <CreateInviteCodeModal
-                    coachId={coachId}
+                    coordinatorId={coordinatorId}
                     onClose={() => setShowCreateModal(false)}
                     onSuccess={(newCode) => {
                         handleCodeCreated(newCode)

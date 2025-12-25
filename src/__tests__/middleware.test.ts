@@ -108,12 +108,12 @@ describe('Middleware', () => {
       }
     })
 
-    it('should route coach to coach dashboard', () => {
-      const role = 'coach'
-      const pathname = '/app/coach'
+    it('should route coordinator to coordinator dashboard', () => {
+      const role = 'coordinator'
+      const pathname = '/app/coordinator'
 
-      if (role === 'coach') {
-        expect(pathname).toContain('coach')
+      if (role === 'coordinator') {
+        expect(pathname).toContain('coordinator')
       }
     })
 

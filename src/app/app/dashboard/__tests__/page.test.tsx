@@ -107,7 +107,7 @@ describe('Dashboard Page', () => {
     }, { timeout: 5000 })
   })
 
-  it('should display coach note when available', async () => {
+  it('should display coordinator note when available', async () => {
     render(<DashboardPage />)
     
     // Should render dashboard

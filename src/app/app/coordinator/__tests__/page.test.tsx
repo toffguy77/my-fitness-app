@@ -1,10 +1,10 @@
 /**
- * Component Tests: Coach Dashboard Page
- * Tests coach dashboard, client list, filtering, and status display
+ * Component Tests: Coordinator Dashboard Page
+ * Tests coordinator dashboard, client list, filtering, and status display
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
-import CoachPage from '../page'
+import CoordinatorPage from '../page'
 
 // Mock Next.js modules
 const mockPush = jest.fn()
@@ -18,7 +18,7 @@ jest.mock('next/navigation', () => ({
 
 // Mock profile utils
 jest.mock('@/utils/supabase/profile', () => ({
-  getCoachClients: jest.fn().mockResolvedValue([
+  getCoordinatorClients: jest.fn().mockResolvedValue([
     {
       id: 'client-1',
       email: 'client1@test.com',
@@ -51,12 +51,12 @@ jest.mock('@/utils/logger', () => ({
   },
 }))
 
-describe('Coach Dashboard Page', () => {
+describe('Coordinator Dashboard Page', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coach-123' } },
+      data: { user: { id: 'coordinator-123' } },
       error: null,
     })
 
@@ -64,7 +64,7 @@ describe('Coach Dashboard Page', () => {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({
-        data: { role: 'coach' },
+        data: { role: 'coordinator' },
         error: null,
       }),
       order: jest.fn().mockReturnThis(),
@@ -75,43 +75,43 @@ describe('Coach Dashboard Page', () => {
     })
   })
 
-  it('should render coach dashboard', async () => {
-    render(<CoachPage />)
+  it('should render coordinator dashboard', async () => {
+    render(<CoordinatorPage />)
     
     // Should show loading initially
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading|тренер|coach/i)).toBeInTheDocument()
+      expect(screen.getByText(/загрузка|loading|координатор|coordinator/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should display clients list', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
-    // Should render coach page
+    // Should render coordinator page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading|тренер|coach/i)).toBeInTheDocument()
+      expect(screen.getByText(/загрузка|loading|координатор|coordinator/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should handle status filtering', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
-    // Should render coach page
+    // Should render coordinator page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading|тренер|coach/i)).toBeInTheDocument()
+      expect(screen.getByText(/загрузка|loading|координатор|coordinator/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should handle sorting', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
-    // Should render coach page
+    // Should render coordinator page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading|тренер|coach/i)).toBeInTheDocument()
+      expect(screen.getByText(/загрузка|loading|координатор|coordinator/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
-  it('should redirect non-coach users', async () => {
+  it('should redirect non-coordinator users', async () => {
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -121,7 +121,7 @@ describe('Coach Dashboard Page', () => {
       }),
     })
 
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     // Should redirect
     await waitFor(() => {
@@ -130,20 +130,20 @@ describe('Coach Dashboard Page', () => {
   })
 
   it('should display client status indicators', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
-    // Should render coach page
+    // Should render coordinator page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading|тренер|coach/i)).toBeInTheDocument()
+      expect(screen.getByText(/загрузка|loading|координатор|coordinator/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should handle client navigation', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
-    // Should render coach page
+    // Should render coordinator page
     await waitFor(() => {
-      expect(screen.getByText(/загрузка|loading|тренер|coach/i)).toBeInTheDocument()
+      expect(screen.getByText(/загрузка|loading|координатор|coordinator/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 })

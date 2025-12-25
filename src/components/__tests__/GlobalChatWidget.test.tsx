@@ -77,7 +77,7 @@ describe('GlobalChatWidget Component', () => {
   it('should not render when user is not premium', async () => {
     getUserProfile.mockResolvedValue({
       id: 'user-123',
-      coach_id: 'coach-123',
+      coordinator_id: 'coordinator-123',
       role: 'client',
     })
     
@@ -90,10 +90,10 @@ describe('GlobalChatWidget Component', () => {
     })
   })
 
-  it('should not render when user has no coach', async () => {
+  it('should not render when user has no coordinator', async () => {
     getUserProfile.mockResolvedValue({
       id: 'user-123',
-      coach_id: null,
+      coordinator_id: null,
       role: 'client',
     })
     
@@ -106,10 +106,10 @@ describe('GlobalChatWidget Component', () => {
     })
   })
 
-  it('should render ChatWidget for premium user with coach', async () => {
+  it('should render ChatWidget for premium user with coordinator', async () => {
     getUserProfile.mockResolvedValue({
       id: 'user-123',
-      coach_id: 'coach-123',
+      coordinator_id: 'coordinator-123',
       role: 'client',
     })
     

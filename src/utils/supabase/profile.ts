@@ -2,7 +2,7 @@ import { createClient } from './client'
 import { User } from '@supabase/supabase-js'
 import { logger } from '@/utils/logger'
 
-export type UserRole = 'client' | 'coach' | 'super_admin'
+export type UserRole = 'client' | 'coordinator' | 'super_admin'
 
 export type SubscriptionStatus = 'free' | 'active' | 'cancelled' | 'past_due' | 'expired'
 export type SubscriptionTier = 'basic' | 'premium'
@@ -13,7 +13,7 @@ export type UserProfile = {
   full_name?: string | null
   phone?: string | null
   role: UserRole
-  coach_id?: string | null
+  coordinator_id?: string | null
   avatar_url?: string | null
   subscription_status?: SubscriptionStatus
   subscription_tier?: SubscriptionTier
@@ -48,24 +48,24 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
   return data as UserProfile
 }
 
-export async function getCoachClients(coachId: string): Promise<UserProfile[]> {
+export async function getCoordinatorClients(coordinatorId: string): Promise<UserProfile[]> {
   const supabase = createClient()
 
-  logger.debug('Profile: загрузка клиентов тренера', { coachId })
+  logger.debug('Profile: загрузка клиентов координатора', { coordinatorId })
 
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('coach_id', coachId)
+    .eq('coordinator_id', coordinatorId)
     .eq('role', 'client')
     .order('full_name', { ascending: true })
 
   if (error) {
-    logger.error('Profile: ошибка загрузки клиентов', error, { coachId })
+    logger.error('Profile: ошибка загрузки клиентов', error, { coordinatorId })
     return []
   }
 
-  logger.info('Profile: клиенты успешно загружены', { coachId, count: data?.length || 0 })
+  logger.info('Profile: клиенты успешно загружены', { coordinatorId, count: data?.length || 0 })
   return (data || []) as UserProfile[]
 }
 

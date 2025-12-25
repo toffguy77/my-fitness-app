@@ -6,7 +6,7 @@
 import { createClient } from '../client'
 import {
   getUserProfile,
-  getCoachClients,
+  getCoordinatorClients,
   isSuperAdmin,
   isPremium,
   hasActiveSubscription,
@@ -68,7 +68,7 @@ describe('Profile Utilities Extended Tests', () => {
         full_name: 'Test User',
         phone: '+1234567890',
         role: 'client',
-        coach_id: 'coach-123',
+        coordinator_id: 'coordinator-123',
         avatar_url: 'https://example.com/avatar.jpg',
         subscription_status: 'active',
         subscription_tier: 'premium',
@@ -122,25 +122,25 @@ describe('Profile Utilities Extended Tests', () => {
     })
   })
 
-  describe('getCoachClients Extended', () => {
-    it('should handle coach with no clients', async () => {
+  describe('getCoordinatorClients Extended', () => {
+    it('should handle coordinator with no clients', async () => {
       const queryBuilder = mockSupabase.from()
       queryBuilder.order.mockResolvedValue({
         data: [],
         error: null,
       })
 
-      const result = await getCoachClients('coach-123')
+      const result = await getCoordinatorClients('coordinator-123')
 
       expect(result).toEqual([])
     })
 
-    it('should handle coach with many clients', async () => {
+    it('should handle coordinator with many clients', async () => {
       const manyClients: UserProfile[] = Array.from({ length: 50 }, (_, i) => ({
         id: `client-${i}`,
         full_name: `Client ${i}`,
         role: 'client',
-        coach_id: 'coach-123',
+        coordinator_id: 'coordinator-123',
       }))
 
       const queryBuilder = mockSupabase.from()
@@ -149,16 +149,16 @@ describe('Profile Utilities Extended Tests', () => {
         error: null,
       })
 
-      const result = await getCoachClients('coach-123')
+      const result = await getCoordinatorClients('coordinator-123')
 
       expect(result).toHaveLength(50)
     })
 
     it('should order clients by full_name ascending', async () => {
       const clients: UserProfile[] = [
-        { id: '1', full_name: 'Zebra', role: 'client', coach_id: 'coach-123' },
-        { id: '2', full_name: 'Alpha', role: 'client', coach_id: 'coach-123' },
-        { id: '3', full_name: 'Beta', role: 'client', coach_id: 'coach-123' },
+        { id: '1', full_name: 'Zebra', role: 'client', coordinator_id: 'coordinator-123' },
+        { id: '2', full_name: 'Alpha', role: 'client', coordinator_id: 'coordinator-123' },
+        { id: '3', full_name: 'Beta', role: 'client', coordinator_id: 'coordinator-123' },
       ]
 
       const queryBuilder = mockSupabase.from()
@@ -167,7 +167,7 @@ describe('Profile Utilities Extended Tests', () => {
         error: null,
       })
 
-      await getCoachClients('coach-123')
+      await getCoordinatorClients('coordinator-123')
 
       expect(queryBuilder.order).toHaveBeenCalledWith('full_name', { ascending: true })
     })
@@ -175,7 +175,7 @@ describe('Profile Utilities Extended Tests', () => {
 
   describe('isSuperAdmin Extended', () => {
     it('should handle all role types', async () => {
-      const roles: Array<'client' | 'coach' | 'super_admin'> = ['client', 'coach', 'super_admin']
+      const roles: Array<'client' | 'coordinator' | 'super_admin'> = ['client', 'coordinator', 'super_admin']
 
       for (const role of roles) {
         const queryBuilder = mockSupabase.from()

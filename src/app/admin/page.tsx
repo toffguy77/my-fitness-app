@@ -16,7 +16,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
   const [subscriptionFilter, setSubscriptionFilter] = useState<SubscriptionStatus | 'all'>('all')
-  const [activeStatFilter, setActiveStatFilter] = useState<'all' | 'clients' | 'coaches' | 'premium'>('all')
+  const [activeStatFilter, setActiveStatFilter] = useState<'all' | 'clients' | 'coordinators' | 'premium'>('all')
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -104,7 +104,7 @@ export default function AdminPage() {
       // Подготовка данных для обновления
       const updateData: {
         role: UserRole
-        coach_id: string | null
+        coordinator_id: string | null
         subscription_status?: SubscriptionStatus
         subscription_tier?: SubscriptionTier
         subscription_start_date?: string | null
@@ -112,7 +112,7 @@ export default function AdminPage() {
         full_name: string | null
       } = {
         role: editingUser.role,
-        coach_id: editingUser.coach_id || null,
+        coordinator_id: editingUser.coordinator_id || null,
         full_name: editingUser.full_name || null,
       }
 
@@ -123,7 +123,7 @@ export default function AdminPage() {
         updateData.subscription_start_date = editingUser.subscription_start_date || null
         updateData.subscription_end_date = editingUser.subscription_end_date || null
       } else {
-        // Для тренеров и админов очищаем поля подписки
+        // Для координаторов и админов очищаем поля подписки
         updateData.subscription_status = 'free'
         updateData.subscription_tier = 'basic'
         updateData.subscription_start_date = null
@@ -166,9 +166,9 @@ export default function AdminPage() {
     }
   }
 
-  // Загружаем список тренеров для выбора
-  const coaches = useMemo(() => {
-    return users.filter(u => u.role === 'coach')
+  // Загружаем список координаторов для выбора
+  const coordinators = useMemo(() => {
+    return users.filter(u => u.role === 'coordinator')
   }, [users])
 
   if (loading) return <div className="p-8 text-center">Загрузка...</div>
@@ -199,9 +199,9 @@ export default function AdminPage() {
 
       {/* STATS / FILTERS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard 
-          label="Всего пользователей" 
-          value={users.length} 
+        <StatCard
+          label="Всего пользователей"
+          value={users.length}
           icon={<Users size={20} />}
           isActive={activeStatFilter === 'all'}
           onClick={() => {
@@ -210,9 +210,9 @@ export default function AdminPage() {
             setSubscriptionFilter('all')
           }}
         />
-        <StatCard 
-          label="Клиенты" 
-          value={users.filter(u => u.role === 'client').length} 
+        <StatCard
+          label="Клиенты"
+          value={users.filter(u => u.role === 'client').length}
           icon={<UserIcon size={20} />}
           isActive={activeStatFilter === 'clients'}
           onClick={() => {
@@ -221,20 +221,20 @@ export default function AdminPage() {
             setSubscriptionFilter('all')
           }}
         />
-        <StatCard 
-          label="Тренеры" 
-          value={users.filter(u => u.role === 'coach').length} 
+        <StatCard
+          label="Координаторы"
+          value={users.filter(u => u.role === 'coordinator').length}
           icon={<Shield size={20} />}
-          isActive={activeStatFilter === 'coaches'}
+          isActive={activeStatFilter === 'coordinators'}
           onClick={() => {
-            setActiveStatFilter('coaches')
-            setRoleFilter('coach')
+            setActiveStatFilter('coordinators')
+            setRoleFilter('coordinator')
             setSubscriptionFilter('all')
           }}
         />
-        <StatCard 
-          label="Premium подписки" 
-          value={users.filter(u => u.subscription_status === 'active').length} 
+        <StatCard
+          label="Premium подписки"
+          value={users.filter(u => u.subscription_status === 'active').length}
           icon={<Shield size={20} />}
           isActive={activeStatFilter === 'premium'}
           onClick={() => {
@@ -273,8 +273,8 @@ export default function AdminPage() {
                 setActiveStatFilter('all')
               } else if (newRole === 'client' && subscriptionFilter === 'all') {
                 setActiveStatFilter('clients')
-              } else if (newRole === 'coach' && subscriptionFilter === 'all') {
-                setActiveStatFilter('coaches')
+              } else if (newRole === 'coordinator' && subscriptionFilter === 'all') {
+                setActiveStatFilter('coordinators')
               } else {
                 setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
               }
@@ -283,7 +283,7 @@ export default function AdminPage() {
           >
             <option value="all">Все роли</option>
             <option value="client">Клиенты</option>
-            <option value="coach">Тренеры</option>
+            <option value="coordinator">Координаторы</option>
             <option value="super_admin">Супер-админы</option>
           </select>
 
@@ -300,8 +300,8 @@ export default function AdminPage() {
                 setActiveStatFilter('all')
               } else if (newSubscription === 'all' && roleFilter === 'client') {
                 setActiveStatFilter('clients')
-              } else if (newSubscription === 'all' && roleFilter === 'coach') {
-                setActiveStatFilter('coaches')
+              } else if (newSubscription === 'all' && roleFilter === 'coordinator') {
+                setActiveStatFilter('coordinators')
               } else {
                 setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
               }
@@ -341,7 +341,7 @@ export default function AdminPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Роль</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подписка</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Тренер</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Координатор</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата регистрации</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
               </tr>
@@ -359,11 +359,11 @@ export default function AdminPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.role === 'super_admin' ? 'bg-purple-100 text-purple-700' :
-                      userProfile.role === 'coach' ? 'bg-blue-100 text-blue-700' :
+                      userProfile.role === 'coordinator' ? 'bg-blue-100 text-blue-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
                       {userProfile.role === 'super_admin' ? 'Супер-админ' :
-                        userProfile.role === 'coach' ? 'Тренер' : 'Клиент'}
+                        userProfile.role === 'coordinator' ? 'Координатор' : 'Клиент'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -388,9 +388,9 @@ export default function AdminPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {userProfile.coach_id ? (
-                      coaches.find(c => c.id === userProfile.coach_id)?.full_name ||
-                      coaches.find(c => c.id === userProfile.coach_id)?.email ||
+                    {userProfile.coordinator_id ? (
+                      coordinators.find(c => c.id === userProfile.coordinator_id)?.full_name ||
+                      coordinators.find(c => c.id === userProfile.coordinator_id)?.email ||
                       'Неизвестен'
                     ) : '-'}
                   </td>
@@ -411,13 +411,13 @@ export default function AdminPage() {
                       {userProfile.role === 'client' && (
                         <button
                           onClick={() => {
-                            const updatedUser = { ...userProfile, role: 'coach' as UserRole, coach_id: null, subscription_status: 'free' as SubscriptionStatus, subscription_tier: 'basic' as SubscriptionTier, subscription_start_date: null, subscription_end_date: null }
+                            const updatedUser = { ...userProfile, role: 'coordinator' as UserRole, coordinator_id: null, subscription_status: 'free' as SubscriptionStatus, subscription_tier: 'basic' as SubscriptionTier, subscription_start_date: null, subscription_end_date: null }
                             setEditingUser(updatedUser)
                           }}
                           className="text-blue-600 hover:text-blue-700 text-xs font-medium"
-                          title="Быстро превратить в тренера"
+                          title="Быстро превратить в координатора"
                         >
-                          → Тренер
+                          → Координатор
                         </button>
                       )}
                     </div>
@@ -464,45 +464,45 @@ export default function AdminPage() {
                   onChange={(e) => {
                     const newRole = e.target.value as UserRole
                     const updatedUser = { ...editingUser, role: newRole }
-                    
-                    // Если пользователь становится тренером или супер-админом, очищаем поля клиента
-                    if (newRole === 'coach' || newRole === 'super_admin') {
-                      updatedUser.coach_id = null
-                      // Очищаем подписку при превращении в тренера
+
+                    // Если пользователь становится координатором или супер-админом, очищаем поля клиента
+                    if (newRole === 'coordinator' || newRole === 'super_admin') {
+                      updatedUser.coordinator_id = null
+                      // Очищаем подписку при превращении в координатора
                       updatedUser.subscription_status = 'free'
                       updatedUser.subscription_tier = 'basic'
                       updatedUser.subscription_start_date = null
                       updatedUser.subscription_end_date = null
                     }
-                    
+
                     setEditingUser(updatedUser)
                   }}
                   className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
                 >
                   <option value="client">Клиент</option>
-                  <option value="coach">Тренер</option>
+                  <option value="coordinator">Координатор</option>
                   <option value="super_admin">Супер-админ</option>
                 </select>
-                {(editingUser.role === 'client' && (editingUser.coach_id || editingUser.subscription_status !== 'free')) && (
+                {(editingUser.role === 'client' && (editingUser.coordinator_id || editingUser.subscription_status !== 'free')) && (
                   <p className="text-xs text-gray-500 mt-1">
-                    При изменении роли на &quot;Тренер&quot; будут очищены: назначенный тренер и подписка
+                    При изменении роли на &quot;Координатор&quot; будут очищены: назначенный координатор и подписка
                   </p>
                 )}
               </div>
 
-              {/* Тренер (только для клиентов) */}
+              {/* Координатор (только для клиентов) */}
               {editingUser.role === 'client' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-1">Тренер</label>
+                  <label className="block text-sm font-medium text-gray-900 mb-1">Координатор</label>
                   <select
-                    value={editingUser.coach_id || ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, coach_id: e.target.value || null })}
+                    value={editingUser.coordinator_id || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, coordinator_id: e.target.value || null })}
                     className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
                   >
                     <option value="">Не назначен</option>
-                    {coaches.map(coach => (
-                      <option key={coach.id} value={coach.id}>
-                        {coach.full_name || coach.email}
+                    {coordinators.map(coordinator => (
+                      <option key={coordinator.id} value={coordinator.id}>
+                        {coordinator.full_name || coordinator.email}
                       </option>
                     ))}
                   </select>
@@ -535,13 +535,13 @@ export default function AdminPage() {
                       onChange={(e) => {
                         const newTier = e.target.value as SubscriptionTier
                         const updatedUser = { ...editingUser, subscription_tier: newTier }
-                        
+
                         // Если выбран Premium, автоматически устанавливаем даты: начало = сегодня, окончание = +30 дней
                         if (newTier === 'premium') {
                           const today = new Date()
                           const endDate = new Date(today)
                           endDate.setDate(endDate.getDate() + 30) // +30 календарных дней
-                          
+
                           updatedUser.subscription_start_date = today.toISOString().split('T')[0]
                           updatedUser.subscription_end_date = endDate.toISOString().split('T')[0]
                         } else if (newTier === 'basic') {
@@ -549,7 +549,7 @@ export default function AdminPage() {
                           updatedUser.subscription_start_date = null
                           updatedUser.subscription_end_date = null
                         }
-                        
+
                         setEditingUser(updatedUser)
                       }}
                       className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
@@ -606,13 +606,13 @@ export default function AdminPage() {
   )
 }
 
-function StatCard({ 
-  label, 
-  value, 
-  icon, 
-  isActive = false, 
-  onClick 
-}: { 
+function StatCard({
+  label,
+  value,
+  icon,
+  isActive = false,
+  onClick
+}: {
   label: string
   value: number
   icon: React.ReactNode
@@ -622,11 +622,10 @@ function StatCard({
   return (
     <button
       onClick={onClick}
-      className={`bg-white p-4 rounded-xl shadow-sm border-2 transition-all w-full text-left hover:shadow-md ${
-        isActive 
-          ? 'border-black bg-gray-50' 
+      className={`bg-white p-4 rounded-xl shadow-sm border-2 transition-all w-full text-left hover:shadow-md ${isActive
+          ? 'border-black bg-gray-50'
           : 'border-gray-100 hover:border-gray-300'
-      }`}
+        }`}
     >
       <div className="flex items-center justify-between">
         <div>

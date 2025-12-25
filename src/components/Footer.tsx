@@ -1,6 +1,29 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import { getUserProfile, type UserProfile } from '@/utils/supabase/profile'
+
 export default function Footer() {
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const userProfile = await getUserProfile(user)
+        if (userProfile) {
+          setProfile(userProfile)
+        }
+      }
+      setLoading(false)
+    }
+    fetchProfile()
+  }, [])
+
+  const isCoordinator = profile?.role === 'coordinator'
 
   return (
     <footer className="bg-white border-t border-gray-200 mt-auto">
@@ -9,15 +32,21 @@ export default function Footer() {
           <div className="text-sm text-gray-600">
             © {new Date().getFullYear()} Fitness App. Все права защищены.
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <a href="/app/settings" className="hover:text-gray-900 transition-colors">
-              Настройки
-            </a>
-            <span className="text-gray-300">|</span>
-            <a href="/leaderboard" className="hover:text-gray-900 transition-colors">
-              Лидерборд
-            </a>
-          </div>
+          {!loading && (
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <a href="/app/settings" className="hover:text-gray-900 transition-colors">
+                Настройки
+              </a>
+              {!isCoordinator && (
+                <>
+                  <span className="text-gray-300">|</span>
+                  <a href="/leaderboard" className="hover:text-gray-900 transition-colors">
+                    Лидерборд
+                  </a>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </footer>

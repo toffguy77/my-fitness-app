@@ -1,6 +1,6 @@
 /**
- * Component Tests: Coach Client View Page
- * Tests coach's view of individual client dashboard
+ * Component Tests: Coordinator Client View Page
+ * Tests coordinator's view of individual client dashboard
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
@@ -73,14 +73,14 @@ jest.mock('react-hot-toast', () => ({
   },
 }))
 
-describe('Coach Client View Page', () => {
+describe('Coordinator Client View Page', () => {
   jest.setTimeout(15000)
   
   beforeEach(() => {
     jest.clearAllMocks()
     
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coach-123' } },
+      data: { user: { id: 'coordinator-123' } },
       error: null,
     })
 
@@ -88,7 +88,7 @@ describe('Coach Client View Page', () => {
     const mockEq = jest.fn().mockReturnThis()
     const mockSingle = jest.fn().mockResolvedValue({
       data: {
-        coach_id: 'coach-123',
+        coordinator_id: 'coordinator-123',
         full_name: 'Test Client',
         email: 'client@test.com',
       },
@@ -97,7 +97,7 @@ describe('Coach Client View Page', () => {
     
     // Setup mock to handle different table calls
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'coach_notes') {
+      if (table === 'coordinator_notes') {
         // Support both select().eq().eq().eq().single() and upsert()
         return {
           select: jest.fn().mockReturnThis(),
@@ -225,15 +225,15 @@ describe('Coach Client View Page', () => {
     
     // Setup mocks for multiple queries - need to handle different table calls
     let profilesCallCount = 0
-    let coachNotesCallCount = 0
+    let coordinatorNotesCallCount = 0
     const mockSelect = jest.fn().mockReturnThis()
     const mockEq = jest.fn().mockReturnThis()
     
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'coach_notes') {
-        coachNotesCallCount++
+      if (table === 'coordinator_notes') {
+        coordinatorNotesCallCount++
         // First call: no note for initial date
-        if (coachNotesCallCount === 1) {
+        if (coordinatorNotesCallCount === 1) {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
@@ -285,7 +285,7 @@ describe('Coach Client View Page', () => {
         eq: mockEq,
         single: jest.fn().mockResolvedValue({
           data: {
-            coach_id: 'coach-123',
+            coordinator_id: 'coordinator-123',
             full_name: 'Test Client',
             email: 'client@test.com',
           },
@@ -318,13 +318,13 @@ describe('Coach Client View Page', () => {
     }, { timeout: 10000 })
   })
 
-  it('should redirect if user is not coach of this client', async () => {
+  it('should redirect if user is not coordinator of this client', async () => {
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({
         data: {
-          coach_id: 'other-coach-123',
+          coordinator_id: 'other-coordinator-123',
           full_name: 'Test Client',
         },
         error: null,
@@ -334,7 +334,7 @@ describe('Coach Client View Page', () => {
     render(<ClientViewPage />)
     
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/app/coach')
+      expect(mockPush).toHaveBeenCalledWith('/app/coordinator')
     }, { timeout: 3000 })
   })
 
@@ -352,9 +352,9 @@ describe('Coach Client View Page', () => {
   })
 
   it('should handle save errors gracefully', async () => {
-    // Setup mock to return error for coach_notes upsert
+    // Setup mock to return error for coordinator_notes upsert
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'coach_notes') {
+      if (table === 'coordinator_notes') {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
@@ -392,7 +392,7 @@ describe('Coach Client View Page', () => {
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: {
-            coach_id: 'coach-123',
+            coordinator_id: 'coordinator-123',
             full_name: 'Test Client',
             email: 'client@test.com',
           },

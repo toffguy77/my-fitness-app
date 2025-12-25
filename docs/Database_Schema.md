@@ -16,14 +16,14 @@
 
 ### user_role
 ```sql
-CREATE TYPE user_role AS ENUM ('client', 'coach', 'super_admin');
+CREATE TYPE user_role AS ENUM ('client', 'coordinator', 'super_admin');
 ```
 
 **Описание:** Роли пользователей в системе
 
 **Значения:**
 - `client` — клиент (Free или Premium)
-- `coach` — тренер
+- `coordinator` — координатор (специализируется на питании)
 - `super_admin` — супер-администратор
 
 ---
@@ -42,7 +42,7 @@ CREATE TABLE profiles (
   full_name TEXT,
   phone TEXT,
   role user_role DEFAULT 'client',
-  coach_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  coordinator_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   avatar_url TEXT,
   
   -- Подписка
@@ -72,20 +72,20 @@ CREATE TABLE profiles (
 
 **Ключевые поля:**
 - `id` — UUID, ссылается на `auth.users.id`
-- `role` — роль пользователя (client, coach, super_admin)
-- `coach_id` — ID тренера (для Premium клиентов)
+- `role` — роль пользователя (client, coordinator, super_admin)
+- `coordinator_id` — ID координатора (для Premium клиентов)
 - `subscription_status` — статус подписки (free, active, cancelled, past_due, expired)
 - `subscription_tier` — уровень подписки (basic, premium)
 - `subscription_end_date` — дата окончания подписки
 
 **Индексы:**
 - `idx_profiles_role` — по роли
-- `idx_profiles_coach_id` — по тренеру
+- `idx_profiles_coordinator_id` — по координатору
 - `idx_profiles_public` — по публичным профилям (WHERE profile_visibility = 'public')
 
 **RLS политики:**
 - Пользователи могут читать и обновлять свой профиль
-- Тренеры могут читать профили своих клиентов
+- Координаторы могут читать профили своих клиентов
 - Super Admin имеет полный доступ
 - Публичные профили доступны всем пользователям
 
@@ -93,7 +93,7 @@ CREATE TABLE profiles (
 
 ### 2. nutrition_targets
 
-**Описание:** Цели питания для пользователей (тренировочные дни и дни отдыха)
+**Описание:** Цели питания для пользователей (тренировочные дни и дни отдыха). Координаторы могут устанавливать и обновлять цели для своих клиентов.
 
 **Структура:**
 ```sql
@@ -202,47 +202,47 @@ CREATE TABLE daily_logs (
 
 **RLS политики:**
 - Пользователи могут управлять своими логами
-- Тренеры могут читать логи своих клиентов
+- Координаторы могут читать логи своих клиентов
 
 ---
 
-### 4. coach_notes
+### 4. coordinator_notes
 
-**Описание:** Заметки тренера для клиентов на конкретную дату
+**Описание:** Заметки координатора для клиентов на конкретную дату
 
 **Структура:**
 ```sql
-CREATE TABLE coach_notes (
+CREATE TABLE coordinator_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  coach_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  coordinator_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(client_id, coach_id, date)
+  UNIQUE(client_id, coordinator_id, date)
 );
 ```
 
 **Ключевые поля:**
 - `client_id` — ID клиента
-- `coach_id` — ID тренера
+- `coordinator_id` — ID координатора
 - `date` — дата заметки
 - `content` — текст заметки
 
 **Индексы:**
-- `idx_coach_notes_client_date` — по клиенту и дате
-- `idx_coach_notes_coach_date` — по тренеру и дате
+- `idx_coordinator_notes_client_date` — по клиенту и дате
+- `idx_coordinator_notes_coordinator_date` — по координатору и дате
 
 **RLS политики:**
-- Тренеры могут читать и писать заметки для своих клиентов
-- Клиенты могут читать заметки от своего тренера
+- Координаторы могут читать и писать заметки для своих клиентов
+- Клиенты могут читать заметки от своего координатора
 
 ---
 
 ### 5. messages
 
-**Описание:** Сообщения чата между тренером и клиентом
+**Описание:** Сообщения чата между координатором и клиентом
 
 **Структура:**
 ```sql
@@ -412,7 +412,7 @@ CREATE TABLE favorite_products (
 CREATE TABLE invite_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
-  coach_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  coordinator_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   max_uses INTEGER CHECK (max_uses IS NULL OR max_uses > 0),
   used_count INTEGER DEFAULT 0 CHECK (used_count >= 0),
   expires_at TIMESTAMPTZ,
@@ -427,7 +427,7 @@ CREATE TABLE invite_codes (
 
 **Ключевые поля:**
 - `code` — уникальный 8-символьный код
-- `coach_id` — ID тренера
+- `coordinator_id` — ID координатора
 - `max_uses` — максимальное количество использований (NULL = безлимит)
 - `used_count` — текущее количество использований
 - `expires_at` — срок действия (NULL = без срока)
@@ -612,7 +612,7 @@ CREATE TABLE pending_notifications (
 ### Основные связи
 
 1. **profiles → profiles** (self-reference)
-   - `coach_id` → `profiles.id` (тренер клиента)
+   - `coordinator_id` → `profiles.id` (координатор клиента)
 
 2. **profiles → nutrition_targets**
    - `nutrition_targets.user_id` → `profiles.id`
@@ -620,9 +620,9 @@ CREATE TABLE pending_notifications (
 3. **profiles → daily_logs**
    - `daily_logs.user_id` → `profiles.id`
 
-4. **profiles → coach_notes**
-   - `coach_notes.client_id` → `profiles.id`
-   - `coach_notes.coach_id` → `profiles.id`
+4. **profiles → coordinator_notes**
+   - `coordinator_notes.client_id` → `profiles.id`
+   - `coordinator_notes.coordinator_id` → `profiles.id`
 
 5. **profiles → messages**
    - `messages.sender_id` → `profiles.id`
@@ -638,7 +638,7 @@ CREATE TABLE pending_notifications (
    - `product_usage_history.user_product_id` → `user_products.id`
 
 9. **profiles → invite_codes**
-   - `invite_codes.coach_id` → `profiles.id`
+   - `invite_codes.coordinator_id` → `profiles.id`
 
 10. **profiles → achievements**
     - `user_achievements.user_id` → `profiles.id`
@@ -652,7 +652,7 @@ CREATE TABLE pending_notifications (
 
 Все таблицы имеют индексы для оптимизации запросов:
 
-- **По пользователям:** `user_id`, `coach_id`, `client_id`
+- **По пользователям:** `user_id`, `coordinator_id`, `client_id`
 - **По датам:** `date`, `created_at`, `updated_at`
 - **По статусам:** `is_active`, `is_completed`, `subscription_status`
 - **По популярности:** `usage_count`, `used_count`
@@ -690,7 +690,7 @@ CREATE POLICY "Coaches can view their clients"
   ON profiles FOR SELECT
   USING (
     auth.uid() = id OR
-    (coach_id = auth.uid() AND role = 'client')
+    (coordinator_id = auth.uid() AND role = 'client')
   );
 ```
 
@@ -707,7 +707,7 @@ CREATE POLICY "Super admin can view all"
 
 ### Функции
 
-1. **create_user_profile(user_id, user_email, user_full_name, user_role, user_coach_id)**
+1. **create_user_profile(user_id, user_email, user_full_name, user_role, user_coordinator_id)**
    - Безопасно создает профиль пользователя при регистрации
    - Обходит RLS используя SECURITY DEFINER
    - Проверяет, что профиль еще не существует

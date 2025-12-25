@@ -102,22 +102,22 @@ describe('Email Utilities', () => {
       expect(callArgs.html).toContain('Test User')
     })
 
-    it('should send coach_note_notification email', async () => {
+    it('should send coordinator_note_notification email', async () => {
       mockSend.mockResolvedValue({
         data: { id: 'email-id' },
         error: null,
       })
 
-      await sendEmail('test@example.com', 'coach_note_notification', {
+      await sendEmail('test@example.com', 'coordinator_note_notification', {
         userName: 'Test User',
-        coachName: 'Coach Name',
+        coordinatorName: 'Coordinator Name',
         date: '2024-01-15',
         noteContent: 'Test note',
       })
 
       const callArgs = mockSend.mock.calls[0][0]
       expect(callArgs.subject).toContain('заметка')
-      expect(callArgs.html).toContain('Coach Name')
+      expect(callArgs.html).toContain('Coordinator Name')
     })
 
     it('should send subscription_expiring email', async () => {

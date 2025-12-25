@@ -22,14 +22,14 @@ export default function InviteCodesPage() {
                     return
                 }
 
-                // Проверяем, что пользователь - тренер
+                // Проверяем, что пользователь - координатор
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('role')
                     .eq('id', authUser.id)
                     .single()
 
-                if (!profile || profile.role !== 'coach') {
+                if (!profile || profile.role !== 'coordinator') {
                     router.push('/app/dashboard')
                     return
                 }
@@ -64,7 +64,7 @@ export default function InviteCodesPage() {
         <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-4xl md:mx-auto">
             <div className="mb-6">
                 <button
-                    onClick={() => router.push('/app/coach')}
+                    onClick={() => router.push('/app/coordinator')}
                     className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
                 >
                     <ArrowLeft size={20} />
@@ -72,7 +72,7 @@ export default function InviteCodesPage() {
                 </button>
             </div>
 
-            <InviteCodeManager coachId={user.id} />
+            <InviteCodeManager coordinatorId={user.id} />
         </main>
     )
 }

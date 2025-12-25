@@ -550,7 +550,7 @@ function NutritionPageContent() {
     }
   }
 
-  // Функция отправки тренеру (завершение дня)
+  // Функция отправки координатору (завершение дня)
   const handleSubmit = async () => {
     if (!user) {
       logger.warn('Nutrition: попытка сохранения без авторизованного пользователя')
@@ -669,7 +669,7 @@ function NutritionPageContent() {
         completed_at: new Date().toISOString()
       }
 
-      logger.info('Nutrition: начало отправки отчета тренеру', {
+      logger.info('Nutrition: начало отправки отчета координатору', {
         userId: user.id,
         date: selectedDate,
         dayType,
@@ -699,21 +699,21 @@ function NutritionPageContent() {
         setSaveError('Ошибка сохранения: ' + error.message)
         toast.error('Ошибка сохранения: ' + error.message)
       } else {
-        logger.info('Nutrition: отчет успешно отправлен тренеру', {
+        logger.info('Nutrition: отчет успешно отправлен координатору', {
           userId: user.id,
           date: selectedDate,
           dayType,
         })
         setIsCompleted(true)
         setStatus('submitted')
-        toast.success('Отчет отправлен тренеру')
+        toast.success('Отчет отправлен координатору')
 
         // Проверяем достижения после успешной отправки
         checkAchievementsAfterMealSave(user.id).catch((error) => {
           logger.warn('Nutrition: ошибка проверки достижений', { error })
         })
 
-        // Остаемся на странице ввода; отправка тренеру доступна с дашборда
+        // Остаемся на странице ввода; отправка координатору доступна с дашборда
         setTimeout(() => {
           setStatus('idle')
         }, 1200)
@@ -1049,7 +1049,7 @@ function NutritionPageContent() {
           />
           {!currentTargets && (
             <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-              Цели для этого типа дня не установлены. Обратитесь к тренеру.
+              Цели для этого типа дня не установлены. Обратитесь к координатору.
             </div>
           )}
         </div>
@@ -1108,7 +1108,7 @@ function NutritionPageContent() {
         </div>
       ) : (
         <div className="p-4 bg-yellow-50 text-yellow-800 rounded-xl mb-6 text-sm">
-          Тренер еще не назначил план питания.
+          Координатор еще не назначил план питания.
         </div>
       )}
 
@@ -1358,7 +1358,7 @@ function NutritionPageContent() {
           </div>
         )}
 
-        {/* Кнопка сохранения черновика. Отправка тренеру доступна только с дашборда */}
+        {/* Кнопка сохранения черновика. Отправка координатору доступна только с дашборда */}
         <div className="flex gap-3">
           <button
             onClick={handleSaveDraft}

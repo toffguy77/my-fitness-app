@@ -70,7 +70,7 @@ describe('Admin Page Extended Tests', () => {
             id: 'user-2',
             email: 'user2@test.com',
             full_name: 'User Two',
-            role: 'coach',
+            role: 'coordinator',
             subscription_status: 'premium',
             subscription_tier: 'premium',
           },

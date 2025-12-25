@@ -21,16 +21,16 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Проверяем, что пользователь - тренер
+        // Проверяем, что пользователь - координатор
         const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
 
-        if (!profile || profile.role !== 'coach') {
+        if (!profile || profile.role !== 'coordinator') {
             return NextResponse.json(
-                { error: 'Forbidden: Only coaches can create invite codes' },
+                { error: 'Forbidden: Only coordinators can create invite codes' },
                 { status: 403 }
             )
         }
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
             .from('invite_codes')
             .insert({
                 code,
-                coach_id: user.id,
+                coordinator_id: user.id,
                 max_uses: max_uses || null,
                 expires_at: expires_at || null,
                 is_active: true,

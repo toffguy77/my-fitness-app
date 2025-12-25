@@ -1,9 +1,9 @@
 /**
- * Business Logic Tests: Coach Status Calculation (Traffic Light System v2)
+ * Business Logic Tests: Coordinator Status Calculation (Traffic Light System v2)
  * Tests client status calculation logic
  */
 
-describe('Coach Status Calculation (Traffic Light System v2)', () => {
+describe('Coordinator Status Calculation (Traffic Light System v2)', () => {
   const calculateClientStatus = (
     todayLog: any,
     target: any,

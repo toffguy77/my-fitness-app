@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
         // Проверяем код (анонимные пользователи могут читать активные коды благодаря RLS)
         const { data: inviteCode, error: codeError } = await supabase
             .from('invite_codes')
-            .select('id, code, coach_id, max_uses, used_count, expires_at, is_active')
+            .select('id, code, coordinator_id, max_uses, used_count, expires_at, is_active')
             .eq('code', code)
             .eq('is_active', true)
             .single()
@@ -40,16 +40,16 @@ export async function GET(request: NextRequest) {
             })
         }
 
-        // Получаем имя тренера
-        const { data: coachProfile } = await supabase
+        // Получаем имя координатора
+        const { data: coordinatorProfile } = await supabase
             .from('profiles')
             .select('full_name')
-            .eq('id', inviteCode.coach_id)
+            .eq('id', inviteCode.coordinator_id)
             .single()
 
         return NextResponse.json({
             valid: true,
-            coach_name: coachProfile?.full_name || undefined,
+            coordinator_name: coordinatorProfile?.full_name || undefined,
             expires_at: inviteCode.expires_at || undefined,
             remaining_uses: inviteCode.max_uses
                 ? inviteCode.max_uses - inviteCode.used_count

@@ -116,11 +116,10 @@ export default function NotificationSettings() {
       </div>
 
       {message && (
-        <div className={`mb-4 p-3 rounded-lg text-sm ${
-          message.includes('Ошибка') 
+        <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('Ошибка')
             ? 'bg-red-50 border border-red-200 text-red-800'
             : 'bg-green-50 border border-green-200 text-green-800'
-        }`}>
+          }`}>
           {message}
         </div>
       )}
@@ -142,7 +141,7 @@ export default function NotificationSettings() {
               />
             </div>
             <p className="text-xs text-gray-600">
-              Получать один раз в день сводку по вашему прогрессу и заметкам от тренера
+              Получать один раз в день сводку по вашему прогрессу и заметкам от координатора
             </p>
           </div>
         </div>
@@ -163,7 +162,7 @@ export default function NotificationSettings() {
               />
             </div>
             <p className="text-xs text-gray-600">
-              Получать email сразу при получении заметки от тренера или напоминании о чекине
+              Получать email сразу при получении заметки от координатора или напоминании о чекине
             </p>
           </div>
         </div>

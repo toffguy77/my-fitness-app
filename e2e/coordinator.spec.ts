@@ -1,18 +1,18 @@
 /**
- * E2E Tests: Coach Dashboard Flow
+ * E2E Tests: Coordinator Dashboard Flow
  * Critical scenarios: View clients, check status, add notes
  */
 
 import { test, expect } from '@playwright/test'
 
-test.describe('Coach Dashboard Flow', () => {
+test.describe('Coordinator Dashboard Flow', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to coach dashboard (requires coach auth)
-    await page.goto('/app/coach')
+    // Navigate to coordinator dashboard (requires coordinator auth)
+    await page.goto('/app/coordinator')
   })
 
-  test('should display coach dashboard with clients list', async ({ page }) => {
-    await expect(page.locator('text=/тренер|coach/i')).toBeVisible()
+  test('should display coordinator dashboard with clients list', async ({ page }) => {
+    await expect(page.locator('text=/координатор|coordinator/i')).toBeVisible()
     await expect(page.locator('text=/клиенты|clients/i')).toBeVisible()
   })
 
@@ -43,19 +43,19 @@ test.describe('Coach Dashboard Flow', () => {
       await clientCard.click()
       
       // Should navigate to client detail page
-      await expect(page).toHaveURL(/.*coach\/.*/)
+      await expect(page).toHaveURL(/.*coordinator\/.*/)
     }
   })
 
-  test('should add coach note for client', async ({ page }) => {
+  test('should add coordinator note for client', async ({ page }) => {
     // Navigate to client view
-    await page.goto('/app/coach/test-client-id')
+    await page.goto('/app/coordinator/test-client-id')
     
     // Find note input
     const noteTextarea = page.locator('textarea[placeholder*="заметка"], textarea[placeholder*="note"]')
     
     if (await noteTextarea.count() > 0) {
-      await noteTextarea.fill('Тестовая заметка от тренера')
+      await noteTextarea.fill('Тестовая заметка от координатора')
       
       // Save note
       await page.click('button:has-text(/сохранить|save/i)')

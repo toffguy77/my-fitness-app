@@ -1,9 +1,9 @@
 /**
- * Business Logic Tests for Coach Dashboard
+ * Business Logic Tests for Coordinator Dashboard
  * Tests status calculation, filtering, and sorting logic
  */
 
-describe('Coach Dashboard Business Logic', () => {
+describe('Coordinator Dashboard Business Logic', () => {
   describe('Status Calculation (Traffic Light System v2)', () => {
     const calculateStatus = (
       todayLog: any,

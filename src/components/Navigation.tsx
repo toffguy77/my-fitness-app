@@ -1,10 +1,12 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, UtensilsCrossed, TrendingUp, Settings, Trophy } from 'lucide-react'
+import { Home, UtensilsCrossed, TrendingUp, Settings, Trophy, Users, UserPlus, BarChart3 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import { getUserProfile, type UserProfile } from '@/utils/supabase/profile'
 
-const navigationItems = [
+const clientNavigationItems = [
   { path: '/app/dashboard', icon: Home, label: 'Дашборд', id: 'nav-item-dashboard' },
   { path: '/app/nutrition', icon: UtensilsCrossed, label: 'Питание', id: 'nav-item-nutrition' },
   { path: '/app/reports', icon: TrendingUp, label: 'Отчеты', id: 'nav-item-reports' },
@@ -12,10 +14,34 @@ const navigationItems = [
   { path: '/app/settings', icon: Settings, label: 'Настройки', id: 'nav-item-settings' },
 ]
 
+const coordinatorNavigationItems = [
+  { path: '/app/coordinator', icon: Users, label: 'Клиенты', id: 'nav-item-coordinator-clients' },
+  { path: '/app/coordinator/invites', icon: UserPlus, label: 'Инвайт-коды', id: 'nav-item-invites' },
+  { path: '/app/admin/metrics', icon: BarChart3, label: 'Метрики', id: 'nav-item-metrics' },
+  { path: '/app/settings', icon: Settings, label: 'Настройки', id: 'nav-item-settings' },
+]
+
 export default function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const [isDesktop, setIsDesktop] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const userProfile = await getUserProfile(user)
+        if (userProfile) {
+          setProfile(userProfile)
+        }
+      }
+      setLoading(false)
+    }
+    fetchProfile()
+  }, [])
 
   useEffect(() => {
     const checkDesktop = () => {
@@ -26,6 +52,9 @@ export default function Navigation() {
     return () => window.removeEventListener('resize', checkDesktop)
   }, [])
 
+  const isCoordinator = profile?.role === 'coordinator'
+  const navigationItems = isCoordinator ? coordinatorNavigationItems : clientNavigationItems
+
   // Prefetch navigation routes on hover/focus for better perceived performance
   useEffect(() => {
     navigationItems.forEach((item) => {
@@ -33,7 +62,7 @@ export default function Navigation() {
         router.prefetch(item.path)
       }
     })
-  }, [pathname, router])
+  }, [pathname, router, navigationItems])
 
   // Desktop: Sidebar
   if (isDesktop) {
@@ -43,9 +72,16 @@ export default function Navigation() {
           <h2 className="text-xl font-bold text-gray-900">Fitness App</h2>
         </div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navigationItems.map((item) => {
+          {!loading && navigationItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.path || pathname?.startsWith(item.path + '/')
+            // Для координатора: /app/coordinator/[clientId] должен подсвечивать "Клиенты"
+            // Для координатора: /app/admin/metrics должен подсвечивать "Метрики"
+            let isActive = pathname === item.path || pathname?.startsWith(item.path + '/')
+            if (isCoordinator) {
+              if (item.path === '/app/coordinator' && pathname?.startsWith('/app/coordinator/')) {
+                isActive = true
+              }
+            }
             return (
               <button
                 key={item.path}
@@ -73,9 +109,14 @@ export default function Navigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
       <div className="flex items-center justify-around h-16 px-2">
-        {navigationItems.map((item) => {
+        {!loading && navigationItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.path || pathname?.startsWith(item.path + '/')
+          let isActive = pathname === item.path || pathname?.startsWith(item.path + '/')
+          if (isCoordinator) {
+            if (item.path === '/app/coordinator' && pathname?.startsWith('/app/coordinator/')) {
+              isActive = true
+            }
+          }
           return (
             <button
               key={item.path}

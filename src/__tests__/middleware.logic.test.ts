@@ -69,29 +69,29 @@ describe('Middleware Logic', () => {
 
   describe('Role-based Routing', () => {
     it('should route client to dashboard', () => {
-      const role = 'client' as 'client' | 'coach' | 'super_admin'
+      const role = 'client' as 'client' | 'coordinator' | 'super_admin'
       
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coach') {
-        redirectPath = '/app/coach'
+      } else if (role === 'coordinator') {
+        redirectPath = '/app/coordinator'
       }
       
       expect(redirectPath).toBe('/app/dashboard')
     })
 
-    it('should route coach to coach dashboard', () => {
-      const role = 'coach' as 'client' | 'coach' | 'super_admin'
+    it('should route coordinator to coordinator dashboard', () => {
+      const role = 'coordinator' as 'client' | 'coordinator' | 'super_admin'
       
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coach') {
-        redirectPath = '/app/coach'
+      } else if (role === 'coordinator') {
+        redirectPath = '/app/coordinator'
       }
       
-      expect(redirectPath).toBe('/app/coach')
+      expect(redirectPath).toBe('/app/coordinator')
     })
 
     it('should route super_admin to admin panel', () => {
@@ -100,8 +100,8 @@ describe('Middleware Logic', () => {
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coach') {
-        redirectPath = '/app/coach'
+      } else if (role === 'coordinator') {
+        redirectPath = '/app/coordinator'
       }
       
       expect(redirectPath).toBe('/admin')
@@ -126,20 +126,20 @@ describe('Middleware Logic', () => {
     })
   })
 
-  describe('Coach Route Protection', () => {
-    it('should require coach role for coach dashboard', () => {
-      const pathname = '/app/coach'
-      const role = 'client' as 'client' | 'coach' | 'super_admin'
+  describe('Coordinator Route Protection', () => {
+    it('should require coordinator role for coordinator dashboard', () => {
+      const pathname = '/app/coordinator'
+      const role = 'client' as 'client' | 'coordinator' | 'super_admin'
       
-      const shouldRedirect = pathname.startsWith('/app/coach') && role !== 'coach'
+      const shouldRedirect = pathname.startsWith('/app/coordinator') && role !== 'coordinator'
       expect(shouldRedirect).toBe(true)
     })
 
-    it('should allow coach to access coach dashboard', () => {
-      const pathname = '/app/coach'
-      const role = 'coach'
+    it('should allow coordinator to access coordinator dashboard', () => {
+      const pathname = '/app/coordinator'
+      const role = 'coordinator'
       
-      const shouldRedirect = pathname.startsWith('/app/coach') && role !== 'coach'
+      const shouldRedirect = pathname.startsWith('/app/coordinator') && role !== 'coordinator'
       expect(shouldRedirect).toBe(false)
     })
   })

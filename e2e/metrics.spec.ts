@@ -9,7 +9,7 @@ test.describe('Metrics Dashboard', () => {
     // Navigate to login page
     await page.goto('/login')
     
-    // Login as super_admin or coach
+    // Login as super_admin or coordinator
     // Note: This requires test user setup
     await page.fill('input[type="email"]', 'admin@test.com')
     await page.fill('input[type="password"]', 'testpassword')

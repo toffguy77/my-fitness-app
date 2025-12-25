@@ -174,17 +174,17 @@ describe('Middleware Integration Tests', () => {
   })
 
   describe('Role-Based Access', () => {
-    it('should allow coach access to coach routes', async () => {
-      mockGetUser.mockResolvedValue({ data: { user: { id: 'coach-123' } }, error: null })
+    it('should allow coordinator access to coordinator routes', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'coordinator-123' } }, error: null })
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
-          data: { role: 'coach' },
+          data: { role: 'coordinator' },
           error: null,
         }),
       })
-      mockRequest.nextUrl!.pathname = '/app/coach'
+      mockRequest.nextUrl!.pathname = '/app/coordinator'
 
       const result = await middleware(mockRequest as NextRequest)
       
@@ -194,7 +194,7 @@ describe('Middleware Integration Tests', () => {
       expect(status).toBe(200)
     })
 
-    it('should redirect non-coach users from coach routes', async () => {
+    it('should redirect non-coordinator users from coordinator routes', async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null })
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
@@ -204,13 +204,13 @@ describe('Middleware Integration Tests', () => {
           error: null,
         }),
       })
-      mockRequest.nextUrl!.pathname = '/app/coach'
+      mockRequest.nextUrl!.pathname = '/app/coordinator'
 
       const result = await middleware(mockRequest as NextRequest)
       
-      // Should redirect non-coach users
+      // Should redirect non-coordinator users
       expect(result).toBeDefined()
-      // Middleware should redirect non-coach users
+      // Middleware should redirect non-coordinator users
       const status = result.status || (result as Response & { statusCode?: number }).statusCode
       if (status === 307) {
         expect(status).toBe(307)

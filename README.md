@@ -101,7 +101,7 @@ src/
 │   │   ├── dashboard/     # Дашборд клиента
 │   │   ├── nutrition/     # Ввод питания
 │   │   ├── reports/      # Отчеты (Premium)
-│   │   └── coach/        # Кабинет тренера
+│   │   └── coordinator/  # Кабинет координатора
 │   └── admin/            # Супер-админка
 ├── components/            # React компоненты
 ├── utils/                 # Утилиты

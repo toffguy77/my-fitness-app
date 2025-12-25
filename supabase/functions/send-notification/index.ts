@@ -121,8 +121,8 @@ function getEmailSubject(template: string, data: Record<string, unknown>): strin
   switch (template) {
     case 'reminder_data_entry':
       return 'Не забудьте внести данные о питании'
-    case 'coach_note_notification':
-      return `Новая заметка от тренера${data.date ? ` за ${data.date}` : ''}`
+    case 'coordinator_note_notification':
+      return `Новая заметка от координатора${data.date ? ` за ${data.date}` : ''}`
     case 'subscription_expiring':
       return `Ваша Premium подписка истекает через ${data.daysRemaining || 3} ${data.daysRemaining === 1 ? 'день' : 'дня'}`
     case 'subscription_expired':
@@ -148,11 +148,11 @@ function getEmailHtml(template: string, data: Record<string, unknown>): string {
           </a>
         </div>
       `
-    case 'coach_note_notification':
+    case 'coordinator_note_notification':
       return `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">Привет${userName}!</h2>
-          <p>Ваш тренер${data.coachName ? ` ${data.coachName}` : ''} оставил вам заметку${data.date ? ` за ${data.date}` : ''}.</p>
+          <p>Ваш координатор${data.coordinatorName ? ` ${data.coordinatorName}` : ''} оставил вам заметку${data.date ? ` за ${data.date}` : ''}.</p>
           ${data.noteContent ? `<div style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <p style="margin: 0; white-space: pre-wrap;">${data.noteContent}</p>
           </div>` : ''}
@@ -197,8 +197,8 @@ function getEmailText(template: string, data: Record<string, unknown>): string {
   switch (template) {
     case 'reminder_data_entry':
       return `Привет${userName}!\n\nНе забудьте внести данные о питании за сегодня.\n\nРегулярное отслеживание поможет вам достичь ваших целей.\n\nВнести данные: ${APP_URL}/app/nutrition`
-    case 'coach_note_notification':
-      return `Привет${userName}!\n\nВаш тренер${data.coachName ? ` ${data.coachName}` : ''} оставил вам заметку${data.date ? ` за ${data.date}` : ''}.\n\n${data.noteContent ? `Заметка:\n${data.noteContent}\n\n` : ''}Посмотреть на дашборде: ${APP_URL}/app/dashboard${data.date ? `?date=${data.date}` : ''}`
+    case 'coordinator_note_notification':
+      return `Привет${userName}!\n\nВаш координатор${data.coordinatorName ? ` ${data.coordinatorName}` : ''} оставил вам заметку${data.date ? ` за ${data.date}` : ''}.\n\n${data.noteContent ? `Заметка:\n${data.noteContent}\n\n` : ''}Посмотреть на дашборде: ${APP_URL}/app/dashboard${data.date ? `?date=${data.date}` : ''}`
     case 'subscription_expiring':
       return `Привет${userName}!\n\nВаша Premium подписка истекает через ${data.daysRemaining || 3} ${data.daysRemaining === 1 ? 'день' : 'дня'}.\n\nЧтобы продолжить пользоваться всеми возможностями платформы, продлите подписку.\n\nУправление подпиской: ${APP_URL}/app/settings`
     case 'subscription_expired':

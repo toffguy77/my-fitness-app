@@ -102,9 +102,9 @@ describe('ChatWidget Component', () => {
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
           data: {
-            id: 'coach-123',
-            full_name: 'Test Coach',
-            email: 'coach@test.com',
+            id: 'coordinator-123',
+            full_name: 'Test Coordinator',
+            email: 'coordinator@test.com',
           },
           error: null,
         }),
@@ -121,9 +121,9 @@ describe('ChatWidget Component', () => {
   })
 
   it('should render chat widget button', async () => {
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
-    // Wait for coachProfile to load and button to render
+    // Wait for coordinatorProfile to load and button to render
     await waitFor(() => {
       const button = screen.queryByRole('button', { name: /чат с/i })
       expect(button).toBeInTheDocument()
@@ -132,7 +132,7 @@ describe('ChatWidget Component', () => {
 
   it('should open chat window when button is clicked', async () => {
     const user = userEvent.setup()
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
     await waitFor(() => {
       const button = screen.queryByRole('button')
@@ -155,7 +155,7 @@ describe('ChatWidget Component', () => {
 
   it('should close chat window when close button is clicked', async () => {
     const user = userEvent.setup()
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
     await waitFor(() => {
       const button = screen.queryByRole('button')
@@ -182,8 +182,8 @@ describe('ChatWidget Component', () => {
     }
   })
 
-  it('should not render when coachId is null', () => {
-    const { container } = render(<ChatWidget userId="user-123" coachId={null} />)
+  it('should not render when coordinatorId is null', () => {
+    const { container } = render(<ChatWidget userId="user-123" coordinatorId={null} />)
     expect(container.firstChild).toBeNull()
   })
 
@@ -201,7 +201,7 @@ describe('ChatWidget Component', () => {
       }),
     })
 
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
     await waitFor(() => {
       const badge = screen.queryByText('2')
@@ -212,7 +212,7 @@ describe('ChatWidget Component', () => {
   })
 
   it('should handle loading state', () => {
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
     // Component may show loading initially
     expect(screen.queryByText(/загрузка/i) || screen.queryByRole('button')).toBeDefined()
@@ -222,7 +222,7 @@ describe('ChatWidget Component', () => {
     const toast = require('react-hot-toast').default
     const { subscribeToMessages } = require('@/utils/chat/realtime')
     
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
     await waitFor(() => {
       const button = screen.queryByRole('button')
@@ -237,9 +237,9 @@ describe('ChatWidget Component', () => {
       const onNewMessage = subscribeCall[2]
       const testMessage = {
         id: 'msg-1',
-        sender_id: 'coach-123',
+        sender_id: 'coordinator-123',
         receiver_id: 'user-123',
-        content: 'New message from coach',
+        content: 'New message from coordinator',
         created_at: new Date().toISOString(),
         read_at: null,
         is_deleted: false,
@@ -282,7 +282,7 @@ describe('ChatWidget Component', () => {
     
     global.AudioContext = jest.fn().mockImplementation(() => mockAudioContext) as any
     
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
     await waitFor(() => {
       const button = screen.queryByRole('button')
@@ -297,7 +297,7 @@ describe('ChatWidget Component', () => {
       const onNewMessage = subscribeCall[2]
       const testMessage = {
         id: 'msg-1',
-        sender_id: 'coach-123',
+        sender_id: 'coordinator-123',
         receiver_id: 'user-123',
         content: 'New message',
         created_at: new Date().toISOString(),
@@ -324,9 +324,9 @@ describe('ChatWidget Component', () => {
       is: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({
         data: {
-          id: 'coach-123',
-          full_name: 'Test Coach',
-          email: 'coach@test.com',
+          id: 'coordinator-123',
+          full_name: 'Test Coordinator',
+          email: 'coordinator@test.com',
         },
         error: null,
       }),
@@ -339,7 +339,7 @@ describe('ChatWidget Component', () => {
       }),
     })
 
-    render(<ChatWidget userId="user-123" coachId="coach-123" />)
+    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
     
     await waitFor(() => {
       const button = screen.queryByRole('button')

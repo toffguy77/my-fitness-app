@@ -27,16 +27,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, что пользователь - тренер или super_admin
+    // Проверяем, что пользователь - координатор или super_admin
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, coach_id')
+      .select('role, coordinator_id')
       .eq('id', user.id)
       .single()
 
-    if (!profile || (profile.role !== 'coach' && profile.role !== 'super_admin')) {
+    if (!profile || (profile.role !== 'coordinator' && profile.role !== 'super_admin')) {
       return NextResponse.json(
-        { error: 'Forbidden: Only coaches can update nutrition targets' },
+        { error: 'Forbidden: Only coordinators can update nutrition targets' },
         { status: 403 }
       )
     }
@@ -58,17 +58,17 @@ export async function POST(request: NextRequest) {
 
     const { targetId, calories, protein, fats, carbs, clientId } = validationResult.data
 
-    // Проверяем, что тренер имеет доступ к этому клиенту
-    if (profile.role === 'coach') {
+    // Проверяем, что координатор имеет доступ к этому клиенту
+    if (profile.role === 'coordinator') {
       const { data: clientProfile } = await supabase
         .from('profiles')
-        .select('coach_id')
+        .select('coordinator_id')
         .eq('id', clientId)
         .single()
 
-      if (!clientProfile || clientProfile.coach_id !== user.id) {
+      if (!clientProfile || clientProfile.coordinator_id !== user.id) {
         return NextResponse.json(
-          { error: 'Forbidden: Client not assigned to this coach' },
+          { error: 'Forbidden: Client not assigned to this coordinator' },
           { status: 403 }
         )
       }

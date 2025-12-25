@@ -15,7 +15,7 @@ DO $$
 BEGIN
     -- Создаем enum для ролей пользователей
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-        CREATE TYPE user_role AS ENUM ('client', 'coach', 'super_admin');
+        CREATE TYPE user_role AS ENUM ('client', 'coordinator', 'super_admin');
     END IF;
 END $$;
 
@@ -44,8 +44,8 @@ $$;
 
 COMMENT ON FUNCTION is_super_admin(UUID) IS 'Проверяет, является ли пользователь super_admin (без рекурсии RLS)';
 
--- Функция для проверки, является ли пользователь coach
-CREATE OR REPLACE FUNCTION is_coach(user_id UUID)
+-- Функция для проверки, является ли пользователь coordinator
+CREATE OR REPLACE FUNCTION is_coordinator(user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -55,15 +55,15 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM profiles
     WHERE id = user_id
-    AND role = 'coach'
+    AND role = 'coordinator'
   );
 END;
 $$;
 
-COMMENT ON FUNCTION is_coach(UUID) IS 'Проверяет, является ли пользователь coach (без рекурсии RLS)';
+COMMENT ON FUNCTION is_coordinator(UUID) IS 'Проверяет, является ли пользователь coordinator (без рекурсии RLS)';
 
--- Функция для проверки, является ли пользователь coach для конкретного клиента
-CREATE OR REPLACE FUNCTION is_client_coach(client_id UUID, potential_coach_id UUID)
+-- Функция для проверки, является ли пользователь coordinator для конкретного клиента
+CREATE OR REPLACE FUNCTION is_client_coordinator(client_id UUID, potential_coordinator_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -73,12 +73,12 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM profiles
     WHERE id = client_id
-    AND profiles.coach_id = potential_coach_id
+    AND profiles.coordinator_id = potential_coordinator_id
   );
 END;
 $$;
 
-COMMENT ON FUNCTION is_client_coach(UUID, UUID) IS 'Проверяет, является ли пользователь тренером клиента (без рекурсии RLS)';
+COMMENT ON FUNCTION is_client_coordinator(UUID, UUID) IS 'Проверяет, является ли пользователь координатором клиента (без рекурсии RLS)';
 
 -- ============================================
 -- 3. СОЗДАНИЕ ТАБЛИЦ
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     full_name TEXT,
     phone TEXT,
     role user_role DEFAULT 'client',
-    coach_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    coordinator_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     avatar_url TEXT,
     
     -- Подписка
@@ -119,8 +119,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 COMMENT ON TABLE profiles IS 'Профили пользователей приложения';
-COMMENT ON COLUMN profiles.role IS 'Роль пользователя: client, coach, super_admin';
-COMMENT ON COLUMN profiles.coach_id IS 'ID тренера (для клиентов)';
+COMMENT ON COLUMN profiles.role IS 'Роль пользователя: client, coordinator, super_admin';
+COMMENT ON COLUMN profiles.coordinator_id IS 'ID координатора (для клиентов)';
 COMMENT ON COLUMN profiles.subscription_status IS 'Статус подписки: free, active, cancelled, past_due, expired';
 COMMENT ON COLUMN profiles.subscription_tier IS 'Уровень подписки: basic, premium';
 COMMENT ON COLUMN profiles.phone IS 'Телефон пользователя';
@@ -186,23 +186,23 @@ COMMENT ON COLUMN daily_logs.meals IS 'Массив приемов пищи за
 COMMENT ON COLUMN daily_logs.is_completed IS 'Флаг завершения дня (Check-in). True означает, что день завершен и отправлен тренеру.';
 COMMENT ON COLUMN daily_logs.completed_at IS 'Время завершения дня (Check-in). Устанавливается при нажатии кнопки "Завершить день".';
 
--- 3.4 Таблица coach_notes (заметки тренера)
-CREATE TABLE IF NOT EXISTS coach_notes (
+-- 3.4 Таблица coordinator_notes (заметки координатора)
+CREATE TABLE IF NOT EXISTS coordinator_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  coach_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  coordinator_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(client_id, coach_id, date)
+  UNIQUE(client_id, coordinator_id, date)
 );
 
-COMMENT ON TABLE coach_notes IS 'Заметки тренера для клиентов на конкретную дату';
-COMMENT ON COLUMN coach_notes.client_id IS 'ID клиента, для которого оставлена заметка';
-COMMENT ON COLUMN coach_notes.coach_id IS 'ID тренера, который оставил заметку';
-COMMENT ON COLUMN coach_notes.date IS 'Дата, к которой относится заметка';
-COMMENT ON COLUMN coach_notes.content IS 'Текст заметки от тренера';
+COMMENT ON TABLE coordinator_notes IS 'Заметки координатора для клиентов на конкретную дату';
+COMMENT ON COLUMN coordinator_notes.client_id IS 'ID клиента, для которого оставлена заметка';
+COMMENT ON COLUMN coordinator_notes.coordinator_id IS 'ID координатора, который оставил заметку';
+COMMENT ON COLUMN coordinator_notes.date IS 'Дата, к которой относится заметка';
+COMMENT ON COLUMN coordinator_notes.content IS 'Текст заметки от координатора';
 
 -- 3.5 Таблица messages (сообщения чата)
 CREATE TABLE IF NOT EXISTS messages (
@@ -217,7 +217,7 @@ CREATE TABLE IF NOT EXISTS messages (
   CONSTRAINT check_sender_receiver CHECK (sender_id != receiver_id)
 );
 
-COMMENT ON TABLE messages IS 'Сообщения чата между тренером и клиентом';
+COMMENT ON TABLE messages IS 'Сообщения чата между координатором и клиентом';
 COMMENT ON COLUMN messages.sender_id IS 'ID отправителя сообщения';
 COMMENT ON COLUMN messages.receiver_id IS 'ID получателя сообщения';
 COMMENT ON COLUMN messages.content IS 'Текст сообщения (макс 1000 символов)';
@@ -329,7 +329,7 @@ COMMENT ON COLUMN favorite_products.user_product_id IS 'ID пользовате�
 CREATE TABLE IF NOT EXISTS invite_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT NOT NULL UNIQUE,
-  coach_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  coordinator_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   max_uses INTEGER CHECK (max_uses IS NULL OR max_uses > 0),
   used_count INTEGER DEFAULT 0 CHECK (used_count >= 0),
   expires_at TIMESTAMPTZ,
@@ -342,9 +342,9 @@ CREATE TABLE IF NOT EXISTS invite_codes (
   )
 );
 
-COMMENT ON TABLE invite_codes IS 'Инвайт-коды для регистрации клиентов тренерами';
+COMMENT ON TABLE invite_codes IS 'Инвайт-коды для регистрации клиентов координаторами';
 COMMENT ON COLUMN invite_codes.code IS 'Уникальный 8-символьный код';
-COMMENT ON COLUMN invite_codes.coach_id IS 'ID тренера, создавшего код';
+COMMENT ON COLUMN invite_codes.coordinator_id IS 'ID координатора, создавшего код';
 COMMENT ON COLUMN invite_codes.max_uses IS 'Максимальное количество использований (NULL = безлимит)';
 COMMENT ON COLUMN invite_codes.used_count IS 'Текущее количество использований';
 COMMENT ON COLUMN invite_codes.expires_at IS 'Срок действия кода (NULL = без срока)';
@@ -459,7 +459,7 @@ COMMENT ON COLUMN notification_settings.email_realtime_alerts IS 'Мгновен
 CREATE TABLE IF NOT EXISTS pending_notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  notification_type TEXT NOT NULL CHECK (notification_type IN ('coach_note', 'check_in_reminder', 'weekly_digest')),
+  notification_type TEXT NOT NULL CHECK (notification_type IN ('coordinator_note', 'check_in_reminder', 'weekly_digest')),
   content JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   sent_at TIMESTAMPTZ,
@@ -467,7 +467,7 @@ CREATE TABLE IF NOT EXISTS pending_notifications (
 );
 
 COMMENT ON TABLE pending_notifications IS 'Очередь уведомлений для отправки (дайджесты и отложенные)';
-COMMENT ON COLUMN pending_notifications.notification_type IS 'Тип уведомления: coach_note, check_in_reminder, weekly_digest';
+COMMENT ON COLUMN pending_notifications.notification_type IS 'Тип уведомления: coordinator_note, check_in_reminder, weekly_digest';
 COMMENT ON COLUMN pending_notifications.content IS 'JSONB с данными уведомления';
 COMMENT ON COLUMN pending_notifications.sent_at IS 'Время отправки (NULL если еще не отправлено)';
 COMMENT ON COLUMN pending_notifications.retry_count IS 'Количество попыток отправки';
@@ -478,7 +478,7 @@ COMMENT ON COLUMN pending_notifications.retry_count IS 'Количество п�
 
 -- Индексы для profiles
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
-CREATE INDEX IF NOT EXISTS idx_profiles_coach_id ON profiles(coach_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_coordinator_id ON profiles(coordinator_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_subscription_status ON profiles(subscription_status);
 CREATE INDEX IF NOT EXISTS idx_profiles_phone ON profiles(phone) WHERE phone IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_profiles_birth_date ON profiles(birth_date);
@@ -494,9 +494,9 @@ CREATE INDEX IF NOT EXISTS idx_daily_logs_is_completed ON daily_logs(user_id, is
 CREATE INDEX IF NOT EXISTS idx_daily_logs_weight ON daily_logs(weight) WHERE weight IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_daily_logs_meals ON daily_logs USING GIN (meals);
 
--- Индексы для coach_notes
-CREATE INDEX IF NOT EXISTS idx_coach_notes_client_date ON coach_notes(client_id, date DESC);
-CREATE INDEX IF NOT EXISTS idx_coach_notes_coach_date ON coach_notes(coach_id, date DESC);
+-- Индексы для coordinator_notes
+CREATE INDEX IF NOT EXISTS idx_coordinator_notes_client_date ON coordinator_notes(client_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_coordinator_notes_coordinator_date ON coordinator_notes(coordinator_id, date DESC);
 
 -- Индексы для messages
 CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON messages(sender_id, receiver_id, created_at DESC);
@@ -535,7 +535,7 @@ WHERE user_product_id IS NOT NULL;
 
 -- Индексы для invite_codes
 CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON invite_codes(code) WHERE is_active = TRUE;
-CREATE INDEX IF NOT EXISTS idx_invite_codes_coach ON invite_codes(coach_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invite_codes_coordinator ON invite_codes(coordinator_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_invite_codes_active ON invite_codes(is_active, expires_at) WHERE is_active = TRUE;
 
 -- Индексы для invite_code_usage
@@ -699,7 +699,7 @@ CREATE OR REPLACE FUNCTION use_invite_code(
 ) RETURNS UUID AS $$
 DECLARE
   invite_code_record invite_codes%ROWTYPE;
-  coach_id_result UUID;
+  coordinator_id_result UUID;
 BEGIN
   -- Находим активный код
   SELECT * INTO invite_code_record
@@ -735,12 +735,12 @@ BEGIN
   VALUES (invite_code_record.id, user_id_param)
   ON CONFLICT (invite_code_id, user_id) DO NOTHING;
 
-  -- Возвращаем ID тренера
-  RETURN invite_code_record.coach_id;
+  -- Возвращаем ID координатора
+  RETURN invite_code_record.coordinator_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION use_invite_code IS 'Использует инвайт-код и возвращает ID тренера для назначения клиенту';
+COMMENT ON FUNCTION use_invite_code IS 'Использует инвайт-код и возвращает ID координатора для назначения клиенту';
 
 -- 5.7 Функция проверки достижений (исправленная версия)
 CREATE OR REPLACE FUNCTION check_achievements(
@@ -952,7 +952,7 @@ CREATE OR REPLACE FUNCTION create_user_profile(
   user_email TEXT,
   user_full_name TEXT DEFAULT NULL,
   user_role user_role DEFAULT 'client',
-  user_coach_id UUID DEFAULT NULL
+  user_coordinator_id UUID DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -982,7 +982,7 @@ BEGIN
       email,
       full_name,
       role,
-      coach_id,
+      coordinator_id,
       subscription_status,
       subscription_tier,
       profile_visibility,
@@ -993,7 +993,7 @@ BEGIN
       user_email,
       user_full_name,
       user_role,
-      user_coach_id,
+      user_coordinator_id,
       'free',
       'basic',
       'private',
@@ -1007,7 +1007,7 @@ BEGIN
       email,
       full_name,
       role,
-      coach_id,
+      coordinator_id,
       subscription_status,
       subscription_tier,
       created_at,
@@ -1017,7 +1017,7 @@ BEGIN
       user_email,
       user_full_name,
       user_role,
-      user_coach_id,
+      user_coordinator_id,
       'free',
       'basic',
       NOW(),
@@ -1027,7 +1027,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION create_user_profile(UUID, TEXT, TEXT, user_role, UUID) IS 'Безопасно создает профиль пользователя, обходя RLS. Используется при регистрации.';
+COMMENT ON FUNCTION create_user_profile(UUID, TEXT, TEXT, user_role, UUID) IS 'Безопасно создает профиль пользователя, обходя RLS. Используется при регистрации. Параметр user_coordinator_id - ID координатора для назначения клиенту.';
 
 -- ============================================
 -- 6. СОЗДАНИЕ ТРИГГЕРОВ
@@ -1373,7 +1373,7 @@ CREATE TRIGGER trigger_check_message_rate_limit
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nutrition_targets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE coach_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE coordinator_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_products ENABLE ROW LEVEL SECURITY;
@@ -1397,7 +1397,7 @@ CREATE POLICY "Users can view profiles"
 ON profiles FOR SELECT
 USING (
     auth.uid() = id
-    OR coach_id = auth.uid()
+    OR coordinator_id = auth.uid()
 );
 
 DROP POLICY IF EXISTS "Anyone can read public profiles" ON profiles;
@@ -1406,7 +1406,7 @@ ON profiles FOR SELECT
 USING (
   profile_visibility = 'public' OR
   auth.uid() = id OR
-  coach_id = auth.uid()
+  coordinator_id = auth.uid()
 );
 
 DROP POLICY IF EXISTS "Users can update profiles" ON profiles;
@@ -1435,8 +1435,8 @@ USING (
     auth.uid() = user_id
     OR is_super_admin(auth.uid())
     OR (
-        is_coach(auth.uid())
-        AND is_client_coach(nutrition_targets.user_id, auth.uid())
+        is_coordinator(auth.uid())
+        AND is_client_coordinator(nutrition_targets.user_id, auth.uid())
     )
 );
 
@@ -1447,8 +1447,8 @@ WITH CHECK (
     auth.uid() = user_id
     OR is_super_admin(auth.uid())
     OR (
-        is_coach(auth.uid())
-        AND is_client_coach(nutrition_targets.user_id, auth.uid())
+        is_coordinator(auth.uid())
+        AND is_client_coordinator(nutrition_targets.user_id, auth.uid())
     )
 );
 
@@ -1459,8 +1459,8 @@ USING (
     auth.uid() = user_id
     OR is_super_admin(auth.uid())
     OR (
-        is_coach(auth.uid())
-        AND is_client_coach(nutrition_targets.user_id, auth.uid())
+        is_coordinator(auth.uid())
+        AND is_client_coordinator(nutrition_targets.user_id, auth.uid())
     )
 );
 
@@ -1471,8 +1471,8 @@ USING (
     auth.uid() = user_id
     OR is_super_admin(auth.uid())
     OR (
-        is_coach(auth.uid())
-        AND is_client_coach(nutrition_targets.user_id, auth.uid())
+        is_coordinator(auth.uid())
+        AND is_client_coordinator(nutrition_targets.user_id, auth.uid())
     )
 );
 
@@ -1484,8 +1484,8 @@ USING (
     auth.uid() = user_id
     OR is_super_admin(auth.uid())
     OR (
-        is_coach(auth.uid())
-        AND is_client_coach(daily_logs.user_id, auth.uid())
+        is_coordinator(auth.uid())
+        AND is_client_coordinator(daily_logs.user_id, auth.uid())
     )
 );
 
@@ -1504,8 +1504,8 @@ USING (
     auth.uid() = user_id
     OR is_super_admin(auth.uid())
     OR (
-        is_coach(auth.uid())
-        AND is_client_coach(daily_logs.user_id, auth.uid())
+        is_coordinator(auth.uid())
+        AND is_client_coordinator(daily_logs.user_id, auth.uid())
     )
 );
 
@@ -1517,47 +1517,47 @@ USING (
     OR is_super_admin(auth.uid())
 );
 
--- 8.4 Политики для coach_notes
-DROP POLICY IF EXISTS "Coaches can view notes for their clients" ON coach_notes;
-CREATE POLICY "Coaches can view notes for their clients"
-  ON coach_notes FOR SELECT
+-- 8.4 Политики для coordinator_notes
+DROP POLICY IF EXISTS "Coordinators can view notes for their clients" ON coordinator_notes;
+CREATE POLICY "Coordinators can view notes for their clients"
+  ON coordinator_notes FOR SELECT
   USING (
-    coach_id = auth.uid() OR
+    coordinator_id = auth.uid() OR
     is_super_admin(auth.uid())
   );
 
-DROP POLICY IF EXISTS "Coaches can insert notes for their clients" ON coach_notes;
-CREATE POLICY "Coaches can insert notes for their clients"
-  ON coach_notes FOR INSERT
+DROP POLICY IF EXISTS "Coordinators can insert notes for their clients" ON coordinator_notes;
+CREATE POLICY "Coordinators can insert notes for their clients"
+  ON coordinator_notes FOR INSERT
   WITH CHECK (
-    coach_id = auth.uid() AND
+    coordinator_id = auth.uid() AND
     EXISTS (
       SELECT 1 FROM profiles
       WHERE profiles.id = client_id
-      AND profiles.coach_id = auth.uid()
+      AND profiles.coordinator_id = auth.uid()
     )
   );
 
-DROP POLICY IF EXISTS "Coaches can update their own notes" ON coach_notes;
-CREATE POLICY "Coaches can update their own notes"
-  ON coach_notes FOR UPDATE
-  USING (coach_id = auth.uid())
-  WITH CHECK (coach_id = auth.uid());
+DROP POLICY IF EXISTS "Coordinators can update their own notes" ON coordinator_notes;
+CREATE POLICY "Coordinators can update their own notes"
+  ON coordinator_notes FOR UPDATE
+  USING (coordinator_id = auth.uid())
+  WITH CHECK (coordinator_id = auth.uid());
 
-DROP POLICY IF EXISTS "Coaches can delete their own notes" ON coach_notes;
-CREATE POLICY "Coaches can delete their own notes"
-  ON coach_notes FOR DELETE
-  USING (coach_id = auth.uid());
+DROP POLICY IF EXISTS "Coordinators can delete their own notes" ON coordinator_notes;
+CREATE POLICY "Coordinators can delete their own notes"
+  ON coordinator_notes FOR DELETE
+  USING (coordinator_id = auth.uid());
 
-DROP POLICY IF EXISTS "Clients can view notes from their coach" ON coach_notes;
-CREATE POLICY "Clients can view notes from their coach"
-  ON coach_notes FOR SELECT
+DROP POLICY IF EXISTS "Clients can view notes from their coordinator" ON coordinator_notes;
+CREATE POLICY "Clients can view notes from their coordinator"
+  ON coordinator_notes FOR SELECT
   USING (
     client_id = auth.uid() AND
     EXISTS (
       SELECT 1 FROM profiles
       WHERE profiles.id = auth.uid()
-      AND profiles.coach_id = coach_notes.coach_id
+      AND profiles.coordinator_id = coordinator_notes.coordinator_id
     )
   );
 
@@ -1644,26 +1644,26 @@ ON favorite_products FOR DELETE
 USING (auth.uid() = user_id);
 
 -- 8.10 Политики для invite_codes
-DROP POLICY IF EXISTS "Coaches can read their own invite codes" ON invite_codes;
-CREATE POLICY "Coaches can read their own invite codes"
+DROP POLICY IF EXISTS "Coordinators can read their own invite codes" ON invite_codes;
+CREATE POLICY "Coordinators can read their own invite codes"
 ON invite_codes FOR SELECT
-USING (auth.uid() = coach_id);
+USING (auth.uid() = coordinator_id);
 
-DROP POLICY IF EXISTS "Coaches can create their own invite codes" ON invite_codes;
-CREATE POLICY "Coaches can create their own invite codes"
+DROP POLICY IF EXISTS "Coordinators can create their own invite codes" ON invite_codes;
+CREATE POLICY "Coordinators can create their own invite codes"
 ON invite_codes FOR INSERT
-WITH CHECK (auth.uid() = coach_id);
+WITH CHECK (auth.uid() = coordinator_id);
 
-DROP POLICY IF EXISTS "Coaches can update their own invite codes" ON invite_codes;
-CREATE POLICY "Coaches can update their own invite codes"
+DROP POLICY IF EXISTS "Coordinators can update their own invite codes" ON invite_codes;
+CREATE POLICY "Coordinators can update their own invite codes"
 ON invite_codes FOR UPDATE
-USING (auth.uid() = coach_id)
-WITH CHECK (auth.uid() = coach_id);
+USING (auth.uid() = coordinator_id)
+WITH CHECK (auth.uid() = coordinator_id);
 
-DROP POLICY IF EXISTS "Coaches can delete their own invite codes" ON invite_codes;
-CREATE POLICY "Coaches can delete their own invite codes"
+DROP POLICY IF EXISTS "Coordinators can delete their own invite codes" ON invite_codes;
+CREATE POLICY "Coordinators can delete their own invite codes"
 ON invite_codes FOR DELETE
-USING (auth.uid() = coach_id);
+USING (auth.uid() = coordinator_id);
 
 DROP POLICY IF EXISTS "Anyone can read active invite codes for validation" ON invite_codes;
 CREATE POLICY "Anyone can read active invite codes for validation"
@@ -1675,14 +1675,14 @@ USING (
 );
 
 -- 8.11 Политики для invite_code_usage
-DROP POLICY IF EXISTS "Coaches can read usage of their invite codes" ON invite_code_usage;
-CREATE POLICY "Coaches can read usage of their invite codes"
+DROP POLICY IF EXISTS "Coordinators can read usage of their invite codes" ON invite_code_usage;
+CREATE POLICY "Coordinators can read usage of their invite codes"
 ON invite_code_usage FOR SELECT
 USING (
   EXISTS (
     SELECT 1 FROM invite_codes
     WHERE invite_codes.id = invite_code_usage.invite_code_id
-    AND invite_codes.coach_id = auth.uid()
+    AND invite_codes.coordinator_id = auth.uid()
   )
 );
 

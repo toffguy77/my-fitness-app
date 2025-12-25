@@ -35,12 +35,12 @@ export default function ReportsPage() {
   const [isPremium, setIsPremium] = useState(false)
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('graphs')
-  
+
   // Фильтры и пагинация
   const [filteredLogs, setFilteredLogs] = useState<DailyLog[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
-  
+
   // Период для графиков
   const [chartPeriod, setChartPeriod] = useState<'7days' | '30days' | '3months' | 'all'>('30days')
 
@@ -62,8 +62,8 @@ export default function ReportsPage() {
         const subscriptionInfo = await checkSubscriptionStatus(user.id)
         const premium = subscriptionInfo.isActive
         setIsPremium(premium)
-        logger.debug('Reports: статус Premium', { 
-          userId: user.id, 
+        logger.debug('Reports: статус Premium', {
+          userId: user.id,
           isPremium: premium,
           subscriptionStatus: subscriptionInfo.status,
           isExpired: subscriptionInfo.isExpired
@@ -135,14 +135,14 @@ export default function ReportsPage() {
   // Обработчики фильтров
   const handleDateRangeChange = (start: string | null, end: string | null) => {
     let filtered = [...logs]
-    
+
     if (start) {
       filtered = filtered.filter(log => log.date >= start)
     }
     if (end) {
       filtered = filtered.filter(log => log.date <= end)
     }
-    
+
     setFilteredLogs(filtered)
     setCurrentPage(1)
   }
@@ -157,7 +157,7 @@ export default function ReportsPage() {
     const sorted = [...filteredLogs].sort((a, b) => {
       let aVal: number | string
       let bVal: number | string
-      
+
       switch (sortBy) {
         case 'date':
           aVal = a.date
@@ -174,12 +174,12 @@ export default function ReportsPage() {
         default:
           return 0
       }
-      
+
       if (aVal < bVal) return order === 'asc' ? -1 : 1
       if (aVal > bVal) return order === 'asc' ? 1 : -1
       return 0
     })
-    
+
     setFilteredLogs(sorted)
     setCurrentPage(1)
   }
@@ -187,12 +187,12 @@ export default function ReportsPage() {
   // Данные для графиков с целевыми линиями
   const chartData = useMemo(() => {
     const sortedLogs = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    
+
     return sortedLogs.map(log => {
       // Определяем тип дня (если есть в логе, иначе используем дефолт)
       const dayType = 'training' // Упрощенно, можно улучшить
       const target = targets.find(t => t.day_type === dayType)
-      
+
       return {
         date: log.date,
         calories: log.actual_calories,
@@ -289,7 +289,7 @@ export default function ReportsPage() {
         </header>
         <Paywall
           title="Отчеты доступны с Premium подпиской"
-          message="Подключите работу с тренером, чтобы получить доступ к детальным отчетам, аналитике прогресса и персональным рекомендациям."
+          message="Подключите работу с координатором, чтобы получить доступ к детальным отчетам, аналитике прогресса и персональным рекомендациям."
         />
         <PremiumFeatureModal
           isOpen={showPremiumModal}
@@ -314,33 +314,30 @@ export default function ReportsPage() {
       <div className="flex gap-2 border-b border-gray-200">
         <button
           onClick={() => setActiveTab('graphs')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-            activeTab === 'graphs'
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'graphs'
               ? 'border-black text-black'
               : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
         >
           <BarChart3 size={16} />
           Графики
         </button>
         <button
           onClick={() => setActiveTab('table')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-            activeTab === 'table'
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'table'
               ? 'border-black text-black'
               : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
         >
           <Table size={16} />
           Таблица
         </button>
         <button
           onClick={() => setActiveTab('statistics')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-            activeTab === 'statistics'
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'statistics'
               ? 'border-black text-black'
               : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
+            }`}
         >
           <TrendingUp size={16} />
           Статистика

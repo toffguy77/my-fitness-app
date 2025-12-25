@@ -1,10 +1,10 @@
 /**
- * Extended Component Tests: Coach Page
- * Tests coach dashboard functionality, client management, and status filtering
+ * Extended Component Tests: Coordinator Page
+ * Tests coordinator dashboard functionality, client management, and status filtering
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
-import CoachPage from '../page'
+import CoordinatorPage from '../page'
 
 // Mock Next.js modules
 const mockPush = jest.fn()
@@ -18,7 +18,7 @@ jest.mock('next/navigation', () => ({
 
 // Mock profile utils
 jest.mock('@/utils/supabase/profile', () => ({
-  getCoachClients: jest.fn().mockResolvedValue([
+  getCoordinatorClients: jest.fn().mockResolvedValue([
     {
       id: 'client-1',
       email: 'client1@test.com',
@@ -57,12 +57,12 @@ jest.mock('@/utils/logger', () => ({
   },
 }))
 
-describe('Coach Page Extended Tests', () => {
+describe('Coordinator Page Extended Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coach-123' } },
+      data: { user: { id: 'coordinator-123' } },
       error: null,
     })
 
@@ -84,8 +84,8 @@ describe('Coach Page Extended Tests', () => {
     mockFrom.mockReturnValue(mockQueryBuilder)
   })
 
-  it('should render coach page', async () => {
-    render(<CoachPage />)
+  it('should render coordinator page', async () => {
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
@@ -93,7 +93,7 @@ describe('Coach Page Extended Tests', () => {
   })
 
   it('should display client list', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
@@ -104,7 +104,7 @@ describe('Coach Page Extended Tests', () => {
   })
 
   it('should filter clients by status', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
@@ -115,7 +115,7 @@ describe('Coach Page Extended Tests', () => {
   })
 
   it('should sort clients by status', async () => {
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
@@ -137,7 +137,7 @@ describe('Coach Page Extended Tests', () => {
       limit: jest.fn().mockReturnThis(),
     })
 
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
@@ -147,7 +147,7 @@ describe('Coach Page Extended Tests', () => {
     expect(screen.getByRole('main')).toBeInTheDocument()
   })
 
-  it('should redirect non-coach users', async () => {
+  it('should redirect non-coordinator users', async () => {
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -157,7 +157,7 @@ describe('Coach Page Extended Tests', () => {
       }),
     })
 
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/')
@@ -170,7 +170,7 @@ describe('Coach Page Extended Tests', () => {
       error: { message: 'Not authenticated' },
     })
 
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/login')
@@ -189,7 +189,7 @@ describe('Coach Page Extended Tests', () => {
       limit: jest.fn().mockReturnThis(),
     })
 
-    render(<CoachPage />)
+    render(<CoordinatorPage />)
     
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()

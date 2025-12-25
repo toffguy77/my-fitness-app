@@ -83,7 +83,7 @@ export default function ClientDashboard() {
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
   const [editingWeight, setEditingWeight] = useState<boolean>(false)
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]) // Навигация по датам
-  const [coachNote, setCoachNote] = useState<{ content: string; date: string } | null>(null) // Заметка тренера
+  const [coordinatorNote, setCoordinatorNote] = useState<{ content: string; date: string } | null>(null) // Заметка координатора
   const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
   const [reloadKey, setReloadKey] = useState<number>(0) // Триггер перезагрузки данных при возврате на страницу
   const [deleteMealModal, setDeleteMealModal] = useState<{ isOpen: boolean; mealId: string | null }>({ isOpen: false, mealId: null })
@@ -437,7 +437,7 @@ export default function ClientDashboard() {
       if (!user) return
 
       try {
-        // Загружаем профиль для проверки Premium и coach_id
+        // Загружаем профиль для проверки Premium и coordinator_id
         const profile = await getUserProfile(user)
         const isPremiumUser = hasActiveSubscription(profile)
 
@@ -451,7 +451,7 @@ export default function ClientDashboard() {
         if (logError && logError.code !== 'PGRST116') {
           logger.error('Dashboard: ошибка загрузки лога за дату', logError, { userId: user.id, date: selectedDate })
           setTodayLog(null)
-          setCoachNote(null)
+          setCoordinatorNote(null)
           return
         }
 
@@ -539,32 +539,32 @@ export default function ClientDashboard() {
             meals: mealsArray
           } as DailyLog)
 
-          // Загружаем заметку тренера для выбранной даты (только для Premium)
-          if (isPremiumUser && profile?.coach_id) {
+          // Загружаем заметку координатора для выбранной даты (только для Premium)
+          if (isPremiumUser && profile?.coordinator_id) {
             const { data: noteData } = await supabase
-              .from('coach_notes')
+              .from('coordinator_notes')
               .select('content, date')
               .eq('client_id', user.id)
-              .eq('coach_id', profile.coach_id)
+              .eq('coordinator_id', profile.coordinator_id)
               .eq('date', selectedDate)
               .single()
 
             if (noteData) {
-              setCoachNote({ content: noteData.content, date: noteData.date })
+              setCoordinatorNote({ content: noteData.content, date: noteData.date })
             } else {
-              setCoachNote(null)
+              setCoordinatorNote(null)
             }
           } else {
-            setCoachNote(null)
+            setCoordinatorNote(null)
           }
         } else {
           setTodayLog(null)
-          setCoachNote(null)
+          setCoordinatorNote(null)
         }
       } catch (error) {
         logger.error('Dashboard: ошибка загрузки данных за дату', error, { userId: user.id, date: selectedDate })
         setTodayLog(null)
-        setCoachNote(null)
+        setCoordinatorNote(null)
       }
     }
 
@@ -1200,7 +1200,7 @@ export default function ClientDashboard() {
 
                           // Показываем сообщение
                           if (isPremium) {
-                            toast.success('День завершен! Тренер получит уведомление.')
+                            toast.success('День завершен! Координатор получит уведомление.')
                           } else {
                             // Подсчитываем стрик (дни подряд)
                             const completedDates = weekLogs
@@ -1271,18 +1271,18 @@ export default function ClientDashboard() {
         </section>
       )}
 
-      {/* ЗАМЕТКА ТРЕНЕРА (Premium) */}
-      {isPremium && coachNote && (
+      {/* ЗАМЕТКА КООРДИНАТОРА (Premium) */}
+      {isPremium && coordinatorNote && (
         <section className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💬</span>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-blue-900 mb-1">Сообщение от тренера</h3>
-              <p className="text-sm text-blue-800 whitespace-pre-line">{coachNote.content}</p>
+              <h3 className="text-sm font-semibold text-blue-900 mb-1">Сообщение от координатора</h3>
+              <p className="text-sm text-blue-800 whitespace-pre-line">{coordinatorNote.content}</p>
               <p className="text-xs text-blue-600 mt-2">
-                {new Date(coachNote.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                {new Date(coordinatorNote.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
               </p>
             </div>
           </div>
@@ -1297,7 +1297,7 @@ export default function ClientDashboard() {
               <span className="text-xl">🔒</span>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Заметки от тренера</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Заметки от координатора</h3>
               <p className="text-sm text-gray-600 mb-3">
                 Эта функция доступна только с активной Premium подпиской.
               </p>

@@ -127,7 +127,7 @@ describe('Nutrition Targets Update API', () => {
     })
     
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coach-123' } },
+      data: { user: { id: 'coordinator-123' } },
       error: null,
     })
 
@@ -137,13 +137,13 @@ describe('Nutrition Targets Update API', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'profiles') {
         profilesCallCount++
-        // First call: coach profile query
+        // First call: coordinator profile query
         if (profilesCallCount === 1) {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
             single: jest.fn().mockResolvedValue({
-              data: { id: 'coach-123', role: 'coach', coach_id: null },
+              data: { id: 'coordinator-123', role: 'coordinator', coordinator_id: null },
               error: null,
             }),
           }
@@ -153,7 +153,7 @@ describe('Nutrition Targets Update API', () => {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: '123e4567-e89b-12d3-a456-426614174001', coach_id: 'coach-123' },
+            data: { id: '123e4567-e89b-12d3-a456-426614174001', coordinator_id: 'coordinator-123' },
             error: null,
           }),
         }
@@ -279,13 +279,13 @@ describe('Nutrition Targets Update API', () => {
   })
 
   it('should return 500 on database error', async () => {
-    // Reset mocks to ensure coach profile is returned
+    // Reset mocks to ensure coordinator profile is returned
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coach-123' } },
+      data: { user: { id: 'coordinator-123' } },
       error: null,
     })
     
-    // Setup profiles mock to return coach profile
+    // Setup profiles mock to return coordinator profile
     let profilesCallCount = 0
     mockFrom.mockImplementation((table: string) => {
       if (table === 'profiles') {
@@ -295,7 +295,7 @@ describe('Nutrition Targets Update API', () => {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
             single: jest.fn().mockResolvedValue({
-              data: { id: 'coach-123', role: 'coach', coach_id: null },
+              data: { id: 'coordinator-123', role: 'coordinator', coordinator_id: null },
               error: null,
             }),
           }
@@ -304,7 +304,7 @@ describe('Nutrition Targets Update API', () => {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: '123e4567-e89b-12d3-a456-426614174001', coach_id: 'coach-123' },
+            data: { id: '123e4567-e89b-12d3-a456-426614174001', coordinator_id: 'coordinator-123' },
             error: null,
           }),
         }

@@ -97,14 +97,14 @@ describe('Metrics Page', () => {
     expect(screen.getByText('Метрики и аналитика')).toBeInTheDocument()
   })
 
-  it('renders metrics dashboard for coach', async () => {
+  it('renders metrics dashboard for coordinator', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'profiles') {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: 'coach-123', role: 'coach' },
+            data: { id: 'coordinator-123', role: 'coordinator' },
             error: null,
           }),
         }

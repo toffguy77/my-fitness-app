@@ -49,8 +49,8 @@ function LoginPageContent() {
         let redirectPath = '/app/dashboard'
         if (role === 'super_admin') {
           redirectPath = '/admin'
-        } else if (role === 'coach') {
-          redirectPath = '/app/coach'
+        } else if (role === 'coordinator') {
+          redirectPath = '/app/coordinator'
         }
 
         logger.info('Login: редирект авторизованного пользователя', { userId: user.id, role, redirectPath })
@@ -106,8 +106,8 @@ function LoginPageContent() {
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coach') {
-        redirectPath = '/app/coach'
+      } else if (role === 'coordinator') {
+        redirectPath = '/app/coordinator'
       }
 
       logger.info('Login: редирект после успешного входа', { userId: data.user.id, role, redirectPath })

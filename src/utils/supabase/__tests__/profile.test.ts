@@ -1,7 +1,7 @@
 import { createClient } from '../client'
 import {
   getUserProfile,
-  getCoachClients,
+  getCoordinatorClients,
   isSuperAdmin,
   isPremium,
   hasActiveSubscription,
@@ -76,20 +76,20 @@ describe('Profile Utilities', () => {
     })
   })
 
-  describe('getCoachClients', () => {
-    it('should return list of clients for a coach', async () => {
+  describe('getCoordinatorClients', () => {
+    it('should return list of clients for a coordinator', async () => {
       const mockClients: UserProfile[] = [
         {
           id: 'client-1',
           full_name: 'Client One',
           role: 'client',
-          coach_id: 'coach-123',
+          coordinator_id: 'coordinator-123',
         },
         {
           id: 'client-2',
           full_name: 'Client Two',
           role: 'client',
-          coach_id: 'coach-123',
+          coordinator_id: 'coordinator-123',
         },
       ]
 
@@ -99,7 +99,7 @@ describe('Profile Utilities', () => {
         error: null,
       })
 
-      const result = await getCoachClients('coach-123')
+      const result = await getCoordinatorClients('coordinator-123')
 
       expect(result).toEqual(mockClients)
       expect(mockSupabase.from).toHaveBeenCalledWith('profiles')
@@ -112,7 +112,7 @@ describe('Profile Utilities', () => {
         error: { message: 'Error' },
       })
 
-      const result = await getCoachClients('coach-123')
+      const result = await getCoordinatorClients('coordinator-123')
 
       expect(result).toEqual([])
     })

@@ -14,7 +14,7 @@ export default function LandingPage() {
           Твое тело — это математика, а не магия.
         </h1>
         <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-4">
-          Перестань надеяться на интуицию. Интуиция привела тебя к тому весу, который есть сейчас. 
+          Перестань надеяться на интуицию. Интуиция привела тебя к тому весу, который есть сейчас.
           Чтобы изменить результат, нужно изменить данные.
         </p>
         <div className="flex flex-col items-center gap-4">
@@ -40,7 +40,7 @@ export default function LandingPage() {
           <div className="bg-white p-8 border-2 border-black">
             <h3 className="text-2xl font-bold text-black mb-4">Иллюзия контроля</h3>
             <p className="text-gray-700 leading-relaxed">
-              Ты думаешь, что ешь мало, но не считаешь перекусы и &quot;жидкие калории&quot;. 
+              Ты думаешь, что ешь мало, но не считаешь перекусы и &quot;жидкие калории&quot;.
               Без жесткого учета ты слеп.
             </p>
           </div>
@@ -48,7 +48,7 @@ export default function LandingPage() {
           <div className="bg-white p-8 border-2 border-black">
             <h3 className="text-2xl font-bold text-black mb-4">Эмоциональный шум</h3>
             <p className="text-gray-700 leading-relaxed">
-              Обычные приложения хвалят тебя за съеденное яблоко. Нам все равно. 
+              Обычные приложения хвалят тебя за съеденное яблоко. Нам все равно.
               Нам важен только сухой остаток: БЖУ и дефицит.
             </p>
           </div>
@@ -56,7 +56,7 @@ export default function LandingPage() {
           <div className="bg-white p-8 border-2 border-black">
             <h3 className="text-2xl font-bold text-black mb-4">Одиночество</h3>
             <p className="text-gray-700 leading-relaxed">
-              Ты один на один с цифрами. Когда мотивация падает, 
+              Ты один на один с цифрами. Когда мотивация падает,
               никто не скажет, что делать дальше.
             </p>
           </div>
@@ -84,7 +84,7 @@ export default function LandingPage() {
             <div>
               <h3 className="text-2xl font-bold text-black mb-2">Субъективные метрики.</h3>
               <p className="text-lg text-gray-700 leading-relaxed">
-                Мы фиксируем не только еду, но и уровень голода. 
+                Мы фиксируем не только еду, но и уровень голода.
                 Это ключ к пониманию твоего организма.
               </p>
             </div>
@@ -109,7 +109,7 @@ export default function LandingPage() {
         </h2>
         <p className="text-lg sm:text-xl text-gray-300 mb-8 sm:mb-16 text-center max-w-3xl mx-auto leading-relaxed px-4">
           Используй приложение как бесплатный дневник столько, сколько нужно.
-          Когда поймешь, что уперся в потолок — активируй режим работы с тренером.
+          Когда поймешь, что уперся в потолок — активируй режим работы с координатором.
         </p>
 
         {/* Comparison Table */}
@@ -139,7 +139,7 @@ export default function LandingPage() {
 
             {/* Pro Column */}
             <div className="p-8 bg-gray-50">
-              <h3 className="text-2xl font-black mb-6">Pro<br />(С тренером)</h3>
+              <h3 className="text-2xl font-black mb-6">Pro<br />(С координатором)</h3>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <span className="text-black mt-1">•</span>

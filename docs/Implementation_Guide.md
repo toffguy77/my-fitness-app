@@ -28,7 +28,7 @@ my-fitness-app/
 │   │   │   ├── reports/      # Отчеты (Premium)
 │   │   │   ├── settings/     # Настройки
 │   │   │   ├── achievements/ # Достижения
-│   │   │   └── coach/        # Кабинет тренера
+│   │   │   └── coordinator/  # Кабинет координатора
 │   │   ├── admin/             # Супер-админка
 │   │   └── api/               # Next.js API Routes
 │   ├── components/            # React компоненты

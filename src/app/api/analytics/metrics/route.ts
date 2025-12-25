@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (!profile || (profile.role !== 'super_admin' && profile.role !== 'coach')) {
-      // Для демонстрации разрешаем доступ тренерам, в продакшене только super_admin
+    if (!profile || (profile.role !== 'super_admin' && profile.role !== 'coordinator')) {
+      // Для демонстрации разрешаем доступ координаторам, в продакшене только super_admin
       logger.warn('Metrics: попытка доступа без прав', { userId: user.id, role: profile?.role })
     }
 

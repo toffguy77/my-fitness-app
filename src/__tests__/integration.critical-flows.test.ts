@@ -113,13 +113,13 @@ describe('Critical User Flows Integration Tests', () => {
     })
   })
 
-  describe('Coach Client Management Flow', () => {
-    it('should complete coach viewing and note creation flow', async () => {
-      // 1. Load coach clients
-      const loadClients = async (coachId: string) => {
+  describe('Coordinator Client Management Flow', () => {
+    it('should complete coordinator viewing and note creation flow', async () => {
+      // 1. Load coordinator clients
+      const loadClients = async (coordinatorId: string) => {
         return [
-          { id: 'client-1', full_name: 'Client One', coach_id: coachId },
-          { id: 'client-2', full_name: 'Client Two', coach_id: coachId },
+          { id: 'client-1', full_name: 'Client One', coordinator_id: coordinatorId },
+          { id: 'client-2', full_name: 'Client Two', coordinator_id: coordinatorId },
         ]
       }
 
@@ -149,13 +149,13 @@ describe('Critical User Flows Integration Tests', () => {
         return 'grey'
       }
 
-      // 3. Save coach note
-      const saveNote = async (coachId: string, clientId: string, date: string, content: string) => {
-        return { success: true, data: { coach_id: coachId, client_id: clientId, date, content } }
+      // 3. Save coordinator note
+      const saveNote = async (coordinatorId: string, clientId: string, date: string, content: string) => {
+        return { success: true, data: { coordinator_id: coordinatorId, client_id: clientId, date, content } }
       }
 
       // Execute flow
-      const clients = await loadClients('coach-123')
+      const clients = await loadClients('coordinator-123')
       expect(clients).toHaveLength(2)
 
       const status = calculateStatus(
@@ -165,7 +165,7 @@ describe('Critical User Flows Integration Tests', () => {
       )
       expect(status).toBe('green')
 
-      const note = await saveNote('coach-123', 'client-1', '2024-01-15', 'Great progress!')
+      const note = await saveNote('coordinator-123', 'client-1', '2024-01-15', 'Great progress!')
       expect(note.success).toBe(true)
     })
   })

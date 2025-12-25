@@ -23,12 +23,12 @@ ON profiles FOR SELECT
 USING (
   profile_visibility = 'public' OR
   auth.uid() = id OR
-  (profiles.coach_id = auth.uid() AND EXISTS (
+  (profiles.coordinator_id = auth.uid() AND EXISTS (
     SELECT 1 FROM profiles p 
     WHERE p.id = auth.uid()
-    AND p.role = 'coach'
+    AND p.role = 'coordinator'
   ))
 );
 
-COMMENT ON POLICY "Anyone can read public profiles" ON profiles IS 'Разрешает чтение публичных профилей всем, а также профилей своих клиентов для тренеров';
+COMMENT ON POLICY "Anyone can read public profiles" ON profiles IS 'Разрешает чтение публичных профилей всем, а также профилей своих клиентов для координаторов';
 

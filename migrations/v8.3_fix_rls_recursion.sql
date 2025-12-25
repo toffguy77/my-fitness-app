@@ -3,7 +3,7 @@
 -- Dependencies: setup_database.sql
 -- Date: 2025-01-20
 
--- Проблема: Функции is_super_admin и is_coach вызывают рекурсию при использовании в RLS политиках,
+-- Проблема: Функции is_super_admin и is_coordinator вызывают рекурсию при использовании в RLS политиках,
 -- так как они читают из profiles, которая защищена RLS, и это создает бесконечный цикл.
 
 -- Решение: Изменяем функции так, чтобы они использовали прямой доступ к данным
@@ -29,8 +29,8 @@ BEGIN
 END;
 $$;
 
--- Обновляем функцию is_coach для обхода RLS
-CREATE OR REPLACE FUNCTION is_coach(user_id UUID)
+-- Обновляем функцию is_coordinator для обхода RLS
+CREATE OR REPLACE FUNCTION is_coordinator(user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -40,13 +40,13 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = user_id
-    AND role = 'coach'
+    AND role = 'coordinator'
   );
 END;
 $$;
 
--- Обновляем функцию is_client_coach для обхода RLS
-CREATE OR REPLACE FUNCTION is_client_coach(client_id UUID, potential_coach_id UUID)
+-- Обновляем функцию is_client_coordinator для обхода RLS
+CREATE OR REPLACE FUNCTION is_client_coordinator(client_id UUID, potential_coordinator_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -56,7 +56,7 @@ BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = client_id
-    AND profiles.coach_id = potential_coach_id
+    AND profiles.coordinator_id = potential_coordinator_id
   );
 END;
 $$;
@@ -87,10 +87,10 @@ CREATE POLICY "Users can view profiles"
 ON profiles FOR SELECT
 USING (
     auth.uid() = id
-    OR coach_id = auth.uid()
+    OR coordinator_id = auth.uid()
 );
 
-COMMENT ON POLICY "Users can view profiles" ON profiles IS 'Пользователи могут видеть свой профиль и профили своих клиентов (для тренеров). Это предотвращает рекурсию RLS.';
+COMMENT ON POLICY "Users can view profiles" ON profiles IS 'Пользователи могут видеть свой профиль и профили своих клиентов (для координаторов). Это предотвращает рекурсию RLS.';
 
 -- Обновляем политику для публичных профилей, убирая подзапрос, который может вызвать рекурсию
 DROP POLICY IF EXISTS "Anyone can read public profiles" ON profiles;
@@ -99,12 +99,12 @@ ON profiles FOR SELECT
 USING (
   profile_visibility = 'public' OR
   auth.uid() = id OR
-  coach_id = auth.uid()
+  coordinator_id = auth.uid()
 );
 
-COMMENT ON POLICY "Anyone can read public profiles" ON profiles IS 'Разрешает чтение публичных профилей всем, а также профилей своих клиентов для тренеров. Упрощенная версия без подзапросов для предотвращения рекурсии.';
+COMMENT ON POLICY "Anyone can read public profiles" ON profiles IS 'Разрешает чтение публичных профилей всем, а также профилей своих клиентов для координаторов. Упрощенная версия без подзапросов для предотвращения рекурсии.';
 
 COMMENT ON FUNCTION is_super_admin(UUID) IS 'Проверяет, является ли пользователь super_admin (без рекурсии RLS)';
-COMMENT ON FUNCTION is_coach(UUID) IS 'Проверяет, является ли пользователь coach (без рекурсии RLS)';
-COMMENT ON FUNCTION is_client_coach(UUID, UUID) IS 'Проверяет, является ли пользователь тренером клиента (без рекурсии RLS)';
+COMMENT ON FUNCTION is_coordinator(UUID) IS 'Проверяет, является ли пользователь coordinator (без рекурсии RLS)';
+COMMENT ON FUNCTION is_client_coordinator(UUID, UUID) IS 'Проверяет, является ли пользователь координатором клиента (без рекурсии RLS)';
 

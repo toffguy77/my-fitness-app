@@ -39,8 +39,8 @@ function SettingsPageContent() {
     const [passwordError, setPasswordError] = useState<string | null>(null)
     const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
 
-    // Данные тренера (для Premium)
-    const [coach, setCoach] = useState<UserProfile | null>(null)
+    // Данные координатора (для Premium)
+    const [coordinator, setCoordinator] = useState<UserProfile | null>(null)
 
     // Статус подписки
     const [subscriptionInfo, setSubscriptionInfo] = useState<{ status: string; isExpired: boolean; endDate: string | null } | null>(null)
@@ -87,17 +87,17 @@ function SettingsPageContent() {
                 setProfileVisibility(userProfile.profile_visibility || 'private')
                 logger.debug('Settings: профиль загружен', { userId: user.id, role: userProfile.role })
 
-                // Если Premium и есть тренер, загружаем данные тренера
-                if (hasActiveSubscription(userProfile) && userProfile.coach_id) {
-                    const { data: coachData, error: coachError } = await supabase
+                // Если Premium и есть координатор, загружаем данные координатора
+                if (hasActiveSubscription(userProfile) && userProfile.coordinator_id) {
+                    const { data: coordinatorData, error: coordinatorError } = await supabase
                         .from('profiles')
                         .select('*')
-                        .eq('id', userProfile.coach_id)
+                        .eq('id', userProfile.coordinator_id)
                         .single()
 
-                    if (!coachError && coachData) {
-                        setCoach(coachData as UserProfile)
-                        logger.debug('Settings: данные тренера загружены', { coachId: userProfile.coach_id })
+                    if (!coordinatorError && coordinatorData) {
+                        setCoordinator(coordinatorData as UserProfile)
+                        logger.debug('Settings: данные координатора загружены', { coordinatorId: userProfile.coordinator_id })
                     }
                 }
 
@@ -334,7 +334,7 @@ function SettingsPageContent() {
                                 />
                                 <div>
                                     <span className="text-sm font-medium text-gray-900">Приватный</span>
-                                    <p className="text-xs text-gray-500">Только вы и ваш тренер могут видеть ваш профиль</p>
+                                    <p className="text-xs text-gray-500">Только вы и ваш координатор могут видеть ваш профиль</p>
                                 </div>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
@@ -413,37 +413,37 @@ function SettingsPageContent() {
 
                         {!isPremium && !subscriptionInfo?.isExpired && (
                             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                                Для активации Premium подписки обратитесь к администратору или вашему тренеру.
+                                Для активации Premium подписки обратитесь к администратору или вашему координатору.
                             </div>
                         )}
                     </div>
                 </section>
             )}
 
-            {/* COACH SECTION (Premium only) */}
-            {isPremium && coach && (
+            {/* COORDINATOR SECTION (Premium only) */}
+            {isPremium && coordinator && (
                 <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
                     <div className="flex items-center gap-3 mb-4">
                         <UserIcon size={20} className="text-gray-600" />
-                        <h2 className="text-lg font-bold text-gray-900">Мой тренер</h2>
+                        <h2 className="text-lg font-bold text-gray-900">Мой координатор</h2>
                     </div>
 
                     <div className="space-y-3">
                         <div>
                             <span className="text-sm text-gray-600">Имя:</span>
-                            <p className="text-sm font-medium text-gray-900">{coach.full_name || 'Не указано'}</p>
+                            <p className="text-sm font-medium text-gray-900">{coordinator.full_name || 'Не указано'}</p>
                         </div>
                         <div>
                             <span className="text-sm text-gray-600">Email:</span>
-                            <p className="text-sm font-medium text-gray-900">{coach.email || 'Не указано'}</p>
+                            <p className="text-sm font-medium text-gray-900">{coordinator.email || 'Не указано'}</p>
                         </div>
                         <button
                             onClick={() => {
-                                window.location.href = `mailto:${coach.email}`
+                                window.location.href = `mailto:${coordinator.email}`
                             }}
                             className="w-full mt-4 py-2 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors"
                         >
-                            Написать тренеру
+                            Написать координатору
                         </button>
                     </div>
                 </section>

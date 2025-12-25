@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION create_user_profile(
   user_email TEXT,
   user_full_name TEXT DEFAULT NULL,
   user_role user_role DEFAULT 'client',
-  user_coach_id UUID DEFAULT NULL
+  user_coordinator_id UUID DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -29,7 +29,7 @@ BEGIN
     email,
     full_name,
     role,
-    coach_id,
+    coordinator_id,
     subscription_status,
     subscription_tier,
     profile_visibility,
@@ -40,7 +40,7 @@ BEGIN
     user_email,
     user_full_name,
     user_role,
-    user_coach_id,
+    user_coordinator_id,
     'free',
     'basic',
     'private',

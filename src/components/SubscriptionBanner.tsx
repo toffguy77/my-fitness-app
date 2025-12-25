@@ -25,15 +25,15 @@ export default function SubscriptionBanner() {
           return
         }
 
-        // Проверяем роль пользователя - тренеры не должны видеть баннер подписки
+        // Проверяем роль пользователя - координаторы не должны видеть баннер подписки
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single()
 
-        // Если пользователь - тренер или супер-админ, не показываем баннер
-        if (profile?.role === 'coach' || profile?.role === 'super_admin') {
+        // Если пользователь - координатор или супер-админ, не показываем баннер
+        if (profile?.role === 'coordinator' || profile?.role === 'super_admin') {
           setLoading(false)
           return
         }

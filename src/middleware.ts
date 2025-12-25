@@ -133,7 +133,7 @@ export async function middleware(request: NextRequest) {
     const subscriptionTier = profile?.subscription_tier || 'basic'
     const subscriptionEndDate = profile?.subscription_end_date
 
-    // Проверка Premium только для клиентов (тренеры не имеют подписки)
+    // Проверка Premium только для клиентов (координаторы не имеют подписки)
     let isPremium = false
     if (role === 'client') {
       const isActive = subscriptionStatus === 'active'
@@ -163,8 +163,8 @@ export async function middleware(request: NextRequest) {
       let redirectPath = '/app/dashboard'
       if (isSuperAdmin) {
         redirectPath = '/admin'
-      } else if (role === 'coach') {
-        redirectPath = '/app/coach'
+      } else if (role === 'coordinator') {
+        redirectPath = '/app/coordinator'
       }
       try {
         logger.info('Middleware: редирект авторизованного пользователя', {
@@ -193,10 +193,10 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/app/dashboard', request.url))
       }
 
-      // Проверка доступа к кабинету тренера
-      if (pathname.startsWith('/app/coach') && role !== 'coach') {
+      // Проверка доступа к кабинету координатора
+      if (pathname.startsWith('/app/coordinator') && role !== 'coordinator') {
         try {
-          logger.warn('Middleware: попытка доступа к кабинету тренера без прав', {
+          logger.warn('Middleware: попытка доступа к кабинету координатора без прав', {
             userId: user.id,
             role,
             pathname,
@@ -207,8 +207,8 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/app/dashboard', request.url))
       }
 
-      // Проверка доступа к metrics dashboard (только super_admin и coach)
-      if (pathname.startsWith('/app/admin/metrics') && role !== 'super_admin' && role !== 'coach') {
+      // Проверка доступа к metrics dashboard (только super_admin и coordinator)
+      if (pathname.startsWith('/app/admin/metrics') && role !== 'super_admin' && role !== 'coordinator') {
         try {
           logger.warn('Middleware: попытка доступа к metrics dashboard без прав', {
             userId: user.id,

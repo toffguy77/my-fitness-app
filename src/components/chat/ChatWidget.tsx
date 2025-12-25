@@ -12,22 +12,22 @@ import { showNotification, isNotificationSupported } from '@/utils/chat/notifica
 
 interface ChatWidgetProps {
   userId: string
-  coachId: string | null
+  coordinatorId: string | null
   className?: string
 }
 
-export default function ChatWidget({ userId, coachId, className = '' }: ChatWidgetProps) {
+export default function ChatWidget({ userId, coordinatorId, className = '' }: ChatWidgetProps) {
   const supabase = createClient()
   const [isOpen, setIsOpen] = useState(false)
-  const [coachProfile, setCoachProfile] = useState<UserProfile | null>(null)
+  const [coordinatorProfile, setCoordinatorProfile] = useState<UserProfile | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const messageChannelRef = useRef<any>(null)
   const notificationSoundRef = useRef<{ play: () => void } | null>(null)
   const lastNotificationRef = useRef<string>('')
 
-  // Вычисляем имя тренера из профиля
-  const coachName = coachProfile?.full_name || coachProfile?.email || 'Тренер'
+  // Вычисляем имя координатора из профиля
+  const coordinatorName = coordinatorProfile?.full_name || coordinatorProfile?.email || 'Координатор'
 
   // Инициализация звука уведомления
   useEffect(() => {
@@ -73,46 +73,46 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
     } as { play: () => void }
   }, [])
 
-  // Загрузка профиля тренера
+  // Загрузка профиля координатора
   useEffect(() => {
-    if (!coachId) {
+    if (!coordinatorId) {
       setLoading(false)
       return
     }
 
-    const loadCoachProfile = async () => {
+    const loadCoordinatorProfile = async () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .eq('id', coachId)
+          .eq('id', coordinatorId)
           .single()
 
         if (error) {
           throw error
         }
 
-        setCoachProfile(data as UserProfile)
+        setCoordinatorProfile(data as UserProfile)
       } catch (error) {
-        logger.error('ChatWidget: ошибка загрузки профиля тренера', error, { coachId })
+        logger.error('ChatWidget: ошибка загрузки профиля координатора', error, { coordinatorId })
       } finally {
         setLoading(false)
       }
     }
 
-    loadCoachProfile()
-  }, [supabase, coachId])
+    loadCoordinatorProfile()
+  }, [supabase, coordinatorId])
 
   // Загрузка количества непрочитанных сообщений
   const loadUnreadCount = useCallback(async () => {
-    if (!coachId || loading) return
+    if (!coordinatorId || loading) return
 
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('id', { count: 'exact' })
         .eq('receiver_id', userId)
-        .eq('sender_id', coachId)
+        .eq('sender_id', coordinatorId)
         .is('read_at', null)
         .eq('is_deleted', false)
 
@@ -122,12 +122,12 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
 
       setUnreadCount(data?.length || 0)
     } catch (error) {
-      logger.error('ChatWidget: ошибка загрузки непрочитанных сообщений', error, { userId, coachId })
+      logger.error('ChatWidget: ошибка загрузки непрочитанных сообщений', error, { userId, coordinatorId })
     }
-  }, [coachId, loading, supabase, userId])
+  }, [coordinatorId, loading, supabase, userId])
 
   useEffect(() => {
-    if (!coachId || loading) return
+    if (!coordinatorId || loading) return
 
     loadUnreadCount()
 
@@ -135,7 +135,7 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
     if (!isOpen) {
       const messageChannel = subscribeToMessages(
         userId,
-        coachId,
+        coordinatorId,
         (message: Message) => {
           // Проверяем, не показывали ли мы уже уведомление для этого сообщения
           if (message.id !== lastNotificationRef.current) {
@@ -144,7 +144,7 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
             // Показываем toast уведомление
             toast.success(
               <div>
-                <div className="font-medium">Новое сообщение от {coachName}</div>
+                <div className="font-medium">Новое сообщение от {coordinatorName}</div>
                 <div className="text-sm text-gray-600 truncate max-w-xs">{message.content}</div>
               </div>,
               {
@@ -155,7 +155,7 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
 
             // Показываем браузерное уведомление, если поддерживается и разрешено
             if (isNotificationSupported() && document.hidden) {
-              showNotification(`Новое сообщение от ${coachName}`, {
+              showNotification(`Новое сообщение от ${coordinatorName}`, {
                 body: message.content.length > 100 
                   ? message.content.substring(0, 100) + '...' 
                   : message.content,
@@ -188,14 +188,14 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
 
     // Подписка на изменения непрочитанных сообщений
     const channel = supabase
-      .channel(`unread:${userId}:${coachId}`)
+      .channel(`unread:${userId}:${coordinatorId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'messages',
-          filter: `receiver_id=eq.${userId},sender_id=eq.${coachId}`,
+          filter: `receiver_id=eq.${userId},sender_id=eq.${coordinatorId}`,
         },
         () => {
           loadUnreadCount()
@@ -210,9 +210,9 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
         messageChannelRef.current = null
       }
     }
-  }, [supabase, userId, coachId, loading, isOpen, coachName])
+  }, [supabase, userId, coordinatorId, loading, isOpen, coordinatorName])
 
-  if (!coachId || loading || !coachProfile) {
+  if (!coordinatorId || loading || !coordinatorProfile) {
     return null
   }
 
@@ -222,8 +222,8 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
         <div className="w-full sm:w-96 max-w-[calc(100vw-2rem)] sm:max-w-none h-[calc(100vh-8rem)] sm:h-[600px]">
           <ChatWindow
             userId={userId}
-            otherUserId={coachId}
-            otherUserName={coachName}
+            otherUserId={coordinatorId}
+            otherUserName={coordinatorName}
             onClose={() => {
               setIsOpen(false)
               // Обновляем счетчик при закрытии
@@ -244,8 +244,8 @@ export default function ChatWidget({ userId, coachId, className = '' }: ChatWidg
             setUnreadCount(0)
           }}
           className="relative p-3 sm:p-4 bg-black text-white rounded-full shadow-lg hover:bg-gray-800 transition-all hover:scale-110 active:scale-95 touch-manipulation"
-          title={`Чат с ${coachName}${unreadCount > 0 ? ` (${unreadCount} непрочитанных)` : ''}`}
-          aria-label={`Открыть чат с ${coachName}${unreadCount > 0 ? `, ${unreadCount} непрочитанных сообщений` : ''}`}
+          title={`Чат с ${coordinatorName}${unreadCount > 0 ? ` (${unreadCount} непрочитанных)` : ''}`}
+          aria-label={`Открыть чат с ${coordinatorName}${unreadCount > 0 ? `, ${unreadCount} непрочитанных сообщений` : ''}`}
         >
           <MessageSquare size={20} className="sm:w-6 sm:h-6" />
           {unreadCount > 0 && (

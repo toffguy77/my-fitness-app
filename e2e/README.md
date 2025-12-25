@@ -29,7 +29,7 @@ End-to-end тесты для критических пользовательск
 - Изменение даты
 - Daily Check-in
 
-### 5. Coach Dashboard Flow (`coach.spec.ts`)
+### 5. Coordinator Dashboard Flow (`coordinator.spec.ts`)
 - Отображение списка клиентов
 - Система статусов (Traffic Light)
 - Фильтрация и сортировка клиентов

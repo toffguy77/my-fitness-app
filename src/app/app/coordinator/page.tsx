@@ -7,7 +7,7 @@ import { User } from '@supabase/supabase-js'
 import { LogOut, User as UserIcon, AlertCircle, CheckCircle, Circle, Filter, ArrowUpDown, MessageSquare, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import type { UserProfile } from '@/utils/supabase/profile'
-import { getCoachClients } from '@/utils/supabase/profile'
+import { getCoordinatorClients } from '@/utils/supabase/profile'
 import { logger } from '@/utils/logger'
 import { playNotificationSound } from '@/utils/chat/sound'
 import { subscribeToMessages, unsubscribeFromChannel, type Message } from '@/utils/chat/realtime'
@@ -23,7 +23,7 @@ type ClientWithStatus = UserProfile & {
   unreadMessagesCount?: number
 }
 
-export default function CoachDashboard() {
+export default function CoordinatorDashboard() {
   const supabase = createClient()
   const router = useRouter()
   const [, setUser] = useState<User | null>(null)
@@ -33,7 +33,7 @@ export default function CoachDashboard() {
   const [unreadFilter, setUnreadFilter] = useState<boolean>(false) // Фильтр по непрочитанным сообщениям
   const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'status' | 'unread'>('status') // По умолчанию сортировка по статусу
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc') // По умолчанию Red (1) сверху
-  const [coachUserId, setCoachUserId] = useState<string | null>(null)
+  const [coordinatorUserId, setCoordinatorUserId] = useState<string | null>(null)
   const messageChannelsRef = useRef<any[]>([])
 
   useEffect(() => {
@@ -47,27 +47,27 @@ export default function CoachDashboard() {
         }
         user = authUser
         setUser(authUser)
-        setCoachUserId(authUser.id)
+        setCoordinatorUserId(authUser.id)
 
-        // Проверяем, что пользователь - тренер
+        // Проверяем, что пользователь - координатор
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', authUser.id)
           .single()
 
-        if (profile?.role !== 'coach') {
+        if (profile?.role !== 'coordinator') {
           router.push('/')
           return
         }
 
         // Загружаем клиентов
-        const coachClients = await getCoachClients(authUser.id)
+        const coordinatorClients = await getCoordinatorClients(authUser.id)
 
         // Для каждого клиента загружаем данные за сегодня
         const today = new Date().toISOString().split('T')[0]
         const clientsWithStatus = await Promise.all(
-          coachClients.map(async (client) => {
+          coordinatorClients.map(async (client) => {
             // Получаем отчет за сегодня
             const { data: todayLog } = await supabase
               .from('daily_logs')
@@ -155,7 +155,7 @@ export default function CoachDashboard() {
               .eq('id', client.id)
               .single()
 
-            const isExpired = clientProfile?.subscription_status === 'expired' || 
+            const isExpired = clientProfile?.subscription_status === 'expired' ||
               (clientProfile?.subscription_end_date && new Date(clientProfile.subscription_end_date) < new Date())
 
             // Загружаем количество непрочитанных сообщений от клиента
@@ -182,12 +182,12 @@ export default function CoachDashboard() {
         )
 
         setClients(clientsWithStatus)
-        logger.info('Coach: данные клиентов успешно загружены', { coachId: user?.id || 'unknown', count: clientsWithStatus.length })
+        logger.info('Coordinator: данные клиентов успешно загружены', { coordinatorId: user?.id || 'unknown', count: clientsWithStatus.length })
       } catch (error) {
-        logger.error('Coach: ошибка загрузки данных', error, { coachId: user?.id || 'unknown' })
+        logger.error('Coordinator: ошибка загрузки данных', error, { coordinatorId: user?.id || 'unknown' })
       } finally {
         setLoading(false)
-        logger.debug('Coach: загрузка данных завершена')
+        logger.debug('Coordinator: загрузка данных завершена')
       }
     }
 
@@ -196,7 +196,7 @@ export default function CoachDashboard() {
 
   // Подписка на новые сообщения от всех клиентов для звуковых уведомлений
   useEffect(() => {
-    if (!coachUserId || clients.length === 0) return
+    if (!coordinatorUserId || clients.length === 0) return
 
     // Очищаем предыдущие подписки
     messageChannelsRef.current.forEach((channel) => {
@@ -207,26 +207,26 @@ export default function CoachDashboard() {
     // Подписываемся на сообщения от каждого клиента
     clients.forEach((client) => {
       const channel = subscribeToMessages(
-        coachUserId,
+        coordinatorUserId,
         client.id,
         (message: Message) => {
           // Воспроизводим звук при получении нового сообщения
           playNotificationSound()
-          
+
           // Показываем браузерное уведомление, если страница не в фокусе
           if (isNotificationSupported() && document.hidden) {
             const clientName = client.full_name || client.email || 'Клиент'
             showNotification(`Новое сообщение от ${clientName}`, {
-              body: message.content.length > 100 
-                ? message.content.substring(0, 100) + '...' 
+              body: message.content.length > 100
+                ? message.content.substring(0, 100) + '...'
                 : message.content,
-              tag: `coach-message-${client.id}`,
+              tag: `coordinator-message-${client.id}`,
               requireInteraction: false,
             }).catch((error) => {
-              logger.warn('Coach: ошибка показа браузерного уведомления', { error })
+              logger.warn('Coordinator: ошибка показа браузерного уведомления', { error })
             })
           }
-          
+
           // Обновляем счетчик непрочитанных для этого клиента
           setClients((prevClients) =>
             prevClients.map((c) =>
@@ -247,7 +247,7 @@ export default function CoachDashboard() {
       })
       messageChannelsRef.current = []
     }
-  }, [coachUserId, clients])
+  }, [coordinatorUserId, clients])
 
   const getStatusIcon = (status: 'red' | 'green' | 'yellow' | 'grey') => {
     switch (status) {
@@ -350,12 +350,12 @@ export default function CoachDashboard() {
     <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-4xl md:mx-auto font-sans">
       <header className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Кабинет тренера</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Кабинет координатора</h1>
           <p className="text-sm text-gray-500">Управление клиентами</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/app/coach/invites"
+            href="/app/coordinator/invites"
             className="px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm"
           >
             <UserPlus size={16} />
@@ -442,11 +442,10 @@ export default function CoachDashboard() {
               <MessageSquare size={16} className="text-gray-400" />
               <button
                 onClick={() => setUnreadFilter(!unreadFilter)}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  unreadFilter
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${unreadFilter
                     ? 'bg-blue-500 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-600 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 С непрочитанными
               </button>
@@ -510,7 +509,7 @@ export default function CoachDashboard() {
             {filteredAndSortedClients.map((client) => (
               <button
                 key={client.id}
-                onClick={() => router.push(`/app/coach/${client.id}`)}
+                onClick={() => router.push(`/app/coordinator/${client.id}`)}
                 className="w-full p-6 hover:bg-gray-50 transition-colors text-left"
               >
                 <div className="flex items-center justify-between">

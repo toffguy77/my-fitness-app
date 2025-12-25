@@ -20,7 +20,7 @@ export interface InviteCode {
 
 export interface InviteCodeValidation {
     valid: boolean
-    coach_name?: string
+    coordinator_name?: string
     expires_at?: string
     remaining_uses?: number
 }

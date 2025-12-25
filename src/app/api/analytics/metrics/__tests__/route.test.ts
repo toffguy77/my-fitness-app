@@ -144,9 +144,9 @@ describe('Analytics Metrics API', () => {
     expect(data.error).toBe('Unauthorized')
   })
 
-  it('should allow access for coach role', async () => {
+  it('should allow access for coordinator role', async () => {
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coach-123' } },
+      data: { user: { id: 'coordinator-123' } },
       error: null,
     })
 
@@ -156,7 +156,7 @@ describe('Analytics Metrics API', () => {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: 'coach-123', role: 'coach' },
+            data: { id: 'coordinator-123', role: 'coordinator' },
             error: null,
           }),
         }
@@ -209,7 +209,7 @@ describe('Analytics Metrics API', () => {
 
     const response = await GET(request)
     
-    // Note: Currently the API allows coach access, but in production should check role
+    // Note: Currently the API allows coordinator access, but in production should check role
     // For now, we'll just verify it doesn't crash
     expect(response.status).toBeGreaterThanOrEqual(200)
   })

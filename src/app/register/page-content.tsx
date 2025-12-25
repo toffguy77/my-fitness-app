@@ -99,12 +99,12 @@ export default function RegisterPage() {
       // 2. Создаем профиль с ролью 'client' и статусом 'free'
       // ВАЖНО: Профиль создается всегда, даже если email не подтвержден,
       // чтобы пользователь мог войти после подтверждения email
-      let coachId: string | null = null
+      let coordinatorId: string | null = null
 
       // Если есть валидный инвайт-код, используем его
       if (inviteCode && codeValidation?.valid) {
         try {
-          const { data: coachIdData, error: codeError } = await supabase.rpc(
+          const { data: coordinatorIdData, error: codeError } = await supabase.rpc(
             'use_invite_code',
             {
               code_param: inviteCode.toUpperCase(),
@@ -116,15 +116,15 @@ export default function RegisterPage() {
             logger.warn('Register: ошибка использования инвайт-кода', {
               error: codeError.message,
             })
-            // Продолжаем регистрацию без тренера
+            // Продолжаем регистрацию без координатора
           } else {
-            coachId = coachIdData
+            coordinatorId = coordinatorIdData
           }
         } catch (err) {
           logger.warn('Register: ошибка использования инвайт-кода', {
             error: err instanceof Error ? err.message : String(err),
           })
-          // Продолжаем регистрацию без тренера
+          // Продолжаем регистрацию без координатора
         }
       }
 
@@ -135,7 +135,7 @@ export default function RegisterPage() {
         user_email: email,
         user_full_name: fullName || null,
         user_role: 'client',
-        user_coach_id: coachId || null,
+        user_coordinator_id: coordinatorId || null,
       })
 
       if (profileError) {
@@ -144,17 +144,17 @@ export default function RegisterPage() {
         return
       }
 
-      // Отправляем уведомление тренеру, если регистрация была по инвайт-коду
-      if (coachId && inviteCode && codeValidation?.valid) {
+      // Отправляем уведомление координатору, если регистрация была по инвайт-коду
+      if (coordinatorId && inviteCode && codeValidation?.valid) {
         try {
-          // Получаем данные тренера для уведомления
-          const { data: coachProfile } = await supabase
+          // Получаем данные координатора для уведомления
+          const { data: coordinatorProfile } = await supabase
             .from('profiles')
             .select('email, full_name')
-            .eq('id', coachId)
+            .eq('id', coordinatorId)
             .single()
 
-          if (coachProfile?.email) {
+          if (coordinatorProfile?.email) {
             // Отправляем email через API route (выполняется на сервере)
             try {
               const emailResponse = await fetch('/api/email/send', {
@@ -163,10 +163,10 @@ export default function RegisterPage() {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  to: coachProfile.email,
+                  to: coordinatorProfile.email,
                   template: 'invite_code_registration',
                   data: {
-                    coachName: coachProfile.full_name || undefined,
+                    coordinatorName: coordinatorProfile.full_name || undefined,
                     clientName: fullName || undefined,
                     clientEmail: email,
                     inviteCode: inviteCode.toUpperCase(),
@@ -175,26 +175,26 @@ export default function RegisterPage() {
               })
 
               if (emailResponse.ok) {
-                logger.info('Register: уведомление тренеру отправлено', {
-                  coachId,
+                logger.info('Register: уведомление координатору отправлено', {
+                  coordinatorId,
                   clientId: authData.user.id,
                 })
               } else {
-                logger.warn('Register: ошибка отправки уведомления тренеру', {
+                logger.warn('Register: ошибка отправки уведомления координатору', {
                   status: emailResponse.status,
-                  coachId,
+                  coordinatorId,
                 })
               }
             } catch (emailError) {
-              logger.warn('Register: ошибка отправки уведомления тренеру', {
+              logger.warn('Register: ошибка отправки уведомления координатору', {
                 error: emailError instanceof Error ? emailError.message : String(emailError),
-                coachId,
+                coordinatorId,
               })
             }
           }
         } catch (emailError) {
           // Не критично, продолжаем регистрацию
-          logger.warn('Register: ошибка отправки уведомления тренеру', {
+          logger.warn('Register: ошибка отправки уведомления координатору', {
             error: emailError instanceof Error ? emailError.message : String(emailError),
           })
         }
@@ -320,9 +320,9 @@ export default function RegisterPage() {
                 ) : null}
               </div>
             </div>
-            {codeValidation?.valid && codeValidation.coach_name && (
+            {codeValidation?.valid && codeValidation.coordinator_name && (
               <p className="mt-1 text-xs text-green-600">
-                ✓ Код валиден. Тренер: {codeValidation.coach_name}
+                ✓ Код валиден. Координатор: {codeValidation.coordinator_name}
               </p>
             )}
             {inviteCode.length === 8 && codeValidation?.valid === false && (

@@ -240,7 +240,7 @@ export default function MetricsDashboard() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">Чат с тренером</p>
+            <p className="text-sm text-gray-600 mb-1">Чат с координатором</p>
             <p className="text-2xl font-bold text-gray-900">
               {(metrics.featureAdoption.chat * 100).toFixed(0)}%
             </p>

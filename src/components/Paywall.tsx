@@ -16,7 +16,7 @@ interface PaywallProps {
 
 export default function Paywall({ 
   title = 'Доступно с Premium подпиской',
-  message = 'Подключите работу с тренером, чтобы получить доступ к расширенной аналитике, отчетам и персональным рекомендациям.',
+  message = 'Подключите работу с координатором, чтобы получить доступ к расширенной аналитике, отчетам и персональным рекомендациям.',
   showBenefits = true,
   showPreview = true,
   premiumUsersCount,
@@ -105,7 +105,7 @@ export default function Paywall({
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
             <p className="text-sm text-yellow-800 text-center">
-              Для активации Premium подписки обратитесь к администратору или вашему тренеру.
+              Для активации Premium подписки обратитесь к администратору или вашему координатору.
             </p>
           </div>
           
