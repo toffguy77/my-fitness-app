@@ -25,9 +25,9 @@ SET search_path = public
 AS $$
 DECLARE
   user_exists BOOLEAN;
-  max_retries INTEGER := 5;
+  max_retries INTEGER := 10;
   retry_count INTEGER := 0;
-  retry_delay INTERVAL := '100 milliseconds';
+  retry_delay INTERVAL := '200 milliseconds';
 BEGIN
   -- Проверяем, что профиль еще не существует
   IF EXISTS (SELECT 1 FROM profiles WHERE id = user_id) THEN
@@ -36,6 +36,7 @@ BEGIN
 
   -- Проверяем существование пользователя в auth.users
   -- Делаем несколько попыток с задержкой, так как пользователь может создаваться асинхронно
+  -- В Supabase Auth пользователь может создаваться с небольшой задержкой
   LOOP
     -- Проверяем существование пользователя в auth.users
     SELECT EXISTS (
@@ -47,12 +48,14 @@ BEGIN
 
     -- Если достигнуто максимальное количество попыток, выбрасываем ошибку
     IF retry_count >= max_retries THEN
-      RAISE EXCEPTION 'User with id % does not exist in auth.users after % attempts', user_id, max_retries;
+      RAISE EXCEPTION 'User with id % does not exist in auth.users after % attempts (waited %.1f seconds). Please try again or check if user was created successfully in auth.', 
+        user_id, max_retries, EXTRACT(EPOCH FROM retry_delay) * max_retries;
     END IF;
 
     -- Увеличиваем счетчик попыток и ждем перед следующей попыткой
+    -- Увеличиваем задержку с каждой попыткой (exponential backoff)
     retry_count := retry_count + 1;
-    PERFORM pg_sleep(EXTRACT(EPOCH FROM retry_delay));
+    PERFORM pg_sleep(EXTRACT(EPOCH FROM retry_delay) * retry_count);
   END LOOP;
 
   -- Теперь создаем профиль, так как пользователь точно существует

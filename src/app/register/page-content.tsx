@@ -220,11 +220,11 @@ export default function RegisterPage() {
       let profileError = null
       
       // Пробуем вызвать RPC функцию с user_coordinator_id
-      // Делаем несколько попыток с задержкой, так как пользователь может создаваться асинхронно
+      // Делаем несколько попыток с задержкой, так как пользователь может создаваться асинхронно в Supabase Auth
       let rpcError = null
       let retryCount = 0
-      const maxRetries = 3
-      const retryDelay = 200 // миллисекунды
+      const maxRetries = 5
+      const baseRetryDelay = 300 // миллисекунды
 
       while (retryCount < maxRetries) {
         const { error: error } = await supabase.rpc('create_user_profile', {
@@ -237,35 +237,46 @@ export default function RegisterPage() {
 
         rpcError = error
 
-        // Если ошибка связана с foreign key constraint, пробуем еще раз после задержки
+        // Если ошибка связана с отсутствием пользователя в auth.users или foreign key constraint, пробуем еще раз
         if (rpcError && (
+          rpcError.message?.includes('does not exist in auth.users') ||
           rpcError.message?.includes('foreign key constraint') ||
           rpcError.message?.includes('profiles_id_fkey') ||
           rpcError.message?.includes('violates foreign key')
         )) {
           retryCount++
           if (retryCount < maxRetries) {
-            logger.warn('Register: foreign key constraint error, retrying...', {
+            logger.warn('Register: пользователь еще не создан в auth.users, повторная попытка...', {
               attempt: retryCount,
               maxRetries,
-              userId: authData.user.id
+              userId: authData.user.id,
+              error: rpcError.message
             })
-            await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount))
+            // Exponential backoff: увеличиваем задержку с каждой попыткой
+            await new Promise(resolve => setTimeout(resolve, baseRetryDelay * retryCount))
             continue
+          } else {
+            // Если все попытки исчерпаны, логируем и пробуем прямой insert
+            logger.error('Register: пользователь не найден в auth.users после всех попыток, пробуем прямой insert', {
+              userId: authData.user.id,
+              maxRetries,
+              error: rpcError.message
+            })
           }
         }
 
-        // Если нет ошибки или ошибка не связана с foreign key, выходим из цикла
+        // Если нет ошибки или ошибка не связана с отсутствием пользователя, выходим из цикла
         break
       }
 
-      // Если RPC функция не найдена или имеет неправильную сигнатуру (например, user_coach_id),
-      // пробуем прямой insert
+      // Если RPC функция не найдена, имеет неправильную сигнатуру, или пользователь не существует в auth.users,
+      // пробуем прямой insert (который может сработать, если пользователь уже создан)
       if (rpcError && (
         rpcError.message?.includes('Could not find the function') || 
         rpcError.message?.includes('function') && rpcError.message?.includes('not found') ||
         rpcError.message?.includes('schema cache') ||
-        rpcError.message?.includes('user_coordinator_id')
+        rpcError.message?.includes('user_coordinator_id') ||
+        rpcError.message?.includes('does not exist in auth.users')
       )) {
         logger.warn('Register: RPC функция create_user_profile не найдена или имеет неправильную сигнатуру, используем прямой insert', {
           error: rpcError.message,
@@ -281,10 +292,11 @@ export default function RegisterPage() {
         }
 
         // Если RPC не сработал, пробуем прямой insert с повторными попытками
+        // Это может сработать, если пользователь уже создан в auth.users, но функция еще не видит его
         let insertError = null
         let insertRetryCount = 0
-        const maxInsertRetries = 3
-        const insertRetryDelay = 200
+        const maxInsertRetries = 8
+        const baseInsertRetryDelay = 400
 
         while (insertRetryCount < maxInsertRetries) {
           const { error: error } = await supabase
@@ -309,12 +321,14 @@ export default function RegisterPage() {
           )) {
             insertRetryCount++
             if (insertRetryCount < maxInsertRetries) {
-              logger.warn('Register: foreign key constraint error on direct insert, retrying...', {
+              logger.warn('Register: пользователь еще не создан в auth.users при прямом insert, повторная попытка...', {
                 attempt: insertRetryCount,
                 maxRetries: maxInsertRetries,
-                userId: authData.user.id
+                userId: authData.user.id,
+                waitTime: baseInsertRetryDelay * insertRetryCount
               })
-              await new Promise(resolve => setTimeout(resolve, insertRetryDelay * insertRetryCount))
+              // Exponential backoff
+              await new Promise(resolve => setTimeout(resolve, baseInsertRetryDelay * insertRetryCount))
               continue
             }
           }
@@ -328,19 +342,20 @@ export default function RegisterPage() {
         }
       } else if (rpcError) {
         // Другие ошибки RPC (не связанные с отсутствием функции)
-        // Если это ошибка foreign key constraint, пробуем прямой insert с повторными попытками
-        if (rpcError.message?.includes('foreign key constraint') ||
+        // Если это ошибка отсутствия пользователя или foreign key constraint, пробуем прямой insert с повторными попытками
+        if (rpcError.message?.includes('does not exist in auth.users') ||
+            rpcError.message?.includes('foreign key constraint') ||
             rpcError.message?.includes('profiles_id_fkey') ||
             rpcError.message?.includes('violates foreign key')) {
-          logger.warn('Register: foreign key constraint error in RPC, trying direct insert with retries', {
+          logger.warn('Register: пользователь не найден в auth.users или foreign key error в RPC, пробуем прямой insert с повторными попытками', {
             userId: authData.user.id,
             error: rpcError.message
           })
 
           let insertError = null
           let insertRetryCount = 0
-          const maxInsertRetries = 3
-          const insertRetryDelay = 200
+          const maxInsertRetries = 8
+          const baseInsertRetryDelay = 400
 
           while (insertRetryCount < maxInsertRetries) {
             const { error: error } = await supabase
@@ -364,7 +379,13 @@ export default function RegisterPage() {
             )) {
               insertRetryCount++
               if (insertRetryCount < maxInsertRetries) {
-                await new Promise(resolve => setTimeout(resolve, insertRetryDelay * insertRetryCount))
+                logger.warn('Register: прямой insert - пользователь еще не создан, повторная попытка...', {
+                  attempt: insertRetryCount,
+                  maxRetries: maxInsertRetries,
+                  userId: authData.user.id,
+                  waitTime: baseInsertRetryDelay * insertRetryCount
+                })
+                await new Promise(resolve => setTimeout(resolve, baseInsertRetryDelay * insertRetryCount))
                 continue
               }
             }
@@ -376,6 +397,10 @@ export default function RegisterPage() {
             profileError = insertError
           } else {
             // Прямой insert успешен, сбрасываем ошибку
+            logger.registration('Register: профиль создан через прямой insert после ошибки RPC', {
+              userId: authData.user.id,
+              email
+            })
             profileError = null
           }
         } else {
