@@ -375,9 +375,16 @@ function NutritionPageContent() {
       return
     }
 
+    logger.userAction('Nutrition: начало сохранения черновика', {
+      userId: user.id,
+      date: selectedDate,
+      mealsCount: meals.length,
+      totals
+    })
+
     // Валидация: проверяем, что введены данные хотя бы об одном приеме пищи
     if (totals.calories === 0 && totals.protein === 0 && totals.fats === 0 && totals.carbs === 0) {
-      logger.warn('Nutrition: попытка сохранения без данных о питании', { userId: user.id })
+      logger.userAction('Nutrition: попытка сохранения без данных о питании', { userId: user.id })
       setSaveError('Введите данные хотя бы об одном приеме пищи')
       return
     }
@@ -504,6 +511,11 @@ function NutritionPageContent() {
           userId: user.id,
           date: selectedDate,
         })
+        logger.userAction('Nutrition: ошибка сохранения черновика', {
+          userId: user.id,
+          date: selectedDate,
+          error: error.message
+        })
         setSaveError('Ошибка сохранения: ' + error.message)
         toast.error('Ошибка сохранения: ' + error.message)
       } else {
@@ -514,6 +526,12 @@ function NutritionPageContent() {
           mealsSaved: dateMeals.map(m => ({ id: m.id, title: m.title, weight: m.weight, totals: m.totals, per100: m.per100 })),
           savedMealsFromDB: savedData?.meals,
           savedMealsCount: Array.isArray(savedData?.meals) ? savedData.meals.length : 0
+        })
+        logger.userAction('Nutrition: черновик успешно сохранен', {
+          userId: user.id,
+          date: selectedDate,
+          mealsCount: dateMeals.length,
+          totals: aggregatedTotals
         })
 
         // Отслеживаем TTFV при первом сохранении
@@ -680,6 +698,13 @@ function NutritionPageContent() {
           carbs: totals.carbs,
         },
       })
+      logger.userAction('Nutrition: отправка отчета координатору', {
+        userId: user.id,
+        date: selectedDate,
+        dayType,
+        mealsCount: dateMeals.length,
+        totals: aggregatedTotals
+      })
 
       // Upsert: Обновить если есть, создать если нет
       const { error } = await supabase
@@ -703,6 +728,13 @@ function NutritionPageContent() {
           userId: user.id,
           date: selectedDate,
           dayType,
+        })
+        logger.userAction('Nutrition: отчет успешно отправлен координатору', {
+          userId: user.id,
+          date: selectedDate,
+          dayType,
+          mealsCount: dateMeals.length,
+          totals: aggregatedTotals
         })
         setIsCompleted(true)
         setStatus('submitted')

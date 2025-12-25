@@ -1,3 +1,5 @@
+// Unmock logger for these tests to use real implementation
+jest.unmock('@/utils/logger')
 import { logger, Logger, LogLevel } from '../logger'
 
 describe('Logger', () => {

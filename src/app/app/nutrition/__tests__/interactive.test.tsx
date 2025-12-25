@@ -40,6 +40,12 @@ jest.mock('@/utils/logger', () => ({
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
+    userFlow: jest.fn(),
+    registration: jest.fn(),
+    authentication: jest.fn(),
+    userAction: jest.fn(),
+    isDebugEnabled: jest.fn(() => false),
+    isUserFlowLoggingEnabled: jest.fn(() => false),
   },
 }))
 

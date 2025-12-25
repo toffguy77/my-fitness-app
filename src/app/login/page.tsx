@@ -22,19 +22,24 @@ function LoginPageContent() {
 
   useEffect(() => {
     const checkUser = async () => {
-      logger.debug('Login: проверка существующей сессии')
+      logger.userFlow('Login: проверка существующей сессии')
       const { data: { user }, error: userError } = await supabase.auth.getUser()
 
       if (userError) {
-        logger.warn('Login: ошибка проверки сессии', { error: userError.message })
+        logger.authentication('Login: ошибка проверки сессии', { error: userError.message })
         return
       }
 
       if (user) {
-        logger.info('Login: найдена активная сессия', { userId: user.id })
+        logger.authentication('Login: найдена активная сессия', { 
+          userId: user.id,
+          email: user.email,
+          emailConfirmed: !!user.email_confirmed_at
+        })
         setUser(user)
 
         // Загружаем профиль для определения роли
+        logger.userFlow('Login: загрузка профиля для определения роли', { userId: user.id })
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
@@ -53,8 +58,14 @@ function LoginPageContent() {
           redirectPath = '/app/coordinator'
         }
 
-        logger.info('Login: редирект авторизованного пользователя', { userId: user.id, role, redirectPath })
+        logger.authentication('Login: редирект авторизованного пользователя', { 
+          userId: user.id, 
+          role, 
+          redirectPath 
+        })
         router.push(redirectPath)
+      } else {
+        logger.userFlow('Login: активная сессия не найдена')
       }
     }
     checkUser()
@@ -66,18 +77,24 @@ function LoginPageContent() {
     setError(null)
     setMessage(null)
 
-    logger.info('Login: попытка входа', { email })
+    logger.authentication('Login: попытка входа', { email })
 
+    logger.userFlow('Login: вызов signInWithPassword', { email })
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
-      logger.error('Login: ошибка входа', error, { email })
+      logger.authentication('Login: ошибка входа', { 
+        email,
+        error: error.message,
+        errorCode: (error as any).code || 'unknown'
+      })
       
       // Проверяем, связана ли ошибка с неподтвержденным email
       if (error.message.includes('Email not confirmed') || error.message.includes('email not confirmed')) {
+        logger.userFlow('Login: email не подтвержден', { email })
         setNeedsEmailConfirmation(true)
         setError(
           'Email не подтвержден. Пожалуйста, проверьте вашу почту и перейдите по ссылке в письме. ' +
@@ -88,10 +105,16 @@ function LoginPageContent() {
       }
       setLoading(false)
     } else if (data.user) {
-      logger.info('Login: успешный вход', { userId: data.user.id, email })
+      logger.authentication('Login: успешный вход', { 
+        userId: data.user.id, 
+        email,
+        emailConfirmed: !!data.user.email_confirmed_at,
+        sessionId: data.session?.access_token?.substring(0, 20) || 'unknown'
+      })
       setMessage('Успешный вход! Перенаправляем...')
 
       // Определяем роль и редиректим
+      logger.userFlow('Login: загрузка профиля после успешного входа', { userId: data.user.id })
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
@@ -110,7 +133,11 @@ function LoginPageContent() {
         redirectPath = '/app/coordinator'
       }
 
-      logger.info('Login: редирект после успешного входа', { userId: data.user.id, role, redirectPath })
+      logger.authentication('Login: редирект после успешного входа', { 
+        userId: data.user.id, 
+        role, 
+        redirectPath 
+      })
 
       setTimeout(() => {
         router.push(redirectPath)
@@ -125,6 +152,7 @@ function LoginPageContent() {
       return
     }
 
+    logger.userFlow('Login: повторная отправка письма подтверждения', { email })
     setResendingEmail(true)
     setError(null)
 
@@ -138,12 +166,15 @@ function LoginPageContent() {
       })
 
       if (resendError) {
+        logger.error('Login: ошибка повторной отправки письма', resendError, { email })
         setError('Ошибка отправки письма: ' + resendError.message)
       } else {
+        logger.authentication('Login: письмо подтверждения отправлено повторно', { email })
         setMessage('Письмо с подтверждением отправлено! Проверьте вашу почту.')
         setNeedsEmailConfirmation(false)
       }
     } catch (err) {
+      logger.error('Login: исключение при повторной отправке письма', err, { email })
       setError(err instanceof Error ? err.message : 'Произошла ошибка при отправке письма')
     } finally {
       setResendingEmail(false)

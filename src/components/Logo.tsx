@@ -17,7 +17,6 @@ export default function Logo({ width = 200, height = 60, className = '', onClick
       viewBox="0 0 200 60" 
       fill="none" 
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
     >
       {/* Left Weight */}
       <rect x="20" y="18" width="6" height="24" rx="1" fill="#F4F4F5"/>
@@ -47,7 +46,7 @@ export default function Logo({ width = 200, height = 60, className = '', onClick
     return (
       <button
         onClick={onClick}
-        className="hover:opacity-80 transition-opacity"
+        className={`hover:opacity-80 transition-opacity ${className}`}
         aria-label="BURCEV"
       >
         {svgContent}

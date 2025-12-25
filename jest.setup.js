@@ -99,6 +99,30 @@ if (typeof global.TextEncoder === 'undefined') {
   global.TextDecoder = TextDecoder
 }
 
+// Mock logger with all methods
+// Note: Logger tests will unmock this module using jest.unmock()
+jest.mock('@/utils/logger', () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    userFlow: jest.fn(),
+    registration: jest.fn(),
+    authentication: jest.fn(),
+    userAction: jest.fn(),
+    isDebugEnabled: jest.fn(() => false),
+    isUserFlowLoggingEnabled: jest.fn(() => false),
+  },
+  LogLevel: {
+    DEBUG: 0,
+    INFO: 1,
+    WARN: 2,
+    ERROR: 3,
+    NONE: 4,
+  },
+}))
+
 // Silence noisy console errors in tests (act warnings, jsdom navigation)
 const originalConsoleError = console.error
 console.error = (...args) => {

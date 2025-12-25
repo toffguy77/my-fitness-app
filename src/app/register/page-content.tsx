@@ -37,16 +37,29 @@ export default function RegisterPage() {
   // Валидация инвайт-кода
   const validateInviteCode = async (code: string) => {
     if (!code || code.length !== 8) {
+      logger.userFlow('Register: валидация инвайт-кода - неверная длина', { codeLength: code.length })
       setCodeValidation({ valid: false })
       return
     }
 
     setValidatingCode(true)
+    logger.userFlow('Register: начало валидации инвайт-кода', { code: code.toUpperCase() })
     try {
       const response = await fetch(`/api/invite-codes/validate?code=${encodeURIComponent(code)}`)
       const data: InviteCodeValidation = await response.json()
       setCodeValidation(data)
+      if (data.valid) {
+        logger.registration('Register: инвайт-код валиден', { 
+          code: code.toUpperCase(), 
+          coordinatorName: data.coordinator_name,
+          expiresAt: data.expires_at,
+          remainingUses: data.remaining_uses
+        })
+      } else {
+        logger.userFlow('Register: инвайт-код невалиден', { code: code.toUpperCase() })
+      }
     } catch (error) {
+      logger.error('Register: ошибка валидации инвайт-кода', error, { code: code.toUpperCase() })
       setCodeValidation({ valid: false })
     } finally {
       setValidatingCode(false)
@@ -74,8 +87,16 @@ export default function RegisterPage() {
     setError(null)
     setMessage(null)
 
+    logger.registration('Register: начало регистрации', { 
+      email, 
+      hasInviteCode: !!inviteCode,
+      inviteCodeValid: codeValidation?.valid || false,
+      hasFullName: !!fullName
+    })
+
     try {
       // 1. Создаем пользователя в auth
+      logger.userFlow('Register: создание пользователя в auth', { email })
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -85,16 +106,27 @@ export default function RegisterPage() {
       })
 
       if (authError) {
+        logger.registration('Register: ошибка создания пользователя в auth', { 
+          error: authError.message,
+          email 
+        })
         setError(authError.message)
         setLoading(false)
         return
       }
 
       if (!authData.user) {
+        logger.error('Register: пользователь не создан', new Error('User is null'), { email })
         setError('Ошибка создания пользователя')
         setLoading(false)
         return
       }
+
+      logger.registration('Register: пользователь создан в auth', { 
+        userId: authData.user.id,
+        email: authData.user.email,
+        emailConfirmed: !!authData.user.email_confirmed_at
+      })
 
       // 2. Создаем профиль с ролью 'client' и статусом 'free'
       // ВАЖНО: Профиль создается всегда, даже если email не подтвержден,
@@ -103,6 +135,10 @@ export default function RegisterPage() {
 
       // Если есть валидный инвайт-код, используем его
       if (inviteCode && codeValidation?.valid) {
+        logger.userFlow('Register: использование инвайт-кода', { 
+          code: inviteCode.toUpperCase(),
+          userId: authData.user.id
+        })
         try {
           const { data: coordinatorIdData, error: codeError } = await supabase.rpc(
             'use_invite_code',
@@ -113,23 +149,39 @@ export default function RegisterPage() {
           )
 
           if (codeError) {
-            logger.warn('Register: ошибка использования инвайт-кода', {
+            logger.registration('Register: ошибка использования инвайт-кода', {
               error: codeError.message,
+              code: inviteCode.toUpperCase(),
+              userId: authData.user.id
             })
             // Продолжаем регистрацию без координатора
           } else {
             coordinatorId = coordinatorIdData
+            logger.registration('Register: инвайт-код успешно использован', {
+              code: inviteCode.toUpperCase(),
+              userId: authData.user.id,
+              coordinatorId
+            })
           }
         } catch (err) {
-          logger.warn('Register: ошибка использования инвайт-кода', {
-            error: err instanceof Error ? err.message : String(err),
+          logger.error('Register: исключение при использовании инвайт-кода', err, {
+            code: inviteCode.toUpperCase(),
+            userId: authData.user.id
           })
           // Продолжаем регистрацию без координатора
         }
+      } else {
+        logger.userFlow('Register: регистрация без инвайт-кода', { userId: authData.user.id })
       }
 
       // Используем функцию create_user_profile для безопасного создания профиля
       // Эта функция обходит RLS, так как использует SECURITY DEFINER
+      logger.userFlow('Register: создание профиля пользователя', {
+        userId: authData.user.id,
+        email,
+        fullName: fullName || null,
+        coordinatorId: coordinatorId || null
+      })
       const { error: profileError } = await supabase.rpc('create_user_profile', {
         user_id: authData.user.id,
         user_email: email,
@@ -139,10 +191,20 @@ export default function RegisterPage() {
       })
 
       if (profileError) {
+        logger.error('Register: ошибка создания профиля', profileError, {
+          userId: authData.user.id,
+          email
+        })
         setError('Ошибка создания профиля: ' + profileError.message)
         setLoading(false)
         return
       }
+
+      logger.registration('Register: профиль успешно создан', {
+        userId: authData.user.id,
+        email,
+        coordinatorId: coordinatorId || null
+      })
 
       // Отправляем уведомление координатору, если регистрация была по инвайт-коду
       if (coordinatorId && inviteCode && codeValidation?.valid) {
@@ -203,6 +265,10 @@ export default function RegisterPage() {
       // Проверяем, требуется ли подтверждение email
       if (authData.user && !authData.user.email_confirmed_at) {
         // Email не подтвержден - показываем сообщение и предлагаем отправить письмо повторно
+        logger.registration('Register: регистрация завершена, требуется подтверждение email', {
+          userId: authData.user.id,
+          email
+        })
         setNeedsEmailConfirmation(true)
         setMessage(
           'Регистрация успешна! Пожалуйста, проверьте вашу почту и подтвердите email адрес. ' +
@@ -211,6 +277,10 @@ export default function RegisterPage() {
         setLoading(false)
       } else {
         // Email подтвержден - перенаправляем
+        logger.registration('Register: регистрация завершена, email подтвержден, редирект на dashboard', {
+          userId: authData.user.id,
+          email
+        })
         setMessage('Регистрация успешна! Перенаправляем...')
 
         setTimeout(() => {
@@ -227,6 +297,7 @@ export default function RegisterPage() {
   const handleResendConfirmationEmail = async () => {
     if (!email) return
 
+    logger.userFlow('Register: повторная отправка письма подтверждения', { email })
     setResendingEmail(true)
     setError(null)
 
@@ -240,12 +311,15 @@ export default function RegisterPage() {
       })
 
       if (resendError) {
+        logger.error('Register: ошибка повторной отправки письма', resendError, { email })
         setError('Ошибка отправки письма: ' + resendError.message)
       } else {
+        logger.registration('Register: письмо подтверждения отправлено повторно', { email })
         setMessage('Письмо с подтверждением отправлено! Проверьте вашу почту.')
         setNeedsEmailConfirmation(false)
       }
     } catch (err) {
+      logger.error('Register: исключение при повторной отправке письма', err, { email })
       setError(err instanceof Error ? err.message : 'Произошла ошибка при отправке письма')
     } finally {
       setResendingEmail(false)

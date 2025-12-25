@@ -151,6 +151,12 @@ function SettingsPageContent() {
         setMessage(null)
 
         logger.info('Settings: сохранение профиля', { userId: user.id })
+        logger.userAction('Settings: обновление профиля', {
+            userId: user.id,
+            hasFullName: !!fullName,
+            hasPhone: !!phone,
+            profileVisibility
+        })
 
         try {
             const { error: updateError } = await supabase
@@ -164,9 +170,18 @@ function SettingsPageContent() {
 
             if (updateError) {
                 logger.error('Settings: ошибка сохранения профиля', updateError, { userId: user.id })
+                logger.userAction('Settings: ошибка обновления профиля', {
+                    userId: user.id,
+                    error: updateError.message
+                })
                 setError('Ошибка сохранения: ' + updateError.message)
             } else {
                 logger.info('Settings: профиль успешно сохранен', { userId: user.id })
+                logger.userAction('Settings: профиль успешно обновлен', {
+                    userId: user.id,
+                    hasFullName: !!fullName,
+                    hasPhone: !!phone
+                })
                 setMessage('Профиль успешно обновлен')
                 // Обновляем локальный профиль
                 setProfile({
@@ -209,6 +224,7 @@ function SettingsPageContent() {
 
         setChangingPassword(true)
         logger.info('Settings: смена пароля', { userId: user.id })
+        logger.userAction('Settings: попытка смены пароля', { userId: user.id })
 
         try {
             // В Supabase нет прямого API для проверки текущего пароля
@@ -220,9 +236,14 @@ function SettingsPageContent() {
 
             if (updateError) {
                 logger.error('Settings: ошибка смены пароля', updateError, { userId: user.id })
+                logger.userAction('Settings: ошибка смены пароля', {
+                    userId: user.id,
+                    error: updateError.message
+                })
                 setPasswordError('Ошибка смены пароля: ' + updateError.message)
             } else {
                 logger.info('Settings: пароль успешно изменен', { userId: user.id })
+                logger.userAction('Settings: пароль успешно изменен', { userId: user.id })
                 setPasswordMessage('Пароль успешно изменен')
                 setCurrentPassword('')
                 setNewPassword('')
@@ -239,11 +260,17 @@ function SettingsPageContent() {
 
     const handleLogout = async () => {
         logger.info('Settings: выход из системы')
+        logger.userAction('Settings: выход из системы', { userId: user?.id })
         const { error } = await supabase.auth.signOut()
         if (error) {
-            logger.error('Settings: ошибка выхода', error, {})
+            logger.error('Settings: ошибка выхода', error, { userId: user?.id })
+            logger.userAction('Settings: ошибка выхода из системы', {
+                userId: user?.id,
+                error: error.message
+            })
         } else {
-            logger.info('Settings: успешный выход')
+            logger.info('Settings: успешный выход', { userId: user?.id })
+            logger.authentication('Settings: пользователь вышел из системы', { userId: user?.id })
         }
         router.push('/login')
         router.refresh()

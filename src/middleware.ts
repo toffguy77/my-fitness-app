@@ -90,6 +90,7 @@ export async function middleware(request: NextRequest) {
       if (isPublicRoute) {
         try {
           logger.debug('Middleware: доступ к публичному маршруту разрешен', { pathname })
+          logger.userFlow('Middleware: неавторизованный доступ к публичному маршруту', { pathname })
         } catch {
           // Игнорируем ошибки логирования
         }
@@ -98,6 +99,7 @@ export async function middleware(request: NextRequest) {
       // Редирект на логин для защищенных маршрутов
       try {
         logger.info('Middleware: редирект на логин (неавторизованный пользователь)', { pathname })
+        logger.userFlow('Middleware: редирект на логин - неавторизованный доступ к защищенному маршруту', { pathname })
       } catch {
         // Игнорируем ошибки логирования
       }
@@ -238,6 +240,13 @@ export async function middleware(request: NextRequest) {
 
     try {
       logger.debug('Middleware: доступ разрешен', { userId: user.id, pathname })
+      logger.userFlow('Middleware: навигация пользователя', {
+        userId: user.id,
+        pathname,
+        role,
+        isPremium,
+        method: request.method
+      })
     } catch {
       // Игнорируем ошибки логирования
     }

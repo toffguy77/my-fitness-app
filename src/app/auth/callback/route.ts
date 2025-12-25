@@ -65,13 +65,15 @@ export async function GET(request: NextRequest) {
     )
 
     try {
+      logger.userFlow('Auth callback: начало обмена кода на сессию', { codeLength: code.length })
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
       if (exchangeError) {
-        logger.error('Auth callback: ошибка обмена кода на сессию', exchangeError)
+        logger.error('Auth callback: ошибка обмена кода на сессию', exchangeError, { codeLength: code.length })
         return NextResponse.redirect(new URL(`/login?error=invalid_code&message=${encodeURIComponent(exchangeError.message)}`, requestUrl))
       }
 
+      logger.userFlow('Auth callback: код успешно обменян на сессию')
       // Получаем пользователя после обмена кода
       const { data: { user }, error: userError } = await supabase.auth.getUser()
 
@@ -80,7 +82,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL('/login?error=user_not_found', requestUrl))
       }
 
-      logger.info('Auth callback: успешное подтверждение email', { userId: user.id })
+      logger.authentication('Auth callback: успешное подтверждение email', { 
+        userId: user.id,
+        email: user.email,
+        emailConfirmed: !!user.email_confirmed_at
+      })
 
       // Редиректим на указанную страницу или дашборд
       // Создаем redirect response и копируем cookies из response объекта

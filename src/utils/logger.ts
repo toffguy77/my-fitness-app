@@ -19,6 +19,8 @@ class Logger {
     private level: LogLevel;
     private isDevelopment: boolean;
     private isClient: boolean;
+    private isDebugMode: boolean;
+    private enableUserFlowLogging: boolean;
 
     constructor() {
         // Определяем среду выполнения
@@ -34,6 +36,17 @@ class Logger {
         const defaultLevel = this.isDevelopment ? LogLevel.DEBUG : LogLevel.INFO;
 
         this.level = this.parseLogLevel(envLevel) ?? defaultLevel;
+
+        // Проверяем debug режим (детальное логирование для отладки первых пользователей)
+        const debugMode = this.isClient
+            ? process.env.NEXT_PUBLIC_DEBUG_MODE === 'true'
+            : process.env.DEBUG_MODE === 'true';
+        this.isDebugMode = debugMode || this.isDevelopment;
+
+        // Включаем логирование flow пользователя если включен debug режим
+        this.enableUserFlowLogging = this.isDebugMode || 
+            (this.isClient ? process.env.NEXT_PUBLIC_ENABLE_USER_FLOW_LOGGING === 'true' 
+                          : process.env.ENABLE_USER_FLOW_LOGGING === 'true');
     }
 
     private parseLogLevel(level?: string): LogLevel | null {
@@ -105,6 +118,61 @@ class Logger {
      */
     debug(message: string, context?: LogContext): void {
         this.log(LogLevel.DEBUG, 'DEBUG', message, context);
+    }
+
+    /**
+     * Детальное логирование flow пользователя (регистрация, авторизация, действия)
+     * Логируется только если включен debug режим или ENABLE_USER_FLOW_LOGGING
+     */
+    userFlow(action: string, context?: LogContext): void {
+        if (this.enableUserFlowLogging) {
+            this.log(LogLevel.DEBUG, 'USER_FLOW', `[User Flow] ${action}`, context);
+        }
+    }
+
+    /**
+     * Логирование регистрации пользователя
+     */
+    registration(action: string, context?: LogContext): void {
+        if (this.enableUserFlowLogging) {
+            this.log(LogLevel.INFO, 'REGISTRATION', `[Registration] ${action}`, context);
+        } else {
+            this.info(`Registration: ${action}`, context);
+        }
+    }
+
+    /**
+     * Логирование авторизации пользователя
+     */
+    authentication(action: string, context?: LogContext): void {
+        if (this.enableUserFlowLogging) {
+            this.log(LogLevel.INFO, 'AUTH', `[Auth] ${action}`, context);
+        } else {
+            this.info(`Auth: ${action}`, context);
+        }
+    }
+
+    /**
+     * Логирование действий пользователя в приложении
+     */
+    userAction(action: string, context?: LogContext): void {
+        if (this.enableUserFlowLogging) {
+            this.log(LogLevel.DEBUG, 'USER_ACTION', `[User Action] ${action}`, context);
+        }
+    }
+
+    /**
+     * Проверка включен ли debug режим
+     */
+    isDebugEnabled(): boolean {
+        return this.isDebugMode;
+    }
+
+    /**
+     * Проверка включено ли логирование flow пользователя
+     */
+    isUserFlowLoggingEnabled(): boolean {
+        return this.enableUserFlowLogging;
     }
 
     /**
