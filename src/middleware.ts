@@ -1,11 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { logger } from '@/utils/logger'
+import { metricsCollector } from '@/utils/metrics/collector'
 
 export async function middleware(request: NextRequest) {
+  const startTime = Date.now()
+  const method = request.method
+  const pathname = request.nextUrl.pathname
+  
   try {
     const response = NextResponse.next()
-    const pathname = request.nextUrl.pathname
 
     // Безопасное логирование
     try {
@@ -124,17 +128,40 @@ export async function middleware(request: NextRequest) {
 
     // Если пользователь авторизован
     // Загружаем профиль
+    // Используем maybeSingle() вместо single() для обработки случая, когда профиль еще не создан
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, subscription_status, subscription_tier, subscription_end_date')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     if (profileError) {
       try {
         // Безопасное логирование ошибки профиля
         const errorMessage = profileError.message || JSON.stringify(profileError);
         logger.error('Middleware: ошибка загрузки профиля', new Error(errorMessage), { userId: user.id, pathname })
+        
+        // Record database error metric
+        try {
+          metricsCollector.counter(
+            'errors_database_total',
+            'Total number of database errors',
+            {
+              code: profileError.code || 'unknown',
+            }
+          )
+        } catch {
+          // Ignore metrics errors
+        }
+      } catch {
+        // Игнорируем ошибки логирования
+      }
+    }
+
+    // Если профиль не существует (новый пользователь), логируем это
+    if (!profile && !profileError) {
+      try {
+        logger.debug('Middleware: профиль не найден (новый пользователь, возможно еще не прошел onboarding)', { userId: user.id, pathname })
       } catch {
         // Игнорируем ошибки логирования
       }
@@ -166,6 +193,20 @@ export async function middleware(request: NextRequest) {
         isSuperAdmin,
         pathname,
       })
+      
+      // Record subscription metrics in middleware
+      try {
+        if (role === 'client') {
+          metricsCollector.gauge(
+            'subscriptions_active_gauge',
+            'Number of active subscriptions',
+            isPremium ? 1 : 0,
+            { tier: subscriptionTier }
+          )
+        }
+      } catch {
+        // Ignore metrics errors
+      }
     } catch {
       // Игнорируем ошибки логирования
     }

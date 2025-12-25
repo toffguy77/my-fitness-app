@@ -736,6 +736,21 @@ function NutritionPageContent() {
           mealsCount: dateMeals.length,
           totals: aggregatedTotals
         })
+        
+        // Record daily log completion metric
+        try {
+          const { metricsCollector } = require('@/utils/metrics/collector')
+          metricsCollector.counter(
+            'daily_logs_completed_total',
+            'Total number of completed daily logs',
+            {
+              role: 'client',
+            }
+          )
+        } catch {
+          // Ignore metrics errors
+        }
+        
         setIsCompleted(true)
         setStatus('submitted')
         toast.success('Отчет отправлен координатору')

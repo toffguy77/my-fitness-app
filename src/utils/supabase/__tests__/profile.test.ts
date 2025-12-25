@@ -24,6 +24,7 @@ describe('Profile Utilities', () => {
       eq: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       single: jest.fn(),
+      maybeSingle: jest.fn(),
     }
 
     mockSupabase = {
@@ -48,7 +49,7 @@ describe('Profile Utilities', () => {
       }
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: mockProfile,
         error: null,
       })
@@ -65,7 +66,7 @@ describe('Profile Utilities', () => {
       } as User
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: null,
         error: { message: 'Not found' },
       })

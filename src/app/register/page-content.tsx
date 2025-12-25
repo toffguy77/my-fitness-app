@@ -93,6 +93,20 @@ export default function RegisterPage() {
       inviteCodeValid: codeValidation?.valid || false,
       hasFullName: !!fullName
     })
+    
+    // Record registration start metric
+    try {
+      const { metricsCollector } = require('@/utils/metrics/collector')
+      metricsCollector.counter(
+        'registrations_total',
+        'Total number of registration attempts',
+        {
+          source: inviteCode ? 'invite_code' : 'direct',
+        }
+      )
+    } catch {
+      // Ignore metrics errors
+    }
 
     try {
       // 1. Создаем пользователя в auth
@@ -281,6 +295,21 @@ export default function RegisterPage() {
           userId: authData.user.id,
           email
         })
+        
+        // Record completed registration metric
+        try {
+          const { metricsCollector } = require('@/utils/metrics/collector')
+          metricsCollector.counter(
+            'registrations_completed_total',
+            'Total number of completed registrations',
+            {
+              source: inviteCode ? 'invite_code' : 'direct',
+            }
+          )
+        } catch {
+          // Ignore metrics errors
+        }
+        
         setMessage('Регистрация успешна! Перенаправляем...')
 
         setTimeout(() => {

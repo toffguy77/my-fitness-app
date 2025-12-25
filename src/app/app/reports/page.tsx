@@ -46,7 +46,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      logger.debug('Reports: начало загрузки данных')
+        logger.debug('Reports: начало загрузки данных')
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
@@ -62,6 +62,21 @@ export default function ReportsPage() {
         const subscriptionInfo = await checkSubscriptionStatus(user.id)
         const premium = subscriptionInfo.isActive
         setIsPremium(premium)
+        
+        // Record report view metric
+        try {
+          const { metricsCollector } = require('@/utils/metrics/collector')
+          metricsCollector.counter(
+            'reports_viewed_total',
+            'Total number of report views',
+            {
+              role: profile?.role || 'client',
+            }
+          )
+        } catch {
+          // Ignore metrics errors
+        }
+        
         logger.debug('Reports: статус Premium', {
           userId: user.id,
           isPremium: premium,

@@ -37,10 +37,16 @@ export async function getUserProfile(user: User): Promise<UserProfile | null> {
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (error) {
     logger.error('Profile: ошибка загрузки профиля', error, { userId: user.id })
+    return null
+  }
+
+  // Если профиль не найден (новый пользователь), возвращаем null
+  if (!data) {
+    logger.debug('Profile: профиль не найден (новый пользователь, возможно еще не прошел onboarding)', { userId: user.id })
     return null
   }
 

@@ -27,6 +27,7 @@ describe('Profile Utilities Extended Tests', () => {
       eq: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       single: jest.fn(),
+      maybeSingle: jest.fn(),
     }
 
     mockSupabase = {
@@ -41,7 +42,7 @@ describe('Profile Utilities Extended Tests', () => {
       const mockUser: User = { id: 'user-123' } as User
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: {
           id: 'user-123',
           role: 'client',
@@ -83,7 +84,7 @@ describe('Profile Utilities Extended Tests', () => {
       }
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: fullProfile,
         error: null,
       })
@@ -97,7 +98,7 @@ describe('Profile Utilities Extended Tests', () => {
       const mockUser: User = { id: 'user-123' } as User
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: null,
         error: { message: 'Network error', code: 'PGRST301' },
       })
@@ -111,7 +112,7 @@ describe('Profile Utilities Extended Tests', () => {
       const mockUser: User = { id: 'user-123' } as User
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: null,
         error: { message: 'Request timeout', code: 'ETIMEDOUT' },
       })
@@ -194,7 +195,7 @@ describe('Profile Utilities Extended Tests', () => {
       const queryBuilder = mockSupabase.from()
       queryBuilder.single.mockResolvedValue({
         data: null,
-        error: null,
+        error: { message: 'Not found' },
       })
 
       const result = await isSuperAdmin('user-123')
@@ -315,7 +316,7 @@ describe('Profile Utilities Extended Tests', () => {
       const mockUser: User = { id: '' } as User
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: null,
         error: { message: 'Invalid ID' },
       })
@@ -330,7 +331,7 @@ describe('Profile Utilities Extended Tests', () => {
       const mockUser: User = { id: longId } as User
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: { id: longId, role: 'client' },
         error: null,
       })
@@ -345,7 +346,7 @@ describe('Profile Utilities Extended Tests', () => {
       const mockUser: User = { id: specialId } as User
 
       const queryBuilder = mockSupabase.from()
-      queryBuilder.single.mockResolvedValue({
+      queryBuilder.maybeSingle.mockResolvedValue({
         data: null,
         error: { message: 'Invalid ID' },
       })

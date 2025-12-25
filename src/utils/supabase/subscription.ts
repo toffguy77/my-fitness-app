@@ -78,6 +78,29 @@ export async function checkSubscriptionStatus(userId: string): Promise<Subscript
     endDate
   })
 
+  // Record subscription metrics
+  try {
+    const { metricsCollector } = require('../metrics/collector')
+    metricsCollector.counter(
+      'subscriptions_total',
+      'Total number of subscriptions',
+      {
+        status: actualStatus,
+        tier,
+      }
+    )
+    
+    if (isActive) {
+      metricsCollector.gaugeInc(
+        'subscriptions_active_gauge',
+        'Number of active subscriptions',
+        { tier }
+      )
+    }
+  } catch {
+    // Ignore metrics errors
+  }
+
   return {
     status: actualStatus,
     tier,

@@ -863,6 +863,20 @@ export default function ClientDashboard() {
                                   checkAchievementsAfterWeightLog().catch((err) => {
                                     logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
                                   })
+                                  
+                                  // Record weight logged metric
+                                  try {
+                                    const { metricsCollector } = require('@/utils/metrics/collector')
+                                    metricsCollector.counter(
+                                      'weight_logged_total',
+                                      'Total number of weight logs',
+                                      {
+                                        role: profile?.role || 'client',
+                                      }
+                                    )
+                                  } catch {
+                                    // Ignore metrics errors
+                                  }
                                 }
                               } else {
                                 const { error } = await supabase
@@ -883,6 +897,20 @@ export default function ClientDashboard() {
                                   checkAchievementsAfterWeightLog().catch((err) => {
                                     logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
                                   })
+                                  
+                                  // Record weight logged metric
+                                  try {
+                                    const { metricsCollector } = require('@/utils/metrics/collector')
+                                    metricsCollector.counter(
+                                      'weight_logged_total',
+                                      'Total number of weight logs',
+                                      {
+                                        role: profile?.role || 'client',
+                                      }
+                                    )
+                                  } catch {
+                                    // Ignore metrics errors
+                                  }
                                 }
                               }
                               router.refresh()

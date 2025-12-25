@@ -105,6 +105,50 @@ export function trackEvent(
     timestamp: Date.now(),
   }
 
+  // Record metrics
+  try {
+    const { metricsCollector } = require('../metrics/collector')
+    const role = properties?.role || 'unknown'
+    
+    // Track page views
+    if (type === 'page_view') {
+      metricsCollector.counter(
+        'page_views_total',
+        'Total number of page views',
+        {
+          page: name,
+          role: String(role),
+        }
+      )
+    }
+    
+    // Track user actions
+    if (type === 'feature_used' || type === 'button_click' || type === 'form_submit') {
+      metricsCollector.counter(
+        'user_actions_total',
+        'Total number of user actions',
+        {
+          action: name,
+          role: String(role),
+          feature: properties?.feature || 'unknown',
+        }
+      )
+    }
+    
+    // Track sessions
+    if (type === 'page_view' && name === 'app_loaded') {
+      metricsCollector.counter(
+        'sessions_total',
+        'Total number of sessions',
+        {
+          role: String(role),
+        }
+      )
+    }
+  } catch {
+    // Ignore metrics errors
+  }
+
   // Отправляем на сервер
   sendEventToServer(event).catch(() => {
     // Ошибки уже обработаны в sendEventToServer

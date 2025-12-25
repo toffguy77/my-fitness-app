@@ -196,6 +196,35 @@ class Logger {
      * Используется для критических ошибок и исключений
      */
     error(message: string, error?: Error | unknown, context?: LogContext): void {
+        // Record error metrics
+        try {
+            const { metricsCollector } = require('./metrics/collector')
+            const errorType = error instanceof Error ? error.constructor.name : 'unknown'
+            const errorCode = (error as any)?.code || (error as any)?.status || 'unknown'
+            const severity = this.isCriticalError(error) ? 'critical' : 'warning'
+            
+            metricsCollector.counter(
+                'errors_total',
+                'Total number of errors',
+                {
+                    type: this.getErrorType(message, error),
+                    error_code: String(errorCode),
+                    severity,
+                }
+            )
+
+            if (severity === 'critical') {
+                metricsCollector.counter(
+                    'errors_critical_total',
+                    'Total number of critical errors',
+                    {
+                        type: this.getErrorType(message, error),
+                    }
+                )
+            }
+        } catch {
+            // Ignore metrics errors to prevent infinite loops
+        }
         let errorObj: Error | undefined;
 
         if (error instanceof Error) {
@@ -254,6 +283,50 @@ class Logger {
      */
     setLevel(level: LogLevel): void {
         this.level = level;
+    }
+
+    /**
+     * Determine if error is critical
+     */
+    private isCriticalError(error?: Error | unknown): boolean {
+        if (!error) return false;
+        if (error instanceof Error) {
+            const message = error.message.toLowerCase();
+            return message.includes('critical') || 
+                   message.includes('fatal') || 
+                   message.includes('database') ||
+                   message.includes('connection') ||
+                   message.includes('environment');
+        }
+        return false;
+    }
+
+    /**
+     * Get error type from message and error
+     */
+    private getErrorType(message: string, error?: Error | unknown): string {
+        const msg = message.toLowerCase();
+        
+        if (msg.includes('auth') || msg.includes('session') || msg.includes('login')) {
+            return 'auth';
+        }
+        if (msg.includes('database') || msg.includes('supabase') || msg.includes('pg')) {
+            return 'database';
+        }
+        if (msg.includes('validation') || msg.includes('invalid')) {
+            return 'validation';
+        }
+        if (msg.includes('middleware')) {
+            return 'middleware';
+        }
+        if (error instanceof Error) {
+            const errorMsg = error.message.toLowerCase();
+            if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+                return 'network';
+            }
+        }
+        
+        return 'unknown';
     }
 }
 

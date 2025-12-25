@@ -42,11 +42,26 @@ export function trackTTFVStart() {
 export function trackTTFVComplete(action: string) {
   if (firstValueTime) {
     const ttfv = Date.now() - firstValueTime
+    const ttfvSeconds = ttfv / 1000
     trackEvent('feature_used', 'first_value', {
       action,
       ttfv_ms: ttfv,
-      ttfv_seconds: Math.round(ttfv / 1000),
+      ttfv_seconds: Math.round(ttfvSeconds),
     })
+    
+    // Record TTFV metric
+    try {
+      const { metricsCollector } = require('../metrics/collector')
+      metricsCollector.histogram(
+        'ttfv_seconds',
+        'Time to First Value in seconds',
+        ttfvSeconds,
+        { action }
+      )
+    } catch {
+      // Ignore metrics errors
+    }
+    
     firstValueTime = null
   }
 }
@@ -59,6 +74,23 @@ export function trackDAU() {
   trackEvent('feature_used', 'daily_active_user', {
     date: today,
   })
+  
+  // Record DAU metric
+  try {
+    const { metricsCollector } = require('../metrics/collector')
+    metricsCollector.gaugeInc(
+      'users_dau_gauge',
+      'Daily active users gauge',
+      { date: today }
+    )
+    metricsCollector.counter(
+      'users_active_total',
+      'Total number of active users',
+      {}
+    )
+  } catch {
+    // Ignore metrics errors
+  }
 }
 
 /**
@@ -69,18 +101,50 @@ export function trackOnboardingStart() {
   trackEvent('onboarding_start', 'onboarding_started', {
     timestamp: onboardingStartTime,
   })
+  
+  // Record onboarding start metric
+  try {
+    const { metricsCollector } = require('../metrics/collector')
+    metricsCollector.counter(
+      'onboarding_started_total',
+      'Total number of onboarding starts',
+      {}
+    )
+  } catch {
+    // Ignore metrics errors
+  }
 }
 
 export function trackOnboardingComplete(step: number, totalSteps: number) {
   if (onboardingStartTime) {
     const duration = Date.now() - onboardingStartTime
+    const durationSeconds = duration / 1000
     trackEvent('onboarding_complete', 'onboarding_completed', {
       step,
       totalSteps,
       duration_ms: duration,
-      duration_seconds: Math.round(duration / 1000),
+      duration_seconds: Math.round(durationSeconds),
       completion_rate: (step / totalSteps) * 100,
     })
+    
+    // Record onboarding metrics
+    try {
+      const { metricsCollector } = require('../metrics/collector')
+      metricsCollector.counter(
+        'onboarding_completed_total',
+        'Total number of completed onboardings',
+        {}
+      )
+      metricsCollector.histogram(
+        'onboarding_duration_seconds',
+        'Onboarding duration in seconds',
+        durationSeconds,
+        {}
+      )
+    } catch {
+      // Ignore metrics errors
+    }
+    
     onboardingStartTime = null
   }
 }
@@ -93,6 +157,22 @@ export function trackFeatureAdoption(featureName: string, properties?: Record<st
     ...properties,
     feature_adoption: true,
   })
+  
+  // Record feature usage metric
+  try {
+    const { metricsCollector } = require('../metrics/collector')
+    const userType = properties?.user_type || properties?.isPremium ? 'premium' : 'free'
+    metricsCollector.counter(
+      'feature_usage_total',
+      'Total number of feature uses',
+      {
+        feature: featureName,
+        user_type: String(userType),
+      }
+    )
+  } catch {
+    // Ignore metrics errors
+  }
 }
 
 /**
@@ -122,11 +202,26 @@ export function trackPageView(pageName: string, properties?: Record<string, any>
 export function trackSessionEnd() {
   if (sessionStartTime) {
     const duration = Date.now() - sessionStartTime
+    const durationSeconds = duration / 1000
     trackEvent('page_view', 'session_end', {
       duration_ms: duration,
-      duration_seconds: Math.round(duration / 1000),
+      duration_seconds: Math.round(durationSeconds),
       duration_minutes: Math.round(duration / 60000),
     })
+    
+    // Record session duration metric
+    try {
+      const { metricsCollector } = require('../metrics/collector')
+      metricsCollector.histogram(
+        'session_duration_seconds',
+        'Session duration in seconds',
+        durationSeconds,
+        {}
+      )
+    } catch {
+      // Ignore metrics errors
+    }
+    
     sessionStartTime = null
   }
 }

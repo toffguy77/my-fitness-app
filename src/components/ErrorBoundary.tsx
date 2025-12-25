@@ -41,6 +41,29 @@ export default class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     })
 
+    // Record error metrics
+    try {
+      const { metricsCollector } = require('@/utils/metrics/collector')
+      metricsCollector.counter(
+        'errors_total',
+        'Total number of errors',
+        {
+          type: 'react_boundary',
+          error_code: error.name || 'unknown',
+          severity: 'critical',
+        }
+      )
+      metricsCollector.counter(
+        'errors_critical_total',
+        'Total number of critical errors',
+        {
+          type: 'react_boundary',
+        }
+      )
+    } catch {
+      // Ignore metrics errors
+    }
+
     // Здесь можно отправить ошибку в сервис мониторинга
     // Например: Sentry.captureException(error, { contexts: { react: errorInfo } })
   }

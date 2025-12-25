@@ -26,6 +26,15 @@ describe('Integration Tests', () => {
             },
             error: null,
           }),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: {
+              id: 'user-123',
+              role: 'client',
+              subscription_status: 'active',
+              subscription_tier: 'premium',
+            },
+            error: null,
+          }),
         })),
       }
 
@@ -163,6 +172,10 @@ describe('Integration Tests', () => {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
+            data: null,
+            error: { message: 'Not found' },
+          }),
+          maybeSingle: jest.fn().mockResolvedValue({
             data: null,
             error: { message: 'Not found' },
           }),
