@@ -43,7 +43,17 @@ export async function middleware(request: NextRequest) {
     )
 
     // Публичные маршруты (не требуют авторизации)
-    const publicRoutes = ['/', '/login', '/register', '/auth/callback']
+    // Включаем стандартные endpoints для мониторинга и health checks
+    const publicRoutes = [
+      '/',
+      '/login',
+      '/register',
+      '/auth/callback',
+      '/metrics',        // Prometheus metrics endpoint
+      '/health',         // Health check endpoint
+      '/ready',          // Readiness check endpoint
+      '/live',           // Liveness check endpoint
+    ]
     const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
 
     const {
