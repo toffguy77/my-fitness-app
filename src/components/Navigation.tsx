@@ -5,6 +5,7 @@ import { Home, UtensilsCrossed, TrendingUp, Settings, Trophy, Users, UserPlus, B
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { getUserProfile, type UserProfile } from '@/utils/supabase/profile'
+import Logo from '@/components/Logo'
 
 const clientNavigationItems = [
   { path: '/app/dashboard', icon: Home, label: 'Дашборд', id: 'nav-item-dashboard' },
@@ -53,6 +54,7 @@ export default function Navigation() {
   }, [])
 
   const isCoordinator = profile?.role === 'coordinator'
+  const dashboardPath = isCoordinator ? '/app/coordinator' : '/app/dashboard'
   const navigationItems = useMemo(
     () => isCoordinator ? coordinatorNavigationItems : clientNavigationItems,
     [isCoordinator]
@@ -72,7 +74,11 @@ export default function Navigation() {
     return (
       <aside className="fixed left-0 top-0 h-screen w-64 bg-zinc-900 z-40 flex flex-col">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-zinc-100">Fitness App</h2>
+          <Logo
+            width={180}
+            height={54}
+            onClick={() => router.push(dashboardPath)}
+          />
         </div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {!loading && navigationItems.map((item) => {

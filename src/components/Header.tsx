@@ -5,6 +5,7 @@ import { Trophy, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { getUserProfile, type UserProfile } from '@/utils/supabase/profile'
+import Logo from '@/components/Logo'
 
 export default function Header() {
   const router = useRouter()
@@ -32,12 +33,11 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Логотип/Название */}
-          <button
+          <Logo
+            width={200}
+            height={60}
             onClick={() => router.push(dashboardPath)}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-          >
-            <h1 className="text-xl font-bold text-zinc-100">Fitness App</h1>
-          </button>
+          />
 
           {/* Правые элементы */}
           <div className="flex items-center gap-3">

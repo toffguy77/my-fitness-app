@@ -67,7 +67,7 @@ export async function sendEmail(
     const { subject, html, text } = getEmailTemplate(template, data)
 
     const result = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'Fitness App <noreply@fitnessapp.com>',
+      from: process.env.RESEND_FROM_EMAIL || 'BURCEV <noreply@fitnessapp.com>',
       to,
       subject,
       html,
@@ -187,9 +187,9 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
 
     default:
       return {
-        subject: 'Уведомление от Fitness App',
-        html: '<p>Уведомление от Fitness App</p>',
-        text: 'Уведомление от Fitness App',
+        subject: 'Уведомление от BURCEV',
+        html: '<p>Уведомление от BURCEV</p>',
+        text: 'Уведомление от BURCEV',
       }
   }
 }

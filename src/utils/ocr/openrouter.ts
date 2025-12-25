@@ -78,7 +78,7 @@ export async function recognizeTextOpenRouter(
         'Authorization': `Bearer ${apiKeyToUse}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com',
-        'X-Title': 'My Fitness App OCR',
+        'X-Title': 'BURCEV OCR',
       },
       body: JSON.stringify({
         model,

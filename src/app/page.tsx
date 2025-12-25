@@ -180,7 +180,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 border-t-2 border-black">
         <div className="text-center text-sm text-gray-500">
-          <p>© 2025 Fitness App. Все права защищены.</p>
+          <p>© 2025 BURCEV. Все права защищены.</p>
         </div>
       </footer>
     </main>

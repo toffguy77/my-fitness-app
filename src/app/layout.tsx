@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fitness App - Дашборд",
+  title: "BURCEV - Дашборд",
   description: "Приложение для отслеживания питания и тренировок",
 };
 

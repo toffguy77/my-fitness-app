@@ -23,7 +23,7 @@ export default function AchievementsNotifications({ achievements, onClose }: Ach
           onClose={() => onClose(achievement.id)}
           onShare={(achievement) => {
             // Поделиться достижением в социальных сетях
-            const text = `Я получил достижение "${achievement.name}" в My Fitness App! 🏆`
+            const text = `Я получил достижение "${achievement.name}" в BURCEV! 🏆`
             const url = window.location.origin
             
             if (navigator.share) {
