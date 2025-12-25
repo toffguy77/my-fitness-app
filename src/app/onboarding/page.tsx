@@ -261,33 +261,33 @@ export default function OnboardingPage() {
 
   if (loading) {
     return (
-      <div className="w-full min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="w-full min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-lg text-gray-600">Загрузка...</div>
+          <div className="text-lg text-zinc-400">Загрузка...</div>
         </div>
       </div>
     )
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans">
+      <div className="bg-zinc-900 rounded-2xl p-6 sm:p-8">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-gray-900">
+            <span className="text-sm font-semibold text-zinc-100">
               Шаг {currentStep === 'biometrics' ? '1' : currentStep === 'activity' ? '2' : '3'} из 3
             </span>
-            <span className="text-sm font-medium text-gray-600">
+            <span className="text-sm font-medium text-zinc-400">
               {currentStep === 'biometrics' ? 'Биометрия' : currentStep === 'activity' ? 'Активность' : 'Цель'}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div className="w-full bg-zinc-800 rounded-full h-3 overflow-hidden">
             <div
-              className="bg-black h-3 rounded-full transition-all duration-500 ease-out flex items-center justify-end pr-2"
+              className="bg-white h-3 rounded-full transition-all duration-500 ease-out flex items-center justify-end pr-2"
               style={{ width: `${(currentStep === 'biometrics' ? 1 : currentStep === 'activity' ? 2 : 3) * 33.33}%` }}
             >
-              <span className="text-xs font-medium text-white">
+              <span className="text-xs font-medium text-zinc-950 tabular-nums">
                 {Math.round((currentStep === 'biometrics' ? 1 : currentStep === 'activity' ? 2 : 3) * 33.33)}%
               </span>
             </div>
@@ -304,15 +304,15 @@ export default function OnboardingPage() {
                 <div key={step} className="flex flex-col items-center flex-1">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
                     isActive 
-                      ? 'bg-black text-white scale-110' 
+                      ? 'bg-white text-zinc-950 scale-110' 
                       : isCompleted 
-                        ? 'bg-gray-600 text-white' 
-                        : 'bg-gray-200 text-gray-500'
+                        ? 'bg-zinc-700 text-zinc-100' 
+                        : 'bg-zinc-800 text-zinc-500'
                   }`}>
                     {isCompleted ? '✓' : stepNumber}
                   </div>
                   <span className={`text-xs mt-1 text-center ${
-                    isActive ? 'text-gray-900 font-medium' : 'text-gray-500'
+                    isActive ? 'text-zinc-100 font-medium' : 'text-zinc-500'
                   }`}>
                     {step === 'biometrics' ? 'Биометрия' : step === 'activity' ? 'Активность' : 'Цель'}
                   </span>
@@ -323,7 +323,7 @@ export default function OnboardingPage() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
+          <div className="mb-6 p-4 bg-zinc-800 border border-red-400/20 rounded-xl text-sm text-red-400">
             {error}
           </div>
         )}
@@ -332,25 +332,25 @@ export default function OnboardingPage() {
         {currentStep === 'biometrics' && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <UserIcon size={24} className="text-gray-600" />
+              <div className="h-12 w-12 bg-zinc-800 rounded-full flex items-center justify-center">
+                <UserIcon size={24} className="text-zinc-400" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900">Расскажите о себе</h1>
+                  <h1 className="text-2xl font-bold text-zinc-100">Расскажите о себе</h1>
                   <OnboardingTooltip
                     title="Зачем нужны эти данные?"
                     content="Биометрические данные используются для точного расчета вашего базового метаболизма (BMR) и ежедневного расхода энергии (TDEE). Это позволяет создать персональный план питания, который поможет достичь ваших целей."
                     position="top"
                   />
                 </div>
-                <p className="text-sm text-gray-500">Эти данные нужны для расчета ваших целей</p>
+                <p className="text-sm text-zinc-400">Эти данные нужны для расчета ваших целей</p>
               </div>
             </div>
 
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <label className="block text-sm font-medium text-gray-700">Пол</label>
+                <label className="block text-sm font-medium text-zinc-100">Пол</label>
                 <OnboardingTooltip
                   content="Пол влияет на расчет базового метаболизма, так как у мужчин и женщин разный уровень метаболизма."
                   position="top"
@@ -363,8 +363,8 @@ export default function OnboardingPage() {
                     type="button"
                     onClick={() => setGender(g)}
                     className={`p-4 rounded-xl border-2 transition-colors ${gender === g
-                        ? 'border-black bg-black text-white'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        ? 'border-white bg-white text-zinc-950'
+                        : 'border-zinc-800 bg-zinc-800 text-zinc-300 hover:border-zinc-700'
                       }`}
                   >
                     {g === 'male' ? 'Мужской' : g === 'female' ? 'Женский' : 'Другое'}
@@ -384,7 +384,7 @@ export default function OnboardingPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="height" className="block text-sm font-medium text-zinc-100 mb-2">
                   Рост (см)
                 </label>
                 <input
@@ -404,12 +404,12 @@ export default function OnboardingPage() {
                   }}
                   min={100}
                   max={250}
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600 tabular-nums"
                 />
               </div>
 
               <div>
-                <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="weight" className="block text-sm font-medium text-zinc-100 mb-2">
                   Текущий вес (кг)
                 </label>
                 <input
@@ -430,7 +430,7 @@ export default function OnboardingPage() {
                   min={30}
                   max={300}
                   step="0.1"
-                  className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600 tabular-nums"
                 />
               </div>
             </div>
@@ -441,19 +441,19 @@ export default function OnboardingPage() {
         {currentStep === 'activity' && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Activity size={24} className="text-gray-600" />
+              <div className="h-12 w-12 bg-zinc-800 rounded-full flex items-center justify-center">
+                <Activity size={24} className="text-zinc-400" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900">Уровень активности</h1>
+                  <h1 className="text-2xl font-bold text-zinc-100">Уровень активности</h1>
                   <OnboardingTooltip
                     title="Что такое уровень активности?"
                     content="Уровень активности определяет коэффициент, на который умножается ваш базовый метаболизм. Чем выше активность, тем больше калорий вам нужно для поддержания веса."
                     position="top"
                   />
                 </div>
-                <p className="text-sm text-gray-500">Как часто вы тренируетесь?</p>
+                <p className="text-sm text-zinc-400">Как часто вы тренируетесь?</p>
               </div>
             </div>
 
@@ -470,12 +470,12 @@ export default function OnboardingPage() {
                   type="button"
                   onClick={() => setActivityLevel(activity.value)}
                   className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${activityLevel === activity.value
-                      ? 'border-black bg-black text-white'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'border-white bg-white text-zinc-950'
+                      : 'border-zinc-800 bg-zinc-800 text-zinc-300 hover:border-zinc-700'
                     }`}
                 >
                   <div className="font-semibold">{activity.label}</div>
-                  <div className={`text-sm ${activityLevel === activity.value ? 'text-gray-200' : 'text-gray-500'}`}>
+                  <div className={`text-sm ${activityLevel === activity.value ? 'text-zinc-600' : 'text-zinc-400'}`}>
                     {activity.desc}
                   </div>
                 </button>
@@ -488,19 +488,19 @@ export default function OnboardingPage() {
         {currentStep === 'goal' && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Target size={24} className="text-gray-600" />
+              <div className="h-12 w-12 bg-zinc-800 rounded-full flex items-center justify-center">
+                <Target size={24} className="text-zinc-400" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900">Ваша цель</h1>
+                  <h1 className="text-2xl font-bold text-zinc-100">Ваша цель</h1>
                   <OnboardingTooltip
                     title="Как работает расчет целей?"
                     content="В зависимости от выбранной цели система автоматически корректирует калорийность: для похудения создается дефицит 15%, для набора веса - профицит 10%, для поддержания - баланс."
                     position="top"
                   />
                 </div>
-                <p className="text-sm text-gray-500">Что вы хотите достичь?</p>
+                <p className="text-sm text-zinc-400">Что вы хотите достичь?</p>
               </div>
             </div>
 
@@ -515,12 +515,12 @@ export default function OnboardingPage() {
                   type="button"
                   onClick={() => setGoal(g.value)}
                   className={`w-full p-4 rounded-xl border-2 text-left transition-colors ${goal === g.value
-                      ? 'border-black bg-black text-white'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      ? 'border-white bg-white text-zinc-950'
+                      : 'border-zinc-800 bg-zinc-800 text-zinc-300 hover:border-zinc-700'
                     }`}
                 >
                   <div className="font-semibold">{g.label}</div>
-                  <div className={`text-sm ${goal === g.value ? 'text-gray-200' : 'text-gray-500'}`}>
+                  <div className={`text-sm ${goal === g.value ? 'text-zinc-600' : 'text-zinc-400'}`}>
                     {g.desc}
                   </div>
                 </button>
@@ -529,8 +529,8 @@ export default function OnboardingPage() {
 
             {/* Preview расчетов */}
             {birthDate && typeof height === 'number' && typeof weight === 'number' && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="text-sm font-medium text-gray-700 mb-2">Предварительный расчет:</div>
+              <div className="mt-6 p-4 bg-zinc-800 rounded-xl">
+                <div className="text-sm font-medium text-zinc-100 mb-2">Предварительный расчет:</div>
                 {(() => {
                   const birth = new Date(birthDate)
                   const today = new Date()
@@ -543,13 +543,13 @@ export default function OnboardingPage() {
                   const macros = calculateMacros(targetCalories)
 
                   return (
-                    <div className="text-sm text-gray-600 space-y-1">
+                    <div className="text-sm text-zinc-400 space-y-1 tabular-nums">
                       <div>Базовый метаболизм (BMR): {Math.round(bmr)} ккал</div>
                       <div>Расход энергии (TDEE): {Math.round(tdee)} ккал</div>
-                      <div className="font-semibold text-gray-900 mt-2">
+                      <div className="font-semibold text-zinc-100 mt-2">
                         Целевые калории: {targetCalories} ккал/день
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-zinc-500 mt-1">
                         Белки: {macros.protein}г • Жиры: {macros.fats}г • Углеводы: {macros.carbs}г
                       </div>
                     </div>
@@ -561,12 +561,12 @@ export default function OnboardingPage() {
         )}
 
         {/* Navigation Buttons */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-800">
           <button
             type="button"
             onClick={handleBack}
             disabled={currentStep === 'biometrics' || saving}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ArrowLeft size={16} />
             Назад
@@ -577,7 +577,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={handleFinish}
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Сохранение...' : 'Завершить настройку'}
               <ArrowRight size={16} />
@@ -586,7 +586,7 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={handleNext}
-              className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-2 px-6 py-3 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors"
             >
               Далее
               <ArrowRight size={16} />

@@ -125,7 +125,7 @@ export default function MessageInput({
     }, [])
 
     return (
-        <div className="flex items-end gap-2 p-3 border-t border-gray-200 bg-white">
+        <div className="flex items-end gap-2 p-3 border-t border-zinc-800 bg-zinc-900">
             <textarea
                 value={content}
                 onChange={handleChange}
@@ -134,13 +134,13 @@ export default function MessageInput({
                 disabled={disabled || isSending}
                 rows={1}
                 maxLength={1000}
-                className="flex-1 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-black outline-none text-sm text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 p-2 border border-zinc-800 rounded-lg resize-none focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-zinc-600"
                 style={{ minHeight: '40px', maxHeight: '120px' }}
             />
             <button
                 onClick={handleSend}
                 disabled={!content.trim() || isSending || disabled}
-                className="p-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                className="p-2 bg-white text-zinc-950 rounded-lg hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                 title="Отправить (Enter)"
             >
                 <Send size={18} />

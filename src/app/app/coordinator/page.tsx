@@ -252,13 +252,13 @@ export default function CoordinatorDashboard() {
   const getStatusIcon = (status: 'red' | 'green' | 'yellow' | 'grey') => {
     switch (status) {
       case 'red':
-        return <AlertCircle size={20} className="text-red-500" />
+        return <AlertCircle size={20} className="text-rose-400" />
       case 'yellow':
-        return <Circle size={20} className="text-yellow-500 fill-yellow-500" />
+        return <Circle size={20} className="text-amber-400 fill-amber-400" />
       case 'green':
-        return <CheckCircle size={20} className="text-green-500" />
+        return <CheckCircle size={20} className="text-emerald-400" />
       case 'grey':
-        return <Circle size={20} className="text-gray-400" />
+        return <Circle size={20} className="text-zinc-500" />
     }
   }
 
@@ -344,19 +344,19 @@ export default function CoordinatorDashboard() {
     }
   }
 
-  if (loading) return <div className="p-8 text-center">Загрузка...</div>
+  if (loading) return <div className="p-8 text-center text-zinc-400">Загрузка...</div>
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-4xl md:mx-auto font-sans">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-4xl md:mx-auto font-sans">
       <header className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Кабинет координатора</h1>
-          <p className="text-sm text-gray-500">Управление клиентами</p>
+          <h1 className="text-2xl font-bold text-zinc-100">Кабинет координатора</h1>
+          <p className="text-sm text-zinc-400">Управление клиентами</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/app/coordinator/invites"
-            className="px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm"
+            className="px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-200 transition-colors flex items-center gap-2 text-sm"
           >
             <UserPlus size={16} />
             Инвайт-коды
@@ -367,18 +367,18 @@ export default function CoordinatorDashboard() {
               router.push('/login')
               router.refresh()
             }}
-            className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
+            className="h-8 w-8 flex items-center justify-center bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors"
             title="Выйти"
           >
-            <LogOut size={16} className="text-gray-600" />
+            <LogOut size={16} className="text-zinc-400" />
           </button>
         </div>
       </header>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
+      <div className="bg-zinc-900 rounded-2xl shadow-sm border border-zinc-800 overflow-hidden">
+        <div className="p-6 border-b border-zinc-800">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">
+            <h2 className="text-lg font-bold text-zinc-100 tabular-nums">
               Список клиентов ({filteredAndSortedClients.length} из {clients.length})
             </h2>
           </div>
@@ -387,13 +387,13 @@ export default function CoordinatorDashboard() {
           <div className="flex flex-wrap gap-3">
             {/* Фильтр по статусу */}
             <div className="flex items-center gap-2">
-              <Filter size={16} className="text-gray-400" />
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <Filter size={16} className="text-zinc-500" />
+              <div className="flex gap-1 bg-zinc-800 rounded-lg p-1">
                 <button
                   onClick={() => setStatusFilter('all')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'all'
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-zinc-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   Все
@@ -401,8 +401,8 @@ export default function CoordinatorDashboard() {
                 <button
                   onClick={() => setStatusFilter('red')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'red'
-                    ? 'bg-white text-red-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-rose-400 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   🔴 Требуют внимания
@@ -410,8 +410,8 @@ export default function CoordinatorDashboard() {
                 <button
                   onClick={() => setStatusFilter('yellow')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'yellow'
-                    ? 'bg-white text-yellow-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-amber-400 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   🟡 В процессе
@@ -419,8 +419,8 @@ export default function CoordinatorDashboard() {
                 <button
                   onClick={() => setStatusFilter('green')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'green'
-                    ? 'bg-white text-green-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-emerald-400 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   🟢 В норме
@@ -428,8 +428,8 @@ export default function CoordinatorDashboard() {
                 <button
                   onClick={() => setStatusFilter('grey')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === 'grey'
-                    ? 'bg-white text-gray-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-zinc-400 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   ⚪ Нет данных
@@ -439,12 +439,12 @@ export default function CoordinatorDashboard() {
 
             {/* Фильтр по непрочитанным сообщениям */}
             <div className="flex items-center gap-2">
-              <MessageSquare size={16} className="text-gray-400" />
+              <MessageSquare size={16} className="text-zinc-500" />
               <button
                 onClick={() => setUnreadFilter(!unreadFilter)}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${unreadFilter
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-zinc-950 shadow-sm'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
                   }`}
               >
                 С непрочитанными
@@ -453,13 +453,13 @@ export default function CoordinatorDashboard() {
 
             {/* Сортировка */}
             <div className="flex items-center gap-2">
-              <ArrowUpDown size={16} className="text-gray-400" />
-              <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <ArrowUpDown size={16} className="text-zinc-500" />
+              <div className="flex gap-1 bg-zinc-800 rounded-lg p-1">
                 <button
                   onClick={() => handleSort('name')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'name'
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-zinc-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   По имени {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -467,8 +467,8 @@ export default function CoordinatorDashboard() {
                 <button
                   onClick={() => handleSort('lastCheckin')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'lastCheckin'
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-zinc-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   По дате {sortBy === 'lastCheckin' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -476,8 +476,8 @@ export default function CoordinatorDashboard() {
                 <button
                   onClick={() => handleSort('status')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'status'
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-zinc-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   По статусу {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -485,8 +485,8 @@ export default function CoordinatorDashboard() {
                 <button
                   onClick={() => handleSort('unread')}
                   className={`px-3 py-1 rounded text-xs font-medium transition-colors ${sortBy === 'unread'
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white text-zinc-950 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                     }`}
                 >
                   По сообщениям {sortBy === 'unread' && '↓'}
@@ -497,63 +497,63 @@ export default function CoordinatorDashboard() {
         </div>
 
         {clients.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-zinc-500">
             У вас пока нет клиентов
           </div>
         ) : filteredAndSortedClients.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-zinc-500">
             Нет клиентов, соответствующих выбранным фильтрам
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-zinc-800">
             {filteredAndSortedClients.map((client) => (
               <button
                 key={client.id}
                 onClick={() => router.push(`/app/coordinator/${client.id}`)}
-                className="w-full p-6 hover:bg-gray-50 transition-colors text-left"
+                className="w-full p-6 hover:bg-zinc-800 transition-colors text-left"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 flex-1">
-                    <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                      <UserIcon size={24} className="text-gray-400" />
+                    <div className="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center">
+                      <UserIcon size={24} className="text-zinc-500" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className={`font-semibold ${client.isExpired ? 'text-gray-400' : 'text-gray-900'}`}>
+                        <h3 className={`font-semibold ${client.isExpired ? 'text-zinc-500' : 'text-zinc-100'}`}>
                           {client.full_name || client.email || 'Без имени'}
                         </h3>
                         {client.isExpired && (
-                          <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded font-medium">
+                          <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-xs rounded font-medium">
                             Expired
                           </span>
                         )}
                         {client.unreadMessagesCount && client.unreadMessagesCount > 0 && (
-                          <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full font-bold min-w-[20px] text-center">
+                          <span className="px-2 py-0.5 bg-white text-zinc-950 text-xs rounded-full font-bold min-w-[20px] text-center tabular-nums">
                             {client.unreadMessagesCount > 9 ? '9+' : client.unreadMessagesCount}
                           </span>
                         )}
                         {getStatusIcon(client.todayStatus!)}
                       </div>
-                      <div className="text-sm text-gray-500 space-y-1">
+                      <div className="text-sm text-zinc-400 space-y-1">
                         <p>
                           Последний чекин: {client.lastCheckin
                             ? new Date(client.lastCheckin).toLocaleDateString('ru-RU')
                             : 'Нет данных'}
                         </p>
                         {client.todayCalories && client.targetCalories && (
-                          <p>
+                          <p className="tabular-nums">
                             Сегодня: {client.todayCalories} / {client.targetCalories} ккал
-                            {client.isCompleted && <span className="ml-2 text-green-600">✅</span>}
+                            {client.isCompleted && <span className="ml-2 text-emerald-400">✅</span>}
                           </p>
                         )}
                         <p className="text-xs">
                           Статус: {getStatusText(client.todayStatus!)}
-                          {client.isCompleted && <span className="ml-1 text-green-600">(День завершен)</span>}
+                          {client.isCompleted && <span className="ml-1 text-emerald-400">(День завершен)</span>}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="text-gray-400">
+                  <div className="text-zinc-500">
                     →
                   </div>
                 </div>

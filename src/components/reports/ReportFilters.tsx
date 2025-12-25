@@ -55,27 +55,27 @@ export default function ReportFilters({
         onClick={() => setShowFilters(!showFilters)}
         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
           hasActiveFilters
-            ? 'bg-black text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ? 'bg-white text-zinc-950'
+            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
         }`}
       >
         <Filter size={16} />
         Фильтры
         {hasActiveFilters && (
-          <span className="ml-1 px-1.5 py-0.5 bg-white text-black rounded text-xs">
+          <span className="ml-1 px-1.5 py-0.5 bg-zinc-950 text-white rounded text-xs tabular-nums">
             {[startDate && 'дата', endDate && 'дата', dayType !== 'all' && 'тип', sortBy !== 'date' && 'сорт'].filter(Boolean).length}
           </span>
         )}
       </button>
 
       {showFilters && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+        <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4 space-y-4">
           {/* Диапазон дат */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Диапазон дат</label>
+            <label className="block text-sm font-medium text-zinc-100 mb-2">Диапазон дат</label>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">От</label>
+                <label className="block text-xs text-zinc-400 mb-1">От</label>
                 <input
                   type="date"
                   value={startDate}
@@ -85,11 +85,11 @@ export default function ReportFilters({
                       onDateRangeChange?.(e.target.value, endDate)
                     }
                   }}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+                  className="w-full p-2 border border-zinc-800 rounded-lg text-sm text-zinc-100 bg-zinc-900"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">До</label>
+                <label className="block text-xs text-zinc-400 mb-1">До</label>
                 <input
                   type="date"
                   value={endDate}
@@ -99,7 +99,7 @@ export default function ReportFilters({
                       onDateRangeChange?.(startDate, e.target.value)
                     }
                   }}
-                  className="w-full p-2 border border-gray-200 rounded-lg text-sm text-black"
+                  className="w-full p-2 border border-zinc-800 rounded-lg text-sm text-zinc-100 bg-zinc-900"
                 />
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function ReportFilters({
 
           {/* Тип дня */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Тип дня</label>
+            <label className="block text-sm font-medium text-zinc-100 mb-2">Тип дня</label>
             <div className="flex gap-2">
               {(['all', 'training', 'rest'] as const).map((type) => (
                 <button
@@ -115,8 +115,8 @@ export default function ReportFilters({
                   onClick={() => handleDayTypeChange(type)}
                   className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                     dayType === type
-                      ? 'bg-black text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-white text-zinc-950'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   }`}
                 >
                   {type === 'all' ? 'Все' : type === 'training' ? 'Тренировка' : 'Отдых'}
@@ -127,7 +127,7 @@ export default function ReportFilters({
 
           {/* Сортировка */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Сортировка</label>
+            <label className="block text-sm font-medium text-zinc-100 mb-2">Сортировка</label>
             <div className="flex gap-2 flex-wrap">
               {(['date', 'calories', 'weight'] as const).map((by) => (
                 <button
@@ -135,8 +135,8 @@ export default function ReportFilters({
                   onClick={() => handleSortChange(by, sortBy === by && sortOrder === 'desc' ? 'asc' : 'desc')}
                   className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                     sortBy === by
-                      ? 'bg-black text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-white text-zinc-950'
+                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   }`}
                 >
                   {by === 'date' ? 'Дата' : by === 'calories' ? 'Калории' : 'Вес'}
@@ -152,7 +152,7 @@ export default function ReportFilters({
           {hasActiveFilters && (
             <button
               onClick={handleReset}
-              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 bg-zinc-800 text-zinc-300 rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2"
             >
               <X size={16} />
               Сбросить фильтры

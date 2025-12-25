@@ -58,18 +58,18 @@ ${errorInfo ? `Компонент: ${errorInfo.componentStack}` : ''}
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-950">
+      <div className="max-w-2xl w-full bg-zinc-900 rounded-2xl p-8">
         {/* Иконка и заголовок */}
         <div className="flex items-start gap-4 mb-6">
-          <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-            <AlertTriangle size={24} className="text-red-600" />
+          <div className="flex-shrink-0 w-12 h-12 rounded-full bg-zinc-800 border border-red-400/20 flex items-center justify-center">
+            <AlertTriangle size={24} className="text-red-400" />
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="text-2xl font-bold text-zinc-100 mb-2">
               {title || 'Произошла ошибка'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-zinc-400">
               {description || 'Что-то пошло не так. Мы уже работаем над исправлением.'}
             </p>
           </div>
@@ -77,12 +77,12 @@ ${errorInfo ? `Компонент: ${errorInfo.componentStack}` : ''}
 
         {/* Детали ошибки */}
         {error && (
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="mb-6 p-4 bg-zinc-800 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-900">Детали ошибки:</h3>
+              <h3 className="text-sm font-semibold text-zinc-100">Детали ошибки:</h3>
               <button
                 onClick={handleCopyError}
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-100 transition-colors"
                 title="Скопировать информацию об ошибке"
               >
                 {copied ? (
@@ -98,15 +98,15 @@ ${errorInfo ? `Компонент: ${errorInfo.componentStack}` : ''}
                 )}
               </button>
             </div>
-            <p className="text-sm text-gray-700 font-mono break-words">
+            <p className="text-sm text-zinc-300 font-mono break-words">
               {error.message || 'Неизвестная ошибка'}
             </p>
             {process.env.NODE_ENV === 'development' && error.stack && (
               <details className="mt-3">
-                <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+                <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-300">
                   Показать стек ошибки
                 </summary>
-                <pre className="mt-2 text-xs text-gray-600 overflow-auto max-h-40 p-2 bg-white rounded border border-gray-200">
+                <pre className="mt-2 text-xs text-zinc-400 overflow-auto max-h-40 p-2 bg-zinc-950 rounded border border-zinc-800">
                   {error.stack}
                 </pre>
               </details>
@@ -116,11 +116,11 @@ ${errorInfo ? `Компонент: ${errorInfo.componentStack}` : ''}
 
         {/* Предложения по исправлению */}
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Что можно сделать:</h3>
+          <h3 className="text-sm font-semibold text-zinc-100 mb-3">Что можно сделать:</h3>
           <ul className="space-y-2">
             {getErrorSuggestions().map((suggestion, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
-                <span className="text-gray-400 mt-1">•</span>
+              <li key={index} className="flex items-start gap-2 text-sm text-zinc-400">
+                <span className="text-zinc-600 mt-1">•</span>
                 <span>{suggestion}</span>
               </li>
             ))}
@@ -132,7 +132,7 @@ ${errorInfo ? `Компонент: ${errorInfo.componentStack}` : ''}
           {onReset && (
             <button
               onClick={onReset}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-200 transition-colors"
             >
               <RefreshCw size={18} />
               Попробовать снова
@@ -140,14 +140,14 @@ ${errorInfo ? `Компонент: ${errorInfo.componentStack}` : ''}
           )}
           <button
             onClick={() => router.push('/app/dashboard')}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-zinc-800 text-zinc-300 rounded-lg font-medium hover:bg-zinc-800 transition-colors"
           >
             <Home size={18} />
             На главную
           </button>
           <a
             href="mailto:support@fitnessapp.com?subject=Ошибка в приложении"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-zinc-800 text-zinc-300 rounded-lg font-medium hover:bg-zinc-800 transition-colors"
           >
             <Mail size={18} />
             Связаться с поддержкой

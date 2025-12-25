@@ -48,9 +48,9 @@ export default function InviteCodesPage() {
 
     if (loading) {
         return (
-            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-4xl md:mx-auto">
+            <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-4xl md:mx-auto">
                 <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
                 </div>
             </main>
         )
@@ -61,11 +61,11 @@ export default function InviteCodesPage() {
     }
 
     return (
-        <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-4xl md:mx-auto">
+        <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-4xl md:mx-auto">
             <div className="mb-6">
                 <button
                     onClick={() => router.push('/app/coordinator')}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-4"
+                    className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition-colors mb-4"
                 >
                     <ArrowLeft size={20} />
                     <span>Назад к списку клиентов</span>

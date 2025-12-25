@@ -161,7 +161,7 @@ export default function DateInput({
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor={id} className="block text-sm font-medium text-zinc-100 mb-2">
           {label}
         </label>
       )}
@@ -180,10 +180,10 @@ export default function DateInput({
               onKeyDown={(e) => handleKeyDown(e, 'day')}
               onBlur={handleBlur}
               maxLength={2}
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black text-center focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-zinc-100 text-center focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600 tabular-nums"
             />
           </div>
-          <span className="text-gray-400 font-medium">.</span>
+          <span className="text-zinc-500 font-medium">.</span>
           <div className="flex-1">
             <input
               ref={monthRef}
@@ -195,10 +195,10 @@ export default function DateInput({
               onKeyDown={(e) => handleKeyDown(e, 'month')}
               onBlur={handleBlur}
               maxLength={2}
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black text-center focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-zinc-100 text-center focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600 tabular-nums"
             />
           </div>
-          <span className="text-gray-400 font-medium">.</span>
+          <span className="text-zinc-500 font-medium">.</span>
           <div className="flex-1">
             <input
               ref={yearRef}
@@ -210,7 +210,7 @@ export default function DateInput({
               onKeyDown={(e) => handleKeyDown(e, 'year')}
               onBlur={handleBlur}
               maxLength={4}
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black text-center focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-zinc-100 text-center focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600 tabular-nums"
             />
           </div>
         </div>
@@ -224,10 +224,10 @@ export default function DateInput({
               nativeInputRef.current?.showPicker?.()
             }, 100)
           }}
-          className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl border border-gray-200 transition-colors flex-shrink-0"
+          className="p-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-colors flex-shrink-0"
           title="Выбрать дату из календаря"
         >
-          <Calendar size={20} className="text-gray-600" />
+          <Calendar size={20} className="text-zinc-400" />
         </button>
 
         {/* Скрытый нативный date picker */}
@@ -245,7 +245,7 @@ export default function DateInput({
 
       {/* Подсказка - показываем только если есть label */}
       {label && (
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-zinc-500 mt-2">
           Введите дату в формате ДД.ММ.ГГГГ или используйте календарь
         </p>
       )}

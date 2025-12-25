@@ -89,7 +89,7 @@ describe('Pagination', () => {
     )
     
     const currentPageButton = screen.getByText('3')
-    expect(currentPageButton).toHaveClass('bg-black', 'text-white')
+    expect(currentPageButton).toHaveClass('bg-white', 'text-zinc-950')
   })
 })
 

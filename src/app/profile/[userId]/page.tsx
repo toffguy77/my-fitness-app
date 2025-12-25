@@ -116,7 +116,7 @@ export default function PublicProfilePage() {
 
   if (loading) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans">
         <LoadingSpinner />
       </main>
     )
@@ -124,13 +124,13 @@ export default function PublicProfilePage() {
 
   if (error || !profile) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h1 className="text-xl font-bold text-gray-900 mb-4">Профиль недоступен</h1>
-          <p className="text-gray-600 mb-4">{error || 'Профиль не найден'}</p>
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans">
+        <div className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800">
+          <h1 className="text-xl font-bold text-zinc-100 mb-4">Профиль недоступен</h1>
+          <p className="text-zinc-400 mb-4">{error || 'Профиль не найден'}</p>
           <button
             onClick={() => router.push('/')}
-            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 bg-white text-zinc-950 rounded-lg hover:bg-zinc-200 transition-colors"
           >
             На главную
           </button>
@@ -144,20 +144,20 @@ export default function PublicProfilePage() {
     : null
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans space-y-6">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-2xl md:mx-auto font-sans space-y-6">
       {/* Заголовок */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.back()}
-          className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+          className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-300"
         >
           ←
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">Публичный профиль</h1>
+        <h1 className="text-2xl font-bold text-zinc-100">Публичный профиль</h1>
       </div>
 
       {/* Профиль */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800">
         <div className="flex items-center gap-4 mb-6">
           {profile.avatar_url ? (
             <img
@@ -166,16 +166,16 @@ export default function PublicProfilePage() {
               className="w-20 h-20 rounded-full object-cover"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-600">
+            <div className="w-20 h-20 rounded-full bg-zinc-800 flex items-center justify-center text-2xl font-bold text-zinc-400">
               {(profile.full_name || 'U')[0].toUpperCase()}
             </div>
           )}
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-zinc-100">
               {profile.full_name || 'Пользователь'}
             </h2>
             {joinDate && (
-              <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+              <p className="text-sm text-zinc-400 flex items-center gap-1 mt-1">
                 <Calendar size={14} />
                 Участник с {joinDate}
               </p>
@@ -185,16 +185,16 @@ export default function PublicProfilePage() {
       </section>
 
       {/* Достижения */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800">
         <div className="flex items-center gap-2 mb-4">
-          <Trophy size={20} className="text-yellow-500" />
-          <h2 className="text-lg font-bold text-gray-900">Достижения</h2>
-          <span className="text-sm text-gray-500">({achievements.length})</span>
+          <Trophy size={20} className="text-amber-400" />
+          <h2 className="text-lg font-bold text-zinc-100">Достижения</h2>
+          <span className="text-sm text-zinc-400 tabular-nums">({achievements.length})</span>
         </div>
 
         {achievements.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Trophy size={48} className="mx-auto mb-2 text-gray-300" />
+          <div className="text-center py-8 text-zinc-500">
+            <Trophy size={48} className="mx-auto mb-2 text-zinc-600" />
             <p className="text-sm">Пока нет достижений</p>
           </div>
         ) : (
@@ -202,15 +202,15 @@ export default function PublicProfilePage() {
             {achievements.map((achievement) => (
               <div
                 key={achievement.id}
-                className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center"
+                className="p-4 bg-zinc-800 rounded-xl border border-zinc-700 text-center"
               >
                 <AchievementBadge achievement={achievement} size="lg" />
-                <h3 className="text-sm font-semibold text-gray-900 mt-2">{achievement.name}</h3>
+                <h3 className="text-sm font-semibold text-zinc-100 mt-2">{achievement.name}</h3>
                 {achievement.description && (
-                  <p className="text-xs text-gray-500 mt-1">{achievement.description}</p>
+                  <p className="text-xs text-zinc-400 mt-1">{achievement.description}</p>
                 )}
                 {achievement.unlockedAt && (
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-zinc-500 mt-2">
                     {new Date(achievement.unlockedAt).toLocaleDateString('ru-RU')}
                   </p>
                 )}

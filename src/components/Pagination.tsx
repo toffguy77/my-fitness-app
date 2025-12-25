@@ -70,7 +70,7 @@ export default function Pagination({
 
   return (
     <div className="flex items-center justify-between gap-2 flex-wrap">
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-zinc-400 tabular-nums">
         {totalItems !== undefined && (
           <span>
             Показано {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} -{' '}
@@ -83,7 +83,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg border border-zinc-800 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-zinc-300"
           aria-label="Предыдущая страница"
         >
           <ChevronLeft size={16} />
@@ -92,7 +92,7 @@ export default function Pagination({
         {getPageNumbers().map((page, index) => {
           if (page === '...') {
             return (
-              <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
+              <span key={`ellipsis-${index}`} className="px-2 text-zinc-500">
                 ...
               </span>
             )
@@ -103,10 +103,10 @@ export default function Pagination({
             <button
               key={pageNum}
               onClick={() => onPageChange(pageNum)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors tabular-nums ${
                 currentPage === pageNum
-                  ? 'bg-black text-white'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                  ? 'bg-white text-zinc-950'
+                  : 'bg-zinc-900 text-zinc-300 border border-zinc-800 hover:bg-zinc-800'
               }`}
               aria-label={`Страница ${pageNum}`}
               aria-current={currentPage === pageNum ? 'page' : undefined}
@@ -119,7 +119,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg border border-zinc-800 hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-zinc-300"
           aria-label="Следующая страница"
         >
           <ChevronRight size={16} />

@@ -36,16 +36,16 @@ export default function PremiumPreview() {
       {previews.map((preview, index) => (
         <div
           key={index}
-          className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200"
+          className="p-4 bg-zinc-800 rounded-xl border border-zinc-700"
         >
           <div className="flex items-start gap-3 mb-2">
-            <div className="flex-shrink-0 w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white">
+            <div className="flex-shrink-0 w-8 h-8 bg-white rounded-lg flex items-center justify-center text-zinc-950">
               {preview.icon}
             </div>
             <div className="flex-1">
-              <h4 className="font-semibold text-gray-900 mb-1">{preview.title}</h4>
-              <p className="text-sm text-gray-600 mb-2">{preview.description}</p>
-              <div className="text-xs text-gray-500 bg-white rounded-lg p-2 border border-gray-200">
+              <h4 className="font-semibold text-zinc-100 mb-1">{preview.title}</h4>
+              <p className="text-sm text-zinc-400 mb-2">{preview.description}</p>
+              <div className="text-xs text-zinc-400 bg-zinc-900 rounded-lg p-2 border border-zinc-800">
                 {preview.preview}
               </div>
             </div>

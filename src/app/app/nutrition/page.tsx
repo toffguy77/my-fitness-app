@@ -746,15 +746,15 @@ function NutritionPageContent() {
   // Блокировка редактирования если день завершен
   if (isCompleted) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+        <div className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800">
           <div className="text-center py-8">
-            <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 mb-2">День завершен</h2>
-            <p className="text-gray-600 mb-4">Редактирование недоступно.</p>
+            <CheckCircle size={48} className="mx-auto text-emerald-400 mb-4" />
+            <h2 className="text-xl font-bold text-zinc-100 mb-2">День завершен</h2>
+            <p className="text-zinc-400 mb-4">Редактирование недоступно.</p>
             <button
               onClick={() => router.push(`/app/dashboard?date=${selectedDate}`)}
-              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
             >
               Вернуться на дашборд
             </button>
@@ -1029,12 +1029,12 @@ function NutritionPageContent() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
 
       {/* HEADER */}
       <header className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Ввод питания</h1>
-        <p className="text-sm text-gray-500">{new Date().toLocaleDateString('ru-RU')}</p>
+        <h1 className="text-xl font-bold text-zinc-100">Ввод питания</h1>
+        <p className="text-sm text-zinc-400">{new Date().toLocaleDateString('ru-RU')}</p>
       </header>
 
       {/* DAY TYPE TOGGLE */}
@@ -1048,7 +1048,7 @@ function NutritionPageContent() {
             }}
           />
           {!currentTargets && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+            <div className="mt-3 p-3 bg-amber-950/20 border border-amber-800/50 rounded-lg text-sm text-amber-300">
               Цели для этого типа дня не установлены. Обратитесь к координатору.
             </div>
           )}
@@ -1056,8 +1056,8 @@ function NutritionPageContent() {
       )}
 
       {/* WEIGHT SECTION - ТОЛЬКО ВВОД */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm mb-6 border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Вес тела</h2>
+      <div className="bg-zinc-900 p-6 rounded-2xl shadow-sm mb-6 border border-zinc-800">
+        <h2 className="text-lg font-bold text-zinc-100 mb-4">Вес тела</h2>
         <div className="flex items-center gap-3">
           <input
             type="number"
@@ -1070,16 +1070,16 @@ function NutritionPageContent() {
             placeholder="Введите вес"
             min={30}
             max={300}
-            className={`flex-1 p-3 bg-gray-50 rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${log.weight !== null && log.weight !== undefined && (log.weight < 30 || log.weight > 300)
-              ? 'border-red-300 focus:ring-red-500'
-              : 'border-gray-200'
+            className={`flex-1 p-3 bg-zinc-800 rounded-xl border text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none tabular-nums placeholder:text-zinc-500 ${log.weight !== null && log.weight !== undefined && (log.weight < 30 || log.weight > 300)
+              ? 'border-rose-500 focus:ring-rose-400'
+              : 'border-zinc-700'
               }`}
           />
-          <span className="text-sm text-gray-600">кг</span>
+          <span className="text-sm text-zinc-400">кг</span>
         </div>
         <InputHint hint="Допустимый диапазон: 30-300 кг" />
         {log.weight !== null && log.weight !== undefined && (log.weight < 30 || log.weight > 300) && (
-          <div className="text-xs text-red-600 mt-1">
+          <div className="text-xs text-rose-400 mt-1">
             Вес должен быть в диапазоне 30-300 кг
           </div>
         )}
@@ -1087,16 +1087,16 @@ function NutritionPageContent() {
 
       {/* TARGETS SUMMARY */}
       {currentTargets ? (
-        <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 border border-gray-100">
+        <div className="bg-zinc-900 p-4 rounded-2xl shadow-sm mb-6 border border-zinc-800">
           <div className="flex justify-between items-end mb-4">
             <div>
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Калории</span>
-              <div className="text-3xl font-black text-gray-900 flex items-baseline gap-1">
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Калории</span>
+              <div className="text-3xl font-black text-zinc-100 flex items-baseline gap-1 tabular-nums">
                 {totals.calories || 0}
-                <span className="text-lg text-gray-400 font-normal">/ {currentTargets.calories}</span>
+                <span className="text-lg text-zinc-400 font-normal">/ {currentTargets.calories}</span>
               </div>
             </div>
-            <Flame className={totals.calories > currentTargets.calories ? "text-red-500" : "text-green-500"} />
+            <Flame className={totals.calories > currentTargets.calories ? "text-rose-400" : "text-emerald-400"} />
           </div>
 
           {/* Macro Bars */}
@@ -1107,17 +1107,17 @@ function NutritionPageContent() {
           </div>
         </div>
       ) : (
-        <div className="p-4 bg-yellow-50 text-yellow-800 rounded-xl mb-6 text-sm">
+        <div className="p-4 bg-amber-950/20 text-amber-300 border border-amber-800/50 rounded-xl mb-6 text-sm">
           Координатор еще не назначил план питания.
         </div>
       )}
 
       {/* MEALS FORM */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-        <h2 className="font-bold text-gray-800">Отчет за день</h2>
+      <div className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 space-y-6">
+        <h2 className="font-bold text-zinc-100">Отчет за день</h2>
 
-        <div className="flex items-start gap-2 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
-          <div className="mt-0.5 h-2 w-2 rounded-full bg-black" />
+        <div className="flex items-start gap-2 rounded-xl bg-zinc-800 p-3 text-sm text-zinc-300">
+          <div className="mt-0.5 h-2 w-2 rounded-full bg-white" />
           <div>
             Добавьте каждый прием пищи. Если КБЖУ неизвестно — загрузите фото этикетки или продукта и укажите вес. Автозаполнение по фото подключим позже.
           </div>
@@ -1127,13 +1127,13 @@ function NutritionPageContent() {
           {meals.map((meal, index) => {
             const mealValidation = mealValidations[index]
             return (
-              <div key={meal.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-4">
+              <div key={meal.id} className="rounded-xl border border-zinc-800 bg-zinc-800 p-4 space-y-4">
                 <div className="flex items-center justify-between gap-2">
                   <input
                     type="text"
                     value={meal.title}
                     onChange={(e) => updateMeal(meal.id, 'title', e.target.value)}
-                    className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-black outline-none focus:ring-2 focus:ring-black"
+                    className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-100 outline-none focus:ring-2 focus:ring-white placeholder:text-zinc-500"
                     placeholder={getMealNameByTime()}
                   />
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -1142,13 +1142,13 @@ function NutritionPageContent() {
                       value={meal.mealDate || selectedDate}
                       onChange={(e) => updateMeal(meal.id, 'mealDate', e.target.value)}
                       max={new Date().toISOString().split('T')[0]}
-                      className="text-xs border border-gray-200 rounded px-2 py-1 text-black w-28"
+                      className="text-xs border border-zinc-700 rounded px-2 py-1 text-zinc-100 bg-zinc-900 w-28"
                       title="Дата приема пищи"
                     />
                     <button
                       type="button"
                       onClick={() => removeMeal(meal.id)}
-                      className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2 py-1 text-xs font-medium text-rose-400 bg-rose-950/20 hover:bg-rose-950/30 rounded border border-rose-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={meals.length === 0}
                       title="Удалить прием пищи"
                     >
@@ -1159,7 +1159,7 @@ function NutritionPageContent() {
 
                 {/* ProductSearch для автозаполнения */}
                 <div>
-                  <label className="text-xs text-gray-500 mb-2 block">Поиск продукта (автозаполнение КБЖУ)</label>
+                  <label className="text-xs text-zinc-400 mb-2 block">Поиск продукта (автозаполнение КБЖУ)</label>
                   <ProductSearch
                     onSelect={(product, weight) => handleProductSelect(meal.id, product, weight)}
                     placeholder="Начните вводить название продукта..."
@@ -1223,19 +1223,19 @@ function NutritionPageContent() {
 
                 {/* Отображение итоговых значений КБЖУ для порции */}
                 {(meal.totals?.calories > 0 || meal.totals?.protein > 0 || meal.totals?.fats > 0 || meal.totals?.carbs > 0) && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="text-xs font-semibold text-blue-800 mb-2">Итого для порции ({meal.weight}г):</div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="text-blue-700">
+                  <div className="mt-2 p-3 bg-blue-950/20 border border-blue-800/50 rounded-lg">
+                    <div className="text-xs font-semibold text-blue-300 mb-2 tabular-nums">Итого для порции ({meal.weight}г):</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs tabular-nums">
+                      <div className="text-blue-300">
                         <span className="font-medium">Калории:</span> {meal.totals?.calories ?? 0} ккал
                       </div>
-                      <div className="text-blue-700">
+                      <div className="text-blue-300">
                         <span className="font-medium">Белки:</span> {meal.totals?.protein ?? 0} г
                       </div>
-                      <div className="text-blue-700">
+                      <div className="text-blue-300">
                         <span className="font-medium">Жиры:</span> {meal.totals?.fats ?? 0} г
                       </div>
-                      <div className="text-blue-700">
+                      <div className="text-blue-300">
                         <span className="font-medium">Углеводы:</span> {meal.totals?.carbs ?? 0} г
                       </div>
                     </div>
@@ -1251,12 +1251,12 @@ function NutritionPageContent() {
                 )}
 
                 <div className="space-y-2">
-                  <label className="text-xs text-gray-500">Фото (этикетка/блюдо/продукт)</label>
+                  <label className="text-xs text-zinc-400">Фото (этикетка/блюдо/продукт)</label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleOCRScanClick(meal.id)}
-                      className="px-3 py-1.5 bg-black text-white text-xs rounded hover:bg-gray-800 transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 bg-white text-zinc-950 text-xs rounded hover:bg-zinc-200 transition-colors flex items-center gap-1"
                     >
                       📷 Сканировать этикетку
                     </button>
@@ -1269,11 +1269,11 @@ function NutritionPageContent() {
                           updateMeal(meal.id, 'title', meal.title, file.name)
                         }
                       }}
-                      className="text-xs text-gray-600 flex-1"
+                      className="text-xs text-zinc-400 flex-1"
                     />
-                    {meal.photoName && <span className="text-xs text-gray-500 truncate">{meal.photoName}</span>}
+                    {meal.photoName && <span className="text-xs text-zinc-500 truncate">{meal.photoName}</span>}
                   </div>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-zinc-500">
                     Используйте сканирование этикетки для автоматического заполнения КБЖУ
                   </p>
                 </div>
@@ -1286,19 +1286,19 @@ function NutritionPageContent() {
         {!isEditMode && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500">Дата приема пищи:</label>
+              <label className="text-xs text-zinc-400">Дата приема пищи:</label>
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
-                className="text-xs border border-gray-200 rounded px-2 py-1 text-black"
+                className="text-xs border border-zinc-700 rounded px-2 py-1 text-zinc-100 bg-zinc-900"
               />
             </div>
             <button
               type="button"
               onClick={addMeal}
-              className="w-full text-sm font-semibold text-white bg-black hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-colors"
+              className="w-full text-sm font-semibold text-zinc-950 bg-white hover:bg-zinc-200 px-4 py-2 rounded-lg shadow-sm transition-colors"
             >
               + Добавить прием пищи
             </button>
@@ -1306,18 +1306,18 @@ function NutritionPageContent() {
         )}
 
         {/* ВСЕГО ЗА ДЕНЬ - ПЕРЕМЕЩЕНО ВНИЗ */}
-        <div className="pt-4 border-t border-gray-200">
-          <div className="text-sm font-semibold text-gray-900 text-center mb-2">
+        <div className="pt-4 border-t border-zinc-800">
+          <div className="text-sm font-semibold text-zinc-100 text-center mb-2 tabular-nums">
             Всего за день: {totals.calories} ккал, Б {totals.protein} / Ж {totals.fats} / У {totals.carbs} г
           </div>
           {/* Валидация дневных норм не показывается во время ввода - только при сохранении */}
           {/* Во время ввода валидируются только отдельные приемы пищи */}
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-gray-100">
+        <div className="space-y-4 pt-4 border-t border-zinc-800">
           {/* HUNGER LEVEL - EMOJI (5 уровней) */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-3 block">Уровень голода</label>
+            <label className="text-sm font-medium text-zinc-300 mb-3 block">Уровень голода</label>
             <div className="grid grid-cols-5 gap-2 sm:gap-3">
               {[1, 2, 3, 4, 5].map((level) => (
                 <button
@@ -1325,8 +1325,8 @@ function NutritionPageContent() {
                   type="button"
                   onClick={() => setLog({ ...log, hunger_level: level })}
                   className={`p-3 rounded-lg text-2xl transition-all ${log.hunger_level === level
-                    ? 'bg-black text-white scale-110'
-                    : 'bg-gray-100 hover:bg-gray-200'
+                    ? 'bg-white text-zinc-950 scale-110'
+                    : 'bg-zinc-800 hover:bg-zinc-700'
                     }`}
                   title={getHungerLevelText(level)}
                 >
@@ -1334,15 +1334,15 @@ function NutritionPageContent() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
+            <p className="text-xs text-zinc-400 mt-2 text-center">
               {getHungerLevelText(log.hunger_level || 3)}
             </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Комментарий</label>
+            <label className="text-sm font-medium text-zinc-300 mb-1 block">Комментарий</label>
             <textarea
-              className="w-full p-3 bg-gray-50 rounded-xl border-none text-sm text-black focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-800 rounded-xl border-none text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
               rows={3}
               placeholder="Как прошел день? Были срывы?"
               value={log.notes || ''}
@@ -1353,7 +1353,7 @@ function NutritionPageContent() {
 
         {/* Сообщения об ошибках и предупреждения - показываем прямо над кнопками для лучшей видимости */}
         {saveError && (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200">
+          <div className="rounded-lg bg-rose-950/20 px-3 py-2 text-sm text-rose-300 border border-rose-800/50">
             {saveError}
           </div>
         )}
@@ -1363,8 +1363,8 @@ function NutritionPageContent() {
           <button
             onClick={handleSaveDraft}
             disabled={status === 'saving_draft' || status === 'submitting' || status === 'submitted'}
-            className={`px-4 py-4 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-              ${status === 'draft_saved' ? 'bg-green-100 text-green-700' : ''}
+            className={`px-4 py-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+              ${status === 'draft_saved' ? 'bg-emerald-950/20 text-emerald-300 border border-emerald-800/50' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700'}
             `}
           >
             {status === 'saving_draft' && 'Сохранение...'}
@@ -1400,7 +1400,7 @@ function NutritionPageContent() {
 export default function NutritionPage() {
   return (
     <Suspense fallback={
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
         <div className="space-y-6">
           <SkeletonLoader variant="card" count={2} />
           <SkeletonLoader variant="list" count={3} />
@@ -1429,7 +1429,7 @@ function InputGroup({ label, value, onChange, hint, min, max, validation }: Inpu
 
   return (
     <div>
-      <label className="text-xs text-gray-400 block mb-1">{label}</label>
+      <label className="text-xs text-zinc-400 block mb-1">{label}</label>
       <input
         type="number"
         value={displayValue}
@@ -1440,15 +1440,15 @@ function InputGroup({ label, value, onChange, hint, min, max, validation }: Inpu
         }}
         min={min}
         max={max}
-        className={`w-full p-3 bg-white rounded-xl border font-mono text-base font-medium text-black focus:ring-2 outline-none placeholder:text-gray-400 placeholder:text-sm ${hasError
-          ? 'border-red-300 focus:ring-red-500'
-          : 'border-gray-200 focus:ring-black'
+        className={`w-full p-3 bg-zinc-900 rounded-xl border font-mono text-base font-medium text-zinc-100 focus:ring-2 outline-none placeholder:text-zinc-500 placeholder:text-sm tabular-nums ${hasError
+          ? 'border-rose-500 focus:ring-rose-400'
+          : 'border-zinc-700 focus:ring-white'
           }`}
         placeholder="Введите значение"
       />
       {hint && <InputHint hint={hint} />}
       {hasError && validation?.error && (
-        <div className="text-xs text-red-600 mt-1">{validation.error}</div>
+        <div className="text-xs text-rose-400 mt-1">{validation.error}</div>
       )}
     </div>
   )

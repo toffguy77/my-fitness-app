@@ -87,37 +87,37 @@ export default function WelcomeTour({ onComplete }: WelcomeTourProps) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleSkip} />
-        <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full p-6 animate-slide-in-right">
+        <div className="relative bg-zinc-900 rounded-2xl shadow-xl max-w-md w-full p-6 animate-slide-in-right border border-zinc-800">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               {currentStepData.icon && (
-                <div className="w-12 h-12 bg-black rounded-full flex items-center justify-center text-white">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-zinc-950">
                   {currentStepData.icon}
                 </div>
               )}
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{currentStepData.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <h3 className="text-xl font-bold text-zinc-100">{currentStepData.title}</h3>
+                <p className="text-sm text-zinc-500 mt-1 tabular-nums">
                   Шаг {currentStep + 1} из {tourSteps.length}
                 </p>
               </div>
             </div>
             <button
               onClick={handleSkip}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors"
               aria-label="Пропустить"
             >
               <X size={20} />
             </button>
           </div>
 
-          <p className="text-gray-600 mb-6">{currentStepData.description}</p>
+          <p className="text-zinc-300 mb-6">{currentStepData.description}</p>
 
           {/* Progress bar */}
           <div className="mb-6">
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-zinc-800 rounded-full h-2">
               <div
-                className="bg-black h-2 rounded-full transition-all duration-300"
+                className="bg-white h-2 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -127,13 +127,13 @@ export default function WelcomeTour({ onComplete }: WelcomeTourProps) {
           <div className="flex items-center justify-between">
             <button
               onClick={handleSkip}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               Пропустить
             </button>
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 px-6 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-2 px-6 py-2 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-200 transition-colors"
             >
               {currentStep === tourSteps.length - 1 ? 'Начать' : 'Далее'}
               <ArrowRight size={16} />
@@ -150,35 +150,35 @@ export default function WelcomeTour({ onComplete }: WelcomeTourProps) {
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={handleSkip} />
       <div className="fixed z-50">
         {/* Highlight overlay будет добавлен через portal к целевому элементу */}
-        <div className="relative bg-white rounded-xl shadow-xl p-4 max-w-xs animate-slide-in-right">
+        <div className="relative bg-zinc-900 rounded-xl shadow-xl p-4 max-w-xs animate-slide-in-right border border-zinc-800">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               {currentStepData.icon && (
-                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white flex-shrink-0">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-zinc-950 flex-shrink-0">
                   {currentStepData.icon}
                 </div>
               )}
-              <h3 className="text-lg font-bold text-gray-900">{currentStepData.title}</h3>
+              <h3 className="text-lg font-bold text-zinc-100">{currentStepData.title}</h3>
             </div>
             <button
               onClick={handleSkip}
-              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              className="text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
               aria-label="Пропустить"
             >
               <X size={18} />
             </button>
           </div>
-          <p className="text-sm text-gray-600 mb-4">{currentStepData.description}</p>
+          <p className="text-sm text-zinc-300 mb-4">{currentStepData.description}</p>
           
           {/* Progress */}
           <div className="mb-3">
-            <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div className="w-full bg-zinc-800 rounded-full h-1.5">
               <div
-                className="bg-black h-1.5 rounded-full transition-all duration-300"
+                className="bg-white h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1 text-center">
+            <p className="text-xs text-zinc-500 mt-1 text-center tabular-nums">
               {currentStep + 1} / {tourSteps.length}
             </p>
           </div>
@@ -187,13 +187,13 @@ export default function WelcomeTour({ onComplete }: WelcomeTourProps) {
           <div className="flex items-center justify-between">
             <button
               onClick={handleSkip}
-              className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               Пропустить
             </button>
             <button
               onClick={handleNext}
-              className="flex items-center gap-1 px-4 py-1.5 bg-black text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-1 px-4 py-1.5 bg-white text-zinc-950 rounded-lg text-xs font-medium hover:bg-zinc-200 transition-colors"
             >
               {currentStep === tourSteps.length - 1 ? 'Начать' : 'Далее'}
               <ArrowRight size={14} />

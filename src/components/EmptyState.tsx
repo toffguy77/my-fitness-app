@@ -31,7 +31,7 @@ export default function EmptyState({
   }
 
   const iconSize = variant === 'illustration' ? 64 : variant === 'default' ? 48 : 32
-  const iconColor = variant === 'illustration' ? 'text-gray-300' : 'text-gray-400'
+  const iconColor = variant === 'illustration' ? 'text-zinc-500' : 'text-zinc-600'
 
   return (
     <div className={`${baseStyles} ${variantStyles[variant]} ${className}`}>
@@ -40,11 +40,11 @@ export default function EmptyState({
           <Icon size={iconSize} className={iconColor} strokeWidth={variant === 'illustration' ? 1.5 : 2} />
         </div>
       )}
-      <h3 className={`font-semibold text-gray-900 mb-2 ${variant === 'illustration' ? 'text-xl' : variant === 'default' ? 'text-lg' : 'text-base'}`}>
+      <h3 className={`font-semibold text-zinc-100 mb-2 ${variant === 'illustration' ? 'text-xl' : variant === 'default' ? 'text-lg' : 'text-base'}`}>
         {title}
       </h3>
       {description && (
-        <p className={`text-gray-500 mb-4 max-w-md ${variant === 'illustration' ? 'text-base' : 'text-sm'}`}>
+        <p className={`text-zinc-400 mb-4 max-w-md ${variant === 'illustration' ? 'text-base' : 'text-sm'}`}>
           {description}
         </p>
       )}

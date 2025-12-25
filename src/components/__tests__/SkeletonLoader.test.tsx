@@ -40,7 +40,7 @@ describe('SkeletonLoader', () => {
   it('has default gray background', () => {
     const { container } = render(<SkeletonLoader />)
     
-    const skeleton = container.querySelector('.bg-gray-200')
+    const skeleton = container.querySelector('.bg-zinc-800')
     expect(skeleton).toBeInTheDocument()
   })
 })

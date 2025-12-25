@@ -74,7 +74,7 @@ describe('MetricCard', () => {
   it('applies default variant styles', () => {
     const { container } = render(<MetricCard title="Test" value={100} />)
     
-    const card = container.querySelector('.bg-white.border-gray-200')
+    const card = container.querySelector('.bg-zinc-900.border-zinc-800')
     expect(card).toBeInTheDocument()
   })
 
@@ -83,8 +83,11 @@ describe('MetricCard', () => {
       <MetricCard title="Test" value={100} variant="success" />
     )
     
-    const card = container.querySelector('.bg-green-50.border-green-200')
+    const card = container.querySelector('.bg-zinc-900.border-zinc-800')
     expect(card).toBeInTheDocument()
+    // Check that value has success color
+    const value = screen.getByText('100')
+    expect(value).toHaveClass('text-emerald-300')
   })
 
   it('applies warning variant styles', () => {
@@ -92,8 +95,11 @@ describe('MetricCard', () => {
       <MetricCard title="Test" value={100} variant="warning" />
     )
     
-    const card = container.querySelector('.bg-yellow-50.border-yellow-200')
+    const card = container.querySelector('.bg-zinc-900.border-zinc-800')
     expect(card).toBeInTheDocument()
+    // Check that value has warning color
+    const value = screen.getByText('100')
+    expect(value).toHaveClass('text-amber-300')
   })
 
   it('applies danger variant styles', () => {
@@ -101,8 +107,11 @@ describe('MetricCard', () => {
       <MetricCard title="Test" value={100} variant="danger" />
     )
     
-    const card = container.querySelector('.bg-red-50.border-red-200')
+    const card = container.querySelector('.bg-zinc-900.border-zinc-800')
     expect(card).toBeInTheDocument()
+    // Check that value has danger color
+    const value = screen.getByText('100')
+    expect(value).toHaveClass('text-rose-300')
   })
 })
 

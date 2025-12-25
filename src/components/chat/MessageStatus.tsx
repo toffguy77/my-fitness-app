@@ -13,7 +13,7 @@ interface MessageStatusProps {
 export default function MessageStatus({ status, readAt, className = '' }: MessageStatusProps) {
   if (status === 'sending') {
     return (
-      <span className={`inline-flex items-center text-xs text-gray-400 ${className}`} title="Отправляется...">
+      <span className={`inline-flex items-center text-xs text-zinc-500 ${className}`} title="Отправляется...">
         <span className="animate-pulse">•</span>
       </span>
     )
@@ -21,7 +21,7 @@ export default function MessageStatus({ status, readAt, className = '' }: Messag
 
   if (status === 'sent') {
     return (
-      <span className={`inline-flex items-center text-xs text-gray-400 ${className}`} title="Отправлено">
+      <span className={`inline-flex items-center text-xs text-zinc-500 ${className}`} title="Отправлено">
         <Check size={12} />
       </span>
     )
@@ -29,7 +29,7 @@ export default function MessageStatus({ status, readAt, className = '' }: Messag
 
   if (status === 'delivered' || (status === 'read' && !readAt)) {
     return (
-      <span className={`inline-flex items-center text-xs text-gray-400 ${className}`} title="Доставлено">
+      <span className={`inline-flex items-center text-xs text-zinc-500 ${className}`} title="Доставлено">
         <CheckCheck size={12} />
       </span>
     )
@@ -37,7 +37,7 @@ export default function MessageStatus({ status, readAt, className = '' }: Messag
 
   if (status === 'read' && readAt) {
     return (
-      <span className={`inline-flex items-center text-xs text-blue-400 ${className}`} title="Прочитано">
+      <span className={`inline-flex items-center text-xs text-emerald-400 ${className}`} title="Прочитано">
         <CheckCheck size={12} className="fill-current" />
       </span>
     )

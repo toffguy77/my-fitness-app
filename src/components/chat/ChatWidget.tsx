@@ -144,8 +144,8 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
             // Показываем toast уведомление
             toast.success(
               <div>
-                <div className="font-medium">Новое сообщение от {coordinatorName}</div>
-                <div className="text-sm text-gray-600 truncate max-w-xs">{message.content}</div>
+                <div className="font-medium text-zinc-100">Новое сообщение от {coordinatorName}</div>
+                <div className="text-sm text-zinc-400 truncate max-w-xs">{message.content}</div>
               </div>,
               {
                 duration: 5000,
@@ -243,13 +243,13 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
             // Сбрасываем счетчик при открытии чата
             setUnreadCount(0)
           }}
-          className="relative p-3 sm:p-4 bg-black text-white rounded-full shadow-lg hover:bg-gray-800 transition-all hover:scale-110 active:scale-95 touch-manipulation"
+          className="relative p-3 sm:p-4 bg-white text-zinc-950 rounded-full shadow-lg hover:bg-zinc-200 transition-all hover:scale-110 active:scale-95 touch-manipulation"
           title={`Чат с ${coordinatorName}${unreadCount > 0 ? ` (${unreadCount} непрочитанных)` : ''}`}
           aria-label={`Открыть чат с ${coordinatorName}${unreadCount > 0 ? `, ${unreadCount} непрочитанных сообщений` : ''}`}
         >
           <MessageSquare size={20} className="sm:w-6 sm:h-6" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] sm:min-w-[24px] h-5 sm:h-6 flex items-center justify-center px-1 sm:px-1.5 ring-2 ring-white text-[10px] sm:text-xs">
+            <span className="absolute -top-1 -right-1 bg-red-400 text-white text-xs font-bold rounded-full min-w-[20px] sm:min-w-[24px] h-5 sm:h-6 flex items-center justify-center px-1 sm:px-1.5 ring-2 ring-zinc-950 text-[10px] sm:text-xs tabular-nums">
               {unreadCount > 99 ? '99+' : unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

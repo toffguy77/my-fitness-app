@@ -56,14 +56,14 @@ export default function CreateInviteCodeModal({
     const today = new Date().toISOString().split('T')[0]
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-zinc-900 rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold text-gray-900">Создать инвайт-код</h2>
+                        <h2 className="text-xl font-bold text-zinc-100">Создать инвайт-код</h2>
                         <button
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            className="text-zinc-500 hover:text-zinc-300 transition-colors"
                         >
                             <X size={24} />
                         </button>
@@ -71,7 +71,7 @@ export default function CreateInviteCodeModal({
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-zinc-100 mb-2">
                                 Лимит использований (опционально)
                             </label>
                             <input
@@ -80,15 +80,15 @@ export default function CreateInviteCodeModal({
                                 value={maxUses}
                                 onChange={(e) => setMaxUses(e.target.value)}
                                 placeholder="Безлимит"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                className="w-full px-4 py-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white focus:border-transparent text-zinc-100 bg-zinc-900 placeholder:text-zinc-600 tabular-nums"
                             />
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-zinc-500">
                                 Оставьте пустым для безлимитного использования
                             </p>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-zinc-100 mb-2">
                                 Срок действия (опционально)
                             </label>
                             <input
@@ -96,9 +96,9 @@ export default function CreateInviteCodeModal({
                                 min={today}
                                 value={expiresAt}
                                 onChange={(e) => setExpiresAt(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                className="w-full px-4 py-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white focus:border-transparent text-zinc-100 bg-zinc-900"
                             />
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-zinc-500">
                                 Оставьте пустым для бессрочного кода
                             </p>
                         </div>
@@ -107,14 +107,14 @@ export default function CreateInviteCodeModal({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                                className="flex-1 px-4 py-2 border border-zinc-800 text-zinc-300 rounded-lg font-medium hover:bg-zinc-800 transition-colors"
                             >
                                 Отмена
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? 'Создание...' : 'Создать код'}
                             </button>

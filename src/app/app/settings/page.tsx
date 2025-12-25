@@ -251,7 +251,7 @@ function SettingsPageContent() {
 
     if (loading) {
         return (
-            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+            <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
                 <div className="space-y-6">
                     <SkeletonLoader variant="card" count={3} />
                 </div>
@@ -266,91 +266,91 @@ function SettingsPageContent() {
     const isPremium = hasActiveSubscription(profile) && !subscriptionInfo?.isExpired
 
     return (
-        <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+        <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
             {/* HEADER */}
             <header className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
-                <p className="text-sm text-gray-500">Управление профилем</p>
+                <h1 className="text-2xl font-bold text-zinc-100">Настройки</h1>
+                <p className="text-sm text-zinc-400">Управление профилем</p>
             </header>
 
             {/* PROFILE SECTION */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+            <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 mb-6">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center">
-                        <UserIcon size={24} className="text-gray-600" />
+                    <div className="h-12 w-12 bg-zinc-800 rounded-full flex items-center justify-center">
+                        <UserIcon size={24} className="text-zinc-400" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-gray-900">Профиль</h2>
-                        <p className="text-sm text-gray-500">{profile.email}</p>
+                        <h2 className="text-lg font-bold text-zinc-100">Профиль</h2>
+                        <p className="text-sm text-zinc-400">{profile.email}</p>
                     </div>
                 </div>
 
                 {error && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                    <div className="mb-4 p-3 bg-rose-950/20 border border-rose-800/50 rounded-lg text-sm text-rose-300">
                         {error}
                     </div>
                 )}
 
                 {message && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                    <div className="mb-4 p-3 bg-emerald-950/20 border border-emerald-800/50 rounded-lg text-sm text-emerald-300">
                         {message}
                     </div>
                 )}
 
                 <div className="space-y-4">
                     <div>
-                        <label className="text-sm font-medium text-gray-700 mb-1 block">Имя</label>
+                        <label className="text-sm font-medium text-zinc-300 mb-1 block">Имя</label>
                         <input
                             type="text"
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
+                            className="w-full p-3 bg-zinc-800 rounded-xl border border-zinc-700 text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
                             placeholder="Ваше имя"
                         />
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-gray-700 mb-1 block">Телефон</label>
+                        <label className="text-sm font-medium text-zinc-300 mb-1 block">Телефон</label>
                         <input
                             type="tel"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
+                            className="w-full p-3 bg-zinc-800 rounded-xl border border-zinc-700 text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
                             placeholder="+7 (999) 123-45-67"
                         />
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">Приватность профиля</label>
+                        <label className="text-sm font-medium text-zinc-300 mb-2 block">Приватность профиля</label>
                         <div className="space-y-2">
-                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-zinc-800">
                                 <input
                                     type="radio"
                                     name="profileVisibility"
                                     value="private"
                                     checked={profileVisibility === 'private'}
                                     onChange={(e) => setProfileVisibility(e.target.value as 'private' | 'public')}
-                                    className="w-4 h-4 text-black focus:ring-2 focus:ring-black"
+                                    className="w-4 h-4 text-white focus:ring-2 focus:ring-white bg-zinc-800 border-zinc-700"
                                 />
                                 <div>
-                                    <span className="text-sm font-medium text-gray-900">Приватный</span>
-                                    <p className="text-xs text-gray-500">Только вы и ваш координатор могут видеть ваш профиль</p>
+                                    <span className="text-sm font-medium text-zinc-100">Приватный</span>
+                                    <p className="text-xs text-zinc-400">Только вы и ваш координатор могут видеть ваш профиль</p>
                                 </div>
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-zinc-800">
                                 <input
                                     type="radio"
                                     name="profileVisibility"
                                     value="public"
                                     checked={profileVisibility === 'public'}
                                     onChange={(e) => setProfileVisibility(e.target.value as 'private' | 'public')}
-                                    className="w-4 h-4 text-black focus:ring-2 focus:ring-black"
+                                    className="w-4 h-4 text-white focus:ring-2 focus:ring-white bg-zinc-800 border-zinc-700"
                                 />
                                 <div>
-                                    <span className="text-sm font-medium text-gray-900">Публичный</span>
-                                    <p className="text-xs text-gray-500">Ваши достижения видны всем по ссылке</p>
+                                    <span className="text-sm font-medium text-zinc-100">Публичный</span>
+                                    <p className="text-xs text-zinc-400">Ваши достижения видны всем по ссылке</p>
                                     {profileVisibility === 'public' && user && (
-                                        <p className="text-xs text-gray-400 mt-1 font-mono break-all">
+                                        <p className="text-xs text-zinc-500 mt-1 font-mono break-all">
                                             {typeof window !== 'undefined' ? `${window.location.origin}/profile/${user.id}` : '/profile/[userId]'}
                                         </p>
                                     )}
@@ -362,7 +362,7 @@ function SettingsPageContent() {
                     <button
                         onClick={handleSaveProfile}
                         disabled={saving}
-                        className="w-full py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? 'Сохранение...' : 'Сохранить изменения'}
                     </button>
@@ -371,77 +371,82 @@ function SettingsPageContent() {
 
             {/* SUBSCRIPTION SECTION (только для клиентов) */}
             {profile?.role === 'client' && (
-                <section ref={subscriptionSectionRef} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-                    <div className="flex items-center gap-3 mb-4">
-                        <Shield size={20} className="text-gray-600" />
-                        <h2 className="text-lg font-bold text-gray-900">Подписка</h2>
-                    </div>
-
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600">Тариф:</span>
-                            <span className={`text-sm font-semibold ${isPremium ? 'text-green-600' : 'text-gray-600'}`}>
-                                {isPremium ? 'Premium' : 'Free'}
-                            </span>
+                <section ref={subscriptionSectionRef} className="bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 rounded-2xl shadow-lg border-2 border-zinc-800 mb-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
+                    <div className="relative">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="h-10 w-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                                <Shield size={20} className="text-white" />
+                            </div>
+                            <h2 className="text-lg font-bold text-zinc-100">Подписка</h2>
                         </div>
 
-                        {profile.subscription_start_date && (
+                        <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Начало подписки:</span>
-                                <span className="text-sm text-gray-900">
-                                    {new Date(profile.subscription_start_date).toLocaleDateString('ru-RU')}
+                                <span className="text-sm text-zinc-400">Тариф:</span>
+                                <span className={`text-sm font-semibold ${isPremium ? 'text-emerald-300' : 'text-zinc-400'}`}>
+                                    {isPremium ? 'Premium' : 'Free'}
                                 </span>
                             </div>
-                        )}
 
-                        {profile.subscription_end_date && (
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Окончание подписки:</span>
-                                <span className={`text-sm font-semibold ${subscriptionInfo?.isExpired ? 'text-red-600' : 'text-gray-900'
-                                    }`}>
-                                    {new Date(profile.subscription_end_date).toLocaleDateString('ru-RU')}
-                                    {subscriptionInfo?.isExpired && ' (Истекла)'}
-                                </span>
-                            </div>
-                        )}
+                            {profile.subscription_start_date && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-zinc-400">Начало подписки:</span>
+                                    <span className="text-sm text-zinc-100">
+                                        {new Date(profile.subscription_start_date).toLocaleDateString('ru-RU')}
+                                    </span>
+                                </div>
+                            )}
 
-                        {subscriptionInfo?.isExpired && (
-                            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
-                                Подписка истекла. Доступ к Premium функциям ограничен.
-                            </div>
-                        )}
+                            {profile.subscription_end_date && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-zinc-400">Окончание подписки:</span>
+                                    <span className={`text-sm font-semibold tabular-nums ${subscriptionInfo?.isExpired ? 'text-rose-300' : 'text-zinc-100'
+                                        }`}>
+                                        {new Date(profile.subscription_end_date).toLocaleDateString('ru-RU')}
+                                        {subscriptionInfo?.isExpired && ' (Истекла)'}
+                                    </span>
+                                </div>
+                            )}
 
-                        {!isPremium && !subscriptionInfo?.isExpired && (
-                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                                Для активации Premium подписки обратитесь к администратору или вашему координатору.
-                            </div>
-                        )}
+                            {subscriptionInfo?.isExpired && (
+                                <div className="mt-4 p-3 bg-rose-950/20 border border-rose-800/50 rounded-lg text-sm text-rose-300">
+                                    Подписка истекла. Доступ к Premium функциям ограничен.
+                                </div>
+                            )}
+
+                            {!isPremium && !subscriptionInfo?.isExpired && (
+                                <div className="mt-4 p-3 bg-amber-950/20 border border-amber-800/50 rounded-lg text-sm text-amber-300">
+                                    Для активации Premium подписки обратитесь к администратору или вашему координатору.
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
             )}
 
             {/* COORDINATOR SECTION (Premium only) */}
             {isPremium && coordinator && (
-                <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 mb-6">
                     <div className="flex items-center gap-3 mb-4">
-                        <UserIcon size={20} className="text-gray-600" />
-                        <h2 className="text-lg font-bold text-gray-900">Мой координатор</h2>
+                        <UserIcon size={20} className="text-zinc-400" />
+                        <h2 className="text-lg font-bold text-zinc-100">Мой координатор</h2>
                     </div>
 
                     <div className="space-y-3">
                         <div>
-                            <span className="text-sm text-gray-600">Имя:</span>
-                            <p className="text-sm font-medium text-gray-900">{coordinator.full_name || 'Не указано'}</p>
+                            <span className="text-sm text-zinc-400">Имя:</span>
+                            <p className="text-sm font-medium text-zinc-100">{coordinator.full_name || 'Не указано'}</p>
                         </div>
                         <div>
-                            <span className="text-sm text-gray-600">Email:</span>
-                            <p className="text-sm font-medium text-gray-900">{coordinator.email || 'Не указано'}</p>
+                            <span className="text-sm text-zinc-400">Email:</span>
+                            <p className="text-sm font-medium text-zinc-100">{coordinator.email || 'Не указано'}</p>
                         </div>
                         <button
                             onClick={() => {
                                 window.location.href = `mailto:${coordinator.email}`
                             }}
-                            className="w-full mt-4 py-2 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                            className="w-full mt-4 py-2 bg-zinc-800 text-zinc-300 rounded-xl font-medium hover:bg-zinc-700 transition-colors"
                         >
                             Написать координатору
                         </button>
@@ -450,54 +455,54 @@ function SettingsPageContent() {
             )}
 
             {/* PASSWORD SECTION */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+            <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <Lock size={20} className="text-gray-600" />
-                    <h2 className="text-lg font-bold text-gray-900">Безопасность</h2>
+                    <Lock size={20} className="text-zinc-400" />
+                    <h2 className="text-lg font-bold text-zinc-100">Безопасность</h2>
                 </div>
 
                 {passwordError && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                    <div className="mb-4 p-3 bg-rose-950/20 border border-rose-800/50 rounded-lg text-sm text-rose-300">
                         {passwordError}
                     </div>
                 )}
 
                 {passwordMessage && (
-                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                    <div className="mb-4 p-3 bg-emerald-950/20 border border-emerald-800/50 rounded-lg text-sm text-emerald-300">
                         {passwordMessage}
                     </div>
                 )}
 
                 <div className="space-y-4">
                     <div>
-                        <label className="text-sm font-medium text-gray-700 mb-1 block">Текущий пароль</label>
+                        <label className="text-sm font-medium text-zinc-300 mb-1 block">Текущий пароль</label>
                         <input
                             type="password"
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
+                            className="w-full p-3 bg-zinc-800 rounded-xl border border-zinc-700 text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
                             placeholder="Введите текущий пароль"
                         />
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-gray-700 mb-1 block">Новый пароль</label>
+                        <label className="text-sm font-medium text-zinc-300 mb-1 block">Новый пароль</label>
                         <input
                             type="password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
+                            className="w-full p-3 bg-zinc-800 rounded-xl border border-zinc-700 text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
                             placeholder="Минимум 6 символов"
                         />
                     </div>
 
                     <div>
-                        <label className="text-sm font-medium text-gray-700 mb-1 block">Подтвердите новый пароль</label>
+                        <label className="text-sm font-medium text-zinc-300 mb-1 block">Подтвердите новый пароль</label>
                         <input
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-black focus:ring-2 focus:ring-black outline-none"
+                            className="w-full p-3 bg-zinc-800 rounded-xl border border-zinc-700 text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
                             placeholder="Повторите новый пароль"
                         />
                     </div>
@@ -505,7 +510,7 @@ function SettingsPageContent() {
                     <button
                         onClick={handleChangePassword}
                         disabled={changingPassword}
-                        className="w-full py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full py-3 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {changingPassword ? 'Изменение...' : 'Изменить пароль'}
                     </button>
@@ -513,30 +518,30 @@ function SettingsPageContent() {
             </section>
 
             {/* NUTRITION TARGETS SECTION */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+            <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <Target size={20} className="text-gray-600" />
-                    <h2 className="text-lg font-bold text-gray-900">Мои цели</h2>
+                    <Target size={20} className="text-zinc-400" />
+                    <h2 className="text-lg font-bold text-zinc-100">Мои цели</h2>
                 </div>
 
                 {targets.rest && targets.training ? (
                     <div className="space-y-4">
-                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                            <div className="text-sm font-semibold text-gray-900 mb-2">День отдыха</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-900">
-                                <div><span className="text-gray-700">Калории:</span> <span className="font-bold text-gray-900">{targets.rest.calories}</span></div>
-                                <div><span className="text-gray-700">Белки:</span> <span className="font-bold text-gray-900">{targets.rest.protein}г</span></div>
-                                <div><span className="text-gray-700">Жиры:</span> <span className="font-bold text-gray-900">{targets.rest.fats}г</span></div>
-                                <div><span className="text-gray-700">Углеводы:</span> <span className="font-bold text-gray-900">{targets.rest.carbs}г</span></div>
+                        <div className="p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+                            <div className="text-sm font-semibold text-zinc-100 mb-2">День отдыха</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm text-zinc-100 tabular-nums">
+                                <div><span className="text-zinc-400">Калории:</span> <span className="font-bold text-zinc-100">{targets.rest.calories}</span></div>
+                                <div><span className="text-zinc-400">Белки:</span> <span className="font-bold text-zinc-100">{targets.rest.protein}г</span></div>
+                                <div><span className="text-zinc-400">Жиры:</span> <span className="font-bold text-zinc-100">{targets.rest.fats}г</span></div>
+                                <div><span className="text-zinc-400">Углеводы:</span> <span className="font-bold text-zinc-100">{targets.rest.carbs}г</span></div>
                             </div>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                            <div className="text-sm font-semibold text-gray-900 mb-2">Тренировочный день</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-900">
-                                <div><span className="text-gray-700">Калории:</span> <span className="font-bold text-gray-900">{targets.training.calories}</span></div>
-                                <div><span className="text-gray-700">Белки:</span> <span className="font-bold text-gray-900">{targets.training.protein}г</span></div>
-                                <div><span className="text-gray-700">Жиры:</span> <span className="font-bold text-gray-900">{targets.training.fats}г</span></div>
-                                <div><span className="text-gray-700">Углеводы:</span> <span className="font-bold text-gray-900">{targets.training.carbs}г</span></div>
+                        <div className="p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+                            <div className="text-sm font-semibold text-zinc-100 mb-2">Тренировочный день</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm text-zinc-100 tabular-nums">
+                                <div><span className="text-zinc-400">Калории:</span> <span className="font-bold text-zinc-100">{targets.training.calories}</span></div>
+                                <div><span className="text-zinc-400">Белки:</span> <span className="font-bold text-zinc-100">{targets.training.protein}г</span></div>
+                                <div><span className="text-zinc-400">Жиры:</span> <span className="font-bold text-zinc-100">{targets.training.fats}г</span></div>
+                                <div><span className="text-zinc-400">Углеводы:</span> <span className="font-bold text-zinc-100">{targets.training.carbs}г</span></div>
                             </div>
                         </div>
                         <button
@@ -664,36 +669,36 @@ function SettingsPageContent() {
                                 }
                             }}
                             disabled={recalculating || !targets.rest || !targets.training}
-                            className="w-full py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             <Calculator size={16} />
                             {recalculating ? 'Пересчет...' : 'Пересчитать по текущему весу'}
                         </button>
                     </div>
                 ) : (
-                    <div className="text-center py-4 text-gray-500 text-sm">
+                    <div className="text-center py-4 text-zinc-500 text-sm">
                         Цели не найдены. Пройдите onboarding для их создания.
                     </div>
                 )}
             </section>
 
             {/* USER PRODUCTS SECTION */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+            <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <Target size={20} className="text-gray-600" />
-                    <h2 className="text-lg font-bold text-gray-900">Мои продукты</h2>
+                    <Target size={20} className="text-zinc-400" />
+                    <h2 className="text-lg font-bold text-zinc-100">Мои продукты</h2>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-zinc-400 mb-4">
                     Управляйте своими пользовательскими продуктами. Они будут доступны в поиске при вводе питания.
                 </p>
                 {user && <UserProductsManager userId={user.id} />}
             </section>
 
             {/* LOGOUT SECTION */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800">
                 <button
                     onClick={handleLogout}
-                    className="w-full py-3 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-rose-950/20 text-rose-400 rounded-xl font-medium hover:bg-rose-950/30 transition-colors flex items-center justify-center gap-2 border border-rose-800/50"
                 >
                     <LogOut size={16} />
                     Выйти из системы
@@ -706,7 +711,7 @@ function SettingsPageContent() {
 export default function SettingsPage() {
     return (
         <Suspense fallback={
-            <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+            <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
                 <div className="space-y-6 p-4 sm:p-6">
                     <SkeletonLoader variant="card" count={3} />
                 </div>

@@ -42,7 +42,7 @@ export default function ProductCard({
   const carbs = calculateMacros(product.carbs_per_100g, weight)
 
   return (
-    <div className="p-3 hover:bg-gray-50 transition-colors">
+    <div className="p-3 hover:bg-zinc-800 transition-colors">
       <div className="flex items-start gap-3">
         {product.image_url && (
           <img
@@ -59,9 +59,9 @@ export default function ProductCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              <h4 className="font-medium text-gray-900 text-sm truncate">{product.name}</h4>
+              <h4 className="font-medium text-zinc-100 text-sm truncate">{product.name}</h4>
               {product.brand && (
-                <p className="text-xs text-gray-500 truncate">{product.brand}</p>
+                <p className="text-xs text-zinc-500 truncate">{product.brand}</p>
               )}
             </div>
             {showFavorite && onFavorite && (
@@ -70,7 +70,7 @@ export default function ProductCard({
                   e.stopPropagation()
                   onFavorite()
                 }}
-                className={`p-1 ${isFavorite ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-500 transition-colors`}
+                className={`p-1 ${isFavorite ? 'text-amber-400' : 'text-zinc-500'} hover:text-amber-400 transition-colors`}
                 title={isFavorite ? 'Удалить из избранного' : 'Добавить в избранное'}
               >
                 ⭐
@@ -80,41 +80,41 @@ export default function ProductCard({
 
           <div className="mt-2 space-y-1">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600">Вес (г):</label>
+              <label className="text-xs text-zinc-400">Вес (г):</label>
               <input
                 type="number"
                 value={weight}
                 onChange={handleWeightChange}
                 min="1"
                 max="10000"
-                className="w-20 px-2 py-1 border border-gray-300 rounded text-xs text-black focus:ring-1 focus:ring-black outline-none"
+                className="w-20 px-2 py-1 border border-zinc-800 rounded text-xs text-zinc-100 bg-zinc-900 focus:ring-1 focus:ring-white outline-none placeholder:text-zinc-600 tabular-nums"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
 
-            <div className="grid grid-cols-4 gap-2 text-xs">
+            <div className="grid grid-cols-4 gap-2 text-xs tabular-nums">
               <div>
-                <span className="text-gray-500">К:</span>
-                <span className="ml-1 font-medium">{calories}</span>
+                <span className="text-zinc-500">К:</span>
+                <span className="ml-1 font-medium text-zinc-100">{calories}</span>
               </div>
               <div>
-                <span className="text-gray-500">Б:</span>
-                <span className="ml-1 font-medium">{protein}</span>
+                <span className="text-zinc-500">Б:</span>
+                <span className="ml-1 font-medium text-zinc-100">{protein}</span>
               </div>
               <div>
-                <span className="text-gray-500">Ж:</span>
-                <span className="ml-1 font-medium">{fats}</span>
+                <span className="text-zinc-500">Ж:</span>
+                <span className="ml-1 font-medium text-zinc-100">{fats}</span>
               </div>
               <div>
-                <span className="text-gray-500">У:</span>
-                <span className="ml-1 font-medium">{carbs}</span>
+                <span className="text-zinc-500">У:</span>
+                <span className="ml-1 font-medium text-zinc-100">{carbs}</span>
               </div>
             </div>
           </div>
 
           <button
             onClick={onSelect}
-            className="mt-2 w-full px-3 py-1.5 bg-black text-white rounded-lg text-xs font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-1"
+            className="mt-2 w-full px-3 py-1.5 bg-white text-zinc-950 rounded-lg text-xs font-medium hover:bg-zinc-200 transition-colors flex items-center justify-center gap-1"
           >
             <Check size={14} />
             Выбрать

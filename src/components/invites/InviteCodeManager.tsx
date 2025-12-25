@@ -57,7 +57,7 @@ export default function InviteCodeManager({ coordinatorId }: InviteCodeManagerPr
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <Loader2 size={32} className="animate-spin text-gray-400" />
+                <Loader2 size={32} className="animate-spin text-zinc-500" />
             </div>
         )
     }
@@ -66,14 +66,14 @@ export default function InviteCodeManager({ coordinatorId }: InviteCodeManagerPr
         <>
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-1">Инвайт-коды</h2>
-                    <p className="text-sm text-gray-600">
+                    <h2 className="text-2xl font-bold text-zinc-100 mb-1">Инвайт-коды</h2>
+                    <p className="text-sm text-zinc-400">
                         Создавайте коды для приглашения клиентов. Они автоматически будут назначены вам как координатору.
                     </p>
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-200 transition-colors flex items-center gap-2"
                 >
                     <Plus size={20} />
                     Создать код
@@ -81,11 +81,11 @@ export default function InviteCodeManager({ coordinatorId }: InviteCodeManagerPr
             </div>
 
             {codes.length === 0 ? (
-                <div className="bg-white p-12 rounded-xl border border-gray-200 text-center">
-                    <p className="text-gray-600 mb-4">У вас пока нет инвайт-кодов</p>
+                <div className="bg-zinc-900 p-12 rounded-xl border border-zinc-800 text-center">
+                    <p className="text-zinc-400 mb-4">У вас пока нет инвайт-кодов</p>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                        className="px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium hover:bg-zinc-200 transition-colors"
                     >
                         Создать первый код
                     </button>

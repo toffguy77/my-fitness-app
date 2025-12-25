@@ -39,25 +39,25 @@ export default function OfflinePage() {
     }
 
     return (
-        <main className="w-full min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+        <main className="w-full min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-zinc-900 rounded-2xl p-8 text-center">
                 <div className="mb-6">
-                    <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <WifiOff size={40} className="text-yellow-600" />
+                    <div className="w-20 h-20 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <WifiOff size={40} className="text-amber-400" />
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h1 className="text-2xl font-bold text-zinc-100 mb-2">
                         Вы в офлайн режиме
                     </h1>
-                    <p className="text-gray-600">
+                    <p className="text-zinc-400">
                         Нет подключения к интернету
                     </p>
                 </div>
 
-                <div className="mb-6 text-left bg-gray-50 rounded-lg p-4">
-                    <h2 className="text-sm font-semibold text-gray-900 mb-2">
+                <div className="mb-6 text-left bg-zinc-800 rounded-lg p-4">
+                    <h2 className="text-sm font-semibold text-zinc-100 mb-2">
                         Доступные функции:
                     </h2>
-                    <ul className="text-sm text-gray-600 space-y-1">
+                    <ul className="text-sm text-zinc-400 space-y-1">
                         <li>• Просмотр истории питания (последние 30 дней)</li>
                         <li>• Просмотр истории веса</li>
                         <li>• Просмотр отчетов (кэшированные данные)</li>
@@ -67,7 +67,7 @@ export default function OfflinePage() {
 
                 <button
                     onClick={handleRetry}
-                    className="w-full py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
                 >
                     <RefreshCw size={20} />
                     Попробовать снова

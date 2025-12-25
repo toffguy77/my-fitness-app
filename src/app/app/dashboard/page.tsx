@@ -613,12 +613,12 @@ export default function ClientDashboard() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
 
       {/* HEADER */}
       <header className="mb-6">
         <div className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">Дашборд</h1>
+          <h1 className="text-2xl font-bold text-zinc-100">Дашборд</h1>
         </div>
         {/* Date Navigation */}
         <DateNavigation
@@ -638,21 +638,21 @@ export default function ClientDashboard() {
 
       {/* СВОДКА ЗА ВЫБРАННУЮ ДАТУ */}
       {todayLog && (
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <section className="bg-zinc-900 p-6 rounded-2xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
               <UtensilsCrossed size={20} />
               {selectedDate === new Date().toISOString().split('T')[0] ? 'Сегодня' : new Date(selectedDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
             </h2>
             {!todayLog.is_completed ? (
               <button
                 onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
-                className="text-sm text-black underline decoration-dotted"
+                className="text-sm text-zinc-400 underline decoration-dotted hover:text-zinc-100"
               >
                 Редактировать
               </button>
             ) : (
-              <span className="text-xs text-gray-500">День завершен</span>
+              <span className="text-xs text-zinc-500">День завершен</span>
             )}
           </div>
 
@@ -663,23 +663,23 @@ export default function ClientDashboard() {
 
             if (currentTargets) {
               return (
-                <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 border border-gray-100">
+                <div className="bg-zinc-900 p-4 rounded-2xl mb-6">
                   {/* Калории - большой формат как на странице nutrition */}
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">КАЛОРИИ</div>
-                      <div className="text-3xl font-black text-gray-900 flex items-baseline gap-1">
+                      <div className="text-xs font-semibold text-zinc-500 uppercase mb-1">КАЛОРИИ</div>
+                      <div className="text-3xl font-black text-zinc-100 flex items-baseline gap-1 tabular-nums">
                         {todayLog.actual_calories || 0}
-                        <span className="text-lg text-gray-400 font-normal">/ {currentTargets.calories}</span>
+                        <span className="text-lg text-zinc-400 font-normal">/ {currentTargets.calories}</span>
                       </div>
                     </div>
-                    <Flame className={(todayLog.actual_calories || 0) > currentTargets.calories ? "text-red-500" : "text-green-500"} />
+                    <Flame className={(todayLog.actual_calories || 0) > currentTargets.calories ? "text-red-400" : "text-emerald-400"} />
                   </div>
 
                   {/* Мини-график прогресса за неделю */}
                   {weekLogs.length > 0 && (
                     <div className="mb-4">
-                      <Suspense fallback={<div className="h-10 w-full bg-gray-100 rounded animate-pulse" />}>
+                      <Suspense fallback={<div className="h-10 w-full bg-zinc-800 rounded animate-pulse" />}>
                         <MiniProgressChart
                           data={weekLogs.slice(0, 7).map(log => log.actual_calories || 0).reverse()}
                           target={currentTargets.calories}
@@ -745,27 +745,27 @@ export default function ClientDashboard() {
             // Если нет целей, показываем просто значения
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 mb-4">
-                <div className="rounded-lg bg-gray-50 p-3">
-                  <div className="text-xs text-gray-500 mb-1">Калории</div>
-                  <div className="text-lg font-bold text-gray-900">
+                <div className="rounded-lg bg-zinc-900 p-3">
+                  <div className="text-xs text-zinc-500 mb-1">Калории</div>
+                  <div className="text-lg font-bold text-zinc-100 tabular-nums">
                     {todayLog.actual_calories || 0} ккал
                   </div>
                 </div>
-                <div className="rounded-lg bg-gray-50 p-3">
-                  <div className="text-xs text-gray-500 mb-1">Белки</div>
-                  <div className="text-lg font-bold text-gray-900">
+                <div className="rounded-lg bg-zinc-900 p-3">
+                  <div className="text-xs text-zinc-500 mb-1">Белки</div>
+                  <div className="text-lg font-bold text-zinc-100 tabular-nums">
                     {todayLog.actual_protein || 0} г
                   </div>
                 </div>
-                <div className="rounded-lg bg-gray-50 p-3">
-                  <div className="text-xs text-gray-500 mb-1">Жиры</div>
-                  <div className="text-lg font-bold text-gray-900">
+                <div className="rounded-lg bg-zinc-900 p-3">
+                  <div className="text-xs text-zinc-500 mb-1">Жиры</div>
+                  <div className="text-lg font-bold text-zinc-100 tabular-nums">
                     {todayLog.actual_fats || 0} г
                   </div>
                 </div>
-                <div className="rounded-lg bg-gray-50 p-3">
-                  <div className="text-xs text-gray-500 mb-1">Углеводы</div>
-                  <div className="text-lg font-bold text-gray-900">
+                <div className="rounded-lg bg-zinc-900 p-3">
+                  <div className="text-xs text-zinc-500 mb-1">Углеводы</div>
+                  <div className="text-lg font-bold text-zinc-100 tabular-nums">
                     {todayLog.actual_carbs || 0} г
                   </div>
                 </div>
@@ -785,10 +785,10 @@ export default function ClientDashboard() {
 
               return (
                 <div
-                  className="rounded-lg border-2 border-dashed border-gray-300 p-4 cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  className="rounded-lg border-2 border-dashed border-zinc-800 p-4 cursor-pointer hover:border-zinc-700 hover:bg-zinc-900 transition-colors"
                   onClick={() => setEditingWeight(true)}
                 >
-                  <div className="text-xs text-gray-500 mb-1">Вес тела</div>
+                  <div className="text-xs text-zinc-500 mb-1">Вес тела</div>
                   {editingWeight ? (
                     <div className="flex items-center gap-2">
                       <input
@@ -894,14 +894,14 @@ export default function ClientDashboard() {
                             setEditingWeight(false)
                           }
                         }}
-                        className="w-full p-2 border border-gray-300 rounded text-base font-bold text-black focus:ring-2 focus:ring-black outline-none"
+                        className="w-full p-2 border border-zinc-800 bg-zinc-900 rounded text-base font-bold text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none tabular-nums"
                         autoFocus
                         placeholder="Введите вес"
                       />
-                      <span className="text-sm text-gray-600 font-medium">кг</span>
+                      <span className="text-sm text-zinc-400 font-medium">кг</span>
                     </div>
                   ) : (
-                    <div className="text-lg font-bold text-gray-900">
+                    <div className="text-lg font-bold text-zinc-100 tabular-nums">
                       {currentWeight ? `${currentWeight} кг` : 'Нажмите, чтобы добавить'}
                     </div>
                   )}
@@ -915,19 +915,19 @@ export default function ClientDashboard() {
                 onClick={() => {
                   router.push(`/app/nutrition?date=${selectedDate}`)
                 }}
-                className="rounded-lg border-2 border-dashed border-gray-300 p-4 text-left hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                className="rounded-lg border-2 border-dashed border-zinc-800 p-4 text-left hover:border-zinc-700 hover:bg-zinc-900 transition-colors"
                 title="Ввести питание"
               >
-                <div className="text-xs text-gray-500 mb-1">Ввести питание</div>
-                <div className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <div className="text-xs text-zinc-500 mb-1">Ввести питание</div>
+                <div className="text-lg font-bold text-zinc-100 flex items-center gap-2">
                   <UtensilsCrossed size={18} />
                   <span>Открыть</span>
                 </div>
               </button>
             ) : (
-              <div className="rounded-lg border-2 border-dashed border-gray-200 p-4 bg-gray-50 text-left opacity-50">
-                <div className="text-xs text-gray-500 mb-1">Ввести питание</div>
-                <div className="text-lg font-bold text-gray-600">
+              <div className="rounded-lg border-2 border-dashed border-zinc-800 p-4 bg-zinc-900 text-left opacity-50">
+                <div className="text-xs text-zinc-500 mb-1">Ввести питание</div>
+                <div className="text-lg font-bold text-zinc-600">
                   Недоступно
                 </div>
               </div>
@@ -935,9 +935,9 @@ export default function ClientDashboard() {
           </div>
 
           {/* Приемы пищи за сегодня */}
-          <div className="pt-4 border-t border-gray-100 mt-4">
+          <div className="pt-4 border-t border-zinc-800 mt-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-gray-900">
+              <h3 className="text-base font-semibold text-zinc-100">
                 Приемы пищи за сегодня ({Array.isArray(todayLog.meals) ? todayLog.meals.length : 0})
               </h3>
             </div>
@@ -945,9 +945,9 @@ export default function ClientDashboard() {
             {/* Показываем предупреждение, если есть данные КБЖУ, но нет детализации по приемам */}
             {(!Array.isArray(todayLog.meals) || todayLog.meals.length === 0) &&
               (todayLog.actual_calories > 0 || todayLog.actual_protein > 0 || todayLog.actual_fats > 0 || todayLog.actual_carbs > 0) && (
-                <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm font-medium text-yellow-800 mb-1">⚠️ Данные сохранены без детализации</p>
-                  <p className="text-xs text-yellow-700">
+                <div className="mb-3 p-3 bg-zinc-800 border border-amber-400/20 rounded-lg">
+                  <p className="text-sm font-medium text-amber-400 mb-1">⚠️ Данные сохранены без детализации</p>
+                  <p className="text-xs text-zinc-300">
                     У вас есть данные о питании за сегодня ({todayLog.actual_calories} ккал), но приемы пищи не детализированы.
                     Добавьте приемы пищи для более точного учета.
                   </p>
@@ -959,7 +959,7 @@ export default function ClientDashboard() {
                 {todayLog.meals.map((meal, index) => (
                   <div
                     key={meal.id}
-                    className="flex items-start justify-between p-4 bg-gray-50 rounded-lg gap-3 hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-gray-200"
+                    className="flex items-start justify-between p-4 bg-zinc-900 rounded-lg gap-3 hover:bg-zinc-800 transition-colors cursor-pointer"
                     onClick={() => {
                       if (!todayLog.is_completed) {
                         router.push(`/app/nutrition?edit=${meal.id}&date=${selectedDate}`)
@@ -968,21 +968,21 @@ export default function ClientDashboard() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-medium text-gray-400 bg-white px-2 py-0.5 rounded">
+                        <span className="text-xs font-medium text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
                           #{index + 1}
                         </span>
-                        <div className="text-sm font-semibold text-gray-900">{meal.title}</div>
+                        <div className="text-sm font-semibold text-zinc-100">{meal.title}</div>
                       </div>
                       {meal.mealDate && meal.mealDate !== new Date().toISOString().split('T')[0] && (
-                        <div className="text-xs text-gray-400 mb-1">
+                        <div className="text-xs text-zinc-400 mb-1">
                           Дата: {new Date(meal.mealDate).toLocaleDateString('ru-RU')}
                         </div>
                       )}
-                      <div className="text-xs text-gray-600 space-y-0.5">
+                      <div className="text-xs text-zinc-400 space-y-0.5 tabular-nums">
                         <div className="font-medium">{meal.totals?.calories ?? 0} ккал</div>
                         <div>Белки: {meal.totals?.protein ?? 0}г • Жиры: {meal.totals?.fats ?? 0}г • Углеводы: {meal.totals?.carbs ?? 0}г</div>
                         {meal.weight > 0 && (
-                          <div className="text-gray-500">Вес порции: {meal.weight}г</div>
+                          <div className="text-zinc-500">Вес порции: {meal.weight}г</div>
                         )}
                       </div>
                     </div>
@@ -994,7 +994,7 @@ export default function ClientDashboard() {
                             router.push(`/app/nutrition?edit=${meal.id}&date=${selectedDate}`)
                           }
                         }}
-                        className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-zinc-100 rounded-lg transition-colors"
                         title="Редактировать прием пищи"
                       >
                         ✏️
@@ -1008,7 +1008,7 @@ export default function ClientDashboard() {
                           }
                           setDeleteMealModal({ isOpen: true, mealId: meal.id })
                         }}
-                        className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800 hover:bg-zinc-700 hover:text-red-400 rounded-lg transition-colors"
                         title="Удалить прием пищи"
                       >
                         🗑️
@@ -1112,7 +1112,7 @@ export default function ClientDashboard() {
                   <div className="pt-2 text-center">
                     <button
                       onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
-                      className="text-sm font-medium text-gray-600 hover:text-gray-900 underline"
+                      className="text-sm font-medium text-zinc-400 hover:text-zinc-100 underline"
                     >
                       + Добавить еще один прием пищи
                     </button>
@@ -1128,17 +1128,17 @@ export default function ClientDashboard() {
                   action={
                     <button
                       onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
-                      className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                      className="px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
                     >
                       + Добавить первый прием пищи
                     </button>
                   }
                   variant="default"
-                  className="border-2 border-dashed border-gray-300 rounded-lg"
+                  className="border-2 border-dashed border-zinc-800 rounded-lg"
                 />
               ) : (
-                <div className="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-                  <p className="text-gray-500 text-sm">День завершен. Редактирование недоступно.</p>
+                <div className="text-center py-6 border-2 border-dashed border-zinc-800 rounded-lg">
+                  <p className="text-zinc-500 text-sm">День завершен. Редактирование недоступно.</p>
                 </div>
               )
             )}
@@ -1153,14 +1153,14 @@ export default function ClientDashboard() {
             const canComplete = hasWeight && (hasMeals || hasCalories)
 
             return (
-              <div className="pt-4 border-t border-gray-100 mt-4">
+              <div className="pt-4 border-t border-zinc-800 mt-4">
                 {todayLog.is_completed ? (
                   <div className="text-center py-4">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-2">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 text-emerald-400 rounded-full text-sm font-medium mb-2">
                       <CheckCircle size={16} />
                       День завершен
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-zinc-500 mt-2">
                       {todayLog.completed_at && `Завершен: ${new Date(todayLog.completed_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
                     </p>
                   </div>
@@ -1234,7 +1234,7 @@ export default function ClientDashboard() {
                         }
                       }}
                       disabled={completingDay || todayLog.is_completed || !canComplete}
-                      className="w-full py-4 bg-black text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-4 bg-white text-zinc-950 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {completingDay ? (
                         <>
@@ -1250,7 +1250,7 @@ export default function ClientDashboard() {
                     </button>
                     {!canComplete && !todayLog.is_completed && (
                       <div className="mt-3 text-center">
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-zinc-500">
                           {!hasWeight && !hasMeals && !hasCalories && (
                             <>Введите вес и добавьте хотя бы один прием пищи для завершения дня</>
                           )}
@@ -1273,15 +1273,15 @@ export default function ClientDashboard() {
 
       {/* ЗАМЕТКА КООРДИНАТОРА (Premium) */}
       {isPremium && coordinatorNote && (
-        <section className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm">
+        <section className="bg-slate-800 rounded-2xl p-6">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="h-10 w-10 bg-zinc-800 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💬</span>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-blue-900 mb-1">Сообщение от координатора</h3>
-              <p className="text-sm text-blue-800 whitespace-pre-line">{coordinatorNote.content}</p>
-              <p className="text-xs text-blue-600 mt-2">
+              <h3 className="text-sm font-semibold text-zinc-100 mb-1">Сообщение от координатора</h3>
+              <p className="text-sm text-zinc-100 whitespace-pre-line">{coordinatorNote.content}</p>
+              <p className="text-xs text-zinc-400 mt-2">
                 {new Date(coordinatorNote.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
               </p>
             </div>
@@ -1291,19 +1291,19 @@ export default function ClientDashboard() {
 
       {/* ЗАГЛУШКА ДЛЯ ИСТЕКШЕЙ ПОДПИСКИ */}
       {!isPremium && profile?.subscription_status === 'expired' && (
-        <section className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-6 shadow-sm">
+        <section className="bg-zinc-900 rounded-2xl p-6">
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="h-10 w-10 bg-zinc-800 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-xl">🔒</span>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">Заметки от координатора</h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <h3 className="text-sm font-semibold text-zinc-100 mb-1">Заметки от координатора</h3>
+              <p className="text-sm text-zinc-400 mb-3">
                 Эта функция доступна только с активной Premium подпиской.
               </p>
               <button
                 onClick={() => router.push('/app/settings?tab=subscription')}
-                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                className="px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
               >
                 Продлить подписку
               </button>
@@ -1327,22 +1327,22 @@ export default function ClientDashboard() {
         const weightDiff = lastWeight - firstWeight
 
         return (
-          <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Вес</h2>
+          <section className="bg-zinc-900 p-6 rounded-2xl">
+            <h2 className="text-lg font-bold text-zinc-100 mb-4">Вес</h2>
             <div className="space-y-3">
               {weightLogs.slice(-7).map(log => (
-                <div key={log.date} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <span className="text-sm text-gray-600">
+                <div key={log.date} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+                  <span className="text-sm text-zinc-400">
                     {new Date(log.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                   </span>
-                  <span className="text-lg font-bold text-gray-900">{log.weight} кг</span>
+                  <span className="text-lg font-bold text-zinc-100 tabular-nums">{log.weight} кг</span>
                 </div>
               ))}
               {weightLogs.length >= 2 && (
-                <div className="pt-3 border-t border-gray-200">
+                <div className="pt-3 border-t border-zinc-800">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Изменение:</span>
-                    <span className={`text-sm font-semibold ${weightDiff < 0 ? 'text-green-600' : weightDiff > 0 ? 'text-red-600' : 'text-gray-600'
+                    <span className="text-sm text-zinc-400">Изменение:</span>
+                    <span className={`text-sm font-semibold tabular-nums ${weightDiff < 0 ? 'text-emerald-400' : weightDiff > 0 ? 'text-red-400' : 'text-zinc-400'
                       }`}>
                       {weightDiff !== 0 ? `${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} кг` : '0 кг'}
                     </span>
@@ -1355,9 +1355,9 @@ export default function ClientDashboard() {
       })()}
 
       {/* СВОДКА ПО ПИТАНИЮ */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <section className="bg-zinc-900 p-6 rounded-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
             <UtensilsCrossed size={20} />
             Питание за неделю
           </h2>
@@ -1372,7 +1372,7 @@ export default function ClientDashboard() {
                 window.location.href = '/app/nutrition'
               }
             }}
-            className="text-sm text-black underline decoration-dotted flex items-center gap-1"
+            className="text-sm text-zinc-400 underline decoration-dotted flex items-center gap-1 hover:text-zinc-100"
           >
             Ввести данные
             <ArrowRight size={14} />
@@ -1396,23 +1396,23 @@ export default function ClientDashboard() {
               />
             </div>
 
-            <div className="pt-3 border-t border-gray-100">
+            <div className="pt-3 border-t border-zinc-800">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Дней с отчетами:</span>
-                <span className="font-semibold text-gray-900">{nutritionSummary.daysLogged} из 7</span>
+                <span className="text-zinc-400">Дней с отчетами:</span>
+                <span className="font-semibold text-zinc-100 tabular-nums">{nutritionSummary.daysLogged} из 7</span>
               </div>
               {nutritionSummary.calories.diff > 0 ? (
-                <div className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                <div className="mt-2 text-sm text-red-400 flex items-center gap-1 tabular-nums">
                   <TrendingUp size={14} />
                   Профицит: +{Math.round(nutritionSummary.calories.diff / nutritionSummary.daysLogged)} ккал/день
                 </div>
               ) : nutritionSummary.calories.diff < 0 ? (
-                <div className="mt-2 text-sm text-green-600 flex items-center gap-1">
+                <div className="mt-2 text-sm text-emerald-400 flex items-center gap-1 tabular-nums">
                   <TrendingUp size={14} className="rotate-180" />
                   Дефицит: {Math.round(nutritionSummary.calories.diff / nutritionSummary.daysLogged)} ккал/день
                 </div>
               ) : (
-                <div className="mt-2 text-sm text-gray-600">В норме</div>
+                <div className="mt-2 text-sm text-zinc-400">В норме</div>
               )}
             </div>
           </div>
@@ -1424,7 +1424,7 @@ export default function ClientDashboard() {
             action={
               <button
                 onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
-                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                className="px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
               >
                 Начать вводить данные
               </button>
@@ -1435,12 +1435,12 @@ export default function ClientDashboard() {
       </section>
 
       {/* ТРЕНИРОВКИ (заглушка) */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <section className="bg-zinc-900 p-6 rounded-2xl">
+        <h2 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
           <Calendar size={20} />
           Тренировки
         </h2>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
+        <div className="bg-zinc-800 rounded-xl p-4 text-sm text-amber-400">
           <div className="flex items-start gap-2">
             <Info size={16} className="mt-0.5 flex-shrink-0" />
             <div>
@@ -1452,36 +1452,36 @@ export default function ClientDashboard() {
       </section>
 
       {/* АКТИВНЫЕ ПРОГРАММЫ */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Активные программы</h2>
+      <section className="bg-zinc-900 p-6 rounded-2xl">
+        <h2 className="text-lg font-bold text-zinc-100 mb-4">Активные программы</h2>
 
         {currentTargets ? (
           <div className="space-y-3">
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+            <div className="rounded-xl bg-zinc-800 p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-900">План питания ({dayType === 'training' ? 'Тренировка' : 'Отдых'})</span>
-                <span className="text-xs text-gray-500 bg-green-100 text-green-700 px-2 py-1 rounded-full">Активна</span>
+                <span className="font-semibold text-zinc-100">План питания ({dayType === 'training' ? 'Тренировка' : 'Отдых'})</span>
+                <span className="text-xs text-zinc-400 bg-zinc-700 text-emerald-400 px-2 py-1 rounded-full">Активна</span>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-zinc-400 tabular-nums">
                 {currentTargets.calories} ккал/день • {currentTargets.protein}г белка • {currentTargets.fats}г жиров • {currentTargets.carbs}г углеводов
               </p>
             </div>
           </div>
         ) : (
-          <div className="text-center py-4 text-gray-500 text-sm">
+          <div className="text-center py-4 text-zinc-500 text-sm">
             Нет активных программ
           </div>
         )}
       </section>
 
       {/* БЫСТРЫЕ ДЕЙСТВИЯ */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Быстрые действия</h2>
+      <section className="bg-zinc-900 p-6 rounded-2xl">
+        <h2 className="text-lg font-bold text-zinc-100 mb-4">Быстрые действия</h2>
         <div className="space-y-3">
           {isPremium ? (
             <button
               onClick={() => router.push('/app/reports')}
-              className="w-full p-4 bg-gray-100 text-black rounded-xl font-bold flex items-center justify-between hover:bg-gray-200 transition-colors"
+              className="w-full p-4 bg-zinc-800 text-zinc-100 rounded-xl font-bold flex items-center justify-between hover:bg-zinc-700 transition-colors"
             >
               <span className="flex items-center gap-2">
                 <TrendingUp size={20} />
@@ -1490,12 +1490,12 @@ export default function ClientDashboard() {
               <ArrowRight size={20} />
             </button>
           ) : (
-            <div className="w-full p-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-center">
-              <p className="text-sm text-gray-600 mb-2">Отчеты и аналитика</p>
-              <p className="text-xs text-gray-500 mb-3">Доступно с Premium подпиской</p>
+            <div className="w-full p-4 bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-xl text-center">
+              <p className="text-sm text-zinc-400 mb-2">Отчеты и аналитика</p>
+              <p className="text-xs text-zinc-500 mb-3">Доступно с Premium подпиской</p>
               <button
                 onClick={() => router.push('/app/settings?tab=subscription')}
-                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                className="px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
               >
                 Перейти на Premium
               </button>
@@ -1510,13 +1510,13 @@ export default function ClientDashboard() {
 
 function StatCard({ label, value, target, unit }: { label: string; value: string; target: number; unit: string }) {
   return (
-    <div className="rounded-lg bg-gray-50 p-3">
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
+    <div className="rounded-lg bg-zinc-900 p-3">
+      <div className="text-xs text-zinc-500 mb-1">{label}</div>
       <div className="flex items-baseline gap-1">
-        <span className="text-lg font-bold text-gray-900">{value}</span>
-        <span className="text-xs text-gray-500">/ {target}</span>
+        <span className="text-lg font-bold text-zinc-100 tabular-nums">{value}</span>
+        <span className="text-xs text-zinc-500 tabular-nums">/ {target}</span>
       </div>
-      <div className="text-xs text-gray-400 mt-1">{unit}</div>
+      <div className="text-xs text-zinc-400 mt-1">{unit}</div>
     </div>
   )
 }

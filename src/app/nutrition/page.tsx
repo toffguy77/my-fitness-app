@@ -323,19 +323,19 @@ export default function NutritionPage() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans">
 
       {/* HEADER */}
       <header className="mb-6 flex justify-between items-center">
         <div>
           <button
             onClick={() => router.push('/')}
-            className="text-sm text-gray-500 mb-2 block"
+            className="text-sm text-zinc-400 mb-2 block hover:text-zinc-100"
           >
             ← Назад
           </button>
-          <h1 className="text-xl font-bold text-gray-900">Ввод питания</h1>
-          <p className="text-sm text-gray-500">{new Date().toLocaleDateString('ru-RU')}</p>
+          <h1 className="text-xl font-bold text-zinc-100">Ввод питания</h1>
+          <p className="text-sm text-zinc-500">{new Date().toLocaleDateString('ru-RU')}</p>
         </div>
       </header>
 
@@ -348,37 +348,37 @@ export default function NutritionPage() {
 
       {/* TARGETS SUMMARY */}
       {currentTargets ? (
-        <div className="bg-white p-4 rounded-2xl shadow-sm mb-6 border border-gray-100">
+        <div className="bg-zinc-900 p-4 rounded-2xl mb-6">
           <div className="flex justify-between items-end mb-4">
             <div>
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Калории</span>
-              <div className="text-3xl font-black text-gray-900 flex items-baseline gap-1">
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Калории</span>
+              <div className="text-3xl font-black text-zinc-100 flex items-baseline gap-1 tabular-nums">
                 {totals.calories || 0}
-                <span className="text-lg text-gray-400 font-normal">/ {currentTargets.calories}</span>
+                <span className="text-lg text-zinc-400 font-normal">/ {currentTargets.calories}</span>
               </div>
             </div>
-            <Flame className={totals.calories > currentTargets.calories ? "text-red-500" : "text-green-500"} />
+            <Flame className={totals.calories > currentTargets.calories ? "text-red-400" : "text-emerald-400"} />
           </div>
 
           {/* Macro Bars */}
           <div className="space-y-3">
-            <MacroBar label="Белки" current={totals.protein} target={currentTargets.protein} color="bg-blue-500" />
-            <MacroBar label="Жиры" current={totals.fats} target={currentTargets.fats} color="bg-yellow-500" />
-            <MacroBar label="Углеводы" current={totals.carbs} target={currentTargets.carbs} color="bg-orange-500" />
+            <MacroBar label="Белки" current={totals.protein} target={currentTargets.protein} color="bg-blue-300" />
+            <MacroBar label="Жиры" current={totals.fats} target={currentTargets.fats} color="bg-amber-300" />
+            <MacroBar label="Углеводы" current={totals.carbs} target={currentTargets.carbs} color="bg-rose-300" />
           </div>
         </div>
       ) : (
-        <div className="p-4 bg-yellow-50 text-yellow-800 rounded-xl mb-6 text-sm">
+        <div className="p-4 bg-zinc-800 text-amber-400 rounded-xl mb-6 text-sm">
           Координатор еще не назначил план питания.
         </div>
       )}
 
       {/* MEALS FORM */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-        <h2 className="font-bold text-gray-800">Отчет за день</h2>
+      <div className="bg-zinc-900 p-6 rounded-2xl space-y-6">
+        <h2 className="font-bold text-zinc-100">Отчет за день</h2>
 
-        <div className="flex items-start gap-2 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
-          <div className="mt-0.5 h-2 w-2 rounded-full bg-black" />
+        <div className="flex items-start gap-2 rounded-xl bg-zinc-800 p-3 text-sm text-zinc-300">
+          <div className="mt-0.5 h-2 w-2 rounded-full bg-zinc-400" />
           <div>
             Добавьте каждый прием пищи. Если КБЖУ неизвестно — загрузите фото этикетки или продукта и укажите вес. Автозаполнение по фото подключим позже.
           </div>
@@ -386,19 +386,19 @@ export default function NutritionPage() {
 
         <div className="space-y-4">
           {meals.map((meal, idx) => (
-            <div key={meal.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-4">
+            <div key={meal.id} className="rounded-xl bg-zinc-800 p-4 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <input
                   type="text"
                   value={meal.title}
                   onChange={(e) => updateMeal(meal.id, 'title', e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-black"
+                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-100 outline-none focus:ring-2 focus:ring-zinc-700 placeholder:text-zinc-600"
                   placeholder={`Прием пищи ${idx + 1}`}
                 />
                 <button
                   type="button"
                   onClick={() => removeMeal(meal.id)}
-                  className="text-xs text-gray-500 underline disabled:text-gray-300"
+                  className="text-xs text-zinc-400 underline hover:text-zinc-100 disabled:text-zinc-600"
                   disabled={meals.length === 1}
                 >
                   Удалить
@@ -414,7 +414,7 @@ export default function NutritionPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-gray-500">Фото (этикетка/блюдо/продукт)</label>
+                <label className="text-xs text-zinc-500">Фото (этикетка/блюдо/продукт)</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="file"
@@ -425,11 +425,11 @@ export default function NutritionPage() {
                         updateMeal(meal.id, 'title', meal.title, file.name)
                       }
                     }}
-                    className="text-xs text-gray-600"
+                    className="text-xs text-zinc-400"
                   />
-                  {meal.photoName && <span className="text-xs text-gray-500 truncate">{meal.photoName}</span>}
+                  {meal.photoName && <span className="text-xs text-zinc-500 truncate">{meal.photoName}</span>}
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-zinc-500">
                   Автоподстановка КБЖУ по фото будет подключена (OCR/поиск продуктов). Пока что заполните поля вручную.
                 </p>
               </div>
@@ -438,23 +438,23 @@ export default function NutritionPage() {
         </div>
 
         <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-zinc-400 tabular-nums">
             Всего за день: {totals.calories} ккал, Б {totals.protein} / Ж {totals.fats} / У {totals.carbs} г
           </div>
           <button
             type="button"
             onClick={addMeal}
-            className="text-sm font-semibold text-white bg-black hover:bg-gray-800 px-4 py-2 rounded-lg shadow-sm transition-colors"
+            className="text-sm font-semibold text-zinc-950 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg transition-colors"
           >
             + Добавить прием пищи
           </button>
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-gray-100">
+        <div className="space-y-4 pt-4 border-t border-zinc-800">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">Уровень голода</label>
-              <span className="text-sm font-semibold text-gray-900">
+              <label className="text-sm font-medium text-zinc-100">Уровень голода</label>
+              <span className="text-sm font-semibold text-zinc-100">
                 {getHungerLevelText(log.hunger_level || 5)}
               </span>
             </div>
@@ -462,18 +462,18 @@ export default function NutritionPage() {
               type="range" min="1" max="10"
               value={log.hunger_level || 5}
               onChange={(e) => setLog({ ...log, hunger_level: parseInt(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
+              className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-400"
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <div className="flex justify-between text-xs text-zinc-500 mt-1">
               <span>1</span>
               <span>10</span>
             </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Комментарий</label>
+            <label className="text-sm font-medium text-zinc-100 mb-1 block">Комментарий</label>
             <textarea
-              className="w-full p-3 bg-gray-50 rounded-xl border-none text-sm focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600"
               rows={3}
               placeholder="Как прошел день? Были срывы?"
               value={log.notes || ''}
@@ -485,8 +485,8 @@ export default function NutritionPage() {
         <button
           onClick={handleSave}
           disabled={status === 'saving'}
-          className={`w-full py-4 rounded-xl font-bold text-white flex justify-center items-center gap-2 transition-all
-            ${status === 'saved' ? 'bg-green-600' : 'bg-black active:scale-95'}
+          className={`w-full py-4 rounded-xl font-bold flex justify-center items-center gap-2 transition-all
+            ${status === 'saved' ? 'bg-emerald-400 text-zinc-950' : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95'}
           `}
         >
           {status === 'saving' && 'Сохраняем...'}
@@ -495,7 +495,7 @@ export default function NutritionPage() {
         </button>
 
         {saveError && (
-          <div className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mt-2 rounded-lg bg-zinc-800 border border-red-400/20 px-3 py-2 text-sm text-red-400">
             {saveError}
           </div>
         )}
@@ -515,15 +515,23 @@ type MacroBarProps = {
 
 function MacroBar({ label, current, target, color }: MacroBarProps) {
   const percent = Math.min((current / target) * 100, 100)
+  // Use pastel colors for macros
+  const pastelColor = label.toLowerCase().includes('белк') || label.toLowerCase().includes('белок') || label.toLowerCase().includes('protein')
+    ? 'bg-blue-300'
+    : label.toLowerCase().includes('жир') || label.toLowerCase().includes('fats') || label.toLowerCase().includes('fat')
+    ? 'bg-amber-300'
+    : label.toLowerCase().includes('углев') || label.toLowerCase().includes('carbs') || label.toLowerCase().includes('carb')
+    ? 'bg-rose-300'
+    : color
   return (
     <div>
       <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-500">{label}</span>
-        <span className="font-medium">{current} / {target}</span>
+        <span className="text-zinc-500">{label}</span>
+        <span className="font-medium text-zinc-100 tabular-nums">{current} / {target}</span>
       </div>
-      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
         <div
-          className={`h-full ${color} transition-all duration-500`}
+          className={`h-full ${pastelColor} transition-all duration-500`}
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -542,7 +550,7 @@ function InputGroup({ label, value, onChange }: InputGroupProps) {
 
   return (
     <div>
-      <label className="text-xs text-gray-400 block mb-1">{label}</label>
+      <label className="text-xs text-zinc-500 block mb-1">{label}</label>
       <input
         type="number"
         value={displayValue}
@@ -551,7 +559,7 @@ function InputGroup({ label, value, onChange }: InputGroupProps) {
           const numValue = inputValue === '' ? 0 : parseFloat(inputValue) || 0
           onChange(numValue)
         }}
-        className="w-full p-3 bg-white rounded-xl border border-gray-200 font-mono text-base font-medium focus:ring-2 focus:ring-black outline-none placeholder:text-gray-400 placeholder:text-sm"
+        className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 font-mono text-base font-medium text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600 placeholder:text-sm tabular-nums"
         placeholder="Введите значение"
       />
     </div>

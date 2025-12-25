@@ -52,7 +52,7 @@ export default function ExportButton({ data, targets, filename }: ExportButtonPr
       <button
         onClick={() => setShowMenu(!showMenu)}
         disabled={isExporting || !data || data.length === 0}
-        className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-medium text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium text-sm hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {isExporting ? (
           <>
@@ -73,25 +73,25 @@ export default function ExportButton({ data, targets, filename }: ExportButtonPr
             className="fixed inset-0 z-10"
             onClick={() => setShowMenu(false)}
           />
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 z-20">
+          <div className="absolute right-0 mt-2 w-48 bg-zinc-900 rounded-xl shadow-lg border border-zinc-800 z-20">
             <div className="py-1">
               <button
                 onClick={() => handleExport('csv')}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 flex items-center gap-2 transition-colors"
               >
                 <FileText size={16} />
                 CSV
               </button>
               <button
                 onClick={() => handleExport('json')}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 flex items-center gap-2 transition-colors"
               >
                 <FileJson size={16} />
                 JSON
               </button>
               <button
                 onClick={() => handleExport('pdf')}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 flex items-center gap-2 transition-colors"
               >
                 <File size={16} />
                 PDF

@@ -92,24 +92,24 @@ export default function ConfirmModal({
   const variantStyles = {
     danger: {
       icon: AlertCircle,
-      iconColor: 'text-red-600',
-      iconBg: 'bg-red-100',
-      confirmButton: 'bg-red-600 hover:bg-red-700 text-white',
-      border: 'border-red-200',
+      iconColor: 'text-red-400',
+      iconBg: 'bg-zinc-800 border border-red-400/20',
+      confirmButton: 'bg-zinc-800 text-zinc-400 hover:text-red-400',
+      border: 'border-red-400/20',
     },
     warning: {
       icon: AlertTriangle,
-      iconColor: 'text-yellow-600',
-      iconBg: 'bg-yellow-100',
-      confirmButton: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-      border: 'border-yellow-200',
+      iconColor: 'text-amber-400',
+      iconBg: 'bg-zinc-800 border border-amber-400/20',
+      confirmButton: 'bg-zinc-800 text-zinc-400 hover:text-amber-400',
+      border: 'border-amber-400/20',
     },
     info: {
       icon: Info,
-      iconColor: 'text-blue-600',
-      iconBg: 'bg-blue-100',
-      confirmButton: 'bg-black hover:bg-gray-800 text-white',
-      border: 'border-blue-200',
+      iconColor: 'text-zinc-400',
+      iconBg: 'bg-zinc-800',
+      confirmButton: 'bg-white text-zinc-950 hover:bg-zinc-200',
+      border: 'border-zinc-800',
     },
   }
 
@@ -134,26 +134,26 @@ export default function ConfirmModal({
 
       {/* Modal */}
       <div
-        className="relative bg-white rounded-2xl shadow-xl max-w-md w-full border-2 border-gray-200 animate-slide-in-right"
+        className="relative bg-zinc-900 rounded-2xl shadow-xl max-w-md w-full border-2 border-zinc-800 animate-slide-in-right"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start gap-4 p-6 border-b border-gray-200">
+        <div className="flex items-start gap-4 p-6 border-b border-zinc-800">
           <div className={`flex-shrink-0 w-12 h-12 rounded-full ${style.iconBg} flex items-center justify-center`}>
             <Icon size={24} className={style.iconColor} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 id="confirm-title" className="text-lg font-bold text-gray-900 mb-2">
+            <h3 id="confirm-title" className="text-lg font-bold text-zinc-100 mb-2">
               {title}
             </h3>
-            <p id="confirm-message" className="text-sm text-gray-600">
+            <p id="confirm-message" className="text-sm text-zinc-400">
               {message}
             </p>
           </div>
           {!isLoading && (
             <button
               onClick={handleCancel}
-              className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+              className="flex-shrink-0 p-1 text-zinc-500 hover:text-zinc-300 transition-colors rounded-lg hover:bg-zinc-800"
               aria-label="Закрыть"
             >
               <X size={20} />
@@ -167,7 +167,7 @@ export default function ConfirmModal({
             ref={cancelButtonRef}
             onClick={handleCancel}
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className="px-4 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:ring-offset-2 focus:ring-offset-zinc-900"
           >
             {cancelText}
           </button>
@@ -175,17 +175,17 @@ export default function ConfirmModal({
             ref={confirmButtonRef}
             onClick={handleConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
               variant === 'danger'
-                ? 'focus:ring-red-500'
+                ? 'focus:ring-red-400'
                 : variant === 'warning'
-                ? 'focus:ring-yellow-500'
-                : 'focus:ring-black'
+                ? 'focus:ring-amber-400'
+                : 'focus:ring-white'
             } ${style.confirmButton}`}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className={`w-4 h-4 border-2 ${variant === 'info' ? 'border-zinc-950' : 'border-zinc-400'} border-t-transparent rounded-full animate-spin`} />
                 Обработка...
               </span>
             ) : (

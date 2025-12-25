@@ -36,16 +36,16 @@ export default function SaveIndicator({
     >
       {status === 'saving' && (
         <>
-          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-gray-600">Сохранение...</span>
+          <div className="w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-zinc-400">Сохранение...</span>
         </>
       )}
       {status === 'saved' && (
         <>
-          <CheckCircle size={16} className="text-green-600 animate-pulse-once" />
-          <span className="text-green-600">Сохранено</span>
+          <CheckCircle size={16} className="text-emerald-400 animate-pulse-once" />
+          <span className="text-emerald-400">Сохранено</span>
           {lastSaved && showTimestamp && (
-            <span className="text-gray-500 text-xs ml-1">
+            <span className="text-zinc-500 text-xs ml-1">
               {formatTime(lastSaved)}
             </span>
           )}
@@ -53,8 +53,8 @@ export default function SaveIndicator({
       )}
       {status === 'idle' && lastSaved && (
         <>
-          <Save size={16} className="text-gray-400" />
-          <span className="text-gray-500">Сохранено {formatTime(lastSaved)}</span>
+          <Save size={16} className="text-zinc-500" />
+          <span className="text-zinc-500">Сохранено {formatTime(lastSaved)}</span>
         </>
       )}
     </div>

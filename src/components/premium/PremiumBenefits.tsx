@@ -47,14 +47,14 @@ export default function PremiumBenefits() {
       {benefits.map((benefit, index) => (
         <div
           key={index}
-          className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
+          className="flex items-start gap-3 p-4 bg-zinc-800 rounded-xl border border-zinc-700 hover:border-zinc-600 transition-colors"
         >
-          <div className="flex-shrink-0 w-10 h-10 bg-black rounded-lg flex items-center justify-center text-white">
+          <div className="flex-shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center text-zinc-950">
             {benefit.icon}
           </div>
           <div className="flex-1">
-            <h4 className="font-semibold text-gray-900 mb-1">{benefit.title}</h4>
-            <p className="text-sm text-gray-600">{benefit.description}</p>
+            <h4 className="font-semibold text-zinc-100 mb-1">{benefit.title}</h4>
+            <p className="text-sm text-zinc-400">{benefit.description}</p>
           </div>
         </div>
       ))}

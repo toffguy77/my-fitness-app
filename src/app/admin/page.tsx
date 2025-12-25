@@ -171,18 +171,18 @@ export default function AdminPage() {
     return users.filter(u => u.role === 'coordinator')
   }, [users])
 
-  if (loading) return <div className="p-8 text-center">Загрузка...</div>
+  if (loading) return <div className="p-8 text-center text-zinc-400">Загрузка...</div>
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-7xl md:mx-auto font-sans">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-7xl md:mx-auto font-sans">
       {/* HEADER */}
       <header className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-zinc-100 flex items-center gap-2">
             <Shield size={24} />
             Панель администратора
           </h1>
-          <p className="text-sm text-gray-500">Управление пользователями и подписками</p>
+          <p className="text-sm text-zinc-400">Управление пользователями и подписками</p>
         </div>
         <button
           onClick={async () => {
@@ -190,10 +190,10 @@ export default function AdminPage() {
             router.push('/login')
             router.refresh()
           }}
-          className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
+          className="h-8 w-8 flex items-center justify-center bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors"
           title="Выйти"
         >
-          <LogOut size={16} className="text-gray-600" />
+          <LogOut size={16} className="text-zinc-400" />
         </button>
       </header>
 
@@ -246,18 +246,18 @@ export default function AdminPage() {
       </div>
 
       {/* FILTERS */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+      <div className="bg-zinc-900 p-4 rounded-2xl shadow-sm border border-zinc-800 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Поиск */}
           <div className="flex-1">
             <div className="relative">
-              <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Поиск по email или имени..."
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+                className="w-full pl-10 pr-4 py-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
               />
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function AdminPage() {
                 setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
               }
             }}
-            className="px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+            className="px-4 py-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm focus:ring-2 focus:ring-white outline-none text-zinc-100"
           >
             <option value="all">Все роли</option>
             <option value="client">Клиенты</option>
@@ -306,7 +306,7 @@ export default function AdminPage() {
                 setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
               }
             }}
-            className="px-4 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-black outline-none"
+            className="px-4 py-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm focus:ring-2 focus:ring-white outline-none text-zinc-100"
           >
             <option value="all">Все подписки</option>
             <option value="free">Бесплатные</option>
@@ -324,7 +324,7 @@ export default function AdminPage() {
                 setSubscriptionFilter('all')
                 setActiveStatFilter('all')
               }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl border border-gray-200 text-sm font-medium hover:bg-gray-200 transition-colors whitespace-nowrap"
+              className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-xl border border-zinc-700 text-sm font-medium hover:bg-zinc-700 transition-colors whitespace-nowrap"
             >
               Сбросить фильтры
             </button>
@@ -333,68 +333,59 @@ export default function AdminPage() {
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-zinc-900 rounded-2xl shadow-sm border border-zinc-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-zinc-800 border-b border-zinc-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Пользователь</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Роль</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подписка</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Координатор</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата регистрации</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Пользователь</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Роль</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Подписка</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Координатор</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Дата регистрации</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Действия</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-zinc-900 divide-y divide-zinc-800">
               {filteredUsers.map((userProfile) => (
-                <tr key={userProfile.id} className="hover:bg-gray-50">
+                <tr key={userProfile.id} className="hover:bg-zinc-800 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-zinc-100">
                         {userProfile.full_name || 'Без имени'}
                       </div>
-                      <div className="text-sm text-gray-500">{userProfile.email}</div>
+                      <div className="text-sm text-zinc-400">{userProfile.email}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.role === 'super_admin' ? 'bg-purple-100 text-purple-700' :
-                      userProfile.role === 'coordinator' ? 'bg-blue-100 text-blue-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                      {userProfile.role === 'super_admin' ? 'Супер-админ' :
-                        userProfile.role === 'coordinator' ? 'Координатор' : 'Клиент'}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.role === 'super_admin' ? 'bg-purple-950/30 text-purple-300 border border-purple-800/50' : userProfile.role === 'coordinator' ? 'bg-blue-950/30 text-blue-300 border border-blue-800/50' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'}`}>
+                      {userProfile.role === 'super_admin' ? 'Супер-админ' : userProfile.role === 'coordinator' ? 'Координатор' : 'Клиент'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {userProfile.role === 'client' ? (
                       <div className="text-sm">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.subscription_status === 'active' ? 'bg-green-100 text-green-700' :
-                          userProfile.subscription_status === 'free' ? 'bg-gray-100 text-gray-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                          {userProfile.subscription_status === 'active' ? 'Активна' :
-                            userProfile.subscription_status === 'free' ? 'Бесплатно' :
-                              userProfile.subscription_status === 'cancelled' ? 'Отменена' : 'Просрочена'}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.subscription_status === 'active' ? 'bg-emerald-950/30 text-emerald-300 border border-emerald-800/50' : userProfile.subscription_status === 'free' ? 'bg-zinc-800 text-zinc-300 border border-zinc-700' : 'bg-rose-950/30 text-rose-300 border border-rose-800/50'}`}>
+                          {userProfile.subscription_status === 'active' ? 'Активна' : userProfile.subscription_status === 'free' ? 'Бесплатно' : userProfile.subscription_status === 'cancelled' ? 'Отменена' : 'Просрочена'}
                         </span>
                         {userProfile.subscription_tier && (
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-zinc-400 mt-1">
                             {userProfile.subscription_tier === 'premium' ? 'Premium' : 'Basic'}
                           </div>
                         )}
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-400">—</span>
+                      <span className="text-sm text-zinc-500">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
                     {userProfile.coordinator_id ? (
                       coordinators.find(c => c.id === userProfile.coordinator_id)?.full_name ||
                       coordinators.find(c => c.id === userProfile.coordinator_id)?.email ||
                       'Неизвестен'
                     ) : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
                     {userProfile.created_at
                       ? new Date(userProfile.created_at).toLocaleDateString('ru-RU')
                       : '-'}
@@ -403,7 +394,7 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEdit(userProfile)}
-                        className="text-black hover:text-gray-700 flex items-center gap-1"
+                        className="text-zinc-300 hover:text-zinc-100 flex items-center gap-1"
                       >
                         <Edit size={16} />
                         Редактировать
@@ -414,7 +405,7 @@ export default function AdminPage() {
                             const updatedUser = { ...userProfile, role: 'coordinator' as UserRole, coordinator_id: null, subscription_status: 'free' as SubscriptionStatus, subscription_tier: 'basic' as SubscriptionTier, subscription_start_date: null, subscription_end_date: null }
                             setEditingUser(updatedUser)
                           }}
-                          className="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                          className="text-blue-400 hover:text-blue-300 text-xs font-medium"
                           title="Быстро превратить в координатора"
                         >
                           → Координатор
@@ -429,7 +420,7 @@ export default function AdminPage() {
         </div>
 
         {filteredUsers.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-zinc-500">
             Пользователи не найдены
           </div>
         )}
@@ -437,28 +428,28 @@ export default function AdminPage() {
 
       {/* EDIT MODAL */}
       {editingUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full sm:max-w-2xl sm:mx-auto max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Редактирование пользователя</h2>
-              <p className="text-sm text-gray-500 mt-1">{editingUser.email}</p>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-zinc-900 rounded-2xl shadow-xl w-full sm:max-w-2xl sm:mx-auto max-h-[90vh] overflow-y-auto border border-zinc-800">
+            <div className="p-4 sm:p-6 border-b border-zinc-800">
+              <h2 className="text-xl font-bold text-zinc-100">Редактирование пользователя</h2>
+              <p className="text-sm text-zinc-400 mt-1">{editingUser.email}</p>
             </div>
 
             <div className="p-6 space-y-4">
               {/* Имя */}
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">Имя</label>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">Имя</label>
                 <input
                   type="text"
                   value={editingUser.full_name || ''}
                   onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none placeholder:text-zinc-500"
                 />
               </div>
 
               {/* Роль */}
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-1">Роль</label>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">Роль</label>
                 <select
                   value={editingUser.role}
                   onChange={(e) => {
@@ -477,14 +468,14 @@ export default function AdminPage() {
 
                     setEditingUser(updatedUser)
                   }}
-                  className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                  className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                 >
                   <option value="client">Клиент</option>
                   <option value="coordinator">Координатор</option>
                   <option value="super_admin">Супер-админ</option>
                 </select>
                 {(editingUser.role === 'client' && (editingUser.coordinator_id || editingUser.subscription_status !== 'free')) && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-zinc-400 mt-1">
                     При изменении роли на &quot;Координатор&quot; будут очищены: назначенный координатор и подписка
                   </p>
                 )}
@@ -493,11 +484,11 @@ export default function AdminPage() {
               {/* Координатор (только для клиентов) */}
               {editingUser.role === 'client' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-1">Координатор</label>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Координатор</label>
                   <select
                     value={editingUser.coordinator_id || ''}
                     onChange={(e) => setEditingUser({ ...editingUser, coordinator_id: e.target.value || null })}
-                    className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                    className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                   >
                     <option value="">Не назначен</option>
                     {coordinators.map(coordinator => (
@@ -513,11 +504,11 @@ export default function AdminPage() {
               {editingUser.role === 'client' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">Статус подписки</label>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1">Статус подписки</label>
                     <select
                       value={editingUser.subscription_status || 'free'}
                       onChange={(e) => setEditingUser({ ...editingUser, subscription_status: e.target.value as SubscriptionStatus })}
-                      className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                      className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                     >
                       <option value="free">Бесплатно</option>
                       <option value="active">Активна</option>
@@ -529,7 +520,7 @@ export default function AdminPage() {
 
                   {/* Уровень подписки */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">Уровень подписки</label>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1">Уровень подписки</label>
                     <select
                       value={editingUser.subscription_tier || 'basic'}
                       onChange={(e) => {
@@ -552,7 +543,7 @@ export default function AdminPage() {
 
                         setEditingUser(updatedUser)
                       }}
-                      className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                      className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                     >
                       <option value="basic">Basic</option>
                       <option value="premium">Premium</option>
@@ -562,21 +553,21 @@ export default function AdminPage() {
                   {/* Даты подписки */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">Начало подписки</label>
+                      <label className="block text-sm font-medium text-zinc-300 mb-1">Начало подписки</label>
                       <input
                         type="date"
                         value={editingUser.subscription_start_date ? editingUser.subscription_start_date.split('T')[0] : ''}
                         onChange={(e) => setEditingUser({ ...editingUser, subscription_start_date: e.target.value || null })}
-                        className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                        className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">Окончание подписки</label>
+                      <label className="block text-sm font-medium text-zinc-300 mb-1">Окончание подписки</label>
                       <input
                         type="date"
                         value={editingUser.subscription_end_date ? editingUser.subscription_end_date.split('T')[0] : ''}
                         onChange={(e) => setEditingUser({ ...editingUser, subscription_end_date: e.target.value || null })}
-                        className="w-full p-2 bg-white rounded-xl border border-gray-300 text-sm text-gray-900 focus:ring-2 focus:ring-black outline-none"
+                        className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                       />
                     </div>
                   </div>
@@ -584,17 +575,17 @@ export default function AdminPage() {
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex gap-3">
+            <div className="p-6 border-t border-zinc-800 flex gap-3">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 py-2 px-4 bg-black text-white rounded-xl font-medium hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 py-2 px-4 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed transition-colors"
               >
                 {saving ? 'Сохранение...' : 'Сохранить'}
               </button>
               <button
                 onClick={() => setEditingUser(null)}
-                className="flex-1 py-2 px-4 bg-gray-200 text-gray-900 rounded-xl font-medium hover:bg-gray-300 transition-colors"
+                className="flex-1 py-2 px-4 bg-zinc-800 text-zinc-300 rounded-xl font-medium hover:bg-zinc-700 transition-colors"
               >
                 Отмена
               </button>
@@ -622,17 +613,14 @@ function StatCard({
   return (
     <button
       onClick={onClick}
-      className={`bg-white p-4 rounded-xl shadow-sm border-2 transition-all w-full text-left hover:shadow-md ${isActive
-          ? 'border-black bg-gray-50'
-          : 'border-gray-100 hover:border-gray-300'
-        }`}
+      className={`bg-zinc-900 p-4 rounded-xl shadow-sm border-2 transition-all w-full text-left hover:shadow-md ${isActive ? 'border-white bg-zinc-800' : 'border-zinc-800 hover:border-zinc-700'}`}
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className={`text-sm ${isActive ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>{label}</p>
-          <p className={`text-2xl font-bold mt-1 ${isActive ? 'text-black' : 'text-gray-900'}`}>{value}</p>
+          <p className={`text-sm ${isActive ? 'text-zinc-300 font-medium' : 'text-zinc-400'}`}>{label}</p>
+          <p className={`text-2xl font-bold mt-1 tabular-nums ${isActive ? 'text-zinc-100' : 'text-zinc-200'}`}>{value}</p>
         </div>
-        <div className={isActive ? 'text-black' : 'text-gray-400'}>
+        <div className={isActive ? 'text-zinc-100' : 'text-zinc-500'}>
           {icon}
         </div>
       </div>

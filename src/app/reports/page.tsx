@@ -74,20 +74,20 @@ export default function ReportsPage() {
     return byWeek
   }, [logs])
 
-  if (loading) return <div className="p-6 text-center text-sm text-gray-600">Загружаем отчеты...</div>
+  if (loading) return <div className="p-6 text-center text-sm text-zinc-400">Загружаем отчеты...</div>
   if (!user) return null
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans space-y-6">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Сводка</h1>
-          <p className="text-sm text-gray-500">Отчеты по дням и неделям</p>
+          <h1 className="text-xl font-bold text-zinc-100">Сводка</h1>
+          <p className="text-sm text-zinc-400">Отчеты по дням и неделям</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/')}
-            className="text-sm text-black underline decoration-dotted"
+            className="text-sm text-zinc-300 underline decoration-dotted"
           >
             ← Назад
           </button>
@@ -97,48 +97,48 @@ export default function ReportsPage() {
               router.push('/login')
               router.refresh()
             }}
-            className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
+            className="h-8 w-8 flex items-center justify-center bg-zinc-800 rounded-full hover:bg-zinc-700 transition-colors"
             title="Выйти"
           >
-            <LogOut size={16} className="text-gray-600" />
+            <LogOut size={16} className="text-zinc-400" />
           </button>
         </div>
       </header>
 
       {today ? (
-        <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-2">
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-800">Сегодня</h2>
-            <span className="text-xs text-gray-500">{formatDate(today.date)}</span>
+            <h2 className="text-sm font-semibold text-zinc-100">Сегодня</h2>
+            <span className="text-xs text-zinc-400">{formatDate(today.date)}</span>
           </div>
           <DayStats log={today} />
           {today.notes && (
-            <p className="text-xs text-gray-600 whitespace-pre-line">Комментарий: {today.notes}</p>
+            <p className="text-xs text-zinc-300 whitespace-pre-line">Комментарий: {today.notes}</p>
           )}
         </section>
       ) : (
-        <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
+        <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-500">
           За сегодня отчета нет.
         </div>
       )}
 
       <section className="space-y-4">
         {Object.entries(grouped).map(([weekKey, weekLogs]) => (
-          <div key={weekKey} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm space-y-3">
+          <div key={weekKey} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-800">Неделя {weekKey}</h3>
-              <span className="text-xs text-gray-500">{weekRangeLabel(weekLogs)}</span>
+              <h3 className="text-sm font-semibold text-zinc-100">Неделя {weekKey}</h3>
+              <span className="text-xs text-zinc-400">{weekRangeLabel(weekLogs)}</span>
             </div>
             <div className="space-y-2">
               {weekLogs.map((log) => (
-                <div key={log.id} className="rounded-xl bg-gray-50 p-3 flex justify-between items-center">
+                <div key={log.id} className="rounded-xl bg-zinc-800 p-3 flex justify-between items-center">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{formatDate(log.date)}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-semibold text-zinc-100">{formatDate(log.date)}</p>
+                    <p className="text-xs text-zinc-400 tabular-nums">
                       {log.actual_calories} ккал • Б {log.actual_protein} / Ж {log.actual_fats} / У {log.actual_carbs}
                     </p>
                   </div>
-                  <span className="text-[11px] text-gray-500 uppercase">{weekdayShort(log.date)}</span>
+                  <span className="text-[11px] text-zinc-500 uppercase">{weekdayShort(log.date)}</span>
                 </div>
               ))}
             </div>
@@ -162,9 +162,9 @@ function DayStats({ log }: { log: DailyLog }) {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-gray-50 p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-sm font-semibold text-gray-900">{value}</p>
+    <div className="rounded-lg bg-zinc-800 p-3">
+      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="text-sm font-semibold text-zinc-100 tabular-nums">{value}</p>
     </div>
   )
 }

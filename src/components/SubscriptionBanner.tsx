@@ -65,11 +65,11 @@ export default function SubscriptionBanner() {
   const endDate = subscriptionInfo.endDate ? new Date(subscriptionInfo.endDate).toLocaleDateString('ru-RU') : null
 
   return (
-    <div className="w-full bg-yellow-50 border-b-2 border-yellow-400 px-4 py-3 flex items-center justify-between gap-4">
+    <div className="w-full bg-amber-950/30 border-b-2 border-amber-800/50 px-4 py-3 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 flex-1">
-        <AlertTriangle size={20} className="text-yellow-600 flex-shrink-0" />
+        <AlertTriangle size={20} className="text-amber-400 flex-shrink-0" />
         <div className="flex-1">
-          <p className="text-sm font-medium text-yellow-900">
+          <p className="text-sm font-medium text-amber-200">
             {isExpired ? (
               <>Подписка истекла{endDate && ` ${endDate}`}. Доступ к Premium функциям ограничен.</>
             ) : (
@@ -81,13 +81,13 @@ export default function SubscriptionBanner() {
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push('/app/settings?tab=subscription')}
-          className="px-4 py-1.5 bg-yellow-600 text-white rounded-lg text-sm font-medium hover:bg-yellow-700 transition-colors"
+          className="px-4 py-1.5 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
         >
           Продлить
         </button>
         <button
           onClick={() => setDismissed(true)}
-          className="p-1 text-yellow-600 hover:text-yellow-800 transition-colors"
+          className="p-1 text-amber-400 hover:text-amber-300 transition-colors"
           title="Скрыть"
         >
           <X size={18} />

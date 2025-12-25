@@ -205,7 +205,7 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
   }
 
   if (loading) {
-    return <div className="p-4 text-center text-gray-500">Загрузка...</div>
+    return <div className="p-4 text-center text-zinc-400">Загрузка...</div>
   }
 
   return (
@@ -213,18 +213,18 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
       {/* Поиск и кнопка добавления */}
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" size={18} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Поиск продуктов..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+            className="w-full pl-10 pr-4 py-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600"
           />
         </div>
         <button
           onClick={handleAdd}
-          className="px-4 py-2 bg-black text-white rounded-lg font-medium text-sm hover:bg-gray-800 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-white text-zinc-950 rounded-lg font-medium text-sm hover:bg-zinc-200 transition-colors flex items-center gap-2"
         >
           <Plus size={16} />
           Добавить
@@ -233,7 +233,7 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
 
       {/* Список продуктов */}
       {filteredProducts.length === 0 ? (
-        <div className="p-8 text-center text-gray-500 text-sm">
+        <div className="p-8 text-center text-zinc-400 text-sm">
           {searchQuery ? 'Продукты не найдены' : 'У вас пока нет пользовательских продуктов'}
         </div>
       ) : (
@@ -241,47 +241,47 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
           {filteredProducts.map((product) => (
             <div
               key={product.id}
-              className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+              className="p-4 bg-zinc-800 rounded-lg border border-zinc-700 hover:bg-zinc-700 transition-colors"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{product.name}</h4>
+                  <h4 className="font-medium text-zinc-100">{product.name}</h4>
                   {product.category && (
-                    <p className="text-xs text-gray-500 mt-1">{product.category}</p>
+                    <p className="text-xs text-zinc-500 mt-1">{product.category}</p>
                   )}
-                  <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
+                  <div className="mt-2 grid grid-cols-4 gap-2 text-xs tabular-nums">
                     <div>
-                      <span className="text-gray-500">К:</span>
-                      <span className="ml-1 font-medium">{product.calories_per_100g}</span>
+                      <span className="text-zinc-500">К:</span>
+                      <span className="ml-1 font-medium text-zinc-100">{product.calories_per_100g}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Б:</span>
-                      <span className="ml-1 font-medium">{product.protein_per_100g}</span>
+                      <span className="text-zinc-500">Б:</span>
+                      <span className="ml-1 font-medium text-zinc-100">{product.protein_per_100g}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Ж:</span>
-                      <span className="ml-1 font-medium">{product.fats_per_100g}</span>
+                      <span className="text-zinc-500">Ж:</span>
+                      <span className="ml-1 font-medium text-zinc-100">{product.fats_per_100g}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">У:</span>
-                      <span className="ml-1 font-medium">{product.carbs_per_100g}</span>
+                      <span className="text-zinc-500">У:</span>
+                      <span className="ml-1 font-medium text-zinc-100">{product.carbs_per_100g}</span>
                     </div>
                   </div>
                   {product.notes && (
-                    <p className="text-xs text-gray-500 mt-2">{product.notes}</p>
+                    <p className="text-xs text-zinc-500 mt-2">{product.notes}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleEdit(product)}
-                    className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+                    className="p-2 text-zinc-400 hover:text-zinc-100 transition-colors"
                     title="Редактировать"
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => handleDelete(product.id)}
-                    className="p-2 text-red-600 hover:text-red-800 transition-colors"
+                    className="p-2 text-red-400 hover:text-red-300 transition-colors"
                     title="Удалить"
                   >
                     <Trash2 size={16} />
@@ -295,98 +295,98 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
 
       {/* Модалка добавления/редактирования */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 rounded-xl shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
+            <h3 className="text-lg font-bold text-zinc-100 mb-4">
               {editingProduct ? 'Редактировать продукт' : 'Добавить продукт'}
             </h3>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-zinc-100 mb-1">
                   Название продукта *
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+                  className="w-full p-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600"
                   placeholder="Например: Куриная грудка"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-zinc-100 mb-1">
                     Калории (на 100г) *
                   </label>
                   <input
                     type="number"
                     value={formData.calories_per_100g || ''}
                     onChange={(e) => setFormData({ ...formData, calories_per_100g: parseFloat(e.target.value) || 0 })}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+                    className="w-full p-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600 tabular-nums"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-zinc-100 mb-1">
                     Белки (г на 100г) *
                   </label>
                   <input
                     type="number"
                     value={formData.protein_per_100g || ''}
                     onChange={(e) => setFormData({ ...formData, protein_per_100g: parseFloat(e.target.value) || 0 })}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+                    className="w-full p-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600 tabular-nums"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-zinc-100 mb-1">
                     Жиры (г на 100г) *
                   </label>
                   <input
                     type="number"
                     value={formData.fats_per_100g || ''}
                     onChange={(e) => setFormData({ ...formData, fats_per_100g: parseFloat(e.target.value) || 0 })}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+                    className="w-full p-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600 tabular-nums"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-zinc-100 mb-1">
                     Углеводы (г на 100г) *
                   </label>
                   <input
                     type="number"
                     value={formData.carbs_per_100g || ''}
                     onChange={(e) => setFormData({ ...formData, carbs_per_100g: parseFloat(e.target.value) || 0 })}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+                    className="w-full p-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600 tabular-nums"
                     min="0"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-zinc-100 mb-1">
                   Категория (опционально)
                 </label>
                 <input
                   type="text"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+                  className="w-full p-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600"
                   placeholder="Например: Мясо, Молочные продукты"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-zinc-100 mb-1">
                   Заметки (опционально)
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black resize-none"
+                  className="w-full p-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600 resize-none"
                   rows={3}
                   placeholder="Дополнительная информация о продукте"
                 />
@@ -399,14 +399,14 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
                   setShowAddModal(false)
                   setEditingProduct(null)
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-zinc-800 rounded-lg text-sm font-medium text-zinc-300 hover:bg-zinc-800 transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Сохранение...' : editingProduct ? 'Сохранить' : 'Добавить'}
               </button>

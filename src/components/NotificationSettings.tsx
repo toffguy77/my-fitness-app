@@ -105,31 +105,31 @@ export default function NotificationSettings() {
   }
 
   if (loading) {
-    return <div className="p-4 text-center text-gray-500">Загрузка...</div>
+    return <div className="p-4 text-center text-zinc-500">Загрузка...</div>
   }
 
   return (
-    <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
+    <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 mb-6">
       <div className="flex items-center gap-3 mb-4">
-        <Bell size={20} className="text-gray-600" />
-        <h2 className="text-lg font-bold text-gray-900">Уведомления</h2>
+        <Bell size={20} className="text-zinc-400" />
+        <h2 className="text-lg font-bold text-zinc-100">Уведомления</h2>
       </div>
 
       {message && (
         <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('Ошибка')
-            ? 'bg-red-50 border border-red-200 text-red-800'
-            : 'bg-green-50 border border-green-200 text-green-800'
+            ? 'bg-rose-950/20 border border-rose-800/50 text-rose-300'
+            : 'bg-emerald-950/20 border border-emerald-800/50 text-emerald-300'
           }`}>
           {message}
         </div>
       )}
 
       <div className="space-y-4">
-        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-          <Mail size={20} className="text-gray-600 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+          <Mail size={20} className="text-zinc-400 mt-0.5" />
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <label htmlFor="daily_digest" className="text-sm font-medium text-gray-900 cursor-pointer">
+              <label htmlFor="daily_digest" className="text-sm font-medium text-zinc-100 cursor-pointer">
                 Ежедневная сводка
               </label>
               <input
@@ -137,20 +137,20 @@ export default function NotificationSettings() {
                 id="daily_digest"
                 checked={settings.email_daily_digest}
                 onChange={(e) => setSettings(prev => ({ ...prev, email_daily_digest: e.target.checked }))}
-                className="w-5 h-5 text-black border-gray-300 rounded focus:ring-2 focus:ring-black"
+                className="w-5 h-5 text-white border-zinc-600 rounded focus:ring-2 focus:ring-white bg-zinc-900"
               />
             </div>
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-zinc-400">
               Получать один раз в день сводку по вашему прогрессу и заметкам от координатора
             </p>
           </div>
         </div>
 
-        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-          <Bell size={20} className="text-gray-600 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+          <Bell size={20} className="text-zinc-400 mt-0.5" />
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <label htmlFor="realtime_alerts" className="text-sm font-medium text-gray-900 cursor-pointer">
+              <label htmlFor="realtime_alerts" className="text-sm font-medium text-zinc-100 cursor-pointer">
                 Мгновенные уведомления
               </label>
               <input
@@ -158,10 +158,10 @@ export default function NotificationSettings() {
                 id="realtime_alerts"
                 checked={settings.email_realtime_alerts}
                 onChange={(e) => setSettings(prev => ({ ...prev, email_realtime_alerts: e.target.checked }))}
-                className="w-5 h-5 text-black border-gray-300 rounded focus:ring-2 focus:ring-black"
+                className="w-5 h-5 text-white border-zinc-600 rounded focus:ring-2 focus:ring-white bg-zinc-900"
               />
             </div>
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-zinc-400">
               Получать email сразу при получении заметки от координатора или напоминании о чекине
             </p>
           </div>
@@ -170,7 +170,7 @@ export default function NotificationSettings() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-3 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 bg-white text-zinc-950 rounded-xl font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? 'Сохранение...' : 'Сохранить настройки'}
         </button>

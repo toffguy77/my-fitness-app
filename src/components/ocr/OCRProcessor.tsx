@@ -94,19 +94,19 @@ export default function OCRProcessor({
     <div className="w-full max-w-md mx-auto p-6">
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Loader2 className="animate-spin text-black" size={24} />
+          <Loader2 className="animate-spin text-white" size={24} />
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">{status}</p>
-            <div className="mt-2 bg-gray-200 rounded-full h-2 overflow-hidden">
+            <p className="text-sm font-medium text-zinc-100">{status}</p>
+            <div className="mt-2 bg-zinc-800 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-black h-full transition-all duration-300"
+                className="bg-white h-full transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">{progress}%</p>
+            <p className="text-xs text-zinc-500 mt-1 tabular-nums">{progress}%</p>
           </div>
         </div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-zinc-500">
           {preferredTier === 'fast' && 'Используется быстрая обработка'}
           {preferredTier === 'balanced' && 'Используется сбалансированная обработка'}
           {preferredTier === 'advanced' && 'Используется продвинутая обработка'}

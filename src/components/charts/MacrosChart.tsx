@@ -55,8 +55,8 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
 
   if (filteredData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-xl border border-gray-200">
-        <p className="text-gray-500 text-sm">Нет данных за выбранный период</p>
+      <div className="flex items-center justify-center h-64 bg-zinc-900 rounded-xl">
+        <p className="text-zinc-500 text-sm">Нет данных за выбранный период</p>
       </div>
     )
   }
@@ -66,27 +66,28 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
       return (
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={filteredData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
             <XAxis
               dataKey="date"
               tickFormatter={formatDate}
-              stroke="#6b7280"
+              stroke="#a1a1aa"
               style={{ fontSize: '12px' }}
             />
-            <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+            <YAxis stroke="#a1a1aa" style={{ fontSize: '12px' }} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #e5e7eb',
+                backgroundColor: '#18181b',
+                border: '1px solid #27272a',
                 borderRadius: '8px',
                 padding: '8px 12px',
+                color: '#f4f4f5',
               }}
               labelFormatter={(value: string | number) => `Дата: ${formatDate(String(value))}`}
             />
-            <Legend />
-            <Bar dataKey="protein" fill="#3b82f6" name="Белки (г)" />
-            <Bar dataKey="fats" fill="#f59e0b" name="Жиры (г)" />
-            <Bar dataKey="carbs" fill="#10b981" name="Углеводы (г)" />
+            <Legend wrapperStyle={{ color: '#a1a1aa' }} />
+            <Bar dataKey="protein" fill="#93c5fd" name="Белки (г)" />
+            <Bar dataKey="fats" fill="#fcd34d" name="Жиры (г)" />
+            <Bar dataKey="carbs" fill="#fda4af" name="Углеводы (г)" />
           </BarChart>
         </ResponsiveContainer>
       )
@@ -96,40 +97,41 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
       <div className="space-y-6">
         {/* График калорий */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Калории</h3>
+          <h3 className="text-sm font-semibold text-zinc-100 mb-2">Калории</h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={filteredData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
               <XAxis
                 dataKey="date"
                 tickFormatter={formatDate}
-                stroke="#6b7280"
+                stroke="#a1a1aa"
                 style={{ fontSize: '12px' }}
               />
-              <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#a1a1aa" style={{ fontSize: '12px' }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#18181b',
+                  border: '1px solid #27272a',
                   borderRadius: '8px',
                   padding: '8px 12px',
+                  color: '#f4f4f5',
                 }}
                 labelFormatter={(value: string | number) => `Дата: ${formatDate(String(value))}`}
               />
-              <Legend />
+              <Legend wrapperStyle={{ color: '#a1a1aa' }} />
               <Line
                 type="monotone"
                 dataKey="calories"
-                stroke="#ef4444"
+                stroke="#f87171"
                 strokeWidth={2}
-                dot={{ fill: '#ef4444', r: 3 }}
+                dot={{ fill: '#f87171', r: 3 }}
                 name="Факт (ккал)"
               />
               {showTargets && filteredData.some(d => d.targetCalories) && (
                 <Line
                   type="monotone"
                   dataKey="targetCalories"
-                  stroke="#10b981"
+                  stroke="#34d399"
                   strokeWidth={2}
                   strokeDasharray="5 5"
                   dot={false}
@@ -142,49 +144,50 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
 
         {/* График макронутриентов */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Макронутриенты</h3>
+          <h3 className="text-sm font-semibold text-zinc-100 mb-2">Макронутриенты</h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={filteredData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
               <XAxis
                 dataKey="date"
                 tickFormatter={formatDate}
-                stroke="#6b7280"
+                stroke="#a1a1aa"
                 style={{ fontSize: '12px' }}
               />
-              <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#a1a1aa" style={{ fontSize: '12px' }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#18181b',
+                  border: '1px solid #27272a',
                   borderRadius: '8px',
                   padding: '8px 12px',
+                  color: '#f4f4f5',
                 }}
                 labelFormatter={(value: string | number) => `Дата: ${formatDate(String(value))}`}
               />
-              <Legend />
+              <Legend wrapperStyle={{ color: '#a1a1aa' }} />
               <Line
                 type="monotone"
                 dataKey="protein"
-                stroke="#3b82f6"
+                stroke="#93c5fd"
                 strokeWidth={2}
-                dot={{ fill: '#3b82f6', r: 3 }}
+                dot={{ fill: '#93c5fd', r: 3 }}
                 name="Белки (г)"
               />
               <Line
                 type="monotone"
                 dataKey="fats"
-                stroke="#f59e0b"
+                stroke="#fcd34d"
                 strokeWidth={2}
-                dot={{ fill: '#f59e0b', r: 3 }}
+                dot={{ fill: '#fcd34d', r: 3 }}
                 name="Жиры (г)"
               />
               <Line
                 type="monotone"
                 dataKey="carbs"
-                stroke="#10b981"
+                stroke="#fda4af"
                 strokeWidth={2}
-                dot={{ fill: '#10b981', r: 3 }}
+                dot={{ fill: '#fda4af', r: 3 }}
                 name="Углеводы (г)"
               />
               {showTargets && (
@@ -193,9 +196,10 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
                     <Line
                       type="monotone"
                       dataKey="targetProtein"
-                      stroke="#3b82f6"
+                      stroke="#93c5fd"
                       strokeWidth={1}
                       strokeDasharray="5 5"
+                      strokeOpacity={0.5}
                       dot={false}
                       name="Цель белков"
                     />
@@ -204,9 +208,10 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
                     <Line
                       type="monotone"
                       dataKey="targetFats"
-                      stroke="#f59e0b"
+                      stroke="#fcd34d"
                       strokeWidth={1}
                       strokeDasharray="5 5"
+                      strokeOpacity={0.5}
                       dot={false}
                       name="Цель жиров"
                     />
@@ -215,9 +220,10 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
                     <Line
                       type="monotone"
                       dataKey="targetCarbs"
-                      stroke="#10b981"
+                      stroke="#fda4af"
                       strokeWidth={1}
                       strokeDasharray="5 5"
+                      strokeOpacity={0.5}
                       dot={false}
                       name="Цель углеводов"
                     />

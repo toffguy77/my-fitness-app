@@ -83,7 +83,7 @@ export default function MessageList({
     if (messages.length === 0) {
         return (
             <div ref={listRef} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
-                <div className="text-center text-gray-500 text-sm">
+                <div className="text-center text-zinc-400 text-sm">
                     <p>Нет сообщений</p>
                     <p className="text-xs mt-2">Начните общение с клиентом</p>
                 </div>
@@ -98,7 +98,7 @@ export default function MessageList({
                     <button
                         onClick={onLoadMore}
                         disabled={loading}
-                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                        className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-100 disabled:opacity-50"
                     >
                         {loading ? 'Загрузка...' : 'Загрузить предыдущие сообщения'}
                     </button>
@@ -108,7 +108,7 @@ export default function MessageList({
             {Object.entries(groupedMessages).map(([dateKey, dateMessages]) => (
                 <div key={dateKey} className="space-y-2">
                     <div className="flex justify-center">
-                        <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                        <span className="px-3 py-1 bg-zinc-800 text-zinc-400 text-xs rounded-full">
                             {formatDate(new Date(dateKey))}
                         </span>
                     </div>
@@ -158,25 +158,25 @@ export default function MessageList({
                             >
                                 <div className={`relative max-w-[70%] ${isOwn ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
                                     {isEditing ? (
-                                        <div className="w-full bg-white border-2 border-black rounded-lg p-3">
+                                        <div className="w-full bg-zinc-800 border-2 border-white rounded-lg p-3">
                                             <textarea
                                                 value={editingContent}
                                                 onChange={(e) => setEditingContent(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 rounded text-sm text-black focus:ring-2 focus:ring-black outline-none resize-none"
+                                                className="w-full p-2 border border-zinc-700 rounded text-sm text-zinc-100 bg-zinc-900 focus:ring-2 focus:ring-white outline-none resize-none placeholder:text-zinc-600"
                                                 rows={3}
                                                 autoFocus
                                             />
                                             <div className="flex items-center justify-end gap-2 mt-2">
                                                 <button
                                                     onClick={handleEditCancel}
-                                                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                                                    className="px-3 py-1 text-sm text-zinc-400 hover:text-zinc-100 transition-colors"
                                                 >
                                                     <X size={16} />
                                                 </button>
                                                 <button
                                                     onClick={handleEditSave}
                                                     disabled={!editingContent.trim()}
-                                                    className="px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="px-3 py-1 text-sm bg-white text-zinc-950 rounded hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <Check size={16} />
                                                 </button>
@@ -185,19 +185,19 @@ export default function MessageList({
                                     ) : (
                                         <div
                                             className={`rounded-lg px-3 py-2 ${isOwn
-                                                    ? 'bg-black text-white'
-                                                    : 'bg-gray-100 text-gray-900'
+                                                    ? 'bg-white text-zinc-950'
+                                                    : 'bg-zinc-800 text-zinc-100'
                                                 }`}
                                         >
                                             {isDeleting ? (
-                                                <p className="text-sm italic text-gray-400">Сообщение удалено</p>
+                                                <p className="text-sm italic text-zinc-500">Сообщение удалено</p>
                                             ) : (
                                                 <>
                                                     <p className="text-sm whitespace-pre-wrap break-words">
                                                         {message.content}
                                                     </p>
-                                                    <div className={`flex items-center justify-between gap-2 mt-1 ${isOwn ? 'text-gray-300' : 'text-gray-500'}`}>
-                                                        <p className="text-xs">
+                                                    <div className={`flex items-center justify-between gap-2 mt-1 ${isOwn ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                                                        <p className="text-xs tabular-nums">
                                                             {formatTime(date)}
                                                         </p>
                                                         {isOwn && (
@@ -217,7 +217,7 @@ export default function MessageList({
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mt-1">
                                             <button
                                                 onClick={handleEditStart}
-                                                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                                className="p-1 text-zinc-500 hover:text-zinc-300 transition-colors"
                                                 title="Редактировать"
                                             >
                                                 <Edit2 size={14} />
@@ -228,7 +228,7 @@ export default function MessageList({
                                                         handleDelete()
                                                     }
                                                 }}
-                                                className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                                className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
                                                 title="Удалить"
                                             >
                                                 <Trash2 size={14} />

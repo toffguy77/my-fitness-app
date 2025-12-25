@@ -304,8 +304,8 @@ export default function ProductSearch({
               setShowResults(query.length >= 2)
             }}
             className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${activeTab === 'search'
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-white text-zinc-950'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
           >
             <Search size={14} className="inline mr-1" />
@@ -317,8 +317,8 @@ export default function ProductSearch({
               setShowResults(true)
             }}
             className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${activeTab === 'history'
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-white text-zinc-950'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
           >
             <Clock size={14} className="inline mr-1" />
@@ -330,8 +330,8 @@ export default function ProductSearch({
               setShowResults(true)
             }}
             className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${activeTab === 'favorites'
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-white text-zinc-950'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
               }`}
           >
             <Star size={14} className="inline mr-1" />
@@ -345,7 +345,7 @@ export default function ProductSearch({
         <div className="space-y-2">
           {showBarcodeInput ? (
             <div className="relative">
-              <Scan className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Scan className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" size={18} />
               <input
                 ref={barcodeInputRef}
                 type="text"
@@ -357,13 +357,13 @@ export default function ProductSearch({
                   }
                 }}
                 placeholder="Введите штрих-код..."
-                className="w-full pl-10 pr-20 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black"
+                className="w-full pl-10 pr-20 py-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600"
               />
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
                 <button
                   onClick={handleBarcodeScan}
                   disabled={scanning || !barcodeValue.trim()}
-                  className="px-2 py-1 bg-black text-white rounded text-xs font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 py-1 bg-white text-zinc-950 rounded text-xs font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {scanning ? <Loader2 className="animate-spin" size={14} /> : 'Найти'}
                 </button>
@@ -372,7 +372,7 @@ export default function ProductSearch({
                     setShowBarcodeInput(false)
                     setBarcodeValue('')
                   }}
-                  className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300 transition-colors"
+                  className="px-2 py-1 bg-zinc-800 text-zinc-300 rounded text-xs font-medium hover:bg-zinc-700 transition-colors"
                 >
                   ✕
                 </button>
@@ -380,24 +380,24 @@ export default function ProductSearch({
             </div>
           ) : (
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-500" size={18} />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => query.length >= 2 && setShowResults(true)}
                 placeholder={placeholder}
-                className="w-full pl-10 pr-20 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black outline-none text-sm text-black transition-all"
+                className="w-full pl-10 pr-20 py-2 border border-zinc-800 rounded-lg focus:ring-2 focus:ring-white outline-none text-sm text-zinc-100 bg-zinc-900 placeholder:text-zinc-600 transition-all"
               />
               <button
                 onClick={handleOpenCamera}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors rounded hover:bg-zinc-800"
                 title="Сканировать штрих-код"
               >
                 <Scan size={18} />
               </button>
               {loading && (
-                <Loader2 className="absolute right-12 top-1/2 transform -translate-y-1/2 animate-spin text-gray-400" size={18} />
+                <Loader2 className="absolute right-12 top-1/2 transform -translate-y-1/2 animate-spin text-zinc-500" size={18} />
               )}
             </div>
           )}
@@ -405,7 +405,7 @@ export default function ProductSearch({
       )}
 
       {showResults && (
-        <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-2 bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg max-h-96 overflow-y-auto">
           {activeTab === 'search' && loading && (
             <div className="p-4">
               {[...Array(2)].map((_, i) => (
@@ -415,12 +415,12 @@ export default function ProductSearch({
           )}
 
           {activeTab === 'search' && results.length === 0 && !loading && query.length >= 2 && (
-            <div className="p-4 text-center text-gray-500">
+            <div className="p-4 text-center text-zinc-400">
               <p className="text-sm mb-2">Продукт не найден</p>
               {showAddCustom && onAddCustom && (
                 <button
                   onClick={onAddCustom}
-                  className="mt-2 px-4 py-2 text-sm text-black bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 mx-auto"
+                  className="mt-2 px-4 py-2 text-sm text-zinc-950 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors flex items-center gap-2 mx-auto"
                 >
                   <Plus size={16} />
                   Добавить свой продукт
@@ -447,7 +447,7 @@ export default function ProductSearch({
 
           {/* Результаты поиска */}
           {activeTab === 'search' && results.map((product) => (
-            <div key={product.id || product.name} className="border-b border-gray-100 last:border-b-0">
+            <div key={product.id || product.name} className="border-b border-zinc-800 last:border-b-0">
               <ProductCard
                 product={product}
                 onSelect={() => handleSelect(product)}
@@ -483,12 +483,12 @@ export default function ProductSearch({
 
           {/* История использования */}
           {activeTab === 'history' && historyProducts.length === 0 && !loadingHistory && (
-            <div className="p-4 text-center text-gray-500 text-sm">
+            <div className="p-4 text-center text-zinc-400 text-sm">
               Нет недавно использованных продуктов
             </div>
           )}
           {activeTab === 'history' && historyProducts.map((product) => (
-            <div key={product.id || product.name} className="border-b border-gray-100 last:border-b-0">
+            <div key={product.id || product.name} className="border-b border-zinc-800 last:border-b-0">
               <ProductCard
                 product={product}
                 onSelect={() => handleSelect(product)}
@@ -524,12 +524,12 @@ export default function ProductSearch({
 
           {/* Избранные продукты */}
           {activeTab === 'favorites' && favoriteProducts.length === 0 && !loadingHistory && (
-            <div className="p-4 text-center text-gray-500 text-sm">
+            <div className="p-4 text-center text-zinc-400 text-sm">
               Нет избранных продуктов
             </div>
           )}
           {activeTab === 'favorites' && favoriteProducts.map((product) => (
-            <div key={product.id || product.name} className="border-b border-gray-100 last:border-b-0">
+            <div key={product.id || product.name} className="border-b border-zinc-800 last:border-b-0">
               <ProductCard
                 product={product}
                 onSelect={() => handleSelect(product)}

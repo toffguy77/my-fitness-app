@@ -70,8 +70,8 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
 
   if (filteredData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-xl border border-gray-200">
-        <p className="text-gray-500 text-sm">Нет данных за выбранный период</p>
+      <div className="flex items-center justify-center h-64 bg-zinc-900 rounded-xl border border-zinc-800">
+        <p className="text-zinc-500 text-sm">Нет данных за выбранный период</p>
       </div>
     )
   }
@@ -85,8 +85,8 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
               key={p}
               onClick={() => onPeriodChange(p)}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${period === p
-                  ? 'bg-black text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-white text-zinc-950'
+                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
             >
               {p === '7days' ? '7 дней' : p === '30days' ? '30 дней' : p === '3months' ? '3 месяца' : 'Все время'}
@@ -97,41 +97,45 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
 
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={trendData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            stroke="#6b7280"
+            stroke="#71717a"
             style={{ fontSize: '12px' }}
+            tick={{ fill: '#a1a1aa' }}
           />
           <YAxis
-            stroke="#6b7280"
+            stroke="#71717a"
             style={{ fontSize: '12px' }}
-            label={{ value: 'Вес (кг)', angle: -90, position: 'insideLeft' }}
+            tick={{ fill: '#a1a1aa' }}
+            label={{ value: 'Вес (кг)', angle: -90, position: 'insideLeft', style: { fill: '#a1a1aa' } }}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e5e7eb',
+              backgroundColor: '#18181b',
+              border: '1px solid #3f3f46',
               borderRadius: '8px',
               padding: '8px 12px',
+              color: '#f4f4f5',
             }}
+            labelStyle={{ color: '#f4f4f5' }}
             labelFormatter={(value) => `Дата: ${formatDate(value)}`}
             formatter={(value: number | undefined) => value !== undefined ? [`${value.toFixed(1)} кг`, ''] : ['', '']}
           />
-          <Legend />
+          <Legend wrapperStyle={{ color: '#a1a1aa' }} />
           <Line
             type="monotone"
             dataKey="weight"
-            stroke="#3b82f6"
+            stroke="#60a5fa"
             strokeWidth={2}
-            dot={{ fill: '#3b82f6', r: 4 }}
+            dot={{ fill: '#60a5fa', r: 4 }}
             name="Вес"
           />
           <Line
             type="monotone"
             dataKey="trend"
-            stroke="#10b981"
+            stroke="#34d399"
             strokeWidth={2}
             strokeDasharray="5 5"
             dot={false}

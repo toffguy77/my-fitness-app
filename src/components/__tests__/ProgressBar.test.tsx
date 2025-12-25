@@ -20,23 +20,23 @@ describe('ProgressBar', () => {
   })
 
   it('shows green color for >= 80%', () => {
-    const { container } = render(<ProgressBar label="Углеводы" current={80} target={100} unit="г" />)
+    const { container } = render(<ProgressBar label="Калории" current={80} target={100} unit="ккал" />)
     
-    const progressBar = container.querySelector('.bg-green-500')
+    const progressBar = container.querySelector('.bg-emerald-400')
     expect(progressBar).toBeInTheDocument()
   })
 
   it('shows yellow color for >= 50% and < 80%', () => {
-    const { container } = render(<ProgressBar label="Жиры" current={50} target={100} unit="г" />)
+    const { container } = render(<ProgressBar label="Калории" current={50} target={100} unit="ккал" />)
     
-    const progressBar = container.querySelector('.bg-yellow-500')
+    const progressBar = container.querySelector('.bg-amber-400')
     expect(progressBar).toBeInTheDocument()
   })
 
   it('shows red color for < 50%', () => {
     const { container } = render(<ProgressBar label="Калории" current={30} target={100} unit="ккал" />)
     
-    const progressBar = container.querySelector('.bg-red-500')
+    const progressBar = container.querySelector('.bg-red-400')
     expect(progressBar).toBeInTheDocument()
   })
 

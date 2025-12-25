@@ -14,7 +14,7 @@ export default function LoadingSpinner({ size = 'md', className = '' }: LoadingS
 
   return (
     <div
-      className={`inline-block animate-spin rounded-full border-gray-300 border-t-black ${sizeClasses[size]} ${className}`}
+      className={`inline-block animate-spin rounded-full border-zinc-700 border-t-white ${sizeClasses[size]} ${className}`}
       role="status"
       aria-label="Загрузка"
     >

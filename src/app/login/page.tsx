@@ -165,42 +165,42 @@ function LoginPageContent() {
   }, [searchParams])
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans flex items-center justify-center">
-      <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans flex items-center justify-center">
+      <div className="w-full bg-zinc-900 p-8 rounded-2xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Вход в систему</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-2xl font-bold text-zinc-100 mb-2">Вход в систему</h1>
+          <p className="text-sm text-zinc-400">
             Войдите в свой аккаунт для отслеживания питания и тренировок
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200">
+          <div className="mb-4 p-3 bg-zinc-800 border border-red-400/20 text-red-400 text-sm rounded-lg">
             {error}
           </div>
         )}
 
         {message && (
-          <div className="mb-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200">
+          <div className="mb-4 p-3 bg-zinc-800 border border-emerald-400/20 text-emerald-400 text-sm rounded-lg">
             {message}
           </div>
         )}
 
         {needsEmailConfirmation && (
-          <div className="mb-4 p-4 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-200">
-            <p className="font-medium mb-2">Требуется подтверждение email</p>
-            <p className="mb-3">
-              Мы отправили письмо с подтверждением на адрес <strong>{email}</strong>. 
+          <div className="mb-4 p-4 bg-zinc-800 border border-zinc-700 text-sm rounded-lg">
+            <p className="font-medium mb-2 text-zinc-100">Требуется подтверждение email</p>
+            <p className="mb-3 text-zinc-300">
+              Мы отправили письмо с подтверждением на адрес <strong className="text-zinc-100">{email}</strong>. 
               Пожалуйста, проверьте вашу почту и перейдите по ссылке в письме.
             </p>
-            <p className="mb-3 text-xs text-blue-600">
+            <p className="mb-3 text-xs text-zinc-400">
               Не получили письмо? Проверьте папку "Спам" или запросите отправку повторно.
             </p>
             <button
               type="button"
               onClick={handleResendConfirmationEmail}
               disabled={resendingEmail}
-              className="w-full py-2 px-4 rounded-lg font-medium text-blue-800 bg-blue-100 hover:bg-blue-200 disabled:bg-blue-50 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors text-sm"
+              className="w-full py-2 px-4 rounded-lg font-medium text-zinc-950 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors text-sm"
             >
               {resendingEmail ? 'Отправка...' : 'Отправить письмо повторно'}
             </button>
@@ -209,7 +209,7 @@ function LoginPageContent() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-zinc-100 mb-1">
               Email
             </label>
             <input
@@ -218,13 +218,13 @@ function LoginPageContent() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600"
               placeholder="your@email.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-zinc-100 mb-1">
               Пароль
             </label>
             <input
@@ -233,7 +233,7 @@ function LoginPageContent() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600"
               placeholder="Введите пароль"
             />
           </div>
@@ -241,15 +241,15 @@ function LoginPageContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl font-bold text-white bg-black hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3 rounded-xl font-bold text-zinc-950 bg-white hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Вход...' : 'Войти'}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm">
-          <p className="text-gray-500 mb-2">Нет аккаунта?</p>
-          <Link href="/register" className="text-black font-medium underline decoration-dotted">
+          <p className="text-zinc-500 mb-2">Нет аккаунта?</p>
+          <Link href="/register" className="text-zinc-400 font-medium underline decoration-dotted hover:text-zinc-100">
             Зарегистрироваться бесплатно
           </Link>
         </div>
@@ -261,10 +261,10 @@ function LoginPageContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans flex items-center justify-center">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-zinc-400 mx-auto mb-4"></div>
+          <p className="text-zinc-400">Загрузка...</p>
         </div>
       </main>
     }>

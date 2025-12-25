@@ -253,42 +253,42 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans flex items-center justify-center">
-      <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 md:max-w-md md:mx-auto font-sans flex items-center justify-center">
+      <div className="w-full bg-zinc-900 p-8 rounded-2xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Регистрация</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-2xl font-bold text-zinc-100 mb-2">Регистрация</h1>
+          <p className="text-sm text-zinc-400">
             Создайте бесплатный аккаунт для отслеживания питания
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200">
+          <div className="mb-4 p-3 bg-zinc-800 border border-red-400/20 text-red-400 text-sm rounded-lg">
             {error}
           </div>
         )}
 
         {message && (
-          <div className="mb-4 p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200">
+          <div className="mb-4 p-3 bg-zinc-800 border border-emerald-400/20 text-emerald-400 text-sm rounded-lg">
             {message}
           </div>
         )}
 
         {needsEmailConfirmation && (
-          <div className="mb-4 p-4 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-200">
-            <p className="font-medium mb-2">Требуется подтверждение email</p>
-            <p className="mb-3">
-              Мы отправили письмо с подтверждением на адрес <strong>{email}</strong>.
+          <div className="mb-4 p-4 bg-zinc-800 border border-zinc-700 text-sm rounded-lg">
+            <p className="font-medium mb-2 text-zinc-100">Требуется подтверждение email</p>
+            <p className="mb-3 text-zinc-300">
+              Мы отправили письмо с подтверждением на адрес <strong className="text-zinc-100">{email}</strong>.
               Пожалуйста, проверьте вашу почту и перейдите по ссылке в письме.
             </p>
-            <p className="mb-3 text-xs text-blue-600">
+            <p className="mb-3 text-xs text-zinc-400">
               Не получили письмо? Проверьте папку "Спам" или запросите отправку повторно.
             </p>
             <button
               type="button"
               onClick={handleResendConfirmationEmail}
               disabled={resendingEmail}
-              className="w-full py-2 px-4 rounded-lg font-medium text-blue-800 bg-blue-100 hover:bg-blue-200 disabled:bg-blue-50 disabled:text-blue-400 disabled:cursor-not-allowed transition-colors text-sm"
+              className="w-full py-2 px-4 rounded-lg font-medium text-zinc-950 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors text-sm"
             >
               {resendingEmail ? 'Отправка...' : 'Отправить письмо повторно'}
             </button>
@@ -297,7 +297,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
-            <label htmlFor="inviteCode" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="inviteCode" className="block text-sm font-medium text-zinc-100 mb-1">
               Инвайт-код (необязательно)
             </label>
             <div className="relative">
@@ -306,44 +306,44 @@ export default function RegisterPage() {
                 type="text"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
-                className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none font-mono uppercase"
+                className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none font-mono uppercase placeholder:text-zinc-600"
                 placeholder="XXXXXXXX"
                 maxLength={8}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {validatingCode ? (
-                  <Loader2 size={18} className="animate-spin text-gray-400" />
+                  <Loader2 size={18} className="animate-spin text-zinc-500" />
                 ) : codeValidation?.valid ? (
-                  <CheckCircle size={18} className="text-green-600" />
+                  <CheckCircle size={18} className="text-emerald-400" />
                 ) : inviteCode.length === 8 && codeValidation?.valid === false ? (
-                  <XCircle size={18} className="text-red-600" />
+                  <XCircle size={18} className="text-red-400" />
                 ) : null}
               </div>
             </div>
             {codeValidation?.valid && codeValidation.coordinator_name && (
-              <p className="mt-1 text-xs text-green-600">
+              <p className="mt-1 text-xs text-emerald-400">
                 ✓ Код валиден. Координатор: {codeValidation.coordinator_name}
               </p>
             )}
             {inviteCode.length === 8 && codeValidation?.valid === false && (
-              <p className="mt-1 text-xs text-red-600">
+              <p className="mt-1 text-xs text-red-400">
                 ✗ Неверный или истекший код
               </p>
             )}
             {codeValidation?.expires_at && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-zinc-500">
                 Истекает: {new Date(codeValidation.expires_at).toLocaleDateString('ru-RU')}
               </p>
             )}
             {codeValidation?.remaining_uses !== undefined && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-zinc-500 tabular-nums">
                 Осталось использований: {codeValidation.remaining_uses}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="fullName" className="block text-sm font-medium text-zinc-100 mb-1">
               Имя (необязательно)
             </label>
             <input
@@ -351,13 +351,13 @@ export default function RegisterPage() {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600"
               placeholder="Ваше имя"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-zinc-100 mb-1">
               Email *
             </label>
             <input
@@ -366,13 +366,13 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600"
               placeholder="your@email.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-zinc-100 mb-1">
               Пароль *
             </label>
             <input
@@ -382,7 +382,7 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-sm text-black focus:ring-2 focus:ring-black outline-none"
+              className="w-full p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none placeholder:text-zinc-600"
               placeholder="Минимум 6 символов"
             />
           </div>
@@ -390,15 +390,15 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl font-bold text-white bg-black hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3 rounded-xl font-bold text-zinc-950 bg-white hover:bg-zinc-200 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Регистрация...' : 'Создать аккаунт'}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm">
-          <p className="text-gray-500 mb-2">Уже есть аккаунт?</p>
-          <Link href="/login" className="text-black font-medium underline decoration-dotted">
+          <p className="text-zinc-500 mb-2">Уже есть аккаунт?</p>
+          <Link href="/login" className="text-zinc-400 font-medium underline decoration-dotted hover:text-zinc-100">
             Войти
           </Link>
         </div>

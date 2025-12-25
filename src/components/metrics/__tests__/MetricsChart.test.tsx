@@ -16,7 +16,7 @@ describe('MetricsChart', () => {
     const { container } = render(<MetricsChart data={mockData} />)
     
     // Check that ResponsiveContainer is rendered
-    const chartContainer = container.querySelector('.bg-white.rounded-xl')
+    const chartContainer = container.querySelector('.bg-zinc-900.rounded-xl')
     expect(chartContainer).toBeInTheDocument()
   })
 
@@ -30,14 +30,14 @@ describe('MetricsChart', () => {
     const { container } = render(<MetricsChart data={mockData} />)
     
     // LineChart should be rendered (we can't easily test recharts internals, but we can check the container)
-    const chartContainer = container.querySelector('.bg-white')
+    const chartContainer = container.querySelector('.bg-zinc-900')
     expect(chartContainer).toBeInTheDocument()
   })
 
   it('renders bar chart when type is bar', () => {
     const { container } = render(<MetricsChart data={mockData} type="bar" />)
     
-    const chartContainer = container.querySelector('.bg-white')
+    const chartContainer = container.querySelector('.bg-zinc-900')
     expect(chartContainer).toBeInTheDocument()
   })
 
@@ -46,14 +46,14 @@ describe('MetricsChart', () => {
       <MetricsChart data={mockData} color="#ff0000" />
     )
     
-    const chartContainer = container.querySelector('.bg-white')
+    const chartContainer = container.querySelector('.bg-zinc-900')
     expect(chartContainer).toBeInTheDocument()
   })
 
   it('handles empty data array', () => {
     const { container } = render(<MetricsChart data={[]} />)
     
-    const chartContainer = container.querySelector('.bg-white')
+    const chartContainer = container.querySelector('.bg-zinc-900')
     expect(chartContainer).toBeInTheDocument()
   })
 })

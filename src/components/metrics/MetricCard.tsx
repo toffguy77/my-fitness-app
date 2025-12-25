@@ -23,17 +23,17 @@ export default function MetricCard({
   variant = 'default',
 }: MetricCardProps) {
   const variantStyles = {
-    default: 'bg-white border-gray-200',
-    success: 'bg-green-50 border-green-200',
-    warning: 'bg-yellow-50 border-yellow-200',
-    danger: 'bg-red-50 border-red-200',
+    default: 'bg-zinc-900 border-zinc-800',
+    success: 'bg-zinc-900 border-zinc-800',
+    warning: 'bg-zinc-900 border-zinc-800',
+    danger: 'bg-zinc-900 border-zinc-800',
   }
 
   const valueStyles = {
-    default: 'text-gray-900',
-    success: 'text-green-700',
-    warning: 'text-yellow-700',
-    danger: 'text-red-700',
+    default: 'text-zinc-100',
+    success: 'text-emerald-300',
+    warning: 'text-amber-300',
+    danger: 'text-rose-300',
   }
 
   return (
@@ -41,24 +41,24 @@ export default function MetricCard({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            {Icon && <Icon size={20} className="text-gray-500" />}
-            <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+            {Icon && <Icon size={20} className="text-zinc-500" />}
+            <h3 className="text-sm font-medium text-zinc-400">{title}</h3>
           </div>
-          <div className={`text-3xl font-bold ${valueStyles[variant]} mb-1`}>
+          <div className={`text-3xl font-bold ${valueStyles[variant]} mb-1 tabular-nums`}>
             {typeof value === 'number' ? value.toLocaleString('ru-RU') : value}
           </div>
           {subtitle && (
-            <p className="text-xs text-gray-500">{subtitle}</p>
+            <p className="text-xs text-zinc-500">{subtitle}</p>
           )}
           {trend && (
             <div className="flex items-center gap-1 mt-2">
               {trend.value > 0 ? (
-                <TrendingUp size={14} className="text-green-600" />
+                <TrendingUp size={14} className="text-emerald-400" />
               ) : (
-                <TrendingDown size={14} className="text-red-600" />
+                <TrendingDown size={14} className="text-rose-400" />
               )}
-              <span className={`text-xs font-medium ${
-                trend.value > 0 ? 'text-green-600' : 'text-red-600'
+              <span className={`text-xs font-medium tabular-nums ${
+                trend.value > 0 ? 'text-emerald-400' : 'text-rose-400'
               }`}>
                 {Math.abs(trend.value)}% {trend.label}
               </span>

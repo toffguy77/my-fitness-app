@@ -87,14 +87,14 @@ export default function PhotoUpload({
   return (
     <div className="w-full max-w-md mx-auto">
       {!preview ? (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-          <Camera className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-4">Выберите фото этикетки</p>
+        <div className="border-2 border-dashed border-zinc-800 rounded-lg p-8 text-center">
+          <Camera className="mx-auto h-12 w-12 text-zinc-500 mb-4" />
+          <p className="text-zinc-400 mb-4">Выберите фото этикетки</p>
           <div className="flex gap-2 justify-center">
             <button
               type="button"
               onClick={handleCameraClick}
-              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-white text-zinc-950 rounded hover:bg-zinc-200 transition-colors flex items-center gap-2"
             >
               <Camera size={18} />
               Камера
@@ -102,13 +102,13 @@ export default function PhotoUpload({
             <button
               type="button"
               onClick={handleGalleryClick}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded hover:bg-zinc-700 transition-colors flex items-center gap-2"
             >
               <Upload size={18} />
               Галерея
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-4">
+          <p className="text-xs text-zinc-500 mt-4">
             Максимальный размер: {maxSizeMB}MB
           </p>
         </div>
@@ -118,12 +118,12 @@ export default function PhotoUpload({
             <img
               src={preview}
               alt="Preview"
-              className="w-full rounded-lg border border-gray-300"
+              className="w-full rounded-lg border border-zinc-800"
             />
             <button
               type="button"
               onClick={handleCancel}
-              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
+              className="absolute top-2 right-2 bg-red-400 text-white rounded-full p-2 hover:bg-red-500 transition-colors"
             >
               <X size={18} />
             </button>
@@ -133,7 +133,7 @@ export default function PhotoUpload({
               type="button"
               onClick={handleConfirm}
               disabled={isProcessing}
-              className="flex-1 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-white text-zinc-950 rounded hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isProcessing ? (
                 <>
@@ -151,7 +151,7 @@ export default function PhotoUpload({
               type="button"
               onClick={handleCancel}
               disabled={isProcessing}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded hover:bg-zinc-700 transition-colors disabled:opacity-50"
             >
               Отмена
             </button>

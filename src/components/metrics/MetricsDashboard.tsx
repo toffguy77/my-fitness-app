@@ -97,9 +97,9 @@ export default function MetricsDashboard() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-        <AlertTriangle className="mx-auto mb-2 text-red-600" size={32} />
-        <p className="text-red-800 font-medium">{error}</p>
+      <div className="bg-rose-950/20 border border-rose-800/50 rounded-xl p-6 text-center">
+        <AlertTriangle className="mx-auto mb-2 text-rose-400" size={32} />
+        <p className="text-rose-300 font-medium">{error}</p>
       </div>
     )
   }
@@ -130,23 +130,23 @@ export default function MetricsDashboard() {
   return (
     <div className="space-y-6">
       {/* Фильтры */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
         <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-zinc-300">
             Период:
           </label>
           <input
             type="date"
             value={dateRange.startDate}
             onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="px-3 py-2 border border-zinc-800 rounded-lg text-sm bg-zinc-900 text-zinc-100"
           />
-          <span className="text-gray-500">—</span>
+          <span className="text-zinc-500">—</span>
           <input
             type="date"
             value={dateRange.endDate}
             onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="px-3 py-2 border border-zinc-800 rounded-lg text-sm bg-zinc-900 text-zinc-100"
           />
         </div>
       </div>
@@ -218,30 +218,30 @@ export default function MetricsDashboard() {
       </div>
 
       {/* Feature Adoption детали */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Feature Adoption</h3>
+      <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-6">
+        <h3 className="text-lg font-semibold text-zinc-100 mb-4">Feature Adoption</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <p className="text-sm text-gray-600 mb-1">Сохранение приемов пищи</p>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-sm text-zinc-400 mb-1">Сохранение приемов пищи</p>
+            <p className="text-2xl font-bold text-emerald-300 tabular-nums">
               {(metrics.featureAdoption.mealSaving * 100).toFixed(0)}%
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">OCR сканирование</p>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-sm text-zinc-400 mb-1">OCR сканирование</p>
+            <p className="text-2xl font-bold text-emerald-300 tabular-nums">
               {(metrics.featureAdoption.ocrScan * 100).toFixed(0)}%
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">Отчеты</p>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-sm text-zinc-400 mb-1">Отчеты</p>
+            <p className="text-2xl font-bold text-emerald-300 tabular-nums">
               {(metrics.featureAdoption.reports * 100).toFixed(0)}%
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">Чат с координатором</p>
-            <p className="text-2xl font-bold text-gray-900">
+            <p className="text-sm text-zinc-400 mb-1">Чат с координатором</p>
+            <p className="text-2xl font-bold text-emerald-300 tabular-nums">
               {(metrics.featureAdoption.chat * 100).toFixed(0)}%
             </p>
           </div>

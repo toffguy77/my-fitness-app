@@ -1,8 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Obsidian & Titanium Color System */
+  --background: #09090b; /* Zinc 950 - Base surface */
+  --foreground: #f4f4f5; /* Zinc 100 - Primary text */
+  
+  /* Surfaces */
+  --surface-base: #09090b; /* Zinc 950 */
+  --surface-card: #18181b; /* Zinc 900 */
+  --surface-elevated: #27272a; /* Zinc 800 */
+  
+  /* Borders */
+  --border-subtle: #27272a; /* Zinc 800 */
+  --border-focus: #3f3f46; /* Zinc 700 */
+  
+  /* Text */
+  --text-primary: #f4f4f5; /* Zinc 100 */
+  --text-secondary: #a1a1aa; /* Zinc 400 */
+  --text-tertiary: #52525b; /* Zinc 600 */
+  --text-inverse: #09090b; /* Zinc 950 - for buttons */
+  
+  /* Actions */
+  --action-primary: #ffffff; /* White */
+  --action-primary-hover: #e4e4e7; /* Zinc 200 */
+  --action-secondary: #27272a; /* Zinc 800 */
+  
+  /* Status (Pastel) */
+  --status-success: #34d399; /* Emerald 400 */
+  --status-warning: #fbbf24; /* Amber 400 */
+  --status-error: #f87171; /* Red 400 */
+  
+  /* Data Visualization (Pastel) */
+  --chart-protein: #93c5fd; /* Blue 300 */
+  --chart-fats: #fcd34d; /* Amber 300 */
+  --chart-carbs: #fda4af; /* Rose 300 */
 }
 
 @theme inline {
@@ -12,17 +43,16 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* Tabular numbers for data displays */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 /* Safe area support for mobile devices */
@@ -71,9 +101,9 @@ html, body {
   }
 }
 
-/* Focus indicators for keyboard navigation */
+/* Focus indicators for keyboard navigation - dark theme */
 *:focus-visible {
-  outline: 2px solid #000;
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -83,7 +113,7 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid #000;
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
 

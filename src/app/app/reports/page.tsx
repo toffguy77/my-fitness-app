@@ -268,7 +268,7 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
         <div className="space-y-6">
           <SkeletonLoader variant="card" count={2} />
           <SkeletonLoader variant="table" count={1} />
@@ -282,10 +282,10 @@ export default function ReportsPage() {
   // Показываем paywall или модальное окно для бесплатных пользователей
   if (!isPremium) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900">Отчеты и аналитика</h1>
-          <p className="text-sm text-gray-500">История и статистика</p>
+          <h1 className="text-xl font-bold text-zinc-100">Отчеты и аналитика</h1>
+          <p className="text-sm text-zinc-400">История и статистика</p>
         </header>
         <Paywall
           title="Отчеты доступны с Premium подпиской"
@@ -304,19 +304,19 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
       <header className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Отчеты и аналитика</h1>
-        <p className="text-sm text-gray-500">Детальная статистика и графики</p>
+        <h1 className="text-xl font-bold text-zinc-100">Отчеты и аналитика</h1>
+        <p className="text-sm text-zinc-400">Детальная статистика и графики</p>
       </header>
 
       {/* Вкладки */}
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-zinc-800">
         <button
           onClick={() => setActiveTab('graphs')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'graphs'
-              ? 'border-black text-black'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              ? 'border-white text-zinc-100'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
         >
           <BarChart3 size={16} />
@@ -325,8 +325,8 @@ export default function ReportsPage() {
         <button
           onClick={() => setActiveTab('table')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'table'
-              ? 'border-black text-black'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              ? 'border-white text-zinc-100'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
         >
           <Table size={16} />
@@ -335,8 +335,8 @@ export default function ReportsPage() {
         <button
           onClick={() => setActiveTab('statistics')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'statistics'
-              ? 'border-black text-black'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              ? 'border-white text-zinc-100'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
         >
           <TrendingUp size={16} />
@@ -348,13 +348,13 @@ export default function ReportsPage() {
       {activeTab === 'graphs' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Графики прогресса</h2>
+            <h2 className="text-lg font-semibold text-zinc-100">Графики прогресса</h2>
             <ExportButton data={filteredLogs} targets={targets} filename="nutrition_report" />
           </div>
 
           {weightData.length > 0 && (
-            <section className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-800 mb-4">Динамика веса</h3>
+            <section className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-100 mb-4">Динамика веса</h3>
               <Suspense fallback={<SkeletonLoader variant="card" count={1} />}>
                 <WeightChart data={weightData} period={chartPeriod} onPeriodChange={setChartPeriod} />
               </Suspense>
@@ -362,8 +362,8 @@ export default function ReportsPage() {
           )}
 
           {chartData.length > 0 && (
-            <section className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-800 mb-4">Калории и макронутриенты</h3>
+            <section className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+              <h3 className="text-sm font-semibold text-zinc-100 mb-4">Калории и макронутриенты</h3>
               <Suspense fallback={<SkeletonLoader variant="card" count={1} />}>
                 <MacrosChart data={chartData} period={chartPeriod} showTargets={targets.length > 0} />
               </Suspense>
@@ -371,7 +371,7 @@ export default function ReportsPage() {
           )}
 
           {chartData.length === 0 && weightData.length === 0 && (
-            <div className="bg-white rounded-xl border border-gray-200">
+            <div className="bg-zinc-900 rounded-xl border border-zinc-800">
               <EmptyState
                 icon={BarChart}
                 title="Нет данных для отображения графиков"
@@ -386,7 +386,7 @@ export default function ReportsPage() {
       {activeTab === 'table' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-lg font-semibold text-gray-900">Таблица данных</h2>
+            <h2 className="text-lg font-semibold text-zinc-100">Таблица данных</h2>
             <ExportButton data={filteredLogs} targets={targets} filename="nutrition_data" />
           </div>
 
@@ -398,34 +398,34 @@ export default function ReportsPage() {
 
           {paginatedLogs.length > 0 ? (
             <>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-zinc-800 border-b border-zinc-700">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Дата</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Ккал</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Б</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Ж</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">У</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Вес</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase">Дата</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase">Ккал</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase">Б</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase">Ж</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase">У</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-300 uppercase">Вес</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-zinc-800">
                       {paginatedLogs.map((log) => (
-                        <tr key={log.date} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm text-gray-900">
+                        <tr key={log.date} className="hover:bg-zinc-800 transition-colors">
+                          <td className="px-4 py-3 text-sm text-zinc-100">
                             {new Date(log.date).toLocaleDateString('ru-RU', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',
                             })}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">{log.actual_calories}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">{log.actual_protein}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">{log.actual_fats}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">{log.actual_carbs}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
+                          <td className="px-4 py-3 text-sm text-zinc-300 tabular-nums">{log.actual_calories}</td>
+                          <td className="px-4 py-3 text-sm text-zinc-300 tabular-nums">{log.actual_protein}</td>
+                          <td className="px-4 py-3 text-sm text-zinc-300 tabular-nums">{log.actual_fats}</td>
+                          <td className="px-4 py-3 text-sm text-zinc-300 tabular-nums">{log.actual_carbs}</td>
+                          <td className="px-4 py-3 text-sm text-zinc-300 tabular-nums">
                             {log.weight ? `${log.weight} кг` : '-'}
                           </td>
                         </tr>
@@ -444,7 +444,7 @@ export default function ReportsPage() {
               />
             </>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200">
+            <div className="bg-zinc-900 rounded-xl border border-zinc-800">
               <EmptyState
                 icon={Table}
                 title="Нет данных для отображения"
@@ -458,12 +458,12 @@ export default function ReportsPage() {
 
       {activeTab === 'statistics' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Статистика</h2>
+          <h2 className="text-lg font-semibold text-zinc-100">Статистика</h2>
 
           {statistics ? (
             <div className="space-y-4">
-              <section className="bg-white rounded-xl border border-gray-200 p-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-4">Общая статистика</h3>
+              <section className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+                <h3 className="text-sm font-semibold text-zinc-100 mb-4">Общая статистика</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <StatCard label="Дней с данными" value={statistics.daysLogged.toString()} />
                   <StatCard label="Средние калории" value={`${statistics.avgCalories} ккал`} />
@@ -474,8 +474,8 @@ export default function ReportsPage() {
               </section>
 
               {statistics.weightChange !== null && (
-                <section className="bg-white rounded-xl border border-gray-200 p-4">
-                  <h3 className="text-sm font-semibold text-gray-800 mb-4">Динамика веса</h3>
+                <section className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+                  <h3 className="text-sm font-semibold text-zinc-100 mb-4">Динамика веса</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <StatCard
                       label="Изменение веса"
@@ -494,8 +494,8 @@ export default function ReportsPage() {
                 </section>
               )}
 
-              <section className="bg-white rounded-xl border border-gray-200 p-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-4">Суммарные значения</h3>
+              <section className="bg-zinc-900 rounded-xl border border-zinc-800 p-4">
+                <h3 className="text-sm font-semibold text-zinc-100 mb-4">Суммарные значения</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <StatCard label="Всего калорий" value={`${statistics.totalCalories.toLocaleString()} ккал`} />
                   <StatCard label="Всего белков" value={`${statistics.totalProtein.toLocaleString()} г`} />
@@ -505,7 +505,7 @@ export default function ReportsPage() {
               </section>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200">
+            <div className="bg-zinc-900 rounded-xl border border-zinc-800">
               <EmptyState
                 icon={TrendingUp}
                 title="Нет данных для расчета статистики"
@@ -531,9 +531,9 @@ export default function ReportsPage() {
 
 function StatCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-lg p-3 ${highlight ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-sm font-semibold ${highlight ? 'text-green-700' : 'text-gray-900'}`}>{value}</p>
+    <div className={`rounded-lg p-3 ${highlight ? 'bg-emerald-950/20 border border-emerald-800/50' : 'bg-zinc-800 border border-zinc-700'}`}>
+      <p className="text-xs text-zinc-400 mb-1">{label}</p>
+      <p className={`text-sm font-semibold tabular-nums ${highlight ? 'text-emerald-300' : 'text-zinc-100'}`}>{value}</p>
     </div>
   )
 }

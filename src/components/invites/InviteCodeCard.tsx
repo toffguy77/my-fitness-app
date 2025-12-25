@@ -87,23 +87,23 @@ export default function InviteCodeCard({
     const isActive = code.is_active && !isExpired && !isLimitReached
 
     return (
-        <div className={`bg-white p-6 rounded-xl border ${isActive ? 'border-gray-200' : 'border-gray-300 bg-gray-50'
+        <div className={`bg-zinc-900 p-6 rounded-xl border ${isActive ? 'border-zinc-800' : 'border-zinc-800 bg-zinc-950'
             }`}>
             <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                        <code className="text-2xl font-bold text-gray-900 font-mono">
+                        <code className="text-2xl font-bold text-zinc-100 font-mono">
                             {code.code}
                         </code>
                         {!isActive && (
-                            <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded font-medium">
+                            <span className="px-2 py-1 bg-zinc-800 text-zinc-400 text-xs rounded font-medium">
                                 {isExpired ? 'Истек' : isLimitReached ? 'Лимит' : 'Неактивен'}
                             </span>
                         )}
                     </div>
                     <button
                         onClick={handleCopy}
-                        className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1 transition-colors"
+                        className="text-sm text-zinc-400 hover:text-zinc-100 flex items-center gap-1 transition-colors"
                     >
                         <Copy size={14} />
                         Копировать ссылку
@@ -114,7 +114,7 @@ export default function InviteCodeCard({
                         <button
                             onClick={handleDeactivate}
                             disabled={deactivating}
-                            className="p-2 text-gray-600 hover:text-orange-600 transition-colors disabled:opacity-50"
+                            className="p-2 text-zinc-400 hover:text-amber-400 transition-colors disabled:opacity-50"
                             title="Деактивировать"
                         >
                             <PowerOff size={18} />
@@ -123,7 +123,7 @@ export default function InviteCodeCard({
                         <button
                             onClick={handleDeactivate}
                             disabled={deactivating}
-                            className="p-2 text-gray-400 hover:text-green-600 transition-colors disabled:opacity-50"
+                            className="p-2 text-zinc-500 hover:text-emerald-400 transition-colors disabled:opacity-50"
                             title="Активировать"
                         >
                             <Power size={18} />
@@ -132,7 +132,7 @@ export default function InviteCodeCard({
                     <button
                         onClick={handleDelete}
                         disabled={deleting}
-                        className="p-2 text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
+                        className="p-2 text-zinc-400 hover:text-red-400 transition-colors disabled:opacity-50"
                         title="Удалить"
                     >
                         <Trash2 size={18} />
@@ -141,21 +141,21 @@ export default function InviteCodeCard({
             </div>
 
             <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className="flex items-center gap-2 text-zinc-400 tabular-nums">
                     <Users size={16} />
                     <span>
-                        Использовано: <strong>{code.used_count}</strong>
+                        Использовано: <strong className="text-zinc-100">{code.used_count}</strong>
                         {code.max_uses ? ` / ${code.max_uses}` : ' (безлимит)'}
                     </span>
                 </div>
 
                 {code.statistics && (
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-zinc-400 tabular-nums">
                         <TrendingUp size={16} />
                         <span>
-                            Всего регистраций: <strong>{code.statistics.total_registrations}</strong>
+                            Всего регистраций: <strong className="text-zinc-100">{code.statistics.total_registrations}</strong>
                             {code.statistics.recent_registrations > 0 && (
-                                <span className="text-green-600 ml-1">
+                                <span className="text-emerald-400 ml-1">
                                     (+{code.statistics.recent_registrations} за 7 дней)
                                 </span>
                             )}
@@ -164,15 +164,15 @@ export default function InviteCodeCard({
                 )}
 
                 {code.expires_at && (
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-zinc-400">
                         <Calendar size={16} />
                         <span>
-                            Истекает: <strong>{new Date(code.expires_at).toLocaleDateString('ru-RU')}</strong>
+                            Истекает: <strong className="text-zinc-100">{new Date(code.expires_at).toLocaleDateString('ru-RU')}</strong>
                         </span>
                     </div>
                 )}
 
-                <div className="text-gray-500 text-xs pt-2 border-t border-gray-200">
+                <div className="text-zinc-500 text-xs pt-2 border-t border-zinc-800">
                     Создан: {new Date(code.created_at).toLocaleDateString('ru-RU')}
                     {code.last_used_at && (
                         <span className="ml-2">

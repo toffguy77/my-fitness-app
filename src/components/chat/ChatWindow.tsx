@@ -265,36 +265,36 @@ export default function ChatWindow({
         : { height: '600px', maxHeight: 'calc(100vh - 2rem)' }
     
     return (
-        <div className={`flex flex-col bg-white rounded-lg shadow-lg border border-gray-200 ${className}`} style={heightStyle}>
+        <div className={`flex flex-col bg-zinc-900 rounded-lg shadow-lg border border-zinc-800 ${className}`} style={heightStyle}>
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
                 <div className="flex items-center gap-2 flex-1">
-                    <MessageSquare size={20} className="text-gray-600" />
-                    <h3 className="font-semibold text-gray-900">{otherUserName}</h3>
+                    <MessageSquare size={20} className="text-zinc-400" />
+                    <h3 className="font-semibold text-zinc-100">{otherUserName}</h3>
                     {isTyping && (
-                        <span className="text-xs text-gray-500 italic">печатает...</span>
+                        <span className="text-xs text-zinc-500 italic">печатает...</span>
                     )}
                 </div>
                 {/* Индикатор состояния подключения */}
                 <div className="flex items-center gap-2">
                     {connectionStatus.reconnecting ? (
-                        <div className="flex items-center gap-1 text-yellow-600 text-xs">
+                        <div className="flex items-center gap-1 text-amber-400 text-xs">
                             <Loader2 size={14} className="animate-spin" />
                             <span>{connectionStatus.error || 'Переподключение...'}</span>
                         </div>
                     ) : connectionStatus.connected ? (
-                        <div className="flex items-center gap-1 text-green-600" title="Подключено">
+                        <div className="flex items-center gap-1 text-emerald-400" title="Подключено">
                             <Wifi size={16} />
                         </div>
                     ) : connectionStatus.error ? (
-                        <div className="flex items-center gap-1 text-red-600" title={connectionStatus.error}>
+                        <div className="flex items-center gap-1 text-red-400" title={connectionStatus.error}>
                             <WifiOff size={16} />
                         </div>
                     ) : null}
                     {onClose && (
                         <button
                             onClick={onClose}
-                            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                            className="p-1 text-zinc-500 hover:text-zinc-300 transition-colors"
                             title="Закрыть"
                         >
                             <X size={20} />
@@ -307,13 +307,13 @@ export default function ChatWindow({
             {loading && messages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center p-4">
                     <div className="text-center">
-                        <Loader2 className="animate-spin mx-auto mb-2 text-gray-400" size={24} />
-                        <p className="text-sm text-gray-500">Загрузка сообщений...</p>
+                        <Loader2 className="animate-spin mx-auto mb-2 text-zinc-500" size={24} />
+                        <p className="text-sm text-zinc-400">Загрузка сообщений...</p>
                     </div>
                 </div>
             ) : messages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center p-4">
-                    <div className="text-center text-gray-500 text-sm">
+                    <div className="text-center text-zinc-400 text-sm">
                         <p>Нет сообщений</p>
                         <p className="text-xs mt-2">Начните общение с {otherUserName}</p>
                     </div>

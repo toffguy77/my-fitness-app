@@ -31,7 +31,7 @@ export default function OnboardingTooltip({
         onMouseLeave={() => setIsOpen(false)}
         onFocus={() => setIsOpen(true)}
         onBlur={() => setIsOpen(false)}
-        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 transition-colors"
         aria-label="Подсказка"
       >
         <Info size={14} />
@@ -39,19 +39,19 @@ export default function OnboardingTooltip({
       
       {isOpen && (
         <div
-          className={`absolute z-50 w-64 p-3 bg-gray-900 text-white text-sm rounded-lg shadow-xl ${positionClasses[position]}`}
+          className={`absolute z-50 w-64 p-3 bg-zinc-800 text-zinc-100 text-sm rounded-lg shadow-xl ${positionClasses[position]}`}
           role="tooltip"
         >
           {title && (
-            <div className="font-semibold mb-1">{title}</div>
+            <div className="font-semibold mb-1 text-zinc-100">{title}</div>
           )}
-          <div>{content}</div>
+          <div className="text-zinc-300">{content}</div>
           {/* Arrow */}
           <div className={`absolute ${
-            position === 'top' ? 'top-full left-1/2 transform -translate-x-1/2 border-t-gray-900 border-t-8 border-x-transparent border-x-8' :
-            position === 'bottom' ? 'bottom-full left-1/2 transform -translate-x-1/2 border-b-gray-900 border-b-8 border-x-transparent border-x-8' :
-            position === 'left' ? 'left-full top-1/2 transform -translate-y-1/2 border-l-gray-900 border-l-8 border-y-transparent border-y-8' :
-            'right-full top-1/2 transform -translate-y-1/2 border-r-gray-900 border-r-8 border-y-transparent border-y-8'
+            position === 'top' ? 'top-full left-1/2 transform -translate-x-1/2 border-t-zinc-800 border-t-8 border-x-transparent border-x-8' :
+            position === 'bottom' ? 'bottom-full left-1/2 transform -translate-x-1/2 border-b-zinc-800 border-b-8 border-x-transparent border-x-8' :
+            position === 'left' ? 'left-full top-1/2 transform -translate-y-1/2 border-l-zinc-800 border-l-8 border-y-transparent border-y-8' :
+            'right-full top-1/2 transform -translate-y-1/2 border-r-zinc-800 border-r-8 border-y-transparent border-y-8'
           }`} />
         </div>
       )}

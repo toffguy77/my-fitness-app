@@ -145,7 +145,7 @@ describe('Navigation', () => {
     
     await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
-    expect(nutritionButton).toHaveClass('bg-black', 'text-white')
+    expect(nutritionButton).toHaveClass('bg-white', 'text-zinc-950')
   })
 
   it('renders desktop sidebar on large screens', () => {

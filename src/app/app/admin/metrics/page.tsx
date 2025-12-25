@@ -56,7 +56,7 @@ export default function MetricsPage() {
 
   if (loading) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-6xl lg:mx-auto font-sans">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-6xl lg:mx-auto font-sans">
         <SkeletonLoader variant="card" count={2} />
       </main>
     )
@@ -67,22 +67,22 @@ export default function MetricsPage() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-6xl lg:mx-auto font-sans">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-6xl lg:mx-auto font-sans">
       <header className="mb-6">
         <div className="flex items-center gap-4 mb-4">
           <button
             onClick={() => router.push('/app/dashboard')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
             title="Назад"
           >
-            <ArrowLeft size={20} className="text-gray-600" />
+            <ArrowLeft size={20} className="text-zinc-400" />
           </button>
           <div className="flex items-center gap-3">
-            <BarChart3 size={24} className="text-gray-900" />
-            <h1 className="text-2xl font-bold text-gray-900">Метрики и аналитика</h1>
+            <BarChart3 size={24} className="text-zinc-100" />
+            <h1 className="text-2xl font-bold text-zinc-100">Метрики и аналитика</h1>
           </div>
         </div>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-zinc-400">
           Просмотр ключевых метрик приложения: TTFV, DAU, Completion Rate, Feature Adoption и другие
         </p>
       </header>

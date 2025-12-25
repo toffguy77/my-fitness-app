@@ -59,11 +59,11 @@ export default function DateNavigation({
       <button
         onClick={handlePrevious}
         disabled={!canGoPrevious}
-        className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         title="Предыдущий день"
         aria-label="Предыдущий день"
       >
-        <ChevronLeft size={18} className="text-gray-600" />
+        <ChevronLeft size={18} className="text-zinc-400" />
       </button>
 
       <div className="flex-1">
@@ -79,7 +79,7 @@ export default function DateNavigation({
       {showTodayButton && !isToday && (
         <button
           onClick={handleToday}
-          className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors whitespace-nowrap"
+          className="px-3 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors whitespace-nowrap"
           title="Перейти к сегодня"
         >
           Сегодня
@@ -89,11 +89,11 @@ export default function DateNavigation({
       <button
         onClick={handleNext}
         disabled={!canGoNext}
-        className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        className="h-10 w-10 flex items-center justify-center rounded-lg hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         title="Следующий день"
         aria-label="Следующий день"
       >
-        <ChevronRight size={18} className="text-gray-600" />
+        <ChevronRight size={18} className="text-zinc-400" />
       </button>
     </div>
   )

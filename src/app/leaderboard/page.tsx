@@ -185,17 +185,17 @@ export default function LeaderboardPage() {
   }, [supabase, activeTab, user])
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="text-yellow-500" size={20} />
-    if (rank === 2) return <Medal className="text-gray-400" size={20} />
-    if (rank === 3) return <Award className="text-orange-600" size={20} />
-    return <span className="text-sm font-bold text-gray-600 w-5 text-center">#{rank}</span>
+    if (rank === 1) return <Trophy className="text-amber-400" size={20} />
+    if (rank === 2) return <Medal className="text-zinc-500" size={20} />
+    if (rank === 3) return <Award className="text-amber-400" size={20} />
+    return <span className="text-sm font-bold text-zinc-400 w-5 text-center tabular-nums">#{rank}</span>
   }
 
   const getRankColor = (rank: number) => {
-    if (rank === 1) return 'bg-yellow-50 border-yellow-200'
-    if (rank === 2) return 'bg-gray-50 border-gray-200'
-    if (rank === 3) return 'bg-orange-50 border-orange-200'
-    return 'bg-white border-gray-200'
+    if (rank === 1) return 'bg-zinc-800 border-amber-400/20'
+    if (rank === 2) return 'bg-zinc-800 border-zinc-700'
+    if (rank === 3) return 'bg-zinc-800 border-amber-400/20'
+    return 'bg-zinc-900 border-zinc-800'
   }
 
   const getTabValue = (tab: typeof activeTab) => {
@@ -214,7 +214,7 @@ export default function LeaderboardPage() {
   // Показываем загрузку, если пользователь еще не проверен
   if (!user && loading) {
     return (
-      <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
+      <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans">
         <div className="space-y-6">
           <SkeletonLoader variant="card" count={1} />
           <SkeletonLoader variant="list" count={5} />
@@ -229,22 +229,22 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <main className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
+    <main className="w-full min-h-screen bg-zinc-950 p-4 sm:p-6 lg:max-w-4xl lg:mx-auto font-sans space-y-6">
       {/* Заголовок */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Лидерборд</h1>
-        <p className="text-sm text-gray-500">Рейтинг пользователей</p>
+        <h1 className="text-2xl font-bold text-zinc-100">Лидерборд</h1>
+        <p className="text-sm text-zinc-400">Рейтинг пользователей</p>
       </div>
 
       {/* Вкладки */}
-      <div className="bg-white p-2 rounded-xl border border-gray-100">
+      <div className="bg-zinc-900 p-2 rounded-xl">
         <div className="grid grid-cols-4 gap-2">
           <button
             onClick={() => setActiveTab('achievements')}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === 'achievements'
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-white text-zinc-950'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
             <Trophy size={16} className="inline mr-1" />
@@ -254,8 +254,8 @@ export default function LeaderboardPage() {
             onClick={() => setActiveTab('streak')}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === 'streak'
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-white text-zinc-950'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
             <TrendingUp size={16} className="inline mr-1" />
@@ -265,8 +265,8 @@ export default function LeaderboardPage() {
             onClick={() => setActiveTab('meals')}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === 'meals'
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-white text-zinc-950'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
             Приемы пищи
@@ -275,8 +275,8 @@ export default function LeaderboardPage() {
             onClick={() => setActiveTab('ocr')}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === 'ocr'
-                ? 'bg-black text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-white text-zinc-950'
+                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
             }`}
           >
             OCR
@@ -286,14 +286,14 @@ export default function LeaderboardPage() {
 
       {/* Лидерборд */}
       {loading ? (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-zinc-900 p-6 rounded-2xl">
           <SkeletonLoader variant="list" count={5} />
         </div>
       ) : leaderboard.length === 0 ? (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
-          <Trophy size={48} className="mx-auto mb-2 text-gray-300" />
-          <p className="text-gray-500">Пока нет участников в лидерборде</p>
-          <p className="text-sm text-gray-400 mt-2">
+        <div className="bg-zinc-900 p-6 rounded-2xl text-center">
+          <Trophy size={48} className="mx-auto mb-2 text-zinc-600" />
+          <p className="text-zinc-400">Пока нет участников в лидерборде</p>
+          <p className="text-sm text-zinc-500 mt-2">
             Сделайте свой профиль публичным, чтобы участвовать
           </p>
         </div>
@@ -320,16 +320,16 @@ export default function LeaderboardPage() {
                       className="w-12 h-12 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold text-gray-600">
+                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-lg font-bold text-zinc-400">
                       {(entry.full_name || 'U')[0].toUpperCase()}
                     </div>
                   )}
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">
+                    <h3 className="font-semibold text-zinc-100 truncate">
                       {entry.full_name || 'Пользователь'}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-zinc-400 tabular-nums">
                       {entry[getTabValue(activeTab) as keyof LeaderboardEntry]} {
                         activeTab === 'achievements' ? 'достижений' :
                         activeTab === 'streak' ? 'дней подряд' :

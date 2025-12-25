@@ -351,22 +351,22 @@ export default function ClientDashboardView({
         const weightDiff = lastWeight - firstWeight
 
         return (
-          <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Вес</h2>
+          <section className="bg-zinc-900 p-6 rounded-2xl">
+            <h2 className="text-lg font-bold text-zinc-100 mb-4">Вес</h2>
             <div className="space-y-3">
               {weightLogs.slice(-7).map(log => (
-                <div key={log.date} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <span className="text-sm text-gray-600">
+                <div key={log.date} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+                  <span className="text-sm text-zinc-400">
                     {new Date(log.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                   </span>
-                  <span className="text-lg font-bold text-gray-900">{log.weight} кг</span>
+                  <span className="text-lg font-bold text-zinc-100 tabular-nums">{log.weight} кг</span>
                 </div>
               ))}
               {weightLogs.length >= 2 && (
-                <div className="pt-3 border-t border-gray-200">
+                <div className="pt-3 border-t border-zinc-800">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Изменение:</span>
-                    <span className={`text-sm font-semibold ${weightDiff < 0 ? 'text-green-600' : weightDiff > 0 ? 'text-red-600' : 'text-gray-600'
+                    <span className="text-sm text-zinc-400">Изменение:</span>
+                    <span className={`text-sm font-semibold tabular-nums ${weightDiff < 0 ? 'text-emerald-400' : weightDiff > 0 ? 'text-red-400' : 'text-zinc-400'
                       }`}>
                       {weightDiff !== 0 ? `${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)} кг` : '0 кг'}
                     </span>
@@ -379,16 +379,16 @@ export default function ClientDashboardView({
       })()}
 
       {/* СВОДКА ПО ПИТАНИЮ */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <section className="bg-zinc-900 p-6 rounded-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
             <UtensilsCrossed size={20} />
             Питание за неделю
           </h2>
           {!readOnly && (
             <button
               onClick={() => router.push('/app/nutrition')}
-              className="text-sm text-black underline decoration-dotted flex items-center gap-1"
+              className="text-sm text-zinc-400 underline decoration-dotted flex items-center gap-1 hover:text-zinc-100"
             >
               Ввести данные
               <ArrowRight size={14} />
@@ -421,28 +421,28 @@ export default function ClientDashboardView({
               />
             </div>
 
-            <div className="pt-3 border-t border-gray-100">
+            <div className="pt-3 border-t border-zinc-800">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Дней с отчетами:</span>
-                <span className="font-semibold text-gray-900">{nutritionSummary.daysLogged} из 7</span>
+                <span className="text-zinc-400">Дней с отчетами:</span>
+                <span className="font-semibold text-zinc-100 tabular-nums">{nutritionSummary.daysLogged} из 7</span>
               </div>
               {nutritionSummary.daysWithTargets < nutritionSummary.daysLogged && (
-                <div className="mt-2 text-sm text-yellow-600 flex items-center gap-1">
+                <div className="mt-2 text-sm text-amber-400 flex items-center gap-1">
                   ⚠️ Не все дни имеют установленные цели питания
                 </div>
               )}
               {nutritionSummary.daysWithTargets > 0 && nutritionSummary.calories.diff > 0 ? (
-                <div className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                <div className="mt-2 text-sm text-red-400 flex items-center gap-1 tabular-nums">
                   <TrendingUp size={14} />
                   Профицит: +{Math.round(nutritionSummary.calories.diff / nutritionSummary.daysWithTargets)} ккал/день
                 </div>
               ) : nutritionSummary.daysWithTargets > 0 && nutritionSummary.calories.diff < 0 ? (
-                <div className="mt-2 text-sm text-green-600 flex items-center gap-1">
+                <div className="mt-2 text-sm text-emerald-400 flex items-center gap-1 tabular-nums">
                   <TrendingUp size={14} className="rotate-180" />
                   Дефицит: {Math.round(nutritionSummary.calories.diff / nutritionSummary.daysWithTargets)} ккал/день
                 </div>
               ) : nutritionSummary.daysWithTargets > 0 ? (
-                <div className="mt-2 text-sm text-gray-600">В норме</div>
+                <div className="mt-2 text-sm text-zinc-400">В норме</div>
               ) : null}
             </div>
           </div>
@@ -458,8 +458,8 @@ export default function ClientDashboardView({
 
       {/* ДЕТАЛИЗАЦИЯ ПИТАНИЯ ПО ДНЯМ */}
       {weekLogs.length > 0 && (
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <section className="bg-zinc-900 p-6 rounded-2xl">
+          <h2 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
             <UtensilsCrossed size={20} />
             Питание по дням
           </h2>
@@ -472,18 +472,18 @@ export default function ClientDashboardView({
                 const isToday = log.date === new Date().toISOString().split('T')[0]
 
                 return (
-                  <div key={log.date} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                  <div key={log.date} className="border border-zinc-800 rounded-xl p-4 bg-zinc-800">
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-semibold text-zinc-100">
                             {isToday ? 'Сегодня' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}
                           </h3>
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${log.target_type === 'training'
-                            ? 'bg-blue-100 text-blue-700'
+                            ? 'bg-teal-500/10 text-teal-200'
                             : log.target_type === 'rest'
-                              ? 'bg-gray-100 text-gray-700'
-                              : 'bg-yellow-100 text-yellow-700'
+                              ? 'bg-slate-500/10 text-slate-300'
+                              : 'bg-amber-500/10 text-amber-300'
                             }`}>
                             {log.target_type === 'training'
                               ? '🏋️ Тренировка'
@@ -493,60 +493,60 @@ export default function ClientDashboardView({
                           </span>
                         </div>
                         {log.is_completed && (
-                          <span className="text-xs text-green-600 font-medium mt-1 inline-block">
+                          <span className="text-xs text-emerald-400 font-medium mt-1 inline-block">
                             ✓ День завершен
                             {log.completed_at && ` (${new Date(log.completed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})`}
                           </span>
                         )}
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-bold text-gray-900">{log.actual_calories || 0} ккал</div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-sm font-bold text-zinc-100 tabular-nums">{log.actual_calories || 0} ккал</div>
+                        <div className="text-xs text-zinc-400 tabular-nums">
                           Б: {log.actual_protein || 0}г • Ж: {log.actual_fats || 0}г • У: {log.actual_carbs || 0}г
                         </div>
                       </div>
                     </div>
 
                     {meals.length > 0 ? (
-                      <div className="space-y-2 mt-3 pt-3 border-t border-gray-200">
-                        <div className="text-xs font-medium text-gray-500 mb-2">Приемы пищи ({meals.length}):</div>
+                      <div className="space-y-2 mt-3 pt-3 border-t border-zinc-700">
+                        <div className="text-xs font-medium text-zinc-500 mb-2">Приемы пищи ({meals.length}):</div>
                         {meals.map((meal, index) => (
-                          <div key={meal.id} className="bg-white rounded-lg p-3 border border-gray-100">
+                          <div key={meal.id} className="bg-zinc-900 rounded-lg p-3">
                             <div className="flex items-start justify-between mb-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                                <span className="text-xs font-medium text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
                                   #{index + 1}
                                 </span>
-                                <span className="text-sm font-semibold text-gray-900">{meal.title}</span>
+                                <span className="text-sm font-semibold text-zinc-100">{meal.title}</span>
                               </div>
-                              <span className="text-sm font-bold text-gray-900">{meal.totals?.calories ?? 0} ккал</span>
+                              <span className="text-sm font-bold text-zinc-100 tabular-nums">{meal.totals?.calories ?? 0} ккал</span>
                             </div>
-                            <div className="text-xs text-gray-600 ml-7">
+                            <div className="text-xs text-zinc-400 ml-7 tabular-nums">
                               Б: {meal.totals?.protein ?? 0}г • Ж: {meal.totals?.fats ?? 0}г • У: {meal.totals?.carbs ?? 0}г
-                              {meal.weight > 0 && <span className="ml-2 text-gray-500">({meal.weight}г)</span>}
+                              {meal.weight > 0 && <span className="ml-2 text-zinc-500">({meal.weight}г)</span>}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-500 italic">
+                      <div className="mt-3 pt-3 border-t border-zinc-700 text-sm text-zinc-500 italic">
                         Приемы пищи не детализированы
                       </div>
                     )}
 
                     {(log.weight || log.hunger_level || log.energy_level || log.notes) && (
-                      <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                      <div className="mt-3 pt-3 border-t border-zinc-700 space-y-2">
                         {log.weight && (
-                          <div className="text-sm text-gray-600">
-                            <span className="font-medium">Вес:</span> {log.weight} кг
+                          <div className="text-sm text-zinc-400">
+                            <span className="font-medium">Вес:</span> <span className="tabular-nums">{log.weight} кг</span>
                           </div>
                         )}
                         {(log.hunger_level || log.energy_level) && (
                           <div className="flex items-center gap-4 text-sm">
                             {log.hunger_level && (
-                              <div className="text-gray-600">
+                              <div className="text-zinc-400">
                                 <span className="font-medium">Голод:</span>{' '}
-                                <span className="font-semibold text-gray-900">
+                                <span className="font-semibold text-zinc-100">
                                   {log.hunger_level === 1 ? '😋 Совсем нет' :
                                     log.hunger_level === 2 ? '🙂 Легкий' :
                                       log.hunger_level === 3 ? '😊 Умеренный' :
@@ -557,17 +557,17 @@ export default function ClientDashboardView({
                               </div>
                             )}
                             {log.energy_level && (
-                              <div className="text-gray-600">
+                              <div className="text-zinc-400">
                                 <span className="font-medium">Энергия:</span>{' '}
-                                <span className="font-semibold text-gray-900">{log.energy_level}/10</span>
+                                <span className="font-semibold text-zinc-100 tabular-nums">{log.energy_level}/10</span>
                               </div>
                             )}
                           </div>
                         )}
                         {log.notes && log.notes.trim() && (
-                          <div className="text-sm text-gray-700 bg-white rounded-lg p-3 border border-gray-200">
-                            <div className="font-medium text-gray-900 mb-1">Комментарий:</div>
-                            <div className="text-gray-700 whitespace-pre-wrap">{log.notes}</div>
+                          <div className="text-sm text-zinc-300 bg-zinc-900 rounded-lg p-3">
+                            <div className="font-medium text-zinc-100 mb-1">Комментарий:</div>
+                            <div className="text-zinc-300 whitespace-pre-wrap">{log.notes}</div>
                           </div>
                         )}
                       </div>
@@ -588,13 +588,13 @@ export default function ClientDashboardView({
       )}
 
       {/* АКТИВНЫЕ ПРОГРАММЫ */}
-      <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <section className="bg-zinc-900 p-6 rounded-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Активные программы</h2>
+          <h2 className="text-lg font-bold text-zinc-100">Активные программы</h2>
           {readOnly && (targetsTraining || targetsRest) && !editingTargets && (
             <button
               onClick={handleEditTargets}
-              className="text-sm text-black underline decoration-dotted"
+              className="text-sm text-zinc-400 underline decoration-dotted hover:text-zinc-100"
             >
               Редактировать
             </button>
@@ -604,7 +604,7 @@ export default function ClientDashboardView({
         {editingTargets ? (
           <div className="space-y-4">
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-900 mb-2">Тип дня</label>
+                <label className="block text-sm font-medium text-zinc-100 mb-2">Тип дня</label>
               <DayToggle
                 value={editingTargets.day_type as 'training' | 'rest'}
                 onChange={(newDayType) => {
@@ -645,50 +645,50 @@ export default function ClientDashboardView({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Калории</label>
+                <label className="text-xs text-zinc-500 block mb-1">Калории</label>
                 <input
                   type="number"
                   value={editingTargets.calories}
                   onChange={(e) => setEditingTargets({ ...editingTargets, calories: parseInt(e.target.value) || 0 })}
-                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('калорий'))
-                    ? 'border-red-500'
-                    : 'border-gray-200'
+                  className={`w-full p-2 bg-zinc-900 rounded-xl border text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none tabular-nums ${targetsValidation && targetsValidation.errors.some(e => e.includes('калорий'))
+                    ? 'border-red-400'
+                    : 'border-zinc-800'
                     }`}
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Белки (г)</label>
+                <label className="text-xs text-zinc-500 block mb-1">Белки (г)</label>
                 <input
                   type="number"
                   value={editingTargets.protein}
                   onChange={(e) => setEditingTargets({ ...editingTargets, protein: parseInt(e.target.value) || 0 })}
-                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('белк'))
-                    ? 'border-red-500'
-                    : 'border-gray-200'
+                  className={`w-full p-2 bg-zinc-900 rounded-xl border text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none tabular-nums ${targetsValidation && targetsValidation.errors.some(e => e.includes('белк'))
+                    ? 'border-red-400'
+                    : 'border-zinc-800'
                     }`}
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Жиры (г)</label>
+                <label className="text-xs text-zinc-500 block mb-1">Жиры (г)</label>
                 <input
                   type="number"
                   value={editingTargets.fats}
                   onChange={(e) => setEditingTargets({ ...editingTargets, fats: parseInt(e.target.value) || 0 })}
-                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('жир'))
-                    ? 'border-red-500'
-                    : 'border-gray-200'
+                  className={`w-full p-2 bg-zinc-900 rounded-xl border text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none tabular-nums ${targetsValidation && targetsValidation.errors.some(e => e.includes('жир'))
+                    ? 'border-red-400'
+                    : 'border-zinc-800'
                     }`}
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Углеводы (г)</label>
+                <label className="text-xs text-zinc-500 block mb-1">Углеводы (г)</label>
                 <input
                   type="number"
                   value={editingTargets.carbs}
                   onChange={(e) => setEditingTargets({ ...editingTargets, carbs: parseInt(e.target.value) || 0 })}
-                  className={`w-full p-2 bg-white rounded-xl border text-sm text-black focus:ring-2 focus:ring-black outline-none ${targetsValidation && targetsValidation.errors.some(e => e.includes('углевод'))
-                    ? 'border-red-500'
-                    : 'border-gray-200'
+                  className={`w-full p-2 bg-zinc-900 rounded-xl border text-sm text-zinc-100 focus:ring-2 focus:ring-zinc-700 outline-none tabular-nums ${targetsValidation && targetsValidation.errors.some(e => e.includes('углевод'))
+                    ? 'border-red-400'
+                    : 'border-zinc-800'
                     }`}
                 />
               </div>
@@ -705,15 +705,15 @@ export default function ClientDashboardView({
                 onClick={handleSaveTargets}
                 disabled={savingTargets || (targetsValidation !== null && !targetsValidation.valid)}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm ${targetsValidation !== null && !targetsValidation.valid
-                  ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'bg-black text-white hover:bg-gray-800'
-                  } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                  ? 'bg-red-400 text-zinc-950 hover:bg-red-300'
+                  : 'bg-white text-zinc-950 hover:bg-zinc-200'
+                  } disabled:bg-zinc-700 disabled:cursor-not-allowed`}
               >
                 {savingTargets ? 'Сохранение...' : 'Сохранить'}
               </button>
               <button
                 onClick={() => setEditingTargets(null)}
-                className="flex-1 py-2 px-4 bg-gray-200 text-gray-900 rounded-lg font-medium text-sm hover:bg-gray-300"
+                className="flex-1 py-2 px-4 bg-zinc-800 text-zinc-100 rounded-lg font-medium text-sm hover:bg-zinc-700"
               >
                 Отмена
               </button>
@@ -722,12 +722,12 @@ export default function ClientDashboardView({
         ) : (
           <div className="space-y-3">
             {targetsTraining && (
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <div className="rounded-xl bg-zinc-800 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-gray-900">План питания (Тренировка)</span>
-                  <span className="text-xs text-gray-500 bg-green-100 text-green-700 px-2 py-1 rounded-full">Активна</span>
+                  <span className="font-semibold text-zinc-100">План питания (Тренировка)</span>
+                  <span className="text-xs text-zinc-400 bg-zinc-700 text-emerald-400 px-2 py-1 rounded-full">Активна</span>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-zinc-400 tabular-nums">
                   {targetsTraining.calories} ккал/день • {targetsTraining.protein}г белка • {targetsTraining.fats}г жиров • {targetsTraining.carbs}г углеводов
                 </p>
                 {readOnly && (
@@ -735,7 +735,7 @@ export default function ClientDashboardView({
                     onClick={() => {
                       setEditingTargets({ ...targetsTraining, day_type: 'training' })
                     }}
-                    className="mt-2 text-xs text-black underline decoration-dotted"
+                    className="mt-2 text-xs text-zinc-400 underline decoration-dotted hover:text-zinc-100"
                   >
                     Редактировать
                   </button>
@@ -743,12 +743,12 @@ export default function ClientDashboardView({
               </div>
             )}
             {targetsRest && (
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <div className="rounded-xl bg-zinc-800 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-gray-900">План питания (Отдых)</span>
-                  <span className="text-xs text-gray-500 bg-green-100 text-green-700 px-2 py-1 rounded-full">Активна</span>
+                  <span className="font-semibold text-zinc-100">План питания (Отдых)</span>
+                  <span className="text-xs text-zinc-400 bg-zinc-700 text-emerald-400 px-2 py-1 rounded-full">Активна</span>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-zinc-400 tabular-nums">
                   {targetsRest.calories} ккал/день • {targetsRest.protein}г белка • {targetsRest.fats}г жиров • {targetsRest.carbs}г углеводов
                 </p>
                 {readOnly && (
@@ -756,7 +756,7 @@ export default function ClientDashboardView({
                     onClick={() => {
                       setEditingTargets({ ...targetsRest, day_type: 'rest' })
                     }}
-                    className="mt-2 text-xs text-black underline decoration-dotted"
+                    className="mt-2 text-xs text-zinc-400 underline decoration-dotted hover:text-zinc-100"
                   >
                     Редактировать
                   </button>
@@ -764,7 +764,7 @@ export default function ClientDashboardView({
               </div>
             )}
             {!targetsTraining && !targetsRest && (
-              <div className="text-center py-4 text-gray-500 text-sm">
+              <div className="text-center py-4 text-zinc-500 text-sm">
                 Нет активных программ
               </div>
             )}
@@ -777,13 +777,13 @@ export default function ClientDashboardView({
 
 function StatCard({ label, value, target, unit }: { label: string; value: string; target: number; unit: string }) {
   return (
-    <div className="rounded-lg bg-gray-50 p-3">
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
+    <div className="rounded-lg bg-zinc-900 p-3">
+      <div className="text-xs text-zinc-500 mb-1">{label}</div>
       <div className="flex items-baseline gap-1">
-        <span className="text-lg font-bold text-gray-900">{value}</span>
-        <span className="text-xs text-gray-500">/ {target}</span>
+        <span className="text-lg font-bold text-zinc-100 tabular-nums">{value}</span>
+        <span className="text-xs text-zinc-500 tabular-nums">/ {target}</span>
       </div>
-      <div className="text-xs text-gray-400 mt-1">{unit}</div>
+      <div className="text-xs text-zinc-400 mt-1">{unit}</div>
     </div>
   )
 }
