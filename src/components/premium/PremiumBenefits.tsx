@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, TrendingUp, BarChart3, Users, MessageSquare, Calendar, Target } from 'lucide-react'
+import { TrendingUp, BarChart3, Users, MessageSquare, Calendar, Target } from 'lucide-react'
 
 interface PremiumBenefit {
   icon: React.ReactNode

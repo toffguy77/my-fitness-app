@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
+import packageJson from './package.json';
 
 // Disable PWA in test environment to avoid Babel plugin issues
 const isTest = process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID !== undefined;
+
+// Get version from package.json
+const appVersion = packageJson.version;
 
 const baseConfig: NextConfig = {
   reactCompiler: true,
@@ -12,6 +16,10 @@ const baseConfig: NextConfig = {
   // Исправление проблемы со шрифтами в Turbopack
   experimental: {
     optimizePackageImports: ['lucide-react'],
+  },
+  // Set environment variables for build
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
   },
 };
 
