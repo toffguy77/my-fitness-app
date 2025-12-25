@@ -204,7 +204,11 @@ describe('Chat Notifications', () => {
         ...options,
       })) as any
       
-      global.Notification.permission = 'denied'
+      Object.defineProperty(global.Notification, 'permission', {
+        value: 'denied',
+        writable: true,
+        configurable: true,
+      })
       global.Notification.requestPermission = mockRequestPermission
 
       const result = await showNotification('Test')
@@ -218,7 +222,11 @@ describe('Chat Notifications', () => {
       const mockNotificationConstructor = jest.fn().mockReturnValue(mockNotification)
       
       global.Notification = mockNotificationConstructor as any
-      global.Notification.permission = 'granted'
+      Object.defineProperty(global.Notification, 'permission', {
+        value: 'granted',
+        writable: true,
+        configurable: true,
+      })
       global.Notification.requestPermission = mockRequestPermission
 
       const result = await showNotification('Test', { body: 'Test body' })
@@ -239,7 +247,11 @@ describe('Chat Notifications', () => {
       })
       
       global.Notification = mockNotificationConstructor as any
-      global.Notification.permission = 'granted'
+      Object.defineProperty(global.Notification, 'permission', {
+        value: 'granted',
+        writable: true,
+        configurable: true,
+      })
       global.Notification.requestPermission = mockRequestPermission
 
       const result = await showNotification('Test')
