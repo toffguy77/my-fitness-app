@@ -474,7 +474,7 @@ export default function AdminPage() {
                   <option value="coordinator">Координатор</option>
                   <option value="super_admin">Супер-админ</option>
                 </select>
-                {(editingUser.role === 'client' && (editingUser.coordinator_id || editingUser.subscription_status !== 'free')) && (
+                {editingUser.role === 'client' && (editingUser.coordinator_id || editingUser.subscription_status !== 'free') && (
                   <p className="text-xs text-zinc-400 mt-1">
                     При изменении роли на &quot;Координатор&quot; будут очищены: назначенный координатор и подписка
                   </p>
