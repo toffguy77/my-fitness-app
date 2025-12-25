@@ -210,7 +210,7 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
         messageChannelRef.current = null
       }
     }
-  }, [supabase, userId, coordinatorId, loading, isOpen, coordinatorName])
+  }, [supabase, userId, coordinatorId, loading, isOpen, coordinatorName, loadUnreadCount])
 
   if (!coordinatorId || loading || !coordinatorProfile) {
     return null

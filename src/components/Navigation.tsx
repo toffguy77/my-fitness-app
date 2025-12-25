@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { Home, UtensilsCrossed, TrendingUp, Settings, Trophy, Users, UserPlus, BarChart3 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { getUserProfile, type UserProfile } from '@/utils/supabase/profile'
 
@@ -53,7 +53,10 @@ export default function Navigation() {
   }, [])
 
   const isCoordinator = profile?.role === 'coordinator'
-  const navigationItems = isCoordinator ? coordinatorNavigationItems : clientNavigationItems
+  const navigationItems = useMemo(
+    () => isCoordinator ? coordinatorNavigationItems : clientNavigationItems,
+    [isCoordinator]
+  )
 
   // Prefetch navigation routes on hover/focus for better perceived performance
   useEffect(() => {

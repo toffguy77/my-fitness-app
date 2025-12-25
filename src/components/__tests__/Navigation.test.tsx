@@ -2,7 +2,7 @@
  * Tests for Navigation component
  */
 
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Navigation from '../Navigation'
 
@@ -21,13 +21,36 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }))
 
+// Mock Supabase client
+jest.mock('@/utils/supabase/client', () => ({
+  createClient: jest.fn(() => ({
+    auth: {
+      getUser: jest.fn().mockResolvedValue({
+        data: { user: { id: 'test-user-id' } },
+        error: null,
+      }),
+    },
+  })),
+}))
 
-// TODO: Fix memory issue in Navigation test
-describe.skip('Navigation', () => {
+// Mock profile utils
+jest.mock('@/utils/supabase/profile', () => ({
+  getUserProfile: jest.fn().mockResolvedValue({
+    id: 'test-user-id',
+    role: 'client',
+    email: 'test@example.com',
+  }),
+}))
+
+
+describe('Navigation', () => {
+  let cleanup: (() => void)[] = []
+
   beforeEach(() => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
     ;(usePathname as jest.Mock).mockReturnValue('/app/dashboard')
+    cleanup = []
     
     // Mock window.innerWidth
     Object.defineProperty(window, 'innerWidth', {
@@ -37,24 +60,39 @@ describe.skip('Navigation', () => {
     })
   })
 
-  it('renders navigation items', () => {
-    render(<Navigation />)
+  afterEach(() => {
+    // Cleanup all rendered components
+    cleanup.forEach(fn => fn())
+    cleanup = []
+  })
+
+  it('renders navigation items', async () => {
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
+    
+    // Wait for loading to complete
+    await screen.findByText('Дашборд', {}, { timeout: 2000 })
     
     expect(screen.getByText('Дашборд')).toBeInTheDocument()
     expect(screen.getByText('Питание')).toBeInTheDocument()
     expect(screen.getByText('Отчеты')).toBeInTheDocument()
   })
 
-  it('prefetches routes on mount', () => {
-    render(<Navigation />)
+  it('prefetches routes on mount', async () => {
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
-    // Should prefetch all navigation routes except current
-    expect(mockPrefetch).toHaveBeenCalled()
+    // Wait for component to load
+    await waitFor(() => {
+      expect(mockPrefetch).toHaveBeenCalled()
+    }, { timeout: 2000 })
   })
 
-  it('prefetches route on hover (desktop)', () => {
-    render(<Navigation />)
+  it('prefetches route on hover (desktop)', async () => {
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
+    await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
     
@@ -65,7 +103,8 @@ describe.skip('Navigation', () => {
   })
 
   it('prefetches route on focus (desktop)', () => {
-    render(<Navigation />)
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
@@ -84,7 +123,8 @@ describe.skip('Navigation', () => {
       value: 375, // Mobile
     })
 
-    render(<Navigation />)
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
@@ -98,14 +138,16 @@ describe.skip('Navigation', () => {
   it('highlights active route', () => {
     ;(usePathname as jest.Mock).mockReturnValue('/app/nutrition')
     
-    render(<Navigation />)
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toHaveClass('bg-black', 'text-white')
   })
 
   it('renders desktop sidebar on large screens', () => {
-    render(<Navigation />)
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
     const sidebar = document.querySelector('aside')
     expect(sidebar).toBeInTheDocument()
@@ -120,15 +162,18 @@ describe.skip('Navigation', () => {
       value: 375, // Mobile
     })
 
-    render(<Navigation />)
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
     const bottomNav = document.querySelector('nav.fixed.bottom-0')
     expect(bottomNav).toBeInTheDocument()
   })
 
-  it('navigates on button click', () => {
-    render(<Navigation />)
+  it('navigates on button click', async () => {
+    const { unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
+    await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
     
@@ -138,7 +183,8 @@ describe.skip('Navigation', () => {
   })
 
   it('handles window resize', () => {
-    const { rerender } = render(<Navigation />)
+    const { rerender, unmount } = render(<Navigation />)
+    cleanup.push(unmount)
     
     // Change viewport size
     Object.defineProperty(window, 'innerWidth', {
