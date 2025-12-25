@@ -93,6 +93,15 @@ export default function RegisterPage() {
       inviteCodeValid: codeValidation?.valid || false,
       hasFullName: !!fullName
     })
+    // Дополнительно пишем в stdout для гарантии попадания в Docker логи (Node.js серверная среда)
+    if (typeof window === 'undefined' && typeof process !== 'undefined' && 
+        'stdout' in process && typeof (process as any).stdout?.write === 'function') {
+      try {
+        (process as any).stdout.write(`[REGISTRATION START] email: ${email}, hasInviteCode: ${!!inviteCode}, inviteCodeValid: ${codeValidation?.valid || false}\n`)
+      } catch {
+        // Ignore if stdout is not available
+      }
+    }
 
     // Record registration start metric
     try {
@@ -125,6 +134,15 @@ export default function RegisterPage() {
           error: authError.message,
           email
         })
+        // Дополнительно пишем в stderr для гарантии попадания в Docker логи (Node.js серверная среда)
+        if (typeof window === 'undefined' && typeof process !== 'undefined' && 
+            'stderr' in process && typeof (process as any).stderr?.write === 'function') {
+          try {
+            (process as any).stderr.write(`[REGISTRATION ERROR] Failed to create user: ${authError.message}, email: ${email}\n`)
+          } catch {
+            // Ignore if stderr is not available
+          }
+        }
         setError(authError.message)
         setLoading(false)
         return
@@ -202,13 +220,44 @@ export default function RegisterPage() {
       let profileError = null
       
       // Пробуем вызвать RPC функцию с user_coordinator_id
-      const { error: rpcError } = await supabase.rpc('create_user_profile', {
-        user_id: authData.user.id,
-        user_email: email,
-        user_full_name: fullName || null,
-        user_role: 'client',
-        user_coordinator_id: coordinatorId || null,
-      })
+      // Делаем несколько попыток с задержкой, так как пользователь может создаваться асинхронно
+      let rpcError = null
+      let retryCount = 0
+      const maxRetries = 3
+      const retryDelay = 200 // миллисекунды
+
+      while (retryCount < maxRetries) {
+        const { error: error } = await supabase.rpc('create_user_profile', {
+          user_id: authData.user.id,
+          user_email: email,
+          user_full_name: fullName || null,
+          user_role: 'client',
+          user_coordinator_id: coordinatorId || null,
+        })
+
+        rpcError = error
+
+        // Если ошибка связана с foreign key constraint, пробуем еще раз после задержки
+        if (rpcError && (
+          rpcError.message?.includes('foreign key constraint') ||
+          rpcError.message?.includes('profiles_id_fkey') ||
+          rpcError.message?.includes('violates foreign key')
+        )) {
+          retryCount++
+          if (retryCount < maxRetries) {
+            logger.warn('Register: foreign key constraint error, retrying...', {
+              attempt: retryCount,
+              maxRetries,
+              userId: authData.user.id
+            })
+            await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount))
+            continue
+          }
+        }
+
+        // Если нет ошибки или ошибка не связана с foreign key, выходим из цикла
+        break
+      }
 
       // Если RPC функция не найдена или имеет неправильную сигнатуру (например, user_coach_id),
       // пробуем прямой insert
@@ -231,25 +280,107 @@ export default function RegisterPage() {
           // Ignore metrics errors
         }
 
-        // Если RPC не сработал, пробуем прямой insert
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email: email,
-            full_name: fullName || null,
-            role: 'client',
-            coordinator_id: coordinatorId || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+        // Если RPC не сработал, пробуем прямой insert с повторными попытками
+        let insertError = null
+        let insertRetryCount = 0
+        const maxInsertRetries = 3
+        const insertRetryDelay = 200
+
+        while (insertRetryCount < maxInsertRetries) {
+          const { error: error } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user.id,
+              email: email,
+              full_name: fullName || null,
+              role: 'client',
+              coordinator_id: coordinatorId || null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+
+          insertError = error
+
+          // Если ошибка связана с foreign key constraint, пробуем еще раз после задержки
+          if (insertError && (
+            insertError.message?.includes('foreign key constraint') ||
+            insertError.message?.includes('profiles_id_fkey') ||
+            insertError.message?.includes('violates foreign key')
+          )) {
+            insertRetryCount++
+            if (insertRetryCount < maxInsertRetries) {
+              logger.warn('Register: foreign key constraint error on direct insert, retrying...', {
+                attempt: insertRetryCount,
+                maxRetries: maxInsertRetries,
+                userId: authData.user.id
+              })
+              await new Promise(resolve => setTimeout(resolve, insertRetryDelay * insertRetryCount))
+              continue
+            }
+          }
+
+          // Если нет ошибки или ошибка не связана с foreign key, выходим из цикла
+          break
+        }
 
         if (insertError) {
           profileError = insertError
         }
       } else if (rpcError) {
         // Другие ошибки RPC (не связанные с отсутствием функции)
-        profileError = rpcError
+        // Если это ошибка foreign key constraint, пробуем прямой insert с повторными попытками
+        if (rpcError.message?.includes('foreign key constraint') ||
+            rpcError.message?.includes('profiles_id_fkey') ||
+            rpcError.message?.includes('violates foreign key')) {
+          logger.warn('Register: foreign key constraint error in RPC, trying direct insert with retries', {
+            userId: authData.user.id,
+            error: rpcError.message
+          })
+
+          let insertError = null
+          let insertRetryCount = 0
+          const maxInsertRetries = 3
+          const insertRetryDelay = 200
+
+          while (insertRetryCount < maxInsertRetries) {
+            const { error: error } = await supabase
+              .from('profiles')
+              .insert({
+                id: authData.user.id,
+                email: email,
+                full_name: fullName || null,
+                role: 'client',
+                coordinator_id: coordinatorId || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+
+            insertError = error
+
+            if (insertError && (
+              insertError.message?.includes('foreign key constraint') ||
+              insertError.message?.includes('profiles_id_fkey') ||
+              insertError.message?.includes('violates foreign key')
+            )) {
+              insertRetryCount++
+              if (insertRetryCount < maxInsertRetries) {
+                await new Promise(resolve => setTimeout(resolve, insertRetryDelay * insertRetryCount))
+                continue
+              }
+            }
+
+            break
+          }
+
+          if (insertError) {
+            profileError = insertError
+          } else {
+            // Прямой insert успешен, сбрасываем ошибку
+            profileError = null
+          }
+        } else {
+          profileError = rpcError
+        }
       }
 
       if (profileError) {
@@ -257,6 +388,21 @@ export default function RegisterPage() {
           userId: authData.user.id,
           email
         })
+        // Дополнительно пишем в stderr для гарантии попадания в Docker логи (Node.js серверная среда)
+        if (typeof window === 'undefined' && typeof process !== 'undefined' && 
+            'stderr' in process && typeof (process as any).stderr?.write === 'function') {
+          try {
+            let errorDetails: string
+            if (profileError instanceof Error) {
+              errorDetails = profileError.stack || profileError.message
+            } else {
+              errorDetails = JSON.stringify(profileError)
+            }
+            (process as any).stderr.write(`[REGISTRATION ERROR] Failed to create profile: ${errorDetails}, userId: ${authData.user.id}, email: ${email}\n`)
+          } catch {
+            // Ignore if stderr is not available
+          }
+        }
         setError('Ошибка создания профиля: ' + profileError.message)
         setLoading(false)
         return
@@ -267,6 +413,15 @@ export default function RegisterPage() {
         email,
         coordinatorId: coordinatorId || null
       })
+      // Дополнительно пишем в stdout для гарантии попадания в Docker логи (Node.js серверная среда)
+      if (typeof window === 'undefined' && typeof process !== 'undefined' && 
+          'stdout' in process && typeof (process as any).stdout?.write === 'function') {
+        try {
+          (process as any).stdout.write(`[REGISTRATION SUCCESS] userId: ${authData.user.id}, email: ${email}, coordinatorId: ${coordinatorId || 'null'}\n`)
+        } catch {
+          // Ignore if stdout is not available
+        }
+      }
 
       // Отправляем уведомление координатору, если регистрация была по инвайт-коду
       if (coordinatorId && inviteCode && codeValidation?.valid) {

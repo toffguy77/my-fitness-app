@@ -91,24 +91,74 @@ class Logger {
             logData.push(error);
         }
 
-        // Используем соответствующий метод консоли
-        switch (level) {
-            case LogLevel.DEBUG:
-                if (this.isClient) {
-                    console.debug(...logData);
-                } else {
-                    console.debug(...logData);
+        // ВАЖНО: Для серверной среды всегда пишем в stdout/stderr для Docker
+        // Это гарантирует, что логи видны в контейнере
+        // В Edge Runtime (middleware) process.stdout/stderr недоступны, используем только console
+        // Проверяем, что мы не в Edge Runtime через проверку доступности process
+        const isNodeRuntime = !this.isClient && typeof process !== 'undefined' && 
+                              'stdout' in process && 'stderr' in process &&
+                              typeof (process as any).stdout?.write === 'function';
+        
+        if (isNodeRuntime) {
+            // Для Node.js серверной среды используем process.stdout/stderr напрямую
+            // чтобы гарантировать попадание логов в Docker
+            const logLine = formattedMessage + (error ? `\nError: ${error.stack || error.message}` : '');
+            
+            try {
+                const stdout = (process as any).stdout;
+                const stderr = (process as any).stderr;
+                
+                switch (level) {
+                    case LogLevel.DEBUG:
+                        stdout.write(`DEBUG: ${logLine}\n`);
+                        console.debug(...logData);
+                        break;
+                    case LogLevel.INFO:
+                        stdout.write(`INFO: ${logLine}\n`);
+                        console.info(...logData);
+                        break;
+                    case LogLevel.WARN:
+                        stderr.write(`WARN: ${logLine}\n`);
+                        console.warn(...logData);
+                        break;
+                    case LogLevel.ERROR:
+                        stderr.write(`ERROR: ${logLine}\n`);
+                        console.error(...logData);
+                        break;
                 }
-                break;
-            case LogLevel.INFO:
-                console.info(...logData);
-                break;
-            case LogLevel.WARN:
-                console.warn(...logData);
-                break;
-            case LogLevel.ERROR:
-                console.error(...logData);
-                break;
+            } catch {
+                // Если запись в stdout/stderr не удалась, используем только console
+                switch (level) {
+                    case LogLevel.DEBUG:
+                        console.debug(...logData);
+                        break;
+                    case LogLevel.INFO:
+                        console.info(...logData);
+                        break;
+                    case LogLevel.WARN:
+                        console.warn(...logData);
+                        break;
+                    case LogLevel.ERROR:
+                        console.error(...logData);
+                        break;
+                }
+            }
+        } else {
+            // Для клиентской среды используем обычные методы консоли
+            switch (level) {
+                case LogLevel.DEBUG:
+                    console.debug(...logData);
+                    break;
+                case LogLevel.INFO:
+                    console.info(...logData);
+                    break;
+                case LogLevel.WARN:
+                    console.warn(...logData);
+                    break;
+                case LogLevel.ERROR:
+                    console.error(...logData);
+                    break;
+            }
         }
     }
 
@@ -132,23 +182,41 @@ class Logger {
 
     /**
      * Логирование регистрации пользователя
+     * ВАЖНО: Всегда логируется в production для отладки проблем пользователей
      */
     registration(action: string, context?: LogContext): void {
-        if (this.enableUserFlowLogging) {
-            this.log(LogLevel.INFO, 'REGISTRATION', `[Registration] ${action}`, context);
-        } else {
-            this.info(`Registration: ${action}`, context);
+        // Всегда логируем регистрацию (критически важно для отладки)
+        this.log(LogLevel.INFO, 'REGISTRATION', `[Registration] ${action}`, context);
+        
+        // Дополнительно пишем в stdout для Docker (Node.js серверная среда, если доступно)
+        if (!this.isClient && typeof process !== 'undefined' && 
+            'stdout' in process && typeof (process as any).stdout?.write === 'function') {
+            try {
+                const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+                (process as any).stdout.write(`[REGISTRATION] ${action}${contextStr}\n`);
+            } catch {
+                // Ignore if stdout is not available (Edge Runtime)
+            }
         }
     }
 
     /**
      * Логирование авторизации пользователя
+     * ВАЖНО: Всегда логируется в production для отладки проблем пользователей
      */
     authentication(action: string, context?: LogContext): void {
-        if (this.enableUserFlowLogging) {
-            this.log(LogLevel.INFO, 'AUTH', `[Auth] ${action}`, context);
-        } else {
-            this.info(`Auth: ${action}`, context);
+        // Всегда логируем авторизацию (критически важно для отладки)
+        this.log(LogLevel.INFO, 'AUTH', `[Auth] ${action}`, context);
+        
+        // Дополнительно пишем в stdout для Docker (Node.js серверная среда, если доступно)
+        if (!this.isClient && typeof process !== 'undefined' && 
+            'stdout' in process && typeof (process as any).stdout?.write === 'function') {
+            try {
+                const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+                (process as any).stdout.write(`[AUTH] ${action}${contextStr}\n`);
+            } catch {
+                // Ignore if stdout is not available (Edge Runtime)
+            }
         }
     }
 
@@ -254,6 +322,19 @@ class Logger {
         }
 
         this.log(LogLevel.ERROR, 'ERROR', message, context, errorObj);
+        
+        // ВАЖНО: Всегда пишем ошибки в stderr для Docker (Node.js серверная среда, если доступно)
+        // Это гарантирует, что ошибки видны в логах контейнера
+        if (!this.isClient && typeof process !== 'undefined' && 
+            'stderr' in process && typeof (process as any).stderr?.write === 'function') {
+            try {
+                const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+                const errorStr = errorObj ? `\nError: ${errorObj.stack || errorObj.message}` : '';
+                (process as any).stderr.write(`[ERROR] ${message}${contextStr}${errorStr}\n`);
+            } catch {
+                // Ignore if stderr is not available (Edge Runtime)
+            }
+        }
     }
 
     /**

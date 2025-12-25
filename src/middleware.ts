@@ -3,19 +3,45 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { logger } from '@/utils/logger'
 import { metricsCollector } from '@/utils/metrics/collector'
 
+/**
+ * Нормализует pathname для метрик (заменяет динамические параметры на шаблоны)
+ */
+function normalizeRoute(pathname: string): string {
+  // Заменяем UUID на [id]
+  let normalized = pathname.replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/[id]')
+  // Заменяем числовые ID на [id]
+  normalized = normalized.replace(/\/\d+/g, '/[id]')
+  // Заменяем другие динамические сегменты если есть (например, /app/coordinator/[clientId] -> /app/coordinator/[id])
+  return normalized
+}
+
 export async function middleware(request: NextRequest) {
   const startTime = Date.now()
   const method = request.method
   const pathname = request.nextUrl.pathname
+  const normalizedRoute = normalizeRoute(pathname)
   
   try {
     const response = NextResponse.next()
+    
+    // Добавляем хук для отслеживания статуса ответа после завершения
+    response.headers.set('X-Request-Id', `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+    
+    // Record RED metrics: Rate (запросы) - будет обновлен с статусом в конце
 
-    // Безопасное логирование
+    // ВАЖНО: Логируем все запросы для отладки в production
+    // Используем INFO уровень, чтобы логи были видны в контейнере
     try {
-      logger.debug('Middleware: обработка запроса', { pathname, method: request.method })
+      logger.info('Middleware: обработка запроса', { 
+        pathname, 
+        method: request.method,
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown'
+      })
+      // В Edge Runtime process.stdout недоступен, используем только console
     } catch {
-      // Игнорируем ошибки логирования
+      // Если logger не работает, используем console напрямую
+      console.log(`[MIDDLEWARE] ${request.method} ${pathname}`)
     }
 
     // Проверка переменных окружения - приложение должно падать, если они не настроены
@@ -83,8 +109,37 @@ export async function middleware(request: NextRequest) {
       }
     }
 
+    // Helper для записи RED метрик перед редиректом
+    const recordRedirectMetrics = (statusCode: number, redirectPath: string) => {
+      const duration = Date.now() - startTime
+      try {
+        metricsCollector.counter(
+          'http_requests_total',
+          'Total number of HTTP requests',
+          {
+            route: normalizedRoute,
+            method: method,
+            status_code: String(statusCode),
+          }
+        )
+        metricsCollector.histogram(
+          'http_request_duration_seconds',
+          'HTTP request duration in seconds',
+          duration / 1000,
+          {
+            route: normalizedRoute,
+            method: method,
+            status_code: String(statusCode),
+          }
+        )
+      } catch {
+        // Ignore metrics errors
+      }
+    }
+
     // Onboarding доступен только авторизованным пользователям
     if (pathname === '/onboarding' && !user) {
+      recordRedirectMetrics(302, '/login')
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
@@ -95,6 +150,7 @@ export async function middleware(request: NextRequest) {
       } catch {
         // Игнорируем ошибки логирования
       }
+      recordRedirectMetrics(302, '/login')
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
@@ -117,6 +173,7 @@ export async function middleware(request: NextRequest) {
       } catch {
         // Игнорируем ошибки логирования
       }
+      recordRedirectMetrics(302, '/login')
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
@@ -228,6 +285,7 @@ export async function middleware(request: NextRequest) {
       } catch {
         // Игнорируем ошибки логирования
       }
+      recordRedirectMetrics(302, redirectPath)
       return NextResponse.redirect(new URL(redirectPath, request.url))
     }
 
@@ -243,6 +301,7 @@ export async function middleware(request: NextRequest) {
         } catch {
           // Игнорируем ошибки логирования
         }
+        recordRedirectMetrics(403, '/app/dashboard')
         return NextResponse.redirect(new URL('/app/dashboard', request.url))
       }
 
@@ -257,6 +316,7 @@ export async function middleware(request: NextRequest) {
         } catch {
           // Игнорируем ошибки логирования
         }
+        recordRedirectMetrics(403, '/app/dashboard')
         return NextResponse.redirect(new URL('/app/dashboard', request.url))
       }
 
@@ -271,6 +331,7 @@ export async function middleware(request: NextRequest) {
         } catch {
           // Игнорируем ошибки логирования
         }
+        recordRedirectMetrics(403, '/app/dashboard')
         return NextResponse.redirect(new URL('/app/dashboard', request.url))
       }
     }
@@ -286,6 +347,7 @@ export async function middleware(request: NextRequest) {
       } catch {
         // Игнорируем ошибки логирования
       }
+      recordRedirectMetrics(403, '/app/dashboard')
       return NextResponse.redirect(new URL('/app/dashboard', request.url))
     }
 
@@ -301,9 +363,62 @@ export async function middleware(request: NextRequest) {
     } catch {
       // Игнорируем ошибки логирования
     }
+    
+    // Record RED metrics: Duration и статус успешного ответа
+    const duration = Date.now() - startTime
+    const statusCode = 200 // Успешный ответ
+    
+    try {
+      // Duration (histogram)
+      metricsCollector.histogram(
+        'http_request_duration_seconds',
+        'HTTP request duration in seconds',
+        duration / 1000, // конвертируем миллисекунды в секунды
+        {
+          route: normalizedRoute,
+          method: method,
+          status_code: String(statusCode),
+        }
+      )
+      
+      // Rate уже записан в начале, ошибок нет
+    } catch {
+      // Ignore metrics errors
+    }
+    
     return response
   } catch (error) {
     // Критические ошибки должны быть видны - возвращаем 500 ошибку
+    const duration = Date.now() - startTime
+    const statusCode = 500
+    
+    // Record RED metrics: Errors и Duration для ошибки
+    try {
+      metricsCollector.counter(
+        'http_requests_errors_total',
+        'Total number of HTTP request errors',
+        {
+          route: normalizedRoute,
+          method: method,
+          status_code: String(statusCode),
+          error_type: error instanceof Error ? error.constructor.name : 'unknown',
+        }
+      )
+      
+      metricsCollector.histogram(
+        'http_request_duration_seconds',
+        'HTTP request duration in seconds',
+        duration / 1000,
+        {
+          route: normalizedRoute,
+          method: method,
+          status_code: String(statusCode),
+        }
+      )
+    } catch {
+      // Ignore metrics errors
+    }
+    
     console.error('Middleware: критическая ошибка', error)
     return new NextResponse(
       JSON.stringify({
@@ -311,7 +426,7 @@ export async function middleware(request: NextRequest) {
         message: error instanceof Error ? error.message : 'Unknown error'
       }),
       {
-        status: 500,
+        status: statusCode,
         headers: { 'Content-Type': 'application/json' }
       }
     )
