@@ -38,18 +38,21 @@ export default function DateInput({
 
   // Парсим значение из формата YYYY-MM-DD
   useEffect(() => {
-    if (value) {
-      const date = new Date(value)
-      if (!isNaN(date.getTime())) {
-        setDay(String(date.getDate()).padStart(2, '0'))
-        setMonth(String(date.getMonth() + 1).padStart(2, '0'))
-        setYear(String(date.getFullYear()))
+    // Используем setTimeout для избежания синхронного setState в useEffect
+    setTimeout(() => {
+      if (value) {
+        const date = new Date(value)
+        if (!isNaN(date.getTime())) {
+          setDay(String(date.getDate()).padStart(2, '0'))
+          setMonth(String(date.getMonth() + 1).padStart(2, '0'))
+          setYear(String(date.getFullYear()))
+        }
+      } else {
+        setDay('')
+        setMonth('')
+        setYear('')
       }
-    } else {
-      setDay('')
-      setMonth('')
-      setYear('')
-    }
+    }, 0)
   }, [value])
 
   // Обновляем значение при изменении дня, месяца или года

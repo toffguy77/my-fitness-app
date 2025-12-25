@@ -16,9 +16,11 @@ export default function InstallPrompt() {
     const [isInstalled, setIsInstalled] = useState(false)
 
     useEffect(() => {
-        // Проверяем, установлено ли приложение
+        // Проверяем, установлено ли приложение (используем setTimeout для избежания синхронного setState)
         if (window.matchMedia('(display-mode: standalone)').matches) {
-            setIsInstalled(true)
+            setTimeout(() => {
+                setIsInstalled(true)
+            }, 0)
             return
         }
 

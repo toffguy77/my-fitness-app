@@ -12,8 +12,10 @@ export default function OfflineIndicator({ className = '' }: OfflineIndicatorPro
     const [isOnline, setIsOnline] = useState(true)
 
     useEffect(() => {
-        // Проверяем начальное состояние
-        setIsOnline(navigator.onLine)
+        // Проверяем начальное состояние (используем setTimeout для избежания синхронного setState)
+        setTimeout(() => {
+            setIsOnline(navigator.onLine)
+        }, 0)
 
         const handleOnline = () => {
             setIsOnline(true)

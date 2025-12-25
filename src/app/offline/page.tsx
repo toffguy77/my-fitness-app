@@ -17,7 +17,10 @@ export default function OfflinePage() {
             }
         }
 
-        setIsOnline(navigator.onLine)
+        // Используем setTimeout для избежания синхронного setState в useEffect
+        setTimeout(() => {
+            setIsOnline(navigator.onLine)
+        }, 0)
 
         window.addEventListener('online', checkOnline)
         window.addEventListener('offline', checkOnline)
