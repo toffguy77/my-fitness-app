@@ -53,7 +53,7 @@ global.alert = jest.fn()
 describe('Nutrition Edge Cases', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -79,7 +79,7 @@ describe('Nutrition Edge Cases', () => {
   describe('Meal Data Edge Cases', () => {
     it('should handle meals with zero values', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -89,7 +89,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle meals with very large values', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -99,7 +99,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle meals with negative values', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -109,7 +109,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle meals with decimal values', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -119,7 +119,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle empty meal titles', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -129,7 +129,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle very long meal titles', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -141,7 +141,7 @@ describe('Nutrition Edge Cases', () => {
   describe('Save Edge Cases', () => {
     it('should handle save with empty meals array', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -151,7 +151,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle save with incomplete meal data', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -161,7 +161,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle concurrent save attempts', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -170,12 +170,12 @@ describe('Nutrition Edge Cases', () => {
     })
 
     it('should handle save timeout', async () => {
-      mockUpsert.mockImplementation(() => 
+      mockUpsert.mockImplementation(() =>
         new Promise((resolve) => setTimeout(() => resolve({ error: null }), 10000))
       )
 
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -187,7 +187,7 @@ describe('Nutrition Edge Cases', () => {
   describe('Date Edge Cases', () => {
     it('should handle date parameter in URL', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -197,7 +197,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle invalid date parameter', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -209,7 +209,7 @@ describe('Nutrition Edge Cases', () => {
   describe('Hunger Level Edge Cases', () => {
     it('should handle hunger level boundary values', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -220,7 +220,7 @@ describe('Nutrition Edge Cases', () => {
 
     it('should handle undefined hunger level', async () => {
       render(<NutritionPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Ввод питания')).toBeInTheDocument()
       }, { timeout: 3000 })

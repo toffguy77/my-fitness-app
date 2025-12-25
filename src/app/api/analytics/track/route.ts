@@ -91,7 +91,6 @@ export async function POST(request: NextRequest) {
     })
 
     // Отправляем метрики в Prometheus в зависимости от типа события
-    const timestamp = event.timestamp || Date.now()
     const labels: Record<string, string> = {
       event_type: event.type,
       event_name: event.name,

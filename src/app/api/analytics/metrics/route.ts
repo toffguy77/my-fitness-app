@@ -7,11 +7,12 @@ import { logger } from '@/utils/logger'
  * Возвращает агрегированные метрики для dashboard
  */
 
-interface MetricsQuery {
-  startDate?: string
-  endDate?: string
-  userId?: string
-}
+// MetricsQuery interface for future use
+// interface MetricsQuery {
+//   startDate?: string
+//   endDate?: string
+//   userId?: string
+// }
 
 export async function GET(request: NextRequest) {
   try {
@@ -116,8 +117,8 @@ export async function GET(request: NextRequest) {
 async function fetchMetricsFromPrometheus(
   startDate: string,
   endDate: string,
-  userId?: string | null
-): Promise<any> {
+  _userId?: string | null
+): Promise<Record<string, number>> {
   const PROMETHEUS_QUERY_URL = process.env.PROMETHEUS_QUERY_URL!
   
   // Примеры запросов к Prometheus
@@ -129,7 +130,7 @@ async function fetchMetricsFromPrometheus(
     sessions: 'avg(session_duration_seconds)',
   }
 
-  const metrics: any = {}
+  const metrics: Record<string, number> = {}
 
   // Выполняем запросы к Prometheus
   for (const [key, query] of Object.entries(queries)) {

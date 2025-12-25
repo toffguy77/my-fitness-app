@@ -7,7 +7,6 @@ import { createClient } from '@/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { UtensilsCrossed, TrendingUp, Calendar, Info, ArrowRight, ChevronLeft, ChevronRight, CheckCircle, Flame, Inbox, X } from 'lucide-react'
 import DayToggle from '@/components/DayToggle'
-import ValidationWarning from '@/components/ValidationWarning'
 import ProgressBar from '@/components/ProgressBar'
 import { getMotivationalMessage } from '@/utils/progress/motivationalMessages'
 // Lazy load chart component for code splitting
@@ -15,7 +14,6 @@ const MiniProgressChart = lazy(() => import('@/components/charts/MiniProgressCha
 import ConfirmModal from '@/components/modals/ConfirmModal'
 import EmptyState from '@/components/EmptyState'
 import SkeletonLoader from '@/components/SkeletonLoader'
-import WelcomeTour from '@/components/WelcomeTour'
 import DateNavigation from '@/components/DateNavigation'
 import { getUserProfile, hasActiveSubscription, type UserProfile } from '@/utils/supabase/profile'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
@@ -87,8 +85,6 @@ export default function ClientDashboard() {
   const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
   const [reloadKey, setReloadKey] = useState<number>(0) // Триггер перезагрузки данных при возврате на страницу
   const [deleteMealModal, setDeleteMealModal] = useState<{ isOpen: boolean; mealId: string | null }>({ isOpen: false, mealId: null })
-  const [showWelcomeTour, setShowWelcomeTour] = useState(false)
-  const [showQuickStart, setShowQuickStart] = useState(false)
 
   // Перезагружаем данные, когда пользователь возвращается на вкладку/страницу
   useEffect(() => {
