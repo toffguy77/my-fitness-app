@@ -208,7 +208,7 @@ export default function RegisterPage() {
       }
 
       // Создаем профиль с ролью 'client' и статусом 'free'
-      // Используем простой прямой insert, как в версии 0.7.0 (но с coordinator_id вместо coach_id)
+      // Используем RPC функцию create_user_profile, которая обходит RLS через SECURITY DEFINER
       logger.userFlow('Register: создание профиля пользователя', {
         userId: authData.user.id,
         email,
@@ -216,18 +216,15 @@ export default function RegisterPage() {
         coordinatorId: coordinatorId || null
       })
 
-      // Создаем профиль с простым прямым insert, как в версии 0.7.0
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: fullName || null,
-          role: 'client',
-          subscription_status: 'free',
-          subscription_tier: 'basic',
-          coordinator_id: coordinatorId || null,
-        })
+      // Используем RPC функцию create_user_profile, которая обходит RLS через SECURITY DEFINER
+      // Это необходимо, так как прямой insert блокируется RLS политиками
+      const { error: profileError } = await supabase.rpc('create_user_profile', {
+        user_id: authData.user.id,
+        user_email: email,
+        user_full_name: fullName || null,
+        user_role: 'client',
+        user_coordinator_id: coordinatorId || null,
+      })
 
       if (profileError) {
         logger.error('Register: ошибка создания профиля', profileError, {
