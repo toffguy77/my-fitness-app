@@ -218,13 +218,40 @@ export default function RegisterPage() {
 
       // Используем RPC функцию create_user_profile, которая обходит RLS через SECURITY DEFINER
       // Это необходимо, так как прямой insert блокируется RLS политиками
-      const { error: profileError } = await supabase.rpc('create_user_profile', {
-        user_id: authData.user.id,
-        user_email: email,
-        user_full_name: fullName || null,
-        user_role: 'client',
-        user_coordinator_id: coordinatorId || null,
-      })
+      // Добавляем небольшую задержку и retry, так как пользователь может еще не появиться в auth.users
+      let profileError = null
+      let retryCount = 0
+      const maxRetries = 3
+      const retryDelay = 200 // миллисекунды
+
+      while (retryCount < maxRetries) {
+        const { error: error } = await supabase.rpc('create_user_profile', {
+          user_id: authData.user.id,
+          user_email: email,
+          user_full_name: fullName || null,
+          user_role: 'client',
+          user_coordinator_id: coordinatorId || null,
+        })
+
+        profileError = error
+
+        // Если ошибка связана с отсутствием пользователя в auth.users, пробуем еще раз
+        if (profileError && profileError.message?.includes('does not exist in auth.users')) {
+          retryCount++
+          if (retryCount < maxRetries) {
+            logger.warn('Register: пользователь еще не создан в auth.users, повторная попытка...', {
+              attempt: retryCount,
+              maxRetries,
+              userId: authData.user.id
+            })
+            await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount))
+            continue
+          }
+        }
+
+        // Если нет ошибки или ошибка не связана с отсутствием пользователя, выходим из цикла
+        break
+      }
 
       if (profileError) {
         logger.error('Register: ошибка создания профиля', profileError, {
