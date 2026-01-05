@@ -21,7 +21,7 @@
     "@supabase/supabase-js": "^2.87.3",
     "@types/papaparse": "^5.5.2",
     "clsx": "^2.1.1",
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.0.0",
     "lucide-react": "^0.561.0",
     "next": "16.0.10",
     "next-pwa": "^5.6.0",
