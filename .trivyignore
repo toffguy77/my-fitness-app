@@ -1,0 +1,19 @@
+# Trivy ignore file for Docker security scanning
+# This file contains vulnerabilities that are acknowledged and accepted
+
+# Example entries (remove or modify as needed):
+# CVE-2021-44228  # Log4j vulnerability (if not applicable to Node.js app)
+# CVE-2022-0778   # OpenSSL vulnerability (if using specific version)
+
+# Development dependencies vulnerabilities (if not shipped to production)
+# Add specific CVEs here that are only in devDependencies
+
+# Known false positives
+# Add CVEs that are false positives for your specific use case
+
+# Temporary ignores (with expiration dates)
+# CVE-YYYY-XXXXX  # Temporary ignore until 2024-12-31 - waiting for upstream fix
+
+# Note: Be very careful with ignoring security vulnerabilities
+# Only ignore if you have a valid reason and mitigation in place
+# Document the reason for each ignore with comments

@@ -20,20 +20,23 @@ export async function middleware(request: NextRequest) {
   const method = request.method
   const pathname = request.nextUrl.pathname
   const normalizedRoute = normalizeRoute(pathname)
-  
+
   try {
     const response = NextResponse.next()
-    
+
     // Добавляем хук для отслеживания статуса ответа после завершения
-    response.headers.set('X-Request-Id', `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
-    
+    // Fix: Check if headers object exists and supports 'set' method before using it
+    if (response.headers && typeof response.headers.set === 'function') {
+      response.headers.set('X-Request-Id', `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+    }
+
     // Record RED metrics: Rate (запросы) - будет обновлен с статусом в конце
 
     // ВАЖНО: Логируем все запросы для отладки в production
     // Используем INFO уровень, чтобы логи были видны в контейнере
     try {
-      logger.info('Middleware: обработка запроса', { 
-        pathname, 
+      logger.info('Middleware: обработка запроса', {
+        pathname,
         method: request.method,
         ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
@@ -197,7 +200,7 @@ export async function middleware(request: NextRequest) {
         // Безопасное логирование ошибки профиля
         const errorMessage = profileError.message || JSON.stringify(profileError);
         logger.error('Middleware: ошибка загрузки профиля', new Error(errorMessage), { userId: user.id, pathname })
-        
+
         // Record database error metric
         try {
           metricsCollector.counter(
@@ -250,7 +253,7 @@ export async function middleware(request: NextRequest) {
         isSuperAdmin,
         pathname,
       })
-      
+
       // Record subscription metrics in middleware
       try {
         if (role === 'client') {
@@ -363,11 +366,11 @@ export async function middleware(request: NextRequest) {
     } catch {
       // Игнорируем ошибки логирования
     }
-    
+
     // Record RED metrics: Duration и статус успешного ответа
     const duration = Date.now() - startTime
     const statusCode = 200 // Успешный ответ
-    
+
     try {
       // Duration (histogram)
       metricsCollector.histogram(
@@ -380,18 +383,18 @@ export async function middleware(request: NextRequest) {
           status_code: String(statusCode),
         }
       )
-      
+
       // Rate уже записан в начале, ошибок нет
     } catch {
       // Ignore metrics errors
     }
-    
+
     return response
   } catch (error) {
     // Критические ошибки должны быть видны - возвращаем 500 ошибку
     const duration = Date.now() - startTime
     const statusCode = 500
-    
+
     // Record RED metrics: Errors и Duration для ошибки
     try {
       metricsCollector.counter(
@@ -404,7 +407,7 @@ export async function middleware(request: NextRequest) {
           error_type: error instanceof Error ? error.constructor.name : 'unknown',
         }
       )
-      
+
       metricsCollector.histogram(
         'http_request_duration_seconds',
         'HTTP request duration in seconds',
@@ -418,7 +421,7 @@ export async function middleware(request: NextRequest) {
     } catch {
       // Ignore metrics errors
     }
-    
+
     console.error('Middleware: критическая ошибка', error)
     return new NextResponse(
       JSON.stringify({

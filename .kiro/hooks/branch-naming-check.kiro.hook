@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Branch Naming Convention Checker",
+  "description": "Checks that development is done in separate branches with proper naming format like feature/branch-name, fix/branch-name, bug/branch-name etc.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check the current git branch name and verify it follows the naming convention: `<feature|fix|bug|hotfix|chore>/<branch-name>`. If the branch name doesn't follow this pattern, suggest creating a new branch with the proper naming convention. Also check if we're on main/master branch and remind about creating feature branches for development work."
+  }
+}

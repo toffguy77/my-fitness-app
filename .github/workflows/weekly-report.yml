@@ -1,0 +1,256 @@
+name: Weekly CI/CD Report
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      send_telegram:
+        description: 'Send report via Telegram'
+        required: false
+        default: 'true'
+        type: boolean
+      
+      days_back:
+        description: 'Number of days to look back (default: 7)'
+        required: false
+        default: '7'
+        type: string
+
+jobs:
+  generate-weekly-report:
+    name: Generate Weekly Report
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Generate weekly report
+        run: |
+          echo "📊 Generating weekly CI/CD report..."
+          
+          # Set custom lookback period if provided
+          if [[ "${{ github.event.inputs.days_back }}" != "" ]]; then
+            export REPORT_DAYS_BACK="${{ github.event.inputs.days_back }}"
+          fi
+          
+          node scripts/weekly-report.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: weekly-report-${{ github.run_id }}
+          path: |
+            reports/weekly-report-*.md
+            reports/weekly-data-*.json
+          retention-days: 90
+      
+      - name: Commit and push reports
+        run: |
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add reports to git
+          git add reports/
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Add weekly CI/CD report for $(date +%Y-%m-%d)"
+            git push
+            echo "✅ Report committed and pushed to repository"
+          fi
+      
+      - name: Create GitHub issue with report summary
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Find the latest report file
+            const reportsDir = 'reports';
+            const files = fs.readdirSync(reportsDir);
+            const reportFiles = files.filter(f => f.startsWith('weekly-report-') && f.endsWith('.md'));
+            
+            if (reportFiles.length === 0) {
+              console.log('No report files found');
+              return;
+            }
+            
+            // Get the latest report
+            const latestReport = reportFiles.sort().pop();
+            const reportPath = path.join(reportsDir, latestReport);
+            const reportContent = fs.readFileSync(reportPath, 'utf8');
+            
+            // Extract summary from report (first few sections)
+            const lines = reportContent.split('\n');
+            let summary = '';
+            let inSummary = false;
+            let sectionCount = 0;
+            
+            for (const line of lines) {
+              if (line.startsWith('## ')) {
+                sectionCount++;
+                if (sectionCount > 3) break; // Only include first 3 sections
+              }
+              summary += line + '\n';
+            }
+            
+            // Create issue
+            const issueTitle = `📊 Weekly CI/CD Report - ${new Date().toISOString().split('T')[0]}`;
+            const issueBody = `${summary}
+            
+            ---
+            
+            **Full Report:** [View Complete Report](https://github.com/${{ github.repository }}/blob/main/${reportPath})
+            
+            **Data File:** [Download JSON Data](https://github.com/${{ github.repository }}/blob/main/reports/weekly-data-${new Date().toISOString().split('T')[0]}.json)
+            
+            This issue was automatically created by the Weekly Report workflow.
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['report', 'ci-cd', 'weekly']
+            });
+            
+            console.log('✅ GitHub issue created with report summary');
+      
+      - name: Send Telegram notification
+        if: ${{ github.event.inputs.send_telegram != 'false' }}
+        run: |
+          echo "📱 Sending weekly report via Telegram..."
+          
+          # The report was already sent during generation if Telegram credentials are available
+          # This step is just for logging
+          
+          if [[ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" && -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]]; then
+            echo "✅ Telegram notification sent (if report generation succeeded)"
+          else
+            echo "⚠️  Telegram credentials not configured - skipping notification"
+          fi
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Update repository README with latest metrics
+        run: |
+          echo "📝 Updating README with latest metrics..."
+          
+          # Read the latest data file
+          LATEST_DATA=$(ls -t reports/weekly-data-*.json | head -1)
+          
+          if [[ -f "$LATEST_DATA" ]]; then
+            # Extract key metrics using jq
+            SUCCESS_RATE=$(cat "$LATEST_DATA" | jq -r '.workflowAnalysis.successfulRuns / .workflowAnalysis.totalRuns * 100 | floor')
+            TOTAL_RUNS=$(cat "$LATEST_DATA" | jq -r '.workflowAnalysis.totalRuns')
+            AVG_DURATION=$(cat "$LATEST_DATA" | jq -r '.workflowAnalysis.averageDuration')
+            
+            # Convert duration to minutes
+            AVG_MINUTES=$((AVG_DURATION / 60000))
+            
+            echo "📊 Latest Metrics:"
+            echo "- Success Rate: ${SUCCESS_RATE}%"
+            echo "- Total Runs: ${TOTAL_RUNS}"
+            echo "- Average Duration: ${AVG_MINUTES} minutes"
+            
+            # Create or update metrics badge section in README
+            # This is a placeholder - in a real implementation, you'd update the actual README
+            echo "Metrics would be updated in README.md"
+          else
+            echo "No data file found to extract metrics"
+          fi
+
+  notify-on-failure:
+    name: Notify on Report Failure
+    runs-on: ubuntu-latest
+    needs: generate-weekly-report
+    if: failure()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Send failure notification
+        run: |
+          echo "❌ Weekly report generation failed"
+          
+          # Send Telegram notification about failure
+          if [[ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" && -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]]; then
+            node -e "
+              const https = require('https');
+              
+              const message = \`🚨 *Weekly Report Generation Failed*
+              
+              Repository: \\\`${{ github.repository }}\\\`
+              Workflow: ${{ github.workflow }}
+              Run ID: ${{ github.run_id }}
+              
+              Please check the workflow logs for details.
+              
+              🔗 [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\`;
+              
+              const payload = JSON.stringify({
+                chat_id: '${{ secrets.TELEGRAM_CHAT_ID }}',
+                text: message,
+                parse_mode: 'Markdown'
+              });
+              
+              const options = {
+                hostname: 'api.telegram.org',
+                port: 443,
+                path: '/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage',
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Content-Length': payload.length
+                }
+              };
+              
+              const req = https.request(options, (res) => {
+                console.log('Telegram notification sent');
+              });
+              
+              req.on('error', (error) => {
+                console.error('Failed to send Telegram notification:', error.message);
+              });
+              
+              req.write(payload);
+              req.end();
+            "
+          else
+            echo "Telegram credentials not configured"
+          fi
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

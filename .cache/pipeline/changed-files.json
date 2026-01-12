@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-01-12T18:06:45.293Z",
+  "baseSha": "HEAD~1",
+  "currentSha": "f0fb9c2620657add563d438e101aae9e085ba20c",
+  "changedFiles": [
+    "package.json"
+  ],
+  "categories": {
+    "source": [],
+    "tests": [],
+    "config": [
+      "package.json"
+    ],
+    "docs": [],
+    "workflows": [],
+    "dependencies": [],
+    "other": []
+  },
+  "recommendations": {
+    "skipJobs": [],
+    "runJobs": [],
+    "optimizations": []
+  }
+}

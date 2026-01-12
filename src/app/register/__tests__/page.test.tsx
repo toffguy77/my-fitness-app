@@ -7,6 +7,10 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RegisterPage from '../page'
 
+// Mock fetch for test environment
+const mockFetch = jest.fn()
+global.fetch = mockFetch
+
 // Mock Next.js modules
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -28,11 +32,13 @@ jest.mock('next/link', () => {
 const mockSignUp = jest.fn()
 const mockFrom = jest.fn()
 const mockRpc = jest.fn()
+const mockGetUser = jest.fn()
 
 jest.mock('@/utils/supabase/client', () => ({
   createClient: jest.fn(() => ({
     auth: {
       signUp: mockSignUp,
+      getUser: mockGetUser,
     },
     from: mockFrom,
     rpc: mockRpc,
@@ -42,6 +48,13 @@ jest.mock('@/utils/supabase/client', () => ({
 describe('Register Page', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockFetch.mockClear()
+
+    // Default mock setup
+    mockGetUser.mockResolvedValue({
+      data: { user: null },
+      error: null,
+    })
     mockRpc.mockResolvedValue({ data: null, error: null })
     mockFrom.mockReturnValue({
       insert: jest.fn().mockResolvedValue({
@@ -53,7 +66,7 @@ describe('Register Page', () => {
 
   it('should render registration form', () => {
     render(<RegisterPage />)
-    
+
     expect(screen.getByText(/Регистрация/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Имя/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Email/i)).toBeInTheDocument()
@@ -64,10 +77,10 @@ describe('Register Page', () => {
   it('should show validation error on empty required fields', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
-    
+
     const submitButton = screen.getByRole('button', { name: /Создать аккаунт/i })
     await user.click(submitButton)
-    
+
     // HTML5 validation should prevent submission
     const emailInput = screen.getByLabelText(/Email/i) as HTMLInputElement
     expect(emailInput.validity.valueMissing).toBe(true)
@@ -76,11 +89,11 @@ describe('Register Page', () => {
   it('should handle form input', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
-    
+
     await user.type(screen.getByLabelText(/Имя/i), 'John Doe')
     await user.type(screen.getByLabelText(/Email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/Пароль/i), 'password123')
-    
+
     expect(screen.getByLabelText(/Имя/i)).toHaveValue('John Doe')
     expect(screen.getByLabelText(/Email/i)).toHaveValue('test@example.com')
     expect(screen.getByLabelText(/Пароль/i)).toHaveValue('password123')
@@ -92,13 +105,13 @@ describe('Register Page', () => {
       data: { user: null },
       error: { message: 'Email already exists' },
     })
-    
+
     render(<RegisterPage />)
-    
+
     await user.type(screen.getByLabelText(/Email/i), 'existing@example.com')
     await user.type(screen.getByLabelText(/Пароль/i), 'password123')
     await user.click(screen.getByRole('button', { name: /Создать аккаунт/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Email already exists/i)).toBeInTheDocument()
     })
@@ -106,19 +119,33 @@ describe('Register Page', () => {
 
   it('should show success message on successful registration', async () => {
     const user = userEvent.setup()
+
+    // Mock successful signup
     mockSignUp.mockResolvedValue({
       data: {
         user: { id: 'user-123', email: 'test@example.com' },
       },
       error: null,
     })
-    
+
+    // Mock successful profile creation
+    mockRpc.mockResolvedValue({
+      data: { success: true },
+      error: null,
+    })
+
+    // Mock fetch calls (for invite code validation and profile creation)
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ valid: false }), // No invite code validation needed
+    })
+
     render(<RegisterPage />)
-    
+
     await user.type(screen.getByLabelText(/Email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/Пароль/i), 'password123')
     await user.click(screen.getByRole('button', { name: /Создать аккаунт/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Регистрация успешна/i)).toBeInTheDocument()
     })
@@ -126,21 +153,21 @@ describe('Register Page', () => {
 
   it('should have link to login page', () => {
     render(<RegisterPage />)
-    
+
     const loginLink = screen.getByRole('link', { name: /Войти/i })
     expect(loginLink).toHaveAttribute('href', '/login')
   })
 
   it('should disable submit button while loading', async () => {
     const user = userEvent.setup()
-    mockSignUp.mockImplementation(() => new Promise(() => {})) // Never resolves
-    
+    mockSignUp.mockImplementation(() => new Promise(() => { })) // Never resolves
+
     render(<RegisterPage />)
-    
+
     await user.type(screen.getByLabelText(/Email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/Пароль/i), 'password123')
     await user.click(screen.getByRole('button', { name: /Создать аккаунт/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Регистрация.../i })).toBeDisabled()
     })
@@ -148,7 +175,7 @@ describe('Register Page', () => {
 
   it('should validate password minimum length', () => {
     render(<RegisterPage />)
-    
+
     const passwordInput = screen.getByLabelText(/Пароль/i) as HTMLInputElement
     expect(passwordInput).toHaveAttribute('minLength', '6')
   })

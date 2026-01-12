@@ -22,6 +22,9 @@ build
 # Testing
 coverage
 .nyc_output
+test-results
+e2e/test-results
+playwright-report
 
 # Misc
 .DS_Store
@@ -42,7 +45,6 @@ next-env.d.ts
 .gitattributes
 
 # Docker
-Dockerfile
 .dockerignore
 docker-compose.yml
 .docker
@@ -50,10 +52,25 @@ docker-compose.yml
 # Documentation (optional - remove if you want docs in image)
 docs/*.md
 docs/*.pdf
+README.md
+ANALYSIS_*.md
 
 # Supabase local
 .supabase
 
 # Vercel
 .vercel
+
+# CI/CD files
+.github
+.kiro
+scripts
+migrations
+
+# Development files
+jest.config.js
+jest.setup.js
+playwright.config.ts
+eslint.config.mjs
+codecov.yml
 

@@ -1,0 +1,12 @@
+{
+  "jobId": "threshold-test-1768239164500",
+  "jobName": "threshold-test",
+  "runId": null,
+  "startTime": 1768239164500,
+  "status": "running",
+  "resources": {
+    "initialMemory": 29,
+    "initialCpu": 50,
+    "initialDisk": 20
+  }
+}

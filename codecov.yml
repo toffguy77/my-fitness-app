@@ -1,0 +1,55 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 40%
+        threshold: 1%
+        if_not_found: success
+        if_ci_failed: error
+    patch:
+      default:
+        target: 40%
+        threshold: 1%
+        if_not_found: success
+        if_ci_failed: error
+
+comment:
+  layout: "reach,diff,flags,tree,reach"
+  behavior: default
+  require_changes: false
+  require_base: no
+  require_head: yes
+
+flags:
+  unittests-components:
+    paths:
+      - src/components/
+  unittests-utils:
+    paths:
+      - src/utils/
+  unittests-hooks:
+    paths:
+      - src/hooks/
+  unittests-api:
+    paths:
+      - src/app/api/
+  unittests-complete:
+    paths:
+      - src/
+
+ignore:
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - "**/__tests__/**"
+  - "**/e2e/**"
+  - "**/*.stories.ts"
+  - "**/*.stories.tsx"
+  - "**/*.d.ts"
+  - "jest.config.js"
+  - "jest.setup.js"
+  - "next.config.ts"
+  - "tailwind.config.ts"
+  - "postcss.config.mjs"
+  - "playwright.config.ts"

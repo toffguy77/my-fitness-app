@@ -1,0 +1,55 @@
+{
+  "pipeline": {
+    "total": 600000,
+    "warning": 480000,
+    "critical": 720000
+  },
+  "jobs": {
+    "quality-checks": {
+      "max": 180000,
+      "warning": 120000
+    },
+    "unit-tests": {
+      "max": 300000,
+      "warning": 240000
+    },
+    "integration-tests": {
+      "max": 240000,
+      "warning": 180000
+    },
+    "e2e-tests": {
+      "max": 600000,
+      "warning": 480000
+    },
+    "build": {
+      "max": 180000,
+      "warning": 120000
+    },
+    "deploy-staging": {
+      "max": 300000,
+      "warning": 240000
+    },
+    "deploy-production": {
+      "max": 600000,
+      "warning": 480000
+    }
+  },
+  "resources": {
+    "memory": {
+      "warning": 80,
+      "critical": 90
+    },
+    "cpu": {
+      "warning": 85,
+      "critical": 95
+    },
+    "disk": {
+      "warning": 80,
+      "critical": 90
+    }
+  },
+  "successRate": {
+    "warning": 85,
+    "critical": 70
+  }
+}

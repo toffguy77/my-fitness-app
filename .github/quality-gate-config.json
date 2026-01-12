@@ -1,0 +1,67 @@
+{
+    "performance": {
+        "thresholds": {
+            "total": 600000,
+            "coverage": 300000,
+            "security": 120000,
+            "eslint": 60000,
+            "typescript": 120000
+        },
+        "parallelExecution": true,
+        "incrementalChecks": true,
+        "caching": {
+            "enabled": true,
+            "eslint": true,
+            "typescript": true,
+            "dependencies": true
+        }
+    },
+    "coverage": {
+        "global": {
+            "statements": 80,
+            "branches": 80,
+            "functions": 80,
+            "lines": 80
+        },
+        "critical": {
+            "statements": 90,
+            "branches": 90,
+            "functions": 90,
+            "lines": 90,
+            "paths": [
+                "src/middleware.ts",
+                "src/utils/supabase/",
+                "src/utils/validation/"
+            ]
+        }
+    },
+    "security": {
+        "blockOnCritical": true,
+        "blockOnHigh": false,
+        "auditLevel": "high",
+        "skipDevDependencies": false
+    },
+    "eslint": {
+        "maxWarnings": 0,
+        "cache": true,
+        "incremental": true,
+        "format": "json"
+    },
+    "typescript": {
+        "incremental": true,
+        "strict": true,
+        "noEmit": true
+    },
+    "notifications": {
+        "onFailure": true,
+        "onSuccess": false,
+        "prComments": true,
+        "detailedReports": true
+    },
+    "optimization": {
+        "skipUnchangedFiles": true,
+        "parallelJobs": 4,
+        "timeoutMultiplier": 1.5,
+        "retryFailedChecks": false
+    }
+}

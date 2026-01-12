@@ -21,6 +21,35 @@ const customJestConfig = {
     '!src/**/*.stories.{js,jsx,ts,tsx}',
     '!src/**/__tests__/**',
   ],
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html', 'json', 'text-summary', 'json-summary'],
+  coverageThreshold: {
+    global: {
+      branches: 40,
+      functions: 40,
+      lines: 40,
+      statements: 40
+    },
+    './src/middleware.ts': {
+      branches: 40,
+      functions: 40,
+      lines: 40,
+      statements: 40
+    },
+    './src/utils/supabase/': {
+      branches: 40,
+      functions: 40,
+      lines: 40,
+      statements: 40
+    },
+    './src/utils/validation/': {
+      branches: 40,
+      functions: 40,
+      lines: 40,
+      statements: 40
+    }
+  },
   testMatch: [
     '**/__tests__/**/*.{js,jsx,ts,tsx}',
     '**/*.{spec,test}.{js,jsx,ts,tsx}',

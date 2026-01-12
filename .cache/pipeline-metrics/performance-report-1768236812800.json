@@ -1,0 +1,14 @@
+{
+  "period": "7 days",
+  "generatedAt": "2026-01-12T16:53:32.799Z",
+  "summary": {
+    "totalRuns": 0,
+    "successfulRuns": 0,
+    "overallSuccessRate": null,
+    "averagePipelineDuration": null,
+    "totalPipelineTime": 0
+  },
+  "jobs": {},
+  "trends": {},
+  "recommendations": []
+}

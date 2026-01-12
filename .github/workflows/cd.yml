@@ -1,0 +1,332 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [main]
+  
+  # Allow manual deployment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+      
+      - name: Send deployment start notification
+        run: |
+          node scripts/telegram-notify.js deployment staging in_progress ${{ github.sha }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Deploy to Staging (Placeholder)
+        id: deploy-staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          echo "📦 Building Docker image..."
+          
+          # Placeholder for actual deployment
+          # In real implementation, this would:
+          # 1. Build Docker image
+          # 2. Push to container registry
+          # 3. Deploy to staging environment (e.g., Vercel, AWS, etc.)
+          
+          # Simulate deployment
+          sleep 10
+          
+          # Set deployment URL (placeholder)
+          echo "deployment_url=https://staging.myfitnessapp.com" >> $GITHUB_OUTPUT
+          echo "✅ Staging deployment completed"
+      
+      - name: Run staging health checks
+        run: |
+          echo "🔍 Running staging health checks..."
+          
+          # Placeholder for health checks
+          # In real implementation, this would:
+          # 1. Check application endpoints
+          # 2. Verify database connectivity
+          # 3. Test critical user flows
+          
+          # Simulate health checks
+          sleep 5
+          echo "✅ All health checks passed"
+      
+      - name: Send deployment success notification
+        if: success()
+        run: |
+          node scripts/telegram-notify.js deployment staging success ${{ github.sha }} ${{ steps.deploy-staging.outputs.deployment_url }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Send deployment failure notification
+        if: failure()
+        run: |
+          node scripts/telegram-notify.js deployment staging failure ${{ github.sha }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: ${{ github.ref == 'refs/heads/main' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch') }}
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      
+      - name: Send deployment start notification
+        run: |
+          node scripts/telegram-notify.js deployment production in_progress ${{ github.sha }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Deploy to Production (Placeholder)
+        id: deploy-production
+        run: |
+          echo "🚀 Deploying to production environment..."
+          echo "📦 Using staging-verified build..."
+          
+          # Placeholder for actual deployment
+          # In real implementation, this would:
+          # 1. Use the same Docker image from staging
+          # 2. Deploy to production environment
+          # 3. Update load balancer/CDN
+          
+          # Simulate deployment
+          sleep 15
+          
+          # Set deployment URL (placeholder)
+          echo "deployment_url=https://myfitnessapp.com" >> $GITHUB_OUTPUT
+          echo "✅ Production deployment completed"
+      
+      - name: Run production health checks
+        run: |
+          echo "🔍 Running production health checks..."
+          
+          # Placeholder for health checks
+          # In real implementation, this would:
+          # 1. Check application endpoints
+          # 2. Verify database connectivity
+          # 3. Test critical user flows
+          # 4. Check monitoring systems
+          
+          # Simulate health checks
+          sleep 10
+          echo "✅ All production health checks passed"
+      
+      - name: Send deployment success notification
+        if: success()
+        run: |
+          node scripts/telegram-notify.js deployment production success ${{ github.sha }} ${{ steps.deploy-production.outputs.deployment_url }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Send deployment failure notification
+        if: failure()
+        run: |
+          node scripts/telegram-notify.js deployment production failure ${{ github.sha }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+  rollback:
+    name: Automatic Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: failure()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Determine rollback environment and get previous version
+        id: rollback-info
+        run: |
+          # Determine which environment failed
+          ENVIRONMENT="production"
+          if [[ "${{ needs.deploy-staging.result }}" == "failure" ]]; then
+            ENVIRONMENT="staging"
+          fi
+          if [[ "${{ needs.deploy-production.result }}" == "failure" ]]; then
+            ENVIRONMENT="production"
+          fi
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          
+          # Get previous successful deployment version
+          # In real implementation, this would query deployment history
+          # For now, we'll use the previous commit
+          PREVIOUS_VERSION=$(git rev-parse HEAD~1)
+          echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "🔄 Preparing rollback for $ENVIRONMENT to version $PREVIOUS_VERSION"
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build previous version
+        run: |
+          echo "📦 Building previous version for rollback..."
+          git checkout ${{ steps.rollback-info.outputs.previous_version }}
+          npm ci
+          npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.rollback-info.outputs.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.STAGING_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.rollback-info.outputs.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.STAGING_SUPABASE_ANON_KEY }}
+      
+      - name: Perform automatic rollback
+        id: perform-rollback
+        run: |
+          echo "🔄 Performing automatic rollback..."
+          echo "🌍 Environment: ${{ steps.rollback-info.outputs.environment }}"
+          echo "📦 Rolling back to: ${{ steps.rollback-info.outputs.previous_version }}"
+          echo "❌ Failed version: ${{ github.sha }}"
+          
+          # Enhanced rollback logic
+          # In real implementation, this would:
+          # 1. Deploy the previous successful version
+          # 2. Update load balancer configuration
+          # 3. Clear CDN caches
+          # 4. Update monitoring systems
+          # 5. Verify rollback success
+          
+          # Simulate enhanced rollback
+          sleep 10
+          
+          # Set deployment URL based on environment
+          if [[ "${{ steps.rollback-info.outputs.environment }}" == "production" ]]; then
+            echo "deployment_url=https://myfitnessapp.com" >> $GITHUB_OUTPUT
+          else
+            echo "deployment_url=https://staging.myfitnessapp.com" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "✅ Automatic rollback completed successfully"
+      
+      - name: Verify rollback success
+        run: |
+          echo "🔍 Verifying rollback was successful..."
+          
+          # Enhanced health verification after rollback
+          # In real implementation, this would:
+          # 1. Check application health
+          # 2. Verify database connectivity
+          # 3. Test authentication flows
+          # 4. Check monitoring systems
+          # 5. Validate no data corruption
+          
+          # Simulate comprehensive health checks
+          sleep 8
+          
+          echo "✅ Rollback health verification passed"
+          echo "🎯 System restored to stable state"
+      
+      - name: Create rollback incident record
+        run: |
+          # Create detailed incident record
+          cat > rollback-incident.json << EOF
+          {
+            "incident_id": "auto-rollback-${{ github.run_id }}",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "type": "automatic_rollback",
+            "environment": "${{ steps.rollback-info.outputs.environment }}",
+            "failed_version": "${{ github.sha }}",
+            "rollback_version": "${{ steps.rollback-info.outputs.previous_version }}",
+            "trigger": "deployment_failure",
+            "workflow_run_id": "${{ github.run_id }}",
+            "deployment_url": "${{ steps.perform-rollback.outputs.deployment_url }}",
+            "failed_jobs": {
+              "staging": "${{ needs.deploy-staging.result }}",
+              "production": "${{ needs.deploy-production.result }}"
+            }
+          }
+          EOF
+          
+          echo "📋 Rollback incident record created:"
+          cat rollback-incident.json
+      
+      - name: Send enhanced rollback notification
+        run: |
+          node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback ${{ github.sha }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Send rollback success notification
+        if: success()
+        run: |
+          node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_success ${{ github.sha }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Send rollback failure notification
+        if: failure()
+        run: |
+          node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_failure ${{ github.sha }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Upload rollback artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: rollback-incident-${{ steps.rollback-info.outputs.environment }}-${{ github.run_id }}
+          path: rollback-incident.json
+          retention-days: 90

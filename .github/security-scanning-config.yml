@@ -1,0 +1,285 @@
+# Security Scanning Configuration
+# Defines security scanning policies and thresholds for CI/CD pipeline
+
+security_scanning:
+  # Global configuration
+  global:
+    enabled: true
+    fail_on_critical: true
+    fail_on_high: false  # Set to true for stricter security
+    report_format: "json"
+    upload_artifacts: true
+    retention_days: 90
+  
+  # Dependency scanning configuration
+  dependency_scanning:
+    enabled: true
+    tools:
+      npm_audit:
+        enabled: true
+        audit_level: "high"
+        production_only: true
+        timeout: 120
+        fail_on_critical: true
+        fail_on_high: false
+      
+      snyk:
+        enabled: true  # Requires SNYK_TOKEN secret
+        severity_threshold: "high"
+        monitor: true
+        fail_on_critical: true
+        fail_on_high: false
+        timeout: 300
+      
+      github_advisory:
+        enabled: true
+        severity_threshold: "high"
+    
+    # Vulnerability thresholds
+    thresholds:
+      critical: 0      # Block on any critical vulnerabilities
+      high: 10         # Allow up to 10 high severity vulnerabilities
+      medium: 50       # Allow up to 50 medium severity vulnerabilities
+      low: -1          # No limit on low severity vulnerabilities
+  
+  # Static Application Security Testing (SAST)
+  sast:
+    enabled: true
+    tools:
+      eslint_security:
+        enabled: true
+        config_file: ".eslintrc.security.js"
+        extensions: [".js", ".jsx", ".ts", ".tsx"]
+        timeout: 300
+        fail_on_error: true
+      
+      codeql:
+        enabled: true
+        languages: ["javascript"]
+        queries: "security-extended"
+        timeout: 600
+        fail_on_critical: true
+      
+      semgrep:
+        enabled: false  # Optional - requires additional setup
+        ruleset: "auto"
+        timeout: 300
+    
+    # Code quality thresholds
+    thresholds:
+      security_errors: 0     # Block on any security errors
+      security_warnings: 20  # Allow up to 20 security warnings
+  
+  # Secret scanning configuration
+  secret_scanning:
+    enabled: true
+    tools:
+      github_secret_scanning:
+        enabled: true
+        push_protection: true
+        validity_checks: true
+      
+      custom_patterns:
+        enabled: true
+        patterns:
+          - name: "API Keys"
+            pattern: '(?i)(api[_-]?key|apikey)\s*[:=]\s*["\'][a-z0-9]{20,}["\']'
+            severity: "high"
+          
+          - name: "Database URLs"
+            pattern: '(?i)(database[_-]?url|db[_-]?url)\s*[:=]\s*["\'][^"\']+["\']'
+            severity: "high"
+          
+          - name: "Private Keys"
+            pattern: '-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----'
+            severity: "critical"
+          
+          - name: "JWT Tokens"
+            pattern: 'eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*'
+            severity: "high"
+          
+          - name: "Basic Auth"
+            pattern: 'Authorization:\s*Basic\s+[A-Za-z0-9+/=]+'
+            severity: "high"
+        
+        exclude_patterns:
+          - 'secrets\.'
+          - 'env\.'
+          - 'process\.env\.'
+          - '\.test\.'
+          - '\.spec\.'
+          - 'example'
+          - 'placeholder'
+        
+        exclude_files:
+          - "**/*.test.*"
+          - "**/*.spec.*"
+          - "**/node_modules/**"
+          - "**/.git/**"
+          - "**/coverage/**"
+    
+    # Secret scanning thresholds
+    thresholds:
+      critical_secrets: 0    # Block on any critical secrets
+      high_secrets: 0        # Block on any high severity secrets
+      medium_secrets: 5      # Allow up to 5 medium severity potential secrets
+  
+  # Container scanning configuration
+  container_scanning:
+    enabled: true
+    tools:
+      trivy:
+        enabled: true
+        severity_threshold: "HIGH"
+        ignore_unfixed: false
+        timeout: 600
+        format: "sarif"
+        
+        # Trivy configuration
+        config:
+          skip_files:
+            - "/usr/share/doc/**"
+            - "/usr/share/man/**"
+            - "/var/cache/**"
+          
+          skip_dirs:
+            - "/tmp"
+            - "/var/tmp"
+      
+      docker_bench:
+        enabled: false  # Optional - Docker Bench for Security
+        timeout: 300
+    
+    # Container security thresholds
+    thresholds:
+      critical: 0      # Block on any critical container vulnerabilities
+      high: 5          # Allow up to 5 high severity vulnerabilities
+      medium: 20       # Allow up to 20 medium severity vulnerabilities
+  
+  # License scanning configuration
+  license_scanning:
+    enabled: true
+    allowed_licenses:
+      - "MIT"
+      - "Apache-2.0"
+      - "BSD-2-Clause"
+      - "BSD-3-Clause"
+      - "ISC"
+      - "CC0-1.0"
+      - "Unlicense"
+      - "WTFPL"
+    
+    # Licenses that require review
+    review_required:
+      - "GPL-2.0"
+      - "GPL-3.0"
+      - "LGPL-2.1"
+      - "LGPL-3.0"
+      - "AGPL-3.0"
+    
+    # Prohibited licenses
+    prohibited:
+      - "UNLICENSED"
+      - "UNKNOWN"
+    
+    thresholds:
+      prohibited_licenses: 0     # Block on any prohibited licenses
+      review_required_licenses: 3 # Allow up to 3 licenses requiring review
+  
+  # Infrastructure as Code (IaC) scanning
+  iac_scanning:
+    enabled: true
+    tools:
+      checkov:
+        enabled: false  # Optional - requires additional setup
+        framework: ["dockerfile", "github_actions"]
+        timeout: 300
+      
+      tfsec:
+        enabled: false  # Optional - for Terraform files
+        timeout: 300
+    
+    # IaC security thresholds
+    thresholds:
+      critical: 0      # Block on any critical IaC issues
+      high: 3          # Allow up to 3 high severity IaC issues
+  
+  # Reporting configuration
+  reporting:
+    formats:
+      - "json"
+      - "sarif"
+      - "markdown"
+    
+    destinations:
+      github_security_tab: true
+      artifacts: true
+      pr_comments: true
+      status_checks: true
+    
+    # Notification configuration
+    notifications:
+      telegram:
+        enabled: true
+        on_critical: true
+        on_high: true
+        on_medium: false
+      
+      github_issues:
+        enabled: true
+        on_critical: true
+        on_high: false
+        labels: ["security", "vulnerability"]
+      
+      email:
+        enabled: false  # Configure if needed
+        recipients: []
+  
+  # Compliance and audit
+  compliance:
+    standards:
+      - "OWASP Top 10"
+      - "CWE Top 25"
+      - "SANS Top 25"
+    
+    audit_trail:
+      enabled: true
+      retention_days: 365
+      include_scan_results: true
+      include_remediation_actions: true
+  
+  # Performance optimization
+  performance:
+    parallel_scanning: true
+    cache_results: true
+    incremental_scanning: true
+    
+    # Timeout configuration (in seconds)
+    timeouts:
+      dependency_scan: 300
+      sast_scan: 600
+      secret_scan: 180
+      container_scan: 900
+      license_scan: 120
+  
+  # Environment-specific configuration
+  environments:
+    development:
+      fail_on_high: false
+      notifications:
+        telegram: false
+        github_issues: false
+    
+    staging:
+      fail_on_high: false
+      notifications:
+        telegram: true
+        github_issues: true
+    
+    production:
+      fail_on_high: true
+      fail_on_critical: true
+      notifications:
+        telegram: true
+        github_issues: true
+        email: true

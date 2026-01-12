@@ -1,0 +1,16 @@
+{
+    "mcpServers": {
+        "supabase": {
+            "command": "uvx",
+            "args": [
+                "mcp-server-supabase@latest",
+                "https://mcp.supabase.com/mcp?project_ref=kvdusetwlsxcusbjwvdu&read_only=false"
+            ],
+            "env": {
+                "FASTMCP_LOG_LEVEL": "ERROR"
+            },
+            "disabled": false,
+            "autoApprove": []
+        }
+    }
+}

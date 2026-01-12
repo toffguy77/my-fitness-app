@@ -1,0 +1,442 @@
+name: Performance Monitoring
+
+on:
+  # Run after CI pipeline completes
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+  
+  # Run weekly performance reports
+  schedule:
+    - cron: '0 8 * * 1' # Every Monday at 8 AM UTC
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      report_days:
+        description: 'Number of days to include in report'
+        required: false
+        default: '7'
+        type: string
+      cleanup_days:
+        description: 'Number of days to keep metrics (cleanup)'
+        required: false
+        default: '30'
+        type: string
+
+jobs:
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Restore performance metrics cache
+        uses: actions/cache@v3
+        with:
+          path: .cache/pipeline-metrics
+          key: ${{ runner.os }}-performance-metrics-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-performance-metrics-
+      
+      - name: Generate performance report
+        id: performance-report
+        run: |
+          REPORT_DAYS="${{ github.event.inputs.report_days || '7' }}"
+          echo "Generating performance report for last $REPORT_DAYS days..."
+          
+          # Generate the report
+          node scripts/pipeline-monitor.js report "$REPORT_DAYS" > performance-report.txt
+          
+          # Check if report was generated successfully
+          if [ -f ".cache/pipeline-metrics/performance-report-"*.json ]; then
+            echo "report_generated=true" >> $GITHUB_OUTPUT
+            echo "✅ Performance report generated successfully"
+          else
+            echo "report_generated=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No performance data available for report"
+          fi
+      
+      - name: Analyze performance trends
+        if: steps.performance-report.outputs.report_generated == 'true'
+        run: |
+          echo "📈 Analyzing performance trends..."
+          
+          # Get the latest report file
+          LATEST_REPORT=$(ls -t .cache/pipeline-metrics/performance-report-*.json | head -1)
+          
+          if [ -f "$LATEST_REPORT" ]; then
+            echo "📊 Performance Summary:"
+            
+            # Extract key metrics using jq
+            TOTAL_RUNS=$(cat "$LATEST_REPORT" | jq -r '.summary.totalRuns')
+            SUCCESS_RATE=$(cat "$LATEST_REPORT" | jq -r '.summary.overallSuccessRate')
+            AVG_DURATION=$(cat "$LATEST_REPORT" | jq -r '.summary.averagePipelineDuration')
+            
+            echo "  Total Pipeline Runs: $TOTAL_RUNS"
+            echo "  Overall Success Rate: $SUCCESS_RATE%"
+            echo "  Average Pipeline Duration: ${AVG_DURATION}ms"
+            
+            # Check for performance issues
+            if [ "$SUCCESS_RATE" -lt 90 ]; then
+              echo "⚠️ WARNING: Success rate below 90%"
+            fi
+            
+            if [ "$AVG_DURATION" -gt 600000 ]; then # 10 minutes
+              echo "⚠️ WARNING: Average pipeline duration exceeds 10 minutes"
+            fi
+            
+            # Show job-specific metrics
+            echo ""
+            echo "📋 Job Performance:"
+            cat "$LATEST_REPORT" | jq -r '.jobs | to_entries[] | "  \(.key): \(.value.averageDuration)ms (Success: \(.value.successRate)%)"'
+            
+            # Show recommendations
+            echo ""
+            echo "💡 Recommendations:"
+            cat "$LATEST_REPORT" | jq -r '.recommendations[] | "  - \(.message)"'
+          fi
+      
+      - name: Check for performance alerts
+        run: |
+          echo "🚨 Checking for performance alerts..."
+          
+          # Show recent alerts
+          node scripts/pipeline-monitor.js alerts
+          
+          # Check if there are critical alerts in the last 24 hours
+          if [ -f ".cache/pipeline-metrics/alerts.json" ]; then
+            CRITICAL_ALERTS=$(cat .cache/pipeline-metrics/alerts.json | jq --arg cutoff "$(date -d '24 hours ago' -u +%s)000" '[.[] | select(.timestamp > ($cutoff | tonumber) and .severity == "critical")] | length')
+            
+            if [ "$CRITICAL_ALERTS" -gt 0 ]; then
+              echo "🚨 Found $CRITICAL_ALERTS critical alerts in the last 24 hours"
+              echo "critical_alerts=$CRITICAL_ALERTS" >> $GITHUB_OUTPUT
+            else
+              echo "✅ No critical alerts in the last 24 hours"
+              echo "critical_alerts=0" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "✅ No alerts file found"
+            echo "critical_alerts=0" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Cleanup old metrics
+        run: |
+          CLEANUP_DAYS="${{ github.event.inputs.cleanup_days || '30' }}"
+          echo "🧹 Cleaning up metrics older than $CLEANUP_DAYS days..."
+          node scripts/pipeline-monitor.js cleanup "$CLEANUP_DAYS"
+      
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-metrics-${{ github.run_id }}
+          path: |
+            .cache/pipeline-metrics/performance-report-*.json
+            .cache/pipeline-metrics/alerts.json
+            performance-report.txt
+          retention-days: 90
+      
+      - name: Generate performance dashboard
+        run: |
+          echo "📊 Generating performance dashboard..."
+          node scripts/performance-dashboard.js generate
+          
+          # Check if dashboard was generated
+          if [ -f "performance-dashboard/index.html" ]; then
+            echo "✅ Performance dashboard generated successfully"
+            echo "dashboard_generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Dashboard generation failed"
+            echo "dashboard_generated=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Upload performance dashboard
+        if: steps.performance-report.outputs.dashboard_generated == 'true'
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-dashboard-${{ github.run_id }}
+          path: performance-dashboard/
+          retention-days: 30
+      
+      - name: Cache performance metrics
+        if: always()
+        uses: actions/cache@v3
+        with:
+          path: .cache/pipeline-metrics
+          key: ${{ runner.os }}-performance-metrics-${{ github.sha }}
+      
+      - name: Send performance notification
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          echo "📊 Sending weekly performance report..."
+          
+          # Create performance summary for notification
+          if [ -f "performance-report.txt" ]; then
+            # Send to Telegram (if configured)
+            if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+              node scripts/telegram-notify.js performance-report "$(cat performance-report.txt)"
+            fi
+            
+            echo "✅ Performance notification sent"
+          else
+            echo "⚠️ No performance report to send"
+          fi
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      
+      - name: Create performance issue
+        if: steps.performance-report.outputs.report_generated == 'true' && github.event_name == 'schedule'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Check if we should create an issue based on performance metrics
+            let shouldCreateIssue = false;
+            let issueBody = '## 📊 Weekly Performance Report\n\n';
+            
+            try {
+              // Find the latest report
+              const reportFiles = fs.readdirSync('.cache/pipeline-metrics').filter(f => f.startsWith('performance-report-'));
+              if (reportFiles.length === 0) {
+                console.log('No performance reports found');
+                return;
+              }
+              
+              const latestReport = reportFiles.sort().pop();
+              const reportPath = `.cache/pipeline-metrics/${latestReport}`;
+              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+              
+              // Add summary to issue body
+              issueBody += `### 📈 Summary (Last ${report.period})\n\n`;
+              issueBody += `- **Total Runs**: ${report.summary.totalRuns}\n`;
+              issueBody += `- **Success Rate**: ${report.summary.overallSuccessRate}%\n`;
+              issueBody += `- **Average Duration**: ${Math.round(report.summary.averagePipelineDuration / 1000 / 60)}m ${Math.round((report.summary.averagePipelineDuration / 1000) % 60)}s\n\n`;
+              
+              // Check for issues that warrant creating an issue
+              if (report.summary.overallSuccessRate < 90) {
+                shouldCreateIssue = true;
+                issueBody += `⚠️ **Alert**: Success rate below 90%\n\n`;
+              }
+              
+              if (report.summary.averagePipelineDuration > 600000) {
+                shouldCreateIssue = true;
+                issueBody += `⚠️ **Alert**: Average pipeline duration exceeds 10 minutes\n\n`;
+              }
+              
+              // Add job details
+              issueBody += '### 🔧 Job Performance\n\n';
+              issueBody += '| Job | Avg Duration | Success Rate | Trend |\n';
+              issueBody += '|-----|--------------|--------------|-------|\n';
+              
+              Object.entries(report.jobs).forEach(([jobName, jobStats]) => {
+                const duration = `${Math.round(jobStats.averageDuration / 1000 / 60)}m ${Math.round((jobStats.averageDuration / 1000) % 60)}s`;
+                const trend = report.trends[jobName] || 'stable';
+                const trendIcon = trend === 'improving' ? '📈' : trend === 'degrading' ? '📉' : '➡️';
+                
+                issueBody += `| ${jobName} | ${duration} | ${jobStats.successRate}% | ${trendIcon} ${trend} |\n`;
+                
+                if (jobStats.successRate < 85) {
+                  shouldCreateIssue = true;
+                }
+              });
+              
+              // Add recommendations
+              if (report.recommendations && report.recommendations.length > 0) {
+                issueBody += '\n### 💡 Recommendations\n\n';
+                report.recommendations.forEach(rec => {
+                  issueBody += `- **${rec.job}** (${rec.type}): ${rec.message}\n`;
+                });
+              }
+              
+              issueBody += '\n### 📋 Actions\n\n';
+              issueBody += '- [ ] Review performance trends\n';
+              issueBody += '- [ ] Investigate slow jobs\n';
+              issueBody += '- [ ] Optimize resource usage\n';
+              issueBody += '- [ ] Update performance thresholds if needed\n';
+              
+              issueBody += `\n---\n*Report generated on ${new Date().toISOString()}*`;
+              
+            } catch (error) {
+              console.log('Error reading performance report:', error.message);
+              return;
+            }
+            
+            // Only create issue if there are performance concerns
+            if (shouldCreateIssue) {
+              const { data: existingIssues } = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: 'performance,ci/cd',
+                state: 'open'
+              });
+              
+              // Check if there's already an open performance issue this week
+              const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+              const recentIssue = existingIssues.find(issue => 
+                new Date(issue.created_at) > oneWeekAgo &&
+                issue.title.includes('Performance Report')
+              );
+              
+              if (!recentIssue) {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: `📊 Weekly Performance Report - ${new Date().toISOString().split('T')[0]}`,
+                  body: issueBody,
+                  labels: ['performance', 'ci/cd', 'monitoring']
+                });
+                
+                console.log('Created performance issue due to performance concerns');
+              } else {
+                console.log('Performance issue already exists for this week');
+              }
+            } else {
+              console.log('No performance issues detected, skipping issue creation');
+            }
+
+  resource-monitoring:
+    name: Resource Usage Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Restore performance metrics cache
+        uses: actions/cache@v3
+        with:
+          path: .cache/pipeline-metrics
+          key: ${{ runner.os }}-performance-metrics-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-performance-metrics-
+      
+      - name: Analyze resource usage trends
+        run: |
+          echo "📊 Analyzing resource usage trends..."
+          
+          # Create a simple resource analysis script
+          cat > analyze-resources.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          const metricsDir = '.cache/pipeline-metrics';
+          
+          if (!fs.existsSync(metricsDir)) {
+            console.log('No metrics directory found');
+            process.exit(0);
+          }
+          
+          // Find all job metric files
+          const files = fs.readdirSync(metricsDir).filter(f => f.startsWith('job-'));
+          
+          if (files.length === 0) {
+            console.log('No job metrics found');
+            process.exit(0);
+          }
+          
+          const resourceStats = {};
+          
+          files.forEach(file => {
+            try {
+              const filePath = path.join(metricsDir, file);
+              const metrics = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              
+              if (metrics.resources && metrics.jobName) {
+                if (!resourceStats[metrics.jobName]) {
+                  resourceStats[metrics.jobName] = {
+                    memoryUsage: [],
+                    cpuUsage: [],
+                    diskUsage: []
+                  };
+                }
+                
+                if (metrics.resources.peakMemory) {
+                  resourceStats[metrics.jobName].memoryUsage.push(metrics.resources.peakMemory);
+                }
+                if (metrics.resources.peakCpu) {
+                  resourceStats[metrics.jobName].cpuUsage.push(metrics.resources.peakCpu);
+                }
+                if (metrics.resources.finalDisk) {
+                  resourceStats[metrics.jobName].diskUsage.push(metrics.resources.finalDisk);
+                }
+              }
+            } catch (error) {
+              // Skip invalid files
+            }
+          });
+          
+          console.log('📊 Resource Usage Summary:');
+          console.log('');
+          
+          Object.entries(resourceStats).forEach(([jobName, stats]) => {
+            if (stats.memoryUsage.length > 0) {
+              const avgMemory = stats.memoryUsage.reduce((a, b) => a + b, 0) / stats.memoryUsage.length;
+              const maxMemory = Math.max(...stats.memoryUsage);
+              
+              const avgCpu = stats.cpuUsage.length > 0 ? 
+                stats.cpuUsage.reduce((a, b) => a + b, 0) / stats.cpuUsage.length : 0;
+              const maxCpu = stats.cpuUsage.length > 0 ? Math.max(...stats.cpuUsage) : 0;
+              
+              console.log(`🔧 ${jobName}:`);
+              console.log(`  Memory: ${avgMemory.toFixed(1)}% avg, ${maxMemory}% peak`);
+              console.log(`  CPU: ${avgCpu.toFixed(1)}% avg, ${maxCpu}% peak`);
+              
+              if (maxMemory > 85) {
+                console.log(`  ⚠️ High memory usage detected`);
+              }
+              if (maxCpu > 90) {
+                console.log(`  ⚠️ High CPU usage detected`);
+              }
+              console.log('');
+            }
+          });
+          EOF
+          
+          node analyze-resources.js
+      
+      - name: Generate resource optimization recommendations
+        run: |
+          echo "💡 Resource Optimization Recommendations:"
+          echo ""
+          echo "1. **Memory Optimization:**"
+          echo "   - Use --max-old-space-size for Node.js processes if needed"
+          echo "   - Consider splitting large test suites"
+          echo "   - Optimize Docker image layers"
+          echo ""
+          echo "2. **CPU Optimization:**"
+          echo "   - Use parallel execution where possible"
+          echo "   - Optimize build processes"
+          echo "   - Consider using faster runners for CPU-intensive jobs"
+          echo ""
+          echo "3. **Disk Optimization:**"
+          echo "   - Clean up temporary files during builds"
+          echo "   - Use .dockerignore to reduce build context"
+          echo "   - Optimize caching strategies"
+          echo ""
+          echo "4. **General Recommendations:**"
+          echo "   - Monitor trends over time"
+          echo "   - Set up alerts for resource spikes"
+          echo "   - Regular cleanup of old artifacts"

@@ -1,5 +1,9 @@
 # Fitness App - Freemium SaaS Platform
 
+[![CI Pipeline](https://github.com/toffguy77/my-fitness-app/actions/workflows/ci.yml/badge.svg)](https://github.com/toffguy77/my-fitness-app/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/toffguy77/my-fitness-app/branch/main/graph/badge.svg)](https://codecov.io/gh/toffguy77/my-fitness-app)
+[![Coverage Status](https://codecov.io/gh/toffguy77/my-fitness-app/branch/main/graph/badge.svg?token=YOUR_TOKEN)](https://codecov.io/gh/toffguy77/my-fitness-app)
+
 Цифровой дневник питания с поддержкой тренера. Freemium SaaS платформа для отслеживания КБЖУ и управления пищевым поведением.
 
 ## 🚀 Технологии

@@ -158,8 +158,13 @@ export default function RegisterPage() {
       logger.registration('Register: пользователь создан в auth', {
         userId: authData.user.id,
         email: authData.user.email,
-        emailConfirmed: !!authData.user.email_confirmed_at
+        emailConfirmed: !!authData.user.email_confirmed_at,
+        hasSession: !!authData.session
       })
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:162',message:'HYPOTHESIS_I: signUp completed, checking email confirmation',data:{userId:authData.user.id,email:authData.user.email,emailConfirmed:!!authData.user.email_confirmed_at,hasSession:!!authData.session,sessionAccessToken:authData.session?.access_token?.substring(0,20)||null,emailRedirectTo:`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,signUpTimestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
 
       // 2. Создаем профиль с ролью 'client' и статусом 'free'
       // ВАЖНО: Профиль создается всегда, даже если email не подтвержден,
@@ -218,71 +223,151 @@ export default function RegisterPage() {
 
       // Используем RPC функцию create_user_profile, которая обходит RLS через SECURITY DEFINER
       // Это необходимо, так как прямой insert блокируется RLS политиками
-      // Добавляем небольшую задержку и retry, так как пользователь может еще не появиться в auth.users
+      // Добавляем задержку и retry, так как пользователь может еще не появиться в auth.users
       let profileError = null
       let retryCount = 0
-      const maxRetries = 3
-      const retryDelay = 200 // миллисекунды
+      const maxRetries = 6 // Увеличено с 3 до 6 попыток
+      const initialDelay = 300 // Начальная задержка перед первой попыткой
+      const baseRetryDelay = 300 // Базовая задержка между попытками (300, 600, 900, 1200, 1500, 1800ms)
+      const profileCreationStartTime = Date.now()
+
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:222',message:'POST_FIX: Starting profile creation with initial delay',data:{userId:authData.user.id,retryCount:0,maxRetries,initialDelay,baseRetryDelay,startTime:profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      // #endregion
+
+      // Начальная задержка перед первой попыткой (пользователь может появиться с задержкой)
+      await new Promise(resolve => setTimeout(resolve, initialDelay))
 
       while (retryCount < maxRetries) {
-        const { error: error } = await supabase.rpc('create_user_profile', {
-          user_id: authData.user.id,
-          user_email: email,
-          user_full_name: fullName || null,
-          user_role: 'client',
-          user_coordinator_id: coordinatorId || null,
-        })
+        const attemptStartTime = Date.now()
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:235',message:'HYPOTHESIS_G: Retry attempt started, checking auth user first',data:{retryCount,attemptNumber:retryCount+1,maxRetries,timeSinceProfileStart:attemptStartTime-profileCreationStartTime,userId:authData.user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
 
+        // Проверяем, существует ли пользователь в auth через getUser
+        const { data: authUserData, error: authUserError } = await supabase.auth.getUser()
+        const authUserCheckTime = Date.now()
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:242',message:'HYPOTHESIS_G: auth.getUser check completed',data:{retryCount,hasAuthUser:!!authUserData.user,authUserMatches:authUserData.user?.id===authData.user.id,authUserError:authUserError?.message||null,checkDuration:authUserCheckTime-attemptStartTime,timeSinceProfileStart:authUserCheckTime-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
+
+        const { error: error } = await supabase.rpc('create_user_profile', {
+        user_id: authData.user.id,
+        user_email: email,
+        user_full_name: fullName || null,
+        user_role: 'client',
+        user_coordinator_id: coordinatorId || null,
+      })
+
+        const attemptDuration = Date.now() - attemptStartTime
         profileError = error
 
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:254',message:'HYPOTHESIS_G: RPC call completed',data:{retryCount,hasError:!!profileError,errorMessage:profileError?.message||null,errorCode:profileError?.code||null,attemptDuration,timeSinceProfileStart:Date.now()-profileCreationStartTime,includesDoesNotExist:profileError?.message?.includes('does not exist in auth.users')||false},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
+
+        // Если нет ошибки, выходим из цикла - профиль создан успешно
+        if (!profileError) {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:273',message:'POST_FIX: Success, exiting retry loop',data:{retryCount,timeSinceProfileStart:Date.now()-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+          // #endregion
+          break
+        }
+
         // Если ошибка связана с отсутствием пользователя в auth.users, пробуем еще раз
+        // После миграции v9.6 функция не должна выбрасывать эту ошибку, но на всякий случай обрабатываем
         if (profileError && profileError.message?.includes('does not exist in auth.users')) {
           retryCount++
+          
+          // Экспоненциальный backoff: 300ms, 600ms, 900ms, 1200ms, 1500ms, 1800ms
+          const waitTime = baseRetryDelay * retryCount
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:260',message:'POST_FIX: User not found, retrying with delay',data:{retryCount,waitTime,timeSinceProfileStart:Date.now()-profileCreationStartTime,willRetry:retryCount<maxRetries},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+          // #endregion
+
           if (retryCount < maxRetries) {
             logger.warn('Register: пользователь еще не создан в auth.users, повторная попытка...', {
               attempt: retryCount,
               maxRetries,
-              userId: authData.user.id
+              userId: authData.user.id,
+              waitTime
             })
-            await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount))
+            await new Promise(resolve => setTimeout(resolve, waitTime))
             continue
           }
         }
 
-        // Если нет ошибки или ошибка не связана с отсутствием пользователя, выходим из цикла
-        break
+        // Если ошибка не связана с отсутствием пользователя, выходим
+        if (profileError && !profileError.message?.includes('does not exist in auth.users')) {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:280',message:'POST_FIX: Different error, exiting retry loop',data:{retryCount,errorMessage:profileError?.message,timeSinceProfileStart:Date.now()-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+          // #endregion
+          break
+        }
       }
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:312',message:'POST_FIX: Retry loop completed',data:{finalRetryCount:retryCount,hasError:!!profileError,errorMessage:profileError?.message||null,totalTime:Date.now()-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      // #endregion
 
-      if (profileError) {
+      // После миграции v9.6 функция create_user_profile не выбрасывает ошибку при foreign_key_violation
+      // Она просто игнорирует ошибку и позволяет триггеру создать профиль позже
+      // Поэтому, даже если profileError существует и связана с "does not exist", мы продолжаем регистрацию
+      // Профиль будет создан автоматически, когда пользователь появится в auth.users
+      
+      if (profileError && !profileError.message?.includes('does not exist in auth.users')) {
+        // Если это не ошибка "does not exist", значит какая-то другая проблема
         logger.error('Register: ошибка создания профиля', profileError, {
           userId: authData.user.id,
-          email
+          email,
+          attempts: retryCount
         })
-        // Дополнительно пишем в stderr для гарантии попадания в Docker логи (Node.js серверная среда)
+        
+        // Пишем в stderr для Docker логов
         if (typeof window === 'undefined' && typeof process !== 'undefined' && 
             'stderr' in process && typeof (process as any).stderr?.write === 'function') {
           try {
-            let errorDetails: string
-            if (profileError instanceof Error) {
-              errorDetails = profileError.stack || profileError.message
-            } else {
-              errorDetails = JSON.stringify(profileError)
-            }
-            (process as any).stderr.write(`[REGISTRATION ERROR] Failed to create profile: ${errorDetails}, userId: ${authData.user.id}, email: ${email}\n`)
+            (process as any).stderr.write(`[REGISTRATION ERROR] Failed to create profile: ${profileError.message}, userId: ${authData.user.id}, email: ${email}, attempts: ${retryCount}\n`)
           } catch {
             // Ignore if stderr is not available
           }
         }
-        setError('Ошибка создания профиля: ' + profileError.message)
+        setError(`Ошибка создания профиля: ${profileError.message}`)
         setLoading(false)
         return
       }
+      
+      // Если ошибка была связана с "does not exist", или ошибки не было - продолжаем
+      // Профиль будет создан автоматически триггером или при следующей попытке
+      if (profileError && profileError.message?.includes('does not exist in auth.users')) {
+        logger.warn('Register: профиль не создан (пользователь еще не в auth.users), но продолжаем регистрацию', {
+          userId: authData.user.id,
+          email,
+          attempts: retryCount,
+          note: 'Профиль будет создан автоматически, когда пользователь появится в auth.users'
+        })
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:351',message:'POST_FIX: Profile creation warning, but continuing',data:{userId:authData.user.id,email,retryCount,note:'Profile will be created automatically when user appears in auth.users'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+        // #endregion
+      }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:362',message:'POST_FIX: About to log profile creation success',data:{userId:authData.user.id,email,coordinatorId:coordinatorId||null,hasProfileError:!!profileError},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      // #endregion
 
       logger.registration('Register: профиль успешно создан', {
         userId: authData.user.id,
         email,
         coordinatorId: coordinatorId || null
       })
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:372',message:'POST_FIX: Profile creation logged, continuing registration flow',data:{userId:authData.user.id,email,coordinatorId:coordinatorId||null},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      // #endregion
       // Дополнительно пишем в stdout для гарантии попадания в Docker логи (Node.js серверная среда)
       if (typeof window === 'undefined' && typeof process !== 'undefined' && 
           'stdout' in process && typeof (process as any).stdout?.write === 'function') {
@@ -354,8 +439,15 @@ export default function RegisterPage() {
         // Email не подтвержден - показываем сообщение и предлагаем отправить письмо повторно
         logger.registration('Register: регистрация завершена, требуется подтверждение email', {
           userId: authData.user.id,
-          email
+          email,
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
+          note: 'Проверьте настройки Supabase Dashboard: Email Auth -> Email Templates и SMTP settings'
         })
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:440',message:'HYPOTHESIS_I: Email confirmation required',data:{userId:authData.user.id,email,emailConfirmed:false,emailRedirectTo:`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,note:'Check Supabase Dashboard settings: Email Auth -> Email Templates and SMTP'},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+        // #endregion
+        
         setNeedsEmailConfirmation(true)
         setMessage(
           'Регистрация успешна! Пожалуйста, проверьте вашу почту и подтвердите email адрес. ' +
@@ -404,6 +496,10 @@ export default function RegisterPage() {
     setResendingEmail(true)
     setError(null)
 
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:499',message:'HYPOTHESIS_I: Resending confirmation email',data:{email,emailRedirectTo:`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+    // #endregion
+
     try {
       const { error: resendError } = await supabase.auth.resend({
         type: 'signup',
@@ -413,12 +509,33 @@ export default function RegisterPage() {
         },
       })
 
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:511',message:'HYPOTHESIS_I: Resend confirmation email result',data:{email,hasError:!!resendError,errorMessage:resendError?.message||null,errorCode:resendError?.code||null,errorStatus:resendError?.status||null,fullError:JSON.stringify(resendError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
+
       if (resendError) {
-        logger.error('Register: ошибка повторной отправки письма', resendError, { email })
-        setError('Ошибка отправки письма: ' + resendError.message)
+        const errorDetails = {
+          email,
+          errorCode: (resendError as any).code,
+          errorStatus: (resendError as any).status,
+          errorMessage: resendError.message,
+          fullError: JSON.stringify(resendError),
+          note: 'Проверьте настройки Supabase Dashboard: Email Auth -> Email Templates и SMTP settings. Убедитесь, что SMTP сервер настроен правильно и доступен.'
+        }
+        
+        logger.error('Register: ошибка повторной отправки письма', resendError, errorDetails)
+        
+        // Более детальное сообщение об ошибке
+        let errorMessage = 'Ошибка отправки письма: ' + resendError.message
+        if ((resendError as any).code) {
+          errorMessage += ` (код: ${(resendError as any).code})`
+        }
+        errorMessage += '. Проверьте настройки SMTP в Supabase Dashboard (Project Settings → Auth → SMTP Settings). Убедитесь, что SMTP сервер настроен правильно, доступен и не заблокирован.'
+        
+        setError(errorMessage)
       } else {
         logger.registration('Register: письмо подтверждения отправлено повторно', { email })
-        setMessage('Письмо с подтверждением отправлено! Проверьте вашу почту.')
+        setMessage('Письмо с подтверждением отправлено! Проверьте вашу почту (включая папку "Спам").')
         setNeedsEmailConfirmation(false)
       }
     } catch (err) {
@@ -465,7 +582,7 @@ export default function RegisterPage() {
               type="button"
               onClick={handleResendConfirmationEmail}
               disabled={resendingEmail}
-              className="w-full py-2 px-4 rounded-lg font-medium text-zinc-950 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors text-sm"
+              className="w-full py-2 px-4 rounded-lg font-medium text-zinc-100 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors text-sm"
             >
               {resendingEmail ? 'Отправка...' : 'Отправить письмо повторно'}
             </button>

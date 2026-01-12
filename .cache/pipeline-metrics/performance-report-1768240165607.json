@@ -1,0 +1,27 @@
+{
+  "period": "1 days",
+  "generatedAt": "2026-01-12T17:49:25.606Z",
+  "summary": {
+    "totalRuns": 1,
+    "successfulRuns": 1,
+    "overallSuccessRate": 100,
+    "averagePipelineDuration": 40825,
+    "totalPipelineTime": 40825
+  },
+  "jobs": {
+    "test-job": {
+      "totalRuns": 1,
+      "successfulRuns": 1,
+      "successRate": 100,
+      "averageDuration": 40825,
+      "minDuration": 40825,
+      "maxDuration": 40825,
+      "averageMemory": 29,
+      "averageCpu": 50
+    }
+  },
+  "trends": {
+    "test-job": "insufficient-data"
+  },
+  "recommendations": []
+}

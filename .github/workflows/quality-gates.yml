@@ -1,0 +1,665 @@
+name: Quality Gates
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  # Fast incremental quality gate for quick feedback
+  incremental-quality-gate:
+    name: Incremental Quality Gate (Fast)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      should-run-full: ${{ steps.incremental-check.outputs.run-full }}
+      changed-files: ${{ steps.changed-files.outputs.files }}
+      cache-key: ${{ steps.cache-strategy.outputs.cache-key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files for optimization
+        id: changed-files
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            source:
+              - 'src/**/*.{ts,tsx,js,jsx}'
+            tests:
+              - 'src/**/*.{test,spec}.{ts,tsx,js,jsx}'
+            config:
+              - 'package*.json'
+              - 'tsconfig.json'
+              - 'jest.config.js'
+              - 'eslint.config.*'
+            workflows:
+              - '.github/workflows/**'
+          list-files: json
+
+      - name: Optimize cache strategy
+        id: cache-strategy
+        run: |
+          # Create optimized cache key based on changed files
+          CONFIG_HASH=$(find . -name "package*.json" -o -name "tsconfig.json" -o -name "jest.config.js" -o -name "eslint.config.*" | sort | xargs cat | sha256sum | cut -d' ' -f1)
+          CACHE_KEY="quality-gate-v2-${{ runner.os }}-${CONFIG_HASH}"
+          echo "cache-key=${CACHE_KEY}" >> $GITHUB_OUTPUT
+          
+          # Determine if we can use cached results
+          CHANGED_SOURCE='${{ steps.changed-files.outputs.source }}'
+          CHANGED_CONFIG='${{ steps.changed-files.outputs.config }}'
+          
+          if [ "$CHANGED_CONFIG" = "true" ]; then
+            echo "🔄 Config files changed - full quality gate required"
+            echo "use-cache=false" >> $GITHUB_OUTPUT
+          elif [ "$CHANGED_SOURCE" = "false" ]; then
+            echo "⚡ No source files changed - can use cached results"
+            echo "use-cache=true" >> $GITHUB_OUTPUT
+          else
+            echo "📊 Source files changed - incremental checks possible"
+            echo "use-cache=partial" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js with enhanced caching
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Cache quality gate results
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            node_modules
+            .eslintcache
+            tsconfig.tsbuildinfo
+            coverage/
+          key: ${{ steps.cache-strategy.outputs.cache-key }}
+          restore-keys: |
+            quality-gate-v2-${{ runner.os }}-
+
+      - name: Install dependencies (conditional)
+        run: |
+          if [ ! -d "node_modules" ] || [ "${{ steps.changed-files.outputs.config }}" = "true" ]; then
+            echo "📦 Installing dependencies..."
+            npm ci
+          else
+            echo "⚡ Using cached dependencies"
+          fi
+
+      - name: Run optimized incremental quality checks
+        id: incremental-check
+        run: |
+          # Make script executable
+          chmod +x scripts/quality-gate-incremental.js
+          
+          # Set optimization flags based on changed files
+          export CHANGED_SOURCE='${{ steps.changed-files.outputs.source }}'
+          export CHANGED_TESTS='${{ steps.changed-files.outputs.tests }}'
+          export CHANGED_CONFIG='${{ steps.changed-files.outputs.config }}'
+          export USE_CACHE='${{ steps.cache-strategy.outputs.use-cache }}'
+          
+          # Run incremental checks with performance monitoring
+          START_TIME=$(date +%s)
+          
+          if node scripts/quality-gate-incremental.js; then
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "✅ Incremental quality gate passed in ${DURATION}s"
+            echo "run-full=false" >> $GITHUB_OUTPUT
+            echo "duration=${DURATION}" >> $GITHUB_OUTPUT
+          else
+            END_TIME=$(date +%s)
+            DURATION=$((END_TIME - START_TIME))
+            echo "❌ Incremental quality gate failed after ${DURATION}s - will run comprehensive checks"
+            echo "run-full=true" >> $GITHUB_OUTPUT
+            echo "duration=${DURATION}" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+  comprehensive-quality-gate:
+    name: Comprehensive Quality Gate
+    runs-on: ubuntu-latest
+    needs: [incremental-quality-gate]
+    if: always() && (github.event_name == 'push' || needs.incremental-quality-gate.outputs.should-run-full == 'true' || needs.incremental-quality-gate.result == 'failure')
+    outputs:
+      quality-gate-status: ${{ steps.quality-gate.outputs.status }}
+      coverage-percentage: ${{ steps.coverage-check.outputs.percentage }}
+      security-issues: ${{ steps.security-check.outputs.issues }}
+      execution-time: ${{ steps.performance-metrics.outputs.total-time }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for incremental checks
+
+      - name: Setup Node.js with enhanced caching
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Advanced dependency caching
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            node_modules
+            .eslintcache
+            tsconfig.tsbuildinfo
+            coverage/
+            playwright-report/
+          key: comprehensive-quality-v3-${{ runner.os }}-${{ hashFiles('**/package-lock.json', 'tsconfig.json', 'jest.config.js') }}
+          restore-keys: |
+            comprehensive-quality-v3-${{ runner.os }}-
+            comprehensive-quality-v2-${{ runner.os }}-
+
+      - name: Conditional dependency installation
+        run: |
+          if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
+            echo "📦 Installing dependencies..."
+            npm ci --prefer-offline --no-audit
+          else
+            echo "⚡ Using cached dependencies"
+            # Verify dependencies are still valid
+            npm ls --depth=0 > /dev/null 2>&1 || npm ci --prefer-offline --no-audit
+          fi
+
+      - name: Initialize performance tracking
+        id: performance-start
+        run: |
+          echo "start-time=$(date +%s)" >> $GITHUB_OUTPUT
+          echo "🚀 Starting comprehensive quality gate with performance tracking..."
+
+      # Optimized parallel execution with resource management (Requirements 6.3, 6.5)
+      - name: Run Quality Checks in Optimized Parallel Groups
+        id: parallel-checks
+        run: |
+          echo "🚀 Running quality checks in optimized parallel groups..."
+          
+          # Create optimized background jobs with resource limits
+          # Group 1: CPU-intensive checks (limited concurrency)
+          (
+            echo "🔍 Starting coverage analysis (CPU-intensive)..."
+            # Use fewer workers for coverage to prevent memory issues
+            npm run test:coverage:ci -- --maxWorkers=2 --workerIdleMemoryLimit=1GB > coverage.log 2>&1
+            echo $? > coverage.exit
+          ) &
+          COVERAGE_PID=$!
+          
+          (
+            echo "🔧 Starting TypeScript analysis (CPU-intensive)..."
+            # Use incremental compilation for faster TypeScript checks
+            npm run type-check -- --incremental > typescript.log 2>&1
+            echo $? > typescript.exit
+          ) &
+          TYPESCRIPT_PID=$!
+          
+          # Group 2: I/O-intensive checks (can run in parallel)
+          (
+            echo "🔒 Starting security analysis (I/O-intensive)..."
+            # Use production-only audit for faster scanning
+            npm audit --production --audit-level high --json > audit-results.json 2>&1
+            echo $? > security.exit
+          ) &
+          SECURITY_PID=$!
+          
+          (
+            echo "🎨 Starting ESLint analysis (I/O-intensive)..."
+            # Use ESLint cache for faster subsequent runs
+            npm run lint -- --cache --format=json --output-file=eslint-results.json > eslint.log 2>&1
+            echo $? > eslint.exit
+          ) &
+          ESLINT_PID=$!
+          
+          # Monitor progress and resource usage
+          echo "⏳ Waiting for parallel checks to complete..."
+          
+          # Wait for CPU-intensive checks first (they usually take longer)
+          wait $COVERAGE_PID
+          echo "✅ Coverage analysis completed"
+          
+          wait $TYPESCRIPT_PID
+          echo "✅ TypeScript analysis completed"
+          
+          # Wait for I/O-intensive checks
+          wait $SECURITY_PID
+          echo "✅ Security analysis completed"
+          
+          wait $ESLINT_PID
+          echo "✅ ESLint analysis completed"
+          
+          echo "✅ All parallel checks completed successfully"
+
+      # Quality Check 1: Code Coverage (Requirements 4.1)
+      - name: Coverage Quality Gate
+        id: coverage-check
+        run: |
+          echo "🔍 Analyzing coverage results..."
+          
+          # Check if coverage completed successfully
+          COVERAGE_EXIT=$(cat coverage.exit 2>/dev/null || echo "1")
+          if [ "$COVERAGE_EXIT" != "0" ]; then
+            echo "❌ Coverage analysis failed"
+            echo "coverage_passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Extract coverage data
+          if [ -f "coverage/coverage-summary.json" ]; then
+            OVERALL_COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.lines.pct')
+            STATEMENTS_COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.statements.pct')
+            BRANCHES_COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.branches.pct')
+            FUNCTIONS_COVERAGE=$(cat coverage/coverage-summary.json | jq -r '.total.functions.pct')
+            
+            echo "Overall Coverage: ${OVERALL_COVERAGE}%"
+            echo "Statements: ${STATEMENTS_COVERAGE}%"
+            echo "Branches: ${BRANCHES_COVERAGE}%"
+            echo "Functions: ${FUNCTIONS_COVERAGE}%"
+            
+            # Check critical components coverage (90% threshold)
+            CRITICAL_COMPONENTS_FAILED=""
+            
+            # Check middleware coverage
+            if [ -f "coverage/coverage-final.json" ]; then
+              MIDDLEWARE_COVERAGE=$(cat coverage/coverage-final.json | jq -r '."src/middleware.ts".lines.pct // 0')
+              if (( $(echo "$MIDDLEWARE_COVERAGE < 90" | bc -l) )); then
+                CRITICAL_COMPONENTS_FAILED="$CRITICAL_COMPONENTS_FAILED middleware(${MIDDLEWARE_COVERAGE}%)"
+              fi
+              
+              # Check auth utilities coverage
+              AUTH_COVERAGE=$(cat coverage/coverage-final.json | jq -r '[."src/utils/supabase/client.ts", ."src/utils/supabase/server.ts"] | map(select(. != null) | .lines.pct) | add / length // 0')
+              if (( $(echo "$AUTH_COVERAGE < 90" | bc -l) )); then
+                CRITICAL_COMPONENTS_FAILED="$CRITICAL_COMPONENTS_FAILED auth-utils(${AUTH_COVERAGE}%)"
+              fi
+              
+              # Check validation utilities coverage
+              VALIDATION_COVERAGE=$(cat coverage/coverage-final.json | jq -r '[."src/utils/validation/nutrition.ts"] | map(select(. != null) | .lines.pct) | add / length // 0')
+              if (( $(echo "$VALIDATION_COVERAGE < 90" | bc -l) )); then
+                CRITICAL_COMPONENTS_FAILED="$CRITICAL_COMPONENTS_FAILED validation(${VALIDATION_COVERAGE}%)"
+              fi
+            fi
+            
+            # Set outputs
+            echo "percentage=$OVERALL_COVERAGE" >> $GITHUB_OUTPUT
+            echo "statements=$STATEMENTS_COVERAGE" >> $GITHUB_OUTPUT
+            echo "branches=$BRANCHES_COVERAGE" >> $GITHUB_OUTPUT
+            echo "functions=$FUNCTIONS_COVERAGE" >> $GITHUB_OUTPUT
+            echo "critical_failed=$CRITICAL_COMPONENTS_FAILED" >> $GITHUB_OUTPUT
+            
+            # Check overall threshold (40%)
+            if (( $(echo "$OVERALL_COVERAGE < 40" | bc -l) )); then
+              echo "❌ Overall coverage ${OVERALL_COVERAGE}% is below 40% threshold"
+              echo "coverage_passed=false" >> $GITHUB_OUTPUT
+              exit 1
+            elif [ -n "$CRITICAL_COMPONENTS_FAILED" ]; then
+              echo "❌ Critical components below 90% threshold: $CRITICAL_COMPONENTS_FAILED"
+              echo "coverage_passed=false" >> $GITHUB_OUTPUT
+              exit 1
+            else
+              echo "✅ Coverage thresholds met (${OVERALL_COVERAGE}%)"
+              echo "coverage_passed=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "❌ Coverage report not found"
+            echo "coverage_passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      # Quality Check 2: Security Vulnerabilities (Requirements 4.2)
+      - name: Security Quality Gate
+        id: security-check
+        run: |
+          echo "🔒 Analyzing security results..."
+          
+          # Check if security scan completed
+          SECURITY_EXIT=$(cat security.exit 2>/dev/null || echo "0")
+          
+          # Process audit results
+          CRITICAL_VULNS=$(cat audit-results.json | jq -r '.metadata.vulnerabilities.critical // 0')
+          HIGH_VULNS=$(cat audit-results.json | jq -r '.metadata.vulnerabilities.high // 0')
+          MODERATE_VULNS=$(cat audit-results.json | jq -r '.metadata.vulnerabilities.moderate // 0')
+          
+          echo "Critical vulnerabilities: $CRITICAL_VULNS"
+          echo "High vulnerabilities: $HIGH_VULNS"
+          echo "Moderate vulnerabilities: $MODERATE_VULNS"
+          
+          # Set outputs
+          echo "critical=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          echo "high=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "moderate=$MODERATE_VULNS" >> $GITHUB_OUTPUT
+          echo "issues=$((CRITICAL_VULNS + HIGH_VULNS))" >> $GITHUB_OUTPUT
+          
+          # Block on critical vulnerabilities
+          if [ "$CRITICAL_VULNS" -gt 0 ]; then
+            echo "❌ Found $CRITICAL_VULNS critical vulnerabilities - blocking merge"
+            cat audit-results.json | jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "critical") | "🚨 Critical: \(.key) - \(.value.title)"'
+            echo "security_passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Warn on high vulnerabilities but don't block (configurable)
+          if [ "$HIGH_VULNS" -gt 0 ]; then
+            echo "⚠️  Found $HIGH_VULNS high vulnerabilities - review recommended"
+            cat audit-results.json | jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "high") | "⚠️  High: \(.key) - \(.value.title)"'
+            # Uncomment to block on high vulnerabilities:
+            # echo "security_passed=false" >> $GITHUB_OUTPUT
+            # exit 1
+          fi
+          
+          echo "✅ Security scan completed - no critical vulnerabilities found"
+          echo "security_passed=true" >> $GITHUB_OUTPUT
+
+      # Quality Check 3: Code Style (Requirements 4.3)
+      - name: ESLint Quality Gate
+        id: eslint-check
+        run: |
+          echo "🎨 Analyzing ESLint results..."
+          
+          # Check if ESLint completed successfully
+          ESLINT_EXIT=$(cat eslint.exit 2>/dev/null || echo "1")
+          
+          if [ "$ESLINT_EXIT" = "0" ]; then
+            echo "✅ ESLint checks passed"
+            echo "eslint_passed=true" >> $GITHUB_OUTPUT
+            echo "eslint_errors=0" >> $GITHUB_OUTPUT
+            echo "eslint_warnings=0" >> $GITHUB_OUTPUT
+          else
+            # Parse ESLint results from parallel execution
+            if [ -f "eslint-results.json" ]; then
+              ERROR_COUNT=$(cat eslint-results.json | jq '[.[] | .errorCount] | add // 0')
+              WARNING_COUNT=$(cat eslint-results.json | jq '[.[] | .warningCount] | add // 0')
+              
+              echo "ESLint errors: $ERROR_COUNT"
+              echo "ESLint warnings: $WARNING_COUNT"
+              
+              echo "eslint_errors=$ERROR_COUNT" >> $GITHUB_OUTPUT
+              echo "eslint_warnings=$WARNING_COUNT" >> $GITHUB_OUTPUT
+              
+              if [ "$ERROR_COUNT" -gt 0 ]; then
+                echo "❌ Found $ERROR_COUNT ESLint errors - blocking merge"
+                echo "eslint_passed=false" >> $GITHUB_OUTPUT
+                
+                # Show first 10 errors for debugging
+                echo "Top ESLint errors:"
+                cat eslint-results.json | jq -r '.[] | select(.errorCount > 0) | .messages[] | select(.severity == 2) | "❌ \(.ruleId): \(.message) (\(.line):\(.column))"' | head -10
+                exit 1
+              else
+                echo "✅ No ESLint errors found ($WARNING_COUNT warnings)"
+                echo "eslint_passed=true" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "❌ ESLint results not found"
+              echo "eslint_passed=false" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+          fi
+
+      # Quality Check 4: TypeScript Types (Requirements 4.4)
+      - name: TypeScript Quality Gate
+        id: typescript-check
+        run: |
+          echo "🔧 Analyzing TypeScript results..."
+          
+          # Check if TypeScript completed successfully
+          TYPESCRIPT_EXIT=$(cat typescript.exit 2>/dev/null || echo "1")
+          
+          if [ "$TYPESCRIPT_EXIT" = "0" ]; then
+            echo "✅ TypeScript type checking passed"
+            echo "typescript_passed=true" >> $GITHUB_OUTPUT
+            echo "typescript_errors=0" >> $GITHUB_OUTPUT
+          else
+            # Count TypeScript errors from parallel execution
+            if [ -f "typescript.log" ]; then
+              ERROR_COUNT=$(grep -c "error TS" typescript.log || echo "0")
+            else
+              ERROR_COUNT=1
+            fi
+            echo "TypeScript errors: $ERROR_COUNT"
+            echo "typescript_errors=$ERROR_COUNT" >> $GITHUB_OUTPUT
+            
+            if [ "$ERROR_COUNT" -gt 0 ]; then
+              echo "❌ Found $ERROR_COUNT TypeScript errors - blocking merge"
+              echo "typescript_passed=false" >> $GITHUB_OUTPUT
+              
+              # Show first 10 errors for debugging
+              echo "Top TypeScript errors:"
+              grep "error TS" typescript.log | head -10
+              exit 1
+            else
+              echo "✅ TypeScript type checking passed"
+              echo "typescript_passed=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      # Comprehensive Quality Gate Decision (Requirements 4.5)
+      - name: Final Quality Gate Decision
+        id: quality-gate
+        if: always()
+        run: |
+          echo "📊 Quality Gate Summary"
+          echo "======================"
+          
+          # Collect all check results
+          COVERAGE_PASSED="${{ steps.coverage-check.outputs.coverage_passed }}"
+          SECURITY_PASSED="${{ steps.security-check.outputs.security_passed }}"
+          ESLINT_PASSED="${{ steps.eslint-check.outputs.eslint_passed }}"
+          TYPESCRIPT_PASSED="${{ steps.typescript-check.outputs.typescript_passed }}"
+          
+          # Display detailed results
+          echo "Coverage: ${COVERAGE_PASSED:-false} (${{ steps.coverage-check.outputs.percentage }}%)"
+          echo "Security: ${SECURITY_PASSED:-false} (${{ steps.security-check.outputs.issues }} critical/high issues)"
+          echo "ESLint: ${ESLINT_PASSED:-false} (${{ steps.eslint-check.outputs.eslint_errors }} errors)"
+          echo "TypeScript: ${TYPESCRIPT_PASSED:-false} (${{ steps.typescript-check.outputs.typescript_errors }} errors)"
+          
+          # Check if all gates passed
+          FAILED_GATES=""
+          
+          if [ "$COVERAGE_PASSED" != "true" ]; then
+            FAILED_GATES="$FAILED_GATES coverage"
+          fi
+          
+          if [ "$SECURITY_PASSED" != "true" ]; then
+            FAILED_GATES="$FAILED_GATES security"
+          fi
+          
+          if [ "$ESLINT_PASSED" != "true" ]; then
+            FAILED_GATES="$FAILED_GATES eslint"
+          fi
+          
+          if [ "$TYPESCRIPT_PASSED" != "true" ]; then
+            FAILED_GATES="$FAILED_GATES typescript"
+          fi
+          
+          if [ -n "$FAILED_GATES" ]; then
+            echo ""
+            echo "❌ QUALITY GATE FAILED"
+            echo "======================"
+            echo "🚫 Merge blocked due to failed quality checks: $FAILED_GATES"
+            echo ""
+            echo "Required actions:"
+            
+            if [ "$COVERAGE_PASSED" != "true" ]; then
+              echo "📊 Coverage: Increase test coverage to meet thresholds"
+              if [ -n "${{ steps.coverage-check.outputs.critical_failed }}" ]; then
+                echo "   Critical components need 90% coverage: ${{ steps.coverage-check.outputs.critical_failed }}"
+              fi
+              echo "   Overall coverage must be ≥40% (current: ${{ steps.coverage-check.outputs.percentage }}%)"
+            fi
+            
+            if [ "$SECURITY_PASSED" != "true" ]; then
+              echo "🔒 Security: Fix critical vulnerabilities (${{ steps.security-check.outputs.critical }} found)"
+            fi
+            
+            if [ "$ESLINT_PASSED" != "true" ]; then
+              echo "🎨 ESLint: Fix code style errors (${{ steps.eslint-check.outputs.eslint_errors }} errors)"
+            fi
+            
+            if [ "$TYPESCRIPT_PASSED" != "true" ]; then
+              echo "🔧 TypeScript: Fix type errors (${{ steps.typescript-check.outputs.typescript_errors }} errors)"
+            fi
+            
+            echo ""
+            echo "Run the following commands locally to fix issues:"
+            echo "  npm run lint -- --fix    # Fix ESLint issues"
+            echo "  npm run type-check       # Check TypeScript errors"
+            echo "  npm run test:coverage    # Check coverage locally"
+            echo "  npm audit fix            # Fix security vulnerabilities"
+            
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo ""
+            echo "✅ QUALITY GATE PASSED"
+            echo "======================"
+            echo "🎉 All quality checks passed - ready to merge!"
+            echo ""
+            echo "Summary:"
+            echo "✅ Coverage: ${{ steps.coverage-check.outputs.percentage }}% (≥40% required)"
+            echo "✅ Security: No critical vulnerabilities"
+            echo "✅ ESLint: Code style compliant"
+            echo "✅ TypeScript: No type errors"
+            
+            echo "status=passed" >> $GITHUB_OUTPUT
+          fi
+
+      # Upload artifacts for debugging
+      - name: Upload Quality Gate Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: quality-gate-results
+          path: |
+            coverage/
+            audit-results.json
+            eslint-results.json
+            typescript-results.txt
+            .eslintcache
+            tsconfig.tsbuildinfo
+          retention-days: 30
+
+      # Performance metrics and optimization reporting (Requirements 6.3, 6.5)
+      - name: Generate Performance Metrics
+        id: performance-metrics
+        if: always()
+        run: |
+          END_TIME=$(date +%s)
+          START_TIME="${{ steps.performance-start.outputs.start-time }}"
+          TOTAL_TIME=$((END_TIME - START_TIME))
+          
+          echo "📊 Quality Gate Performance Report"
+          echo "=================================="
+          echo "Total execution time: ${TOTAL_TIME}s"
+          echo "total-time=${TOTAL_TIME}" >> $GITHUB_OUTPUT
+          
+          # Calculate individual check times (approximate)
+          COVERAGE_TIME=$(stat -c %Y coverage.log 2>/dev/null || echo $END_TIME)
+          SECURITY_TIME=$(stat -c %Y audit-results.json 2>/dev/null || echo $END_TIME)
+          ESLINT_TIME=$(stat -c %Y eslint-results.json 2>/dev/null || echo $END_TIME)
+          TYPESCRIPT_TIME=$(stat -c %Y typescript.log 2>/dev/null || echo $END_TIME)
+          
+          # Performance analysis
+          echo ""
+          echo "🎯 Performance Analysis:"
+          
+          if [ $TOTAL_TIME -lt 300 ]; then
+            echo "✅ Excellent performance: Under 5 minutes"
+          elif [ $TOTAL_TIME -lt 600 ]; then
+            echo "✅ Good performance: Under 10 minutes"
+          else
+            echo "⚠️  Performance warning: Over 10 minutes"
+          fi
+          
+          # Cache effectiveness
+          if [ -f ".eslintcache" ]; then
+            echo "✅ ESLint cache utilized"
+          else
+            echo "⚠️  ESLint cache not found - consider enabling caching"
+          fi
+          
+          if [ -f "tsconfig.tsbuildinfo" ]; then
+            echo "✅ TypeScript incremental compilation utilized"
+          else
+            echo "⚠️  TypeScript incremental compilation not used"
+          fi
+          
+          # Resource optimization recommendations
+          echo ""
+          echo "💡 Optimization Recommendations:"
+          
+          if [ $TOTAL_TIME -gt 600 ]; then
+            echo "- Consider splitting large test suites"
+            echo "- Enable more aggressive caching"
+            echo "- Use incremental builds where possible"
+          fi
+          
+          # Save metrics for historical tracking
+          mkdir -p .github/metrics
+          cat > .github/metrics/quality-gate-performance.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "totalTime": $TOTAL_TIME,
+            "cacheUtilized": {
+              "eslint": $([ -f ".eslintcache" ] && echo "true" || echo "false"),
+              "typescript": $([ -f "tsconfig.tsbuildinfo" ] && echo "true" || echo "false"),
+              "dependencies": $([ -d "node_modules" ] && echo "true" || echo "false")
+            },
+            "parallelEfficiency": "optimized"
+          }
+          EOF
+          
+          echo "📈 Performance metrics saved for tracking"
+
+  # Comment on PR with detailed quality gate results
+  quality-gate-comment:
+    name: Quality Gate PR Comment
+    runs-on: ubuntu-latest
+    needs: comprehensive-quality-gate
+    if: always() && github.event_name == 'pull_request'
+    steps:
+      - name: Comment PR with Quality Gate Results
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const status = '${{ needs.comprehensive-quality-gate.outputs.quality-gate-status }}';
+            const coverage = '${{ needs.comprehensive-quality-gate.outputs.coverage-percentage }}';
+            const securityIssues = '${{ needs.comprehensive-quality-gate.outputs.security-issues }}';
+            
+            const statusIcon = status === 'passed' ? '✅' : '❌';
+            const statusText = status === 'passed' ? 'PASSED' : 'FAILED';
+            
+            const message = `
+            ## ${statusIcon} Quality Gate ${statusText}
+            
+            | Check | Status | Details |
+            |-------|--------|---------|
+            | **Coverage** | ${coverage >= 40 ? '✅' : '❌'} | ${coverage}% (≥40% required) |
+            | **Security** | ${securityIssues == 0 ? '✅' : '❌'} | ${securityIssues} critical/high vulnerabilities |
+            | **ESLint** | ${{ needs.comprehensive-quality-gate.result == 'success' ? '✅' : '❌' }} | Code style compliance |
+            | **TypeScript** | ${{ needs.comprehensive-quality-gate.result == 'success' ? '✅' : '❌' }} | Type checking |
+            
+            ${status === 'passed' 
+              ? '🎉 **All quality checks passed!** This PR is ready to merge.' 
+              : '🚫 **Quality gate failed.** Please address the issues above before merging.'}
+            
+            ### Next Steps
+            ${status === 'passed' 
+              ? '- Review the changes and merge when ready\n- All automated quality checks have passed'
+              : '- Fix the failing quality checks\n- Push your changes to re-run the quality gate\n- Use `npm run lint -- --fix` to auto-fix style issues\n- Run `npm run test:coverage` to check coverage locally'}
+            
+            ---
+            *Quality gate enforces: 40% code coverage, no critical security vulnerabilities, ESLint compliance, and TypeScript type safety.*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
