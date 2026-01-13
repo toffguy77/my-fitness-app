@@ -325,7 +325,7 @@ jobs:
       
       - name: Upload rollback artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rollback-incident-${{ steps.rollback-info.outputs.environment }}-${{ github.run_id }}
           path: rollback-incident.json
