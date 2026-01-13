@@ -385,16 +385,16 @@ jobs:
         run: |
           case "${{ matrix.test-group }}" in
             "components")
-              npm run test -- --testPathPattern="src/components.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
+              npm run test -- --testPathPatterns="src/components.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
               ;;
             "utils")
-              npm run test -- --testPathPattern="src/utils.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
+              npm run test -- --testPathPatterns="src/utils.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
               ;;
             "hooks")
-              npm run test -- --testPathPattern="src/hooks.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
+              npm run test -- --testPathPatterns="src/hooks.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
               ;;
             "api")
-              npm run test -- --testPathPattern="src/app/api.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
+              npm run test -- --testPathPatterns="src/app/api.*test\.(js|jsx|ts|tsx)$" --maxWorkers=2
               ;;
           esac
         continue-on-error: true
@@ -403,16 +403,16 @@ jobs:
         run: |
           case "${{ matrix.test-group }}" in
             "components")
-              npm run test:coverage -- --testPathPattern="src/components.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/components
+              npm run test:coverage -- --testPathPatterns="src/components.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/components
               ;;
             "utils")
-              npm run test:coverage -- --testPathPattern="src/utils.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/utils
+              npm run test:coverage -- --testPathPatterns="src/utils.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/utils
               ;;
             "hooks")
-              npm run test:coverage -- --testPathPattern="src/hooks.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/hooks
+              npm run test:coverage -- --testPathPatterns="src/hooks.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/hooks
               ;;
             "api")
-              npm run test:coverage -- --testPathPattern="src/app/api.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/api
+              npm run test:coverage -- --testPathPatterns="src/app/api.*test\.(js|jsx|ts|tsx)$" --coverageDirectory=coverage/api
               ;;
           esac
       
@@ -653,13 +653,13 @@ jobs:
         run: |
           case "${{ matrix.test-group }}" in
             "critical-flows")
-              npm run test -- --testPathPattern="integration\.critical-flows\.test\.(js|jsx|ts|tsx)$" --maxWorkers=1
+              npm run test -- --testPathPatterns="integration\.critical-flows\.test\.(js|jsx|ts|tsx)$" --maxWorkers=1
               ;;
             "middleware")
-              npm run test -- --testPathPattern="middleware.*integration\.test\.(js|jsx|ts|tsx)$" --maxWorkers=1
+              npm run test -- --testPathPatterns="middleware.*integration\.test\.(js|jsx|ts|tsx)$" --maxWorkers=1
               ;;
             "supabase")
-              npm run test -- --testPathPattern="supabase.*test\.(js|jsx|ts|tsx)$" --maxWorkers=1
+              npm run test -- --testPathPatterns="supabase.*test\.(js|jsx|ts|tsx)$" --maxWorkers=1
               ;;
           esac
 
@@ -870,7 +870,7 @@ jobs:
             npm run test:coverage
             
             # Run tests for specific files
-            npm test -- --testPathPattern="your-file-pattern"
+            npm test -- --testPathPatterns="your-file-pattern"
             
             # Generate coverage report
             npm run test:coverage:ci
