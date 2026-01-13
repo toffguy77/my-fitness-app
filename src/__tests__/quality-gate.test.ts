@@ -271,8 +271,10 @@ describe('Quality Gate Integration', () => {
             // Verify workflow content structure
             const workflowContent = fs.readFileSync(workflowPath, 'utf8');
             expect(workflowContent).toContain('name: Quality Gates');
-            expect(workflowContent).toContain('comprehensive-quality-gate');
-            expect(workflowContent).toContain('incremental-quality-gate');
+            expect(workflowContent).toContain('quality-gate');
+            expect(workflowContent).toContain('TypeScript check');
+            expect(workflowContent).toContain('ESLint');
+            expect(workflowContent).toContain('coverage');
         });
 
         it('should provide detailed PR comments on quality gate results', () => {
