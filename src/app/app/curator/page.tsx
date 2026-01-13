@@ -7,7 +7,7 @@ import { User } from '@supabase/supabase-js'
 import { LogOut, User as UserIcon, AlertCircle, CheckCircle, Circle, Filter, ArrowUpDown, MessageSquare, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import type { UserProfile } from '@/utils/supabase/profile'
-import { getCuratorClients } from '@/utils/supabase/profile'
+import { getCoordinatorClients } from '@/utils/supabase/profile'
 import { logger } from '@/utils/logger'
 import { playNotificationSound } from '@/utils/chat/sound'
 import { subscribeToMessages, unsubscribeFromChannel, type Message } from '@/utils/chat/realtime'
@@ -62,12 +62,12 @@ export default function CuratorDashboard() {
         }
 
         // Загружаем клиентов
-        const curatorClients = await getCuratorClients(authUser.id)
+        const curatorClients = await getCoordinatorClients(authUser.id)
 
         // Для каждого клиента загружаем данные за сегодня
         const today = new Date().toISOString().split('T')[0]
         const clientsWithStatus = await Promise.all(
-          curatorClients.map(async (client) => {
+          curatorClients.map(async (client: UserProfile) => {
             // Получаем отчет за сегодня
             const { data: todayLog } = await supabase
               .from('daily_logs')
