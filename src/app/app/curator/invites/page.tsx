@@ -72,7 +72,7 @@ export default function InviteCodesPage() {
                 </button>
             </div>
 
-            <InviteCodeManager curatorId={user.id} />
+            <InviteCodeManager coordinatorId={user.id} />
         </main>
     )
 }
