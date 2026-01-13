@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  statuses: write
+  pull-requests: write
+  security-events: write
+
 jobs:
   performance-analysis:
     name: Performance Analysis & Optimization
