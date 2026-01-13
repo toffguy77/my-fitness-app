@@ -143,8 +143,12 @@ RUN chown -R nextjs:nodejs /app
 # Switch to non-root user
 USER nextjs
 
+# Environment variables for development
+ENV PORT=3069
+ENV HOSTNAME="0.0.0.0"
+
 # Expose port for development
-EXPOSE 3000
+EXPOSE 3069
 
 # Start development server
 CMD ["npm", "run", "dev"]
