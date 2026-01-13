@@ -139,7 +139,7 @@ jobs:
       
       - name: Upload performance artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-metrics-${{ github.run_id }}
           path: |
@@ -164,7 +164,7 @@ jobs:
       
       - name: Upload performance dashboard
         if: steps.performance-report.outputs.dashboard_generated == 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-dashboard-${{ github.run_id }}
           path: performance-dashboard/
