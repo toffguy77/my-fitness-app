@@ -31,6 +31,7 @@ jobs:
       security-events: write
       actions: read
       pull-requests: write
+      statuses: write
     outputs:
       scan-status: ${{ steps.security-scan.outputs.status }}
       critical-issues: ${{ steps.security-scan.outputs.critical }}
