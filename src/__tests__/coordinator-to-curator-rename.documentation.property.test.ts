@@ -158,9 +158,9 @@ describe('Documentation Consistency Property Tests', () => {
     })
 
     /**
-     * Property 6.2: API documentation uses curator endpoints
+     * Property 6.2: API documentation uses coordinator endpoints
      */
-    test('Property 6.2: API documentation references curator endpoints', () => {
+    test('Property 6.2: API documentation references coordinator endpoints', () => {
         const functionalSpecPath = path.resolve(process.cwd(), 'docs/Functional_Specification.md')
 
         if (!fs.existsSync(functionalSpecPath)) {
@@ -169,11 +169,11 @@ describe('Documentation Consistency Property Tests', () => {
 
         const content = fs.readFileSync(functionalSpecPath, 'utf-8')
 
-        // Should contain curator endpoints
-        expect(content).toMatch(/\/app\/curator/)
+        // Should contain coordinator endpoints
+        expect(content).toMatch(/\/app\/coordinator/)
 
-        // Should contain curator role references
-        expect(content).toMatch(/куратор/)
-        expect(content).toMatch(/Curator/)
+        // Should contain coordinator role references
+        expect(content).toMatch(/координатор/)
+        expect(content).toMatch(/Coordinator/)
     })
 })
