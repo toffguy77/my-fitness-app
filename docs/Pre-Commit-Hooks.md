@@ -1,248 +1,226 @@
-# Pre-Commit Hooks Setup
+# Pre-Commit Hooks Guide
 
-Этот документ описывает настройку и использование pre-commit hooks для локальной проверки кода перед отправкой в GitHub.
+## Overview
 
-## Зачем это нужно?
+Pre-commit hooks are automated checks that run locally before you commit or push code to GitHub. They catch errors early, before they reach the CI/CD pipeline, saving time and preventing failed builds.
 
-Pre-commit hooks автоматически запускают проверки **локально** перед каждым коммитом, что позволяет:
+## What's Configured
 
-- ✅ Обнаруживать ошибки до отправки в GitHub
-- ✅ Экономить время на исправление ошибок в CI/CD
-- ✅ Поддерживать высокое качество кода
-- ✅ Избегать "красных" пайплайнов в GitHub Actions
+### On Commit (runs before `git commit`)
 
-## Быстрая установка
+1. **ESLint** - Code quality and style checks
+   - Validates JavaScript/TypeScript syntax
+   - Enforces coding standards
+   - Catches common errors
 
-### Вариант 1: Автоматическая установка (рекомендуется)
+### On Push (runs before `git push`)
+
+2. **NPM Security Audit** - Dependency vulnerability scanning
+   - Checks for high-severity vulnerabilities
+   - Scans npm packages for known security issues
+
+### File Checks (runs on commit)
+
+3. **Check for large files** - Prevents committing files >1MB
+4. **Check for case conflicts** - Prevents case-sensitivity issues
+5. **Check JSON syntax** - Validates JSON files
+6. **Check YAML syntax** - Validates YAML files
+7. **Detect private keys** - Prevents committing secrets
+8. **Fix end of files** - Ensures files end with newline
+9. **Trim trailing whitespace** - Removes trailing spaces
+
+## Installation
+
+### First Time Setup
 
 ```bash
 npm run precommit:setup
 ```
 
-Этот скрипт автоматически:
-1. Установит `pre-commit` (через pip или brew)
-2. Настроит git hooks
-3. Обновит hooks до последних версий
-4. Запустит проверку на всех файлах
+This will:
+- Install pre-commit via Homebrew (macOS)
+- Install git hooks
+- Update hooks to latest versions
+- Run a test on all files
 
-### Вариант 2: Ручная установка
+### Manual Installation
+
+If the script fails, install manually:
 
 ```bash
-# 1. Установите pre-commit
-pip install pre-commit
-# или
+# Install pre-commit
 brew install pre-commit
 
-# 2. Установите git hooks
+# Install hooks
 pre-commit install
+pre-commit install --hook-type commit-msg
 pre-commit install --hook-type pre-push
-
-# 3. (Опционально) Запустите на всех файлах
-pre-commit run --all-files
 ```
 
-## Что проверяется?
+## Usage
 
-### При каждом коммите (commit):
+### Normal Workflow
 
-1. **TypeScript Type Check** - проверка типов TypeScript
-   ```bash
-   npm run type-check
-   ```
-
-2. **ESLint** - проверка качества кода и стиля
-   ```bash
-   npm run lint
-   ```
-
-3. **Jest Tests** - запуск тестов для измененных файлов
-   ```bash
-   npm test -- --bail --findRelatedTests
-   ```
-
-4. **Detect Secrets** - поиск секретов и паролей в коде
-
-5. **File Checks**:
-   - Проверка больших файлов (>1MB)
-   - Проверка JSON/YAML синтаксиса
-   - Проверка приватных ключей
-   - Удаление trailing whitespace
-   - Исправление окончаний файлов
-
-### При каждом push:
-
-1. **NPM Security Audit** - проверка уязвимостей в зависимостях
-   ```bash
-   npm audit --audit-level=high
-   ```
-
-## Использование
-
-### Обычный workflow
+Pre-commit hooks run automatically:
 
 ```bash
-# 1. Внесите изменения в код
 git add .
-
-# 2. Сделайте коммит (hooks запустятся автоматически)
-git commit -m "feat: добавил новую функцию"
-
-# Если проверки прошли успешно:
-✅ TypeScript Type Check.....................................Passed
-✅ ESLint....................................................Passed
-✅ Jest Tests................................................Passed
-✅ Detect secrets............................................Passed
-
-# 3. Отправьте в GitHub
-git push origin main
-
-# При push запустится security audit
-✅ NPM Security Audit........................................Passed
+git commit -m "your message"  # Hooks run here
+git push                       # Push hooks run here
 ```
 
-### Если проверка не прошла
+### Manual Testing
+
+Run hooks manually without committing:
 
 ```bash
-# Hooks покажут ошибки:
-❌ ESLint....................................................Failed
-- hook id: eslint
-- exit code: 1
-
-/path/to/file.ts
-  10:5  error  'variable' is never used  @typescript-eslint/no-unused-vars
-
-# Исправьте ошибки и попробуйте снова
-git add .
-git commit -m "fix: исправил ошибки линтера"
-```
-
-### Пропустить проверки (не рекомендуется!)
-
-```bash
-# Пропустить все hooks
-git commit --no-verify -m "WIP: временный коммит"
-
-# Или установить переменную окружения
-SKIP=eslint git commit -m "пропустить только eslint"
-```
-
-## Полезные команды
-
-```bash
-# Запустить все hooks вручную на всех файлах
+# Run all hooks on all files
 npm run precommit:run
-# или
+
+# Or use pre-commit directly
 pre-commit run --all-files
+```
 
-# Запустить конкретный hook
-pre-commit run eslint --all-files
-pre-commit run typescript-check --all-files
+### Skipping Hooks (Not Recommended)
 
-# Обновить hooks до последних версий
+If you need to bypass hooks temporarily:
+
+```bash
+git commit --no-verify -m "your message"
+git push --no-verify
+```
+
+**Warning:** Only skip hooks when absolutely necessary. They exist to catch errors before they reach GitHub.
+
+## Updating Hooks
+
+Keep hooks up to date:
+
+```bash
 npm run precommit:update
-# или
+```
+
+Or:
+
+```bash
 pre-commit autoupdate
-
-# Посмотреть список установленных hooks
-pre-commit run --all-files --verbose
-
-# Удалить hooks (если нужно)
-pre-commit uninstall
-```
-
-## Настройка
-
-Конфигурация находится в файле `.pre-commit-config.yaml` в корне проекта.
-
-### Отключить конкретный hook
-
-Отредактируйте `.pre-commit-config.yaml` и добавьте hook в секцию `ci.skip`:
-
-```yaml
-ci:
-  skip: [jest-tests]  # Пропустить тесты в CI
-```
-
-### Изменить когда запускается hook
-
-Измените `stages` для конкретного hook:
-
-```yaml
-- id: jest-tests
-  stages: [push]  # Запускать только при push, не при commit
 ```
 
 ## Troubleshooting
 
-### pre-commit не найден
+### Hooks Not Running
 
-```bash
-# Установите через pip
-pip3 install pre-commit
+1. Check if pre-commit is installed:
+   ```bash
+   pre-commit --version
+   ```
 
-# Или через brew (macOS)
-brew install pre-commit
+2. Reinstall hooks:
+   ```bash
+   pre-commit install
+   ```
 
-# Проверьте установку
-pre-commit --version
-```
+### ESLint Failures
 
-### Hooks не запускаются
+If ESLint fails:
 
-```bash
-# Переустановите hooks
-pre-commit uninstall
-pre-commit install
-pre-commit install --hook-type pre-push
-```
+1. Run ESLint directly to see errors:
+   ```bash
+   npm run lint
+   ```
 
-### Тесты работают слишком долго
+2. Auto-fix what you can:
+   ```bash
+   npm run lint -- --fix
+   ```
 
-Можно настроить запуск только для измененных файлов или отключить тесты при коммите:
+3. Fix remaining errors manually
+
+### Security Audit Failures
+
+If npm audit fails:
+
+1. Review vulnerabilities:
+   ```bash
+   npm audit
+   ```
+
+2. Update dependencies:
+   ```bash
+   npm audit fix
+   ```
+
+3. For unfixable issues, document in `.trivyignore` or update packages manually
+
+### YAML Syntax Errors
+
+If YAML validation fails:
+
+1. Check the specific file mentioned in the error
+2. Use a YAML validator online or in your editor
+3. Common issues:
+   - Incorrect indentation (use spaces, not tabs)
+   - Missing quotes around special characters
+   - Duplicate keys
+
+## Configuration
+
+### Pre-commit Config
+
+Location: `.pre-commit-config.yaml`
+
+To modify hooks:
+
+1. Edit `.pre-commit-config.yaml`
+2. Update hooks:
+   ```bash
+   pre-commit autoupdate
+   ```
+3. Test changes:
+   ```bash
+   pre-commit run --all-files
+   ```
+
+### Excluding Files
+
+To exclude files from specific hooks, edit `.pre-commit-config.yaml`:
 
 ```yaml
-# В .pre-commit-config.yaml
-- id: jest-tests
-  stages: [push]  # Запускать только при push
+- id: trailing-whitespace
+  exclude: |
+    (?x)^(
+      .*\.md$|
+      node_modules/.*
+    )$
 ```
 
-### Ошибка "command not found: npm"
+## Benefits
 
-Убедитесь, что Node.js установлен и доступен в PATH:
+1. **Faster Feedback** - Catch errors in seconds, not minutes
+2. **Fewer Failed Builds** - Prevent CI/CD pipeline failures
+3. **Better Code Quality** - Enforce standards before code review
+4. **Security** - Prevent committing secrets or vulnerabilities
+5. **Consistency** - Same checks for all developers
 
-```bash
-node --version
-npm --version
-```
+## Integration with CI/CD
 
-## Интеграция с IDE
+Pre-commit hooks complement (not replace) GitHub Actions:
 
-### VS Code
+- **Local (pre-commit)**: Fast feedback, basic checks
+- **GitHub Actions (CI)**: Comprehensive testing, deployment
 
-Установите расширение:
-- [Pre-commit Helper](https://marketplace.visualstudio.com/items?itemName=elagil.pre-commit-helper)
+Both run the same checks, but pre-commit catches issues earlier.
 
-### WebStorm / IntelliJ IDEA
+## Best Practices
 
-Pre-commit hooks работают автоматически через git integration.
+1. **Always run hooks** - Don't skip unless absolutely necessary
+2. **Fix issues immediately** - Don't commit broken code
+3. **Keep hooks updated** - Run `npm run precommit:update` regularly
+4. **Test before pushing** - Run `npm run precommit:run` before big changes
+5. **Share with team** - Ensure all developers have hooks installed
 
-## Производительность
+## Related Documentation
 
-Если hooks работают медленно:
-
-1. **Используйте кэш**: pre-commit автоматически кэширует результаты
-2. **Запускайте тесты только для измененных файлов**: уже настроено через `--findRelatedTests`
-3. **Отключите медленные hooks для коммитов**: переместите их в `pre-push` stage
-
-## Дополнительная информация
-
-- [Официальная документация pre-commit](https://pre-commit.com/)
-- [Список доступных hooks](https://pre-commit.com/hooks.html)
-- [GitHub Actions интеграция](https://pre-commit.ci/)
-
-## Поддержка
-
-Если возникли проблемы:
-1. Проверьте [Troubleshooting](#troubleshooting) выше
-2. Запустите `pre-commit run --all-files --verbose` для детальной информации
-3. Проверьте логи в `.git/hooks/`
+- [CI/CD System Guide](./CICD_System_Guide.md)
+- [Quality Gates](./CICD_Deployment_Procedures.md)
+- [Security Guide](./Security_Guide.md)
