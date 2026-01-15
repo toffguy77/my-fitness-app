@@ -261,9 +261,11 @@ describe('Comprehensive CI/CD System Tests', () => {
             );
 
             expect(successNotification).toBeDefined();
-            expect(successNotification.if).toBe('success()');
+            expect(successNotification.if).toContain('success()');
+            expect(successNotification.if).toContain('secrets.TELEGRAM_BOT_TOKEN');
             expect(failureNotification).toBeDefined();
-            expect(failureNotification.if).toBe('failure()');
+            expect(failureNotification.if).toContain('failure()');
+            expect(failureNotification.if).toContain('secrets.TELEGRAM_BOT_TOKEN');
         });
 
         it('should have post-rollback monitoring', () => {

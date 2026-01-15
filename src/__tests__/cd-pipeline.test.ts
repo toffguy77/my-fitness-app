@@ -205,7 +205,8 @@ describe('CD Pipeline Configuration', () => {
                 step.name === 'Send deployment success notification'
             );
             expect(successNotifyStep).toBeDefined();
-            expect(successNotifyStep.if).toBe('success()');
+            expect(successNotifyStep.if).toContain('success()');
+            expect(successNotifyStep.if).toContain('secrets.TELEGRAM_BOT_TOKEN');
             expect(successNotifyStep.run).toContain('telegram-notify.js deployment staging success');
 
             // Check for failure notification
@@ -213,7 +214,8 @@ describe('CD Pipeline Configuration', () => {
                 step.name === 'Send deployment failure notification'
             );
             expect(failureNotifyStep).toBeDefined();
-            expect(failureNotifyStep.if).toBe('failure()');
+            expect(failureNotifyStep.if).toContain('failure()');
+            expect(failureNotifyStep.if).toContain('secrets.TELEGRAM_BOT_TOKEN');
             expect(failureNotifyStep.run).toContain('telegram-notify.js deployment staging failure');
         });
 
@@ -336,7 +338,8 @@ describe('CD Pipeline Configuration', () => {
                 step.name === 'Send deployment success notification'
             );
             expect(successNotifyStep).toBeDefined();
-            expect(successNotifyStep.if).toBe('success()');
+            expect(successNotifyStep.if).toContain('success()');
+            expect(successNotifyStep.if).toContain('secrets.TELEGRAM_BOT_TOKEN');
             expect(successNotifyStep.run).toContain('telegram-notify.js deployment production success');
 
             // Check for failure notification
@@ -344,7 +347,8 @@ describe('CD Pipeline Configuration', () => {
                 step.name === 'Send deployment failure notification'
             );
             expect(failureNotifyStep).toBeDefined();
-            expect(failureNotifyStep.if).toBe('failure()');
+            expect(failureNotifyStep.if).toContain('failure()');
+            expect(failureNotifyStep.if).toContain('secrets.TELEGRAM_BOT_TOKEN');
             expect(failureNotifyStep.run).toContain('telegram-notify.js deployment production failure');
         });
 
