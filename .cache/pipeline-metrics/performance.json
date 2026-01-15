@@ -274,6 +274,17 @@
         "finalDisk": 8
       },
       "commit": "036e0eb9ad3409a4408aff5a018fe1ede6a71dde"
+    },
+    {
+      "timestamp": 1768504117185,
+      "duration": 85,
+      "status": "success",
+      "resources": {
+        "peakMemory": 29,
+        "peakCpu": 50,
+        "finalDisk": 8
+      },
+      "commit": "6e7fe3ce6bdc35042dd19afcb2a351b24faeeb49"
     }
   ],
   "threshold-test": [
@@ -540,6 +551,17 @@
         "finalDisk": 8
       },
       "commit": "036e0eb9ad3409a4408aff5a018fe1ede6a71dde"
+    },
+    {
+      "timestamp": 1768504118826,
+      "duration": 92,
+      "status": "success",
+      "resources": {
+        "peakMemory": 29,
+        "peakCpu": 50,
+        "finalDisk": 8
+      },
+      "commit": "6e7fe3ce6bdc35042dd19afcb2a351b24faeeb49"
     }
   ]
 }

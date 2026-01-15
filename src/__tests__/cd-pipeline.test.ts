@@ -9,11 +9,51 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
 
+interface WorkflowStep {
+    name?: string;
+    run?: string;
+    env?: Record<string, string>;
+    uses?: string;
+    with?: Record<string, string | number>;
+    id?: string;
+    if?: string;
+    'continue-on-error'?: boolean;
+}
+
+interface WorkflowJob {
+    name?: string;
+    'runs-on'?: string;
+    environment?: string;
+    if?: string;
+    needs?: string | string[];
+    steps?: WorkflowStep[];
+}
+
+interface WorkflowConfig {
+    on?: {
+        workflow_run?: {
+            workflows?: string[];
+            types?: string[];
+            branches?: string[];
+        };
+        workflow_dispatch?: {
+            inputs?: Record<string, {
+                description?: string;
+                required?: boolean;
+                default?: string;
+                type?: string;
+                options?: string[];
+            }>;
+        };
+    };
+    jobs?: Record<string, WorkflowJob>;
+}
+
 describe('CD Pipeline Configuration', () => {
     const cdWorkflowPath = join(process.cwd(), '.github/workflows/cd.yml');
     const rollbackWorkflowPath = join(process.cwd(), '.github/workflows/rollback.yml');
-    let cdWorkflowConfig: any;
-    let rollbackWorkflowConfig: any;
+    let cdWorkflowConfig: WorkflowConfig;
+    let rollbackWorkflowConfig: WorkflowConfig;
 
     beforeAll(() => {
         // Load and parse the CD workflow configuration
@@ -56,61 +96,61 @@ describe('CD Pipeline Configuration', () => {
         });
 
         it('should have staging deployment job that builds artifacts', () => {
-            const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            expect(deployStagingJob.name).toBe('Deploy to Staging');
-            expect(deployStagingJob['runs-on']).toBe('ubuntu-latest');
-            expect(deployStagingJob.environment).toBe('staging');
+            const deployStagingJob = cdWorkflowConfig.jobs?.['deploy-staging'];
+            expect(deployStagingJob?.name).toBe('Deploy to Staging');
+            expect(deployStagingJob?.['runs-on']).toBe('ubuntu-latest');
+            expect(deployStagingJob?.environment).toBe('staging');
 
             // Check for build step
-            const buildStep = deployStagingJob.steps.find((step: any) =>
+            const buildStep = deployStagingJob?.steps?.find((step) =>
                 step.name === 'Build application'
             );
             expect(buildStep).toBeDefined();
-            expect(buildStep.run).toContain('npm run build');
+            expect(buildStep?.run).toContain('npm run build');
         });
 
         it('should have proper environment variables for staging build', () => {
-            const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const buildStep = deployStagingJob.steps.find((step: any) =>
+            const deployStagingJob = cdWorkflowConfig.jobs?.['deploy-staging'];
+            const buildStep = deployStagingJob?.steps?.find((step) =>
                 step.name === 'Build application'
             );
 
-            expect(buildStep.env).toBeDefined();
-            expect(buildStep.env.NEXT_PUBLIC_SUPABASE_URL).toContain('STAGING_SUPABASE_URL');
-            expect(buildStep.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).toContain('STAGING_SUPABASE_ANON_KEY');
+            expect(buildStep?.env).toBeDefined();
+            expect(buildStep?.env?.NEXT_PUBLIC_SUPABASE_URL).toContain('STAGING_SUPABASE_URL');
+            expect(buildStep?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY).toContain('STAGING_SUPABASE_ANON_KEY');
         });
 
         it('should have production deployment job that builds artifacts', () => {
-            const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
+            const deployProductionJob = cdWorkflowConfig.jobs?.['deploy-production'];
             expect(deployProductionJob).toBeDefined();
-            expect(deployProductionJob.name).toBe('Deploy to Production');
-            expect(deployProductionJob.environment).toBe('production');
+            expect(deployProductionJob?.name).toBe('Deploy to Production');
+            expect(deployProductionJob?.environment).toBe('production');
 
             // Check for build step
-            const buildStep = deployProductionJob.steps.find((step: any) =>
+            const buildStep = deployProductionJob?.steps?.find((step) =>
                 step.name === 'Build application'
             );
             expect(buildStep).toBeDefined();
-            expect(buildStep.run).toContain('npm run build');
+            expect(buildStep?.run).toContain('npm run build');
         });
 
         it('should have proper environment variables for production build', () => {
-            const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const buildStep = deployProductionJob.steps.find((step: any) =>
+            const deployProductionJob = cdWorkflowConfig.jobs?.['deploy-production'];
+            const buildStep = deployProductionJob?.steps?.find((step) =>
                 step.name === 'Build application'
             );
 
-            expect(buildStep.env).toBeDefined();
-            expect(buildStep.env.NEXT_PUBLIC_SUPABASE_URL).toContain('NEXT_PUBLIC_SUPABASE_URL');
-            expect(buildStep.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+            expect(buildStep?.env).toBeDefined();
+            expect(buildStep?.env?.NEXT_PUBLIC_SUPABASE_URL).toContain('NEXT_PUBLIC_SUPABASE_URL');
+            expect(buildStep?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY');
         });
 
         it('should use Node.js version 20 for consistency with CI', () => {
-            const jobs = Object.values(cdWorkflowConfig.jobs) as any[];
+            const jobs = Object.values(cdWorkflowConfig.jobs) as WorkflowJob[];
 
             jobs.forEach(job => {
                 if (job.steps) {
-                    const nodeSetupStep = job.steps.find((step: any) =>
+                    const nodeSetupStep = job.steps.find((step) =>
                         step.uses && step.uses.includes('actions/setup-node')
                     );
 
@@ -123,7 +163,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have caching configured for deployment performance', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const nodeSetupStep = deployStagingJob.steps.find((step: any) =>
+            const nodeSetupStep = deployStagingJob.steps.find((step) =>
                 step.uses && step.uses.includes('actions/setup-node')
             );
 
@@ -141,7 +181,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should install dependencies before building artifacts', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const installStep = deployStagingJob.steps.find((step: any) =>
+            const installStep = deployStagingJob.steps.find((step) =>
                 step.name === 'Install dependencies'
             );
 
@@ -168,7 +208,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have staging deployment step with proper configuration', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const deployStep = deployStagingJob.steps.find((step: any) =>
+            const deployStep = deployStagingJob.steps.find((step) =>
                 step.name && step.name.includes('Deploy to Staging')
             );
 
@@ -179,7 +219,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have staging health checks after deployment', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const healthCheckStep = deployStagingJob.steps.find((step: any) =>
+            const healthCheckStep = deployStagingJob.steps.find((step) =>
                 step.name === 'Run staging health checks'
             );
 
@@ -194,14 +234,14 @@ describe('CD Pipeline Configuration', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
 
             // Check for start notification
-            const startNotifyStep = deployStagingJob.steps.find((step: any) =>
+            const startNotifyStep = deployStagingJob.steps.find((step) =>
                 step.name === 'Send deployment start notification'
             );
             expect(startNotifyStep).toBeDefined();
             expect(startNotifyStep.run).toContain('telegram-notify.js deployment staging in_progress');
 
             // Check for success notification
-            const successNotifyStep = deployStagingJob.steps.find((step: any) =>
+            const successNotifyStep = deployStagingJob.steps.find((step) =>
                 step.name === 'Send deployment success notification'
             );
             expect(successNotifyStep).toBeDefined();
@@ -210,7 +250,7 @@ describe('CD Pipeline Configuration', () => {
             expect(successNotifyStep.run).toContain('telegram-notify.js deployment staging success');
 
             // Check for failure notification
-            const failureNotifyStep = deployStagingJob.steps.find((step: any) =>
+            const failureNotifyStep = deployStagingJob.steps.find((step) =>
                 step.name === 'Send deployment failure notification'
             );
             expect(failureNotifyStep).toBeDefined();
@@ -221,11 +261,11 @@ describe('CD Pipeline Configuration', () => {
 
         it('should use proper environment secrets for staging', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const notificationSteps = deployStagingJob.steps.filter((step: any) =>
+            const notificationSteps = deployStagingJob.steps.filter((step) =>
                 step.env && step.env.TELEGRAM_BOT_TOKEN
             );
 
-            notificationSteps.forEach((step: any) => {
+            notificationSteps.forEach((step) => {
                 expect(step.env.TELEGRAM_BOT_TOKEN).toBe('${{ secrets.TELEGRAM_BOT_TOKEN }}');
                 expect(step.env.TELEGRAM_CHAT_ID).toBe('${{ secrets.TELEGRAM_CHAT_ID }}');
             });
@@ -233,7 +273,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should set deployment URL output for staging', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const deployStep = deployStagingJob.steps.find((step: any) =>
+            const deployStep = deployStagingJob.steps.find((step) =>
                 step.id === 'deploy-staging'
             );
 
@@ -248,7 +288,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should checkout code before staging deployment', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const checkoutStep = deployStagingJob.steps.find((step: any) =>
+            const checkoutStep = deployStagingJob.steps.find((step) =>
                 step.uses && step.uses.includes('actions/checkout')
             );
 
@@ -258,7 +298,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should simulate proper staging deployment process', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const deployStep = deployStagingJob.steps.find((step: any) =>
+            const deployStep = deployStagingJob.steps.find((step) =>
                 step.id === 'deploy-staging'
             );
 
@@ -290,7 +330,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have production deployment step with enhanced configuration', () => {
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const deployStep = deployProductionJob.steps.find((step: any) =>
+            const deployStep = deployProductionJob.steps.find((step) =>
                 step.name && step.name.includes('Deploy to Production')
             );
 
@@ -302,7 +342,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have comprehensive production health checks', () => {
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const healthCheckStep = deployProductionJob.steps.find((step: any) =>
+            const healthCheckStep = deployProductionJob.steps.find((step) =>
                 step.name === 'Run production health checks'
             );
 
@@ -316,7 +356,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have longer health check duration for production', () => {
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const healthCheckStep = deployProductionJob.steps.find((step: any) =>
+            const healthCheckStep = deployProductionJob.steps.find((step) =>
                 step.name === 'Run production health checks'
             );
 
@@ -327,14 +367,14 @@ describe('CD Pipeline Configuration', () => {
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
 
             // Check for start notification
-            const startNotifyStep = deployProductionJob.steps.find((step: any) =>
+            const startNotifyStep = deployProductionJob.steps.find((step) =>
                 step.name === 'Send deployment start notification'
             );
             expect(startNotifyStep).toBeDefined();
             expect(startNotifyStep.run).toContain('telegram-notify.js deployment production in_progress');
 
             // Check for success notification
-            const successNotifyStep = deployProductionJob.steps.find((step: any) =>
+            const successNotifyStep = deployProductionJob.steps.find((step) =>
                 step.name === 'Send deployment success notification'
             );
             expect(successNotifyStep).toBeDefined();
@@ -343,7 +383,7 @@ describe('CD Pipeline Configuration', () => {
             expect(successNotifyStep.run).toContain('telegram-notify.js deployment production success');
 
             // Check for failure notification
-            const failureNotifyStep = deployProductionJob.steps.find((step: any) =>
+            const failureNotifyStep = deployProductionJob.steps.find((step) =>
                 step.name === 'Send deployment failure notification'
             );
             expect(failureNotifyStep).toBeDefined();
@@ -354,7 +394,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should set production deployment URL output', () => {
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const deployStep = deployProductionJob.steps.find((step: any) =>
+            const deployStep = deployProductionJob.steps.find((step) =>
                 step.id === 'deploy-production'
             );
 
@@ -369,7 +409,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have longer deployment simulation for production', () => {
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const deployStep = deployProductionJob.steps.find((step: any) =>
+            const deployStep = deployProductionJob.steps.find((step) =>
                 step.id === 'deploy-production'
             );
 
@@ -389,7 +429,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should determine rollback environment correctly', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const rollbackInfoStep = rollbackJob.steps.find((step: any) =>
+            const rollbackInfoStep = rollbackJob.steps.find((step) =>
                 step.id === 'rollback-info'
             );
 
@@ -401,7 +441,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have enhanced rollback with previous version detection', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const rollbackStep = rollbackJob.steps.find((step: any) =>
+            const rollbackStep = rollbackJob.steps.find((step) =>
                 step.id === 'perform-rollback'
             );
 
@@ -448,7 +488,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should checkout specific version for rollback', () => {
             const rollbackJob = rollbackWorkflowConfig.jobs.rollback;
-            const checkoutStep = rollbackJob.steps.find((step: any) =>
+            const checkoutStep = rollbackJob.steps.find((step) =>
                 step.uses && step.uses.includes('actions/checkout')
             );
 
@@ -459,14 +499,14 @@ describe('CD Pipeline Configuration', () => {
         it('should have enhanced rollback notifications', () => {
             const rollbackJob = rollbackWorkflowConfig.jobs.rollback;
 
-            const successStep = rollbackJob.steps.find((step: any) =>
+            const successStep = rollbackJob.steps.find((step) =>
                 step.name === 'Send rollback success notification'
             );
             expect(successStep).toBeDefined();
             expect(successStep.if).toBe('success()');
             expect(successStep.run).toContain('rollback_success');
 
-            const failureStep = rollbackJob.steps.find((step: any) =>
+            const failureStep = rollbackJob.steps.find((step) =>
                 step.name === 'Send rollback failure notification'
             );
             expect(failureStep).toBeDefined();
@@ -484,7 +524,7 @@ describe('CD Pipeline Configuration', () => {
 
         it('should upload rollback artifacts for tracking', () => {
             const rollbackJob = rollbackWorkflowConfig.jobs.rollback;
-            const uploadStep = rollbackJob.steps.find((step: any) =>
+            const uploadStep = rollbackJob.steps.find((step) =>
                 step.uses && step.uses.includes('actions/upload-artifact')
             );
 
@@ -546,11 +586,11 @@ describe('CD Pipeline Configuration', () => {
         });
 
         it('should have consistent Node.js and npm setup across all jobs', () => {
-            const jobs = Object.values(cdWorkflowConfig.jobs) as any[];
+            const jobs = Object.values(cdWorkflowConfig.jobs) as WorkflowJob[];
 
             jobs.forEach(job => {
                 if (job.steps) {
-                    const nodeSetupStep = job.steps.find((step: any) =>
+                    const nodeSetupStep = job.steps.find((step) =>
                         step.uses && step.uses.includes('actions/setup-node')
                     );
 
@@ -559,7 +599,7 @@ describe('CD Pipeline Configuration', () => {
                         expect(nodeSetupStep.with.cache).toBe('npm');
                     }
 
-                    const installStep = job.steps.find((step: any) =>
+                    const installStep = job.steps.find((step) =>
                         step.name === 'Install dependencies'
                     );
 
@@ -571,20 +611,20 @@ describe('CD Pipeline Configuration', () => {
         });
 
         it('should have proper error handling and notifications throughout', () => {
-            const jobs = Object.values(cdWorkflowConfig.jobs) as any[];
+            const jobs = Object.values(cdWorkflowConfig.jobs) as WorkflowJob[];
 
             jobs.forEach(job => {
                 if (job.steps) {
-                    const notificationSteps = job.steps.filter((step: any) =>
+                    const notificationSteps = job.steps.filter((step) =>
                         step.name && step.name.includes('notification')
                     );
 
                     if (notificationSteps.length > 0) {
                         // Should have both success and failure notifications
-                        const successNotify = notificationSteps.find((step: any) =>
+                        const successNotify = notificationSteps.find((step) =>
                             step.if === 'success()'
                         );
-                        const failureNotify = notificationSteps.find((step: any) =>
+                        const failureNotify = notificationSteps.find((step) =>
                             step.if === 'failure()'
                         );
 
@@ -609,14 +649,14 @@ describe('CD Pipeline Configuration', () => {
         it('should have proper artifact and output management', () => {
             // Staging deployment should set output
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const stagingDeployStep = deployStagingJob.steps.find((step: any) =>
+            const stagingDeployStep = deployStagingJob.steps.find((step) =>
                 step.id === 'deploy-staging'
             );
             expect(stagingDeployStep.run).toContain('>> $GITHUB_OUTPUT');
 
             // Production deployment should set output
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const productionDeployStep = deployProductionJob.steps.find((step: any) =>
+            const productionDeployStep = deployProductionJob.steps.find((step) =>
                 step.id === 'deploy-production'
             );
             expect(productionDeployStep.run).toContain('>> $GITHUB_OUTPUT');

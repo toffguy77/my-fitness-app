@@ -5,7 +5,7 @@
 
 import js from '@eslint/js';
 
-export default [
+const securityConfig = [
     js.configs.recommended,
     {
         rules: {
@@ -73,3 +73,5 @@ export default [
         }
     }
 ];
+
+export default securityConfig;

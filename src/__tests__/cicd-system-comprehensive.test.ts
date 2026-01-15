@@ -11,11 +11,60 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
 
+interface WorkflowStep {
+    name?: string;
+    run?: string;
+    env?: Record<string, string>;
+    uses?: string;
+    with?: Record<string, string | number>;
+    id?: string;
+    if?: string;
+    'continue-on-error'?: boolean;
+}
+
+interface WorkflowJob {
+    name?: string;
+    'runs-on'?: string;
+    environment?: string;
+    if?: string;
+    needs?: string | string[];
+    steps?: WorkflowStep[];
+}
+
+interface WorkflowConfig {
+    on?: {
+        workflow_run?: {
+            workflows?: string[];
+            types?: string[];
+            branches?: string[];
+        };
+        workflow_dispatch?: {
+            inputs?: Record<string, {
+                description?: string;
+                required?: boolean;
+                default?: string;
+                type?: string;
+                options?: string[];
+            }>;
+        };
+        push?: {
+            branches?: string[];
+        };
+        pull_request?: {
+            branches?: string[];
+        };
+        schedule?: Array<{
+            cron?: string;
+        }>;
+    };
+    jobs?: Record<string, WorkflowJob>;
+}
+
 describe('Comprehensive CI/CD System Tests', () => {
-    let ciWorkflowConfig: any;
-    let cdWorkflowConfig: any;
-    let rollbackWorkflowConfig: any;
-    let qualityGateWorkflowConfig: any;
+    let ciWorkflowConfig: WorkflowConfig;
+    let cdWorkflowConfig: WorkflowConfig;
+    let rollbackWorkflowConfig: WorkflowConfig;
+    let qualityGateWorkflowConfig: WorkflowConfig;
 
     beforeAll(() => {
         // Load all workflow configurations
@@ -76,7 +125,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
             [...ciJobs, ...cdJobs].forEach(job => {
                 if (job.steps) {
-                    const nodeSetupStep = job.steps.find((step: any) =>
+                    const nodeSetupStep = job.steps.find((step) =>
                         step.uses && step.uses.includes('actions/setup-node')
                     );
                     if (nodeSetupStep) {
@@ -92,7 +141,7 @@ describe('Comprehensive CI/CD System Tests', () => {
             expect(ciPipelineJob).toBeDefined();
 
             // Check for upload coverage step
-            const uploadStep = ciPipelineJob.steps.find((step: any) =>
+            const uploadStep = ciPipelineJob.steps.find((step) =>
                 step.uses && step.uses.includes('upload-artifact')
             );
             expect(uploadStep).toBeDefined();
@@ -125,7 +174,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
             allJobs.forEach(job => {
                 if (job.steps) {
-                    job.steps.forEach((step: any) => {
+                    job.steps.forEach((step) => {
                         if (step.env) {
                             Object.values(step.env).forEach((value: any) => {
                                 if (typeof value === 'string' && value.includes('secrets.')) {
@@ -145,7 +194,7 @@ describe('Comprehensive CI/CD System Tests', () => {
             expect(ciPipelineJob).toBeDefined();
 
             // Check for continue-on-error in security audit
-            const securityStep = ciPipelineJob.steps.find((step: any) =>
+            const securityStep = ciPipelineJob.steps.find((step) =>
                 step.name && step.name.includes('Security audit')
             );
             if (securityStep) {
@@ -162,7 +211,7 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have proper caching strategy across pipelines', () => {
             // CI pipeline should have npm caching
             const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
-            const nodeSetupStep = ciPipelineJob.steps.find((step: any) =>
+            const nodeSetupStep = ciPipelineJob.steps.find((step) =>
                 step.uses && step.uses.includes('actions/setup-node')
             );
             expect(nodeSetupStep).toBeDefined();
@@ -173,7 +222,7 @@ describe('Comprehensive CI/CD System Tests', () => {
                 const cdJobs = Object.values(cdWorkflowConfig.jobs) as any[];
                 cdJobs.forEach(job => {
                     if (job.steps) {
-                        const nodeSetupStep = job.steps.find((step: any) =>
+                        const nodeSetupStep = job.steps.find((step) =>
                             step.uses && step.uses.includes('actions/setup-node')
                         );
                         if (nodeSetupStep && nodeSetupStep.with) {
@@ -214,7 +263,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should determine correct rollback environment based on failure point', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const rollbackInfoStep = rollbackJob.steps.find((step: any) =>
+            const rollbackInfoStep = rollbackJob.steps.find((step) =>
                 step.id === 'rollback-info'
             );
 
@@ -227,7 +276,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have comprehensive rollback execution steps', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const performRollbackStep = rollbackJob.steps.find((step: any) =>
+            const performRollbackStep = rollbackJob.steps.find((step) =>
                 step.id === 'perform-rollback'
             );
 
@@ -240,7 +289,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have rollback verification and health checks', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const verifyStep = rollbackJob.steps.find((step: any) =>
+            const verifyStep = rollbackJob.steps.find((step) =>
                 step.name === 'Verify rollback success'
             );
 
@@ -253,10 +302,10 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have rollback notification system', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
 
-            const successNotification = rollbackJob.steps.find((step: any) =>
+            const successNotification = rollbackJob.steps.find((step) =>
                 step.name === 'Send rollback success notification'
             );
-            const failureNotification = rollbackJob.steps.find((step: any) =>
+            const failureNotification = rollbackJob.steps.find((step) =>
                 step.name === 'Send rollback failure notification'
             );
 
@@ -278,7 +327,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should create rollback audit trail', () => {
             const rollbackJob = rollbackWorkflowConfig.jobs.rollback;
-            const auditStep = rollbackJob.steps.find((step: any) =>
+            const auditStep = rollbackJob.steps.find((step) =>
                 step.name === 'Create rollback audit record'
             );
 
@@ -290,7 +339,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have rollback artifact retention', () => {
             const rollbackJob = rollbackWorkflowConfig.jobs.rollback;
-            const uploadStep = rollbackJob.steps.find((step: any) =>
+            const uploadStep = rollbackJob.steps.find((step) =>
                 step.uses && step.uses.includes('actions/upload-artifact')
             );
 
@@ -317,7 +366,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have efficient caching configuration', () => {
             const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
-            const nodeSetupStep = ciPipelineJob.steps.find((step: any) =>
+            const nodeSetupStep = ciPipelineJob.steps.find((step) =>
                 step.uses && step.uses.includes('actions/setup-node')
             );
 
@@ -331,7 +380,7 @@ describe('Comprehensive CI/CD System Tests', () => {
             expect(ciPipelineJob).toBeDefined();
 
             // Security audit should continue on error
-            const securityStep = ciPipelineJob.steps.find((step: any) =>
+            const securityStep = ciPipelineJob.steps.find((step) =>
                 step.name && step.name.includes('Security audit')
             );
             if (securityStep) {
@@ -347,7 +396,7 @@ describe('Comprehensive CI/CD System Tests', () => {
             ];
 
             deployJobs.forEach(job => {
-                const installStep = job.steps.find((step: any) =>
+                const installStep = job.steps.find((step) =>
                     step.name === 'Install dependencies'
                 );
                 if (installStep) {
@@ -396,7 +445,7 @@ describe('Comprehensive CI/CD System Tests', () => {
             expect(ciPipelineJob.steps).toBeDefined();
 
             // Steps should be in logical order
-            const stepNames = ciPipelineJob.steps.map((step: any) => step.name);
+            const stepNames = ciPipelineJob.steps.map((step) => step.name);
             expect(stepNames).toContain('Checkout code');
             expect(stepNames).toContain('Setup Node.js');
         });
@@ -420,11 +469,11 @@ describe('Comprehensive CI/CD System Tests', () => {
 
             jobs.forEach(job => {
                 if (job.steps) {
-                    const uploadSteps = job.steps.filter((step: any) =>
+                    const uploadSteps = job.steps.filter((step) =>
                         step.uses && step.uses.includes('actions/upload-artifact')
                     );
 
-                    uploadSteps.forEach((step: any) => {
+                    uploadSteps.forEach((step) => {
                         if (step.with && step.with['retention-days']) {
                             expect(step.with['retention-days']).toBeLessThanOrEqual(90);
                         }
@@ -442,14 +491,14 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have comprehensive health checks across all environments', () => {
             // Staging health checks
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const stagingHealthCheck = deployStagingJob.steps.find((step: any) =>
+            const stagingHealthCheck = deployStagingJob.steps.find((step) =>
                 step.name === 'Run staging health checks'
             );
             expect(stagingHealthCheck).toBeDefined();
 
             // Production health checks
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const productionHealthCheck = deployProductionJob.steps.find((step: any) =>
+            const productionHealthCheck = deployProductionJob.steps.find((step) =>
                 step.name === 'Run production health checks'
             );
             expect(productionHealthCheck).toBeDefined();
@@ -466,7 +515,7 @@ describe('Comprehensive CI/CD System Tests', () => {
             let hasRetryMechanism = false;
             allJobs.forEach(job => {
                 if (job.steps) {
-                    job.steps.forEach((step: any) => {
+                    job.steps.forEach((step) => {
                         if (step.uses && step.uses.includes('retry')) {
                             hasRetryMechanism = true;
                         }
@@ -478,8 +527,8 @@ describe('Comprehensive CI/CD System Tests', () => {
             const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
             const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
             const deploySteps = [
-                deployStagingJob?.steps?.find((step: any) => step.id === 'deploy-staging'),
-                deployProductionJob?.steps?.find((step: any) => step.id === 'deploy-production')
+                deployStagingJob?.steps?.find((step) => step.id === 'deploy-staging'),
+                deployProductionJob?.steps?.find((step) => step.id === 'deploy-production')
             ];
 
             deploySteps.forEach(step => {
@@ -496,7 +545,7 @@ describe('Comprehensive CI/CD System Tests', () => {
             expect(ciPipelineJob.steps).toBeDefined();
 
             // Check for basic steps that provide logging
-            const stepNames = ciPipelineJob.steps.map((step: any) => step.name);
+            const stepNames = ciPipelineJob.steps.map((step) => step.name);
             expect(stepNames).toContain('Checkout code');
             expect(stepNames).toContain('Setup Node.js');
         });
@@ -510,7 +559,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
             allJobs.forEach(job => {
                 if (job.steps) {
-                    job.steps.forEach((step: any) => {
+                    job.steps.forEach((step) => {
                         if (step.env) {
                             Object.entries(step.env).forEach(([key, value]) => {
                                 if (typeof value === 'string' && value.includes('secrets.')) {
