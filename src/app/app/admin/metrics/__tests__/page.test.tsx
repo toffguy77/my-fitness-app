@@ -52,7 +52,7 @@ describe('Metrics Page', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
+      ; (useRouter as jest.Mock).mockReturnValue(mockRouter)
 
     // Default: authenticated super_admin user
     mockGetUser.mockResolvedValue({
@@ -81,7 +81,7 @@ describe('Metrics Page', () => {
 
   it('renders loading state initially', () => {
     render(<MetricsPage />)
-    
+
     // Should show skeleton loaders while checking access
     const skeletons = document.querySelectorAll('.animate-pulse')
     expect(skeletons.length).toBeGreaterThan(0)
@@ -89,22 +89,22 @@ describe('Metrics Page', () => {
 
   it('renders metrics dashboard for super_admin', async () => {
     render(<MetricsPage />)
-    
+
     await waitFor(() => {
       expect(screen.getByTestId('metrics-dashboard')).toBeInTheDocument()
     })
-    
+
     expect(screen.getByText('Метрики и аналитика')).toBeInTheDocument()
   })
 
-  it('renders metrics dashboard for coordinator', async () => {
+  it('renders metrics dashboard for curator', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'profiles') {
         return {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: 'coordinator-123', role: 'coordinator' },
+            data: { id: 'curator-123', role: 'curator' },
             error: null,
           }),
         }
@@ -117,7 +117,7 @@ describe('Metrics Page', () => {
     })
 
     render(<MetricsPage />)
-    
+
     await waitFor(() => {
       expect(screen.getByTestId('metrics-dashboard')).toBeInTheDocument()
     })
@@ -130,7 +130,7 @@ describe('Metrics Page', () => {
     })
 
     render(<MetricsPage />)
-    
+
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/login')
     })
@@ -156,7 +156,7 @@ describe('Metrics Page', () => {
     })
 
     render(<MetricsPage />)
-    
+
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/app/dashboard')
     })
@@ -164,11 +164,11 @@ describe('Metrics Page', () => {
 
   it('displays page title and description', async () => {
     render(<MetricsPage />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('Метрики и аналитика')).toBeInTheDocument()
     })
-    
+
     expect(
       screen.getByText(/Просмотр ключевых метрик приложения/)
     ).toBeInTheDocument()
@@ -176,7 +176,7 @@ describe('Metrics Page', () => {
 
   it('has back button that navigates to dashboard', async () => {
     render(<MetricsPage />)
-    
+
     await waitFor(() => {
       const backButton = screen.getByTitle('Назад')
       expect(backButton).toBeInTheDocument()
