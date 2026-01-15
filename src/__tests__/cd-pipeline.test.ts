@@ -5,7 +5,7 @@
  * according to the requirements specification.
  */
 
-// @ts-nocheck - Complex YAML type assertions in test file
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
