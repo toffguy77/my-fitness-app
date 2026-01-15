@@ -3,7 +3,7 @@
 
 /**
  * Performance Dashboard Generator
- * 
+ *
  * Generates HTML dashboard for CI/CD pipeline performance metrics
  */
 
@@ -138,20 +138,20 @@ class PerformanceDashboard {
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f7fa;
             color: #333;
             line-height: 1.6;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
-        
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -160,24 +160,24 @@ class PerformanceDashboard {
             margin-bottom: 30px;
             text-align: center;
         }
-        
+
         .header h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
         }
-        
+
         .header p {
             font-size: 1.1em;
             opacity: 0.9;
         }
-        
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
-        
+
         .stat-card {
             background: white;
             padding: 25px;
@@ -186,29 +186,29 @@ class PerformanceDashboard {
             text-align: center;
             transition: transform 0.2s;
         }
-        
+
         .stat-card:hover {
             transform: translateY(-2px);
         }
-        
+
         .stat-value {
             font-size: 2.5em;
             font-weight: bold;
             margin-bottom: 10px;
         }
-        
+
         .stat-label {
             color: #666;
             font-size: 0.9em;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
+
         .success { color: #27ae60; }
         .warning { color: #f39c12; }
         .danger { color: #e74c3c; }
         .info { color: #3498db; }
-        
+
         .section {
             background: white;
             margin-bottom: 30px;
@@ -216,81 +216,81 @@ class PerformanceDashboard {
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             overflow: hidden;
         }
-        
+
         .section-header {
             background: #f8f9fa;
             padding: 20px;
             border-bottom: 1px solid #e9ecef;
         }
-        
+
         .section-header h2 {
             font-size: 1.5em;
             color: #333;
         }
-        
+
         .section-content {
             padding: 20px;
         }
-        
+
         .job-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
-        
+
         .job-card {
             border: 1px solid #e9ecef;
             border-radius: 8px;
             padding: 20px;
             background: #f8f9fa;
         }
-        
+
         .job-name {
             font-weight: bold;
             font-size: 1.1em;
             margin-bottom: 15px;
             color: #333;
         }
-        
+
         .job-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
             font-size: 0.9em;
         }
-        
+
         .job-stat {
             display: flex;
             justify-content: space-between;
         }
-        
+
         .alert-item {
             padding: 15px;
             margin-bottom: 10px;
             border-radius: 8px;
             border-left: 4px solid;
         }
-        
+
         .alert-critical {
             background: #fdf2f2;
             border-color: #e74c3c;
         }
-        
+
         .alert-warning {
             background: #fefbf3;
             border-color: #f39c12;
         }
-        
+
         .alert-time {
             font-size: 0.8em;
             color: #666;
             margin-top: 5px;
         }
-        
+
         .trend-up { color: #27ae60; }
         .trend-down { color: #e74c3c; }
         .trend-stable { color: #95a5a6; }
-        
+
         .chart-placeholder {
             height: 200px;
             background: #f8f9fa;
@@ -301,27 +301,27 @@ class PerformanceDashboard {
             color: #6c757d;
             border-radius: 8px;
         }
-        
+
         .footer {
             text-align: center;
             padding: 20px;
             color: #666;
             font-size: 0.9em;
         }
-        
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
             }
-            
+
             .header {
                 padding: 20px;
             }
-            
+
             .header h1 {
                 font-size: 2em;
             }
-            
+
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -335,7 +335,7 @@ class PerformanceDashboard {
             <p>Real-time insights into pipeline performance and reliability</p>
             <p><small>Generated: ${new Date().toLocaleString()}</small></p>
         </div>
-        
+
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value success">${data.summary.totalRuns}</div>
@@ -354,7 +354,7 @@ class PerformanceDashboard {
                 <div class="stat-label">Critical Alerts (7d)</div>
             </div>
         </div>
-        
+
         <div class="section">
             <div class="section-header">
                 <h2>Job Performance</h2>
@@ -365,7 +365,7 @@ class PerformanceDashboard {
                 </div>
             </div>
         </div>
-        
+
         <div class="section">
             <div class="section-header">
                 <h2>Recent Alerts</h2>
@@ -374,7 +374,7 @@ class PerformanceDashboard {
                 ${this.generateAlertsSection(data.alerts)}
             </div>
         </div>
-        
+
         <div class="section">
             <div class="section-header">
                 <h2>Performance Trends</h2>
@@ -386,7 +386,7 @@ class PerformanceDashboard {
                 </div>
             </div>
         </div>
-        
+
         <div class="section">
             <div class="section-header">
                 <h2>Recent Reports</h2>
@@ -396,7 +396,7 @@ class PerformanceDashboard {
             </div>
         </div>
     </div>
-    
+
     <div class="footer">
         <p>CI/CD Performance Dashboard • Updated automatically with each pipeline run</p>
     </div>

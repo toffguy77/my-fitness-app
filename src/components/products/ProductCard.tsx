@@ -55,7 +55,7 @@ export default function ProductCard({
             }}
           />
         )}
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
@@ -124,4 +124,3 @@ export default function ProductCard({
     </div>
   )
 }
-

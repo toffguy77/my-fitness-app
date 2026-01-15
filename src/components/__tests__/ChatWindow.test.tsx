@@ -76,7 +76,7 @@ jest.mock('react-hot-toast', () => ({
 describe('ChatWindow Component', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Default mock for insert with select().single() chain
     const mockSingle = jest.fn().mockResolvedValue({
       data: { id: 'msg-1' },
@@ -88,7 +88,7 @@ describe('ChatWindow Component', () => {
     const mockInsert = jest.fn().mockReturnValue({
       select: mockSelect,
     })
-    
+
     // Default mock returns empty array (no messages)
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
@@ -104,7 +104,7 @@ describe('ChatWindow Component', () => {
       }),
     })
   })
-  
+
   const setupMockWithMessages = () => {
     const mockMessage = {
       id: 'msg-1',
@@ -115,22 +115,22 @@ describe('ChatWindow Component', () => {
       read_at: null,
       is_deleted: false,
     }
-    
+
     // Create a chainable query that returns a promise when awaited
     const createQuery = () => {
       const promise = Promise.resolve({
         data: [mockMessage],
         error: null,
       })
-      
+
       const query: any = promise
       query.select = jest.fn(() => query)
       query.eq = jest.fn(() => query)
       query.limit = jest.fn(() => promise)
-      
+
       return query
     }
-    
+
     const mockSingle = jest.fn().mockResolvedValue({
       data: { id: 'msg-1' },
       error: null,
@@ -141,7 +141,7 @@ describe('ChatWindow Component', () => {
     const mockInsert = jest.fn().mockReturnValue({
       select: mockSelect,
     })
-    
+
     mockFrom.mockReturnValue({
       ...createQuery(),
       insert: mockInsert,
@@ -176,7 +176,7 @@ describe('ChatWindow Component', () => {
 
   it('should display other user name', async () => {
     setupMockWithMessages()
-    
+
     render(
       <ChatWindow
         userId="user-1"
@@ -199,7 +199,7 @@ describe('ChatWindow Component', () => {
   it('should call onClose when close button is clicked', async () => {
     const mockOnClose = jest.fn()
     const user = userEvent.setup()
-    
+
     render(
       <ChatWindow
         userId="user-1"
@@ -256,7 +256,7 @@ describe('ChatWindow Component', () => {
 
   it('should handle connection status', async () => {
     setupMockWithMessages()
-    
+
     render(
       <ChatWindow
         userId="user-1"
@@ -289,7 +289,7 @@ describe('ChatWindow Component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('message-list')).toBeInTheDocument()
     }, { timeout: 5000 })
-    
+
     // markAsRead is called asynchronously in useEffect after messages load
     // We verify that the component rendered with messages, which triggers markAsRead
     // The actual markAsRead call is tested indirectly through component behavior
@@ -298,7 +298,7 @@ describe('ChatWindow Component', () => {
   it('should handle rate limit error when sending message', async () => {
     const toast = require('react-hot-toast').default
     const user = userEvent.setup()
-    
+
     const mockSingle = jest.fn().mockResolvedValue({
       data: null,
       error: { message: 'Rate limit exceeded' },
@@ -309,7 +309,7 @@ describe('ChatWindow Component', () => {
     const mockInsert = jest.fn().mockReturnValue({
       select: mockSelect,
     })
-    
+
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -333,7 +333,7 @@ describe('ChatWindow Component', () => {
     }, { timeout: 5000 })
 
     const sendButton = screen.getByText('Send')
-    
+
     // Click send button - this will trigger onSend which shows toast and throws error
     // MessageInput catches the error, so we just verify toast was called
     await user.click(sendButton)
@@ -363,11 +363,10 @@ describe('ChatWindow Component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('message-list')).toBeInTheDocument()
     }, { timeout: 5000 })
-    
+
     // markAsRead is called asynchronously in useEffect after messages load
     // We verify that the component rendered with messages, which triggers markAsRead
     // The actual update call and onMessageRead callback are tested indirectly
     // by verifying the component behavior (messages are displayed)
   })
 })
-

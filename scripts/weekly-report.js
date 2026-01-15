@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 
 /**
  * Weekly CI/CD Pipeline Report Generator

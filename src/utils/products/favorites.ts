@@ -191,4 +191,3 @@ export async function getFavoriteProducts(userId: string): Promise<Product[]> {
         throw error
     }
 }
-

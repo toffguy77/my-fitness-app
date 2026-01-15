@@ -188,7 +188,7 @@ export default function InviteCodeCard({
                 onClose={() => setDeactivateModal(false)}
                 onConfirm={confirmDeactivate}
                 title={code.is_active ? "Деактивировать код" : "Активировать код"}
-                message={code.is_active 
+                message={code.is_active
                     ? "Вы уверены, что хотите деактивировать этот код? После деактивации его нельзя будет использовать для регистрации."
                     : "Вы уверены, что хотите активировать этот код?"}
                 variant={code.is_active ? "warning" : "info"}
@@ -212,4 +212,3 @@ export default function InviteCodeCard({
         </div>
     )
 }
-

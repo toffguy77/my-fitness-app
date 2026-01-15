@@ -51,4 +51,3 @@ export async function createUniqueInviteCode(
 
     throw new Error('Failed to generate unique invite code after multiple attempts')
 }
-

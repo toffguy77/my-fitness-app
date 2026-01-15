@@ -362,4 +362,3 @@ describe('ChatWidget Component', () => {
     }
   })
 })
-

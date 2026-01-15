@@ -87,4 +87,3 @@ if (typeof window !== 'undefined') {
     supabaseCache.cleanup()
   }, 60000) // Каждую минуту
 }
-

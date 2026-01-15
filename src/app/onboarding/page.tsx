@@ -43,7 +43,7 @@ export default function OnboardingPage() {
           return
         }
         setUser(user)
-        
+
         // Отслеживаем начало онбординга
         trackOnboardingStart()
 
@@ -297,16 +297,16 @@ export default function OnboardingPage() {
             {(['biometrics', 'activity', 'goal'] as OnboardingStep[]).map((step, index) => {
               const stepNumber = index + 1
               const isActive = currentStep === step
-              const isCompleted = (currentStep === 'activity' && step === 'biometrics') || 
+              const isCompleted = (currentStep === 'activity' && step === 'biometrics') ||
                                   (currentStep === 'goal' && (step === 'biometrics' || step === 'activity'))
-              
+
               return (
                 <div key={step} className="flex flex-col items-center flex-1">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
-                    isActive 
-                      ? 'bg-white text-zinc-950 scale-110' 
-                      : isCompleted 
-                        ? 'bg-zinc-700 text-zinc-100' 
+                    isActive
+                      ? 'bg-white text-zinc-950 scale-110'
+                      : isCompleted
+                        ? 'bg-zinc-700 text-zinc-100'
                         : 'bg-zinc-800 text-zinc-500'
                   }`}>
                     {isCompleted ? '✓' : stepNumber}
@@ -597,5 +597,3 @@ export default function OnboardingPage() {
     </main>
   )
 }
-
-

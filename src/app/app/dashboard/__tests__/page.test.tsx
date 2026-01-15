@@ -55,7 +55,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Dashboard Page', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -82,7 +82,7 @@ describe('Dashboard Page', () => {
 
   it('should render dashboard page', async () => {
     render(<DashboardPage />)
-    
+
     // Should show dashboard title after loading
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
@@ -91,7 +91,7 @@ describe('Dashboard Page', () => {
 
   it('should display dashboard title', async () => {
     render(<DashboardPage />)
-    
+
     // Should render dashboard title
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
@@ -100,7 +100,7 @@ describe('Dashboard Page', () => {
 
   it('should handle date navigation', async () => {
     render(<DashboardPage />)
-    
+
     // Should render dashboard with date navigation
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
@@ -109,7 +109,7 @@ describe('Dashboard Page', () => {
 
   it('should display coordinator note when available', async () => {
     render(<DashboardPage />)
-    
+
     // Should render dashboard
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('Dashboard Page', () => {
 
   it('should handle daily check-in completion', async () => {
     render(<DashboardPage />)
-    
+
     // Should render dashboard
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
@@ -127,7 +127,7 @@ describe('Dashboard Page', () => {
 
   it('should handle day type toggle', async () => {
     render(<DashboardPage />)
-    
+
     // Should render dashboard
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
@@ -136,7 +136,7 @@ describe('Dashboard Page', () => {
 
   it('should display nutrition summary when data is available', async () => {
     render(<DashboardPage />)
-    
+
     // Should render dashboard
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
@@ -150,7 +150,7 @@ describe('Dashboard Page', () => {
     })
 
     render(<DashboardPage />)
-    
+
     // Should redirect on auth error
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalled()
@@ -175,11 +175,10 @@ describe('Dashboard Page', () => {
     })
 
     render(<DashboardPage />)
-    
+
     // Should render dashboard even without targets
     await waitFor(() => {
       expect(screen.getByText('Дашборд')).toBeInTheDocument()
     }, { timeout: 5000 })
   })
 })
-

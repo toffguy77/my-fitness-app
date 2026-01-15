@@ -39,7 +39,7 @@ export default function MiniProgressChart({
           Среднее: {average.toFixed(0)} {unit}
         </span>
       </div>
-      
+
       {/* График */}
       <div className="relative h-16 bg-zinc-800 rounded-lg p-2 flex items-end gap-1">
         {/* Линия цели */}
@@ -49,7 +49,7 @@ export default function MiniProgressChart({
             bottom: `${(target / maxValue) * 100}%`,
           }}
         />
-        
+
         {/* Столбцы */}
         {percentages.map((percentage, index) => {
           const value = data[index] || 0
@@ -60,7 +60,7 @@ export default function MiniProgressChart({
             : value >= target * 0.5
             ? 'bg-amber-400'
             : 'bg-red-400'
-          
+
           return (
             <div
               key={index}
@@ -80,7 +80,7 @@ export default function MiniProgressChart({
           )
         })}
       </div>
-      
+
       {/* Легенда */}
       <div className="flex items-center justify-between text-[10px] text-zinc-500">
         <span className="tabular-nums">Цель: {target.toFixed(0)} {unit}</span>
@@ -102,4 +102,3 @@ export default function MiniProgressChart({
     </div>
   )
 }
-

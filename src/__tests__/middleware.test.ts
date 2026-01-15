@@ -127,4 +127,3 @@ describe('Middleware', () => {
     })
   })
 })
-

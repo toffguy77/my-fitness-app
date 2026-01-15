@@ -90,8 +90,8 @@ describe('Database Schema Migration Integrity - Property Tests', () => {
     describe('Property 1: Database Schema Migration Integrity', () => {
         /**
          * **Property 1: Database Schema Migration Integrity**
-         * *For any* database migration operation, all coordinator references in schema objects 
-         * (tables, columns, enums, functions, indexes) should be successfully renamed to curator 
+         * *For any* database migration operation, all coordinator references in schema objects
+         * (tables, columns, enums, functions, indexes) should be successfully renamed to curator
          * while preserving all data relationships and referential integrity
          * **Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5**
          */

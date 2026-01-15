@@ -69,7 +69,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Reports Page', () => {
   it('should render reports page', async () => {
     render(<ReportsPage />)
-    
+
     // Should show reports, paywall, or premium modal
     // Component may show loading first, then render content
     await waitFor(() => {
@@ -82,9 +82,8 @@ describe('Reports Page', () => {
 
   it('should show paywall for free users', async () => {
     render(<ReportsPage />)
-    
+
     // Should show paywall message (from custom title prop)
     await screen.findByText(/Отчеты доступны с Premium подпиской/i, {}, { timeout: 3000 })
   })
 })
-

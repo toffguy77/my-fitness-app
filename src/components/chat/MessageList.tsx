@@ -211,7 +211,7 @@ export default function MessageList({
                                             )}
                                         </div>
                                     )}
-                                    
+
                                     {/* Кнопки редактирования/удаления (только для своих сообщений) */}
                                     {isOwn && !isEditing && !isDeleting && onEditMessage && onDeleteMessage && (
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mt-1">
@@ -246,4 +246,3 @@ export default function MessageList({
         </div>
     )
 }
-

@@ -115,7 +115,7 @@ describe('MetricsCollector', () => {
       metricsCollector.counter('counter1', 'Counter 1', {}, 1)
       metricsCollector.gauge('gauge1', 'Gauge 1', 10, {})
       metricsCollector.histogram('histogram1', 'Histogram 1', 0.5, {})
-      
+
       const metrics = metricsCollector.getAllMetrics()
       expect(metrics).toHaveLength(3)
     })
@@ -123,10 +123,9 @@ describe('MetricsCollector', () => {
     it('should handle metrics with same name but different labels', () => {
       metricsCollector.counter('test_counter', 'Test counter', { method: 'GET' }, 1)
       metricsCollector.counter('test_counter', 'Test counter', { method: 'POST' }, 1)
-      
+
       const metrics = metricsCollector.getAllMetrics()
       expect(metrics).toHaveLength(2)
     })
   })
 })
-

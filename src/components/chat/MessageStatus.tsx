@@ -56,22 +56,21 @@ export function getMessageStatus(
 ): MessageStatus {
   if (isSending) return 'sending'
   if (!isOwn) return 'sent' // Для чужих сообщений не показываем статус
-  
+
   // Для своих сообщений определяем статус
   if (message.read_at) {
     return 'read'
   }
-  
+
   // Проверяем, было ли сообщение "доставлено" (прошло некоторое время с момента отправки)
   const sentTime = new Date(message.created_at).getTime()
   const now = Date.now()
   const timeSinceSent = now - sentTime
-  
+
   // Если прошло больше 1 секунды, считаем доставленным
   if (timeSinceSent > 1000) {
     return 'delivered'
   }
-  
+
   return 'sent'
 }
-

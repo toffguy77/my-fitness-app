@@ -53,7 +53,7 @@ jobs:
               echo "dry_run=true" >> $GITHUB_OUTPUT
               ;;
           esac
-          
+
           # Override with manual input if provided
           if [ -n "${{ github.event.inputs.keep_versions }}" ]; then
             echo "keep_versions=${{ github.event.inputs.keep_versions }}" >> $GITHUB_OUTPUT
@@ -86,33 +86,33 @@ jobs:
         run: |
           cat > cleanup-report.md << EOF
           # Container Registry Cleanup Report
-          
+
           **Date:** $(date)
           **Repository:** ${{ github.repository }}
           **Cleanup Type:** ${{ github.event.inputs.cleanup_type || 'standard' }}
           **Versions Kept:** ${{ steps.params.outputs.keep_versions }}
           **Dry Run:** ${{ steps.params.outputs.dry_run }}
-          
+
           ## Actions Taken
-          
+
           - Cleaned up old container image versions
           - Removed untagged images
           - Kept the ${{ steps.params.outputs.keep_versions }} most recent versions
-          
+
           ## Registry Information
-          
+
           - **Registry:** ${{ env.REGISTRY }}
           - **Image:** ${{ env.IMAGE_NAME }}
           - **Cleanup Frequency:** Weekly (Sundays at 2 AM UTC)
-          
+
           ## Storage Benefits
-          
+
           This cleanup helps:
           - Reduce storage costs
           - Improve registry performance
           - Maintain organization
           - Keep only relevant versions
-          
+
           EOF
 
       - name: Upload cleanup report
@@ -146,7 +146,7 @@ jobs:
           echo "**Date:** $(date)" >> registry-audit.md
           echo "**Repository:** ${{ github.repository }}" >> registry-audit.md
           echo "" >> registry-audit.md
-          
+
           # Get package information using GitHub API
           gh api \
             -H "Accept: application/vnd.github+json" \
@@ -159,7 +159,7 @@ jobs:
               created_at: .created_at,
               updated_at: .updated_at
             }' > package-info.json
-          
+
           echo "## Package Information" >> registry-audit.md
           echo "" >> registry-audit.md
           echo "- **Name:** $(jq -r '.name' package-info.json)" >> registry-audit.md
@@ -168,19 +168,19 @@ jobs:
           echo "- **Created:** $(jq -r '.created_at' package-info.json)" >> registry-audit.md
           echo "- **Updated:** $(jq -r '.updated_at' package-info.json)" >> registry-audit.md
           echo "" >> registry-audit.md
-          
+
           # Get version count
           VERSION_COUNT=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "/orgs/${{ github.repository_owner }}/packages/container/${{ github.event.repository.name }}/versions" \
             --jq 'length')
-          
+
           echo "## Version Statistics" >> registry-audit.md
           echo "" >> registry-audit.md
           echo "- **Total Versions:** ${VERSION_COUNT}" >> registry-audit.md
           echo "" >> registry-audit.md
-          
+
           # List recent versions
           echo "## Recent Versions" >> registry-audit.md
           echo "" >> registry-audit.md
@@ -212,24 +212,24 @@ jobs:
           echo "" >> tag-validation.md
           echo "**Date:** $(date)" >> tag-validation.md
           echo "" >> tag-validation.md
-          
+
           # Run tagging strategy script to generate tags
           ./scripts/docker-tagging-strategy.sh my-fitness-app ghcr.io ${{ github.repository }} generate-tags > generated-tags.txt
-          
+
           echo "## Generated Tags" >> tag-validation.md
           echo "" >> tag-validation.md
           echo "\`\`\`" >> tag-validation.md
           cat generated-tags.txt >> tag-validation.md
           echo "\`\`\`" >> tag-validation.md
           echo "" >> tag-validation.md
-          
+
           # Validate tag format
           echo "## Tag Validation" >> tag-validation.md
           echo "" >> tag-validation.md
-          
+
           VALID_TAGS=0
           INVALID_TAGS=0
-          
+
           while IFS= read -r tag; do
             if [[ "$tag" =~ ^[a-z0-9._/-]+:[a-zA-Z0-9._-]+$ ]]; then
               VALID_TAGS=$((VALID_TAGS + 1))
@@ -238,10 +238,10 @@ jobs:
               echo "- ❌ Invalid tag format: \`$tag\`" >> tag-validation.md
             fi
           done < generated-tags.txt
-          
+
           echo "- ✅ Valid tags: $VALID_TAGS" >> tag-validation.md
           echo "- ❌ Invalid tags: $INVALID_TAGS" >> tag-validation.md
-          
+
           if [ $INVALID_TAGS -gt 0 ]; then
             echo "Tag validation failed with $INVALID_TAGS invalid tags"
             exit 1

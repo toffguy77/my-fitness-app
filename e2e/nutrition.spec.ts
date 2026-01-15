@@ -25,10 +25,10 @@ test.describe('Nutrition Input Flow', () => {
     await page.fill('input[placeholder*="белки"]', '12')
     await page.fill('input[placeholder*="жиры"]', '6')
     await page.fill('input[placeholder*="углеводы"]', '60')
-    
+
     // Add meal
     await page.click('button:has-text("Добавить")')
-    
+
     // Meal should appear in list
     await expect(page.locator('text=Овсянка')).toBeVisible()
   })
@@ -39,12 +39,12 @@ test.describe('Nutrition Input Flow', () => {
     await page.fill('input[placeholder*="калории"]', '350')
     await page.fill('input[placeholder*="белки"]', '12')
     await page.click('button:has-text("Добавить")')
-    
+
     await page.fill('input[placeholder*="название"]', 'Курица')
     await page.fill('input[placeholder*="калории"]', '200')
     await page.fill('input[placeholder*="белки"]', '30')
     await page.click('button:has-text("Добавить")')
-    
+
     // Check totals
     await expect(page.locator('text=/550|ккал/i')).toBeVisible()
     await expect(page.locator('text=/42|белки/i')).toBeVisible()
@@ -58,10 +58,10 @@ test.describe('Nutrition Input Flow', () => {
     await page.fill('input[placeholder*="жиры"]', '6')
     await page.fill('input[placeholder*="углеводы"]', '60')
     await page.click('button:has-text("Добавить")')
-    
+
     // Save
     await page.click('button:has-text("Сохранить")')
-    
+
     // Should show success message or redirect
     await expect(page.locator('text=/сохранено|saved/i')).toBeVisible({ timeout: 5000 })
   })
@@ -70,12 +70,11 @@ test.describe('Nutrition Input Flow', () => {
     // Should have day type toggle
     await expect(page.locator('button:has-text(/тренировка|training/i)')).toBeVisible()
     await expect(page.locator('button:has-text(/отдых|rest/i)')).toBeVisible()
-    
+
     // Click rest day
     await page.click('button:has-text(/отдых|rest/i)')
-    
+
     // Targets should update (if different targets exist)
     await expect(page.locator('button:has-text(/отдых|rest/i)')).toHaveClass(/active|selected/)
   })
 })
-

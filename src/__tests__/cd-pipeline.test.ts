@@ -1,11 +1,11 @@
 /**
  * CD Pipeline Tests
- * 
+ *
  * Example-based tests that validate CD pipeline configuration and behavior
  * according to the requirements specification.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -75,7 +75,7 @@ describe('CD Pipeline Configuration', () => {
     /**
      * Example 8: Automatic Artifact Creation
      * Validates: Requirements 3.1
-     * 
+     *
      * When all tests pass in main branch, build artifact should be automatically created
      */
     describe('Example 8: Automatic Artifact Creation', () => {
@@ -196,7 +196,7 @@ describe('CD Pipeline Configuration', () => {
     /**
      * Example 9: Staging Deployment
      * Validates: Requirements 3.2
-     * 
+     *
      * When build artifact is created, automatic deployment to staging should occur
      */
     describe('Example 9: Staging Deployment', () => {
@@ -315,7 +315,7 @@ describe('CD Pipeline Configuration', () => {
     /**
      * Example 10: Production Deployment Gate
      * Validates: Requirements 3.3
-     * 
+     *
      * When staging tests pass, production deployment should be triggered
      */
     describe('Example 10: Production Deployment Gate', () => {

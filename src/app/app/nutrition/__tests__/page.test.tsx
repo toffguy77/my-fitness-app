@@ -50,10 +50,10 @@ jest.mock('@/utils/logger', () => ({
 describe('Nutrition Page', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Mock window.alert
     global.alert = jest.fn()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -73,7 +73,7 @@ describe('Nutrition Page', () => {
 
   it('should render nutrition page', async () => {
     render(<NutritionPage />)
-    
+
     // Should show nutrition page after loading
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -82,7 +82,7 @@ describe('Nutrition Page', () => {
 
   it('should display nutrition form after loading', async () => {
     render(<NutritionPage />)
-    
+
     // Should render nutrition page
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -91,7 +91,7 @@ describe('Nutrition Page', () => {
 
   it('should handle meal addition', async () => {
     render(<NutritionPage />)
-    
+
     // Should render nutrition page
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -100,7 +100,7 @@ describe('Nutrition Page', () => {
 
   it('should calculate totals from meals', async () => {
     render(<NutritionPage />)
-    
+
     // Should render nutrition page
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -109,7 +109,7 @@ describe('Nutrition Page', () => {
 
   it('should handle saving daily log', async () => {
     render(<NutritionPage />)
-    
+
     // Should render nutrition page
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('Nutrition Page', () => {
 
   it('should handle meal input', async () => {
     render(<NutritionPage />)
-    
+
     // Should render nutrition page
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -127,7 +127,7 @@ describe('Nutrition Page', () => {
 
   it('should handle day type toggle', async () => {
     render(<NutritionPage />)
-    
+
     // Should render nutrition page
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -136,7 +136,7 @@ describe('Nutrition Page', () => {
 
   it('should prevent editing completed days', async () => {
     const today = new Date().toISOString().split('T')[0]
-    
+
     // Mock completed log
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
@@ -153,7 +153,7 @@ describe('Nutrition Page', () => {
     })
 
     render(<NutritionPage />)
-    
+
     // Should show message about completed day (component shows "День завершен" instead of redirecting)
     await waitFor(() => {
       expect(screen.getByText(/день завершен|day completed/i)).toBeInTheDocument()
@@ -174,7 +174,7 @@ describe('Nutrition Page', () => {
     })
 
     render(<NutritionPage />)
-    
+
     // Should render nutrition page
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
@@ -193,11 +193,10 @@ describe('Nutrition Page', () => {
     })
 
     render(<NutritionPage />)
-    
+
     // Should render nutrition page even without targets
     await waitFor(() => {
       expect(screen.getByText('Ввод питания')).toBeInTheDocument()
     }, { timeout: 5000 })
   })
 })
-

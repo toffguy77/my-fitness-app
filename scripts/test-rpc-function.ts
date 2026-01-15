@@ -35,7 +35,7 @@ async function testFunction() {
   // Тест 1: Проверка существования функции
   console.log('1️⃣  Проверка существования функции...')
   const testUserId1 = generateTestUserId()
-  
+
   const { error: error1 } = await supabase.rpc('create_user_profile', {
     user_id: testUserId1,
     user_email: 'test-check@example.com',
@@ -45,7 +45,7 @@ async function testFunction() {
   })
 
   if (error1) {
-    if (error1.message?.includes('Could not find the function') || 
+    if (error1.message?.includes('Could not find the function') ||
         error1.message?.includes('function') && error1.message?.includes('not found') ||
         error1.message?.includes('schema cache')) {
       console.error('❌ Функция create_user_profile НЕ найдена в базе данных')
@@ -70,7 +70,7 @@ async function testFunction() {
   console.log('2️⃣  Проверка скорости выполнения...')
   const testUserId2 = generateTestUserId()
   const startTime = Date.now()
-  
+
   const { error: error2 } = await supabase.rpc('create_user_profile', {
     user_id: testUserId2,
     user_email: 'test-speed@example.com',
@@ -78,9 +78,9 @@ async function testFunction() {
     user_role: 'client',
     user_coordinator_id: null,
   })
-  
+
   const duration = Date.now() - startTime
-  
+
   if (error2) {
     if (error2.message?.includes('does not exist in auth.users')) {
       // Это ожидаемая ошибка - пользователь не существует
@@ -95,7 +95,7 @@ async function testFunction() {
   } else {
     console.log(`✅ Функция выполнена успешно за ${duration}ms`)
   }
-  
+
   if (duration < 100) {
     console.log(`✅ Скорость выполнения в норме: ${duration}ms (< 100ms)`)
   } else if (duration < 500) {
@@ -115,8 +115,8 @@ async function testFunction() {
   console.log('='.repeat(60))
   console.log('ИТОГИ ПРОВЕРКИ:')
   console.log('='.repeat(60))
-  
-  if (error1 && (error1.message?.includes('Could not find the function') || 
+
+  if (error1 && (error1.message?.includes('Could not find the function') ||
                  error1.message?.includes('not found'))) {
     console.log('❌ Функция НЕ найдена - примените миграцию v9.5')
   } else {
@@ -126,7 +126,7 @@ async function testFunction() {
     }
     console.log('✅ Функция готова к использованию')
   }
-  
+
   console.log('\n💡 Для полной проверки:')
   console.log('   1. Создайте тестового пользователя через signUp')
   console.log('   2. Вызовите функцию с реальным user_id')
@@ -143,4 +143,3 @@ testFunction()
     console.error('\n❌ Ошибка при проверке:', err)
     process.exit(1)
   })
-

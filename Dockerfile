@@ -152,4 +152,3 @@ EXPOSE 3069
 
 # Start development server
 CMD ["npm", "run", "dev"]
-

@@ -25,4 +25,3 @@
 3. Run containers as non-root users
 4. Scan images in CI/CD pipeline
 5. Monitor for new vulnerabilities
-

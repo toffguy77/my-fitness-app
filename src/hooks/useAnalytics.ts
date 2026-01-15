@@ -13,7 +13,7 @@ export function useAnalytics(userId?: string) {
     if (userId) {
       setMetricsUserId(userId)
     }
-    
+
     // Отслеживаем DAU при загрузке
     trackDAU()
   }, [userId])
@@ -37,7 +37,7 @@ export function useFeatureTracking(featureName: string, enabled: boolean = true)
       trackFeatureUse(featureName, properties)
     }
   }
-  
+
   return { track }
 }
 
@@ -48,7 +48,7 @@ export function useErrorTracking() {
   const track = (errorName: string, error: Error | string, properties?: Record<string, any>) => {
     trackError(errorName, error, properties)
   }
-  
+
   return { track }
 }
 
@@ -62,4 +62,3 @@ export function useEventTracking() {
     trackError,
   }
 }
-

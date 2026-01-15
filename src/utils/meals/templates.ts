@@ -39,14 +39,14 @@ export function loadMealTemplates(userId?: string): MealTemplate[] {
   try {
     const stored = localStorage.getItem(TEMPLATE_STORAGE_KEY)
     if (!stored) return []
-    
+
     const templates: MealTemplate[] = JSON.parse(stored)
-    
+
     // Фильтруем по userId, если указан
     if (userId) {
       return templates.filter(t => t.userId === userId || !t.userId)
     }
-    
+
     return templates
   } catch (error) {
     console.error('Ошибка загрузки шаблонов:', error)
@@ -130,4 +130,3 @@ export function getDefaultTemplates(): MealTemplate[] {
     },
   ]
 }
-

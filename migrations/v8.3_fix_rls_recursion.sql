@@ -107,4 +107,3 @@ COMMENT ON POLICY "Anyone can read public profiles" ON profiles IS 'Разреш
 COMMENT ON FUNCTION is_super_admin(UUID) IS 'Проверяет, является ли пользователь super_admin (без рекурсии RLS)';
 COMMENT ON FUNCTION is_coordinator(UUID) IS 'Проверяет, является ли пользователь coordinator (без рекурсии RLS)';
 COMMENT ON FUNCTION is_client_coordinator(UUID, UUID) IS 'Проверяет, является ли пользователь координатором клиента (без рекурсии RLS)';
-

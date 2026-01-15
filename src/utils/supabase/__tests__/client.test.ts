@@ -37,4 +37,3 @@ describe('Supabase Client', () => {
     expect(client).toBeDefined()
   })
 })
-

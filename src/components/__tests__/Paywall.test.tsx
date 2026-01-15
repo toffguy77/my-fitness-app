@@ -35,4 +35,3 @@ describe('Paywall Component', () => {
     expect(screen.getByText('Custom message')).toBeInTheDocument()
   })
 })
-

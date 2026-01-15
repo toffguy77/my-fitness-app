@@ -78,4 +78,3 @@ class ProductSearchCache {
 }
 
 export const productSearchCache = new ProductSearchCache()
-

@@ -9,7 +9,7 @@ let notificationSoundRef: { play: () => void } | null = null
  */
 export function initNotificationSound(): void {
   if (typeof window === 'undefined') return
-  
+
   // Создаем простой звук уведомления (beep)
   const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
   const audioContext = new AudioContextClass()
@@ -59,12 +59,8 @@ export function playNotificationSound(): void {
   if (!notificationSoundRef) {
     initNotificationSound()
   }
-  
+
   if (notificationSoundRef) {
     notificationSoundRef.play()
   }
 }
-
-
-
-

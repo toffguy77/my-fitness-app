@@ -3,7 +3,7 @@
 -- Description: Откат миграции v10.0 - возврат от "curator" к "coordinator"
 -- Date: 2025-01-13
 -- Version: 10.0-rollback
--- 
+--
 -- ВАЖНО: Выполнить ТОЛЬКО в случае необходимости отката миграции v10.0
 -- Восстанавливает все объекты БД с терминологией "coordinator"
 -- Требует наличия резервной копии migration_backup_v10
@@ -19,12 +19,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'migration_backup_v10') THEN
         RAISE EXCEPTION 'ОШИБКА: Резервная копия migration_backup_v10 не найдена. Откат невозможен.';
     END IF;
-    
+
     -- Проверить целостность резервной копии
     IF NOT EXISTS (SELECT 1 FROM migration_backup_v10.backup_metadata) THEN
         RAISE EXCEPTION 'ОШИБКА: Метаданные резервной копии повреждены. Откат небезопасен.';
     END IF;
-    
+
     RAISE NOTICE 'Резервная копия найдена. Начинаем откат миграции...';
 END
 $;
@@ -354,9 +354,9 @@ BEGIN
 
   -- Проверяем наличие колонки profile_visibility
   SELECT EXISTS (
-    SELECT 1 
-    FROM information_schema.columns 
-    WHERE table_name = 'profiles' 
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'profiles'
     AND column_name = 'profile_visibility'
   ) INTO has_profile_visibility;
 
@@ -448,42 +448,42 @@ RETURNS TABLE (
 BEGIN
     -- Проверить, что enum содержит coordinator
     RETURN QUERY
-    SELECT 
+    SELECT
         'enum_coordinator_exists'::TEXT,
         CASE WHEN 'coordinator'::TEXT = ANY(enum_range(NULL::user_role)::TEXT[]) THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Enum user_role содержит coordinator: ' || ('coordinator'::TEXT = ANY(enum_range(NULL::user_role)::TEXT[]))::TEXT;
-    
+
     -- Проверить, что таблица coordinator_notes существует
     RETURN QUERY
-    SELECT 
+    SELECT
         'coordinator_notes_table_exists'::TEXT,
         CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'coordinator_notes') THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Таблица coordinator_notes существует: ' || EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'coordinator_notes')::TEXT;
-    
+
     -- Проверить, что колонка coordinator_id существует в profiles
     RETURN QUERY
-    SELECT 
+    SELECT
         'profiles_coordinator_id_exists'::TEXT,
         CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'coordinator_id') THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Колонка coordinator_id в profiles существует: ' || EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'coordinator_id')::TEXT;
-    
+
     -- Проверить, что функция is_coordinator существует
     RETURN QUERY
-    SELECT 
+    SELECT
         'is_coordinator_function_exists'::TEXT,
         CASE WHEN EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'is_coordinator') THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Функция is_coordinator существует: ' || EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'is_coordinator')::TEXT;
-    
+
     -- Проверить количество записей в основных таблицах
     RETURN QUERY
-    SELECT 
+    SELECT
         'data_integrity_profiles'::TEXT,
         'OK'::TEXT,
         'Записей в profiles: ' || COUNT(*)::TEXT
     FROM profiles;
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         'data_integrity_coordinator_notes'::TEXT,
         'OK'::TEXT,
         'Записей в coordinator_notes: ' || COUNT(*)::TEXT
@@ -514,7 +514,7 @@ INSERT INTO rollback_report (details) VALUES (
 -- ============================================
 
 -- Показать результат отката
-SELECT 
+SELECT
     'ОТКАТ МИГРАЦИИ ЗАВЕРШЕН' as status,
     NOW() as completed_at;
 
@@ -530,7 +530,7 @@ SELECT * FROM rollback_report ORDER BY rollback_date DESC LIMIT 1;
 
 -- Откат миграции завершен.
 -- Все объекты БД восстановлены к состоянию "coordinator".
--- 
+--
 -- ВАЖНО: После подтверждения успешного отката рекомендуется:
 -- 1. Проверить работу приложения
 -- 2. Убедиться в корректности данных

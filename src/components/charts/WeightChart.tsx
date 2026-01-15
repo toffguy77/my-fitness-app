@@ -146,4 +146,3 @@ export default function WeightChart({ data, period, onPeriodChange }: WeightChar
     </div>
   )
 }
-

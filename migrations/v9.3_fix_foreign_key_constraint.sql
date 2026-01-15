@@ -48,7 +48,7 @@ BEGIN
 
     -- Если достигнуто максимальное количество попыток, выбрасываем ошибку
     IF retry_count >= max_retries THEN
-      RAISE EXCEPTION 'User with id % does not exist in auth.users after % attempts (waited %.1f seconds). Please try again or check if user was created successfully in auth.', 
+      RAISE EXCEPTION 'User with id % does not exist in auth.users after % attempts (waited %.1f seconds). Please try again or check if user was created successfully in auth.',
         user_id, max_retries, EXTRACT(EPOCH FROM retry_delay) * max_retries;
     END IF;
 
@@ -93,4 +93,3 @@ COMMENT ON FUNCTION create_user_profile(UUID, TEXT, TEXT, user_role, UUID) IS '�
 
 -- Функция теперь проверяет существование пользователя в auth.users
 -- перед созданием профиля, что предотвращает ошибку foreign key constraint.
-

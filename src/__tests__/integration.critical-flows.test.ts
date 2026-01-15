@@ -265,5 +265,3 @@ describe('Critical User Flows Integration Tests', () => {
     })
   })
 })
-
-

@@ -51,7 +51,7 @@ describe('Navigation', () => {
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
     ;(usePathname as jest.Mock).mockReturnValue('/app/dashboard')
     cleanup = []
-    
+
     // Mock window.innerWidth
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
@@ -69,10 +69,10 @@ describe('Navigation', () => {
   it('renders navigation items', async () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     // Wait for loading to complete
     await screen.findByText('Дашборд', {}, { timeout: 2000 })
-    
+
     expect(screen.getByText('Дашборд')).toBeInTheDocument()
     expect(screen.getByText('Питание')).toBeInTheDocument()
     expect(screen.getByText('Отчеты')).toBeInTheDocument()
@@ -81,7 +81,7 @@ describe('Navigation', () => {
   it('prefetches routes on mount', async () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     // Wait for component to load
     await waitFor(() => {
       expect(mockPrefetch).toHaveBeenCalled()
@@ -91,13 +91,13 @@ describe('Navigation', () => {
   it('prefetches route on hover (desktop)', async () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
-    
+
     fireEvent.mouseEnter(nutritionButton!)
-    
+
     // Prefetch should be called (may be called multiple times due to useEffect)
     expect(mockPrefetch).toHaveBeenCalled()
   })
@@ -105,13 +105,13 @@ describe('Navigation', () => {
   it('prefetches route on focus (desktop)', async () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
-    
+
     fireEvent.focus(nutritionButton!)
-    
+
     // Prefetch should be called
     expect(mockPrefetch).toHaveBeenCalled()
   })
@@ -126,23 +126,23 @@ describe('Navigation', () => {
 
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
-    
+
     fireEvent.touchStart(nutritionButton!)
-    
+
     // Prefetch should be called
     expect(mockPrefetch).toHaveBeenCalled()
   })
 
   it('highlights active route', async () => {
     ;(usePathname as jest.Mock).mockReturnValue('/app/nutrition')
-    
+
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toHaveClass('bg-white', 'text-zinc-950')
@@ -151,7 +151,7 @@ describe('Navigation', () => {
   it('renders desktop sidebar on large screens', () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     const sidebar = document.querySelector('aside')
     expect(sidebar).toBeInTheDocument()
     expect(sidebar).toHaveClass('fixed', 'left-0')
@@ -167,7 +167,7 @@ describe('Navigation', () => {
 
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     const bottomNav = document.querySelector('nav.fixed.bottom-0')
     expect(bottomNav).toBeInTheDocument()
   })
@@ -175,34 +175,33 @@ describe('Navigation', () => {
   it('navigates on button click', async () => {
     const { unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     await screen.findByText('Питание', {}, { timeout: 2000 })
     const nutritionButton = screen.getByText('Питание').closest('button')
     expect(nutritionButton).toBeInTheDocument()
-    
+
     fireEvent.click(nutritionButton!)
-    
+
     expect(mockPush).toHaveBeenCalledWith('/app/nutrition')
   })
 
   it('handles window resize', () => {
     const { rerender, unmount } = render(<Navigation />)
     cleanup.push(unmount)
-    
+
     // Change viewport size
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
       value: 375,
     })
-    
+
     fireEvent(window, new Event('resize'))
-    
+
     // Component should re-render with new layout
     rerender(<Navigation />)
-    
+
     const bottomNav = document.querySelector('nav.fixed.bottom-0')
     expect(bottomNav).toBeInTheDocument()
   })
 })
-

@@ -54,7 +54,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Dashboard Edge Cases', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -80,7 +80,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -112,7 +112,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -153,7 +153,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -185,7 +185,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -217,7 +217,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -255,7 +255,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -293,7 +293,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -321,7 +321,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -358,7 +358,7 @@ describe('Dashboard Edge Cases', () => {
       })
 
       render(<DashboardPage />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('Дашборд')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -370,7 +370,7 @@ describe('Dashboard Edge Cases', () => {
   describe('State Edge Cases', () => {
     it('should handle rapid state changes', async () => {
       const { rerender } = render(<DashboardPage />)
-      
+
       // Rapidly change state
       rerender(<DashboardPage />)
       rerender(<DashboardPage />)
@@ -383,5 +383,3 @@ describe('Dashboard Edge Cases', () => {
     })
   })
 })
-
-

@@ -55,4 +55,3 @@ export interface OCRScanRecord {
   cost_usd: number | null
   created_at: string
 }
-

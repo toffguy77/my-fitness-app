@@ -25,7 +25,7 @@ export default function AchievementsNotifications({ achievements, onClose }: Ach
             // Поделиться достижением в социальных сетях
             const text = `Я получил достижение "${achievement.name}" в BURCEV! 🏆`
             const url = window.location.origin
-            
+
             if (navigator.share) {
               navigator.share({
                 title: `Достижение: ${achievement.name}`,
@@ -46,4 +46,3 @@ export default function AchievementsNotifications({ achievements, onClose }: Ach
     </>
   )
 }
-

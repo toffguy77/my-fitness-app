@@ -12,14 +12,14 @@ jest.mock('next/server', () => {
       init: ResponseInit | undefined
       status: number
       headers: Headers
-      
+
       constructor(body?: BodyInit | null, init?: ResponseInit) {
         this.body = body || null
         this.init = init
         this.status = init?.status || 200
         this.headers = new Headers(init?.headers)
       }
-      
+
       text() {
         return Promise.resolve(this.body ? String(this.body) : '')
       }
@@ -77,4 +77,3 @@ describe('/metrics endpoint', () => {
     metricsCollector.getAllMetrics = originalGetAllMetrics
   })
 })
-

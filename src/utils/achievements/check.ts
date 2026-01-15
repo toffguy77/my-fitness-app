@@ -27,7 +27,7 @@ export async function checkAchievements(
     })
 
     const data = await response.json()
-    
+
     // Если ответ не успешен, но это не критично - просто возвращаем пустой массив
     if (!response.ok) {
       logger.warn('Achievements check: ошибка ответа от API', {
@@ -85,4 +85,3 @@ export async function checkAchievementsAfterWeightLog(): Promise<void> {
     logger.warn('Achievements: ошибка проверки после записи веса', { error })
   }
 }
-

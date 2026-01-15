@@ -11,32 +11,32 @@ interface LogoProps {
 
 export default function Logo({ width = 200, height = 60, className = '', onClick }: LogoProps) {
   const svgContent = (
-    <svg 
-      width={width} 
-      height={height} 
-      viewBox="0 0 200 60" 
-      fill="none" 
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 200 60"
+      fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className="text-gray-900"
     >
       {/* Left Weight */}
       <rect x="20" y="18" width="6" height="24" rx="1" fill="currentColor"/>
       <rect x="30" y="12" width="8" height="36" rx="2" fill="currentColor"/>
-      
+
       {/* Text */}
-      <text 
-        x="100" 
-        y="38" 
-        fontFamily="Inter, -apple-system, sans-serif" 
-        fontWeight="700" 
-        fontSize="24" 
-        letterSpacing="0.15em" 
-        textAnchor="middle" 
+      <text
+        x="100"
+        y="38"
+        fontFamily="Inter, -apple-system, sans-serif"
+        fontWeight="700"
+        fontSize="24"
+        letterSpacing="0.15em"
+        textAnchor="middle"
         fill="currentColor"
       >
         BURCEV
       </text>
-      
+
       {/* Right Weight */}
       <rect x="162" y="12" width="8" height="36" rx="2" fill="currentColor"/>
       <rect x="174" y="18" width="6" height="24" rx="1" fill="currentColor"/>

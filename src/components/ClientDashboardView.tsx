@@ -787,4 +787,3 @@ function StatCard({ label, value, target, unit }: { label: string; value: string
     </div>
   )
 }
-

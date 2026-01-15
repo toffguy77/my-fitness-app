@@ -167,4 +167,3 @@ class MetricsCollector {
 
 // Singleton instance
 export const metricsCollector = new MetricsCollector()
-

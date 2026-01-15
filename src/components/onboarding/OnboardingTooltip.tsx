@@ -9,10 +9,10 @@ interface OnboardingTooltipProps {
   position?: 'top' | 'bottom' | 'left' | 'right'
 }
 
-export default function OnboardingTooltip({ 
-  content, 
+export default function OnboardingTooltip({
+  content,
   title,
-  position = 'top' 
+  position = 'top'
 }: OnboardingTooltipProps) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -36,7 +36,7 @@ export default function OnboardingTooltip({
       >
         <Info size={14} />
       </button>
-      
+
       {isOpen && (
         <div
           className={`absolute z-50 w-64 p-3 bg-zinc-800 text-zinc-100 text-sm rounded-lg shadow-xl ${positionClasses[position]}`}
@@ -58,4 +58,3 @@ export default function OnboardingTooltip({
     </div>
   )
 }
-

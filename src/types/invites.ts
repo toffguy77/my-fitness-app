@@ -24,4 +24,3 @@ export interface InviteCodeValidation {
     expires_at?: string
     remaining_uses?: number
 }
-

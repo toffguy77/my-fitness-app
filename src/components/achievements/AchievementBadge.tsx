@@ -24,13 +24,13 @@ export default function AchievementBadge({
   showProgress = true,
 }: AchievementBadgeProps) {
   const Icon = iconMap[achievement.icon_name || 'trophy'] || Trophy
-  
+
   const sizeClasses = {
     sm: 'w-12 h-12',
     md: 'w-16 h-16',
     lg: 'w-24 h-24',
   }
-  
+
   const iconSizes = {
     sm: 20,
     md: 28,
@@ -47,8 +47,8 @@ export default function AchievementBadge({
           ${sizeClasses[size]}
           rounded-full flex items-center justify-center
           border-2 transition-all
-          ${isUnlocked 
-            ? 'bg-zinc-800 border-amber-400/30 text-amber-400' 
+          ${isUnlocked
+            ? 'bg-zinc-800 border-amber-400/30 text-amber-400'
             : 'bg-zinc-900 border-zinc-700 text-zinc-500'
           }
         `}
@@ -61,7 +61,7 @@ export default function AchievementBadge({
           </div>
         )}
       </div>
-      
+
       {showProgress && !isUnlocked && progress > 0 && (
         <div className="absolute bottom-0 left-0 right-0 bg-zinc-800 rounded-full h-1 overflow-hidden">
           <div
@@ -70,7 +70,7 @@ export default function AchievementBadge({
           />
         </div>
       )}
-      
+
       {size !== 'sm' && (
         <div className="mt-2 text-center">
           <p className={`text-xs font-medium ${isUnlocked ? 'text-zinc-100' : 'text-zinc-500'}`}>
@@ -84,4 +84,3 @@ export default function AchievementBadge({
     </div>
   )
 }
-

@@ -16,4 +16,3 @@ export default function InputHint({ hint, className = '' }: InputHintProps) {
     </div>
   )
 }
-

@@ -293,7 +293,7 @@ describe('Nutrition Page Business Logic', () => {
         it('should handle save validation errors', () => {
             const totals = { calories: 0, protein: 0, fats: 0, carbs: 0 }
             const hasData = totals.calories > 0 || totals.protein > 0 || totals.fats > 0 || totals.carbs > 0
-            
+
             expect(hasData).toBe(false)
         })
 
@@ -384,4 +384,3 @@ describe('Nutrition Page Business Logic', () => {
         })
     })
 })
-

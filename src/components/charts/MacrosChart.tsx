@@ -243,4 +243,3 @@ export default function MacrosChart({ data, period, showTargets = true, chartTyp
     </div>
   )
 }
-

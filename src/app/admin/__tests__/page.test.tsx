@@ -49,9 +49,8 @@ jest.mock('@/utils/logger', () => ({
 describe('Admin Page', () => {
   it('should render admin page', async () => {
     render(<AdminPage />)
-    
+
     // Should show admin title (more specific)
     await screen.findByText(/Панель администратора/i, {}, { timeout: 3000 })
   })
 })
-

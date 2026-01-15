@@ -349,7 +349,7 @@ describe('Migration Safety and Rollback Capability - Property Tests', () => {
     describe('Property 8: Migration Safety and Rollback Capability', () => {
         /**
          * **Property 8: Migration Safety and Rollback Capability**
-         * *For any* migration step, if the operation fails, the system should automatically 
+         * *For any* migration step, if the operation fails, the system should automatically
          * rollback to the previous state with no data loss or corruption
          * **Validates: Requirements 8.2, 8.3, 8.5**
          */

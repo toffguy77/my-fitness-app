@@ -276,7 +276,7 @@ describe('Onboarding Calculations', () => {
     it('should calculate age correctly', () => {
       const today = new Date('2024-01-15')
       const birthDate = new Date('1990-01-15')
-      
+
       let age = today.getFullYear() - birthDate.getFullYear()
       const monthDiff = today.getMonth() - birthDate.getMonth()
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -289,7 +289,7 @@ describe('Onboarding Calculations', () => {
     it('should handle birthday not yet occurred this year', () => {
       const today = new Date('2024-01-15')
       const birthDate = new Date('1990-06-15')
-      
+
       let age = today.getFullYear() - birthDate.getFullYear()
       const monthDiff = today.getMonth() - birthDate.getMonth()
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -302,7 +302,7 @@ describe('Onboarding Calculations', () => {
     it('should handle birthday already occurred this year', () => {
       const today = new Date('2024-12-15')
       const birthDate = new Date('1990-06-15')
-      
+
       let age = today.getFullYear() - birthDate.getFullYear()
       const monthDiff = today.getMonth() - birthDate.getMonth()
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
@@ -313,4 +313,3 @@ describe('Onboarding Calculations', () => {
     })
   })
 })
-

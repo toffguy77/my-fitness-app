@@ -61,4 +61,3 @@ export function useSwipeGesture(
     }
   }, [elementRef, onSwipeLeft, onSwipeRight, threshold, minVelocity])
 }
-

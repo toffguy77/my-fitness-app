@@ -5,7 +5,7 @@ on:
     workflows: ["CI Pipeline"]
     types: [completed]
     branches: [main]
-  
+
   # Allow manual deployment
   workflow_dispatch:
     inputs:
@@ -27,22 +27,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build application
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
-      
+
       - name: Send deployment start notification
         if: ${{ env.TELEGRAM_BOT_TOKEN != '' }}
         continue-on-error: true
@@ -51,40 +51,40 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-      
+
       - name: Deploy to Staging (Placeholder)
         id: deploy-staging
         run: |
           echo "🚀 Deploying to staging environment..."
           echo "📦 Building Docker image..."
-          
+
           # Placeholder for actual deployment
           # In real implementation, this would:
           # 1. Build Docker image
           # 2. Push to container registry
           # 3. Deploy to staging environment (e.g., Vercel, AWS, etc.)
-          
+
           # Simulate deployment
           sleep 10
-          
+
           # Set deployment URL (placeholder)
           echo "deployment_url=https://staging.myfitnessapp.com" >> $GITHUB_OUTPUT
           echo "✅ Staging deployment completed"
-      
+
       - name: Run staging health checks
         run: |
           echo "🔍 Running staging health checks..."
-          
+
           # Placeholder for health checks
           # In real implementation, this would:
           # 1. Check application endpoints
           # 2. Verify database connectivity
           # 3. Test critical user flows
-          
+
           # Simulate health checks
           sleep 5
           echo "✅ All health checks passed"
-      
+
       - name: Send deployment success notification
         if: success()
         continue-on-error: true
@@ -93,7 +93,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-      
+
       - name: Send deployment failure notification
         if: failure()
         continue-on-error: true
@@ -112,22 +112,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build application
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      
+
       - name: Send deployment start notification
         if: ${{ env.TELEGRAM_BOT_TOKEN != '' }}
         continue-on-error: true
@@ -136,41 +136,41 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-      
+
       - name: Deploy to Production (Placeholder)
         id: deploy-production
         run: |
           echo "🚀 Deploying to production environment..."
           echo "📦 Using staging-verified build..."
-          
+
           # Placeholder for actual deployment
           # In real implementation, this would:
           # 1. Use the same Docker image from staging
           # 2. Deploy to production environment
           # 3. Update load balancer/CDN
-          
+
           # Simulate deployment
           sleep 15
-          
+
           # Set deployment URL (placeholder)
           echo "deployment_url=https://myfitnessapp.com" >> $GITHUB_OUTPUT
           echo "✅ Production deployment completed"
-      
+
       - name: Run production health checks
         run: |
           echo "🔍 Running production health checks..."
-          
+
           # Placeholder for health checks
           # In real implementation, this would:
           # 1. Check application endpoints
           # 2. Verify database connectivity
           # 3. Test critical user flows
           # 4. Check monitoring systems
-          
+
           # Simulate health checks
           sleep 10
           echo "✅ All production health checks passed"
-      
+
       - name: Send deployment success notification
         if: success()
         continue-on-error: true
@@ -179,7 +179,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-      
+
       - name: Send deployment failure notification
         if: failure()
         continue-on-error: true
@@ -197,13 +197,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Determine rollback environment and get previous version
         id: rollback-info
         run: |
@@ -216,7 +216,7 @@ jobs:
             ENVIRONMENT="production"
           fi
           echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
-          
+
           # Get previous successful deployment version
           # In real implementation, this would query deployment history
           # For now, we'll use the previous commit if it exists
@@ -227,12 +227,12 @@ jobs:
             PREVIOUS_VERSION=$(git rev-parse HEAD)
           fi
           echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
-          
+
           echo "🔄 Preparing rollback for $ENVIRONMENT to version $PREVIOUS_VERSION"
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build previous version
         run: |
           echo "📦 Building previous version for rollback..."
@@ -242,7 +242,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ steps.rollback-info.outputs.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.STAGING_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.rollback-info.outputs.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.STAGING_SUPABASE_ANON_KEY }}
-      
+
       - name: Perform automatic rollback
         id: perform-rollback
         run: |
@@ -250,7 +250,7 @@ jobs:
           echo "🌍 Environment: ${{ steps.rollback-info.outputs.environment }}"
           echo "📦 Rolling back to: ${{ steps.rollback-info.outputs.previous_version }}"
           echo "❌ Failed version: ${{ github.sha }}"
-          
+
           # Enhanced rollback logic
           # In real implementation, this would:
           # 1. Deploy the previous successful version
@@ -258,23 +258,23 @@ jobs:
           # 3. Clear CDN caches
           # 4. Update monitoring systems
           # 5. Verify rollback success
-          
+
           # Simulate enhanced rollback
           sleep 10
-          
+
           # Set deployment URL based on environment
           if [[ "${{ steps.rollback-info.outputs.environment }}" == "production" ]]; then
             echo "deployment_url=https://myfitnessapp.com" >> $GITHUB_OUTPUT
           else
             echo "deployment_url=https://staging.myfitnessapp.com" >> $GITHUB_OUTPUT
           fi
-          
+
           echo "✅ Automatic rollback completed successfully"
-      
+
       - name: Verify rollback success
         run: |
           echo "🔍 Verifying rollback was successful..."
-          
+
           # Enhanced health verification after rollback
           # In real implementation, this would:
           # 1. Check application health
@@ -282,13 +282,13 @@ jobs:
           # 3. Test authentication flows
           # 4. Check monitoring systems
           # 5. Validate no data corruption
-          
+
           # Simulate comprehensive health checks
           sleep 8
-          
+
           echo "✅ Rollback health verification passed"
           echo "🎯 System restored to stable state"
-      
+
       - name: Create rollback incident record
         run: |
           # Create detailed incident record
@@ -309,10 +309,10 @@ jobs:
             }
           }
           EOF
-          
+
           echo "📋 Rollback incident record created:"
           cat rollback-incident.json
-      
+
       - name: Send enhanced rollback notification
         continue-on-error: true
         run: |
@@ -320,7 +320,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-      
+
       - name: Send rollback success notification
         if: success()
         continue-on-error: true
@@ -329,7 +329,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-      
+
       - name: Send rollback failure notification
         if: failure()
         continue-on-error: true
@@ -338,7 +338,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-      
+
       - name: Upload rollback artifacts
         if: always()
         uses: actions/upload-artifact@v4

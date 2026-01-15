@@ -1,5 +1,5 @@
 'use client'
- 
+
 
 import { useState, useEffect, useRef } from 'react'
 import { Calendar } from 'lucide-react'
@@ -95,7 +95,7 @@ export default function DateInput({
     if (val.length > 2) val = val.slice(0, 2)
     if (val && parseInt(val, 10) > 31) val = '31'
     setDay(val)
-    
+
     // Автопереход на следующее поле при заполнении
     if (val.length === 2) {
       monthRef.current?.focus()
@@ -108,7 +108,7 @@ export default function DateInput({
     if (val.length > 2) val = val.slice(0, 2)
     if (val && parseInt(val, 10) > 12) val = '12'
     setMonth(val)
-    
+
     // Автопереход на следующее поле при заполнении
     if (val.length === 2) {
       yearRef.current?.focus()
@@ -122,7 +122,7 @@ export default function DateInput({
     const currentYear = new Date().getFullYear()
     if (val && parseInt(val, 10) > currentYear) val = String(currentYear)
     setYear(val)
-    
+
     if (val.length === 4) {
       updateDate(day, month, val)
     }
@@ -168,7 +168,7 @@ export default function DateInput({
           {label}
         </label>
       )}
-      
+
       <div className="flex items-center gap-2">
         {/* Три поля для ввода */}
         <div className="flex items-center gap-2 flex-1">
@@ -255,4 +255,3 @@ export default function DateInput({
     </div>
   )
 }
-

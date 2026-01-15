@@ -357,5 +357,3 @@ describe('Profile Utilities Extended Tests', () => {
     })
   })
 })
-
-

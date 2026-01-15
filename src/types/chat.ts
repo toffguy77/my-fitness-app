@@ -18,4 +18,3 @@ export interface ChatParticipant {
     email?: string
     avatar_url?: string
 }
-

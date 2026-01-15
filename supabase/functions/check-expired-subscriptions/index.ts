@@ -1,6 +1,6 @@
 /**
  * Supabase Edge Function для проверки и деактивации истекших подписок
- * 
+ *
  * Использование:
  * POST /functions/v1/check-expired-subscriptions
  * Вызывается через cron job ежедневно в 00:00 UTC
@@ -49,10 +49,10 @@ serve(async (req) => {
 
     if (!expiredSubscriptions || expiredSubscriptions.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           message: 'Нет истекших подписок',
-          count: 0 
+          count: 0
         }),
         { headers: { 'Content-Type': 'application/json' } }
       )
@@ -90,7 +90,7 @@ serve(async (req) => {
                   <h2 style="color: #333;">Привет!</h2>
                   <p>Ваша Premium подписка истекла.</p>
                   <p>Вы можете продолжить пользоваться базовым функционалом или продлить Premium подписку для доступа ко всем возможностям.</p>
-                  <a href="${APP_URL}/app/settings" 
+                  <a href="${APP_URL}/app/settings"
                      style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
                     Управление подпиской
                   </a>
@@ -131,4 +131,3 @@ serve(async (req) => {
     )
   }
 })
-

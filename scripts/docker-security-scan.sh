@@ -52,34 +52,34 @@ install_trivy() {
 # Function to scan with Trivy
 scan_with_trivy() {
     echo -e "${GREEN}Running Trivy vulnerability scan...${NC}"
-    
+
     # Scan for vulnerabilities
     trivy image \
         --format json \
         --output "${SCAN_RESULTS_DIR}/trivy-vulnerabilities.json" \
         "${FULL_IMAGE_NAME}"
-    
+
     # Scan for misconfigurations
     trivy image \
         --scanners config \
         --format json \
         --output "${SCAN_RESULTS_DIR}/trivy-config.json" \
         "${FULL_IMAGE_NAME}"
-    
+
     # Generate human-readable report
     trivy image \
         --format table \
         --output "${SCAN_RESULTS_DIR}/trivy-report.txt" \
         "${FULL_IMAGE_NAME}"
-    
+
     # Check for critical vulnerabilities
     CRITICAL_COUNT=$(trivy image --format json "${FULL_IMAGE_NAME}" | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length')
     HIGH_COUNT=$(trivy image --format json "${FULL_IMAGE_NAME}" | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length')
-    
+
     echo -e "${YELLOW}Security scan results:${NC}"
     echo -e "Critical vulnerabilities: ${CRITICAL_COUNT}"
     echo -e "High vulnerabilities: ${HIGH_COUNT}"
-    
+
     # Fail if critical vulnerabilities found
     if [ "${CRITICAL_COUNT}" -gt 0 ]; then
         echo -e "${RED}❌ Critical vulnerabilities found! Build should fail.${NC}"
@@ -96,7 +96,7 @@ scan_with_trivy() {
 # Function to scan Docker best practices
 scan_docker_best_practices() {
     echo -e "${GREEN}Checking Docker best practices...${NC}"
-    
+
     # Check if Dockerfile follows best practices
     if command_exists hadolint; then
         echo -e "${GREEN}Running Hadolint Dockerfile linter...${NC}"
@@ -104,11 +104,11 @@ scan_docker_best_practices() {
     else
         echo -e "${YELLOW}Hadolint not found, skipping Dockerfile linting${NC}"
     fi
-    
+
     # Check image size
     IMAGE_SIZE=$(docker images "${FULL_IMAGE_NAME}" --format "table {{.Size}}" | tail -n 1)
     echo -e "${YELLOW}Image size: ${IMAGE_SIZE}${NC}"
-    
+
     # Check for non-root user
     USER_CHECK=$(docker run --rm "${FULL_IMAGE_NAME}" whoami 2>/dev/null || echo "unknown")
     if [ "${USER_CHECK}" != "nextjs" ] && [ "${USER_CHECK}" != "unknown" ]; then
@@ -121,7 +121,7 @@ scan_docker_best_practices() {
 # Function to generate security report
 generate_security_report() {
     echo -e "${GREEN}Generating security report...${NC}"
-    
+
     cat > "${SCAN_RESULTS_DIR}/security-report.md" << EOF
 # Docker Security Scan Report
 
@@ -163,25 +163,25 @@ main() {
         echo -e "${RED}Docker image ${FULL_IMAGE_NAME} not found. Please build it first.${NC}"
         exit 1
     fi
-    
+
     # Install security tools
     install_trivy
-    
+
     # Run security scans
     if scan_with_trivy; then
         SCAN_RESULT=0
     else
         SCAN_RESULT=1
     fi
-    
+
     # Run best practices check
     scan_docker_best_practices
-    
+
     # Generate report
     generate_security_report
-    
+
     echo -e "${GREEN}Security scan completed. Results saved to ${SCAN_RESULTS_DIR}${NC}"
-    
+
     exit ${SCAN_RESULT}
 }
 

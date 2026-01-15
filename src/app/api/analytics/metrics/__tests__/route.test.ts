@@ -11,7 +11,7 @@ jest.mock('next/server', () => {
     NextRequest: class NextRequest {
       url: string
       cookies: any
-      
+
       constructor(public input: RequestInfo | URL, public init?: RequestInit) {
         this.url = typeof input === 'string' ? input : input.toString()
         this.cookies = {
@@ -30,7 +30,7 @@ jest.mock('next/server', () => {
       statusText: string
       headers: Headers
       cookies: any
-      
+
       constructor(body?: BodyInit | null, init?: ResponseInit) {
         this.body = body || null
         this.init = init
@@ -42,11 +42,11 @@ jest.mock('next/server', () => {
           delete: jest.fn(),
         }
       }
-      
+
       json() {
         return Promise.resolve(this.body ? JSON.parse(this.body as string) : {})
       }
-      
+
       static json(data: any, init?: ResponseInit) {
         return new NextResponse(JSON.stringify(data), {
           ...init,
@@ -86,7 +86,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Analytics Metrics API', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Default: authenticated super_admin user
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'admin-123' } },
@@ -208,7 +208,7 @@ describe('Analytics Metrics API', () => {
     })
 
     const response = await GET(request)
-    
+
     // Note: Currently the API allows coordinator access, but in production should check role
     // For now, we'll just verify it doesn't crash
     expect(response.status).toBeGreaterThanOrEqual(200)
@@ -262,8 +262,7 @@ describe('Analytics Metrics API', () => {
     })
 
     const response = await GET(request)
-    
+
     expect(response.status).toBe(500)
   })
 })
-

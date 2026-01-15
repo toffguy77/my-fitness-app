@@ -53,7 +53,7 @@ describe('UserProductsManager Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -184,4 +184,3 @@ describe('UserProductsManager Component', () => {
     expect(container.firstChild).toBeInTheDocument()
   })
 })
-

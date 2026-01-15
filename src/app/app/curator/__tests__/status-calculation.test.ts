@@ -230,4 +230,3 @@ describe('Curator Status Calculation (Traffic Light System v2)', () => {
     })
   })
 })
-

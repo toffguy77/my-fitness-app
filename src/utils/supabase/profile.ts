@@ -149,4 +149,3 @@ export function hasActiveSubscription(profile: UserProfile | null): boolean {
   })
   return hasActive
 }
-

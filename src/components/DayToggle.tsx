@@ -40,4 +40,3 @@ export default function DayToggle({ value, onChange, disabled = false }: DayTogg
     </div>
   )
 }
-

@@ -388,5 +388,3 @@ describe('ClientDashboardView Interactive Tests', () => {
     })
   })
 })
-
-

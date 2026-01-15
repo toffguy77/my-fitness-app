@@ -104,4 +104,3 @@ describe('Products Cache', () => {
     expect(productSearchCache.get('test2')).toBeNull()
   })
 })
-

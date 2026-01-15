@@ -565,4 +565,3 @@ export default function CuratorDashboard() {
     </main>
   )
 }
-

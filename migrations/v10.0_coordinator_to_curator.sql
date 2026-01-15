@@ -3,7 +3,7 @@
 -- Description: Замена роли "coordinator" на "curator" во всей базе данных
 -- Date: 2025-01-12
 -- Version: 10.0
--- 
+--
 -- ВАЖНО: Эта миграция переименовывает роль coordinator в curator
 -- и все связанные объекты БД (таблицы, колонки, функции, индексы)
 -- ============================================
@@ -362,9 +362,9 @@ BEGIN
 
   -- Проверяем наличие колонки profile_visibility
   SELECT EXISTS (
-    SELECT 1 
-    FROM information_schema.columns 
-    WHERE table_name = 'profiles' 
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'profiles'
     AND column_name = 'profile_visibility'
   ) INTO has_profile_visibility;
 

@@ -306,7 +306,7 @@ describe('Dashboard Business Logic', () => {
         it('should handle invalid date strings gracefully', () => {
             const invalidDate = 'invalid-date'
             const date = new Date(invalidDate)
-            
+
             // Should handle invalid dates without crashing
             expect(isNaN(date.getTime())).toBe(true)
         })
@@ -325,7 +325,7 @@ describe('Dashboard Business Logic', () => {
         it('should handle empty meals array', () => {
             const logData = { meals: [] }
             let mealsArray: any[] = []
-            
+
             if (logData.meals !== null && logData.meals !== undefined) {
                 if (Array.isArray(logData.meals)) {
                     mealsArray = logData.meals
@@ -338,7 +338,7 @@ describe('Dashboard Business Logic', () => {
         it('should handle invalid JSON in meals string', () => {
             const logData = { meals: 'invalid json' }
             let mealsArray: any[] = []
-            
+
             try {
                 if (logData.meals !== null && logData.meals !== undefined) {
                     if (Array.isArray(logData.meals)) {
@@ -361,7 +361,7 @@ describe('Dashboard Business Logic', () => {
             const actual = 1800
             const target = 2000
             const diff = Math.abs((actual - target) / target)
-            
+
             expect(diff).toBe(0.1) // 10% difference
         })
 
@@ -371,7 +371,7 @@ describe('Dashboard Business Logic', () => {
             const diff = target > 0
                 ? Math.abs((actual - target) / target)
                 : actual > 0 ? 1 : 0
-            
+
             expect(diff).toBe(1) // Should handle division by zero
         })
 
@@ -380,7 +380,7 @@ describe('Dashboard Business Logic', () => {
             const target = 2000
             const diff = Math.abs((actual - target) / target)
             const withinRange = diff <= 0.15
-            
+
             expect(withinRange).toBe(true)
         })
 
@@ -389,9 +389,8 @@ describe('Dashboard Business Logic', () => {
             const target = 2000
             const diff = Math.abs((actual - target) / target)
             const withinRange = diff <= 0.15
-            
+
             expect(withinRange).toBe(false)
         })
     })
 })
-

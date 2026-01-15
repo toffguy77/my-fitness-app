@@ -181,4 +181,3 @@ export async function exportToPDF(
   // Сохранение PDF
   doc.save(filename || `nutrition_report_${new Date().toISOString().split('T')[0]}.pdf`)
 }
-

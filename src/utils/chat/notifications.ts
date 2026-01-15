@@ -70,7 +70,3 @@ export function hasNotificationPermission(): boolean {
   }
   return Notification.permission === 'granted'
 }
-
-
-
-

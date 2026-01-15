@@ -152,4 +152,3 @@ describe('Paywall Extended Tests', () => {
     expect(overlay).toBeInTheDocument()
   })
 })
-

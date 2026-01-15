@@ -1,6 +1,6 @@
 /**
  * Performance Monitoring Integration Tests
- * 
+ *
  * Tests for CI/CD pipeline performance monitoring system
  */
 

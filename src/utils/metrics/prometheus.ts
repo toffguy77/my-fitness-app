@@ -141,4 +141,3 @@ export function exportToPrometheus(metrics: Metric[]): string {
 
   return lines.join('\n')
 }
-

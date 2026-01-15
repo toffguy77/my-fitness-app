@@ -74,7 +74,7 @@ describe('Login Page', () => {
 
   it('should render login form', () => {
     render(<LoginPage />)
-    
+
     expect(screen.getByText(/Вход в систему/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Пароль/i)).toBeInTheDocument()
@@ -84,10 +84,10 @@ describe('Login Page', () => {
   it('should show validation error on empty form submission', async () => {
     const user = userEvent.setup()
     render(<LoginPage />)
-    
+
     const submitButton = screen.getByRole('button', { name: /Войти/i })
     await user.click(submitButton)
-    
+
     // HTML5 validation should prevent submission
     const emailInput = screen.getByLabelText(/Email/i) as HTMLInputElement
     expect(emailInput.validity.valueMissing).toBe(true)
@@ -96,13 +96,13 @@ describe('Login Page', () => {
   it('should handle login form input', async () => {
     const user = userEvent.setup()
     render(<LoginPage />)
-    
+
     const emailInput = screen.getByLabelText(/Email/i)
     const passwordInput = screen.getByLabelText(/Пароль/i)
-    
+
     await user.type(emailInput, 'test@example.com')
     await user.type(passwordInput, 'password123')
-    
+
     expect(emailInput).toHaveValue('test@example.com')
     expect(passwordInput).toHaveValue('password123')
   })
@@ -113,13 +113,13 @@ describe('Login Page', () => {
       data: { user: null },
       error: { message: 'Invalid credentials' },
     })
-    
+
     render(<LoginPage />)
-    
+
     await user.type(screen.getByLabelText(/Email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/Пароль/i), 'wrongpassword')
     await user.click(screen.getByRole('button', { name: /Войти/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument()
     })
@@ -133,13 +133,13 @@ describe('Login Page', () => {
       },
       error: null,
     })
-    
+
     render(<LoginPage />)
-    
+
     await user.type(screen.getByLabelText(/Email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/Пароль/i), 'password123')
     await user.click(screen.getByRole('button', { name: /Войти/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Успешный вход/i)).toBeInTheDocument()
     })
@@ -147,7 +147,7 @@ describe('Login Page', () => {
 
   it('should have link to registration page', () => {
     render(<LoginPage />)
-    
+
     const registerLink = screen.getByRole('link', { name: /Зарегистрироваться/i })
     expect(registerLink).toHaveAttribute('href', '/register')
   })
@@ -155,16 +155,15 @@ describe('Login Page', () => {
   it('should disable submit button while loading', async () => {
     const user = userEvent.setup()
     mockSignIn.mockImplementation(() => new Promise(() => {})) // Never resolves
-    
+
     render(<LoginPage />)
-    
+
     await user.type(screen.getByLabelText(/Email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/Пароль/i), 'password123')
     await user.click(screen.getByRole('button', { name: /Войти/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Вход.../i })).toBeDisabled()
     })
   })
 })
-

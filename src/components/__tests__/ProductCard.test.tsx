@@ -160,4 +160,3 @@ describe('ProductCard Component', () => {
     expect(screen.queryByText('Test Brand')).not.toBeInTheDocument()
   })
 })
-

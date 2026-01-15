@@ -33,7 +33,7 @@ describe('Supabase Client Extended Tests', () => {
       },
     })
   })
-  
+
   afterEach(() => {
     // Restore original environment
     process.env = { ...originalEnv }
@@ -46,14 +46,14 @@ describe('Supabase Client Extended Tests', () => {
       jest.isolateModules(() => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key-123'
-        
+
         mockCreateBrowserClient.mockClear()
         const clientModule = require('../client')
         createClient = clientModule.createClient
       })
 
       const client = createClient!()
-      
+
       expect(client).toBeDefined()
       expect(client.from).toBeDefined()
       expect(client.auth).toBeDefined()
@@ -89,13 +89,13 @@ describe('Supabase Client Extended Tests', () => {
       jest.isolateModules(() => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
-        
+
         const clientModule = require('../client')
         createClient = clientModule.createClient
       })
 
       const client = createClient!()
-      
+
       expect(client).toBeDefined()
       expect(client.from).toBeDefined()
       expect(typeof client.from).toBe('function')
@@ -106,13 +106,13 @@ describe('Supabase Client Extended Tests', () => {
       jest.isolateModules(() => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
-        
+
         const clientModule = require('../client')
         createClient = clientModule.createClient
       })
 
       const client = createClient!()
-      
+
       expect(client.auth).toBeDefined()
       expect(client.auth.getUser).toBeDefined()
       expect(client.auth.signOut).toBeDefined()
@@ -125,14 +125,14 @@ describe('Supabase Client Extended Tests', () => {
       jest.isolateModules(() => {
         process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
-        
+
         mockCreateBrowserClient.mockClear()
         const clientModule = require('../client')
         createClient = clientModule.createClient
       })
 
       const client = createClient!()
-      
+
       // Verify client was created successfully
       expect(client).toBeDefined()
       expect(client.from).toBeDefined()
@@ -151,7 +151,7 @@ describe('Supabase Client Extended Tests', () => {
         jest.isolateModules(() => {
           process.env.NEXT_PUBLIC_SUPABASE_URL = url
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
-          
+
           mockCreateBrowserClient.mockClear()
           const clientModule = require('../client')
           createClient = clientModule.createClient

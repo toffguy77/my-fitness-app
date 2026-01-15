@@ -1548,4 +1548,3 @@ function StatCard({ label, value, target, unit }: { label: string; value: string
 }
 
 // Компонент модального окна для добавления приема пищи
-

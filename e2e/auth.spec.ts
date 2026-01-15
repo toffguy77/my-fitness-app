@@ -33,7 +33,7 @@ test.describe('Authentication Flow', () => {
   test('should show validation errors on empty form submission', async ({ page }) => {
     await page.goto('/register')
     await page.click('button[type="submit"]')
-    
+
     // Wait for validation errors
     await expect(page.locator('text=/обязательно|required/i')).toBeVisible()
   })
@@ -43,7 +43,7 @@ test.describe('Authentication Flow', () => {
     await page.fill('input[type="email"]', 'invalid-email')
     await page.fill('input[type="password"]', 'password123')
     await page.click('button[type="submit"]')
-    
+
     // Should show email validation error
     await expect(page.locator('text=/email|почта/i')).toBeVisible()
   })
@@ -52,9 +52,8 @@ test.describe('Authentication Flow', () => {
     // This test would require setting up authenticated state
     // For now, we'll test the redirect logic
     await page.goto('/login')
-    
+
     // If user is already authenticated, middleware should redirect
     // This is tested in integration tests with mocks
   })
 })
-

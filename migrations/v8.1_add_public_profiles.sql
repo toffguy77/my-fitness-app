@@ -5,14 +5,14 @@
 
 -- Добавляем поле для настройки приватности профиля
 ALTER TABLE profiles
-ADD COLUMN IF NOT EXISTS profile_visibility TEXT DEFAULT 'private' 
+ADD COLUMN IF NOT EXISTS profile_visibility TEXT DEFAULT 'private'
   CHECK (profile_visibility IN ('private', 'public'));
 
 COMMENT ON COLUMN profiles.profile_visibility IS 'Видимость профиля: private (приватный) или public (публичный)';
 
 -- Создаем индекс для быстрого поиска публичных профилей
-CREATE INDEX IF NOT EXISTS idx_profiles_public 
-ON profiles(profile_visibility) 
+CREATE INDEX IF NOT EXISTS idx_profiles_public
+ON profiles(profile_visibility)
 WHERE profile_visibility = 'public';
 
 -- Обновляем RLS политики для публичных профилей
@@ -24,11 +24,10 @@ USING (
   profile_visibility = 'public' OR
   auth.uid() = id OR
   (profiles.coordinator_id = auth.uid() AND EXISTS (
-    SELECT 1 FROM profiles p 
+    SELECT 1 FROM profiles p
     WHERE p.id = auth.uid()
     AND p.role = 'coordinator'
   ))
 );
 
 COMMENT ON POLICY "Anyone can read public profiles" ON profiles IS 'Разрешает чтение публичных профилей всем, а также профилей своих клиентов для координаторов';
-

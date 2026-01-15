@@ -44,4 +44,3 @@ export interface FavoriteProduct {
     user_product_id?: string | null
     created_at: string
 }
-

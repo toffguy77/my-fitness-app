@@ -37,4 +37,3 @@ describe('Skeleton Component', () => {
     expect(skeletons.length).toBeGreaterThan(0)
   })
 })
-

@@ -1,6 +1,6 @@
 /**
  * Supabase Edge Function для отправки email уведомлений
- * 
+ *
  * Использование:
  * POST /functions/v1/send-notification
  * Body: { userId: string, template: EmailTemplate, data: EmailData }
@@ -142,7 +142,7 @@ function getEmailHtml(template: string, data: Record<string, unknown>): string {
           <h2 style="color: #333;">Привет${userName}!</h2>
           <p>Не забудьте внести данные о питании за сегодня.</p>
           <p>Регулярное отслеживание поможет вам достичь ваших целей.</p>
-          <a href="${APP_URL}/app/nutrition" 
+          <a href="${APP_URL}/app/nutrition"
              style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
             Внести данные
           </a>
@@ -156,7 +156,7 @@ function getEmailHtml(template: string, data: Record<string, unknown>): string {
           ${data.noteContent ? `<div style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <p style="margin: 0; white-space: pre-wrap;">${data.noteContent}</p>
           </div>` : ''}
-          <a href="${APP_URL}/app/dashboard${data.date ? `?date=${data.date}` : ''}" 
+          <a href="${APP_URL}/app/dashboard${data.date ? `?date=${data.date}` : ''}"
              style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
             Посмотреть на дашборде
           </a>
@@ -168,7 +168,7 @@ function getEmailHtml(template: string, data: Record<string, unknown>): string {
           <h2 style="color: #333;">Привет${userName}!</h2>
           <p>Ваша Premium подписка истекает через <strong>${data.daysRemaining || 3} ${data.daysRemaining === 1 ? 'день' : 'дня'}</strong>.</p>
           <p>Чтобы продолжить пользоваться всеми возможностями платформы, продлите подписку.</p>
-          <a href="${APP_URL}/app/settings" 
+          <a href="${APP_URL}/app/settings"
              style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
             Управление подпиской
           </a>
@@ -180,7 +180,7 @@ function getEmailHtml(template: string, data: Record<string, unknown>): string {
           <h2 style="color: #333;">Привет${userName}!</h2>
           <p>Ваша Premium подписка истекла.</p>
           <p>Вы можете продолжить пользоваться базовым функционалом или продлить Premium подписку для доступа ко всем возможностям.</p>
-          <a href="${APP_URL}/app/settings" 
+          <a href="${APP_URL}/app/settings"
              style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
             Управление подпиской
           </a>
@@ -207,4 +207,3 @@ function getEmailText(template: string, data: Record<string, unknown>): string {
       return 'Уведомление от Fitness App'
   }
 }
-

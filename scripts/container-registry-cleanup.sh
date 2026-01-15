@@ -28,20 +28,20 @@ echo -e "${BLUE}Dry run: ${DRY_RUN}${NC}"
 cleanup_ghcr() {
     local org_or_user=$1
     local package_name=$2
-    
+
     echo -e "${GREEN}Cleaning up GitHub Container Registry...${NC}"
-    
+
     if [ "${DRY_RUN}" = "true" ]; then
         echo -e "${YELLOW}DRY RUN: Would delete old versions of ${org_or_user}/${package_name}${NC}"
         return 0
     fi
-    
+
     # Get package versions (requires GitHub CLI)
     if ! command -v gh >/dev/null 2>&1; then
         echo -e "${RED}GitHub CLI (gh) not found. Please install it first.${NC}"
         return 1
     fi
-    
+
     # List and delete old versions
     gh api \
         -H "Accept: application/vnd.github+json" \
@@ -63,26 +63,26 @@ cleanup_ghcr() {
 # Function to cleanup Docker Hub
 cleanup_docker_hub() {
     local repository=$1
-    
+
     echo -e "${GREEN}Cleaning up Docker Hub...${NC}"
-    
+
     if [ "${DRY_RUN}" = "true" ]; then
         echo -e "${YELLOW}DRY RUN: Would delete old versions of ${repository}${NC}"
         return 0
     fi
-    
+
     # Docker Hub cleanup requires API token
     if [ -z "${DOCKER_HUB_TOKEN}" ]; then
         echo -e "${RED}DOCKER_HUB_TOKEN environment variable not set${NC}"
         return 1
     fi
-    
+
     # Get authentication token
     local token=$(curl -s -H "Content-Type: application/json" \
         -X POST \
         -d "{\"username\": \"${DOCKER_HUB_USERNAME}\", \"password\": \"${DOCKER_HUB_TOKEN}\"}" \
         https://hub.docker.com/v2/users/login/ | jq -r .token)
-    
+
     # Get tags and delete old ones
     curl -s -H "Authorization: JWT ${token}" \
         "https://hub.docker.com/v2/repositories/${repository}/tags/?page_size=100" \
@@ -101,20 +101,20 @@ cleanup_docker_hub() {
 cleanup_ecr() {
     local repository=$1
     local region=${AWS_REGION:-us-east-1}
-    
+
     echo -e "${GREEN}Cleaning up AWS ECR...${NC}"
-    
+
     if [ "${DRY_RUN}" = "true" ]; then
         echo -e "${YELLOW}DRY RUN: Would delete old images from ${repository}${NC}"
         return 0
     fi
-    
+
     # Check if AWS CLI is available
     if ! command -v aws >/dev/null 2>&1; then
         echo -e "${RED}AWS CLI not found. Please install it first.${NC}"
         return 1
     fi
-    
+
     # Get image digests to delete (keep latest N images)
     aws ecr describe-images \
         --repository-name "${repository}" \
@@ -137,20 +137,20 @@ cleanup_ecr() {
 cleanup_gcr() {
     local project_id=$1
     local image_name=$2
-    
+
     echo -e "${GREEN}Cleaning up Google Container Registry...${NC}"
-    
+
     if [ "${DRY_RUN}" = "true" ]; then
         echo -e "${YELLOW}DRY RUN: Would delete old images from gcr.io/${project_id}/${image_name}${NC}"
         return 0
     fi
-    
+
     # Check if gcloud is available
     if ! command -v gcloud >/dev/null 2>&1; then
         echo -e "${RED}Google Cloud CLI (gcloud) not found. Please install it first.${NC}"
         return 1
     fi
-    
+
     # List and delete old images
     gcloud container images list-tags "gcr.io/${project_id}/${image_name}" \
         --limit=999999 \
@@ -169,7 +169,7 @@ cleanup_gcr() {
 generate_cleanup_report() {
     local registry=$1
     local image=$2
-    
+
     cat > "./container-cleanup-report.md" << EOF
 # Container Registry Cleanup Report
 
@@ -228,9 +228,9 @@ main() {
             exit 1
             ;;
     esac
-    
+
     generate_cleanup_report "${REGISTRY_TYPE}" "${IMAGE_NAME}"
-    
+
     echo -e "${GREEN}Container registry cleanup completed${NC}"
 }
 

@@ -15,7 +15,7 @@ let onboardingStartTime: number | null = null
 export function initMetrics(userId?: string) {
   initSession(userId)
   sessionStartTime = Date.now()
-  
+
   // Отслеживаем начало сессии
   trackEvent('page_view', 'app_loaded', {
     timestamp: sessionStartTime,
@@ -48,7 +48,7 @@ export function trackTTFVComplete(action: string) {
       ttfv_ms: ttfv,
       ttfv_seconds: Math.round(ttfvSeconds),
     })
-    
+
     // Record TTFV metric
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -62,7 +62,7 @@ export function trackTTFVComplete(action: string) {
     } catch {
       // Ignore metrics errors
     }
-    
+
     firstValueTime = null
   }
 }
@@ -75,7 +75,7 @@ export function trackDAU() {
   trackEvent('feature_used', 'daily_active_user', {
     date: today,
   })
-  
+
   // Record DAU metric
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -103,7 +103,7 @@ export function trackOnboardingStart() {
   trackEvent('onboarding_start', 'onboarding_started', {
     timestamp: onboardingStartTime,
   })
-  
+
   // Record onboarding start metric
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -129,7 +129,7 @@ export function trackOnboardingComplete(step: number, totalSteps: number) {
       duration_seconds: Math.round(durationSeconds),
       completion_rate: (step / totalSteps) * 100,
     })
-    
+
     // Record onboarding metrics
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -148,7 +148,7 @@ export function trackOnboardingComplete(step: number, totalSteps: number) {
     } catch {
       // Ignore metrics errors
     }
-    
+
     onboardingStartTime = null
   }
 }
@@ -161,7 +161,7 @@ export function trackFeatureAdoption(featureName: string, properties?: Record<st
     ...properties,
     feature_adoption: true,
   })
-  
+
   // Record feature usage metric
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -213,7 +213,7 @@ export function trackSessionEnd() {
       duration_seconds: Math.round(durationSeconds),
       duration_minutes: Math.round(duration / 60000),
     })
-    
+
     // Record session duration metric
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -227,7 +227,7 @@ export function trackSessionEnd() {
     } catch {
       // Ignore metrics errors
     }
-    
+
     sessionStartTime = null
   }
 }
@@ -239,7 +239,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     trackSessionEnd()
   })
-  
+
   // Также отслеживаем при скрытии страницы
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
@@ -247,4 +247,3 @@ if (typeof window !== 'undefined') {
     }
   })
 }
-

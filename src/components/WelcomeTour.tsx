@@ -169,7 +169,7 @@ export default function WelcomeTour({ onComplete }: WelcomeTourProps) {
             </button>
           </div>
           <p className="text-sm text-zinc-300 mb-4">{currentStepData.description}</p>
-          
+
           {/* Progress */}
           <div className="mb-3">
             <div className="w-full bg-zinc-800 rounded-full h-1.5">
@@ -204,4 +204,3 @@ export default function WelcomeTour({ onComplete }: WelcomeTourProps) {
     </>
   )
 }
-

@@ -236,4 +236,3 @@ describe('Profile Utilities', () => {
     })
   })
 })
-

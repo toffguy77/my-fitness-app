@@ -1,9 +1,9 @@
 /**
  * Comprehensive CI/CD System Tests
- * 
+ *
  * Integration tests for the complete CI/CD pipeline flow, rollback scenarios,
  * and performance tests for the pipeline system.
- * 
+ *
  * Requirements: 1.5, 6.5
  */
 
@@ -93,7 +93,7 @@ describe('Comprehensive CI/CD System Tests', () => {
     /**
      * Integration Tests for Full Pipeline Flow
      * Validates: Requirements 1.5
-     * 
+     *
      * Tests the complete flow from code push to production deployment
      */
     describe('Full Pipeline Integration Tests', () => {
@@ -240,7 +240,7 @@ describe('Comprehensive CI/CD System Tests', () => {
     /**
      * Rollback Scenario Tests
      * Validates: Requirements 3.4
-     * 
+     *
      * Tests various rollback scenarios and recovery mechanisms
      */
     describe('Rollback Scenario Tests', () => {
@@ -355,7 +355,7 @@ describe('Comprehensive CI/CD System Tests', () => {
     /**
      * Performance Tests for Pipeline
      * Validates: Requirements 6.5
-     * 
+     *
      * Tests pipeline performance, optimization, and resource usage
      */
     describe('Pipeline Performance Tests', () => {

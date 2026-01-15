@@ -42,7 +42,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Onboarding Page', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -66,7 +66,7 @@ describe('Onboarding Page', () => {
 
   it('should render onboarding page', async () => {
     render(<OnboardingPage />)
-    
+
     // Should show loading initially
     await waitFor(() => {
       expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
@@ -80,7 +80,7 @@ describe('Onboarding Page', () => {
     })
 
     render(<OnboardingPage />)
-    
+
     // Should redirect to login
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/login')
@@ -98,7 +98,7 @@ describe('Onboarding Page', () => {
     })
 
     render(<OnboardingPage />)
-    
+
     // Should redirect to dashboard
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/app/dashboard')
@@ -117,7 +117,7 @@ describe('Onboarding Page', () => {
     })
 
     render(<OnboardingPage />)
-    
+
     // Wait for page to load and check for any onboarding content
     // The component may show loading first, then render the form
     await waitFor(() => {
@@ -131,7 +131,7 @@ describe('Onboarding Page', () => {
 
   it('should handle form input', async () => {
     render(<OnboardingPage />)
-    
+
     // Should render onboarding page
     await waitFor(() => {
       expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
@@ -140,11 +140,10 @@ describe('Onboarding Page', () => {
 
   it('should navigate between steps', async () => {
     render(<OnboardingPage />)
-    
+
     // Should render onboarding page
     await waitFor(() => {
       expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 })
-

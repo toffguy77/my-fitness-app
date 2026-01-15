@@ -180,4 +180,3 @@ describe('Register Page', () => {
     expect(passwordInput).toHaveAttribute('minLength', '6')
   })
 })
-
