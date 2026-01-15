@@ -313,7 +313,7 @@ async function main() {
                         if (fs.existsSync(contextFile)) {
                             context = JSON.parse(fs.readFileSync(contextFile, 'utf8'));
                         }
-                    } catch (_error) {
+                    } catch {
                         console.warn('Could not read context file, using minimal context');
                     }
 

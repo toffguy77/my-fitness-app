@@ -13,7 +13,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 class PerformanceOptimizer {
@@ -165,7 +164,7 @@ class PerformanceOptimizer {
             let sourceHash = '';
             try {
                 sourceHash = execSync('git ls-tree -r HEAD src/ 2>/dev/null | git hash-object --stdin 2>/dev/null || echo "no-git"', { encoding: 'utf8' }).trim();
-            } catch (gitError) {
+            } catch {
                 sourceHash = 'no-git-' + Date.now();
             }
 
@@ -175,7 +174,7 @@ class PerformanceOptimizer {
                 try {
                     const content = fs.readFileSync(file, 'utf8');
                     configHash += content;
-                } catch (fileError) {
+                } catch {
                     // Skip files that can't be read
                 }
             });

@@ -1,0 +1,38 @@
+{
+  "period": "7 days",
+  "generatedAt": "2026-01-15T19:08:37.900Z",
+  "summary": {
+    "totalRuns": 50,
+    "successfulRuns": 50,
+    "overallSuccessRate": 100,
+    "averagePipelineDuration": 908,
+    "totalPipelineTime": 45380
+  },
+  "jobs": {
+    "test-job": {
+      "totalRuns": 26,
+      "successfulRuns": 26,
+      "successRate": 100,
+      "averageDuration": 1656,
+      "minDuration": 51,
+      "maxDuration": 40825,
+      "averageMemory": 29,
+      "averageCpu": 50
+    },
+    "threshold-test": {
+      "totalRuns": 24,
+      "successfulRuns": 24,
+      "successRate": 100,
+      "averageDuration": 97,
+      "minDuration": 53,
+      "maxDuration": 396,
+      "averageMemory": 29,
+      "averageCpu": 50
+    }
+  },
+  "trends": {
+    "test-job": "improving",
+    "threshold-test": "degrading"
+  },
+  "recommendations": []
+}
