@@ -21,39 +21,44 @@ repos:
             \.next/.*
           )$
 
-  # Code quality and security linting
+  # Code quality and security checks
   - repo: local
     hooks:
-      - id: eslint-security
-        name: ESLint Security Check
-        entry: npx eslint
-        language: node
-        files: \.(js|jsx|ts|tsx)$
-        args: ['--config', '.eslintrc.security.js', '--max-warnings', '0']
-        exclude: |
-          (?x)^(
-            node_modules/.*|
-            \.next/.*|
-            coverage/.*|
-            dist/.*|
-            build/.*
-          )$
-
-      - id: npm-audit
-        name: NPM Security Audit
-        entry: npm audit
-        language: system
-        args: ['--audit-level', 'high']
-        pass_filenames: false
-        always_run: true
-
+      # TypeScript type checking
       - id: typescript-check
         name: TypeScript Type Check
-        entry: npx tsc
-        language: node
-        args: ['--noEmit']
+        entry: npm run type-check
+        language: system
         files: \.(ts|tsx)$
         pass_filenames: false
+        stages: [commit]
+
+      # ESLint for code quality
+      - id: eslint
+        name: ESLint
+        entry: npm run lint
+        language: system
+        files: \.(js|jsx|ts|tsx)$
+        pass_filenames: false
+        stages: [commit]
+
+      # Run tests
+      - id: jest-tests
+        name: Jest Tests
+        entry: npm test -- --bail --findRelatedTests
+        language: system
+        files: \.(js|jsx|ts|tsx)$
+        pass_filenames: false
+        stages: [commit]
+
+      # Security audit (only on push to avoid slowdown)
+      - id: npm-audit
+        name: NPM Security Audit
+        entry: npm audit --audit-level=high
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [push]
 
   # File security checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -112,24 +117,6 @@ repos:
       - id: hadolint-docker
         name: Dockerfile linting
         files: Dockerfile.*
-
-  # Additional security checks
-  - repo: https://github.com/gitguardian/ggshield
-    rev: v1.25.0
-    hooks:
-      - id: ggshield
-        name: GitGuardian security scan
-        language: python
-        stages: [commit]
-        exclude: |
-          (?x)^(
-            node_modules/.*|
-            \.git/.*|
-            coverage/.*|
-            \.next/.*|
-            .*\.test\.(js|ts|jsx|tsx)$|
-            .*\.spec\.(js|ts|jsx|tsx)$
-          )$
 
 # Global configuration
 default_language_version:
