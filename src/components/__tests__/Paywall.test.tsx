@@ -25,7 +25,7 @@ describe('Paywall Component', () => {
     render(<Paywall />)
 
     // Should show premium message (more specific)
-    expect(screen.getByText(/Подключите работу с координатором/i)).toBeInTheDocument()
+    expect(screen.getByText(/Подключите работу с куратором/i)).toBeInTheDocument()
   })
 
   it('should accept custom title and message', () => {

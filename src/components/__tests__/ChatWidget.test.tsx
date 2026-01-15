@@ -89,7 +89,7 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
 describe('ChatWidget Component', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -121,9 +121,9 @@ describe('ChatWidget Component', () => {
   })
 
   it('should render chat widget button', async () => {
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
-    // Wait for coordinatorProfile to load and button to render
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
+    // Wait for curatorProfile to load and button to render
     await waitFor(() => {
       const button = screen.queryByRole('button', { name: /чат с/i })
       expect(button).toBeInTheDocument()
@@ -132,8 +132,8 @@ describe('ChatWidget Component', () => {
 
   it('should open chat window when button is clicked', async () => {
     const user = userEvent.setup()
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
     await waitFor(() => {
       const button = screen.queryByRole('button')
       if (button) {
@@ -155,8 +155,8 @@ describe('ChatWidget Component', () => {
 
   it('should close chat window when close button is clicked', async () => {
     const user = userEvent.setup()
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
     await waitFor(() => {
       const button = screen.queryByRole('button')
       if (button) {
@@ -167,7 +167,7 @@ describe('ChatWidget Component', () => {
     const openButton = screen.queryByRole('button')
     if (openButton) {
       await user.click(openButton)
-      
+
       await waitFor(() => {
         expect(screen.queryByTestId('chat-window')).toBeInTheDocument()
       }, { timeout: 3000 })
@@ -182,8 +182,8 @@ describe('ChatWidget Component', () => {
     }
   })
 
-  it('should not render when coordinatorId is null', () => {
-    const { container } = render(<ChatWidget userId="user-123" coordinatorId={null} />)
+  it('should not render when curatorId is null', () => {
+    const { container } = render(<ChatWidget userId="user-123" curatorId={null} />)
     expect(container.firstChild).toBeNull()
   })
 
@@ -201,8 +201,8 @@ describe('ChatWidget Component', () => {
       }),
     })
 
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
     await waitFor(() => {
       const badge = screen.queryByText('2')
       if (badge) {
@@ -212,8 +212,8 @@ describe('ChatWidget Component', () => {
   })
 
   it('should handle loading state', () => {
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
     // Component may show loading initially
     expect(screen.queryByText(/загрузка/i) || screen.queryByRole('button')).toBeDefined()
   })
@@ -221,9 +221,9 @@ describe('ChatWidget Component', () => {
   it('should show notification when new message received', async () => {
     const toast = require('react-hot-toast').default
     const { subscribeToMessages } = require('@/utils/chat/realtime')
-    
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
+
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
     await waitFor(() => {
       const button = screen.queryByRole('button')
       if (button) {
@@ -244,9 +244,9 @@ describe('ChatWidget Component', () => {
         read_at: null,
         is_deleted: false,
       }
-      
+
       onNewMessage(testMessage)
-      
+
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalled()
       })
@@ -255,7 +255,7 @@ describe('ChatWidget Component', () => {
 
   it('should play notification sound when new message received', async () => {
     const { subscribeToMessages } = require('@/utils/chat/realtime')
-    
+
     // Mock AudioContext methods
     const mockOscillator = {
       connect: jest.fn(),
@@ -264,7 +264,7 @@ describe('ChatWidget Component', () => {
       start: jest.fn(),
       stop: jest.fn(),
     }
-    
+
     const mockGain = {
       connect: jest.fn(),
       gain: {
@@ -272,18 +272,18 @@ describe('ChatWidget Component', () => {
         exponentialRampToValueAtTime: jest.fn(),
       },
     }
-    
+
     const mockAudioContext = {
       createOscillator: jest.fn(() => mockOscillator),
       createGain: jest.fn(() => mockGain),
       destination: {},
       currentTime: 0,
     }
-    
+
     global.AudioContext = jest.fn().mockImplementation(() => mockAudioContext) as any
-    
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
+
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
     await waitFor(() => {
       const button = screen.queryByRole('button')
       if (button) {
@@ -304,9 +304,9 @@ describe('ChatWidget Component', () => {
         read_at: null,
         is_deleted: false,
       }
-      
+
       onNewMessage(testMessage)
-      
+
       // Wait a bit for sound to be triggered
       await waitFor(() => {
         // AudioContext should be called to create sound
@@ -317,7 +317,7 @@ describe('ChatWidget Component', () => {
 
   it('should reset unread count when chat is opened', async () => {
     const user = userEvent.setup()
-    
+
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -339,8 +339,8 @@ describe('ChatWidget Component', () => {
       }),
     })
 
-    render(<ChatWidget userId="user-123" coordinatorId="coordinator-123" />)
-    
+    render(<ChatWidget userId="user-123" curatorId="curator-123" />)
+
     await waitFor(() => {
       const button = screen.queryByRole('button')
       if (button) {
@@ -351,11 +351,11 @@ describe('ChatWidget Component', () => {
     const button = screen.queryByRole('button')
     if (button) {
       await user.click(button)
-      
+
       await waitFor(() => {
         expect(screen.queryByTestId('chat-window')).toBeInTheDocument()
       }, { timeout: 3000 })
-      
+
       // Unread count should be reset (badge should not be visible)
       const badge = screen.queryByText('2')
       expect(badge).not.toBeInTheDocument()

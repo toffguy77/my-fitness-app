@@ -54,7 +54,7 @@ describe('GlobalChatWidget Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -68,7 +68,7 @@ describe('GlobalChatWidget Component', () => {
     })
 
     const { container } = render(<GlobalChatWidget />)
-    
+
     await waitFor(() => {
       expect(container.firstChild).toBeNull()
     })
@@ -77,73 +77,73 @@ describe('GlobalChatWidget Component', () => {
   it('should not render when user is not premium', async () => {
     getUserProfile.mockResolvedValue({
       id: 'user-123',
-      coordinator_id: 'coordinator-123',
+      curator_id: 'curator-123',
       role: 'client',
     })
-    
+
     hasActiveSubscription.mockReturnValue(false)
 
     const { container } = render(<GlobalChatWidget />)
-    
+
     await waitFor(() => {
       expect(container.firstChild).toBeNull()
     })
   })
 
-  it('should not render when user has no coordinator', async () => {
+  it('should not render when user has no curator', async () => {
     getUserProfile.mockResolvedValue({
       id: 'user-123',
-      coordinator_id: null,
+      curator_id: null,
       role: 'client',
     })
-    
+
     hasActiveSubscription.mockReturnValue(true)
 
     const { container } = render(<GlobalChatWidget />)
-    
+
     await waitFor(() => {
       expect(container.firstChild).toBeNull()
     })
   })
 
-  it('should render ChatWidget for premium user with coordinator', async () => {
+  it('should render ChatWidget for premium user with curator', async () => {
     getUserProfile.mockResolvedValue({
       id: 'user-123',
-      coordinator_id: 'coordinator-123',
+      curator_id: 'curator-123',
       role: 'client',
     })
-    
+
     checkSubscriptionStatus.mockResolvedValue({
       status: 'active',
       tier: 'premium',
     })
-    
+
     hasActiveSubscription.mockReturnValue(true)
 
     render(<GlobalChatWidget />)
-    
+
     await waitFor(() => {
       expect(screen.getByTestId('chat-widget')).toBeInTheDocument()
     }, { timeout: 3000 })
   })
 
   it('should handle loading state', () => {
-    mockGetUser.mockImplementation(() => new Promise(() => {})) // Never resolves
+    mockGetUser.mockImplementation(() => new Promise(() => { })) // Never resolves
 
     const { container } = render(<GlobalChatWidget />)
-    
+
     // Should not render while loading
     expect(container.firstChild).toBeNull()
   })
 
   it('should handle errors gracefully', async () => {
     mockGetUser.mockRejectedValue(new Error('Auth error'))
-    
+
     getUserProfile.mockResolvedValue(null)
     hasActiveSubscription.mockReturnValue(false)
 
     const { container } = render(<GlobalChatWidget />)
-    
+
     await waitFor(() => {
       expect(container.firstChild).toBeNull()
     })

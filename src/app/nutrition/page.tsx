@@ -369,7 +369,7 @@ export default function NutritionPage() {
         </div>
       ) : (
         <div className="p-4 bg-zinc-800 text-amber-400 rounded-xl mb-6 text-sm">
-          Координатор еще не назначил план питания.
+          Куратор еще не назначил план питания.
         </div>
       )}
 
@@ -519,10 +519,10 @@ function MacroBar({ label, current, target, color }: MacroBarProps) {
   const pastelColor = label.toLowerCase().includes('белк') || label.toLowerCase().includes('белок') || label.toLowerCase().includes('protein')
     ? 'bg-blue-300'
     : label.toLowerCase().includes('жир') || label.toLowerCase().includes('fats') || label.toLowerCase().includes('fat')
-    ? 'bg-amber-300'
-    : label.toLowerCase().includes('углев') || label.toLowerCase().includes('carbs') || label.toLowerCase().includes('carb')
-    ? 'bg-rose-300'
-    : color
+      ? 'bg-amber-300'
+      : label.toLowerCase().includes('углев') || label.toLowerCase().includes('carbs') || label.toLowerCase().includes('carb')
+        ? 'bg-rose-300'
+        : color
   return (
     <div>
       <div className="flex justify-between text-xs mb-1">

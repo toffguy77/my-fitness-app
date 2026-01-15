@@ -20,7 +20,7 @@ export default function MetricsPage() {
     const checkAccess = async () => {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
-        
+
         if (userError || !user) {
           logger.warn('Metrics: пользователь не авторизован')
           router.push('/login')
@@ -36,8 +36,8 @@ export default function MetricsPage() {
           .eq('id', user.id)
           .single()
 
-        // Разрешаем доступ super_admin и coordinator (для демонстрации)
-        if (profile && (profile.role === 'super_admin' || profile.role === 'coordinator')) {
+        // Разрешаем доступ super_admin и curator (для демонстрации)
+        if (profile && (profile.role === 'super_admin' || profile.role === 'curator')) {
           setHasAccess(true)
         } else {
           logger.warn('Metrics: доступ запрещен', { userId: user.id, role: profile?.role })

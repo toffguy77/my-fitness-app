@@ -46,7 +46,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-        logger.debug('Reports: начало загрузки данных')
+      logger.debug('Reports: начало загрузки данных')
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
@@ -77,7 +77,7 @@ export default function ReportsPage() {
         } catch {
           // Ignore metrics errors
         }
-        
+
         logger.debug('Reports: статус Premium', {
           userId: user.id,
           isPremium: premium,
@@ -96,9 +96,9 @@ export default function ReportsPage() {
         logger.debug('Reports: загрузка отчетов', { userId: user.id })
         const [logsResult, targetsResult] = await Promise.all([
           supabase
-          .from('daily_logs')
-          .select('*')
-          .eq('user_id', user.id)
+            .from('daily_logs')
+            .select('*')
+            .eq('user_id', user.id)
             .order('date', { ascending: false }),
           supabase
             .from('nutrition_targets')
@@ -305,7 +305,7 @@ export default function ReportsPage() {
         </header>
         <Paywall
           title="Отчеты доступны с Premium подпиской"
-          message="Подключите работу с координатором, чтобы получить доступ к детальным отчетам, аналитике прогресса и персональным рекомендациям."
+          message="Подключите работу с куратором, чтобы получить доступ к детальным отчетам, аналитике прогресса и персональным рекомендациям."
         />
         <PremiumFeatureModal
           isOpen={showPremiumModal}
@@ -331,34 +331,34 @@ export default function ReportsPage() {
         <button
           onClick={() => setActiveTab('graphs')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'graphs'
-              ? 'border-white text-zinc-100'
-              : 'border-transparent text-zinc-400 hover:text-zinc-300'
+            ? 'border-white text-zinc-100'
+            : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
         >
           <BarChart3 size={16} />
           Графики
         </button>
-          <button
+        <button
           onClick={() => setActiveTab('table')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'table'
-              ? 'border-white text-zinc-100'
-              : 'border-transparent text-zinc-400 hover:text-zinc-300'
+            ? 'border-white text-zinc-100'
+            : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
         >
           <Table size={16} />
           Таблица
-          </button>
-          <button
+        </button>
+        <button
           onClick={() => setActiveTab('statistics')}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'statistics'
-              ? 'border-white text-zinc-100'
-              : 'border-transparent text-zinc-400 hover:text-zinc-300'
+            ? 'border-white text-zinc-100'
+            : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
         >
           <TrendingUp size={16} />
           Статистика
-          </button>
-        </div>
+        </button>
+      </div>
 
       {/* Контент вкладок */}
       {activeTab === 'graphs' && (
@@ -486,7 +486,7 @@ export default function ReportsPage() {
                   <StatCard label="Средние белки" value={`${statistics.avgProtein} г`} />
                   <StatCard label="Средние жиры" value={`${statistics.avgFats} г`} />
                   <StatCard label="Средние углеводы" value={`${statistics.avgCarbs} г`} />
-            </div>
+                </div>
               </section>
 
               {statistics.weightChange !== null && (
@@ -530,7 +530,7 @@ export default function ReportsPage() {
               />
             </div>
           )}
-          </div>
+        </div>
       )}
 
       <PremiumFeatureModal

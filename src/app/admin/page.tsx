@@ -16,7 +16,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
   const [subscriptionFilter, setSubscriptionFilter] = useState<SubscriptionStatus | 'all'>('all')
-  const [activeStatFilter, setActiveStatFilter] = useState<'all' | 'clients' | 'coordinators' | 'premium'>('all')
+  const [activeStatFilter, setActiveStatFilter] = useState<'all' | 'clients' | 'curators' | 'premium'>('all')
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -104,7 +104,7 @@ export default function AdminPage() {
       // Подготовка данных для обновления
       const updateData: {
         role: UserRole
-        coordinator_id: string | null
+        curator_id: string | null
         subscription_status?: SubscriptionStatus
         subscription_tier?: SubscriptionTier
         subscription_start_date?: string | null
@@ -112,7 +112,7 @@ export default function AdminPage() {
         full_name: string | null
       } = {
         role: editingUser.role,
-        coordinator_id: editingUser.coordinator_id || null,
+        curator_id: editingUser.curator_id || null,
         full_name: editingUser.full_name || null,
       }
 
@@ -123,7 +123,7 @@ export default function AdminPage() {
         updateData.subscription_start_date = editingUser.subscription_start_date || null
         updateData.subscription_end_date = editingUser.subscription_end_date || null
       } else {
-        // Для координаторов и админов очищаем поля подписки
+        // Для кураторов и админов очищаем поля подписки
         updateData.subscription_status = 'free'
         updateData.subscription_tier = 'basic'
         updateData.subscription_start_date = null
@@ -166,9 +166,9 @@ export default function AdminPage() {
     }
   }
 
-  // Загружаем список координаторов для выбора
-  const coordinators = useMemo(() => {
-    return users.filter(u => u.role === 'coordinator')
+  // Загружаем список кураторов для выбора
+  const curators = useMemo(() => {
+    return users.filter(u => u.role === 'curator')
   }, [users])
 
   if (loading) return <div className="p-8 text-center text-zinc-400">Загрузка...</div>
@@ -222,13 +222,13 @@ export default function AdminPage() {
           }}
         />
         <StatCard
-          label="Координаторы"
-          value={users.filter(u => u.role === 'coordinator').length}
+          label="Кураторы"
+          value={users.filter(u => u.role === 'curator').length}
           icon={<Shield size={20} />}
-          isActive={activeStatFilter === 'coordinators'}
+          isActive={activeStatFilter === 'curators'}
           onClick={() => {
-            setActiveStatFilter('coordinators')
-            setRoleFilter('coordinator')
+            setActiveStatFilter('curators')
+            setRoleFilter('curator')
             setSubscriptionFilter('all')
           }}
         />
@@ -273,8 +273,8 @@ export default function AdminPage() {
                 setActiveStatFilter('all')
               } else if (newRole === 'client' && subscriptionFilter === 'all') {
                 setActiveStatFilter('clients')
-              } else if (newRole === 'coordinator' && subscriptionFilter === 'all') {
-                setActiveStatFilter('coordinators')
+              } else if (newRole === 'curator' && subscriptionFilter === 'all') {
+                setActiveStatFilter('curators')
               } else {
                 setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
               }
@@ -283,7 +283,7 @@ export default function AdminPage() {
           >
             <option value="all">Все роли</option>
             <option value="client">Клиенты</option>
-            <option value="coordinator">Координаторы</option>
+            <option value="curator">Кураторы</option>
             <option value="super_admin">Супер-админы</option>
           </select>
 
@@ -300,8 +300,8 @@ export default function AdminPage() {
                 setActiveStatFilter('all')
               } else if (newSubscription === 'all' && roleFilter === 'client') {
                 setActiveStatFilter('clients')
-              } else if (newSubscription === 'all' && roleFilter === 'coordinator') {
-                setActiveStatFilter('coordinators')
+              } else if (newSubscription === 'all' && roleFilter === 'curator') {
+                setActiveStatFilter('curators')
               } else {
                 setActiveStatFilter('all') // Сбрасываем, если комбинация не соответствует ни одному фильтру
               }
@@ -341,7 +341,7 @@ export default function AdminPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Пользователь</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Роль</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Подписка</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Координатор</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Куратор</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Дата регистрации</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider">Действия</th>
               </tr>
@@ -358,8 +358,8 @@ export default function AdminPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.role === 'super_admin' ? 'bg-purple-950/30 text-purple-300 border border-purple-800/50' : userProfile.role === 'coordinator' ? 'bg-blue-950/30 text-blue-300 border border-blue-800/50' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'}`}>
-                      {userProfile.role === 'super_admin' ? 'Супер-админ' : userProfile.role === 'coordinator' ? 'Координатор' : 'Клиент'}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${userProfile.role === 'super_admin' ? 'bg-purple-950/30 text-purple-300 border border-purple-800/50' : userProfile.role === 'curator' ? 'bg-blue-950/30 text-blue-300 border border-blue-800/50' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'}`}>
+                      {userProfile.role === 'super_admin' ? 'Супер-админ' : userProfile.role === 'curator' ? 'Куратор' : 'Клиент'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -379,9 +379,9 @@ export default function AdminPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-400">
-                    {userProfile.coordinator_id ? (
-                      coordinators.find(c => c.id === userProfile.coordinator_id)?.full_name ||
-                      coordinators.find(c => c.id === userProfile.coordinator_id)?.email ||
+                    {userProfile.curator_id ? (
+                      curators.find(c => c.id === userProfile.curator_id)?.full_name ||
+                      curators.find(c => c.id === userProfile.curator_id)?.email ||
                       'Неизвестен'
                     ) : '-'}
                   </td>
@@ -402,13 +402,13 @@ export default function AdminPage() {
                       {userProfile.role === 'client' && (
                         <button
                           onClick={() => {
-                            const updatedUser = { ...userProfile, role: 'coordinator' as UserRole, coordinator_id: null, subscription_status: 'free' as SubscriptionStatus, subscription_tier: 'basic' as SubscriptionTier, subscription_start_date: null, subscription_end_date: null }
+                            const updatedUser = { ...userProfile, role: 'curator' as UserRole, curator_id: null, subscription_status: 'free' as SubscriptionStatus, subscription_tier: 'basic' as SubscriptionTier, subscription_start_date: null, subscription_end_date: null }
                             setEditingUser(updatedUser)
                           }}
                           className="text-blue-400 hover:text-blue-300 text-xs font-medium"
-                          title="Быстро превратить в координатора"
+                          title="Быстро превратить в куратора"
                         >
-                          → Координатор
+                          → Куратор
                         </button>
                       )}
                     </div>
@@ -456,10 +456,10 @@ export default function AdminPage() {
                     const newRole = e.target.value as UserRole
                     const updatedUser = { ...editingUser, role: newRole }
 
-                    // Если пользователь становится координатором или супер-админом, очищаем поля клиента
-                    if (newRole === 'coordinator' || newRole === 'super_admin') {
-                      updatedUser.coordinator_id = null
-                      // Очищаем подписку при превращении в координатора
+                    // Если пользователь становится куратором или супер-админом, очищаем поля клиента
+                    if (newRole === 'curator' || newRole === 'super_admin') {
+                      updatedUser.curator_id = null
+                      // Очищаем подписку при превращении в куратора
                       updatedUser.subscription_status = 'free'
                       updatedUser.subscription_tier = 'basic'
                       updatedUser.subscription_start_date = null
@@ -471,29 +471,29 @@ export default function AdminPage() {
                   className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                 >
                   <option value="client">Клиент</option>
-                  <option value="coordinator">Координатор</option>
+                  <option value="curator">Куратор</option>
                   <option value="super_admin">Супер-админ</option>
                 </select>
-                {editingUser.role === 'client' && (editingUser.coordinator_id || editingUser.subscription_status !== 'free') && (
+                {editingUser.role === 'client' && (editingUser.curator_id || editingUser.subscription_status !== 'free') && (
                   <p className="text-xs text-zinc-400 mt-1">
-                    При изменении роли на &quot;Координатор&quot; будут очищены: назначенный координатор и подписка
+                    При изменении роли на &quot;Куратор&quot; будут очищены: назначенный куратор и подписка
                   </p>
                 )}
               </div>
 
-              {/* Координатор (только для клиентов) */}
+              {/* Куратор (только для клиентов) */}
               {editingUser.role === 'client' && (
                 <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1">Координатор</label>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Куратор</label>
                   <select
-                    value={editingUser.coordinator_id || ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, coordinator_id: e.target.value || null })}
+                    value={editingUser.curator_id || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, curator_id: e.target.value || null })}
                     className="w-full p-2 bg-zinc-800 rounded-xl border border-zinc-700 text-sm text-zinc-100 focus:ring-2 focus:ring-white outline-none"
                   >
                     <option value="">Не назначен</option>
-                    {coordinators.map(coordinator => (
-                      <option key={coordinator.id} value={coordinator.id}>
-                        {coordinator.full_name || coordinator.email}
+                    {curators.map(curator => (
+                      <option key={curator.id} value={curator.id}>
+                        {curator.full_name || curator.email}
                       </option>
                     ))}
                   </select>

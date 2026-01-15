@@ -51,16 +51,16 @@ export default function Header() {
     }
   }
 
-  const isCoordinator = useMemo(() => profile?.role === 'coordinator', [profile?.role])
+  const isCurator = useMemo(() => profile?.role === 'curator', [profile?.role])
   const dashboardPath = useMemo(() =>
-    isCoordinator ? '/app/coordinator' : '/app/dashboard',
-    [isCoordinator]
+    isCurator ? '/app/curator' : '/app/dashboard',
+    [isCurator]
   )
 
   const handleLogoClick = () => {
     // Вычисляем путь динамически при клике, чтобы учесть актуальное состояние профиля
-    const currentIsCoordinator = profile?.role === 'coordinator'
-    const path = currentIsCoordinator ? '/app/coordinator' : '/app/dashboard'
+    const currentIsCurator = profile?.role === 'curator'
+    const path = currentIsCurator ? '/app/curator' : '/app/dashboard'
     router.push(path)
   }
 
@@ -79,7 +79,7 @@ export default function Header() {
           {/* Правые элементы */}
           <div className="flex items-center gap-3">
             {/* Кнопка лидерборда - только для клиентов */}
-            {!isCoordinator && (
+            {!isCurator && (
               <button
                 onClick={() => router.push('/leaderboard')}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"

@@ -15,9 +15,9 @@ const clientNavigationItems = [
   { path: '/app/settings', icon: Settings, label: 'Настройки', id: 'nav-item-settings' },
 ]
 
-const coordinatorNavigationItems = [
-  { path: '/app/coordinator', icon: Users, label: 'Клиенты', id: 'nav-item-coordinator-clients' },
-  { path: '/app/coordinator/invites', icon: UserPlus, label: 'Инвайт-коды', id: 'nav-item-invites' },
+const curatorNavigationItems = [
+  { path: '/app/curator', icon: Users, label: 'Клиенты', id: 'nav-item-curator-clients' },
+  { path: '/app/curator/invites', icon: UserPlus, label: 'Инвайт-коды', id: 'nav-item-invites' },
   { path: '/app/admin/metrics', icon: BarChart3, label: 'Метрики', id: 'nav-item-metrics' },
   { path: '/app/settings', icon: Settings, label: 'Настройки', id: 'nav-item-settings' },
 ]
@@ -53,11 +53,11 @@ export default function Navigation() {
     return () => window.removeEventListener('resize', checkDesktop)
   }, [])
 
-  const isCoordinator = profile?.role === 'coordinator'
-  const dashboardPath = isCoordinator ? '/app/coordinator' : '/app/dashboard'
+  const isCurator = profile?.role === 'curator'
+  const dashboardPath = isCurator ? '/app/curator' : '/app/dashboard'
   const navigationItems = useMemo(
-    () => isCoordinator ? coordinatorNavigationItems : clientNavigationItems,
-    [isCoordinator]
+    () => isCurator ? curatorNavigationItems : clientNavigationItems,
+    [isCurator]
   )
 
   // Prefetch navigation routes on hover/focus for better perceived performance
@@ -83,11 +83,11 @@ export default function Navigation() {
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {!loading && navigationItems.map((item) => {
             const Icon = item.icon
-            // Для координатора: /app/coordinator/[clientId] должен подсвечивать "Клиенты"
-            // Для координатора: /app/admin/metrics должен подсвечивать "Метрики"
+            // Для куратора: /app/curator/[clientId] должен подсвечивать "Клиенты"
+            // Для куратора: /app/admin/metrics должен подсвечивать "Метрики"
             let isActive = pathname === item.path || pathname?.startsWith(item.path + '/')
-            if (isCoordinator) {
-              if (item.path === '/app/coordinator' && pathname?.startsWith('/app/coordinator/')) {
+            if (isCurator) {
+              if (item.path === '/app/curator' && pathname?.startsWith('/app/curator/')) {
                 isActive = true
               }
             }
@@ -120,8 +120,8 @@ export default function Navigation() {
         {!loading && navigationItems.map((item) => {
           const Icon = item.icon
           let isActive = pathname === item.path || pathname?.startsWith(item.path + '/')
-          if (isCoordinator) {
-            if (item.path === '/app/coordinator' && pathname?.startsWith('/app/coordinator/')) {
+          if (isCurator) {
+            if (item.path === '/app/curator' && pathname?.startsWith('/app/curator/')) {
               isActive = true
             }
           }

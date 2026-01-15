@@ -12,22 +12,22 @@ import { showNotification, isNotificationSupported } from '@/utils/chat/notifica
 
 interface ChatWidgetProps {
   userId: string
-  coordinatorId: string | null
+  curatorId: string | null
   className?: string
 }
 
-export default function ChatWidget({ userId, coordinatorId, className = '' }: ChatWidgetProps) {
+export default function ChatWidget({ userId, curatorId, className = '' }: ChatWidgetProps) {
   const supabase = createClient()
   const [isOpen, setIsOpen] = useState(false)
-  const [coordinatorProfile, setCoordinatorProfile] = useState<UserProfile | null>(null)
+  const [curatorProfile, setCuratorProfile] = useState<UserProfile | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const messageChannelRef = useRef<any>(null)
   const notificationSoundRef = useRef<{ play: () => void } | null>(null)
   const lastNotificationRef = useRef<string>('')
 
-  // Вычисляем имя координатора из профиля
-  const coordinatorName = coordinatorProfile?.full_name || coordinatorProfile?.email || 'Координатор'
+  // Вычисляем имя куратора из профиля
+  const curatorName = curatorProfile?.full_name || curatorProfile?.email || 'Куратор'
 
   // Инициализация звука уведомления
   useEffect(() => {
@@ -73,46 +73,46 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
     } as { play: () => void }
   }, [])
 
-  // Загрузка профиля координатора
+  // Загрузка профиля куратора
   useEffect(() => {
-    if (!coordinatorId) {
+    if (!curatorId) {
       setLoading(false)
       return
     }
 
-    const loadCoordinatorProfile = async () => {
+    const loadCuratorProfile = async () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .eq('id', coordinatorId)
+          .eq('id', curatorId)
           .single()
 
         if (error) {
           throw error
         }
 
-        setCoordinatorProfile(data as UserProfile)
+        setCuratorProfile(data as UserProfile)
       } catch (error) {
-        logger.error('ChatWidget: ошибка загрузки профиля координатора', error, { coordinatorId })
+        logger.error('ChatWidget: ошибка загрузки профиля куратора', error, { curatorId })
       } finally {
         setLoading(false)
       }
     }
 
-    loadCoordinatorProfile()
-  }, [supabase, coordinatorId])
+    loadCuratorProfile()
+  }, [supabase, curatorId])
 
   // Загрузка количества непрочитанных сообщений
   const loadUnreadCount = useCallback(async () => {
-    if (!coordinatorId || loading) return
+    if (!curatorId || loading) return
 
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('id', { count: 'exact' })
         .eq('receiver_id', userId)
-        .eq('sender_id', coordinatorId)
+        .eq('sender_id', curatorId)
         .is('read_at', null)
         .eq('is_deleted', false)
 
@@ -122,12 +122,12 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
 
       setUnreadCount(data?.length || 0)
     } catch (error) {
-      logger.error('ChatWidget: ошибка загрузки непрочитанных сообщений', error, { userId, coordinatorId })
+      logger.error('ChatWidget: ошибка загрузки непрочитанных сообщений', error, { userId, curatorId })
     }
-  }, [coordinatorId, loading, supabase, userId])
+  }, [curatorId, loading, supabase, userId])
 
   useEffect(() => {
-    if (!coordinatorId || loading) return
+    if (!curatorId || loading) return
 
     loadUnreadCount()
 
@@ -135,7 +135,7 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
     if (!isOpen) {
       const messageChannel = subscribeToMessages(
         userId,
-        coordinatorId,
+        curatorId,
         (message: Message) => {
           // Проверяем, не показывали ли мы уже уведомление для этого сообщения
           if (message.id !== lastNotificationRef.current) {
@@ -144,7 +144,7 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
             // Показываем toast уведомление
             toast.success(
               <div>
-                <div className="font-medium text-zinc-100">Новое сообщение от {coordinatorName}</div>
+                <div className="font-medium text-zinc-100">Новое сообщение от {curatorName}</div>
                 <div className="text-sm text-zinc-400 truncate max-w-xs">{message.content}</div>
               </div>,
               {
@@ -155,9 +155,9 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
 
             // Показываем браузерное уведомление, если поддерживается и разрешено
             if (isNotificationSupported() && document.hidden) {
-              showNotification(`Новое сообщение от ${coordinatorName}`, {
-                body: message.content.length > 100 
-                  ? message.content.substring(0, 100) + '...' 
+              showNotification(`Новое сообщение от ${curatorName}`, {
+                body: message.content.length > 100
+                  ? message.content.substring(0, 100) + '...'
                   : message.content,
                 tag: `message-${message.id}`,
                 requireInteraction: false,
@@ -188,14 +188,14 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
 
     // Подписка на изменения непрочитанных сообщений
     const channel = supabase
-      .channel(`unread:${userId}:${coordinatorId}`)
+      .channel(`unread:${userId}:${curatorId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'messages',
-          filter: `receiver_id=eq.${userId},sender_id=eq.${coordinatorId}`,
+          filter: `receiver_id=eq.${userId},sender_id=eq.${curatorId}`,
         },
         () => {
           loadUnreadCount()
@@ -210,9 +210,9 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
         messageChannelRef.current = null
       }
     }
-  }, [supabase, userId, coordinatorId, loading, isOpen, coordinatorName, loadUnreadCount])
+  }, [supabase, userId, curatorId, loading, isOpen, curatorName, loadUnreadCount])
 
-  if (!coordinatorId || loading || !coordinatorProfile) {
+  if (!curatorId || loading || !curatorProfile) {
     return null
   }
 
@@ -222,8 +222,8 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
         <div className="w-full sm:w-96 max-w-[calc(100vw-2rem)] sm:max-w-none h-[calc(100vh-8rem)] sm:h-[600px]">
           <ChatWindow
             userId={userId}
-            otherUserId={coordinatorId}
-            otherUserName={coordinatorName}
+            otherUserId={curatorId}
+            otherUserName={curatorName}
             onClose={() => {
               setIsOpen(false)
               // Обновляем счетчик при закрытии
@@ -244,8 +244,8 @@ export default function ChatWidget({ userId, coordinatorId, className = '' }: Ch
             setUnreadCount(0)
           }}
           className="relative p-3 sm:p-4 bg-white text-zinc-950 rounded-full shadow-lg hover:bg-zinc-200 transition-all hover:scale-110 active:scale-95 touch-manipulation"
-          title={`Чат с ${coordinatorName}${unreadCount > 0 ? ` (${unreadCount} непрочитанных)` : ''}`}
-          aria-label={`Открыть чат с ${coordinatorName}${unreadCount > 0 ? `, ${unreadCount} непрочитанных сообщений` : ''}`}
+          title={`Чат с ${curatorName}${unreadCount > 0 ? ` (${unreadCount} непрочитанных)` : ''}`}
+          aria-label={`Открыть чат с ${curatorName}${unreadCount > 0 ? `, ${unreadCount} непрочитанных сообщений` : ''}`}
         >
           <MessageSquare size={20} className="sm:w-6 sm:h-6" />
           {unreadCount > 0 && (

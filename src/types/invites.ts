@@ -20,7 +20,7 @@ export interface InviteCode {
 
 export interface InviteCodeValidation {
     valid: boolean
-    coordinator_name?: string
+    curator_name?: string
     expires_at?: string
     remaining_uses?: number
 }

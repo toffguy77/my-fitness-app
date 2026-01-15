@@ -6,7 +6,7 @@
 import { createClient } from '../client'
 import {
   getUserProfile,
-  getCoordinatorClients,
+  getCuratorClients,
   isSuperAdmin,
   isPremium,
   hasActiveSubscription,
@@ -34,7 +34,7 @@ describe('Profile Utilities Extended Tests', () => {
       from: jest.fn(() => mockQueryBuilder),
     }
 
-    ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
+      ; (createClient as jest.Mock).mockReturnValue(mockSupabase)
   })
 
   describe('getUserProfile Extended', () => {
@@ -69,7 +69,7 @@ describe('Profile Utilities Extended Tests', () => {
         full_name: 'Test User',
         phone: '+1234567890',
         role: 'client',
-        coordinator_id: 'coordinator-123',
+        curator_id: 'curator-123',
         avatar_url: 'https://example.com/avatar.jpg',
         subscription_status: 'active',
         subscription_tier: 'premium',
@@ -123,25 +123,25 @@ describe('Profile Utilities Extended Tests', () => {
     })
   })
 
-  describe('getCoordinatorClients Extended', () => {
-    it('should handle coordinator with no clients', async () => {
+  describe('getCuratorClients Extended', () => {
+    it('should handle curator with no clients', async () => {
       const queryBuilder = mockSupabase.from()
       queryBuilder.order.mockResolvedValue({
         data: [],
         error: null,
       })
 
-      const result = await getCoordinatorClients('coordinator-123')
+      const result = await getCuratorClients('curator-123')
 
       expect(result).toEqual([])
     })
 
-    it('should handle coordinator with many clients', async () => {
+    it('should handle curator with many clients', async () => {
       const manyClients: UserProfile[] = Array.from({ length: 50 }, (_, i) => ({
         id: `client-${i}`,
         full_name: `Client ${i}`,
         role: 'client',
-        coordinator_id: 'coordinator-123',
+        curator_id: 'curator-123',
       }))
 
       const queryBuilder = mockSupabase.from()
@@ -150,16 +150,16 @@ describe('Profile Utilities Extended Tests', () => {
         error: null,
       })
 
-      const result = await getCoordinatorClients('coordinator-123')
+      const result = await getCuratorClients('curator-123')
 
       expect(result).toHaveLength(50)
     })
 
     it('should order clients by full_name ascending', async () => {
       const clients: UserProfile[] = [
-        { id: '1', full_name: 'Zebra', role: 'client', coordinator_id: 'coordinator-123' },
-        { id: '2', full_name: 'Alpha', role: 'client', coordinator_id: 'coordinator-123' },
-        { id: '3', full_name: 'Beta', role: 'client', coordinator_id: 'coordinator-123' },
+        { id: '1', full_name: 'Zebra', role: 'client', curator_id: 'curator-123' },
+        { id: '2', full_name: 'Alpha', role: 'client', curator_id: 'curator-123' },
+        { id: '3', full_name: 'Beta', role: 'client', curator_id: 'curator-123' },
       ]
 
       const queryBuilder = mockSupabase.from()
@@ -168,7 +168,7 @@ describe('Profile Utilities Extended Tests', () => {
         error: null,
       })
 
-      await getCoordinatorClients('coordinator-123')
+      await getCuratorClients('curator-123')
 
       expect(queryBuilder.order).toHaveBeenCalledWith('full_name', { ascending: true })
     })

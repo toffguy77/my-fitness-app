@@ -169,11 +169,11 @@ describe('Documentation Consistency Property Tests', () => {
 
         const content = fs.readFileSync(functionalSpecPath, 'utf-8')
 
-        // Should contain coordinator endpoints
-        expect(content).toMatch(/\/app\/coordinator/)
+        // Should contain curator endpoints
+        expect(content).toMatch(/\/app\/curator/)
 
-        // Should contain coordinator role references
-        expect(content).toMatch(/координатор/)
-        expect(content).toMatch(/Coordinator/)
+        // Should contain curator role references
+        expect(content).toMatch(/куратор/)
+        expect(content).toMatch(/Curator/)
     })
 })

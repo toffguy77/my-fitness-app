@@ -6,13 +6,13 @@ import toast from 'react-hot-toast'
 import type { InviteCode } from '@/types/invites'
 
 interface CreateInviteCodeModalProps {
-    coordinatorId: string
+    curatorId: string
     onClose: () => void
     onSuccess: (code: InviteCode) => void
 }
 
 export default function CreateInviteCodeModal({
-    coordinatorId,
+    curatorId,
     onClose,
     onSuccess,
 }: CreateInviteCodeModalProps) {

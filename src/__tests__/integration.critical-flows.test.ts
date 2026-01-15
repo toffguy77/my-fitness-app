@@ -35,7 +35,7 @@ describe('Critical User Flows Integration Tests', () => {
         // Target calories
         const targetCalories = goal === 'lose' ? Math.round(tdee * 0.85)
           : goal === 'gain' ? Math.round(tdee * 1.10)
-          : Math.round(tdee)
+            : Math.round(tdee)
 
         // Macros
         const protein = Math.round((targetCalories * 0.30) / 4)
@@ -113,13 +113,13 @@ describe('Critical User Flows Integration Tests', () => {
     })
   })
 
-  describe('Coordinator Client Management Flow', () => {
-    it('should complete coordinator viewing and note creation flow', async () => {
-      // 1. Load coordinator clients
-      const loadClients = async (coordinatorId: string) => {
+  describe('Curator Client Management Flow', () => {
+    it('should complete curator viewing and note creation flow', async () => {
+      // 1. Load curator clients
+      const loadClients = async (curatorId: string) => {
         return [
-          { id: 'client-1', full_name: 'Client One', coordinator_id: coordinatorId },
-          { id: 'client-2', full_name: 'Client Two', coordinator_id: coordinatorId },
+          { id: 'client-1', full_name: 'Client One', curator_id: curatorId },
+          { id: 'client-2', full_name: 'Client Two', curator_id: curatorId },
         ]
       }
 
@@ -149,13 +149,13 @@ describe('Critical User Flows Integration Tests', () => {
         return 'grey'
       }
 
-      // 3. Save coordinator note
-      const saveNote = async (coordinatorId: string, clientId: string, date: string, content: string) => {
-        return { success: true, data: { coordinator_id: coordinatorId, client_id: clientId, date, content } }
+      // 3. Save curator note
+      const saveNote = async (curatorId: string, clientId: string, date: string, content: string) => {
+        return { success: true, data: { curator_id: curatorId, client_id: clientId, date, content } }
       }
 
       // Execute flow
-      const clients = await loadClients('coordinator-123')
+      const clients = await loadClients('curator-123')
       expect(clients).toHaveLength(2)
 
       const status = calculateStatus(
@@ -165,7 +165,7 @@ describe('Critical User Flows Integration Tests', () => {
       )
       expect(status).toBe('green')
 
-      const note = await saveNote('coordinator-123', 'client-1', '2024-01-15', 'Great progress!')
+      const note = await saveNote('curator-123', 'client-1', '2024-01-15', 'Great progress!')
       expect(note.success).toBe(true)
     })
   })

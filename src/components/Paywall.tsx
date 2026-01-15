@@ -14,9 +14,9 @@ interface PaywallProps {
   premiumUsersCount?: number
 }
 
-export default function Paywall({ 
+export default function Paywall({
   title = 'Доступно с Premium подпиской',
-  message = 'Подключите работу с координатором, чтобы получить доступ к расширенной аналитике, отчетам и персональным рекомендациям.',
+  message = 'Подключите работу с куратором, чтобы получить доступ к расширенной аналитике, отчетам и персональным рекомендациям.',
   showBenefits = true,
   showPreview = true,
   premiumUsersCount,
@@ -41,7 +41,7 @@ export default function Paywall({
       <div className="blur-sm pointer-events-none select-none">
         <div className="h-64 bg-zinc-800 rounded-xl"></div>
       </div>
-      
+
       {/* Paywall overlay - Black Card aesthetics */}
       <div className="absolute inset-0 flex items-center justify-center bg-zinc-950 bg-opacity-95 rounded-xl overflow-y-auto border border-zinc-800">
         <div className="w-full max-w-4xl p-4 sm:p-8">
@@ -51,7 +51,7 @@ export default function Paywall({
             </div>
             <h3 className="text-2xl font-bold text-zinc-100 mb-2">{title}</h3>
             <p className="text-sm text-zinc-400 mb-4">{message}</p>
-            
+
             {/* Социальное доказательство */}
             {premiumUsersCount !== undefined && premiumUsersCount > 0 && (
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full text-sm text-zinc-300">
@@ -66,21 +66,19 @@ export default function Paywall({
             <div className="flex gap-2 mb-6 border-b border-zinc-800">
               <button
                 onClick={() => setActiveTab('benefits')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'benefits'
-                    ? 'text-zinc-100 border-b-2 border-white'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'benefits'
+                  ? 'text-zinc-100 border-b-2 border-white'
+                  : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
               >
                 Преимущества
               </button>
               <button
                 onClick={() => setActiveTab('preview')}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  activeTab === 'preview'
-                    ? 'text-zinc-100 border-b-2 border-white'
-                    : 'text-zinc-500 hover:text-zinc-300'
-                }`}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'preview'
+                  ? 'text-zinc-100 border-b-2 border-white'
+                  : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
               >
                 Примеры функций
               </button>
@@ -105,10 +103,10 @@ export default function Paywall({
 
           <div className="bg-zinc-800 border border-amber-400/20 rounded-xl p-4 mb-6">
             <p className="text-sm text-amber-400 text-center">
-              Для активации Premium подписки обратитесь к администратору или вашему координатору.
+              Для активации Premium подписки обратитесь к администратору или вашему куратору.
             </p>
           </div>
-          
+
           <div className="text-center">
             <button
               onClick={handleBack}

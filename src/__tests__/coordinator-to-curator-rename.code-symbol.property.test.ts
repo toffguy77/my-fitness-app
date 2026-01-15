@@ -73,7 +73,7 @@ describe('Property 4: Code Symbol Renaming Completeness', () => {
             glob.sync(pattern, { cwd: process.cwd() })
         ).filter(file =>
             // Exclude the property test files themselves since they contain coordinator symbols for testing
-            !file.includes('coordinator-to-curator-rename') ||
+            !file.includes('coordinator-to-curator-rename') &&
             !file.includes('.property.test.ts')
         )
     }

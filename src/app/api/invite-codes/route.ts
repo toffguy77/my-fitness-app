@@ -14,25 +14,25 @@ export async function GET(_request: NextRequest) {
             )
         }
 
-        // Проверяем, что пользователь - координатор
+        // Проверяем, что пользователь - куратор
         const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
 
-        if (!profile || profile.role !== 'coordinator') {
+        if (!profile || profile.role !== 'curator') {
             return NextResponse.json(
-                { error: 'Forbidden: Only coordinators can view invite codes' },
+                { error: 'Forbidden: Only curators can view invite codes' },
                 { status: 403 }
             )
         }
 
-        // Получаем все инвайт-коды координатора
+        // Получаем все инвайт-коды куратора
         const { data: codes, error: codesError } = await supabase
             .from('invite_codes')
             .select('*')
-            .eq('coordinator_id', user.id)
+            .eq('curator_id', user.id)
             .order('created_at', { ascending: false })
 
         if (codesError) {

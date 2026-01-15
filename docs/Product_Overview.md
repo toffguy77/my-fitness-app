@@ -123,7 +123,7 @@
 **Статус:** ✅ Реализовано
 
 - Модель подписок (Free/Premium)
-- Роли пользователей (client, coordinator, super_admin)
+- Роли пользователей (client, curator, super_admin)
 - Paywall для Premium функций
 - Управление подписками
 

@@ -12,8 +12,8 @@
 erDiagram
     profiles ||--o{ nutrition_targets : "has"
     profiles ||--o{ daily_logs : "has"
-    profiles ||--o{ coordinator_notes : "client receives"
-    profiles ||--o{ coordinator_notes : "coordinator writes"
+    profiles ||--o{ curator_notes : "client receives"
+    profiles ||--o{ curator_notes : "curator writes"
     profiles ||--o{ messages : "sends"
     profiles ||--o{ messages : "receives"
     profiles ||--o{ user_products : "creates"

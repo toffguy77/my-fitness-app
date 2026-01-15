@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (!profile || (profile.role !== 'super_admin' && profile.role !== 'coordinator')) {
-      // Для демонстрации разрешаем доступ координаторам, в продакшене только super_admin
+    if (!profile || (profile.role !== 'super_admin' && profile.role !== 'curator')) {
+      // Для демонстрации разрешаем доступ кураторам, в продакшене только super_admin
       logger.warn('Metrics: попытка доступа без прав', { userId: user.id, role: profile?.role })
     }
 
@@ -120,7 +120,7 @@ async function fetchMetricsFromPrometheus(
   _userId?: string | null
 ): Promise<Record<string, number>> {
   const PROMETHEUS_QUERY_URL = process.env.PROMETHEUS_QUERY_URL!
-  
+
   // Примеры запросов к Prometheus
   const queries = {
     ttfv: 'avg(ttfv_seconds)',
@@ -139,7 +139,7 @@ async function fetchMetricsFromPrometheus(
         `${PROMETHEUS_QUERY_URL}/api/v1/query?query=${encodeURIComponent(query)}&start=${startDate}&end=${endDate}`
       )
       const data = await response.json()
-      
+
       if (data.status === 'success' && data.data?.result?.length > 0) {
         metrics[key] = parseFloat(data.data.result[0].value[1])
       }

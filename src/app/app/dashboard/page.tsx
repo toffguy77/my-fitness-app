@@ -67,7 +67,7 @@ type NutritionTarget = {
 export default function ClientDashboard() {
   const supabase = createClient()
   const router = useRouter()
-  
+
   // Отслеживаем просмотр страницы
   usePageView('dashboard')
   const [user, setUser] = useState<User | null>(null)
@@ -81,7 +81,7 @@ export default function ClientDashboard() {
   const [todayLog, setTodayLog] = useState<DailyLog | null>(null)
   const [editingWeight, setEditingWeight] = useState<boolean>(false)
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]) // Навигация по датам
-  const [coordinatorNote, setCoordinatorNote] = useState<{ content: string; date: string } | null>(null) // Заметка координатора
+  const [curatorNote, setCuratorNote] = useState<{ content: string; date: string } | null>(null) // Заметка куратора
   const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
   const [reloadKey, setReloadKey] = useState<number>(0) // Триггер перезагрузки данных при возврате на страницу
   const [deleteMealModal, setDeleteMealModal] = useState<{ isOpen: boolean; mealId: string | null }>({ isOpen: false, mealId: null })
@@ -303,8 +303,8 @@ export default function ClientDashboard() {
                 }
               }
             }
-            logger.debug('Dashboard: обработка лога', { 
-              date: log.date, 
+            logger.debug('Dashboard: обработка лога', {
+              date: log.date,
               mealsCount: mealsArray.length,
               rawMealsType: typeof log.meals,
               rawMealsIsArray: Array.isArray(log.meals),
@@ -433,7 +433,7 @@ export default function ClientDashboard() {
       if (!user) return
 
       try {
-        // Загружаем профиль для проверки Premium и coordinator_id
+        // Загружаем профиль для проверки Premium и curator_id
         const profile = await getUserProfile(user)
         const isPremiumUser = hasActiveSubscription(profile)
 
@@ -447,7 +447,7 @@ export default function ClientDashboard() {
         if (logError && logError.code !== 'PGRST116') {
           logger.error('Dashboard: ошибка загрузки лога за дату', logError, { userId: user.id, date: selectedDate })
           setTodayLog(null)
-          setCoordinatorNote(null)
+          setCuratorNote(null)
           return
         }
 
@@ -535,32 +535,32 @@ export default function ClientDashboard() {
             meals: mealsArray
           } as DailyLog)
 
-          // Загружаем заметку координатора для выбранной даты (только для Premium)
-          if (isPremiumUser && profile?.coordinator_id) {
+          // Загружаем заметку куратора для выбранной даты (только для Premium)
+          if (isPremiumUser && profile?.curator_id) {
             const { data: noteData } = await supabase
-              .from('coordinator_notes')
+              .from('curator_notes')
               .select('content, date')
               .eq('client_id', user.id)
-              .eq('coordinator_id', profile.coordinator_id)
+              .eq('curator_id', profile.curator_id)
               .eq('date', selectedDate)
               .single()
 
             if (noteData) {
-              setCoordinatorNote({ content: noteData.content, date: noteData.date })
+              setCuratorNote({ content: noteData.content, date: noteData.date })
             } else {
-              setCoordinatorNote(null)
+              setCuratorNote(null)
             }
           } else {
-            setCoordinatorNote(null)
+            setCuratorNote(null)
           }
         } else {
           setTodayLog(null)
-          setCoordinatorNote(null)
+          setCuratorNote(null)
         }
       } catch (error) {
         logger.error('Dashboard: ошибка загрузки данных за дату', error, { userId: user.id, date: selectedDate })
         setTodayLog(null)
-        setCoordinatorNote(null)
+        setCuratorNote(null)
       }
     }
 
@@ -693,7 +693,7 @@ export default function ClientDashboard() {
                       const yesterdayDate = new Date(selectedDate)
                       yesterdayDate.setDate(yesterdayDate.getDate() - 1)
                       const yesterdayLog = weekLogs.find(log => log.date === yesterdayDate.toISOString().split('T')[0])
-                      
+
                       const proteinPercentage = currentTargets.protein > 0
                         ? Math.min(Math.max(((todayLog.actual_protein || 0) / currentTargets.protein) * 100, 0), 100)
                         : 0
@@ -703,7 +703,7 @@ export default function ClientDashboard() {
                       const carbsPercentage = currentTargets.carbs > 0
                         ? Math.min(Math.max(((todayLog.actual_carbs || 0) / currentTargets.carbs) * 100, 0), 100)
                         : 0
-                      
+
                       return (
                         <>
                           <ProgressBar
@@ -863,7 +863,7 @@ export default function ClientDashboard() {
                                   checkAchievementsAfterWeightLog().catch((err) => {
                                     logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
                                   })
-                                  
+
                                   // Record weight logged metric
                                   try {
                                     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -898,7 +898,7 @@ export default function ClientDashboard() {
                                   checkAchievementsAfterWeightLog().catch((err) => {
                                     logger.warn('Dashboard: ошибка проверки достижений после записи веса', { error: err })
                                   })
-                                  
+
                                   // Record weight logged metric
                                   try {
                                     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -1042,98 +1042,98 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                 ))}
-              {/* Модальное окно подтверждения удаления */}
-              {deleteMealModal.isOpen && todayLog && (
-                <ConfirmModal
-                  isOpen={deleteMealModal.isOpen}
-                  onClose={() => setDeleteMealModal({ isOpen: false, mealId: null })}
-                  onConfirm={async () => {
-                    if (!deleteMealModal.mealId || !todayLog || !user) return
-                    
-                    const mealToDelete = todayLog.meals?.find(m => m.id === deleteMealModal.mealId)
-                    if (!mealToDelete) return
+                {/* Модальное окно подтверждения удаления */}
+                {deleteMealModal.isOpen && todayLog && (
+                  <ConfirmModal
+                    isOpen={deleteMealModal.isOpen}
+                    onClose={() => setDeleteMealModal({ isOpen: false, mealId: null })}
+                    onConfirm={async () => {
+                      if (!deleteMealModal.mealId || !todayLog || !user) return
 
-                    // Сохраняем текущее состояние для отката
-                    const previousMeals = [...(todayLog.meals || [])]
-                    const previousTotals = {
-                      calories: todayLog.actual_calories || 0,
-                      protein: todayLog.actual_protein || 0,
-                      fats: todayLog.actual_fats || 0,
-                      carbs: todayLog.actual_carbs || 0,
-                    }
+                      const mealToDelete = todayLog.meals?.find(m => m.id === deleteMealModal.mealId)
+                      if (!mealToDelete) return
 
-                    // Оптимистичное обновление: сразу обновляем UI
-                    const updatedMeals = previousMeals.filter(m => m.id !== deleteMealModal.mealId)
-                    const dateMeals = updatedMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
-                    const newTotals = dateMeals.reduce(
-                      (acc, m) => ({
-                        calories: acc.calories + (m.totals?.calories || 0),
-                        protein: acc.protein + (m.totals?.protein || 0),
-                        fats: acc.fats + (m.totals?.fats || 0),
-                        carbs: acc.carbs + (m.totals?.carbs || 0)
-                      }),
-                      { calories: 0, protein: 0, fats: 0, carbs: 0 }
-                    )
-
-                    // Обновляем локальное состояние
-                    setTodayLog(prev => prev ? {
-                      ...prev,
-                      meals: updatedMeals,
-                      actual_calories: newTotals.calories,
-                      actual_protein: newTotals.protein,
-                      actual_fats: newTotals.fats,
-                      actual_carbs: newTotals.carbs,
-                    } : null)
-
-                    setDeleteMealModal({ isOpen: false, mealId: null })
-
-                    try {
-                      const { data: existingLog } = await supabase
-                        .from('daily_logs')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .eq('date', selectedDate)
-                        .single()
-
-                      if (existingLog) {
-                        const { error } = await supabase
-                          .from('daily_logs')
-                          .update({
-                            meals: updatedMeals,
-                            actual_calories: newTotals.calories,
-                            actual_protein: newTotals.protein,
-                            actual_fats: newTotals.fats,
-                            actual_carbs: newTotals.carbs
-                          })
-                          .eq('user_id', user.id)
-                          .eq('date', selectedDate)
-
-                        if (error) throw error
+                      // Сохраняем текущее состояние для отката
+                      const previousMeals = [...(todayLog.meals || [])]
+                      const previousTotals = {
+                        calories: todayLog.actual_calories || 0,
+                        protein: todayLog.actual_protein || 0,
+                        fats: todayLog.actual_fats || 0,
+                        carbs: todayLog.actual_carbs || 0,
                       }
 
-                      toast.success('Прием пищи удален')
-                      router.refresh()
-                    } catch (error) {
-                      // Откатываем изменения при ошибке
+                      // Оптимистичное обновление: сразу обновляем UI
+                      const updatedMeals = previousMeals.filter(m => m.id !== deleteMealModal.mealId)
+                      const dateMeals = updatedMeals.filter(m => (m.mealDate || selectedDate) === selectedDate)
+                      const newTotals = dateMeals.reduce(
+                        (acc, m) => ({
+                          calories: acc.calories + (m.totals?.calories || 0),
+                          protein: acc.protein + (m.totals?.protein || 0),
+                          fats: acc.fats + (m.totals?.fats || 0),
+                          carbs: acc.carbs + (m.totals?.carbs || 0)
+                        }),
+                        { calories: 0, protein: 0, fats: 0, carbs: 0 }
+                      )
+
+                      // Обновляем локальное состояние
                       setTodayLog(prev => prev ? {
                         ...prev,
-                        meals: previousMeals,
-                        actual_calories: previousTotals.calories,
-                        actual_protein: previousTotals.protein,
-                        actual_fats: previousTotals.fats,
-                        actual_carbs: previousTotals.carbs,
+                        meals: updatedMeals,
+                        actual_calories: newTotals.calories,
+                        actual_protein: newTotals.protein,
+                        actual_fats: newTotals.fats,
+                        actual_carbs: newTotals.carbs,
                       } : null)
-                      logger.error('Dashboard: ошибка удаления приема пищи', error)
-                      toast.error('Ошибка удаления приема пищи')
-                    }
-                  }}
-                  title="Удалить прием пищи"
-                  message={`Вы уверены, что хотите удалить "${todayLog.meals?.find(m => m.id === deleteMealModal.mealId)?.title || 'этот прием пищи'}"? Это действие нельзя отменить.`}
-                  variant="danger"
-                  confirmText="Удалить"
-                  cancelText="Отмена"
-                />
-              )}
+
+                      setDeleteMealModal({ isOpen: false, mealId: null })
+
+                      try {
+                        const { data: existingLog } = await supabase
+                          .from('daily_logs')
+                          .select('*')
+                          .eq('user_id', user.id)
+                          .eq('date', selectedDate)
+                          .single()
+
+                        if (existingLog) {
+                          const { error } = await supabase
+                            .from('daily_logs')
+                            .update({
+                              meals: updatedMeals,
+                              actual_calories: newTotals.calories,
+                              actual_protein: newTotals.protein,
+                              actual_fats: newTotals.fats,
+                              actual_carbs: newTotals.carbs
+                            })
+                            .eq('user_id', user.id)
+                            .eq('date', selectedDate)
+
+                          if (error) throw error
+                        }
+
+                        toast.success('Прием пищи удален')
+                        router.refresh()
+                      } catch (error) {
+                        // Откатываем изменения при ошибке
+                        setTodayLog(prev => prev ? {
+                          ...prev,
+                          meals: previousMeals,
+                          actual_calories: previousTotals.calories,
+                          actual_protein: previousTotals.protein,
+                          actual_fats: previousTotals.fats,
+                          actual_carbs: previousTotals.carbs,
+                        } : null)
+                        logger.error('Dashboard: ошибка удаления приема пищи', error)
+                        toast.error('Ошибка удаления приема пищи')
+                      }
+                    }}
+                    title="Удалить прием пищи"
+                    message={`Вы уверены, что хотите удалить "${todayLog.meals?.find(m => m.id === deleteMealModal.mealId)?.title || 'этот прием пищи'}"? Это действие нельзя отменить.`}
+                    variant="danger"
+                    confirmText="Удалить"
+                    cancelText="Отмена"
+                  />
+                )}
                 {!todayLog.is_completed && (
                   <div className="pt-2 text-center">
                     <button
@@ -1192,8 +1192,8 @@ export default function ClientDashboard() {
                   </div>
                 ) : (
                   <>
-        <button
-          onClick={async () => {
+                    <button
+                      onClick={async () => {
                         if (!user) return
 
                         if (!hasWeight) {
@@ -1226,7 +1226,7 @@ export default function ClientDashboard() {
 
                           // Показываем сообщение
                           if (isPremium) {
-                            toast.success('День завершен! Координатор получит уведомление.')
+                            toast.success('День завершен! Куратор получит уведомление.')
                           } else {
                             // Подсчитываем стрик (дни подряд)
                             const completedDates = weekLogs
@@ -1251,7 +1251,7 @@ export default function ClientDashboard() {
                             toast.success(`День завершен! Вы молодец! 🎉 Стрик: ${streak} ${streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'}`)
                           }
 
-            router.refresh()
+                          router.refresh()
                         } catch (error) {
                           logger.error('Dashboard: ошибка завершения дня', error, { userId: user.id, date: selectedDate })
                           toast.error('Ошибка при завершении дня. Попробуйте еще раз.')
@@ -1273,7 +1273,7 @@ export default function ClientDashboard() {
                           Завершить день
                         </>
                       )}
-        </button>
+                    </button>
                     {!canComplete && !todayLog.is_completed && (
                       <div className="mt-3 text-center">
                         <p className="text-sm text-zinc-500">
@@ -1297,18 +1297,18 @@ export default function ClientDashboard() {
         </section>
       )}
 
-      {/* ЗАМЕТКА КООРДИНАТОРА (Premium) */}
-      {isPremium && coordinatorNote && (
+      {/* ЗАМЕТКА КУРАТОРА (Premium) */}
+      {isPremium && curatorNote && (
         <section className="bg-slate-800 rounded-2xl p-6">
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 bg-zinc-800 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💬</span>
-        </div>
+            </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-zinc-100 mb-1">Сообщение от координатора</h3>
-              <p className="text-sm text-zinc-100 whitespace-pre-line">{coordinatorNote.content}</p>
+              <h3 className="text-sm font-semibold text-zinc-100 mb-1">Сообщение от куратора</h3>
+              <p className="text-sm text-zinc-100 whitespace-pre-line">{curatorNote.content}</p>
               <p className="text-xs text-zinc-400 mt-2">
-                {new Date(coordinatorNote.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                {new Date(curatorNote.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
               </p>
             </div>
           </div>
@@ -1323,7 +1323,7 @@ export default function ClientDashboard() {
               <span className="text-xl">🔒</span>
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-zinc-100 mb-1">Заметки от координатора</h3>
+              <h3 className="text-sm font-semibold text-zinc-100 mb-1">Заметки от куратора</h3>
               <p className="text-sm text-zinc-400 mb-3">
                 Эта функция доступна только с активной Premium подпиской.
               </p>
@@ -1448,12 +1448,12 @@ export default function ClientDashboard() {
             title="Нет данных за неделю"
             description="Начните отслеживать свое питание и вес, чтобы видеть прогресс"
             action={
-            <button
+              <button
                 onClick={() => router.push(`/app/nutrition?date=${selectedDate}`)}
                 className="px-4 py-2 bg-white text-zinc-950 rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors"
-            >
-              Начать вводить данные
-            </button>
+              >
+                Начать вводить данные
+              </button>
             }
             variant="default"
           />

@@ -51,7 +51,7 @@ export default function RegisterPage() {
       if (data.valid) {
         logger.registration('Register: инвайт-код валиден', {
           code: code.toUpperCase(),
-          coordinatorName: data.coordinator_name,
+          curatorName: data.curator_name,
           expiresAt: data.expires_at,
           remainingUses: data.remaining_uses
         })
@@ -94,8 +94,8 @@ export default function RegisterPage() {
       hasFullName: !!fullName
     })
     // Дополнительно пишем в stdout для гарантии попадания в Docker логи (Node.js серверная среда)
-    if (typeof window === 'undefined' && typeof process !== 'undefined' && 
-        'stdout' in process && typeof (process as any).stdout?.write === 'function') {
+    if (typeof window === 'undefined' && typeof process !== 'undefined' &&
+      'stdout' in process && typeof (process as any).stdout?.write === 'function') {
       try {
         (process as any).stdout.write(`[REGISTRATION START] email: ${email}, hasInviteCode: ${!!inviteCode}, inviteCodeValid: ${codeValidation?.valid || false}\n`)
       } catch {
@@ -135,8 +135,8 @@ export default function RegisterPage() {
           email
         })
         // Дополнительно пишем в stderr для гарантии попадания в Docker логи (Node.js серверная среда)
-        if (typeof window === 'undefined' && typeof process !== 'undefined' && 
-            'stderr' in process && typeof (process as any).stderr?.write === 'function') {
+        if (typeof window === 'undefined' && typeof process !== 'undefined' &&
+          'stderr' in process && typeof (process as any).stderr?.write === 'function') {
           try {
             (process as any).stderr.write(`[REGISTRATION ERROR] Failed to create user: ${authError.message}, email: ${email}\n`)
           } catch {
@@ -161,15 +161,15 @@ export default function RegisterPage() {
         emailConfirmed: !!authData.user.email_confirmed_at,
         hasSession: !!authData.session
       })
-      
+
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:162',message:'HYPOTHESIS_I: signUp completed, checking email confirmation',data:{userId:authData.user.id,email:authData.user.email,emailConfirmed:!!authData.user.email_confirmed_at,hasSession:!!authData.session,sessionAccessToken:authData.session?.access_token?.substring(0,20)||null,emailRedirectTo:`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,signUpTimestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:162', message: 'HYPOTHESIS_I: signUp completed, checking email confirmation', data: { userId: authData.user.id, email: authData.user.email, emailConfirmed: !!authData.user.email_confirmed_at, hasSession: !!authData.session, sessionAccessToken: authData.session?.access_token?.substring(0, 20) || null, emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`, signUpTimestamp: Date.now() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run4', hypothesisId: 'I' }) }).catch(() => { });
       // #endregion
 
       // 2. Создаем профиль с ролью 'client' и статусом 'free'
       // ВАЖНО: Профиль создается всегда, даже если email не подтвержден,
       // чтобы пользователь мог войти после подтверждения email
-      let coordinatorId: string | null = null
+      let curatorId: string | null = null
 
       // Если есть валидный инвайт-код, используем его
       if (inviteCode && codeValidation?.valid) {
@@ -178,7 +178,7 @@ export default function RegisterPage() {
           userId: authData.user.id
         })
         try {
-          const { data: coordinatorIdData, error: codeError } = await supabase.rpc(
+          const { data: curatorIdData, error: codeError } = await supabase.rpc(
             'use_invite_code',
             {
               code_param: inviteCode.toUpperCase(),
@@ -192,13 +192,13 @@ export default function RegisterPage() {
               code: inviteCode.toUpperCase(),
               userId: authData.user.id
             })
-            // Продолжаем регистрацию без координатора
+            // Продолжаем регистрацию без куратора
           } else {
-            coordinatorId = coordinatorIdData
+            curatorId = curatorIdData
             logger.registration('Register: инвайт-код успешно использован', {
               code: inviteCode.toUpperCase(),
               userId: authData.user.id,
-              coordinatorId
+              curatorId
             })
           }
         } catch (err) {
@@ -206,7 +206,7 @@ export default function RegisterPage() {
             code: inviteCode.toUpperCase(),
             userId: authData.user.id
           })
-          // Продолжаем регистрацию без координатора
+          // Продолжаем регистрацию без куратора
         }
       } else {
         logger.userFlow('Register: регистрация без инвайт-кода', { userId: authData.user.id })
@@ -218,7 +218,7 @@ export default function RegisterPage() {
         userId: authData.user.id,
         email,
         fullName: fullName || null,
-        coordinatorId: coordinatorId || null
+        curatorId: curatorId || null
       })
 
       // Используем RPC функцию create_user_profile, которая обходит RLS через SECURITY DEFINER
@@ -232,7 +232,7 @@ export default function RegisterPage() {
       const profileCreationStartTime = Date.now()
 
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:222',message:'POST_FIX: Starting profile creation with initial delay',data:{userId:authData.user.id,retryCount:0,maxRetries,initialDelay,baseRetryDelay,startTime:profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:222', message: 'POST_FIX: Starting profile creation with initial delay', data: { userId: authData.user.id, retryCount: 0, maxRetries, initialDelay, baseRetryDelay, startTime: profileCreationStartTime }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
       // #endregion
 
       // Начальная задержка перед первой попыткой (пользователь может появиться с задержкой)
@@ -240,38 +240,38 @@ export default function RegisterPage() {
 
       while (retryCount < maxRetries) {
         const attemptStartTime = Date.now()
-        
+
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:235',message:'HYPOTHESIS_G: Retry attempt started, checking auth user first',data:{retryCount,attemptNumber:retryCount+1,maxRetries,timeSinceProfileStart:attemptStartTime-profileCreationStartTime,userId:authData.user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:235', message: 'HYPOTHESIS_G: Retry attempt started, checking auth user first', data: { retryCount, attemptNumber: retryCount + 1, maxRetries, timeSinceProfileStart: attemptStartTime - profileCreationStartTime, userId: authData.user.id }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'G' }) }).catch(() => { });
         // #endregion
 
         // Проверяем, существует ли пользователь в auth через getUser
         const { data: authUserData, error: authUserError } = await supabase.auth.getUser()
         const authUserCheckTime = Date.now()
-        
+
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:242',message:'HYPOTHESIS_G: auth.getUser check completed',data:{retryCount,hasAuthUser:!!authUserData.user,authUserMatches:authUserData.user?.id===authData.user.id,authUserError:authUserError?.message||null,checkDuration:authUserCheckTime-attemptStartTime,timeSinceProfileStart:authUserCheckTime-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:242', message: 'HYPOTHESIS_G: auth.getUser check completed', data: { retryCount, hasAuthUser: !!authUserData.user, authUserMatches: authUserData.user?.id === authData.user.id, authUserError: authUserError?.message || null, checkDuration: authUserCheckTime - attemptStartTime, timeSinceProfileStart: authUserCheckTime - profileCreationStartTime }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'G' }) }).catch(() => { });
         // #endregion
 
         const { error: error } = await supabase.rpc('create_user_profile', {
-        user_id: authData.user.id,
-        user_email: email,
-        user_full_name: fullName || null,
-        user_role: 'client',
-        user_coordinator_id: coordinatorId || null,
-      })
+          user_id: authData.user.id,
+          user_email: email,
+          user_full_name: fullName || null,
+          user_role: 'client',
+          user_curator_id: curatorId || null,
+        })
 
         const attemptDuration = Date.now() - attemptStartTime
         profileError = error
 
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:254',message:'HYPOTHESIS_G: RPC call completed',data:{retryCount,hasError:!!profileError,errorMessage:profileError?.message||null,errorCode:profileError?.code||null,attemptDuration,timeSinceProfileStart:Date.now()-profileCreationStartTime,includesDoesNotExist:profileError?.message?.includes('does not exist in auth.users')||false},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:254', message: 'HYPOTHESIS_G: RPC call completed', data: { retryCount, hasError: !!profileError, errorMessage: profileError?.message || null, errorCode: profileError?.code || null, attemptDuration, timeSinceProfileStart: Date.now() - profileCreationStartTime, includesDoesNotExist: profileError?.message?.includes('does not exist in auth.users') || false }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run2', hypothesisId: 'G' }) }).catch(() => { });
         // #endregion
 
         // Если нет ошибки, выходим из цикла - профиль создан успешно
         if (!profileError) {
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:273',message:'POST_FIX: Success, exiting retry loop',data:{retryCount,timeSinceProfileStart:Date.now()-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:273', message: 'POST_FIX: Success, exiting retry loop', data: { retryCount, timeSinceProfileStart: Date.now() - profileCreationStartTime }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
           // #endregion
           break
         }
@@ -280,12 +280,12 @@ export default function RegisterPage() {
         // После миграции v9.6 функция не должна выбрасывать эту ошибку, но на всякий случай обрабатываем
         if (profileError && profileError.message?.includes('does not exist in auth.users')) {
           retryCount++
-          
+
           // Экспоненциальный backoff: 300ms, 600ms, 900ms, 1200ms, 1500ms, 1800ms
           const waitTime = baseRetryDelay * retryCount
-          
+
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:260',message:'POST_FIX: User not found, retrying with delay',data:{retryCount,waitTime,timeSinceProfileStart:Date.now()-profileCreationStartTime,willRetry:retryCount<maxRetries},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:260', message: 'POST_FIX: User not found, retrying with delay', data: { retryCount, waitTime, timeSinceProfileStart: Date.now() - profileCreationStartTime, willRetry: retryCount < maxRetries }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
           // #endregion
 
           if (retryCount < maxRetries) {
@@ -303,21 +303,21 @@ export default function RegisterPage() {
         // Если ошибка не связана с отсутствием пользователя, выходим
         if (profileError && !profileError.message?.includes('does not exist in auth.users')) {
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:280',message:'POST_FIX: Different error, exiting retry loop',data:{retryCount,errorMessage:profileError?.message,timeSinceProfileStart:Date.now()-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:280', message: 'POST_FIX: Different error, exiting retry loop', data: { retryCount, errorMessage: profileError?.message, timeSinceProfileStart: Date.now() - profileCreationStartTime }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
           // #endregion
           break
         }
       }
-      
+
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:312',message:'POST_FIX: Retry loop completed',data:{finalRetryCount:retryCount,hasError:!!profileError,errorMessage:profileError?.message||null,totalTime:Date.now()-profileCreationStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:312', message: 'POST_FIX: Retry loop completed', data: { finalRetryCount: retryCount, hasError: !!profileError, errorMessage: profileError?.message || null, totalTime: Date.now() - profileCreationStartTime }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
       // #endregion
 
       // После миграции v9.6 функция create_user_profile не выбрасывает ошибку при foreign_key_violation
       // Она просто игнорирует ошибку и позволяет триггеру создать профиль позже
       // Поэтому, даже если profileError существует и связана с "does not exist", мы продолжаем регистрацию
       // Профиль будет создан автоматически, когда пользователь появится в auth.users
-      
+
       if (profileError && !profileError.message?.includes('does not exist in auth.users')) {
         // Если это не ошибка "does not exist", значит какая-то другая проблема
         logger.error('Register: ошибка создания профиля', profileError, {
@@ -325,10 +325,10 @@ export default function RegisterPage() {
           email,
           attempts: retryCount
         })
-        
+
         // Пишем в stderr для Docker логов
-        if (typeof window === 'undefined' && typeof process !== 'undefined' && 
-            'stderr' in process && typeof (process as any).stderr?.write === 'function') {
+        if (typeof window === 'undefined' && typeof process !== 'undefined' &&
+          'stderr' in process && typeof (process as any).stderr?.write === 'function') {
           try {
             (process as any).stderr.write(`[REGISTRATION ERROR] Failed to create profile: ${profileError.message}, userId: ${authData.user.id}, email: ${email}, attempts: ${retryCount}\n`)
           } catch {
@@ -339,7 +339,7 @@ export default function RegisterPage() {
         setLoading(false)
         return
       }
-      
+
       // Если ошибка была связана с "does not exist", или ошибки не было - продолжаем
       // Профиль будет создан автоматически триггером или при следующей попытке
       if (profileError && profileError.message?.includes('does not exist in auth.users')) {
@@ -349,46 +349,46 @@ export default function RegisterPage() {
           attempts: retryCount,
           note: 'Профиль будет создан автоматически, когда пользователь появится в auth.users'
         })
-        
+
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:351',message:'POST_FIX: Profile creation warning, but continuing',data:{userId:authData.user.id,email,retryCount,note:'Profile will be created automatically when user appears in auth.users'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:351', message: 'POST_FIX: Profile creation warning, but continuing', data: { userId: authData.user.id, email, retryCount, note: 'Profile will be created automatically when user appears in auth.users' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
         // #endregion
       }
 
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:362',message:'POST_FIX: About to log profile creation success',data:{userId:authData.user.id,email,coordinatorId:coordinatorId||null,hasProfileError:!!profileError},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:362', message: 'POST_FIX: About to log profile creation success', data: { userId: authData.user.id, email, curatorId: curatorId || null, hasProfileError: !!profileError }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
       // #endregion
 
       logger.registration('Register: профиль успешно создан', {
         userId: authData.user.id,
         email,
-        coordinatorId: coordinatorId || null
+        curatorId: curatorId || null
       })
-      
+
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:372',message:'POST_FIX: Profile creation logged, continuing registration flow',data:{userId:authData.user.id,email,coordinatorId:coordinatorId||null},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'FIX'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:372', message: 'POST_FIX: Profile creation logged, continuing registration flow', data: { userId: authData.user.id, email, curatorId: curatorId || null }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'post-fix', hypothesisId: 'FIX' }) }).catch(() => { });
       // #endregion
       // Дополнительно пишем в stdout для гарантии попадания в Docker логи (Node.js серверная среда)
-      if (typeof window === 'undefined' && typeof process !== 'undefined' && 
-          'stdout' in process && typeof (process as any).stdout?.write === 'function') {
+      if (typeof window === 'undefined' && typeof process !== 'undefined' &&
+        'stdout' in process && typeof (process as any).stdout?.write === 'function') {
         try {
-          (process as any).stdout.write(`[REGISTRATION SUCCESS] userId: ${authData.user.id}, email: ${email}, coordinatorId: ${coordinatorId || 'null'}\n`)
+          (process as any).stdout.write(`[REGISTRATION SUCCESS] userId: ${authData.user.id}, email: ${email}, curatorId: ${curatorId || 'null'}\n`)
         } catch {
           // Ignore if stdout is not available
         }
       }
 
-      // Отправляем уведомление координатору, если регистрация была по инвайт-коду
-      if (coordinatorId && inviteCode && codeValidation?.valid) {
+      // Отправляем уведомление куратору, если регистрация была по инвайт-коду
+      if (curatorId && inviteCode && codeValidation?.valid) {
         try {
-          // Получаем данные координатора для уведомления
-          const { data: coordinatorProfile } = await supabase
+          // Получаем данные куратора для уведомления
+          const { data: curatorProfile } = await supabase
             .from('profiles')
             .select('email, full_name')
-            .eq('id', coordinatorId)
+            .eq('id', curatorId)
             .single()
 
-          if (coordinatorProfile?.email) {
+          if (curatorProfile?.email) {
             // Отправляем email через API route (выполняется на сервере)
             try {
               const emailResponse = await fetch('/api/email/send', {
@@ -397,10 +397,10 @@ export default function RegisterPage() {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  to: coordinatorProfile.email,
+                  to: curatorProfile.email,
                   template: 'invite_code_registration',
                   data: {
-                    coordinatorName: coordinatorProfile.full_name || undefined,
+                    curatorName: curatorProfile.full_name || undefined,
                     clientName: fullName || undefined,
                     clientEmail: email,
                     inviteCode: inviteCode.toUpperCase(),
@@ -409,26 +409,26 @@ export default function RegisterPage() {
               })
 
               if (emailResponse.ok) {
-                logger.info('Register: уведомление координатору отправлено', {
-                  coordinatorId,
+                logger.info('Register: уведомление куратору отправлено', {
+                  curatorId,
                   clientId: authData.user.id,
                 })
               } else {
-                logger.warn('Register: ошибка отправки уведомления координатору', {
+                logger.warn('Register: ошибка отправки уведомления куратору', {
                   status: emailResponse.status,
-                  coordinatorId,
+                  curatorId,
                 })
               }
             } catch (emailError) {
-              logger.warn('Register: ошибка отправки уведомления координатору', {
+              logger.warn('Register: ошибка отправки уведомления куратору', {
                 error: emailError instanceof Error ? emailError.message : String(emailError),
-                coordinatorId,
+                curatorId,
               })
             }
           }
         } catch (emailError) {
           // Не критично, продолжаем регистрацию
-          logger.warn('Register: ошибка отправки уведомления координатору', {
+          logger.warn('Register: ошибка отправки уведомления куратору', {
             error: emailError instanceof Error ? emailError.message : String(emailError),
           })
         }
@@ -443,11 +443,11 @@ export default function RegisterPage() {
           emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,
           note: 'Проверьте настройки Supabase Dashboard: Email Auth -> Email Templates и SMTP settings'
         })
-        
+
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:440',message:'HYPOTHESIS_I: Email confirmation required',data:{userId:authData.user.id,email,emailConfirmed:false,emailRedirectTo:`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`,note:'Check Supabase Dashboard settings: Email Auth -> Email Templates and SMTP'},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:440', message: 'HYPOTHESIS_I: Email confirmation required', data: { userId: authData.user.id, email, emailConfirmed: false, emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`, note: 'Check Supabase Dashboard settings: Email Auth -> Email Templates and SMTP' }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run4', hypothesisId: 'I' }) }).catch(() => { });
         // #endregion
-        
+
         setNeedsEmailConfirmation(true)
         setMessage(
           'Регистрация успешна! Пожалуйста, проверьте вашу почту и подтвердите email адрес. ' +
@@ -497,7 +497,7 @@ export default function RegisterPage() {
     setError(null)
 
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:499',message:'HYPOTHESIS_I: Resending confirmation email',data:{email,emailRedirectTo:`${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback`},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:499', message: 'HYPOTHESIS_I: Resending confirmation email', data: { email, emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/callback` }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run4', hypothesisId: 'I' }) }).catch(() => { });
     // #endregion
 
     try {
@@ -510,7 +510,7 @@ export default function RegisterPage() {
       })
 
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'register/page-content.tsx:511',message:'HYPOTHESIS_I: Resend confirmation email result',data:{email,hasError:!!resendError,errorMessage:resendError?.message||null,errorCode:resendError?.code||null,errorStatus:resendError?.status||null,fullError:JSON.stringify(resendError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'I'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ea54ea8c-922b-43b4-a955-d6324257421f', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'register/page-content.tsx:511', message: 'HYPOTHESIS_I: Resend confirmation email result', data: { email, hasError: !!resendError, errorMessage: resendError?.message || null, errorCode: resendError?.code || null, errorStatus: resendError?.status || null, fullError: JSON.stringify(resendError) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run4', hypothesisId: 'I' }) }).catch(() => { });
       // #endregion
 
       if (resendError) {
@@ -522,16 +522,16 @@ export default function RegisterPage() {
           fullError: JSON.stringify(resendError),
           note: 'Проверьте настройки Supabase Dashboard: Email Auth -> Email Templates и SMTP settings. Убедитесь, что SMTP сервер настроен правильно и доступен.'
         }
-        
+
         logger.error('Register: ошибка повторной отправки письма', resendError, errorDetails)
-        
+
         // Более детальное сообщение об ошибке
         let errorMessage = 'Ошибка отправки письма: ' + resendError.message
         if ((resendError as any).code) {
           errorMessage += ` (код: ${(resendError as any).code})`
         }
         errorMessage += '. Проверьте настройки SMTP в Supabase Dashboard (Project Settings → Auth → SMTP Settings). Убедитесь, что SMTP сервер настроен правильно, доступен и не заблокирован.'
-        
+
         setError(errorMessage)
       } else {
         logger.registration('Register: письмо подтверждения отправлено повторно', { email })
@@ -614,9 +614,9 @@ export default function RegisterPage() {
                 ) : null}
               </div>
             </div>
-            {codeValidation?.valid && codeValidation.coordinator_name && (
+            {codeValidation?.valid && codeValidation.curator_name && (
               <p className="mt-1 text-xs text-emerald-400">
-                ✓ Код валиден. Координатор: {codeValidation.coordinator_name}
+                ✓ Код валиден. Куратор: {codeValidation.curator_name}
               </p>
             )}
             {inviteCode.length === 8 && codeValidation?.valid === false && (

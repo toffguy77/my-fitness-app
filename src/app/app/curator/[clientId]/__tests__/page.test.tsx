@@ -334,7 +334,7 @@ describe('Curator Client View Page', () => {
     render(<ClientViewPage />)
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/app/coordinator')
+      expect(mockPush).toHaveBeenCalledWith('/app/curator')
     }, { timeout: 3000 })
   })
 
