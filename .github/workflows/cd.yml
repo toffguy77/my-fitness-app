@@ -44,6 +44,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
       
       - name: Send deployment start notification
+        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment staging in_progress ${{ github.sha }}
         env:
@@ -84,7 +86,8 @@ jobs:
           echo "✅ All health checks passed"
       
       - name: Send deployment success notification
-        if: success()
+        if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment staging success ${{ github.sha }} ${{ steps.deploy-staging.outputs.deployment_url }}
         env:
@@ -92,7 +95,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send deployment failure notification
-        if: failure()
+        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment staging failure ${{ github.sha }}
         env:
@@ -125,6 +129,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       
       - name: Send deployment start notification
+        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment production in_progress ${{ github.sha }}
         env:
@@ -166,7 +172,8 @@ jobs:
           echo "✅ All production health checks passed"
       
       - name: Send deployment success notification
-        if: success()
+        if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment production success ${{ github.sha }} ${{ steps.deploy-production.outputs.deployment_url }}
         env:
@@ -174,7 +181,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send deployment failure notification
-        if: failure()
+        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment production failure ${{ github.sha }}
         env:
@@ -211,8 +219,13 @@ jobs:
           
           # Get previous successful deployment version
           # In real implementation, this would query deployment history
-          # For now, we'll use the previous commit
-          PREVIOUS_VERSION=$(git rev-parse HEAD~1)
+          # For now, we'll use the previous commit if it exists
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            PREVIOUS_VERSION=$(git rev-parse HEAD~1)
+          else
+            # If no previous commit, use current HEAD
+            PREVIOUS_VERSION=$(git rev-parse HEAD)
+          fi
           echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
           
           echo "🔄 Preparing rollback for $ENVIRONMENT to version $PREVIOUS_VERSION"
@@ -301,6 +314,8 @@ jobs:
           cat rollback-incident.json
       
       - name: Send enhanced rollback notification
+        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback ${{ github.sha }}
         env:
@@ -308,7 +323,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send rollback success notification
-        if: success()
+        if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_success ${{ github.sha }}
         env:
@@ -316,7 +332,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send rollback failure notification
-        if: failure()
+        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_failure ${{ github.sha }}
         env:

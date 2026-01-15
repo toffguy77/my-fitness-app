@@ -1,20 +1,55 @@
 {
-  "timestamp": "2026-01-15T17:55:48.445Z",
+  "timestamp": "2026-01-15T18:07:29.454Z",
   "baseSha": "HEAD~1",
-  "currentSha": "c553cadf672206427f24c0ddacf140047acda266",
+  "currentSha": "036e0eb9ad3409a4408aff5a018fe1ede6a71dde",
   "changedFiles": [
-    "src/app/app/admin/metrics/__tests__/page.test.tsx"
+    ".cache/pipeline-metrics/job-test-job-test-run-123.json",
+    ".cache/pipeline-metrics/job-threshold-test-1768499557160.json",
+    ".cache/pipeline-metrics/job-threshold-test-1768499708121.json",
+    ".cache/pipeline-metrics/job-threshold-test-1768499751902.json",
+    ".cache/pipeline-metrics/performance-report-1768499555784.json",
+    ".cache/pipeline-metrics/performance-report-1768499556415.json",
+    ".cache/pipeline-metrics/performance-report-1768499705771.json",
+    ".cache/pipeline-metrics/performance-report-1768499706598.json",
+    ".cache/pipeline-metrics/performance-report-1768499749059.json",
+    ".cache/pipeline-metrics/performance-report-1768499749597.json",
+    ".cache/pipeline-metrics/performance.json",
+    ".cache/pipeline/build-hash.txt",
+    ".cache/pipeline/changed-files.json",
+    "performance-dashboard/index.html",
+    "src/__tests__/coordinator-to-curator-rename.ui-text.property.test.ts",
+    "src/app/api/nutrition-targets/update/__tests__/route.test.ts",
+    "src/app/app/curator/[clientId]/__tests__/page.test.tsx"
   ],
   "categories": {
     "source": [],
     "tests": [
-      "src/app/app/admin/metrics/__tests__/page.test.tsx"
+      "src/__tests__/coordinator-to-curator-rename.ui-text.property.test.ts",
+      "src/app/api/nutrition-targets/update/__tests__/route.test.ts",
+      "src/app/app/curator/[clientId]/__tests__/page.test.tsx"
     ],
-    "config": [],
-    "docs": [],
+    "config": [
+      ".cache/pipeline-metrics/job-test-job-test-run-123.json",
+      ".cache/pipeline-metrics/job-threshold-test-1768499557160.json",
+      ".cache/pipeline-metrics/job-threshold-test-1768499708121.json",
+      ".cache/pipeline-metrics/job-threshold-test-1768499751902.json",
+      ".cache/pipeline-metrics/performance-report-1768499555784.json",
+      ".cache/pipeline-metrics/performance-report-1768499556415.json",
+      ".cache/pipeline-metrics/performance-report-1768499705771.json",
+      ".cache/pipeline-metrics/performance-report-1768499706598.json",
+      ".cache/pipeline-metrics/performance-report-1768499749059.json",
+      ".cache/pipeline-metrics/performance-report-1768499749597.json",
+      ".cache/pipeline-metrics/performance.json",
+      ".cache/pipeline/changed-files.json"
+    ],
+    "docs": [
+      ".cache/pipeline/build-hash.txt"
+    ],
     "workflows": [],
     "dependencies": [],
-    "other": []
+    "other": [
+      "performance-dashboard/index.html"
+    ]
   },
   "recommendations": {
     "skipJobs": [
