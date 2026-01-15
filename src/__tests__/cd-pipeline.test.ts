@@ -269,8 +269,8 @@ describe('CD Pipeline Configuration', () => {
             );
 
             notificationSteps.forEach((step) => {
-                expect(step.env.TELEGRAM_BOT_TOKEN).toBe('${{ secrets.TELEGRAM_BOT_TOKEN }}');
-                expect(step.env.TELEGRAM_CHAT_ID).toBe('${{ secrets.TELEGRAM_CHAT_ID }}');
+                expect(step.env.TELEGRAM_BOT_TOKEN).toBe('${{ vars.TELEGRAM_BOT_TOKEN }}');
+                expect(step.env.TELEGRAM_CHAT_ID).toBe('${{ vars.TELEGRAM_CHAT_ID }}');
             });
         });
 
