@@ -1,8 +1,8 @@
 {
-  "jobId": "test-job-test-run-123",
-  "jobName": "test-job",
-  "runId": "test-run-123",
-  "startTime": 1768507551457,
+  "jobId": "threshold-test-1768507488840",
+  "jobName": "threshold-test",
+  "runId": null,
+  "startTime": 1768507488840,
   "status": "success",
   "resources": {
     "initialMemory": 29,
@@ -14,6 +14,6 @@
     "peakMemory": 29,
     "peakCpu": 50
   },
-  "endTime": 1768507551542,
-  "duration": 85
+  "endTime": 1768507488949,
+  "duration": 109
 }
