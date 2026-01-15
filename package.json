@@ -37,7 +37,10 @@
     "security:licenses": "node scripts/security-scanner.js licenses",
     "security:audit": "npm audit --audit-level high",
     "security:fix": "npm audit fix",
-    "lint:security": "eslint . --config eslint.security.config.mjs --ext .js,.jsx,.ts,.tsx"
+    "lint:security": "eslint . --config eslint.security.config.mjs --ext .js,.jsx,.ts,.tsx",
+    "precommit:setup": "bash scripts/setup-pre-commit.sh",
+    "precommit:run": "pre-commit run --all-files",
+    "precommit:update": "pre-commit autoupdate"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

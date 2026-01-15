@@ -56,7 +56,20 @@ NEXT_PUBLIC_APP_URL=http://localhost:3069
 NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1-xxxxx
 ```
 
-5. Запустите dev сервер:
+5. Настройте pre-commit hooks (рекомендуется):
+```bash
+npm run precommit:setup
+```
+
+Это установит автоматические проверки перед каждым коммитом:
+- ✅ TypeScript type checking
+- ✅ ESLint
+- ✅ Jest tests
+- ✅ Security checks
+
+Подробнее: [docs/Pre-Commit-Hooks.md](docs/Pre-Commit-Hooks.md)
+
+6. Запустите dev сервер:
 ```bash
 npm run dev
 ```
