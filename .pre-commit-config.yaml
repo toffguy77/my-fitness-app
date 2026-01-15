@@ -5,6 +5,15 @@ repos:
   # Code quality checks
   - repo: local
     hooks:
+      # TypeScript type checking
+      - id: typescript-check
+        name: TypeScript Type Check
+        entry: npm run type-check
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+        stages: [pre-commit]
+
       # ESLint for code quality
       - id: eslint
         name: ESLint

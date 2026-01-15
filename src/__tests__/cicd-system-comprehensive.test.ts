@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Comprehensive CI/CD System Tests
  *

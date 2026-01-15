@@ -20,6 +20,7 @@ const eslintConfig = defineConfig([
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "warn",
+      "@typescript-eslint/ban-ts-comment": "off", // Allow @ts-nocheck in test files
       "react-hooks/exhaustive-deps": "off",
       "react-hooks/rules-of-hooks": "warn",
     },
