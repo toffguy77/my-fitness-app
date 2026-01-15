@@ -232,7 +232,7 @@ export async function middleware(request: NextRequest) {
     const subscriptionTier = profile?.subscription_tier || 'basic'
     const subscriptionEndDate = profile?.subscription_end_date
 
-    // Проверка Premium только для клиентов (координаторы не имеют подписки)
+    // Проверка Premium только для клиентов (кураторы не имеют подписки)
     let isPremium = false
     if (role === 'client') {
       const isActive = subscriptionStatus === 'active'
@@ -276,8 +276,8 @@ export async function middleware(request: NextRequest) {
       let redirectPath = '/app/dashboard'
       if (isSuperAdmin) {
         redirectPath = '/admin'
-      } else if (role === 'coordinator') {
-        redirectPath = '/app/coordinator'
+      } else if (role === 'curator') {
+        redirectPath = '/app/curator'
       }
       try {
         logger.info('Middleware: редирект авторизованного пользователя', {
@@ -308,10 +308,10 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/app/dashboard', request.url))
       }
 
-      // Проверка доступа к кабинету координатора
-      if (pathname.startsWith('/app/coordinator') && role !== 'coordinator') {
+      // Проверка доступа к кабинету куратора
+      if (pathname.startsWith('/app/curator') && role !== 'curator') {
         try {
-          logger.warn('Middleware: попытка доступа к кабинету координатора без прав', {
+          logger.warn('Middleware: попытка доступа к кабинету куратора без прав', {
             userId: user.id,
             role,
             pathname,

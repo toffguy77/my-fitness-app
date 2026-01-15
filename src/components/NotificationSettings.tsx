@@ -117,8 +117,8 @@ export default function NotificationSettings() {
 
       {message && (
         <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('Ошибка')
-            ? 'bg-rose-950/20 border border-rose-800/50 text-rose-300'
-            : 'bg-emerald-950/20 border border-emerald-800/50 text-emerald-300'
+          ? 'bg-rose-950/20 border border-rose-800/50 text-rose-300'
+          : 'bg-emerald-950/20 border border-emerald-800/50 text-emerald-300'
           }`}>
           {message}
         </div>
@@ -141,7 +141,7 @@ export default function NotificationSettings() {
               />
             </div>
             <p className="text-xs text-zinc-400">
-              Получать один раз в день сводку по вашему прогрессу и заметкам от координатора
+              Получать один раз в день сводку по вашему прогрессу и заметкам от куратора
             </p>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function NotificationSettings() {
               />
             </div>
             <p className="text-xs text-zinc-400">
-              Получать email сразу при получении заметки от координатора или напоминании о чекине
+              Получать email сразу при получении заметки от куратора или напоминании о чекине
             </p>
           </div>
         </div>

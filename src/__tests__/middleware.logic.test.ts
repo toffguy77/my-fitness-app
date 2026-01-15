@@ -11,7 +11,7 @@ describe('Middleware Logic', () => {
     it('should identify public routes correctly', () => {
       const publicRoutes = ['/', '/login', '/register']
       const pathname = '/'
-      
+
       const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
       expect(isPublicRoute).toBe(true)
     })
@@ -19,7 +19,7 @@ describe('Middleware Logic', () => {
     it('should identify login as public route', () => {
       const publicRoutes = ['/', '/login', '/register']
       const pathname = '/login'
-      
+
       const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
       expect(isPublicRoute).toBe(true)
     })
@@ -27,7 +27,7 @@ describe('Middleware Logic', () => {
     it('should identify register as public route', () => {
       const publicRoutes = ['/', '/login', '/register']
       const pathname = '/register'
-      
+
       const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
       expect(isPublicRoute).toBe(true)
     })
@@ -35,7 +35,7 @@ describe('Middleware Logic', () => {
     it('should identify API routes as public', () => {
       const publicRoutes = ['/', '/login', '/register']
       const pathname = '/api/test'
-      
+
       const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
       expect(isPublicRoute).toBe(true)
     })
@@ -43,7 +43,7 @@ describe('Middleware Logic', () => {
     it('should identify protected routes correctly', () => {
       const publicRoutes = ['/', '/login', '/register']
       const pathname = '/app/dashboard'
-      
+
       const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/api')
       expect(isPublicRoute).toBe(false)
     })
@@ -53,7 +53,7 @@ describe('Middleware Logic', () => {
     it('should require authentication for onboarding', () => {
       const pathname = '/onboarding'
       const hasUser = false
-      
+
       const shouldRedirect = pathname === '/onboarding' && !hasUser
       expect(shouldRedirect).toBe(true)
     })
@@ -61,7 +61,7 @@ describe('Middleware Logic', () => {
     it('should allow authenticated users to access onboarding', () => {
       const pathname = '/onboarding'
       const hasUser = true
-      
+
       const shouldRedirect = pathname === '/onboarding' && !hasUser
       expect(shouldRedirect).toBe(false)
     })
@@ -69,41 +69,41 @@ describe('Middleware Logic', () => {
 
   describe('Role-based Routing', () => {
     it('should route client to dashboard', () => {
-      const role = 'client' as 'client' | 'coordinator' | 'super_admin'
-      
+      const role = 'client' as 'client' | 'curator' | 'super_admin'
+
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coordinator') {
-        redirectPath = '/app/coordinator'
+      } else if (role === 'curator') {
+        redirectPath = '/app/curator'
       }
-      
+
       expect(redirectPath).toBe('/app/dashboard')
     })
 
-    it('should route coordinator to coordinator dashboard', () => {
-      const role = 'coordinator' as 'client' | 'coordinator' | 'super_admin'
-      
+    it('should route curator to curator dashboard', () => {
+      const role = 'curator' as 'client' | 'curator' | 'super_admin'
+
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coordinator') {
-        redirectPath = '/app/coordinator'
+      } else if (role === 'curator') {
+        redirectPath = '/app/curator'
       }
-      
-      expect(redirectPath).toBe('/app/coordinator')
+
+      expect(redirectPath).toBe('/app/curator')
     })
 
     it('should route super_admin to admin panel', () => {
       const role = 'super_admin'
-      
+
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coordinator') {
-        redirectPath = '/app/coordinator'
+      } else if (role === 'curator') {
+        redirectPath = '/app/curator'
       }
-      
+
       expect(redirectPath).toBe('/admin')
     })
   })
@@ -112,7 +112,7 @@ describe('Middleware Logic', () => {
     it('should require premium for reports', () => {
       const pathname = '/app/reports'
       const isPremium = false
-      
+
       const shouldRedirect = pathname.startsWith('/app/reports') && !isPremium
       expect(shouldRedirect).toBe(true)
     })
@@ -120,26 +120,26 @@ describe('Middleware Logic', () => {
     it('should allow premium users to access reports', () => {
       const pathname = '/app/reports'
       const isPremium = true
-      
+
       const shouldRedirect = pathname.startsWith('/app/reports') && !isPremium
       expect(shouldRedirect).toBe(false)
     })
   })
 
-  describe('Coordinator Route Protection', () => {
-    it('should require coordinator role for coordinator dashboard', () => {
-      const pathname = '/app/coordinator'
-      const role = 'client' as 'client' | 'coordinator' | 'super_admin'
-      
-      const shouldRedirect = pathname.startsWith('/app/coordinator') && role !== 'coordinator'
+  describe('Curator Route Protection', () => {
+    it('should require curator role for curator dashboard', () => {
+      const pathname = '/app/curator'
+      const role = 'client' as 'client' | 'curator' | 'super_admin'
+
+      const shouldRedirect = pathname.startsWith('/app/curator') && role !== 'curator'
       expect(shouldRedirect).toBe(true)
     })
 
-    it('should allow coordinator to access coordinator dashboard', () => {
-      const pathname = '/app/coordinator'
-      const role = 'coordinator'
-      
-      const shouldRedirect = pathname.startsWith('/app/coordinator') && role !== 'coordinator'
+    it('should allow curator to access curator dashboard', () => {
+      const pathname = '/app/curator'
+      const role = 'curator'
+
+      const shouldRedirect = pathname.startsWith('/app/curator') && role !== 'curator'
       expect(shouldRedirect).toBe(false)
     })
   })
@@ -148,7 +148,7 @@ describe('Middleware Logic', () => {
     it('should require super_admin role for admin panel', () => {
       const pathname = '/admin'
       const isSuperAdmin = false
-      
+
       const shouldRedirect = pathname.startsWith('/admin') && !isSuperAdmin
       expect(shouldRedirect).toBe(true)
     })
@@ -156,7 +156,7 @@ describe('Middleware Logic', () => {
     it('should allow super_admin to access admin panel', () => {
       const pathname = '/admin'
       const isSuperAdmin = true
-      
+
       const shouldRedirect = pathname.startsWith('/admin') && !isSuperAdmin
       expect(shouldRedirect).toBe(false)
     })
@@ -166,7 +166,7 @@ describe('Middleware Logic', () => {
     it('should calculate premium status correctly', () => {
       const subscriptionStatus = 'active'
       const subscriptionTier = 'premium'
-      
+
       const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
       expect(isPremium).toBe(true)
     })
@@ -174,7 +174,7 @@ describe('Middleware Logic', () => {
     it('should return false for inactive premium', () => {
       const subscriptionStatus = 'cancelled' as 'free' | 'active' | 'cancelled' | 'past_due'
       const subscriptionTier = 'premium' as 'basic' | 'premium'
-      
+
       const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
       expect(isPremium).toBe(false)
     })
@@ -182,7 +182,7 @@ describe('Middleware Logic', () => {
     it('should return false for active basic', () => {
       const subscriptionStatus = 'active' as 'free' | 'active' | 'cancelled' | 'past_due'
       const subscriptionTier = 'basic' as 'basic' | 'premium'
-      
+
       const isPremium = subscriptionStatus === 'active' && subscriptionTier === 'premium'
       expect(isPremium).toBe(false)
     })
@@ -192,7 +192,7 @@ describe('Middleware Logic', () => {
     it('should require SUPABASE_URL', () => {
       const supabaseUrl = undefined
       const supabaseKey = 'test-key'
-      
+
       const isValid = !!(supabaseUrl && supabaseKey)
       expect(isValid).toBe(false)
     })
@@ -200,7 +200,7 @@ describe('Middleware Logic', () => {
     it('should require SUPABASE_ANON_KEY', () => {
       const supabaseUrl = 'https://test.supabase.co'
       const supabaseKey = undefined
-      
+
       const isValid = !!(supabaseUrl && supabaseKey)
       expect(isValid).toBe(false)
     })
@@ -208,7 +208,7 @@ describe('Middleware Logic', () => {
     it('should validate when both are present', () => {
       const supabaseUrl = 'https://test.supabase.co'
       const supabaseKey = 'test-key'
-      
+
       const isValid = !!(supabaseUrl && supabaseKey)
       expect(isValid).toBe(true)
     })

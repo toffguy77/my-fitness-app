@@ -19,10 +19,10 @@ export async function DELETE(
 
         const { id } = await params
 
-        // Проверяем, что пользователь - координатор и владелец кода
+        // Проверяем, что пользователь - куратор и владелец кода
         const { data: inviteCode, error: codeError } = await supabase
             .from('invite_codes')
-            .select('coordinator_id')
+            .select('curator_id')
             .eq('id', id)
             .single()
 
@@ -33,7 +33,7 @@ export async function DELETE(
             )
         }
 
-        if (inviteCode.coordinator_id !== user.id) {
+        if (inviteCode.curator_id !== user.id) {
             return NextResponse.json(
                 { error: 'Forbidden: You can only delete your own invite codes' },
                 { status: 403 }

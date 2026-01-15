@@ -105,7 +105,7 @@ src/
 │   │   ├── dashboard/     # Дашборд клиента
 │   │   ├── nutrition/     # Ввод питания
 │   │   ├── reports/      # Отчеты (Premium)
-│   │   └── coordinator/  # Кабинет координатора
+│   │   └── curator/      # Кабинет куратора
 │   └── admin/            # Супер-админка
 ├── components/            # React компоненты
 ├── utils/                 # Утилиты

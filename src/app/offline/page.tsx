@@ -1,5 +1,5 @@
 'use client'
- 
+
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -64,7 +64,7 @@ export default function OfflinePage() {
                         <li>• Просмотр истории питания (последние 30 дней)</li>
                         <li>• Просмотр истории веса</li>
                         <li>• Просмотр отчетов (кэшированные данные)</li>
-                        <li>• Просмотр заметок от координатора</li>
+                        <li>• Просмотр заметок от куратора</li>
                     </ul>
                 </div>
 

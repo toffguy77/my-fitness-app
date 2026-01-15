@@ -109,7 +109,7 @@ export default function LandingPage() {
         </h2>
         <p className="text-lg sm:text-xl text-gray-300 mb-8 sm:mb-16 text-center max-w-3xl mx-auto leading-relaxed px-4">
           Используй приложение как бесплатный дневник столько, сколько нужно.
-          Когда поймешь, что уперся в потолок — активируй режим работы с координатором.
+          Когда поймешь, что уперся в потолок — активируй режим работы с куратором.
         </p>
 
         {/* Comparison Table */}
@@ -139,7 +139,7 @@ export default function LandingPage() {
 
             {/* Pro Column */}
             <div className="p-8 bg-gray-50">
-              <h3 className="text-2xl font-black mb-6">Pro<br />(С координатором)</h3>
+              <h3 className="text-2xl font-black mb-6">Pro<br />(С куратором)</h3>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                   <span className="text-black mt-1">•</span>

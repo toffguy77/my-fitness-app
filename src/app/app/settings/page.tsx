@@ -39,8 +39,8 @@ function SettingsPageContent() {
     const [passwordError, setPasswordError] = useState<string | null>(null)
     const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
 
-    // Данные координатора (для Premium)
-    const [coordinator, setCoordinator] = useState<UserProfile | null>(null)
+    // Данные куратора (для Premium)
+    const [curator, setCurator] = useState<UserProfile | null>(null)
 
     // Статус подписки
     const [subscriptionInfo, setSubscriptionInfo] = useState<{ status: string; isExpired: boolean; endDate: string | null } | null>(null)
@@ -87,17 +87,17 @@ function SettingsPageContent() {
                 setProfileVisibility(userProfile.profile_visibility || 'private')
                 logger.debug('Settings: профиль загружен', { userId: user.id, role: userProfile.role })
 
-                // Если Premium и есть координатор, загружаем данные координатора
-                if (hasActiveSubscription(userProfile) && userProfile.coordinator_id) {
-                    const { data: coordinatorData, error: coordinatorError } = await supabase
+                // Если Premium и есть куратор, загружаем данные куратора
+                if (hasActiveSubscription(userProfile) && userProfile.curator_id) {
+                    const { data: curatorData, error: curatorError } = await supabase
                         .from('profiles')
                         .select('*')
-                        .eq('id', userProfile.coordinator_id)
+                        .eq('id', userProfile.curator_id)
                         .single()
 
-                    if (!coordinatorError && coordinatorData) {
-                        setCoordinator(coordinatorData as UserProfile)
-                        logger.debug('Settings: данные координатора загружены', { coordinatorId: userProfile.coordinator_id })
+                    if (!curatorError && curatorData) {
+                        setCurator(curatorData as UserProfile)
+                        logger.debug('Settings: данные куратора загружены', { curatorId: userProfile.curator_id })
                     }
                 }
 
@@ -361,7 +361,7 @@ function SettingsPageContent() {
                                 />
                                 <div>
                                     <span className="text-sm font-medium text-zinc-100">Приватный</span>
-                                    <p className="text-xs text-zinc-400">Только вы и ваш координатор могут видеть ваш профиль</p>
+                                    <p className="text-xs text-zinc-400">Только вы и ваш куратор могут видеть ваш профиль</p>
                                 </div>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-zinc-800">
@@ -444,7 +444,7 @@ function SettingsPageContent() {
 
                             {!isPremium && !subscriptionInfo?.isExpired && (
                                 <div className="mt-4 p-3 bg-amber-950/20 border border-amber-800/50 rounded-lg text-sm text-amber-300">
-                                    Для активации Premium подписки обратитесь к администратору или вашему координатору.
+                                    Для активации Premium подписки обратитесь к администратору или вашему куратору.
                                 </div>
                             )}
                         </div>
@@ -452,30 +452,30 @@ function SettingsPageContent() {
                 </section>
             )}
 
-            {/* COORDINATOR SECTION (Premium only) */}
-            {isPremium && coordinator && (
+            {/* CURATOR SECTION (Premium only) */}
+            {isPremium && curator && (
                 <section className="bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-800 mb-6">
                     <div className="flex items-center gap-3 mb-4">
                         <UserIcon size={20} className="text-zinc-400" />
-                        <h2 className="text-lg font-bold text-zinc-100">Мой координатор</h2>
+                        <h2 className="text-lg font-bold text-zinc-100">Мой куратор</h2>
                     </div>
 
                     <div className="space-y-3">
                         <div>
                             <span className="text-sm text-zinc-400">Имя:</span>
-                            <p className="text-sm font-medium text-zinc-100">{coordinator.full_name || 'Не указано'}</p>
+                            <p className="text-sm font-medium text-zinc-100">{curator.full_name || 'Не указано'}</p>
                         </div>
                         <div>
                             <span className="text-sm text-zinc-400">Email:</span>
-                            <p className="text-sm font-medium text-zinc-100">{coordinator.email || 'Не указано'}</p>
+                            <p className="text-sm font-medium text-zinc-100">{curator.email || 'Не указано'}</p>
                         </div>
                         <button
                             onClick={() => {
-                                window.location.href = `mailto:${coordinator.email}`
+                                window.location.href = `mailto:${curator.email}`
                             }}
                             className="w-full mt-4 py-2 bg-zinc-800 text-zinc-300 rounded-xl font-medium hover:bg-zinc-700 transition-colors"
                         >
-                            Написать координатору
+                            Написать куратору
                         </button>
                     </div>
                 </section>

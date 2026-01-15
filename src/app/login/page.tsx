@@ -31,7 +31,7 @@ function LoginPageContent() {
       }
 
       if (user) {
-        logger.authentication('Login: найдена активная сессия', { 
+        logger.authentication('Login: найдена активная сессия', {
           userId: user.id,
           email: user.email,
           emailConfirmed: !!user.email_confirmed_at
@@ -54,14 +54,14 @@ function LoginPageContent() {
         let redirectPath = '/app/dashboard'
         if (role === 'super_admin') {
           redirectPath = '/admin'
-        } else if (role === 'coordinator') {
-          redirectPath = '/app/coordinator'
+        } else if (role === 'curator') {
+          redirectPath = '/app/curator'
         }
 
-        logger.authentication('Login: редирект авторизованного пользователя', { 
-          userId: user.id, 
-          role, 
-          redirectPath 
+        logger.authentication('Login: редирект авторизованного пользователя', {
+          userId: user.id,
+          role,
+          redirectPath
         })
         router.push(redirectPath)
       } else {
@@ -86,12 +86,12 @@ function LoginPageContent() {
     })
 
     if (error) {
-      logger.authentication('Login: ошибка входа', { 
+      logger.authentication('Login: ошибка входа', {
         email,
         error: error.message,
         errorCode: (error as any).code || 'unknown'
       })
-      
+
       // Проверяем, связана ли ошибка с неподтвержденным email
       if (error.message.includes('Email not confirmed') || error.message.includes('email not confirmed')) {
         logger.userFlow('Login: email не подтвержден', { email })
@@ -105,8 +105,8 @@ function LoginPageContent() {
       }
       setLoading(false)
     } else if (data.user) {
-      logger.authentication('Login: успешный вход', { 
-        userId: data.user.id, 
+      logger.authentication('Login: успешный вход', {
+        userId: data.user.id,
         email,
         emailConfirmed: !!data.user.email_confirmed_at,
         sessionId: data.session?.access_token?.substring(0, 20) || 'unknown'
@@ -129,14 +129,14 @@ function LoginPageContent() {
       let redirectPath = '/app/dashboard'
       if (role === 'super_admin') {
         redirectPath = '/admin'
-      } else if (role === 'coordinator') {
-        redirectPath = '/app/coordinator'
+      } else if (role === 'curator') {
+        redirectPath = '/app/curator'
       }
 
-      logger.authentication('Login: редирект после успешного входа', { 
-        userId: data.user.id, 
-        role, 
-        redirectPath 
+      logger.authentication('Login: редирект после успешного входа', {
+        userId: data.user.id,
+        role,
+        redirectPath
       })
 
       setTimeout(() => {
@@ -221,7 +221,7 @@ function LoginPageContent() {
           <div className="mb-4 p-4 bg-zinc-800 border border-zinc-700 text-sm rounded-lg">
             <p className="font-medium mb-2 text-zinc-100">Требуется подтверждение email</p>
             <p className="mb-3 text-zinc-300">
-              Мы отправили письмо с подтверждением на адрес <strong className="text-zinc-100">{email}</strong>. 
+              Мы отправили письмо с подтверждением на адрес <strong className="text-zinc-100">{email}</strong>.
               Пожалуйста, проверьте вашу почту и перейдите по ссылке в письме.
             </p>
             <p className="mb-3 text-xs text-zinc-400">

@@ -34,7 +34,7 @@ jest.mock('next/server', () => {
       statusText: string
       headers: Headers
       cookies: any
-      
+
       constructor(body?: BodyInit | null, init?: ResponseInit) {
         this.body = body || null
         this.init = init
@@ -47,19 +47,19 @@ jest.mock('next/server', () => {
           delete: jest.fn(),
         }
       }
-      
+
       json() {
         return Promise.resolve(this.body ? JSON.parse(this.body as string) : {})
       }
-      
+
       text() {
         return Promise.resolve(this.body as string || '')
       }
-      
+
       static json(data: any, init?: ResponseInit) {
-        const response = new NextResponse(JSON.stringify(data), { 
-          ...init, 
-          headers: { 'Content-Type': 'application/json', ...init?.headers } 
+        const response = new NextResponse(JSON.stringify(data), {
+          ...init,
+          headers: { 'Content-Type': 'application/json', ...init?.headers }
         })
         return response
       }
@@ -118,14 +118,14 @@ describe('Nutrition Targets Update API', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     profileCallCount = 0
-    
+
     // Reset validation mock
     mockValidateNutritionTargets.mockReturnValue({
       valid: true,
       errors: [],
       warnings: [],
     })
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'coordinator-123' } },
       error: null,
@@ -137,13 +137,13 @@ describe('Nutrition Targets Update API', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'profiles') {
         profilesCallCount++
-        // First call: coordinator profile query
+        // First call: curator profile query
         if (profilesCallCount === 1) {
           return {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
             single: jest.fn().mockResolvedValue({
-              data: { id: 'coordinator-123', role: 'coordinator', coordinator_id: null },
+              data: { id: 'curator-123', role: 'curator', curator_id: null },
               error: null,
             }),
           }
@@ -153,7 +153,7 @@ describe('Nutrition Targets Update API', () => {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: '123e4567-e89b-12d3-a456-426614174001', coordinator_id: 'coordinator-123' },
+            data: { id: '123e4567-e89b-12d3-a456-426614174001', curator_id: 'curator-123' },
             error: null,
           }),
         }
@@ -173,7 +173,7 @@ describe('Nutrition Targets Update API', () => {
             let eqCallCount = 0
             const chain = {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              eq: jest.fn().mockImplementation(function(this: any) {
+              eq: jest.fn().mockImplementation(function (this: any) {
                 eqCallCount++
                 // After second eq call, return the result (this is the terminal operation)
                 if (eqCallCount >= 2) {
@@ -284,7 +284,7 @@ describe('Nutrition Targets Update API', () => {
       data: { user: { id: 'coordinator-123' } },
       error: null,
     })
-    
+
     // Setup profiles mock to return coordinator profile
     let profilesCallCount = 0
     mockFrom.mockImplementation((table: string) => {
@@ -295,7 +295,7 @@ describe('Nutrition Targets Update API', () => {
             select: jest.fn().mockReturnThis(),
             eq: jest.fn().mockReturnThis(),
             single: jest.fn().mockResolvedValue({
-              data: { id: 'coordinator-123', role: 'coordinator', coordinator_id: null },
+              data: { id: 'curator-123', role: 'curator', curator_id: null },
               error: null,
             }),
           }
@@ -304,7 +304,7 @@ describe('Nutrition Targets Update API', () => {
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
-            data: { id: '123e4567-e89b-12d3-a456-426614174001', coordinator_id: 'coordinator-123' },
+            data: { id: '123e4567-e89b-12d3-a456-426614174001', curator_id: 'curator-123' },
             error: null,
           }),
         }
@@ -321,7 +321,7 @@ describe('Nutrition Targets Update API', () => {
             let eqCallCount = 0
             const chain = {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              eq: jest.fn().mockImplementation(function(this: any) {
+              eq: jest.fn().mockImplementation(function (this: any) {
                 eqCallCount++
                 if (eqCallCount >= 2) {
                   return Promise.resolve({
@@ -375,7 +375,7 @@ describe('Nutrition Targets Update API', () => {
         'Content-Type': 'application/json',
       },
     })
-    
+
     // Override json method to simulate empty body error
     request.json = jest.fn().mockRejectedValue(new Error('Unexpected end of JSON input'))
 

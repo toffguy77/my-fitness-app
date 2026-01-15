@@ -16,7 +16,7 @@
 
 Скрипт проверит:
 - ✅ Существование функции
-- ✅ Правильность сигнатуры (должна содержать `user_coordinator_id`)
+- ✅ Правильность сигнатуры (должна содержать `user_curator_id`)
 - ✅ Использование `SECURITY DEFINER` (для обхода RLS)
 - ✅ Наличие `ON CONFLICT DO NOTHING`
 - ✅ Отсутствие `pg_sleep` (задержек)
@@ -26,7 +26,7 @@
 ```
 user_id uuid, user_email text, user_full_name text DEFAULT NULL::text, 
 user_role user_role DEFAULT 'client'::user_role, 
-user_coordinator_id uuid DEFAULT NULL::uuid
+user_curator_id uuid DEFAULT NULL::uuid
 ```
 
 **Неправильная сигнатура (устаревшая):**
@@ -66,7 +66,7 @@ CREATE OR REPLACE FUNCTION create_user_profile(
   user_email TEXT,
   user_full_name TEXT DEFAULT NULL,
   user_role user_role DEFAULT 'client',
-  user_coordinator_id UUID DEFAULT NULL
+  user_curator_id UUID DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -90,7 +90,7 @@ BEGIN
     user_email,
     user_full_name,
     user_role,
-    user_coordinator_id,
+    user_curator_id,
     'free',
     'basic',
     'private',

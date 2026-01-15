@@ -1,7 +1,7 @@
 import { createClient } from '../client'
 import {
   getUserProfile,
-  getCoordinatorClients,
+  getCuratorClients,
   isSuperAdmin,
   isPremium,
   hasActiveSubscription,
@@ -17,7 +17,7 @@ describe('Profile Utilities', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Create a fresh mock for each test
     const mockQueryBuilder = {
       select: jest.fn().mockReturnThis(),
@@ -31,7 +31,7 @@ describe('Profile Utilities', () => {
       from: jest.fn(() => mockQueryBuilder),
     }
 
-    ;(createClient as jest.Mock).mockReturnValue(mockSupabase)
+      ; (createClient as jest.Mock).mockReturnValue(mockSupabase)
   })
 
   describe('getUserProfile', () => {
@@ -77,20 +77,20 @@ describe('Profile Utilities', () => {
     })
   })
 
-  describe('getCoordinatorClients', () => {
-    it('should return list of clients for a coordinator', async () => {
+  describe('getCuratorClients', () => {
+    it('should return list of clients for a curator', async () => {
       const mockClients: UserProfile[] = [
         {
           id: 'client-1',
           full_name: 'Client One',
           role: 'client',
-          coordinator_id: 'coordinator-123',
+          curator_id: 'curator-123',
         },
         {
           id: 'client-2',
           full_name: 'Client Two',
           role: 'client',
-          coordinator_id: 'coordinator-123',
+          curator_id: 'curator-123',
         },
       ]
 
@@ -100,7 +100,7 @@ describe('Profile Utilities', () => {
         error: null,
       })
 
-      const result = await getCoordinatorClients('coordinator-123')
+      const result = await getCuratorClients('curator-123')
 
       expect(result).toEqual(mockClients)
       expect(mockSupabase.from).toHaveBeenCalledWith('profiles')
@@ -113,7 +113,7 @@ describe('Profile Utilities', () => {
         error: { message: 'Error' },
       })
 
-      const result = await getCoordinatorClients('coordinator-123')
+      const result = await getCuratorClients('curator-123')
 
       expect(result).toEqual([])
     })

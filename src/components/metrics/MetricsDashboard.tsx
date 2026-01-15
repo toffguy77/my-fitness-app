@@ -66,9 +66,9 @@ export default function MetricsDashboard() {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       })
-      
+
       const response = await fetch(`/api/analytics/metrics?${params}`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch metrics')
       }
@@ -240,7 +240,7 @@ export default function MetricsDashboard() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-zinc-400 mb-1">Чат с координатором</p>
+            <p className="text-sm text-zinc-400 mb-1">Чат с куратором</p>
             <p className="text-2xl font-bold text-emerald-300 tabular-nums">
               {(metrics.featureAdoption.chat * 100).toFixed(0)}%
             </p>

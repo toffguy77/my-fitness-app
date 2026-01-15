@@ -27,16 +27,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, что пользователь - координатор или super_admin
+    // Проверяем, что пользователь - куратор или super_admin
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, coordinator_id')
+      .select('role, curator_id')
       .eq('id', user.id)
       .single()
 
-    if (!profile || (profile.role !== 'coordinator' && profile.role !== 'super_admin')) {
+    if (!profile || (profile.role !== 'curator' && profile.role !== 'super_admin')) {
       return NextResponse.json(
-        { error: 'Forbidden: Only coordinators can update nutrition targets' },
+        { error: 'Forbidden: Only curators can update nutrition targets' },
         { status: 403 }
       )
     }
@@ -58,17 +58,17 @@ export async function POST(request: NextRequest) {
 
     const { targetId, calories, protein, fats, carbs, clientId } = validationResult.data
 
-    // Проверяем, что координатор имеет доступ к этому клиенту
-    if (profile.role === 'coordinator') {
+    // Проверяем, что куратор имеет доступ к этому клиенту
+    if (profile.role === 'curator') {
       const { data: clientProfile } = await supabase
         .from('profiles')
-        .select('coordinator_id')
+        .select('curator_id')
         .eq('id', clientId)
         .single()
 
-      if (!clientProfile || clientProfile.coordinator_id !== user.id) {
+      if (!clientProfile || clientProfile.curator_id !== user.id) {
         return NextResponse.json(
-          { error: 'Forbidden: Client not assigned to this coordinator' },
+          { error: 'Forbidden: Client not assigned to this curator' },
           { status: 403 }
         )
       }

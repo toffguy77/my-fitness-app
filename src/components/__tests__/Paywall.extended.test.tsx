@@ -70,7 +70,7 @@ describe('Paywall Extended Tests', () => {
   it('should render default message when not provided', () => {
     render(<Paywall />)
 
-    expect(screen.getByText(/Подключите работу с координатором/)).toBeInTheDocument()
+    expect(screen.getByText(/Подключите работу с куратором/)).toBeInTheDocument()
   })
 
   it('should render lock icon', () => {

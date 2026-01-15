@@ -10,7 +10,7 @@ import { logger } from '@/utils/logger'
 
 /**
  * Глобальный виджет чата, который показывается на всех страницах приложения
- * для Premium клиентов с назначенным координатором
+ * для Premium клиентов с назначенным куратором
  */
 export default function GlobalChatWidget() {
   const supabase = createClient()
@@ -23,7 +23,7 @@ export default function GlobalChatWidget() {
     const loadUserData = async () => {
       try {
         const { data: { user: authUser }, error: userError } = await supabase.auth.getUser()
-        
+
         if (userError || !authUser) {
           setLoading(false)
           return
@@ -44,7 +44,7 @@ export default function GlobalChatWidget() {
 
         logger.debug('GlobalChatWidget: данные пользователя загружены', {
           userId: authUser.id,
-          hasCoordinator: !!userProfile?.coordinator_id,
+          hasCurator: !!userProfile?.curator_id,
           isPremium: premium,
         })
       } catch (error) {
@@ -57,11 +57,11 @@ export default function GlobalChatWidget() {
     loadUserData()
   }, [supabase])
 
-  // Показываем виджет только для Premium клиентов с назначенным координатором
-  if (loading || !isPremium || !profile?.coordinator_id || !user) {
+  // Показываем виджет только для Premium клиентов с назначенным куратором
+  if (loading || !isPremium || !profile?.curator_id || !user) {
     return null
   }
 
-  return <ChatWidget userId={user.id} coordinatorId={profile.coordinator_id || null} />
+  return <ChatWidget userId={user.id} curatorId={profile.curator_id || null} />
 }
 

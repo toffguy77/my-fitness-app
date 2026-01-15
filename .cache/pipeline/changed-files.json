@@ -1,24 +1,55 @@
 {
-  "timestamp": "2026-01-13T12:30:17.110Z",
+  "timestamp": "2026-01-15T16:57:59.584Z",
   "baseSha": "HEAD~1",
-  "currentSha": "afc2f5816bdc281962952242c1059c5b27de1541",
+  "currentSha": "5e916b922661eb0be39769aab20811af3faad858",
   "changedFiles": [
-    "jest.config.js"
+    ".cache/pipeline-metrics/job-test-job-test-run-123.json",
+    ".cache/pipeline-metrics/job-threshold-test-1768307418169.json",
+    ".cache/pipeline-metrics/performance-report-1768307417528.json",
+    ".cache/pipeline-metrics/performance-report-1768307417770.json",
+    ".cache/pipeline-metrics/performance.json",
+    ".cache/pipeline/build-hash.txt",
+    ".cache/pipeline/changed-files.json",
+    ".github/workflows/ci.yml",
+    "performance-dashboard/index.html",
+    "src/__tests__/coordinator-to-curator-rename.documentation.property.test.ts",
+    "src/__tests__/quality-gate-optimization.test.ts",
+    "src/__tests__/quality-gate.test.ts",
+    "src/app/app/curator/[clientId]/__tests__/page.test.tsx"
   ],
   "categories": {
-    "source": [
-      "jest.config.js"
+    "source": [],
+    "tests": [
+      "src/__tests__/coordinator-to-curator-rename.documentation.property.test.ts",
+      "src/__tests__/quality-gate-optimization.test.ts",
+      "src/__tests__/quality-gate.test.ts",
+      "src/app/app/curator/[clientId]/__tests__/page.test.tsx"
     ],
-    "tests": [],
-    "config": [],
-    "docs": [],
+    "config": [
+      ".cache/pipeline-metrics/job-test-job-test-run-123.json",
+      ".cache/pipeline-metrics/job-threshold-test-1768307418169.json",
+      ".cache/pipeline-metrics/performance-report-1768307417528.json",
+      ".cache/pipeline-metrics/performance-report-1768307417770.json",
+      ".cache/pipeline-metrics/performance.json",
+      ".cache/pipeline/changed-files.json",
+      ".github/workflows/ci.yml"
+    ],
+    "docs": [
+      ".cache/pipeline/build-hash.txt"
+    ],
     "workflows": [],
     "dependencies": [],
-    "other": []
+    "other": [
+      "performance-dashboard/index.html"
+    ]
   },
   "recommendations": {
-    "skipJobs": [],
+    "skipJobs": [
+      "e2e-tests"
+    ],
     "runJobs": [],
-    "optimizations": []
+    "optimizations": [
+      "test-only-run"
+    ]
   }
 }
