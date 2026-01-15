@@ -49,8 +49,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment staging in_progress ${{ github.sha }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
       
       - name: Deploy to Staging (Placeholder)
         id: deploy-staging
@@ -91,8 +91,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment staging success ${{ github.sha }} ${{ steps.deploy-staging.outputs.deployment_url }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
       
       - name: Send deployment failure notification
         if: failure()
@@ -100,8 +100,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment staging failure ${{ github.sha }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
 
   deploy-production:
     name: Deploy to Production
@@ -134,8 +134,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment production in_progress ${{ github.sha }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
       
       - name: Deploy to Production (Placeholder)
         id: deploy-production
@@ -177,8 +177,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment production success ${{ github.sha }} ${{ steps.deploy-production.outputs.deployment_url }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
       
       - name: Send deployment failure notification
         if: failure()
@@ -186,8 +186,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment production failure ${{ github.sha }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
 
   rollback:
     name: Automatic Rollback on Failure
@@ -318,8 +318,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback ${{ github.sha }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
       
       - name: Send rollback success notification
         if: success()
@@ -327,8 +327,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_success ${{ github.sha }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
       
       - name: Send rollback failure notification
         if: failure()
@@ -336,8 +336,8 @@ jobs:
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_failure ${{ github.sha }}
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
       
       - name: Upload rollback artifacts
         if: always()
