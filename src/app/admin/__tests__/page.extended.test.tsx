@@ -48,7 +48,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Admin Page Extended Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'admin-123' } },
       error: null,
@@ -83,7 +83,7 @@ describe('Admin Page Extended Tests', () => {
 
   it('should render admin page', async () => {
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -91,7 +91,7 @@ describe('Admin Page Extended Tests', () => {
 
   it('should display user list', async () => {
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -108,7 +108,7 @@ describe('Admin Page Extended Tests', () => {
 
   it('should filter users by role', async () => {
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -119,7 +119,7 @@ describe('Admin Page Extended Tests', () => {
 
   it('should filter users by subscription status', async () => {
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -130,7 +130,7 @@ describe('Admin Page Extended Tests', () => {
 
   it('should search users by email or name', async () => {
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -146,7 +146,7 @@ describe('Admin Page Extended Tests', () => {
     })
 
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -161,7 +161,7 @@ describe('Admin Page Extended Tests', () => {
     isSuperAdmin.mockResolvedValue(false)
 
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/app/dashboard')
     }, { timeout: 3000 })
@@ -174,7 +174,7 @@ describe('Admin Page Extended Tests', () => {
     })
 
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/login')
     }, { timeout: 3000 })
@@ -190,7 +190,7 @@ describe('Admin Page Extended Tests', () => {
     })
 
     render(<AdminPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -199,4 +199,3 @@ describe('Admin Page Extended Tests', () => {
     expect(screen.getByRole('main')).toBeInTheDocument()
   })
 })
-

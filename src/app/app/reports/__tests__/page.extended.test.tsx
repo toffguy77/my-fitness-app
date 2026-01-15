@@ -53,7 +53,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Reports Page Extended Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -73,7 +73,7 @@ describe('Reports Page Extended Tests', () => {
     hasActiveSubscription.mockReturnValue(true)
 
     render(<ReportsPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -81,7 +81,7 @@ describe('Reports Page Extended Tests', () => {
 
   it('should show paywall for free users', async () => {
     render(<ReportsPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -104,7 +104,7 @@ describe('Reports Page Extended Tests', () => {
     })
 
     render(<ReportsPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -120,10 +120,9 @@ describe('Reports Page Extended Tests', () => {
     })
 
     render(<ReportsPage />)
-    
+
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/login')
     }, { timeout: 3000 })
   })
 })
-

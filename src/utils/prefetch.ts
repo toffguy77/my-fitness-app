@@ -115,4 +115,3 @@ export async function prefetchReportsData(userId: string) {
     // Игнорируем ошибки prefetch
   })
 }
-

@@ -47,13 +47,13 @@ export function loadDraft(date: string): DraftData | null {
   try {
     const key = getDraftKey(date)
     const stored = localStorage.getItem(key)
-    
+
     if (!stored) {
       return null
     }
 
     const draft: DraftData = JSON.parse(stored)
-    
+
     // Проверяем, не устарел ли черновик (старше 7 дней)
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
     if (draft.timestamp < sevenDaysAgo) {
@@ -102,4 +102,3 @@ export function clearAllDrafts(): void {
 export function getAutosaveInterval(): number {
   return AUTOSAVE_INTERVAL
 }
-

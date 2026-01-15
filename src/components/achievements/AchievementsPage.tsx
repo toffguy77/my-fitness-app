@@ -29,7 +29,7 @@ export default function AchievementsPage() {
     try {
       setLoading(true)
       const response = await fetch('/api/achievements')
-      
+
       if (!response.ok) {
         throw new Error('Ошибка загрузки достижений')
       }
@@ -74,7 +74,7 @@ export default function AchievementsPage() {
             <p className="text-sm text-zinc-400">Отслеживайте свой прогресс</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
             <p className="text-3xl font-bold text-zinc-100 tabular-nums">{unlockedCount}</p>
@@ -89,7 +89,7 @@ export default function AchievementsPage() {
             <p className="text-xs text-zinc-400">Всего</p>
           </div>
         </div>
-        
+
         {totalCount > 0 && (
           <div className="mt-4">
             <div className="bg-zinc-800 rounded-full h-2 overflow-hidden">
@@ -174,4 +174,3 @@ export default function AchievementsPage() {
     </div>
   )
 }
-

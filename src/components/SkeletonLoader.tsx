@@ -67,4 +67,3 @@ export default function SkeletonLoader({ variant = 'card', count = 1, className 
     </>
   )
 }
-

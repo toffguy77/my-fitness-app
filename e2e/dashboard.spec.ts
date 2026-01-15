@@ -20,7 +20,7 @@ test.describe('Dashboard Flow', () => {
   test('should display weekly summary', async ({ page }) => {
     // Should show week summary
     await expect(page.locator('text=/неделя|week/i')).toBeVisible()
-    
+
     // Should show days logged
     await expect(page.locator('text=/дней|days/i')).toBeVisible()
   })
@@ -37,9 +37,9 @@ test.describe('Dashboard Flow', () => {
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
       const dateStr = yesterday.toISOString().split('T')[0]
-      
+
       await dateInput.fill(dateStr)
-      
+
       // Should reload data for selected date
       await page.waitForTimeout(1000) // Wait for data load
     }
@@ -48,10 +48,10 @@ test.describe('Dashboard Flow', () => {
   test('should complete daily check-in', async ({ page }) => {
     // Find check-in button
     const checkInButton = page.locator('button:has-text(/завершить|check-in|check in/i)')
-    
+
     if (await checkInButton.count() > 0) {
       await checkInButton.click()
-      
+
       // Should show confirmation or success message
       await expect(
         page.locator('text=/завершен|completed|успешно|success/i')
@@ -62,10 +62,9 @@ test.describe('Dashboard Flow', () => {
   test('should display coordinator note if available', async ({ page }) => {
     // Coordinator note widget should be visible if note exists
     const coordinatorNote = page.locator('text=/заметка|note|координатор|coordinator/i')
-    
+
     // Either note is visible or widget is hidden (both are valid)
     // This test just ensures the page doesn't crash
     await expect(page.locator('body')).toBeVisible()
   })
 })
-

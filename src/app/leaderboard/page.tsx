@@ -106,7 +106,7 @@ export default function LeaderboardPage() {
             for (const log of streakData) {
               const logDate = new Date(log.date)
               logDate.setHours(0, 0, 0, 0)
-              
+
               if (logDate.getTime() === currentDate.getTime()) {
                 currentStreak++
                 currentDate.setDate(currentDate.getDate() - 1)
@@ -312,7 +312,7 @@ export default function LeaderboardPage() {
                   <div className="flex-shrink-0">
                     {getRankIcon(entry.rank)}
                   </div>
-                  
+
                   {entry.avatar_url ? (
                     <img
                       src={entry.avatar_url}
@@ -347,4 +347,3 @@ export default function LeaderboardPage() {
     </main>
   )
 }
-

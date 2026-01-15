@@ -90,7 +90,7 @@ export async function checkSubscriptionStatus(userId: string): Promise<Subscript
         tier,
       }
     )
-    
+
     if (isActive) {
       metricsCollector.gaugeInc(
         'subscriptions_active_gauge',
@@ -119,4 +119,3 @@ export async function isPremiumUser(userId: string): Promise<boolean> {
   const subscriptionInfo = await checkSubscriptionStatus(userId)
   return subscriptionInfo.isActive
 }
-

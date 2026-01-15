@@ -1,7 +1,7 @@
 /**
  * Unit Tests: Email Utilities
  * Tests email sending and template functions
- * 
+ *
  * Note: Email tests are skipped due to Resend mocking complexity.
  * In production, these would be tested with integration tests.
  */

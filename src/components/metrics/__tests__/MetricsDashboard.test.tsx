@@ -70,7 +70,7 @@ describe('MetricsDashboard', () => {
 
   it('renders loading state initially', () => {
     render(<MetricsDashboard />)
-    
+
     // Should show skeleton loaders
     const skeletons = document.querySelectorAll('.animate-pulse')
     expect(skeletons.length).toBeGreaterThan(0)
@@ -78,11 +78,11 @@ describe('MetricsDashboard', () => {
 
   it('fetches and displays metrics', async () => {
     render(<MetricsDashboard />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('Time to First Value')).toBeInTheDocument()
     })
-    
+
     expect(screen.getByText('Daily Active Users')).toBeInTheDocument()
     expect(screen.getByText('Onboarding Completion')).toBeInTheDocument()
     expect(screen.getByText('Error Rate')).toBeInTheDocument()
@@ -90,7 +90,7 @@ describe('MetricsDashboard', () => {
 
   it('displays TTFV metric correctly', async () => {
     render(<MetricsDashboard />)
-    
+
     await waitFor(() => {
       expect(screen.getByText(/45с/)).toBeInTheDocument()
     })
@@ -98,7 +98,7 @@ describe('MetricsDashboard', () => {
 
   it('displays DAU metric correctly', async () => {
     render(<MetricsDashboard />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('45')).toBeInTheDocument() // today value
     })
@@ -111,7 +111,7 @@ describe('MetricsDashboard', () => {
     })
 
     render(<MetricsDashboard />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('Ошибка загрузки метрик')).toBeInTheDocument()
     })
@@ -121,7 +121,7 @@ describe('MetricsDashboard', () => {
     ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
 
     render(<MetricsDashboard />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('Ошибка загрузки метрик')).toBeInTheDocument()
     })
@@ -129,7 +129,7 @@ describe('MetricsDashboard', () => {
 
   it('updates metrics when date range changes', async () => {
     render(<MetricsDashboard />)
-    
+
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled()
     })
@@ -144,28 +144,27 @@ describe('MetricsDashboard', () => {
 
   it('displays feature adoption metrics', async () => {
     render(<MetricsDashboard />)
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled()
     })
-    
+
     // Wait for Feature Adoption section to appear
     await waitFor(() => {
       const featureAdoptionElements = screen.queryAllByText('Feature Adoption')
       expect(featureAdoptionElements.length).toBeGreaterThan(0)
     }, { timeout: 3000 })
-    
+
     // Check for specific percentages - use getAllByText since there may be multiple matches
     await waitFor(() => {
       const mealSavingElements = screen.queryAllByText(/85%/)
       expect(mealSavingElements.length).toBeGreaterThan(0) // mealSaving
     }, { timeout: 3000 })
-    
+
     await waitFor(() => {
       const ocrScanElements = screen.queryAllByText(/32%/)
       expect(ocrScanElements.length).toBeGreaterThan(0) // ocrScan
     }, { timeout: 3000 })
   })
 })
-

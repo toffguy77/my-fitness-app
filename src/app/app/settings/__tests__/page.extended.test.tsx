@@ -71,7 +71,7 @@ jest.mock('@/utils/logger', () => ({
 describe('Settings Page Extended Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
       error: null,
@@ -92,7 +92,7 @@ describe('Settings Page Extended Tests', () => {
 
   it('should render settings page', async () => {
     render(<SettingsPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -100,7 +100,7 @@ describe('Settings Page Extended Tests', () => {
 
   it('should display user profile information', async () => {
     render(<SettingsPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -116,7 +116,7 @@ describe('Settings Page Extended Tests', () => {
     })
 
     render(<SettingsPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -131,7 +131,7 @@ describe('Settings Page Extended Tests', () => {
     })
 
     render(<SettingsPage />)
-    
+
     await waitFor(() => {
       expect(screen.queryByText(/загрузка|loading/i)).not.toBeInTheDocument()
     }, { timeout: 3000 })
@@ -147,10 +147,9 @@ describe('Settings Page Extended Tests', () => {
     })
 
     render(<SettingsPage />)
-    
+
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/login')
     }, { timeout: 3000 })
   })
 })
-

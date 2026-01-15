@@ -337,4 +337,3 @@ export async function getProductByBarcode(barcode: string): Promise<Product | nu
         throw error
     }
 }
-

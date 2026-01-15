@@ -32,7 +32,7 @@ describe('Chat Sound', () => {
       try {
         // Temporarily remove window to test the undefined case
         (global as any).window = undefined
-        
+
         // Should not throw when window is undefined
         expect(() => {
           initNotificationSound()
@@ -205,4 +205,3 @@ describe('Chat Sound', () => {
     })
   })
 })
-

@@ -32,11 +32,11 @@ jest.mock('next/server', () => {
     static next() {
       return mockNext()
     }
-    
+
     static redirect(url: URL | string) {
       return mockRedirect(url)
     }
-    
+
     constructor(body?: BodyInit | null, init?: ResponseInit) {
       super(body, init)
     }
@@ -107,7 +107,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/login'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
       const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
@@ -119,7 +119,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/register'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
       const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
@@ -131,7 +131,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
       const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
@@ -145,7 +145,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/app/dashboard'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.redirect() returns a Response with Location header
       expect(result).toBeDefined()
       // Middleware should redirect unauthenticated users
@@ -161,7 +161,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/onboarding'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.redirect() returns a Response with Location header
       expect(result).toBeDefined()
       // Middleware should redirect unauthenticated users from onboarding
@@ -187,7 +187,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/app/coordinator'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
       const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
@@ -207,7 +207,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/app/coordinator'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // Should redirect non-coordinator users
       expect(result).toBeDefined()
       // Middleware should redirect non-coordinator users
@@ -232,7 +232,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/admin'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
       const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
@@ -252,7 +252,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/admin'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // Should redirect non-admin users
       expect(result).toBeDefined()
       // mockRedirect is inside jest.mock, not accessible here
@@ -278,7 +278,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/app/reports'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.next() returns a Response
       expect(result).toBeDefined()
       const status = result.status || (result as Response & { statusCode?: number }).statusCode || 200
@@ -302,7 +302,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/app/reports'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // NextResponse.redirect() returns a Response with Location header
       expect(result).toBeDefined()
       // Middleware should redirect free users from reports
@@ -324,7 +324,7 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/app/dashboard'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // Should redirect on auth error
       expect(result).toBeDefined()
       // Middleware should redirect on auth error
@@ -349,10 +349,9 @@ describe('Middleware Integration Tests', () => {
       mockRequest.nextUrl!.pathname = '/app/dashboard'
 
       const result = await middleware(mockRequest as NextRequest)
-      
+
       // Should handle error and allow access or redirect
       expect(result).toBeDefined()
     })
   })
 })
-

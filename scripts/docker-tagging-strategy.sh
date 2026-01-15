@@ -35,10 +35,10 @@ echo -e "${BLUE}Version: ${VERSION}${NC}"
 # Function to generate tags based on context
 generate_tags() {
     local tags=()
-    
+
     # Always include commit-based tag for traceability
     tags+=("${FULL_IMAGE_NAME}:${GIT_COMMIT}")
-    
+
     # Branch-based tags
     if [ "${GIT_BRANCH}" = "main" ] || [ "${GIT_BRANCH}" = "master" ]; then
         tags+=("${FULL_IMAGE_NAME}:latest")
@@ -51,39 +51,39 @@ generate_tags() {
         SAFE_BRANCH=$(echo "${GIT_BRANCH}" | sed 's/[^a-zA-Z0-9._-]/-/g')
         tags+=("${FULL_IMAGE_NAME}:branch-${SAFE_BRANCH}")
     fi
-    
+
     # Version-based tags (if semantic version)
     if [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         tags+=("${FULL_IMAGE_NAME}:v${VERSION}")
-        
+
         # Extract major and minor versions
         MAJOR=$(echo "${VERSION}" | cut -d. -f1)
         MINOR=$(echo "${VERSION}" | cut -d. -f2)
-        
+
         tags+=("${FULL_IMAGE_NAME}:v${MAJOR}")
         tags+=("${FULL_IMAGE_NAME}:v${MAJOR}.${MINOR}")
     fi
-    
+
     # Git tag-based tags
     if [ -n "${GIT_TAG}" ]; then
         tags+=("${FULL_IMAGE_NAME}:${GIT_TAG}")
-        
+
         # If it's a release tag (starts with v)
         if [[ "${GIT_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             tags+=("${FULL_IMAGE_NAME}:release")
         fi
     fi
-    
+
     # Date-based tag for archival
     DATE_TAG=$(date -u +"%Y%m%d")
     tags+=("${FULL_IMAGE_NAME}:${DATE_TAG}-${GIT_COMMIT}")
-    
+
     # Environment-specific tags (if specified)
     if [ -n "${ENVIRONMENT}" ]; then
         tags+=("${FULL_IMAGE_NAME}:${ENVIRONMENT}")
         tags+=("${FULL_IMAGE_NAME}:${ENVIRONMENT}-${GIT_COMMIT}")
     fi
-    
+
     # Print all tags
     printf '%s\n' "${tags[@]}"
 }
@@ -92,13 +92,13 @@ generate_tags() {
 build_with_tags() {
     local build_args=()
     local tag_args=()
-    
+
     # Build arguments
     build_args+=(--build-arg "GIT_COMMIT=${GIT_COMMIT}")
     build_args+=(--build-arg "GIT_BRANCH=${GIT_BRANCH}")
     build_args+=(--build-arg "BUILD_DATE=${BUILD_DATE}")
     build_args+=(--build-arg "VERSION=${VERSION}")
-    
+
     # Add environment-specific build args
     if [ -n "${NEXT_PUBLIC_SUPABASE_URL}" ]; then
         build_args+=(--build-arg "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}")
@@ -106,28 +106,28 @@ build_with_tags() {
     if [ -n "${NEXT_PUBLIC_SUPABASE_ANON_KEY}" ]; then
         build_args+=(--build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}")
     fi
-    
+
     # Generate tags
     local tags
     mapfile -t tags < <(generate_tags)
-    
+
     # Create tag arguments
     for tag in "${tags[@]}"; do
         tag_args+=(-t "${tag}")
     done
-    
+
     echo -e "${GREEN}Building image with tags:${NC}"
     printf '%s\n' "${tags[@]}" | sed 's/^/  /'
-    
+
     # Build the image
     docker build \
         "${build_args[@]}" \
         "${tag_args[@]}" \
         --target runner \
         .
-    
+
     echo -e "${GREEN}Build completed successfully${NC}"
-    
+
     # Return tags for further processing
     printf '%s\n' "${tags[@]}"
 }
@@ -136,14 +136,14 @@ build_with_tags() {
 push_tags() {
     local tags
     mapfile -t tags < <(generate_tags)
-    
+
     echo -e "${GREEN}Pushing tags to registry...${NC}"
-    
+
     for tag in "${tags[@]}"; do
         echo -e "${YELLOW}Pushing: ${tag}${NC}"
         docker push "${tag}"
     done
-    
+
     echo -e "${GREEN}All tags pushed successfully${NC}"
 }
 
@@ -151,7 +151,7 @@ push_tags() {
 generate_metadata() {
     local tags
     mapfile -t tags < <(generate_tags)
-    
+
     cat > "./docker-tags-metadata.json" << EOF
 {
   "image": "${FULL_IMAGE_NAME}",
@@ -188,7 +188,7 @@ This script implements a comprehensive tagging strategy for container images:
 
 ${YELLOW}Tag Types:${NC}
 1. ${BLUE}Commit-based:${NC} ${IMAGE_NAME}:${GIT_COMMIT}
-2. ${BLUE}Branch-based:${NC} 
+2. ${BLUE}Branch-based:${NC}
    - main/master → latest, stable
    - develop → develop, beta
    - feature → branch-<name>
@@ -199,7 +199,7 @@ ${YELLOW}Tag Types:${NC}
 
 ${YELLOW}Usage:${NC}
   $0 [image_name] [registry] [repository]
-  
+
 ${YELLOW}Commands:${NC}
   generate-tags    - Show all tags that would be generated
   build           - Build image with all tags
@@ -223,7 +223,7 @@ EOF
 # Main execution
 main() {
     local command=${4:-"generate-tags"}
-    
+
     case "${command}" in
         "generate-tags")
             generate_tags

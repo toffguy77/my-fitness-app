@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL('/login?error=user_not_found', requestUrl))
       }
 
-      logger.authentication('Auth callback: успешное подтверждение email', { 
+      logger.authentication('Auth callback: успешное подтверждение email', {
         userId: user.id,
         email: user.email,
         emailConfirmed: !!user.email_confirmed_at
@@ -113,4 +113,3 @@ export async function GET(request: NextRequest) {
   // Если нет кода, редиректим на логин
   return NextResponse.redirect(new URL('/login?error=no_code', requestUrl))
 }
-

@@ -4,7 +4,7 @@
 
 /**
  * Pipeline Performance Monitor
- * 
+ *
  * This script provides comprehensive monitoring for CI/CD pipeline performance:
  * - Collects execution time metrics
  * - Monitors resource usage

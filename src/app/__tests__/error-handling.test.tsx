@@ -237,7 +237,7 @@ describe('Error Handling', () => {
       const error = { message: 'Error occurred', code: 'ERROR' }
       const context = { userId: 'user-123', action: 'save' }
       const logEntry = { error, context, timestamp: new Date().toISOString() }
-      
+
       expect(logEntry.error).toBe(error)
       expect(logEntry.context).toBe(context)
       expect(logEntry.timestamp).toBeDefined()
@@ -260,4 +260,3 @@ describe('Error Handling', () => {
     })
   })
 })
-

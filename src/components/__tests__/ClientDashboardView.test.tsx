@@ -39,7 +39,7 @@ jest.mock('@/utils/logger', () => ({
 describe('ClientDashboardView Component', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Reset mock implementations
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
@@ -62,14 +62,14 @@ describe('ClientDashboardView Component', () => {
 
   it('should render client dashboard', async () => {
     render(<ClientDashboardView clientId="client-1" readOnly={true} />)
-    
+
     // Component should render (may show loading initially)
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
   })
 
   it('should show loading state initially', () => {
     render(<ClientDashboardView clientId="client-1" readOnly={true} />)
-    
+
     // Should show loading or skeleton
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
   })
@@ -77,7 +77,7 @@ describe('ClientDashboardView Component', () => {
   it('should accept readOnly prop', () => {
     const { rerender } = render(<ClientDashboardView clientId="client-1" readOnly={true} />)
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
-    
+
     rerender(<ClientDashboardView clientId="client-1" readOnly={false} />)
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
   })
@@ -85,14 +85,14 @@ describe('ClientDashboardView Component', () => {
   it('should accept onTargetsUpdate callback', () => {
     const onUpdate = jest.fn()
     render(<ClientDashboardView clientId="client-1" onTargetsUpdate={onUpdate} />)
-    
+
     // Component should render
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
   })
 
   it('should handle day type toggle', async () => {
     render(<ClientDashboardView clientId="client-1" readOnly={false} />)
-    
+
     // Component should render
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
   })
@@ -128,16 +128,15 @@ describe('ClientDashboardView Component', () => {
     })
 
     render(<ClientDashboardView clientId="client-1" readOnly={false} />)
-    
+
     // Component should render
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
   })
 
   it('should handle target editing in non-readonly mode', () => {
     render(<ClientDashboardView clientId="client-1" readOnly={false} />)
-    
+
     // Should allow editing when not readonly
     expect(screen.getByText(/загрузка|loading/i)).toBeInTheDocument()
   })
 })
-

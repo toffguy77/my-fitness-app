@@ -40,7 +40,7 @@ export default function AchievementNotification({
           <div className="flex-shrink-0">
             <AchievementBadge achievement={achievement} size="md" showProgress={false} />
           </div>
-          
+
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <Trophy className="text-amber-400" size={16} />
@@ -50,7 +50,7 @@ export default function AchievementNotification({
             {achievement.description && (
               <p className="text-xs text-zinc-400 mb-3">{achievement.description}</p>
             )}
-            
+
             <div className="flex gap-2">
               {onShare && (
                 <button
@@ -74,7 +74,7 @@ export default function AchievementNotification({
               </button>
             </div>
           </div>
-          
+
           <button
             type="button"
             onClick={() => {
@@ -90,4 +90,3 @@ export default function AchievementNotification({
     </div>
   )
 }
-

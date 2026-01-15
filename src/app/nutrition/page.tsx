@@ -565,4 +565,3 @@ function InputGroup({ label, value, onChange }: InputGroupProps) {
     </div>
   )
 }
-

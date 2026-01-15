@@ -64,4 +64,3 @@ export default function GlobalChatWidget() {
 
   return <ChatWidget userId={user.id} curatorId={profile.curator_id || null} />
 }
-

@@ -111,4 +111,3 @@ export default function MealTemplates({ onSelect, userId, onClose }: MealTemplat
     </div>
   )
 }
-

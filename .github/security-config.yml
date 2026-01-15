@@ -11,46 +11,46 @@ security:
         description: "GitHub Actions token (automatically provided)"
         access_level: repository
         rotation_required: false
-        
+
       - name: NEXT_PUBLIC_SUPABASE_URL
         type: environment
         description: "Supabase project URL (public)"
         access_level: public
         rotation_required: false
-        
+
       - name: NEXT_PUBLIC_SUPABASE_ANON_KEY
         type: environment
         description: "Supabase anonymous key (public)"
         access_level: public
         rotation_required: true
         rotation_frequency: quarterly
-        
+
       - name: STAGING_SUPABASE_URL
         type: environment
         description: "Staging Supabase project URL"
         access_level: staging
         rotation_required: false
-        
+
       - name: STAGING_SUPABASE_ANON_KEY
         type: environment
         description: "Staging Supabase anonymous key"
         access_level: staging
         rotation_required: true
         rotation_frequency: quarterly
-        
+
       - name: TELEGRAM_BOT_TOKEN
         type: notification
         description: "Telegram bot token for CI/CD notifications"
         access_level: ci_cd
         rotation_required: true
         rotation_frequency: annually
-        
+
       - name: TELEGRAM_CHAT_ID
         type: notification
         description: "Telegram chat ID for notifications"
         access_level: ci_cd
         rotation_required: false
-    
+
     # Optional secrets for enhanced functionality
     optional:
       - name: CODECOV_TOKEN
@@ -59,21 +59,21 @@ security:
         access_level: ci
         rotation_required: true
         rotation_frequency: annually
-        
+
       - name: SONAR_TOKEN
         type: integration
         description: "SonarQube token for code quality analysis"
         access_level: ci
         rotation_required: true
         rotation_frequency: annually
-        
+
       - name: SNYK_TOKEN
         type: security
         description: "Snyk token for security scanning"
         access_level: ci
         rotation_required: true
         rotation_frequency: annually
-  
+
   # Access control policies
   access_control:
     # Workflow permissions
@@ -90,7 +90,7 @@ security:
           - CODECOV_TOKEN
           - SONAR_TOKEN
           - SNYK_TOKEN
-          
+
       cd:
         permissions:
           contents: read
@@ -104,7 +104,7 @@ security:
           - STAGING_SUPABASE_ANON_KEY
           - TELEGRAM_BOT_TOKEN
           - TELEGRAM_CHAT_ID
-          
+
       security:
         permissions:
           contents: read
@@ -114,7 +114,7 @@ security:
           - GITHUB_TOKEN
           - TELEGRAM_BOT_TOKEN
           - TELEGRAM_CHAT_ID
-    
+
     # Environment-based access
     environments:
       staging:
@@ -124,7 +124,7 @@ security:
           - STAGING_SUPABASE_ANON_KEY
           - TELEGRAM_BOT_TOKEN
           - TELEGRAM_CHAT_ID
-          
+
       production:
         required_reviewers: 1
         secrets:
@@ -132,7 +132,7 @@ security:
           - NEXT_PUBLIC_SUPABASE_ANON_KEY
           - TELEGRAM_BOT_TOKEN
           - TELEGRAM_CHAT_ID
-  
+
   # Security scanning configuration
   scanning:
     # Dependency scanning
@@ -141,26 +141,26 @@ security:
       schedule: "daily"
       severity_threshold: "high"
       auto_fix: false
-      
+
     # Code scanning
     code:
       enabled: true
       languages: ["javascript", "typescript"]
       queries: "security-and-quality"
       schedule: "weekly"
-      
+
     # Container scanning
     containers:
       enabled: true
       registries: ["ghcr.io"]
       severity_threshold: "critical"
-      
+
     # Secret scanning
     secrets:
       enabled: true
       push_protection: true
       validity_checks: true
-  
+
   # Compliance and audit
   compliance:
     # Audit logging
@@ -172,7 +172,7 @@ security:
         - workflow_execution
         - deployment
         - security_scan
-        
+
     # Reporting
     reporting:
       frequency: "weekly"
@@ -181,7 +181,7 @@ security:
         - secrets_audit
         - vulnerability_summary
         - compliance_status
-        
+
   # Incident response
   incident_response:
     # Automated responses
@@ -189,15 +189,15 @@ security:
       secret_leak:
         action: "revoke_and_notify"
         notification_channels: ["telegram", "github_issue"]
-        
+
       critical_vulnerability:
         action: "block_deployment"
         notification_channels: ["telegram", "github_issue"]
-        
+
       failed_security_scan:
         action: "block_merge"
         notification_channels: ["github_status"]
-    
+
     # Escalation procedures
     escalation:
       levels:
@@ -205,12 +205,12 @@ security:
           trigger: "high_severity_vulnerability"
           action: "notify_team"
           timeout: "4h"
-          
+
         - level: 2
           trigger: "critical_vulnerability"
           action: "notify_security_team"
           timeout: "1h"
-          
+
         - level: 3
           trigger: "secret_leak"
           action: "emergency_response"
@@ -225,21 +225,21 @@ best_practices:
     - "Rotate secrets regularly according to schedule"
     - "Use environment-specific secrets"
     - "Limit secret access to necessary workflows"
-    
+
   # Access control
   access:
     - "Use least privilege principle"
     - "Require reviews for production deployments"
     - "Use environment protection rules"
     - "Monitor and audit access patterns"
-    
+
   # Scanning and monitoring
   monitoring:
     - "Enable all security scanning features"
     - "Set appropriate severity thresholds"
     - "Monitor scan results regularly"
     - "Respond to security alerts promptly"
-    
+
   # Incident response
   response:
     - "Have clear escalation procedures"

@@ -23,7 +23,7 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     expect(screen.getByText('Фильтры')).toBeInTheDocument()
   })
 
@@ -36,10 +36,10 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     const button = screen.getByText('Фильтры')
     await user.click(button)
-    
+
     expect(screen.getByText('Диапазон дат')).toBeInTheDocument()
     expect(screen.getByText('Тип дня')).toBeInTheDocument()
     expect(screen.getByText('Сортировка')).toBeInTheDocument()
@@ -54,13 +54,13 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     const button = screen.getByText('Фильтры')
     await user.click(button)
-    
+
     const trainingButton = screen.getByText('Тренировка')
     await user.click(trainingButton)
-    
+
     expect(mockOnDayTypeChange).toHaveBeenCalledWith('training')
   })
 
@@ -73,13 +73,13 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     const button = screen.getByText('Фильтры')
     await user.click(button)
-    
+
     const caloriesButton = screen.getByText('Калории')
     await user.click(caloriesButton)
-    
+
     expect(mockOnSortChange).toHaveBeenCalledWith('calories', 'desc')
   })
 
@@ -92,22 +92,22 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     const button = screen.getByText('Фильтры')
     await user.click(button)
-    
+
     // Date inputs are type="date", not textbox - find by type attribute
     const dateInputs = screen.queryAllByDisplayValue('')
     const startDateInput = dateInputs.find(input => input.getAttribute('type') === 'date')
-    
+
     if (startDateInput) {
       await user.type(startDateInput, '2024-01-01')
-      
+
       // Find end date input and fill it too (component only calls onDateRangeChange when both dates are set)
       const endDateInput = dateInputs.find(input => input.getAttribute('type') === 'date' && input !== startDateInput)
       if (endDateInput) {
         await user.type(endDateInput, '2024-01-31')
-        
+
         // Component should call onDateRangeChange when both dates are set
         await waitFor(() => {
           expect(mockOnDateRangeChange).toHaveBeenCalled()
@@ -131,13 +131,13 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     const button = screen.getByText('Фильтры')
     await user.click(button)
-    
+
     const trainingButton = screen.getByText('Тренировка')
     await user.click(trainingButton)
-    
+
     expect(screen.getByText('Сбросить фильтры')).toBeInTheDocument()
   })
 
@@ -150,16 +150,16 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     const button = screen.getByText('Фильтры')
     await user.click(button)
-    
+
     const trainingButton = screen.getByText('Тренировка')
     await user.click(trainingButton)
-    
+
     const resetButton = screen.getByText('Сбросить фильтры')
     await user.click(resetButton)
-    
+
     expect(mockOnDateRangeChange).toHaveBeenCalledWith(null, null)
     expect(mockOnDayTypeChange).toHaveBeenCalledWith('all')
     expect(mockOnSortChange).toHaveBeenCalledWith('date', 'desc')
@@ -174,16 +174,15 @@ describe('ReportFilters', () => {
         onSortChange={mockOnSortChange}
       />
     )
-    
+
     const button = screen.getByText('Фильтры')
     await user.click(button)
-    
+
     const trainingButton = screen.getByText('Тренировка')
     await user.click(trainingButton)
-    
+
     // Badge should show count of active filters
     const badge = screen.getByText(/^\d+$/)
     expect(badge).toBeInTheDocument()
   })
 })
-

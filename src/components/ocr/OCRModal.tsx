@@ -57,7 +57,7 @@ export default function OCRModal({
         const reader = new FileReader()
         reader.onloadend = async () => {
           const base64 = reader.result as string
-          
+
           try {
             await fetch('/api/ocr/save', {
               method: 'POST',
@@ -86,12 +86,12 @@ export default function OCRModal({
         logger.warn('OCRModal: ошибка конвертации изображения', { error: error instanceof Error ? error.message : String(error) })
       }
     }
-    
+
     // Проверяем достижения после использования OCR
     checkAchievementsAfterOCR().catch((error) => {
       logger.warn('OCRModal: ошибка проверки достижений после OCR', { error: error instanceof Error ? error.message : String(error) })
     })
-    
+
     onConfirm(data)
     handleClose()
   }
@@ -167,4 +167,3 @@ export default function OCRModal({
     </div>
   )
 }
-

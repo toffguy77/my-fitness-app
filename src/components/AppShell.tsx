@@ -10,9 +10,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Показываем на непубличных страницах: /app/*, /leaderboard, /profile/*
   // Не показываем на: /, /login, /register, /offline
-  const isPublicPage = pathname === '/' || 
-    pathname === '/login' || 
-    pathname === '/register' || 
+  const isPublicPage = pathname === '/' ||
+    pathname === '/login' ||
+    pathname === '/register' ||
     pathname === '/offline' ||
     pathname?.startsWith('/auth/')
 
@@ -33,4 +33,3 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </>
   )
 }
-

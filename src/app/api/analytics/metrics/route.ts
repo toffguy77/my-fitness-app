@@ -153,4 +153,3 @@ async function fetchMetricsFromPrometheus(
 
   return metrics
 }
-

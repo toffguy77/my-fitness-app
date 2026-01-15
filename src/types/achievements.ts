@@ -32,10 +32,9 @@ export interface AchievementWithProgress extends Achievement {
 
 export type AchievementCategory = 'nutrition' | 'weight' | 'activity' | 'accuracy'
 
-export type AchievementTriggerType = 
+export type AchievementTriggerType =
   | 'streak_days'
   | 'total_meals'
   | 'ocr_used'
   | 'weight_logged'
   | 'days_active'
-

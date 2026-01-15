@@ -435,5 +435,3 @@ describe('Curator Client View Page', () => {
     expect(dashboardView).toHaveTextContent('readOnly: true')
   })
 })
-
-

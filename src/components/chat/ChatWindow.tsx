@@ -88,10 +88,10 @@ export default function ChatWindow({
 
             setHasMore(loadedMessages.length === MESSAGES_PER_PAGE)
             setPage(pageNum)
-            
-            logger.debug('ChatWindow: сообщения загружены', { 
-                userId, 
-                otherUserId, 
+
+            logger.debug('ChatWindow: сообщения загружены', {
+                userId,
+                otherUserId,
                 totalMessages: allMessages.length,
                 loadedMessages: loadedMessages.length,
                 displayedMessages: reversedMessages.length
@@ -109,7 +109,7 @@ export default function ChatWindow({
         if (!content.trim() || sending) return
 
         const trimmedContent = content.trim()
-        
+
         // Создаем временное сообщение для оптимистичного обновления
         const tempMessage: Message = {
             id: `temp-${Date.now()}-${Math.random()}`,
@@ -139,7 +139,7 @@ export default function ChatWindow({
             if (error) {
                 // Удаляем временное сообщение при ошибке
                 setMessages((prev) => prev.filter((m) => m.id !== tempMessage.id))
-                
+
                 // Проверяем, не является ли это ошибкой rate limit
                 if (error.message && error.message.includes('Rate limit exceeded')) {
                     toast.error('Слишком много сообщений. Подождите минуту.')
@@ -260,10 +260,10 @@ export default function ChatWindow({
         }
     }
 
-    const heightStyle = className.includes('h-full') 
-        ? { height: '100%' } 
+    const heightStyle = className.includes('h-full')
+        ? { height: '100%' }
         : { height: '600px', maxHeight: 'calc(100vh - 2rem)' }
-    
+
     return (
         <div className={`flex flex-col bg-zinc-900 rounded-lg shadow-lg border border-zinc-800 ${className}`} style={heightStyle}>
             {/* Header */}
@@ -387,4 +387,3 @@ export default function ChatWindow({
         </div>
     )
 }
-

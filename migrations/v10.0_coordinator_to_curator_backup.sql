@@ -3,7 +3,7 @@
 -- Description: Создание резервных копий данных перед миграцией v10.0
 -- Date: 2025-01-13
 -- Version: 10.0-backup
--- 
+--
 -- ВАЖНО: Выполнить ПЕРЕД применением v10.0_coordinator_to_curator.sql
 -- Создает резервные копии всех затрагиваемых таблиц и объектов
 -- ============================================
@@ -23,19 +23,19 @@ COMMENT ON SCHEMA migration_backup_v10 IS 'Резервные копии дан�
 -- ============================================
 
 -- Резервная копия таблицы profiles (содержит coordinator_id)
-CREATE TABLE migration_backup_v10.profiles_backup AS 
+CREATE TABLE migration_backup_v10.profiles_backup AS
 SELECT * FROM profiles;
 
 -- Резервная копия таблицы coordinator_notes (будет переименована)
-CREATE TABLE migration_backup_v10.coordinator_notes_backup AS 
+CREATE TABLE migration_backup_v10.coordinator_notes_backup AS
 SELECT * FROM coordinator_notes;
 
 -- Резервная копия таблицы invite_codes (содержит coordinator_id)
-CREATE TABLE migration_backup_v10.invite_codes_backup AS 
+CREATE TABLE migration_backup_v10.invite_codes_backup AS
 SELECT * FROM invite_codes;
 
 -- Резервная копия таблицы invite_code_usage (связана с invite_codes)
-CREATE TABLE migration_backup_v10.invite_code_usage_backup AS 
+CREATE TABLE migration_backup_v10.invite_code_usage_backup AS
 SELECT * FROM invite_code_usage;
 
 -- ============================================
@@ -50,7 +50,7 @@ BEGIN
         enum_value TEXT PRIMARY KEY,
         backed_up_at TIMESTAMP DEFAULT NOW()
     );
-    
+
     -- Сохранить все значения enum
     INSERT INTO migration_backup_v10.user_role_enum_backup (enum_value)
     SELECT unnest(enum_range(NULL::user_role))::TEXT;
@@ -70,34 +70,34 @@ CREATE TABLE migration_backup_v10.functions_backup (
 
 -- Сохранить функцию is_coordinator
 INSERT INTO migration_backup_v10.functions_backup (function_name, function_definition)
-SELECT 
+SELECT
     'is_coordinator',
     pg_get_functiondef(oid)
-FROM pg_proc 
+FROM pg_proc
 WHERE proname = 'is_coordinator' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
 
 -- Сохранить функцию is_client_coordinator
 INSERT INTO migration_backup_v10.functions_backup (function_name, function_definition)
-SELECT 
+SELECT
     'is_client_coordinator',
     pg_get_functiondef(oid)
-FROM pg_proc 
+FROM pg_proc
 WHERE proname = 'is_client_coordinator' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
 
 -- Сохранить функцию use_invite_code
 INSERT INTO migration_backup_v10.functions_backup (function_name, function_definition)
-SELECT 
+SELECT
     'use_invite_code',
     pg_get_functiondef(oid)
-FROM pg_proc 
+FROM pg_proc
 WHERE proname = 'use_invite_code' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
 
 -- Сохранить функцию create_user_profile
 INSERT INTO migration_backup_v10.functions_backup (function_name, function_definition)
-SELECT 
+SELECT
     'create_user_profile',
     pg_get_functiondef(oid)
-FROM pg_proc 
+FROM pg_proc
 WHERE proname = 'create_user_profile' AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
 
 -- ============================================
@@ -114,12 +114,12 @@ CREATE TABLE migration_backup_v10.indexes_backup (
 
 -- Сохранить индексы, которые будут переименованы
 INSERT INTO migration_backup_v10.indexes_backup (index_name, table_name, index_definition)
-SELECT 
+SELECT
     indexname,
     tablename,
     indexdef
-FROM pg_indexes 
-WHERE schemaname = 'public' 
+FROM pg_indexes
+WHERE schemaname = 'public'
 AND (
     indexname LIKE '%coordinator%' OR
     tablename = 'coordinator_notes'
@@ -139,18 +139,18 @@ CREATE TABLE migration_backup_v10.policies_backup (
 
 -- Сохранить политики для таблиц, которые будут изменены
 INSERT INTO migration_backup_v10.policies_backup (table_name, policy_name, policy_definition)
-SELECT 
+SELECT
     schemaname || '.' || tablename as table_name,
     policyname,
-    'CREATE POLICY "' || policyname || '" ON ' || schemaname || '.' || tablename || 
-    ' FOR ' || cmd || 
+    'CREATE POLICY "' || policyname || '" ON ' || schemaname || '.' || tablename ||
+    ' FOR ' || cmd ||
     CASE WHEN permissive = 'PERMISSIVE' THEN ' TO ' ELSE ' TO ' END ||
     CASE WHEN roles IS NOT NULL THEN array_to_string(roles, ', ') ELSE 'public' END ||
     CASE WHEN qual IS NOT NULL THEN ' USING (' || qual || ')' ELSE '' END ||
     CASE WHEN with_check IS NOT NULL THEN ' WITH CHECK (' || with_check || ')' ELSE '' END ||
     ';' as policy_definition
-FROM pg_policies 
-WHERE schemaname = 'public' 
+FROM pg_policies
+WHERE schemaname = 'public'
 AND (
     tablename IN ('profiles', 'coordinator_notes', 'invite_codes', 'invite_code_usage', 'nutrition_targets', 'daily_logs') OR
     qual LIKE '%coordinator%' OR
@@ -202,45 +202,45 @@ RETURNS TABLE (
 BEGIN
     -- Проверить количество записей в резервных копиях таблиц
     RETURN QUERY
-    SELECT 
+    SELECT
         'profiles_backup_count'::TEXT,
         CASE WHEN COUNT(*) > 0 THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Записей в резервной копии: ' || COUNT(*)::TEXT
     FROM migration_backup_v10.profiles_backup;
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         'coordinator_notes_backup_count'::TEXT,
         CASE WHEN COUNT(*) >= 0 THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Записей в резервной копии: ' || COUNT(*)::TEXT
     FROM migration_backup_v10.coordinator_notes_backup;
-    
+
     RETURN QUERY
-    SELECT 
+    SELECT
         'invite_codes_backup_count'::TEXT,
         CASE WHEN COUNT(*) >= 0 THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Записей в резервной копии: ' || COUNT(*)::TEXT
     FROM migration_backup_v10.invite_codes_backup;
-    
+
     -- Проверить наличие функций в резервной копии
     RETURN QUERY
-    SELECT 
+    SELECT
         'functions_backup_count'::TEXT,
         CASE WHEN COUNT(*) >= 4 THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Функций в резервной копии: ' || COUNT(*)::TEXT
     FROM migration_backup_v10.functions_backup;
-    
+
     -- Проверить наличие индексов в резервной копии
     RETURN QUERY
-    SELECT 
+    SELECT
         'indexes_backup_count'::TEXT,
         CASE WHEN COUNT(*) > 0 THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Индексов в резервной копии: ' || COUNT(*)::TEXT
     FROM migration_backup_v10.indexes_backup;
-    
+
     -- Проверить наличие политик в резервной копии
     RETURN QUERY
-    SELECT 
+    SELECT
         'policies_backup_count'::TEXT,
         CASE WHEN COUNT(*) > 0 THEN 'OK' ELSE 'FAIL' END::TEXT,
         'Политик в резервной копии: ' || COUNT(*)::TEXT
@@ -255,35 +255,35 @@ COMMENT ON FUNCTION migration_backup_v10.verify_backup_integrity() IS 'Пров�
 -- ============================================
 
 -- Показать статистику резервного копирования
-SELECT 
+SELECT
     'РЕЗЕРВНОЕ КОПИРОВАНИЕ ЗАВЕРШЕНО' as status,
     NOW() as completed_at;
 
 -- Показать количество скопированных объектов
-SELECT 
+SELECT
     'Таблицы' as object_type,
     COUNT(*) as backed_up_count
-FROM information_schema.tables 
-WHERE table_schema = 'migration_backup_v10' 
+FROM information_schema.tables
+WHERE table_schema = 'migration_backup_v10'
 AND table_name LIKE '%_backup'
 
 UNION ALL
 
-SELECT 
+SELECT
     'Функции' as object_type,
     COUNT(*) as backed_up_count
 FROM migration_backup_v10.functions_backup
 
 UNION ALL
 
-SELECT 
+SELECT
     'Индексы' as object_type,
     COUNT(*) as backed_up_count
 FROM migration_backup_v10.indexes_backup
 
 UNION ALL
 
-SELECT 
+SELECT
     'Политики' as object_type,
     COUNT(*) as backed_up_count
 FROM migration_backup_v10.policies_backup;
@@ -297,5 +297,5 @@ SELECT * FROM migration_backup_v10.verify_backup_integrity();
 
 -- Резервное копирование завершено.
 -- Теперь можно безопасно применять миграцию v10.0_coordinator_to_curator.sql
--- 
+--
 -- Для восстановления используйте скрипт v10.0_coordinator_to_curator_rollback.sql

@@ -1501,5 +1501,3 @@ function InputGroup({ label, value, onChange, hint, min, max, validation }: Inpu
     </div>
   )
 }
-
-

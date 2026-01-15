@@ -71,7 +71,7 @@ export default function OCRProcessor({
           clearInterval(progressInterval)
           progressInterval = null
         }
-        
+
         if (cancelled) return
 
         logger.error('OCRProcessor: ошибка обработки', error)
@@ -115,4 +115,3 @@ export default function OCRProcessor({
     </div>
   )
 }
-

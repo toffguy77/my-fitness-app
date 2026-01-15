@@ -217,14 +217,14 @@ describe('MessageInput Component', () => {
   it.skip('should enforce rate limiting (10 messages per minute)', async () => {
     jest.useFakeTimers()
     const toast = require('react-hot-toast').default
-    
+
     // Mock Date.now() to return controlled timestamps
     let currentTime = 1000000
     const dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => currentTime)
-    
+
     // Make onSend resolve immediately
     mockOnSend.mockResolvedValue(undefined)
-    
+
     const user = userEvent.setup({ delay: null, advanceTimers: jest.advanceTimersByTime })
     render(
       <MessageInput
@@ -244,12 +244,12 @@ describe('MessageInput Component', () => {
       await user.keyboard('{Control>}a{/Control}')
       await user.type(textarea, `Message ${i}`)
       await user.click(sendButton)
-      
+
       // Wait a bit for the async operation
       await act(async () => {
         await Promise.resolve()
       })
-      
+
       // Advance time slightly but stay within 1 minute window (60000ms)
       currentTime += 100
       dateNowSpy.mockReturnValue(currentTime)
@@ -275,7 +275,7 @@ describe('MessageInput Component', () => {
 
     // Should not have sent the 11th message
     expect(mockOnSend).toHaveBeenCalledTimes(10)
-    
+
     dateNowSpy.mockRestore()
     jest.useRealTimers()
   })
@@ -283,7 +283,7 @@ describe('MessageInput Component', () => {
   it('should restore message content on send error', async () => {
     const user = userEvent.setup({ delay: null })
     const failingOnSend = jest.fn().mockRejectedValue(new Error('Send failed'))
-    
+
     render(
       <MessageInput
         onSend={failingOnSend}
@@ -294,7 +294,7 @@ describe('MessageInput Component', () => {
 
     const textarea = screen.getByPlaceholderText('Введите сообщение...')
     await user.type(textarea, 'Test message')
-    
+
     const sendButton = screen.getByRole('button')
     await user.click(sendButton)
 
@@ -305,4 +305,3 @@ describe('MessageInput Component', () => {
     })
   })
 })
-

@@ -263,4 +263,3 @@ describe('Chat Notifications', () => {
         })
     })
 })
-

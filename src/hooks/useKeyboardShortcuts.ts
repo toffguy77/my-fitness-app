@@ -40,4 +40,3 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[], enabled: boo
     }
   }, [shortcuts, enabled])
 }
-

@@ -420,4 +420,3 @@ export default function ClientViewPage() {
     </main>
   )
 }
-

@@ -625,4 +625,3 @@ export function unsubscribeFromChannel(channel: RealtimeChannel): void {
         // Не пробрасываем ошибку, так как отписка не критична для работы приложения
     }
 }
-

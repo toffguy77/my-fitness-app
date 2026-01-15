@@ -70,7 +70,7 @@ describe('ProductSearch Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -125,7 +125,7 @@ describe('ProductSearch Component', () => {
   it('should call onAddCustom when add custom button is clicked', async () => {
     const user = userEvent.setup()
     const mockOnAddCustom = jest.fn()
-    
+
     render(
       <ProductSearch
         onSelect={mockOnSelect}
@@ -134,7 +134,7 @@ describe('ProductSearch Component', () => {
       />
     )
 
-    const addButton = screen.queryByText(/добавить свой продукт/i) || 
+    const addButton = screen.queryByText(/добавить свой продукт/i) ||
                       screen.queryByText(/добавить/i)
     if (addButton) {
       await user.click(addButton)
@@ -185,4 +185,3 @@ describe('ProductSearch Component', () => {
     }, { timeout: 1000 })
   })
 })
-

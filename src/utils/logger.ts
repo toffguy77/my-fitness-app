@@ -44,8 +44,8 @@ class Logger {
         this.isDebugMode = debugMode || this.isDevelopment;
 
         // Включаем логирование flow пользователя если включен debug режим
-        this.enableUserFlowLogging = this.isDebugMode || 
-            (this.isClient ? process.env.NEXT_PUBLIC_ENABLE_USER_FLOW_LOGGING === 'true' 
+        this.enableUserFlowLogging = this.isDebugMode ||
+            (this.isClient ? process.env.NEXT_PUBLIC_ENABLE_USER_FLOW_LOGGING === 'true'
                           : process.env.ENABLE_USER_FLOW_LOGGING === 'true');
     }
 
@@ -95,19 +95,19 @@ class Logger {
         // Это гарантирует, что логи видны в контейнере
         // В Edge Runtime (middleware) process.stdout/stderr недоступны, используем только console
         // Проверяем, что мы не в Edge Runtime через проверку доступности process
-        const isNodeRuntime = !this.isClient && typeof process !== 'undefined' && 
+        const isNodeRuntime = !this.isClient && typeof process !== 'undefined' &&
                               'stdout' in process && 'stderr' in process &&
                               typeof (process as any).stdout?.write === 'function';
-        
+
         if (isNodeRuntime) {
             // Для Node.js серверной среды используем process.stdout/stderr напрямую
             // чтобы гарантировать попадание логов в Docker
             const logLine = formattedMessage + (error ? `\nError: ${error.stack || error.message}` : '');
-            
+
             try {
                 const stdout = (process as any).stdout;
                 const stderr = (process as any).stderr;
-                
+
                 switch (level) {
                     case LogLevel.DEBUG:
                         stdout.write(`DEBUG: ${logLine}\n`);
@@ -187,9 +187,9 @@ class Logger {
     registration(action: string, context?: LogContext): void {
         // Всегда логируем регистрацию (критически важно для отладки)
         this.log(LogLevel.INFO, 'REGISTRATION', `[Registration] ${action}`, context);
-        
+
         // Дополнительно пишем в stdout для Docker (Node.js серверная среда, если доступно)
-        if (!this.isClient && typeof process !== 'undefined' && 
+        if (!this.isClient && typeof process !== 'undefined' &&
             'stdout' in process && typeof (process as any).stdout?.write === 'function') {
             try {
                 const contextStr = context ? ` ${JSON.stringify(context)}` : '';
@@ -207,9 +207,9 @@ class Logger {
     authentication(action: string, context?: LogContext): void {
         // Всегда логируем авторизацию (критически важно для отладки)
         this.log(LogLevel.INFO, 'AUTH', `[Auth] ${action}`, context);
-        
+
         // Дополнительно пишем в stdout для Docker (Node.js серверная среда, если доступно)
-        if (!this.isClient && typeof process !== 'undefined' && 
+        if (!this.isClient && typeof process !== 'undefined' &&
             'stdout' in process && typeof (process as any).stdout?.write === 'function') {
             try {
                 const contextStr = context ? ` ${JSON.stringify(context)}` : '';
@@ -271,7 +271,7 @@ class Logger {
             const errorType = error instanceof Error ? error.constructor.name : 'unknown'
             const errorCode = (error as any)?.code || (error as any)?.status || 'unknown'
             const severity = this.isCriticalError(error) ? 'critical' : 'warning'
-            
+
             metricsCollector.counter(
                 'errors_total',
                 'Total number of errors',
@@ -302,8 +302,8 @@ class Logger {
             // Обрабатываем объекты ошибок (например, из Supabase)
             if (typeof error === 'object' && error !== null) {
                 try {
-                    const errorMessage = 'message' in error && typeof error.message === 'string' 
-                        ? error.message 
+                    const errorMessage = 'message' in error && typeof error.message === 'string'
+                        ? error.message
                         : JSON.stringify(error);
                     errorObj = new Error(errorMessage);
                     // Копируем дополнительные свойства если они есть
@@ -322,10 +322,10 @@ class Logger {
         }
 
         this.log(LogLevel.ERROR, 'ERROR', message, context, errorObj);
-        
+
         // ВАЖНО: Всегда пишем ошибки в stderr для Docker (Node.js серверная среда, если доступно)
         // Это гарантирует, что ошибки видны в логах контейнера
-        if (!this.isClient && typeof process !== 'undefined' && 
+        if (!this.isClient && typeof process !== 'undefined' &&
             'stderr' in process && typeof (process as any).stderr?.write === 'function') {
             try {
                 const contextStr = context ? ` ${JSON.stringify(context)}` : '';
@@ -374,8 +374,8 @@ class Logger {
         if (!error) return false;
         if (error instanceof Error) {
             const message = error.message.toLowerCase();
-            return message.includes('critical') || 
-                   message.includes('fatal') || 
+            return message.includes('critical') ||
+                   message.includes('fatal') ||
                    message.includes('database') ||
                    message.includes('connection') ||
                    message.includes('environment');
@@ -388,7 +388,7 @@ class Logger {
      */
     private getErrorType(message: string, error?: Error | unknown): string {
         const msg = message.toLowerCase();
-        
+
         if (msg.includes('auth') || msg.includes('session') || msg.includes('login')) {
             return 'auth';
         }
@@ -407,7 +407,7 @@ class Logger {
                 return 'network';
             }
         }
-        
+
         return 'unknown';
     }
 }
@@ -417,6 +417,3 @@ export const logger = new Logger();
 
 // Экспортируем класс для создания кастомных логгеров
 export { Logger };
-
-
-

@@ -130,5 +130,3 @@ describe('Meal Helper Functions', () => {
     })
   })
 })
-
-

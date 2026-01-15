@@ -180,4 +180,3 @@ describe('MessageList Component', () => {
     expect(screen.queryByText(/hello/i)).not.toBeInTheDocument()
   })
 })
-

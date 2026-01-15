@@ -145,7 +145,7 @@ describe('Date Helper Functions', () => {
     it('should parse ISO date string', () => {
       const dateStr = '2024-01-15'
       const date = new Date(dateStr)
-      
+
       expect(date).toBeInstanceOf(Date)
       expect(!isNaN(date.getTime())).toBe(true)
     })
@@ -153,7 +153,7 @@ describe('Date Helper Functions', () => {
     it('should handle date with time', () => {
       const dateStr = '2024-01-15T10:30:00Z'
       const date = new Date(dateStr)
-      
+
       expect(date).toBeInstanceOf(Date)
       expect(!isNaN(date.getTime())).toBe(true)
     })
@@ -166,5 +166,3 @@ describe('Date Helper Functions', () => {
     })
   })
 })
-
-

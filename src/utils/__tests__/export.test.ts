@@ -79,12 +79,12 @@ describe('Export Functions', () => {
       // Spy on createElement to capture link before it's removed
       const createElementSpy = jest.spyOn(document, 'createElement')
       const setAttributeSpy = jest.spyOn(HTMLAnchorElement.prototype, 'setAttribute')
-      
+
       exportToCSV(mockData, 'custom.csv')
 
       // Check that setAttribute was called with download and custom filename
       expect(setAttributeSpy).toHaveBeenCalledWith('download', 'custom.csv')
-      
+
       createElementSpy.mockRestore()
       setAttributeSpy.mockRestore()
     })
@@ -132,12 +132,12 @@ describe('Export Functions', () => {
     it('should use custom filename', () => {
       // Spy on createElement to capture link before it's removed
       const setAttributeSpy = jest.spyOn(HTMLAnchorElement.prototype, 'setAttribute')
-      
+
       exportToJSON(mockData, 'custom.json')
 
       // Check that setAttribute was called with download and custom filename
       expect(setAttributeSpy).toHaveBeenCalledWith('download', 'custom.json')
-      
+
       setAttributeSpy.mockRestore()
     })
   })
@@ -207,4 +207,3 @@ describe('Export Functions', () => {
     })
   })
 })
-

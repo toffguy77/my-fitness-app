@@ -11,7 +11,7 @@ describe('Chat Message Validation - Property Tests', () => {
     describe('Property 4: Message Validation', () => {
         /**
          * **Property 4: Message Validation**
-         * *For any* message input, invalid messages (empty, too long, or containing forbidden content) 
+         * *For any* message input, invalid messages (empty, too long, or containing forbidden content)
          * should be rejected before sending
          * **Validates: Requirements 2.4**
          */

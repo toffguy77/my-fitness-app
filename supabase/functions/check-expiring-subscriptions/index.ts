@@ -1,6 +1,6 @@
 /**
  * Supabase Edge Function для проверки подписок, истекающих через N дней
- * 
+ *
  * Использование:
  * POST /functions/v1/check-expiring-subscriptions
  * Body: { daysAhead?: number } (по умолчанию 3)
@@ -89,7 +89,7 @@ serve(async (req) => {
                   <h2 style="color: #333;">Привет!</h2>
                   <p>Ваша Premium подписка истекает через <strong>${daysRemaining} ${daysRemaining === 1 ? 'день' : 'дня'}</strong>.</p>
                   <p>Чтобы продолжить пользоваться всеми возможностями платформы, продлите подписку.</p>
-                  <a href="${APP_URL}/app/settings" 
+                  <a href="${APP_URL}/app/settings"
                      style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
                     Управление подпиской
                   </a>
@@ -135,4 +135,3 @@ serve(async (req) => {
     )
   }
 })
-

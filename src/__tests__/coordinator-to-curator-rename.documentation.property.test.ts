@@ -1,10 +1,10 @@
 /**
  * Property-based test for documentation consistency during coordinator-to-curator rename
- * 
+ *
  * **Feature: coordinator-to-curator-rename, Property 6: Documentation Text Consistency**
  * **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5**
- * 
- * This test ensures that all documentation files have been updated to use "curator" 
+ *
+ * This test ensures that all documentation files have been updated to use "curator"
  * terminology instead of "coordinator" terminology.
  */
 
@@ -16,8 +16,8 @@ import { glob } from 'glob'
 describe('Documentation Consistency Property Tests', () => {
     /**
      * Property 6: Documentation Text Consistency
-     * For any documentation file in the project, all references to coordinator 
-     * terminology should be updated to curator terminology while maintaining 
+     * For any documentation file in the project, all references to coordinator
+     * terminology should be updated to curator terminology while maintaining
      * document structure and meaning
      */
     test('Property 6: All documentation files should use curator terminology instead of coordinator', async () => {

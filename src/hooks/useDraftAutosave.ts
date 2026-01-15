@@ -51,11 +51,11 @@ export function useDraftAutosave({
     }
 
     const interval = getAutosaveInterval()
-    
+
     autosaveIntervalRef.current = setInterval(() => {
       // Сохраняем только если есть данные для сохранения
       const hasData = meals.length > 0 || weight !== null || hungerLevel !== null || energyLevel !== null || comments
-      
+
       if (hasData) {
         saveDraft(date, {
           meals,
@@ -64,7 +64,7 @@ export function useDraftAutosave({
           energyLevel,
           comments,
         })
-        
+
         const now = Date.now()
         // Показываем уведомление не чаще раза в 2 минуты и только если есть значительные изменения
         const hasSignificantChanges = meals.length > 0 || weight !== null || hungerLevel !== null || energyLevel !== null || comments
@@ -98,4 +98,3 @@ export function useDraftAutosave({
     hasDraft: () => loadDraft(date) !== null,
   }
 }
-

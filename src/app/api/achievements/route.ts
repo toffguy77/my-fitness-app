@@ -47,7 +47,7 @@ export async function GET(_request: NextRequest) {
     // Объединяем достижения с прогрессом пользователя
     const achievementsWithProgress: AchievementWithProgress[] = (achievements || []).map((achievement) => {
       const userAchievement = userAchievements?.find((ua) => ua.achievement_id === achievement.id)
-      
+
       return {
         ...achievement,
         isUnlocked: userAchievement?.progress === 100 || false,
@@ -70,4 +70,3 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
   }
 }
-

@@ -24,7 +24,7 @@ describe('Subscription Logic', () => {
     it('should return true for active subscription with future end date', () => {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + 30)
-      
+
       const profile: UserProfile = {
         id: '1',
         role: 'client',
@@ -38,7 +38,7 @@ describe('Subscription Logic', () => {
     it('should return false for active subscription with past end date', () => {
       const pastDate = new Date()
       pastDate.setDate(pastDate.getDate() - 1)
-      
+
       const profile: UserProfile = {
         id: '1',
         role: 'client',
@@ -74,7 +74,7 @@ describe('Subscription Logic', () => {
     it('should return false for subscription expiring today', () => {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      
+
       const profile: UserProfile = {
         id: '1',
         role: 'client',
@@ -90,7 +90,7 @@ describe('Subscription Logic', () => {
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       tomorrow.setHours(23, 59, 59, 999)
-      
+
       const profile: UserProfile = {
         id: '1',
         role: 'client',
@@ -102,4 +102,3 @@ describe('Subscription Logic', () => {
     })
   })
 })
-

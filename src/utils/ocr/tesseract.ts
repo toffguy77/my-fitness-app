@@ -31,22 +31,22 @@ async function getWorker(): Promise<Worker> {
  */
 export async function recognizeText(imageFile: File): Promise<OCRResult> {
   const startTime = Date.now()
-  
+
   try {
     const worker = await getWorker()
-    
+
     const { data } = await worker.recognize(imageFile)
-    
+
     const processingTimeMs = Date.now() - startTime
-    
+
     const extractedData = extractNutritionData(data.text)
-    
+
     logger.debug('Tesseract: распознавание завершено', {
       confidence: data.confidence,
       textLength: data.text.length,
       processingTimeMs,
     })
-    
+
     return {
       text: data.text,
       confidence: data.confidence,
@@ -71,4 +71,3 @@ export async function terminateWorker(): Promise<void> {
     logger.debug('Tesseract: worker завершен')
   }
 }
-

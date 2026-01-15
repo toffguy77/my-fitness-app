@@ -4,32 +4,32 @@
   /* Obsidian & Titanium Color System */
   --background: #09090b; /* Zinc 950 - Base surface */
   --foreground: #f4f4f5; /* Zinc 100 - Primary text */
-  
+
   /* Surfaces */
   --surface-base: #09090b; /* Zinc 950 */
   --surface-card: #18181b; /* Zinc 900 */
   --surface-elevated: #27272a; /* Zinc 800 */
-  
+
   /* Borders */
   --border-subtle: #27272a; /* Zinc 800 */
   --border-focus: #3f3f46; /* Zinc 700 */
-  
+
   /* Text */
   --text-primary: #f4f4f5; /* Zinc 100 */
   --text-secondary: #a1a1aa; /* Zinc 400 */
   --text-tertiary: #52525b; /* Zinc 600 */
   --text-inverse: #09090b; /* Zinc 950 - for buttons */
-  
+
   /* Actions */
   --action-primary: #ffffff; /* White */
   --action-primary-hover: #e4e4e7; /* Zinc 200 */
   --action-secondary: #27272a; /* Zinc 800 */
-  
+
   /* Status (Pastel) */
   --status-success: #34d399; /* Emerald 400 */
   --status-warning: #fbbf24; /* Amber 400 */
   --status-error: #f87171; /* Red 400 */
-  
+
   /* Data Visualization (Pastel) */
   --chart-protein: #93c5fd; /* Blue 300 */
   --chart-fats: #fcd34d; /* Amber 300 */
@@ -91,7 +91,7 @@ html, body {
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   /* Ensure inputs have adequate padding */
   input,
   textarea,

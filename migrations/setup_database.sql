@@ -2,7 +2,7 @@
 -- Setup Database from Scratch
 -- Description: Полный сетап базы данных My Fitness App с нуля
 -- Date: 2025-01-XX
--- 
+--
 -- ВАЖНО: Этот скрипт создает базу данных с нуля.
 -- Используйте только для новых проектов или полного пересоздания базы.
 -- ============================================
@@ -11,7 +11,7 @@
 -- 1. СОЗДАНИЕ ТИПОВ (ENUM)
 -- ============================================
 
-DO $$ 
+DO $$
 BEGIN
     -- Создаем enum для ролей пользователей
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
@@ -93,27 +93,27 @@ CREATE TABLE IF NOT EXISTS profiles (
     role user_role DEFAULT 'client',
     coordinator_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     avatar_url TEXT,
-    
+
     -- Подписка
-    subscription_status TEXT DEFAULT 'free' 
+    subscription_status TEXT DEFAULT 'free'
         CHECK (subscription_status IN ('free', 'active', 'cancelled', 'past_due', 'expired')),
-    subscription_tier TEXT DEFAULT 'basic' 
+    subscription_tier TEXT DEFAULT 'basic'
         CHECK (subscription_tier IN ('basic', 'premium')),
     subscription_start_date TIMESTAMPTZ,
     subscription_end_date TIMESTAMPTZ,
-    
+
     -- Биометрия (для онбординга)
     gender TEXT CHECK (gender IN ('male', 'female', 'other')),
     birth_date DATE,
     height DECIMAL(5,2), -- см
-    
+
     -- Активность
     activity_level TEXT CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
-    
+
     -- Приватность профиля
-    profile_visibility TEXT DEFAULT 'private' 
+    profile_visibility TEXT DEFAULT 'private'
         CHECK (profile_visibility IN ('private', 'public')),
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -154,26 +154,26 @@ CREATE TABLE IF NOT EXISTS daily_logs (
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     date DATE NOT NULL,
     target_type TEXT CHECK (target_type IN ('training', 'rest')),
-    
+
     -- Фактические значения КБЖУ
     actual_calories INTEGER DEFAULT 0,
     actual_protein INTEGER DEFAULT 0,
     actual_fats INTEGER DEFAULT 0,
     actual_carbs INTEGER DEFAULT 0,
-    
+
     -- Дополнительные данные
     weight DECIMAL(5,2), -- кг
     hunger_level INTEGER CHECK (hunger_level >= 1 AND hunger_level <= 10),
     energy_level INTEGER CHECK (energy_level >= 1 AND energy_level <= 10),
     notes TEXT,
-    
+
     -- Приемы пищи (JSONB)
     meals JSONB DEFAULT '[]'::jsonb,
-    
+
     -- Check-in
     is_completed BOOLEAN DEFAULT false,
     completed_at TIMESTAMPTZ,
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, date)
@@ -213,7 +213,7 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   read_at TIMESTAMPTZ,
   is_deleted BOOLEAN DEFAULT FALSE,
-  
+
   CONSTRAINT check_sender_receiver CHECK (sender_id != receiver_id)
 );
 
@@ -240,7 +240,7 @@ CREATE TABLE IF NOT EXISTS products (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   usage_count INTEGER DEFAULT 0 CHECK (usage_count >= 0),
-  
+
   CONSTRAINT check_macros_positive CHECK (
     calories_per_100g >= 0 AND
     protein_per_100g >= 0 AND
@@ -274,7 +274,7 @@ CREATE TABLE IF NOT EXISTS user_products (
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   CONSTRAINT check_user_macros_positive CHECK (
     calories_per_100g >= 0 AND
     protein_per_100g >= 0 AND
@@ -296,7 +296,7 @@ CREATE TABLE IF NOT EXISTS product_usage_history (
   product_id UUID REFERENCES products(id) ON DELETE SET NULL,
   user_product_id UUID REFERENCES user_products(id) ON DELETE SET NULL,
   used_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   CONSTRAINT check_product_reference CHECK (
     (product_id IS NOT NULL AND user_product_id IS NULL) OR
     (product_id IS NULL AND user_product_id IS NOT NULL)
@@ -314,7 +314,7 @@ CREATE TABLE IF NOT EXISTS favorite_products (
   product_id UUID REFERENCES products(id) ON DELETE CASCADE,
   user_product_id UUID REFERENCES user_products(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   CONSTRAINT check_favorite_reference CHECK (
     (product_id IS NOT NULL AND user_product_id IS NULL) OR
     (product_id IS NULL AND user_product_id IS NOT NULL)
@@ -336,7 +336,7 @@ CREATE TABLE IF NOT EXISTS invite_codes (
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_used_at TIMESTAMPTZ,
-  
+
   CONSTRAINT check_used_count CHECK (
     max_uses IS NULL OR used_count <= max_uses
   )
@@ -356,7 +356,7 @@ CREATE TABLE IF NOT EXISTS invite_code_usage (
   invite_code_id UUID NOT NULL REFERENCES invite_codes(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   used_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   UNIQUE(invite_code_id, user_id)
 );
 
@@ -371,8 +371,8 @@ CREATE TABLE IF NOT EXISTS ocr_scans (
   image_hash TEXT,
   ocr_provider TEXT NOT NULL CHECK (
     ocr_provider IN (
-      'tesseract', 
-      'google_vision', 
+      'tesseract',
+      'google_vision',
       'aws_textract',
       'lighton_ocr_1b',
       'deepseek_ocr',
@@ -435,7 +435,7 @@ CREATE TABLE IF NOT EXISTS user_achievements (
   achievement_id UUID NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
   unlocked_at TIMESTAMPTZ DEFAULT NOW(),
   progress INTEGER DEFAULT 100 CHECK (progress >= 0 AND progress <= 100),
-  
+
   UNIQUE(user_id, achievement_id)
 );
 
@@ -525,12 +525,12 @@ CREATE INDEX IF NOT EXISTS idx_favorite_products_user ON favorite_products(user_
 CREATE INDEX IF NOT EXISTS idx_favorite_products_product ON favorite_products(product_id) WHERE product_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_favorite_products_user_product ON favorite_products(user_product_id) WHERE user_product_id IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_products_unique_global 
-ON favorite_products(user_id, product_id) 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_products_unique_global
+ON favorite_products(user_id, product_id)
 WHERE product_id IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_products_unique_user 
-ON favorite_products(user_id, user_product_id) 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_products_unique_user
+ON favorite_products(user_id, user_product_id)
 WHERE user_product_id IS NOT NULL;
 
 -- Индексы для invite_codes
@@ -598,19 +598,19 @@ BEGIN
   IF calories < 0 OR calories > 10000 THEN
     RETURN FALSE;
   END IF;
-  
+
   IF protein < 0 OR protein > 1000 THEN
     RETURN FALSE;
   END IF;
-  
+
   IF fats < 0 OR fats > 500 THEN
     RETURN FALSE;
   END IF;
-  
+
   IF carbs < 0 OR carbs > 1500 THEN
     RETURN FALSE;
   END IF;
-  
+
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
@@ -627,7 +627,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
   RETURN QUERY
-  SELECT 
+  SELECT
     p.id,
     p.email,
     p.full_name,
@@ -653,7 +653,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
   RETURN QUERY
-  SELECT 
+  SELECT
     p.id,
     p.email,
     p.full_name,
@@ -677,14 +677,14 @@ DECLARE
   updated_count INTEGER;
 BEGIN
   UPDATE profiles
-  SET 
+  SET
     subscription_status = 'cancelled',
     updated_at = NOW()
   WHERE subscription_status = 'active'
     AND subscription_tier = 'premium'
     AND subscription_end_date IS NOT NULL
     AND subscription_end_date < NOW();
-  
+
   GET DIAGNOSTICS updated_count = ROW_COUNT;
   RETURN updated_count;
 END;
@@ -793,11 +793,11 @@ BEGIN
             AND streak_count < 365
           )
           SELECT COALESCE(MAX(streak_count), 0) INTO current_value FROM streak;
-          
+
         WHEN 'total_meals' THEN
           -- Подсчитываем общее количество приемов пищи
           SELECT COALESCE(SUM(
-            CASE 
+            CASE
               WHEN meals IS NULL THEN 0
               WHEN jsonb_typeof(meals) = 'array' THEN jsonb_array_length(meals)
               ELSE 0
@@ -806,28 +806,28 @@ BEGIN
           FROM daily_logs
           WHERE user_id = user_id_param
           AND meals IS NOT NULL;
-          
+
         WHEN 'ocr_used' THEN
           -- Подсчитываем количество успешных OCR сканирований
           SELECT COUNT(*) INTO current_value
           FROM ocr_scans
           WHERE user_id = user_id_param
           AND success = TRUE;
-          
+
         WHEN 'weight_logged' THEN
           -- Подсчитываем количество записей веса
           SELECT COUNT(*) INTO current_value
           FROM daily_logs
           WHERE user_id = user_id_param
           AND weight IS NOT NULL;
-          
+
         WHEN 'days_active' THEN
           -- Подсчитываем количество активных дней
           SELECT COUNT(DISTINCT date) INTO current_value
           FROM daily_logs
           WHERE user_id = user_id_param
           AND (actual_calories > 0 OR weight IS NOT NULL);
-          
+
         ELSE
           current_value := 0;
       END CASE;
@@ -842,12 +842,12 @@ BEGIN
       BEGIN
         INSERT INTO user_achievements AS ua (user_id, achievement_id, progress)
         VALUES (user_id_param, achievement_record.id, 100)
-        ON CONFLICT (user_id, achievement_id) 
-        DO UPDATE SET progress = 100, unlocked_at = CASE 
+        ON CONFLICT (user_id, achievement_id)
+        DO UPDATE SET progress = 100, unlocked_at = CASE
           WHEN ua.progress < 100 THEN NOW()
           ELSE ua.unlocked_at
         END;
-        
+
         RETURN QUERY SELECT achievement_record.id, achievement_record.code, achievement_record.name;
       EXCEPTION
         WHEN OTHERS THEN
@@ -858,11 +858,11 @@ BEGIN
       BEGIN
         INSERT INTO user_achievements AS ua (user_id, achievement_id, progress)
         VALUES (
-          user_id_param, 
-          achievement_record.id, 
+          user_id_param,
+          achievement_record.id,
           LEAST(100, (current_value * 100 / NULLIF(achievement_record.condition_value, 0)))
         )
-        ON CONFLICT (user_id, achievement_id) 
+        ON CONFLICT (user_id, achievement_id)
         DO UPDATE SET progress = LEAST(100, (current_value * 100 / NULLIF(achievement_record.condition_value, 0)))
         WHERE ua.progress < 100;
       EXCEPTION
@@ -871,7 +871,7 @@ BEGIN
       END;
     END IF;
   END LOOP;
-  
+
   RETURN;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -910,8 +910,8 @@ CREATE OR REPLACE FUNCTION check_and_update_subscription_status()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Если subscription_end_date прошел, но статус еще не expired, обновляем
-  IF NEW.subscription_end_date IS NOT NULL 
-     AND NEW.subscription_end_date < NOW() 
+  IF NEW.subscription_end_date IS NOT NULL
+     AND NEW.subscription_end_date < NOW()
      AND NEW.subscription_status != 'expired' THEN
     NEW.subscription_status := 'expired';
   END IF;
@@ -969,9 +969,9 @@ BEGIN
 
   -- Проверяем наличие колонки profile_visibility
   SELECT EXISTS (
-    SELECT 1 
-    FROM information_schema.columns 
-    WHERE table_name = 'profiles' 
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'profiles'
     AND column_name = 'profile_visibility'
   ) INTO has_profile_visibility;
 
@@ -1046,7 +1046,7 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Значения КБЖУ выходят за допустимые пределы. Калории: 0-10000, Белки: 0-1000г, Жиры: 0-500г, Углеводы: 0-1500г';
   END IF;
-  
+
   -- Проверка соответствия калорий макронутриентам (только если есть данные)
   IF NEW.actual_calories > 0 OR NEW.actual_protein > 0 OR NEW.actual_fats > 0 OR NEW.actual_carbs > 0 THEN
     IF NOT validate_calories_match_macros(
@@ -1055,12 +1055,12 @@ BEGIN
       NEW.actual_fats,
       NEW.actual_carbs
     ) THEN
-      RAISE WARNING 'Калории не соответствуют макронутриентам. Расчетные: %, введенные: %', 
+      RAISE WARNING 'Калории не соответствуют макронутриентам. Расчетные: %, введенные: %',
         (NEW.actual_protein * 4 + NEW.actual_fats * 9 + NEW.actual_carbs * 4),
         NEW.actual_calories;
     END IF;
   END IF;
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -1094,64 +1094,64 @@ DECLARE
 BEGIN
   -- Извлекаем вес
   weight_val := COALESCE((meal->>'weight')::NUMERIC, 0);
-  
+
   -- Проверяем, есть ли уже новая структура (per100 и totals)
   IF meal ? 'per100' AND meal ? 'totals' THEN
     -- Уже нормализованная структура, возвращаем как есть
     RETURN meal;
   END IF;
-  
+
   -- Извлекаем значения на 100г (старая структура: caloriesPer100, proteinPer100 и т.д.)
   calories_per100 := COALESCE((meal->>'caloriesPer100')::NUMERIC, 0);
   protein_per100 := COALESCE((meal->>'proteinPer100')::NUMERIC, 0);
   fats_per100 := COALESCE((meal->>'fatsPer100')::NUMERIC, 0);
   carbs_per100 := COALESCE((meal->>'carbsPer100')::NUMERIC, 0);
-  
+
   -- Извлекаем итоговые значения (старая структура: calories, protein и т.д.)
   calories_total := COALESCE((meal->>'calories')::NUMERIC, 0);
   protein_total := COALESCE((meal->>'protein')::NUMERIC, 0);
   fats_total := COALESCE((meal->>'fats')::NUMERIC, 0);
   carbs_total := COALESCE((meal->>'carbs')::NUMERIC, 0);
-  
+
   -- Если есть значения на 100г, используем их как источник истины
   IF calories_per100 > 0 OR protein_per100 > 0 OR fats_per100 > 0 OR carbs_per100 > 0 THEN
     -- Вычисляем totals из per100 и weight
-    calories_total := CASE 
+    calories_total := CASE
       WHEN weight_val > 0 AND calories_per100 > 0 THEN ROUND((calories_per100 * weight_val) / 100)
       ELSE calories_total
     END;
-    protein_total := CASE 
+    protein_total := CASE
       WHEN weight_val > 0 AND protein_per100 > 0 THEN ROUND((protein_per100 * weight_val) / 100)
       ELSE protein_total
     END;
-    fats_total := CASE 
+    fats_total := CASE
       WHEN weight_val > 0 AND fats_per100 > 0 THEN ROUND((fats_per100 * weight_val) / 100)
       ELSE fats_total
     END;
-    carbs_total := CASE 
+    carbs_total := CASE
       WHEN weight_val > 0 AND carbs_per100 > 0 THEN ROUND((carbs_per100 * weight_val) / 100)
       ELSE carbs_total
     END;
   -- Если значений на 100г нет, но есть итоговые значения и вес, вычисляем per100
   ELSIF weight_val > 0 AND (calories_total > 0 OR protein_total > 0 OR fats_total > 0 OR carbs_total > 0) THEN
-    calories_per100 := CASE 
+    calories_per100 := CASE
       WHEN calories_total > 0 THEN ROUND((calories_total * 100) / weight_val)
       ELSE 0
     END;
-    protein_per100 := CASE 
+    protein_per100 := CASE
       WHEN protein_total > 0 THEN ROUND((protein_total * 100) / weight_val)
       ELSE 0
     END;
-    fats_per100 := CASE 
+    fats_per100 := CASE
       WHEN fats_total > 0 THEN ROUND((fats_total * 100) / weight_val)
       ELSE 0
     END;
-    carbs_per100 := CASE 
+    carbs_per100 := CASE
       WHEN carbs_total > 0 THEN ROUND((carbs_total * 100) / weight_val)
       ELSE 0
     END;
   END IF;
-  
+
   -- Создаем нормализованную структуру
   normalized_meal := meal || jsonb_build_object(
     'per100', jsonb_build_object(
@@ -1167,11 +1167,11 @@ BEGIN
       'carbs', carbs_total
     )
   );
-  
+
   -- Удаляем старые поля, если они есть
   normalized_meal := normalized_meal - 'caloriesPer100' - 'proteinPer100' - 'fatsPer100' - 'carbsPer100';
   normalized_meal := normalized_meal - 'calories' - 'protein' - 'fats' - 'carbs';
-  
+
   RETURN normalized_meal;
 END;
 $$;
@@ -1192,32 +1192,32 @@ BEGIN
   -- Извлекаем вес и объект per100
   weight_val := COALESCE((meal->>'weight')::NUMERIC, 0);
   per100_obj := meal->'per100';
-  
+
   -- Если нет per100 или веса, возвращаем meal как есть
   IF per100_obj IS NULL OR weight_val <= 0 THEN
     RETURN meal;
   END IF;
-  
+
   -- Вычисляем totals из per100 и weight
   totals_obj := jsonb_build_object(
-    'calories', CASE 
+    'calories', CASE
       WHEN (per100_obj->>'calories')::NUMERIC > 0 THEN ROUND(((per100_obj->>'calories')::NUMERIC * weight_val) / 100)
       ELSE 0
     END,
-    'protein', CASE 
+    'protein', CASE
       WHEN (per100_obj->>'protein')::NUMERIC > 0 THEN ROUND(((per100_obj->>'protein')::NUMERIC * weight_val) / 100)
       ELSE 0
     END,
-    'fats', CASE 
+    'fats', CASE
       WHEN (per100_obj->>'fats')::NUMERIC > 0 THEN ROUND(((per100_obj->>'fats')::NUMERIC * weight_val) / 100)
       ELSE 0
     END,
-    'carbs', CASE 
+    'carbs', CASE
       WHEN (per100_obj->>'carbs')::NUMERIC > 0 THEN ROUND(((per100_obj->>'carbs')::NUMERIC * weight_val) / 100)
       ELSE 0
     END
   );
-  
+
   -- Обновляем totals в meal
   RETURN meal || jsonb_build_object('totals', totals_obj);
 END;
@@ -1239,32 +1239,32 @@ BEGIN
   -- Извлекаем вес и объект totals
   weight_val := COALESCE((meal->>'weight')::NUMERIC, 0);
   totals_obj := meal->'totals';
-  
+
   -- Если нет totals или веса, возвращаем meal как есть
   IF totals_obj IS NULL OR weight_val <= 0 THEN
     RETURN meal;
   END IF;
-  
+
   -- Вычисляем per100 из totals и weight
   per100_obj := jsonb_build_object(
-    'calories', CASE 
+    'calories', CASE
       WHEN (totals_obj->>'calories')::NUMERIC > 0 THEN ROUND(((totals_obj->>'calories')::NUMERIC * 100) / weight_val)
       ELSE 0
     END,
-    'protein', CASE 
+    'protein', CASE
       WHEN (totals_obj->>'protein')::NUMERIC > 0 THEN ROUND(((totals_obj->>'protein')::NUMERIC * 100) / weight_val)
       ELSE 0
     END,
-    'fats', CASE 
+    'fats', CASE
       WHEN (totals_obj->>'fats')::NUMERIC > 0 THEN ROUND(((totals_obj->>'fats')::NUMERIC * 100) / weight_val)
       ELSE 0
     END,
-    'carbs', CASE 
+    'carbs', CASE
       WHEN (totals_obj->>'carbs')::NUMERIC > 0 THEN ROUND(((totals_obj->>'carbs')::NUMERIC * 100) / weight_val)
       ELSE 0
     END
   );
-  
+
   -- Обновляем per100 в meal
   RETURN meal || jsonb_build_object('per100', per100_obj);
 END;
@@ -1287,16 +1287,16 @@ BEGIN
   IF NEW.meals IS NULL OR jsonb_typeof(NEW.meals) != 'array' THEN
     RETURN NEW;
   END IF;
-  
+
   meals_array := NEW.meals;
-  
+
   -- Обрабатываем каждый meal в массиве
   FOR i IN 0..jsonb_array_length(meals_array) - 1 LOOP
     meal := meals_array->i;
-    
+
     -- Нормализуем структуру meal (преобразует старую структуру в новую)
     meal := normalize_meal_structure(meal);
-    
+
     -- Если изменен per100 или weight, пересчитываем totals
     IF meal ? 'per100' AND meal ? 'weight' THEN
       meal := recalc_meal_totals(meal);
@@ -1304,14 +1304,14 @@ BEGIN
     ELSIF meal ? 'totals' AND NOT (meal ? 'per100') THEN
       meal := recalc_meal_per100(meal);
     END IF;
-    
+
     -- Добавляем нормализованный meal в массив
     normalized_meals := normalized_meals || jsonb_build_array(meal);
   END LOOP;
-  
+
   -- Обновляем meals в NEW
   NEW.meals := normalized_meals;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -1333,7 +1333,7 @@ DROP TRIGGER IF EXISTS update_subscription_status_on_expiry ON profiles;
 CREATE TRIGGER update_subscription_status_on_expiry
   BEFORE UPDATE ON profiles
   FOR EACH ROW
-  WHEN (OLD.subscription_end_date IS DISTINCT FROM NEW.subscription_end_date 
+  WHEN (OLD.subscription_end_date IS DISTINCT FROM NEW.subscription_end_date
         OR OLD.subscription_status IS DISTINCT FROM NEW.subscription_status)
   EXECUTE FUNCTION check_and_update_subscription_status();
 
@@ -1792,4 +1792,3 @@ ON CONFLICT (code) DO NOTHING;
 
 -- База данных создана и готова к использованию.
 -- Все таблицы, функции, триггеры и RLS политики настроены.
-

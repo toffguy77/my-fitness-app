@@ -1,5 +1,5 @@
 'use client'
- 
+
 
 import { useState, useEffect } from 'react'
 import { X, Download } from 'lucide-react'
@@ -125,4 +125,3 @@ export default function InstallPrompt() {
         </div>
     )
 }
-

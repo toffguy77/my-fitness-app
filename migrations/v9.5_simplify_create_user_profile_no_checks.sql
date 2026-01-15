@@ -76,4 +76,3 @@ COMMENT ON FUNCTION create_user_profile(UUID, TEXT, TEXT, user_role, UUID) IS '�
 -- - Простой insert с ON CONFLICT DO NOTHING
 -- - Обработка исключений для graceful error handling
 -- - Должна выполняться мгновенно, без timeout
-

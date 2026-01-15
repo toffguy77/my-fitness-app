@@ -14,7 +14,7 @@ export default function AppLayout({
     children: React.ReactNode
 }) {
     const [userId, setUserId] = useState<string | undefined>(undefined)
-    
+
     // Инициализация аналитики
     useEffect(() => {
         const initAnalytics = async () => {
@@ -24,7 +24,7 @@ export default function AppLayout({
         }
         initAnalytics()
     }, [])
-    
+
     // Используем хук аналитики
     useAnalytics(userId)
 
@@ -36,5 +36,3 @@ export default function AppLayout({
         </>
     )
 }
-
-

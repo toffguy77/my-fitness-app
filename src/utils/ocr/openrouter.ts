@@ -64,14 +64,14 @@ export async function recognizeTextOpenRouter(
 ): Promise<OCRResult> {
   const startTime = Date.now()
   const apiKeyToUse = apiKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY
-  
+
   if (!apiKeyToUse) {
     throw new Error('OpenRouter API key не настроен')
   }
-  
+
   try {
     const imageBase64 = await fileToBase64(imageFile)
-    
+
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
@@ -101,32 +101,32 @@ export async function recognizeTextOpenRouter(
         ],
       }),
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`OpenRouter API error: ${response.status} ${errorText}`)
     }
-    
+
     const data = await response.json()
     const text = data.choices?.[0]?.message?.content || ''
-    
+
     if (!text) {
       throw new Error('OpenRouter вернул пустой текст')
     }
-    
+
     const processingTimeMs = Date.now() - startTime
     const extractedData = extractNutritionData(text)
-    
+
     // Определяем confidence (OpenRouter не всегда возвращает, используем оценку)
     const confidence = data.choices?.[0]?.finish_reason === 'stop' ? 85 : 70
-    
+
     logger.debug('OpenRouter: распознавание завершено', {
       model,
       textLength: text.length,
       processingTimeMs,
       confidence,
     })
-    
+
     return {
       text,
       confidence,
@@ -162,4 +162,3 @@ export async function recognizeTextStructured(imageFile: File, apiKey?: string):
 export async function recognizeTextAdvanced(imageFile: File, apiKey?: string): Promise<OCRResult> {
   return recognizeTextOpenRouter(imageFile, 'qwen/qwen-3-vl-30b-a3b', apiKey)
 }
-

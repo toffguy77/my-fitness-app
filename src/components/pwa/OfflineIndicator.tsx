@@ -1,5 +1,5 @@
 'use client'
- 
+
 
 import { useState, useEffect } from 'react'
 import { WifiOff, Wifi } from 'lucide-react'
@@ -47,4 +47,3 @@ export default function OfflineIndicator({ className = '' }: OfflineIndicatorPro
         </div>
     )
 }
-

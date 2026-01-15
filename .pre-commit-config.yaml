@@ -1,38 +1,10 @@
-# Pre-commit hooks configuration for security and quality checks
-# Install with: pip install pre-commit && pre-commit install
+# Pre-commit hooks configuration for local code quality checks
+# Install with: npm run precommit:setup
 
 repos:
-  # Security scanning hooks
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0
-    hooks:
-      - id: detect-secrets
-        name: Detect secrets
-        description: Detect secrets in staged files
-        args: ['--baseline', '.secrets.baseline']
-        exclude: |
-          (?x)^(
-            .*\.lock$|
-            .*\.min\.js$|
-            .*\.map$|
-            node_modules/.*|
-            \.git/.*|
-            coverage/.*|
-            \.next/.*
-          )$
-
-  # Code quality and security checks
+  # Code quality checks
   - repo: local
     hooks:
-      # TypeScript type checking
-      - id: typescript-check
-        name: TypeScript Type Check
-        entry: npm run type-check
-        language: system
-        files: \.(ts|tsx)$
-        pass_filenames: false
-        stages: [commit]
-
       # ESLint for code quality
       - id: eslint
         name: ESLint
@@ -40,16 +12,7 @@ repos:
         language: system
         files: \.(js|jsx|ts|tsx)$
         pass_filenames: false
-        stages: [commit]
-
-      # Run tests
-      - id: jest-tests
-        name: Jest Tests
-        entry: npm test -- --bail --findRelatedTests
-        language: system
-        files: \.(js|jsx|ts|tsx)$
-        pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
       # Security audit (only on push to avoid slowdown)
       - id: npm-audit
@@ -58,38 +21,29 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [push]
+        stages: [pre-push]
 
-  # File security checks
+  # File checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
         name: Check for large files
         args: ['--maxkb=1000']
-        
+
       - id: check-case-conflict
         name: Check for case conflicts
-        
-      - id: check-executables-have-shebangs
-        name: Check executables have shebangs
-        
+
       - id: check-json
         name: Check JSON syntax
-        
+
       - id: check-yaml
         name: Check YAML syntax
-        args: ['--multi']
-        
-      - id: check-toml
-        name: Check TOML syntax
-        
-      - id: check-xml
-        name: Check XML syntax
-        
+        args: ['--multi', '--unsafe']
+
       - id: detect-private-key
         name: Detect private keys
-        
+
       - id: end-of-file-fixer
         name: Fix end of files
         exclude: |
@@ -97,9 +51,11 @@ repos:
             .*\.min\.js$|
             .*\.map$|
             node_modules/.*|
-            \.git/.*
+            \.git/.*|
+            \.cache/.*|
+            \.next/.*
           )$
-        
+
       - id: trailing-whitespace
         name: Trim trailing whitespace
         exclude: |
@@ -107,16 +63,10 @@ repos:
             .*\.md$|
             .*\.min\.js$|
             .*\.map$|
-            node_modules/.*
+            node_modules/.*|
+            \.cache/.*|
+            \.next/.*
           )$
-
-  # Docker security checks
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.12.0
-    hooks:
-      - id: hadolint-docker
-        name: Dockerfile linting
-        files: Dockerfile.*
 
 # Global configuration
 default_language_version:
@@ -126,16 +76,3 @@ default_language_version:
 # Hook execution settings
 fail_fast: false
 minimum_pre_commit_version: '3.0.0'
-
-# CI configuration
-ci:
-  autofix_commit_msg: |
-    [pre-commit.ci] auto fixes from pre-commit hooks
-    
-    for more information, see https://pre-commit.ci
-  autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
-  autoupdate_schedule: weekly
-  skip: []
-  submodules: false

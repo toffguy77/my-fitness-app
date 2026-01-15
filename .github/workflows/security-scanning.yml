@@ -41,34 +41,34 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Need full history for comprehensive scanning
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: javascript
           queries: security-extended
-      
+
       - name: Run comprehensive security scan
         id: security-scan
         run: |
           echo "🛡️  Starting comprehensive security scan..."
-          
+
           # Determine scan type
           SCAN_TYPE="${{ github.event.inputs.scan_type || 'all' }}"
           echo "Scan type: $SCAN_TYPE"
-          
+
           # Run security scanner
           node scripts/security-scanner.js "$SCAN_TYPE"
-          
+
           # Extract results for GitHub Actions
           if [ -f "security-scan-results.json" ]; then
             CRITICAL=$(cat security-scan-results.json | jq -r '.summary.critical // 0')
@@ -76,13 +76,13 @@ jobs:
             MEDIUM=$(cat security-scan-results.json | jq -r '.summary.medium // 0')
             TOTAL=$(cat security-scan-results.json | jq -r '.summary.total_issues // 0')
             STATUS=$(cat security-scan-results.json | jq -r '.status // "unknown"')
-            
+
             echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
             echo "high=$HIGH" >> $GITHUB_OUTPUT
             echo "medium=$MEDIUM" >> $GITHUB_OUTPUT
             echo "total=$TOTAL" >> $GITHUB_OUTPUT
             echo "status=$STATUS" >> $GITHUB_OUTPUT
-            
+
             echo "📊 Security scan results:"
             echo "   Critical: $CRITICAL"
             echo "   High: $HIGH"
@@ -95,7 +95,7 @@ jobs:
             exit 1
           fi
         continue-on-error: true
-      
+
       - name: Run Snyk security scan
         if: env.SNYK_TOKEN
         uses: snyk/actions/node@master
@@ -104,98 +104,98 @@ jobs:
         with:
           args: --severity-threshold=high --json-file-output=snyk-results.json
         continue-on-error: true
-      
+
       - name: Upload Snyk results to GitHub Code Scanning
         if: env.SNYK_TOKEN && hashFiles('snyk-results.json') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-results.json
-      
+
       - name: Run CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:javascript"
-      
+
       - name: Generate security report
         run: |
           echo "📋 Generating comprehensive security report..."
-          
+
           cat > security-report.md << EOF
           # Security Scan Report
-          
+
           **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           **Repository:** ${{ github.repository }}
           **Commit:** ${{ github.sha }}
           **Workflow Run:** ${{ github.run_id }}
-          
+
           ## 📊 Summary
-          
+
           | Severity | Count | Status |
           |----------|-------|--------|
           | Critical | ${{ steps.security-scan.outputs.critical }} | ${critical_status} |
           | High | ${{ steps.security-scan.outputs.high }} | ${high_status} |
           | Medium | ${{ steps.security-scan.outputs.medium }} | ${medium_status} |
           | **Total** | **${{ steps.security-scan.outputs.total }}** | **${{ steps.security-scan.outputs.status }}** |
-          
+
           ## 🔍 Scan Details
-          
+
           ### Dependency Vulnerabilities
           - **Tool:** npm audit
           - **Scope:** Production dependencies
           - **Threshold:** High severity and above
-          
+
           ### Static Application Security Testing (SAST)
           - **Tool:** ESLint with security rules
           - **Languages:** JavaScript, TypeScript
           - **Rules:** Security-focused linting rules
-          
+
           ### Secret Scanning
           - **Tool:** Custom pattern matching
           - **Scope:** Source code and configuration files
           - **Patterns:** API keys, tokens, passwords
-          
+
           ### License Compliance
           - **Tool:** npm license checker
           - **Policy:** Approved open source licenses only
           - **Allowed:** MIT, Apache-2.0, BSD variants, ISC
-          
+
           ## 🛡️ Security Recommendations
-          
+
           ### Immediate Actions Required
           EOF
-          
+
           # Add conditional content based on scan results
           if [ "${{ steps.security-scan.outputs.critical }}" -gt 0 ]; then
             echo "- ❌ **CRITICAL:** ${{ steps.security-scan.outputs.critical }} critical vulnerabilities found - immediate action required" >> security-report.md
             echo "- 🚫 **DEPLOYMENT BLOCKED** until critical issues are resolved" >> security-report.md
           fi
-          
+
           if [ "${{ steps.security-scan.outputs.high }}" -gt 0 ]; then
             echo "- ⚠️  **HIGH:** ${{ steps.security-scan.outputs.high }} high severity issues found - review and fix recommended" >> security-report.md
           fi
-          
+
           cat >> security-report.md << EOF
-          
+
           ### General Recommendations
           1. **Regular Updates:** Keep dependencies updated to latest secure versions
           2. **Security Training:** Ensure team follows secure coding practices
           3. **Code Review:** Include security review in pull request process
           4. **Monitoring:** Set up continuous security monitoring
           5. **Incident Response:** Have security incident response plan ready
-          
+
           ## 📚 Resources
-          
+
           - [Security Scan Results (JSON)](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
           - [GitHub Security Advisories](https://github.com/advisories)
           - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
           - [Node.js Security Best Practices](https://nodejs.org/en/docs/guides/security/)
-          
+
           ---
           *Report generated by Security Scanning Workflow*
           EOF
-          
+
           echo "📄 Security report generated"
-      
+
       - name: Upload security scan artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -205,25 +205,25 @@ jobs:
             security-report.md
             snyk-results.json
           retention-days: 90
-      
+
       - name: Comment PR with security results
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
         with:
           script: |
             const fs = require('fs');
-            
+
             let securityComment = `
             ## 🛡️ Security Scan Results
-            
+
             **Scan Status:** ${{ steps.security-scan.outputs.status }}
-            
+
             | Severity | Count | Action Required |
             |----------|-------|-----------------|
             | Critical | ${{ steps.security-scan.outputs.critical }} | ${${{ steps.security-scan.outputs.critical }} > 0 ? '🚫 **BLOCKS MERGE**' : '✅ None'} |
             | High | ${{ steps.security-scan.outputs.high }} | ${${{ steps.security-scan.outputs.high }} > 0 ? '⚠️ Review Required' : '✅ None'} |
             | Medium | ${{ steps.security-scan.outputs.medium }} | ${${{ steps.security-scan.outputs.medium }} > 0 ? '📋 Monitor' : '✅ None'} |
-            
+
             ### 🔍 Scans Performed
             - ✅ Dependency vulnerability scan (npm audit)
             - ✅ Static Application Security Testing (SAST)
@@ -231,10 +231,10 @@ jobs:
             - ✅ License compliance check
             ${process.env.SNYK_TOKEN ? '- ✅ Snyk vulnerability scan' : '- ⏭️ Snyk scan (token not configured)'}
             - ✅ CodeQL security analysis
-            
+
             ### 📋 Next Steps
             `;
-            
+
             if (${{ steps.security-scan.outputs.critical }} > 0) {
               securityComment += `
             ❌ **Critical security issues found!**
@@ -255,29 +255,29 @@ jobs:
             - Safe to proceed with code review and merge
               `;
             }
-            
+
             securityComment += `
-            
+
             ### 🔗 Links
             - [📊 Detailed Security Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
             - [🛡️ Security Scanning Workflow](https://github.com/${{ github.repository }}/blob/main/.github/workflows/security-scanning.yml)
-            
+
             ---
             *Security scan completed at ${new Date().toISOString()}*
             `;
-            
+
             // Find existing security comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            
-            const existingComment = comments.find(comment => 
-              comment.user.login === 'github-actions[bot]' && 
+
+            const existingComment = comments.find(comment =>
+              comment.user.login === 'github-actions[bot]' &&
               comment.body.includes('🛡️ Security Scan Results')
             );
-            
+
             if (existingComment) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
@@ -293,7 +293,7 @@ jobs:
                 body: securityComment
               });
             }
-      
+
       - name: Update GitHub status
         if: always()
         run: |
@@ -308,7 +308,7 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Send security notification
         if: steps.security-scan.outputs.critical > 0 || steps.security-scan.outputs.high > 0
         run: |
@@ -317,7 +317,7 @@ jobs:
             if [ "${{ steps.security-scan.outputs.critical }}" -gt 0 ]; then
               SEVERITY="critical"
             fi
-            
+
             node scripts/telegram-notify.js security-alert "$SEVERITY" "${{ steps.security-scan.outputs.critical }}" "${{ steps.security-scan.outputs.high }}"
           else
             echo "📧 Telegram notifications not configured"
@@ -325,7 +325,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      
+
       - name: Fail on critical security issues
         if: steps.security-scan.outputs.critical > 0
         run: |
@@ -345,25 +345,25 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Build Docker image for scanning
         run: |
           echo "🐳 Building Docker image for security scanning..."
           docker build -t security-scan-image:latest .
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'security-scan-image:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
-      
+
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
-      
+
       - name: Run Trivy for critical vulnerabilities check
         uses: aquasecurity/trivy-action@master
         with:
@@ -371,17 +371,17 @@ jobs:
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH'
-      
+
       - name: Check container security results
         run: |
           if [ -f "trivy-results.json" ]; then
             CRITICAL=$(cat trivy-results.json | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length')
             HIGH=$(cat trivy-results.json | jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH")] | length')
-            
+
             echo "🐳 Container security scan results:"
             echo "   Critical vulnerabilities: $CRITICAL"
             echo "   High vulnerabilities: $HIGH"
-            
+
             if [ "$CRITICAL" -gt 0 ]; then
               echo "❌ Critical vulnerabilities found in container image"
               echo "Container deployment should be blocked until issues are resolved"
@@ -395,7 +395,7 @@ jobs:
           else
             echo "⚠️  Container scan results not found"
           fi
-      
+
       - name: Upload container scan artifacts
         uses: actions/upload-artifact@v4
         with:

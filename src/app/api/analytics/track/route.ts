@@ -3,7 +3,7 @@ import { logger } from '@/utils/logger'
 
 /**
  * API endpoint для отправки событий аналитики в Prometheus
- * 
+ *
  * События отправляются в Prometheus через pushgateway или напрямую
  * в зависимости от конфигурации
  */
@@ -43,7 +43,7 @@ async function pushToPrometheus(
     const labelString = Object.entries(labels)
       .map(([key, value]) => `${key}="${value}"`)
       .join(',')
-    
+
     const metric = `${metricName}{${labelString}} ${value}\n`
 
     // Отправляем в pushgateway
@@ -144,4 +144,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

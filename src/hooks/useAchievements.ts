@@ -20,7 +20,7 @@ export function useAchievements() {
   ) => {
     try {
       const achievements = await checkAchievements(triggerType, triggerData)
-      
+
       if (achievements.length > 0) {
         // Загружаем полную информацию о достижениях
         const response = await fetch('/api/achievements')
@@ -29,7 +29,7 @@ export function useAchievements() {
           const fullAchievements = achievements
             .map((a) => data.achievements?.find((fa: AchievementWithProgress) => fa.id === a.achievement_id))
             .filter(Boolean) as AchievementWithProgress[]
-          
+
           setNewAchievements((prev) => [...prev, ...fullAchievements])
         }
       }
@@ -48,4 +48,3 @@ export function useAchievements() {
     removeAchievement,
   }
 }
-

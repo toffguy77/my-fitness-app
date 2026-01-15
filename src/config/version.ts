@@ -23,4 +23,3 @@ if (typeof window === 'undefined') {
 }
 
 export { APP_VERSION }
-

@@ -43,13 +43,13 @@ describe('ExportButton', () => {
 
   it('renders export button', () => {
     render(<ExportButton data={mockData} />)
-    
+
     expect(screen.getByText('Экспорт')).toBeInTheDocument()
   })
 
   it('disables button when data is empty', () => {
     render(<ExportButton data={[]} />)
-    
+
     const button = screen.getByText('Экспорт').closest('button')
     expect(button).toBeDisabled()
   })
@@ -57,10 +57,10 @@ describe('ExportButton', () => {
   it('shows menu when clicked', async () => {
     const user = userEvent.setup()
     render(<ExportButton data={mockData} />)
-    
+
     const button = screen.getByText('Экспорт').closest('button')
     await user.click(button!)
-    
+
     expect(screen.getByText('CSV')).toBeInTheDocument()
     expect(screen.getByText('JSON')).toBeInTheDocument()
     expect(screen.getByText('PDF')).toBeInTheDocument()
@@ -69,13 +69,13 @@ describe('ExportButton', () => {
   it('exports to CSV when CSV option is clicked', async () => {
     const user = userEvent.setup()
     render(<ExportButton data={mockData} />)
-    
+
     const button = screen.getByText('Экспорт').closest('button')
     await user.click(button!)
-    
+
     const csvButton = screen.getByText('CSV')
     await user.click(csvButton)
-    
+
     await waitFor(() => {
       expect(exportToCSV).toHaveBeenCalledWith(mockData, undefined)
       expect(toast.success).toHaveBeenCalledWith('Данные экспортированы в CSV')
@@ -85,13 +85,13 @@ describe('ExportButton', () => {
   it('exports to JSON when JSON option is clicked', async () => {
     const user = userEvent.setup()
     render(<ExportButton data={mockData} />)
-    
+
     const button = screen.getByText('Экспорт').closest('button')
     await user.click(button!)
-    
+
     const jsonButton = screen.getByText('JSON')
     await user.click(jsonButton)
-    
+
     await waitFor(() => {
       expect(exportToJSON).toHaveBeenCalledWith(mockData, undefined)
       expect(toast.success).toHaveBeenCalledWith('Данные экспортированы в JSON')
@@ -102,13 +102,13 @@ describe('ExportButton', () => {
     const user = userEvent.setup()
     const mockTargets = [{ day_type: 'training', calories: 2000, protein: 150, fats: 60, carbs: 200 }]
     render(<ExportButton data={mockData} targets={mockTargets} />)
-    
+
     const button = screen.getByText('Экспорт').closest('button')
     await user.click(button!)
-    
+
     const pdfButton = screen.getByText('PDF')
     await user.click(pdfButton)
-    
+
     await waitFor(() => {
       expect(exportToPDF).toHaveBeenCalledWith(mockData, mockTargets, undefined)
       expect(toast.success).toHaveBeenCalledWith('Данные экспортированы в PDF')
@@ -121,15 +121,15 @@ describe('ExportButton', () => {
     ;(exportToCSV as jest.Mock).mockImplementation(() => {
       throw mockError
     })
-    
+
     render(<ExportButton data={mockData} />)
-    
+
     const button = screen.getByText('Экспорт').closest('button')
     await user.click(button!)
-    
+
     const csvButton = screen.getByText('CSV')
     await user.click(csvButton)
-    
+
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Ошибка экспорта: Export failed')
     })
@@ -138,16 +138,15 @@ describe('ExportButton', () => {
   it('shows loading state during export', async () => {
     const user = userEvent.setup()
     ;(exportToPDF as jest.Mock).mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-    
+
     render(<ExportButton data={mockData} />)
-    
+
     const button = screen.getByText('Экспорт').closest('button')
     await user.click(button!)
-    
+
     const pdfButton = screen.getByText('PDF')
     await user.click(pdfButton)
-    
+
     expect(screen.getByText('Экспорт...')).toBeInTheDocument()
   })
 })
-

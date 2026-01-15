@@ -1,10 +1,10 @@
 /**
  * Supabase Edge Function для обновления кэша популярных продуктов
- * 
+ *
  * Использование:
  * POST /functions/v1/update-product-cache
  * Вызывается через cron job еженедельно (воскресенье 02:00 UTC)
- * 
+ *
  * Функция обновляет данные о топ-100 популярных продуктов из Open Food Facts API
  */
 
@@ -58,7 +58,7 @@ function transformProductData(product: OpenFoodFactsProduct) {
 async function fetchProductFromAPI(barcode: string): Promise<OpenFoodFactsProduct | null> {
   try {
     const url = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -137,8 +137,8 @@ serve(async (req) => {
 
     if (!products || products.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           message: 'Нет продуктов для обновления',
           updated: 0,
           skipped: 0,
@@ -254,12 +254,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',
-        success: false 
+        success: false
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 })
-

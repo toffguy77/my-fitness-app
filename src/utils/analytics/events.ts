@@ -35,7 +35,7 @@ let userId: string | null = null
 export function initSession(userIdParam?: string) {
   sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   userId = userIdParam || null
-  
+
   // Сохраняем sessionId в localStorage для отслеживания между перезагрузками
   if (typeof window !== 'undefined') {
     const storedSessionId = localStorage.getItem('analytics_session_id')
@@ -110,7 +110,7 @@ export function trackEvent(
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { metricsCollector } = require('../metrics/collector')
     const role = properties?.role || 'unknown'
-    
+
     // Track page views
     if (type === 'page_view') {
       metricsCollector.counter(
@@ -122,7 +122,7 @@ export function trackEvent(
         }
       )
     }
-    
+
     // Track user actions
     if (type === 'feature_used' || type === 'button_click' || type === 'form_submit') {
       metricsCollector.counter(
@@ -135,7 +135,7 @@ export function trackEvent(
         }
       )
     }
-    
+
     // Track sessions
     if (type === 'page_view' && name === 'app_loaded') {
       metricsCollector.counter(
@@ -194,4 +194,3 @@ export function trackError(errorName: string, error: Error | string, properties?
 export function trackFeatureUse(featureName: string, properties?: Record<string, any>): void {
   trackEvent('feature_used', featureName, properties)
 }
-

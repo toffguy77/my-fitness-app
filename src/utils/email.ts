@@ -104,7 +104,7 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
             <h2 style="color: #333;">Привет${data.userName ? `, ${data.userName}` : ''}!</h2>
             <p>Не забудьте внести данные о питании за сегодня.</p>
             <p>Регулярное отслеживание поможет вам достичь ваших целей.</p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/nutrition" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/nutrition"
                style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
               Внести данные
             </a>
@@ -123,7 +123,7 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
             ${data.noteContent ? `<div style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 0; white-space: pre-wrap;">${data.noteContent}</p>
             </div>` : ''}
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/dashboard${data.date ? `?date=${data.date}` : ''}" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/dashboard${data.date ? `?date=${data.date}` : ''}"
                style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
               Посмотреть на дашборде
             </a>
@@ -140,7 +140,7 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
             <h2 style="color: #333;">Привет${data.userName ? `, ${data.userName}` : ''}!</h2>
             <p>Ваша Premium подписка истекает через <strong>${data.daysRemaining || 3} ${data.daysRemaining === 1 ? 'день' : 'дня'}</strong>.</p>
             <p>Чтобы продолжить пользоваться всеми возможностями платформы, продлите подписку.</p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/settings" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/settings"
                style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
               Управление подпиской
             </a>
@@ -157,7 +157,7 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
             <h2 style="color: #333;">Привет${data.userName ? `, ${data.userName}` : ''}!</h2>
             <p>Ваша Premium подписка истекла.</p>
             <p>Вы можете продолжить пользоваться базовым функционалом или продлить Premium подписку для доступа ко всем возможностям.</p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/settings" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/settings"
                style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
               Управление подпиской
             </a>
@@ -176,7 +176,7 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
             ${data.clientName ? `<p><strong>Имя клиента:</strong> ${data.clientName}</p>` : ''}
             ${data.clientEmail ? `<p><strong>Email клиента:</strong> ${data.clientEmail}</p>` : ''}
             ${data.inviteCode ? `<p><strong>Инвайт-код:</strong> ${data.inviteCode}</p>` : ''}
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/curator" 
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.fitnessapp.com'}/app/curator"
                style="display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #000; color: #fff; text-decoration: none; border-radius: 8px;">
               Открыть кабинет куратора
             </a>
@@ -193,4 +193,3 @@ function getEmailTemplate(template: EmailTemplate, data: EmailData): {
       }
   }
 }
-

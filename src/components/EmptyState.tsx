@@ -23,7 +23,7 @@ export default function EmptyState({
   className = '',
 }: EmptyStateProps) {
   const baseStyles = 'flex flex-col items-center justify-center text-center'
-  
+
   const variantStyles = {
     default: 'py-12 px-4',
     minimal: 'py-6 px-4',
@@ -56,4 +56,3 @@ export default function EmptyState({
     </div>
   )
 }
-

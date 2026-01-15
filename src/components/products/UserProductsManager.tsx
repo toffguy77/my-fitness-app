@@ -104,7 +104,7 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
       return
     }
 
-    if (formData.calories_per_100g < 0 || formData.protein_per_100g < 0 || 
+    if (formData.calories_per_100g < 0 || formData.protein_per_100g < 0 ||
         formData.fats_per_100g < 0 || formData.carbs_per_100g < 0) {
       toast.error('Значения КБЖУ не могут быть отрицательными')
       return
@@ -431,4 +431,3 @@ export default function UserProductsManager({ userId }: UserProductsManagerProps
     </div>
   )
 }
-

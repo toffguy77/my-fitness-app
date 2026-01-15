@@ -45,4 +45,3 @@ export function getMotivationalMessage(
     return categoryMessages[2]
   }
 }
-

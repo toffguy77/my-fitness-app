@@ -60,7 +60,7 @@ BEGIN
     NOW()
   )
   ON CONFLICT (id) DO NOTHING;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -94,7 +94,7 @@ BEGIN
       AFTER INSERT ON auth.users
       FOR EACH ROW
       EXECUTE FUNCTION handle_new_user();
-    
+
     COMMENT ON TRIGGER on_auth_user_created ON auth.users IS 'Автоматически создает профиль при регистрации нового пользователя';
   EXCEPTION
     WHEN insufficient_privilege THEN
@@ -113,7 +113,7 @@ DROP TRIGGER IF EXISTS update_subscription_status_on_expiry ON profiles;
 CREATE TRIGGER update_subscription_status_on_expiry
   BEFORE UPDATE ON profiles
   FOR EACH ROW
-  WHEN (OLD.subscription_end_date IS DISTINCT FROM NEW.subscription_end_date 
+  WHEN (OLD.subscription_end_date IS DISTINCT FROM NEW.subscription_end_date
         OR OLD.subscription_status IS DISTINCT FROM NEW.subscription_status)
   EXECUTE FUNCTION check_and_update_subscription_status();
 
@@ -133,7 +133,7 @@ BEGIN
       NEW.subscription_status := 'expired';
     END IF;
   END IF;
-  
+
   RETURN NEW;
 END;
 $$;

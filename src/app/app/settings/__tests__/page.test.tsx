@@ -34,7 +34,7 @@ jest.mock('@/utils/supabase/client', () => ({
 // Setup default mocks
 beforeEach(() => {
   jest.clearAllMocks()
-  
+
   mockGetUser.mockResolvedValue({
     data: { user: { id: 'user-123' } },
     error: null,
@@ -102,16 +102,15 @@ jest.mock('@/utils/supabase/subscription', () => ({
 describe('Settings Page', () => {
   it('should render settings page', async () => {
     render(<SettingsPage />)
-    
+
     // Should show settings title
     await screen.findByText(/настройки|settings/i, {}, { timeout: 5000 })
   })
 
   it('should display user profile information', async () => {
     render(<SettingsPage />)
-    
+
     // Should show email or name
     await screen.findByText(/test@example.com|Test User/i, {}, { timeout: 5000 })
   })
 })
-

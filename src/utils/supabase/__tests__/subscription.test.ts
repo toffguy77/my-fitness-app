@@ -47,7 +47,7 @@ describe('Subscription Utilities', () => {
       },
       error: null,
     })
-    
+
     mockFrom.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -76,17 +76,17 @@ describe('Subscription Utilities', () => {
         },
         error: null,
       })
-      
+
       const mockUpdate = jest.fn().mockReturnThis()
       const mockEq = jest.fn().mockResolvedValue({ error: null })
-      
+
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: mockSingle,
         update: mockUpdate,
       })
-      
+
       mockUpdate.mockReturnValue({
         eq: mockEq,
       })
@@ -109,17 +109,17 @@ describe('Subscription Utilities', () => {
         },
         error: null,
       })
-      
+
       const mockUpdate = jest.fn().mockReturnThis()
       const mockEq = jest.fn().mockResolvedValue({ error: null })
-      
+
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: mockSingle,
         update: mockUpdate,
       })
-      
+
       mockUpdate.mockReturnValue({
         eq: mockEq,
       })
@@ -206,17 +206,17 @@ describe('Subscription Utilities', () => {
         },
         error: null,
       })
-      
+
       const mockUpdate = jest.fn().mockReturnThis()
       const mockEq = jest.fn().mockResolvedValue({ error: null })
-      
+
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: mockSingle,
         update: mockUpdate,
       })
-      
+
       mockUpdate.mockReturnValue({
         eq: mockEq,
       })
@@ -247,4 +247,3 @@ describe('Subscription Utilities', () => {
     })
   })
 })
-

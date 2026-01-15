@@ -56,4 +56,3 @@ END;
 $$;
 
 COMMENT ON FUNCTION create_user_profile(UUID, TEXT, TEXT, user_role, UUID) IS 'Безопасно создает профиль пользователя, обходя RLS. Используется при регистрации. Параметр user_coordinator_id - ID координатора для назначения клиенту.';
-

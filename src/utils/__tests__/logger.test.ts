@@ -57,12 +57,12 @@ describe('Logger', () => {
     it('should respect log level settings', () => {
       const customLogger = new Logger()
       customLogger.setLevel(LogLevel.ERROR)
-      
+
       customLogger.debug('Should not log')
       customLogger.info('Should not log')
       customLogger.warn('Should not log')
       customLogger.error('Should log')
-      
+
       expect(consoleSpy.debug).not.toHaveBeenCalled()
       expect(consoleSpy.info).not.toHaveBeenCalled()
       expect(consoleSpy.warn).not.toHaveBeenCalled()
@@ -74,7 +74,7 @@ describe('Logger', () => {
     it('should merge context from child logger', () => {
       const childLogger = logger.child({ userId: '123' })
       childLogger.info('Test message', { action: 'test' })
-      
+
       expect(consoleSpy.info).toHaveBeenCalledWith(
         expect.stringContaining('userId'),
       )
@@ -84,7 +84,7 @@ describe('Logger', () => {
   describe('Context Logging', () => {
     it('should include context in log messages', () => {
       logger.info('Test message', { userId: '123', action: 'test' })
-      
+
       const callArgs = consoleSpy.info.mock.calls[0][0]
       expect(callArgs).toContain('userId')
       expect(callArgs).toContain('action')
@@ -96,4 +96,3 @@ describe('Logger', () => {
     })
   })
 })
-

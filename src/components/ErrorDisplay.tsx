@@ -157,4 +157,3 @@ ${errorInfo ? `Компонент: ${errorInfo.componentStack}` : ''}
     </div>
   )
 }
-

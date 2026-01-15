@@ -1,7 +1,7 @@
 /**
  * Unit Tests: Middleware Logic
  * Tests middleware routing logic and role-based access control
- * 
+ *
  * Note: Full middleware testing requires Next.js server environment.
  * These tests focus on logic validation.
  */
@@ -214,4 +214,3 @@ describe('Middleware Logic', () => {
     })
   })
 })
-
