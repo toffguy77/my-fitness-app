@@ -127,7 +127,7 @@ describe('Nutrition Targets Update API', () => {
     })
 
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coordinator-123' } },
+      data: { user: { id: 'curator-123' } },
       error: null,
     })
 
@@ -279,9 +279,9 @@ describe('Nutrition Targets Update API', () => {
   })
 
   it('should return 500 on database error', async () => {
-    // Reset mocks to ensure coordinator profile is returned
+    // Reset mocks to ensure curator profile is returned
     mockGetUser.mockResolvedValue({
-      data: { user: { id: 'coordinator-123' } },
+      data: { user: { id: 'curator-123' } },
       error: null,
     })
 

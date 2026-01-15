@@ -1,47 +1,20 @@
 {
-  "timestamp": "2026-01-15T16:57:59.584Z",
+  "timestamp": "2026-01-15T17:55:48.445Z",
   "baseSha": "HEAD~1",
-  "currentSha": "5e916b922661eb0be39769aab20811af3faad858",
+  "currentSha": "c553cadf672206427f24c0ddacf140047acda266",
   "changedFiles": [
-    ".cache/pipeline-metrics/job-test-job-test-run-123.json",
-    ".cache/pipeline-metrics/job-threshold-test-1768307418169.json",
-    ".cache/pipeline-metrics/performance-report-1768307417528.json",
-    ".cache/pipeline-metrics/performance-report-1768307417770.json",
-    ".cache/pipeline-metrics/performance.json",
-    ".cache/pipeline/build-hash.txt",
-    ".cache/pipeline/changed-files.json",
-    ".github/workflows/ci.yml",
-    "performance-dashboard/index.html",
-    "src/__tests__/coordinator-to-curator-rename.documentation.property.test.ts",
-    "src/__tests__/quality-gate-optimization.test.ts",
-    "src/__tests__/quality-gate.test.ts",
-    "src/app/app/curator/[clientId]/__tests__/page.test.tsx"
+    "src/app/app/admin/metrics/__tests__/page.test.tsx"
   ],
   "categories": {
     "source": [],
     "tests": [
-      "src/__tests__/coordinator-to-curator-rename.documentation.property.test.ts",
-      "src/__tests__/quality-gate-optimization.test.ts",
-      "src/__tests__/quality-gate.test.ts",
-      "src/app/app/curator/[clientId]/__tests__/page.test.tsx"
+      "src/app/app/admin/metrics/__tests__/page.test.tsx"
     ],
-    "config": [
-      ".cache/pipeline-metrics/job-test-job-test-run-123.json",
-      ".cache/pipeline-metrics/job-threshold-test-1768307418169.json",
-      ".cache/pipeline-metrics/performance-report-1768307417528.json",
-      ".cache/pipeline-metrics/performance-report-1768307417770.json",
-      ".cache/pipeline-metrics/performance.json",
-      ".cache/pipeline/changed-files.json",
-      ".github/workflows/ci.yml"
-    ],
-    "docs": [
-      ".cache/pipeline/build-hash.txt"
-    ],
+    "config": [],
+    "docs": [],
     "workflows": [],
     "dependencies": [],
-    "other": [
-      "performance-dashboard/index.html"
-    ]
+    "other": []
   },
   "recommendations": {
     "skipJobs": [
