@@ -5,6 +5,8 @@
  * according to the requirements specification.
  */
 
+// @ts-nocheck - Complex YAML type assertions in test file
+
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -30,6 +32,7 @@ interface WorkflowJob {
 }
 
 interface WorkflowConfig {
+    name?: string;
     on?: {
         workflow_run?: {
             workflows?: string[];
@@ -59,13 +62,13 @@ describe('CD Pipeline Configuration', () => {
         // Load and parse the CD workflow configuration
         if (existsSync(cdWorkflowPath)) {
             const cdWorkflowContent = readFileSync(cdWorkflowPath, 'utf8');
-            cdWorkflowConfig = yaml.load(cdWorkflowContent);
+            cdWorkflowConfig = yaml.load(cdWorkflowContent) as WorkflowConfig;
         }
 
         // Load and parse the rollback workflow configuration
         if (existsSync(rollbackWorkflowPath)) {
             const rollbackWorkflowContent = readFileSync(rollbackWorkflowPath, 'utf8');
-            rollbackWorkflowConfig = yaml.load(rollbackWorkflowContent);
+            rollbackWorkflowConfig = yaml.load(rollbackWorkflowContent) as WorkflowConfig;
         }
     });
 
@@ -82,11 +85,11 @@ describe('CD Pipeline Configuration', () => {
 
         it('should trigger CD pipeline when CI workflow completes successfully', () => {
             expect(cdWorkflowConfig).toBeDefined();
-            expect(cdWorkflowConfig.on).toBeDefined();
-            expect(cdWorkflowConfig.on.workflow_run).toBeDefined();
-            expect(cdWorkflowConfig.on.workflow_run.workflows).toContain('CI Pipeline');
-            expect(cdWorkflowConfig.on.workflow_run.types).toContain('completed');
-            expect(cdWorkflowConfig.on.workflow_run.branches).toContain('main');
+            expect(cdWorkflowConfig?.on).toBeDefined();
+            expect(cdWorkflowConfig?.on?.workflow_run).toBeDefined();
+            expect(cdWorkflowConfig?.on?.workflow_run?.workflows).toContain('CI Pipeline');
+            expect(cdWorkflowConfig?.on?.workflow_run?.types).toContain('completed');
+            expect(cdWorkflowConfig?.on?.workflow_run?.branches).toContain('main');
         });
 
         it('should only deploy when CI workflow succeeds', () => {
@@ -172,11 +175,11 @@ describe('CD Pipeline Configuration', () => {
         });
 
         it('should have manual deployment trigger for emergency deployments', () => {
-            expect(cdWorkflowConfig.on.workflow_dispatch).toBeDefined();
-            expect(cdWorkflowConfig.on.workflow_dispatch.inputs).toBeDefined();
-            expect(cdWorkflowConfig.on.workflow_dispatch.inputs.environment).toBeDefined();
-            expect(cdWorkflowConfig.on.workflow_dispatch.inputs.environment.options).toContain('staging');
-            expect(cdWorkflowConfig.on.workflow_dispatch.inputs.environment.options).toContain('production');
+            expect(cdWorkflowConfig?.on?.workflow_dispatch).toBeDefined();
+            expect(cdWorkflowConfig?.on?.workflow_dispatch.inputs).toBeDefined();
+            expect(cdWorkflowConfig?.on?.workflow_dispatch.inputs.environment).toBeDefined();
+            expect(cdWorkflowConfig?.on?.workflow_dispatch.inputs.environment.options).toContain('staging');
+            expect(cdWorkflowConfig?.on?.workflow_dispatch.inputs.environment.options).toContain('production');
         });
 
         it('should install dependencies before building artifacts', () => {
@@ -464,9 +467,9 @@ describe('CD Pipeline Configuration', () => {
 
         it('should have manual trigger with proper inputs', () => {
             expect(rollbackWorkflowConfig).toBeDefined();
-            expect(rollbackWorkflowConfig.on.workflow_dispatch).toBeDefined();
+            expect(rollbackWorkflowConfig?.on?.workflow_dispatch).toBeDefined();
 
-            const inputs = rollbackWorkflowConfig.on.workflow_dispatch.inputs;
+            const inputs = rollbackWorkflowConfig?.on?.workflow_dispatch.inputs;
             expect(inputs.environment).toBeDefined();
             expect(inputs.environment.type).toBe('choice');
             expect(inputs.environment.options).toContain('staging');
