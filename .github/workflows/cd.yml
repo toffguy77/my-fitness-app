@@ -44,7 +44,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
       
       - name: Send deployment start notification
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        if: ${{ env.TELEGRAM_BOT_TOKEN != '' }}
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment staging in_progress ${{ github.sha }}
@@ -86,7 +86,7 @@ jobs:
           echo "✅ All health checks passed"
       
       - name: Send deployment success notification
-        if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: success()
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment staging success ${{ github.sha }} ${{ steps.deploy-staging.outputs.deployment_url }}
@@ -95,7 +95,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send deployment failure notification
-        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: failure()
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment staging failure ${{ github.sha }}
@@ -129,7 +129,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       
       - name: Send deployment start notification
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        if: ${{ env.TELEGRAM_BOT_TOKEN != '' }}
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment production in_progress ${{ github.sha }}
@@ -172,7 +172,7 @@ jobs:
           echo "✅ All production health checks passed"
       
       - name: Send deployment success notification
-        if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: success()
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment production success ${{ github.sha }} ${{ steps.deploy-production.outputs.deployment_url }}
@@ -181,7 +181,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send deployment failure notification
-        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: failure()
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment production failure ${{ github.sha }}
@@ -314,7 +314,6 @@ jobs:
           cat rollback-incident.json
       
       - name: Send enhanced rollback notification
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback ${{ github.sha }}
@@ -323,7 +322,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send rollback success notification
-        if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: success()
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_success ${{ github.sha }}
@@ -332,7 +331,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       
       - name: Send rollback failure notification
-        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: failure()
         continue-on-error: true
         run: |
           node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_failure ${{ github.sha }}
