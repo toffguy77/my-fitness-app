@@ -7,6 +7,8 @@
  * Requirements: 1.5, 6.5
  */
 
+// @ts-nocheck - Complex YAML type assertions in test file
+
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
@@ -32,6 +34,7 @@ interface WorkflowJob {
 }
 
 interface WorkflowConfig {
+    name?: string;
     on?: {
         workflow_run?: {
             workflows?: string[];
@@ -74,16 +77,16 @@ describe('Comprehensive CI/CD System Tests', () => {
         const qualityGateWorkflowPath = join(process.cwd(), '.github/workflows/quality-gates.yml');
 
         if (existsSync(ciWorkflowPath)) {
-            ciWorkflowConfig = yaml.load(readFileSync(ciWorkflowPath, 'utf8'));
+            ciWorkflowConfig = yaml.load(readFileSync(ciWorkflowPath, 'utf8')) as WorkflowConfig;
         }
         if (existsSync(cdWorkflowPath)) {
-            cdWorkflowConfig = yaml.load(readFileSync(cdWorkflowPath, 'utf8'));
+            cdWorkflowConfig = yaml.load(readFileSync(cdWorkflowPath, 'utf8')) as WorkflowConfig;
         }
         if (existsSync(rollbackWorkflowPath)) {
-            rollbackWorkflowConfig = yaml.load(readFileSync(rollbackWorkflowPath, 'utf8'));
+            rollbackWorkflowConfig = yaml.load(readFileSync(rollbackWorkflowPath, 'utf8')) as WorkflowConfig;
         }
         if (existsSync(qualityGateWorkflowPath)) {
-            qualityGateWorkflowConfig = yaml.load(readFileSync(qualityGateWorkflowPath, 'utf8'));
+            qualityGateWorkflowConfig = yaml.load(readFileSync(qualityGateWorkflowPath, 'utf8')) as WorkflowConfig;
         }
     });
 
@@ -97,13 +100,13 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have complete CI to CD workflow integration', () => {
             // CI workflow should exist and be properly configured
             expect(ciWorkflowConfig).toBeDefined();
-            expect(ciWorkflowConfig.name).toBe('CI Pipeline');
+            expect(ciWorkflowConfig?.name).toBe('CI Pipeline');
 
             // CD workflow should exist and trigger on CI completion
             expect(cdWorkflowConfig).toBeDefined();
-            expect(cdWorkflowConfig.name).toBe('CD Pipeline');
-            expect(cdWorkflowConfig.on.workflow_run).toBeDefined();
-            expect(cdWorkflowConfig.on.workflow_run.workflows).toContain('CI Pipeline');
+            expect(cdWorkflowConfig?.name).toBe('CD Pipeline');
+            expect(cdWorkflowConfig?.on?.workflow_run).toBeDefined();
+            expect(cdWorkflowConfig?.on?.workflow_run?.workflows).toContain('CI Pipeline');
         });
 
         it('should have proper job sequencing across CI and CD pipelines', () => {
@@ -120,8 +123,8 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have consistent environment variables across pipelines', () => {
             // Check that both CI and CD use the same Node.js version
-            const ciJobs = Object.values(ciWorkflowConfig.jobs) as any[];
-            const cdJobs = Object.values(cdWorkflowConfig.jobs) as any[];
+            const ciJobs = Object.values(ciWorkflowConfig.jobs || {}) as WorkflowJob[];
+            const cdJobs = Object.values(cdWorkflowConfig.jobs || {}) as WorkflowJob[];
 
             [...ciJobs, ...cdJobs].forEach(job => {
                 if (job.steps) {
@@ -137,11 +140,11 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have proper artifact flow from CI to CD', () => {
             // CI should generate coverage reports
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
 
             // Check for upload coverage step
-            const uploadStep = ciPipelineJob.steps.find((step) =>
+            const uploadStep = ciPipelineJob?.steps?.find((step) =>
                 step.uses && step.uses.includes('upload-artifact')
             );
             expect(uploadStep).toBeDefined();
@@ -155,7 +158,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have end-to-end notification flow', () => {
             // CI should have basic structure
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
 
             // CD should have deployment notifications if CD workflow exists
@@ -168,8 +171,8 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have proper security and secrets management across pipelines', () => {
             // Check that sensitive data uses GitHub Secrets
             const allJobs = [
-                ...Object.values(ciWorkflowConfig.jobs),
-                ...Object.values(cdWorkflowConfig.jobs)
+                ...Object.values(ciWorkflowConfig.jobs || {}),
+                ...Object.values(cdWorkflowConfig.jobs || {})
             ] as any[];
 
             allJobs.forEach(job => {
@@ -190,11 +193,11 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have comprehensive error handling across the entire pipeline', () => {
             // CI pipeline should have basic error handling
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
 
             // Check for continue-on-error in security audit
-            const securityStep = ciPipelineJob.steps.find((step) =>
+            const securityStep = ciPipelineJob?.steps?.find((step) =>
                 step.name && step.name.includes('Security audit')
             );
             if (securityStep) {
@@ -210,8 +213,8 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have proper caching strategy across pipelines', () => {
             // CI pipeline should have npm caching
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
-            const nodeSetupStep = ciPipelineJob.steps.find((step) =>
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
+            const nodeSetupStep = ciPipelineJob?.steps?.find((step) =>
                 step.uses && step.uses.includes('actions/setup-node')
             );
             expect(nodeSetupStep).toBeDefined();
@@ -219,7 +222,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
             // CD jobs should use npm cache if CD workflow exists
             if (cdWorkflowConfig && cdWorkflowConfig.jobs) {
-                const cdJobs = Object.values(cdWorkflowConfig.jobs) as any[];
+                const cdJobs = Object.values(cdWorkflowConfig.jobs || {}) as WorkflowJob[];
                 cdJobs.forEach(job => {
                     if (job.steps) {
                         const nodeSetupStep = job.steps.find((step) =>
@@ -263,7 +266,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should determine correct rollback environment based on failure point', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const rollbackInfoStep = rollbackJob.steps.find((step) =>
+            const rollbackInfoStep = rollbackJob?.steps?.find((step) =>
                 step.id === 'rollback-info'
             );
 
@@ -276,7 +279,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have comprehensive rollback execution steps', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const performRollbackStep = rollbackJob.steps.find((step) =>
+            const performRollbackStep = rollbackJob?.steps?.find((step) =>
                 step.id === 'perform-rollback'
             );
 
@@ -289,7 +292,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have rollback verification and health checks', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
-            const verifyStep = rollbackJob.steps.find((step) =>
+            const verifyStep = rollbackJob?.steps?.find((step) =>
                 step.name === 'Verify rollback success'
             );
 
@@ -302,10 +305,10 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have rollback notification system', () => {
             const rollbackJob = cdWorkflowConfig.jobs.rollback;
 
-            const successNotification = rollbackJob.steps.find((step) =>
+            const successNotification = rollbackJob?.steps?.find((step) =>
                 step.name === 'Send rollback success notification'
             );
-            const failureNotification = rollbackJob.steps.find((step) =>
+            const failureNotification = rollbackJob?.steps?.find((step) =>
                 step.name === 'Send rollback failure notification'
             );
 
@@ -318,7 +321,7 @@ describe('Comprehensive CI/CD System Tests', () => {
         });
 
         it('should have post-rollback monitoring', () => {
-            const monitoringJob = rollbackWorkflowConfig.jobs['post-rollback-monitoring'];
+            const monitoringJob = rollbackWorkflowConfig.jobs?.['post-rollback-monitoring'];
             expect(monitoringJob).toBeDefined();
             expect(monitoringJob.name).toBe('Post-Rollback Monitoring');
             expect(monitoringJob.needs).toContain('rollback');
@@ -327,7 +330,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should create rollback audit trail', () => {
             const rollbackJob = rollbackWorkflowConfig.jobs.rollback;
-            const auditStep = rollbackJob.steps.find((step) =>
+            const auditStep = rollbackJob?.steps?.find((step) =>
                 step.name === 'Create rollback audit record'
             );
 
@@ -339,7 +342,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have rollback artifact retention', () => {
             const rollbackJob = rollbackWorkflowConfig.jobs.rollback;
-            const uploadStep = rollbackJob.steps.find((step) =>
+            const uploadStep = rollbackJob?.steps?.find((step) =>
                 step.uses && step.uses.includes('actions/upload-artifact')
             );
 
@@ -358,15 +361,15 @@ describe('Comprehensive CI/CD System Tests', () => {
     describe('Pipeline Performance Tests', () => {
         it('should have optimized job parallelization', () => {
             // CI pipeline should have basic structure - simplified workflows don't use matrix strategy
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
             expect(ciPipelineJob.steps).toBeDefined();
             expect(ciPipelineJob.steps.length).toBeGreaterThan(0);
         });
 
         it('should have efficient caching configuration', () => {
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
-            const nodeSetupStep = ciPipelineJob.steps.find((step) =>
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
+            const nodeSetupStep = ciPipelineJob?.steps?.find((step) =>
                 step.uses && step.uses.includes('actions/setup-node')
             );
 
@@ -376,11 +379,11 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have conditional job execution for performance', () => {
             // Check for basic CI pipeline structure
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
 
             // Security audit should continue on error
-            const securityStep = ciPipelineJob.steps.find((step) =>
+            const securityStep = ciPipelineJob?.steps?.find((step) =>
                 step.name && step.name.includes('Security audit')
             );
             if (securityStep) {
@@ -391,8 +394,8 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have optimized Docker layer caching', () => {
             // Check if Docker builds use layer caching
             const deployJobs = [
-                cdWorkflowConfig.jobs['deploy-staging'],
-                cdWorkflowConfig.jobs['deploy-production']
+                cdWorkflowConfig.jobs?.['deploy-staging'],
+                cdWorkflowConfig.jobs?.['deploy-production']
             ];
 
             deployJobs.forEach(job => {
@@ -409,8 +412,8 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have resource-appropriate runner configurations', () => {
             // All jobs should use ubuntu-latest for consistency and performance
             const allJobs = [
-                ...Object.values(ciWorkflowConfig.jobs),
-                ...Object.values(cdWorkflowConfig.jobs)
+                ...Object.values(ciWorkflowConfig.jobs || {}),
+                ...Object.values(cdWorkflowConfig.jobs || {})
             ] as any[];
 
             allJobs.forEach(job => {
@@ -440,7 +443,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have optimized test execution order', () => {
             // CI pipeline should have basic sequential execution
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
             expect(ciPipelineJob.steps).toBeDefined();
 
@@ -452,7 +455,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have timeout configurations to prevent hanging jobs', () => {
             // Check that CI pipeline job exists
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
 
             // Basic structure validation
@@ -463,9 +466,9 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have artifact cleanup for storage optimization', () => {
             // Check that artifacts have retention policies
             const jobs = [
-                ...Object.values(ciWorkflowConfig.jobs),
-                ...Object.values(cdWorkflowConfig.jobs)
-            ] as any[];
+                ...Object.values(ciWorkflowConfig.jobs || {}),
+                ...Object.values(cdWorkflowConfig.jobs || {})
+            ] as WorkflowJob[];
 
             jobs.forEach(job => {
                 if (job.steps) {
@@ -490,15 +493,15 @@ describe('Comprehensive CI/CD System Tests', () => {
     describe('System Reliability Tests', () => {
         it('should have comprehensive health checks across all environments', () => {
             // Staging health checks
-            const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const stagingHealthCheck = deployStagingJob.steps.find((step) =>
+            const deployStagingJob = cdWorkflowConfig.jobs?.['deploy-staging'];
+            const stagingHealthCheck = deployStagingJob?.steps?.find((step) =>
                 step.name === 'Run staging health checks'
             );
             expect(stagingHealthCheck).toBeDefined();
 
             // Production health checks
-            const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
-            const productionHealthCheck = deployProductionJob.steps.find((step) =>
+            const deployProductionJob = cdWorkflowConfig.jobs?.['deploy-production'];
+            const productionHealthCheck = deployProductionJob?.steps?.find((step) =>
                 step.name === 'Run production health checks'
             );
             expect(productionHealthCheck).toBeDefined();
@@ -507,9 +510,9 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have retry mechanisms for flaky operations', () => {
             // Check if retry mechanisms are in place for critical operations
             const allJobs = [
-                ...Object.values(ciWorkflowConfig.jobs),
-                ...Object.values(cdWorkflowConfig.jobs)
-            ] as any[];
+                ...Object.values(ciWorkflowConfig.jobs || {}),
+                ...Object.values(cdWorkflowConfig.jobs || {})
+            ] as WorkflowJob[];
 
             // Look for retry patterns in critical steps
             let hasRetryMechanism = false;
@@ -524,8 +527,8 @@ describe('Comprehensive CI/CD System Tests', () => {
             });
 
             // At least deployment steps should have retry logic in their scripts
-            const deployStagingJob = cdWorkflowConfig.jobs['deploy-staging'];
-            const deployProductionJob = cdWorkflowConfig.jobs['deploy-production'];
+            const deployStagingJob = cdWorkflowConfig.jobs?.['deploy-staging'];
+            const deployProductionJob = cdWorkflowConfig.jobs?.['deploy-production'];
             const deploySteps = [
                 deployStagingJob?.steps?.find((step) => step.id === 'deploy-staging'),
                 deployProductionJob?.steps?.find((step) => step.id === 'deploy-production')
@@ -540,7 +543,7 @@ describe('Comprehensive CI/CD System Tests', () => {
 
         it('should have comprehensive logging and debugging capabilities', () => {
             // Check that CI pipeline has basic structure
-            const ciPipelineJob = ciWorkflowConfig.jobs['ci-pipeline'];
+            const ciPipelineJob = ciWorkflowConfig.jobs?.['ci-pipeline'];
             expect(ciPipelineJob).toBeDefined();
             expect(ciPipelineJob.steps).toBeDefined();
 
@@ -553,8 +556,8 @@ describe('Comprehensive CI/CD System Tests', () => {
         it('should have proper secret rotation and security practices', () => {
             // Check that secrets are properly referenced
             const allJobs = [
-                ...Object.values(ciWorkflowConfig.jobs),
-                ...Object.values(cdWorkflowConfig.jobs)
+                ...Object.values(ciWorkflowConfig.jobs || {}),
+                ...Object.values(cdWorkflowConfig.jobs || {})
             ] as any[];
 
             allJobs.forEach(job => {
