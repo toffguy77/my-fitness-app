@@ -2,7 +2,7 @@
  * Кэширование результатов поиска продуктов
  */
 
-import { Product } from './api'
+import type { Product } from '@/types/products'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 минут
 const MAX_CACHE_SIZE = 50
