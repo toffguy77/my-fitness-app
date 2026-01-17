@@ -59,7 +59,21 @@ export default function ProductCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              <h4 className="font-medium text-zinc-100 text-sm truncate">{product.name}</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="font-medium text-zinc-100 text-sm truncate">{product.name}</h4>
+                {product.source && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${product.source === 'fatsecret' ? 'bg-green-900/30 text-green-400' :
+                      product.source === 'openfoodfacts' ? 'bg-blue-900/30 text-blue-400' :
+                        product.source === 'usda' ? 'bg-purple-900/30 text-purple-400' :
+                          'bg-zinc-800 text-zinc-400'
+                    }`}>
+                    {product.source === 'fatsecret' ? 'FS' :
+                      product.source === 'openfoodfacts' ? 'OFF' :
+                        product.source === 'usda' ? 'USDA' :
+                          'USER'}
+                  </span>
+                )}
+              </div>
               {product.brand && (
                 <p className="text-xs text-zinc-500 truncate">{product.brand}</p>
               )}

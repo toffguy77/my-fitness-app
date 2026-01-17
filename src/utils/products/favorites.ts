@@ -4,20 +4,23 @@
 
 import { createClient } from '@/utils/supabase/client'
 import { logger } from '@/utils/logger'
+import { saveProductToDB } from './api'
 import type { Product } from '@/types/products'
 
 /**
  * Добавить продукт в избранное
+ * Для продуктов из внешних API (FatSecret, Open Food Facts) сначала сохраняет их в БД
  */
 export async function addToFavorites(
     userId: string,
     productId?: string,
-    userProductId?: string
+    userProductId?: string,
+    product?: Product
 ): Promise<boolean> {
     const supabase = createClient()
 
-    if (!productId && !userProductId) {
-        throw new Error('Необходимо указать productId или userProductId')
+    if (!productId && !userProductId && !product) {
+        throw new Error('Необходимо указать productId, userProductId или product')
     }
 
     if (productId && userProductId) {
@@ -25,27 +28,64 @@ export async function addToFavorites(
     }
 
     try {
+        let finalProductId = productId
+
+        // Если передан объект продукта без ID (из FatSecret/Open Food Facts),
+        // сначала сохраняем его в БД
+        if (product && !product.id && product.source !== 'user') {
+            logger.debug('Products: caching external product before favoriting', {
+                userId,
+                productName: product.name,
+                source: product.source,
+                source_id: product.source_id
+            })
+
+            const savedProductId = await saveProductToDB(product)
+
+            if (!savedProductId) {
+                throw new Error('Не удалось сохранить продукт в базу данных')
+            }
+
+            finalProductId = savedProductId
+            logger.info('Products: external product cached successfully', {
+                userId,
+                productId: savedProductId,
+                productName: product.name,
+                source: product.source
+            })
+        }
+
         const { error } = await supabase
             .from('favorite_products')
             .insert({
                 user_id: userId,
-                product_id: productId || null,
+                product_id: finalProductId || null,
                 user_product_id: userProductId || null,
             })
 
         if (error) {
             // Если продукт уже в избранном, это не ошибка
             if (error.code === '23505') {
-                logger.debug('Products: продукт уже в избранном', { userId, productId, userProductId })
+                logger.debug('Products: продукт уже в избранном', { userId, productId: finalProductId, userProductId })
                 return true
             }
             throw error
         }
 
-        logger.info('Products: продукт добавлен в избранное', { userId, productId, userProductId })
+        logger.info('Products: продукт добавлен в избранное', {
+            userId,
+            productId: finalProductId,
+            userProductId,
+            source: product?.source
+        })
         return true
     } catch (error) {
-        logger.error('Products: ошибка добавления в избранное', error, { userId, productId, userProductId })
+        logger.error('Products: ошибка добавления в избранное', error, {
+            userId,
+            productId,
+            userProductId,
+            productSource: product?.source
+        })
         throw error
     }
 }
@@ -131,6 +171,7 @@ export async function isFavorite(
 
 /**
  * Получить список избранных продуктов пользователя
+ * Возвращает продукты из всех источников (включая FatSecret)
  */
 export async function getFavoriteProducts(userId: string): Promise<Product[]> {
     const supabase = createClient()
@@ -141,6 +182,7 @@ export async function getFavoriteProducts(userId: string): Promise<Product[]> {
             .select(`
         product_id,
         user_product_id,
+        created_at,
         products (*),
         user_products (*)
       `)
@@ -184,7 +226,11 @@ export async function getFavoriteProducts(userId: string): Promise<Product[]> {
             }
         }
 
-        logger.debug('Products: избранные продукты загружены', { userId, count: products.length })
+        logger.debug('Products: избранные продукты загружены', {
+            userId,
+            count: products.length,
+            sources: products.map(p => p.source)
+        })
         return products
     } catch (error) {
         logger.error('Products: ошибка загрузки избранных продуктов', error, { userId })

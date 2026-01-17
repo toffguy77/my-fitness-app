@@ -4,7 +4,7 @@
  */
 
 import { productSearchCache } from '../products/cache'
-import type { Product } from '../products/api'
+import type { Product } from '@/types/products'
 
 describe('Products Cache', () => {
   beforeEach(() => {
