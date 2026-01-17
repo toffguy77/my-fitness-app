@@ -59,7 +59,7 @@
     "react-hot-toast": "^2.6.0",
     "recharts": "^3.6.0",
     "resend": "^4.0.0",
-    "supabase": "^2.67.2",
+    "supabase": "^2.72.8",
     "tailwind-merge": "^3.4.0",
     "tesseract.js": "^5.1.1",
     "zod": "^4.2.1"
