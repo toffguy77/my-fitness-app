@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 /**
  * Hook return type
@@ -42,33 +42,25 @@ export interface UseAbortController {
  * @returns Object with signal and abort function
  */
 export function useAbortController(): UseAbortController {
-    const controllerRef = useRef<AbortController | null>(null)
-
-    // Initialize AbortController on mount (only once)
-    if (controllerRef.current == null) {
-        controllerRef.current = new AbortController()
-    }
+    // Use useState to create controller once
+    const [controller] = useState(() => new AbortController())
 
     // Cleanup on unmount
     useEffect(() => {
-        const controller = controllerRef.current
-
         return () => {
             // Abort all pending requests when component unmounts
-            controller?.abort()
+            controller.abort()
         }
-    }, [])
+    }, [controller])
 
-    // Memoize return value to avoid accessing ref during render
-    return useMemo(() => {
-        const controller = controllerRef.current
-        if (!controller) {
-            throw new Error('AbortController not initialized')
-        }
+    // Create stable abort function
+    const abort = useCallback(() => {
+        controller.abort()
+    }, [controller])
 
-        return {
-            signal: controller.signal,
-            abort: () => controller.abort()
-        }
-    }, [])
+    // Return stable object with signal and abort function
+    return {
+        signal: controller.signal,
+        abort
+    }
 }
