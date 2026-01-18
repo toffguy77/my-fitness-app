@@ -4,6 +4,16 @@
 
 import { createClient } from '@/utils/supabase/client'
 import { logger } from '@/utils/logger'
+import { getFatSecretClient } from './fatsecret'
+import { transformFatSecretFood } from './transform'
+import { getFatSecretConfig } from '@/config/fatsecret'
+import {
+    trackCacheHit,
+    trackFallbackActivation,
+    trackProductSearch,
+    trackBarcodeSearch
+} from './fatsecret-metrics'
+import type { Product } from '@/types/products'
 
 export interface OpenFoodFactsProduct {
     code?: string
@@ -18,20 +28,6 @@ export interface OpenFoodFactsProduct {
     }
     image_url?: string
     image_front_url?: string
-}
-
-export interface Product {
-    id?: string
-    name: string
-    brand?: string
-    barcode?: string | null
-    calories_per_100g: number
-    protein_per_100g: number
-    fats_per_100g: number
-    carbs_per_100g: number
-    source: 'openfoodfacts' | 'usda' | 'user'
-    source_id?: string | null
-    image_url?: string | null
 }
 
 /**
@@ -101,19 +97,11 @@ export async function saveProductToDB(product: Product): Promise<string | null> 
     try {
         const supabase = createClient()
 
-        // Проверяем, существует ли продукт (по штрих-коду или названию)
+        // Проверяем, существует ли продукт (по source_id и source, или по штрих-коду)
         let existingProduct = null
 
-        if (product.barcode) {
-            const { data } = await supabase
-                .from('products')
-                .select('id')
-                .eq('barcode', product.barcode)
-                .single()
-            existingProduct = data
-        }
-
-        if (!existingProduct && product.source_id) {
+        // Приоритет 1: Проверка по source_id и source (для FatSecret и других API)
+        if (product.source_id && product.source) {
             const { data } = await supabase
                 .from('products')
                 .select('id')
@@ -123,8 +111,23 @@ export async function saveProductToDB(product: Product): Promise<string | null> 
             existingProduct = data
         }
 
+        // Приоритет 2: Проверка по штрих-коду (если есть)
+        if (!existingProduct && product.barcode) {
+            const { data } = await supabase
+                .from('products')
+                .select('id')
+                .eq('barcode', product.barcode)
+                .single()
+            existingProduct = data
+        }
+
         if (existingProduct) {
             // Продукт уже существует, возвращаем его ID
+            logger.debug('Products DB: продукт уже существует', {
+                productId: existingProduct.id,
+                source: product.source,
+                source_id: product.source_id
+            })
             return existingProduct.id
         }
 
@@ -151,7 +154,11 @@ export async function saveProductToDB(product: Product): Promise<string | null> 
             return null
         }
 
-        logger.debug('Products DB: продукт сохранен', { productId: data.id, name: product.name })
+        logger.debug('Products DB: продукт сохранен', {
+            productId: data.id,
+            name: product.name,
+            source: product.source
+        })
         return data.id
     } catch (error) {
         logger.error('Products DB: ошибка сохранения продукта', error, { product })
@@ -226,7 +233,57 @@ export async function searchProductsInAPI(query: string, limit: number = 20): Pr
 }
 
 /**
- * Поиск продуктов (сначала БД, потом API)
+ * Поиск продуктов через FatSecret API
+ */
+export async function searchFatSecretAPI(query: string, limit: number = 20): Promise<Product[]> {
+    if (!query || query.length < 2) {
+        return []
+    }
+
+    try {
+        const config = getFatSecretConfig()
+
+        if (!config.enabled) {
+            logger.debug('FatSecret: integration disabled, skipping search', {
+                query,
+                reason: 'integration_disabled'
+            })
+            return []
+        }
+
+        logger.debug('FatSecret: starting API search', {
+            query,
+            limit,
+            timestamp: new Date().toISOString()
+        })
+
+        const client = getFatSecretClient()
+        const foods = await client.searchFoods(query, limit, 0)
+
+        logger.info('FatSecret: search completed successfully', {
+            query,
+            resultsCount: foods.length,
+            limit
+        })
+
+        return foods.map(transformFatSecretFood)
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+
+        logger.error('FatSecret: search failed', {
+            error: errorMessage,
+            stack: error instanceof Error ? error.stack : undefined,
+            query,
+            limit,
+            timestamp: new Date().toISOString()
+        })
+
+        throw error
+    }
+}
+
+/**
+ * Поиск продуктов (сначала БД, потом FatSecret API, потом Open Food Facts)
  */
 export async function searchProducts(query: string, limit: number = 20): Promise<Product[]> {
     if (!query || query.length < 2) {
@@ -234,44 +291,195 @@ export async function searchProducts(query: string, limit: number = 20): Promise
     }
 
     try {
-        // Сначала ищем в БД
+        logger.debug('Products: starting product search', {
+            query,
+            limit,
+            timestamp: new Date().toISOString()
+        })
+
+        // 1. Сначала ищем в БД
         const dbResults = await searchProductsInDB(query, limit)
+
+        // Track cache hit/miss
+        if (dbResults.length > 0) {
+            trackCacheHit(true, 'database')
+        } else {
+            trackCacheHit(false, 'database')
+        }
+
+        logger.debug('Products: database search completed', {
+            query,
+            resultsCount: dbResults.length,
+            limit
+        })
 
         if (dbResults.length >= limit) {
             // Если нашли достаточно в БД, возвращаем их
+            logger.info('Products: sufficient results from database', {
+                query,
+                resultsCount: dbResults.length
+            })
+            trackProductSearch('database', dbResults.length)
             return dbResults
         }
 
-        // Если в БД недостаточно результатов, ищем через API
-        const apiResults = await searchProductsInAPI(query, limit - dbResults.length)
+        // 2. Если в БД недостаточно результатов, ищем через FatSecret API
+        const remainingLimit = limit - dbResults.length
+        let apiResults: Product[] = []
 
-        // Сохраняем результаты из API в БД (асинхронно, не блокируем ответ)
-        apiResults.forEach(product => {
-            saveProductToDB(product).then(productId => {
-                if (productId) {
-                    product.id = productId
-                }
-            }).catch(() => {
-                // Игнорируем ошибки сохранения
+        try {
+            logger.debug('Products: attempting FatSecret API search', {
+                query,
+                remainingLimit
             })
-        })
+
+            const fatSecretResults = await searchFatSecretAPI(query, remainingLimit)
+
+            // Если FatSecret вернул результаты, используем их
+            if (fatSecretResults.length > 0) {
+                apiResults = fatSecretResults
+
+                // Track successful FatSecret search
+                trackProductSearch('fatsecret', fatSecretResults.length)
+
+                // Сохраняем результаты из FatSecret в БД (асинхронно, не блокируем ответ)
+                fatSecretResults.forEach(product => {
+                    saveProductToDB(product).then(productId => {
+                        if (productId) {
+                            product.id = productId
+                        }
+                    }).catch(err => {
+                        logger.warn('Products: ошибка сохранения продукта FatSecret в БД', {
+                            error: err instanceof Error ? err.message : String(err),
+                            productId: product.source_id,
+                            productName: product.name
+                        })
+                    })
+                })
+
+                logger.info('Products: FatSecret API search successful', {
+                    query,
+                    resultsCount: fatSecretResults.length,
+                    source: 'fatsecret'
+                })
+            } else {
+                // FatSecret не вернул результатов, пробуем Open Food Facts
+                logger.info('Products: FatSecret returned no results, activating fallback', {
+                    query,
+                    reason: 'no_results',
+                    fallbackSource: 'openfoodfacts',
+                    timestamp: new Date().toISOString()
+                })
+                trackFallbackActivation('no_results', 'openfoodfacts')
+                throw new Error('No results from FatSecret')
+            }
+        } catch (fatSecretError) {
+            const errorMessage = fatSecretError instanceof Error ? fatSecretError.message : String(fatSecretError)
+
+            logger.warn('Products: FatSecret API failed, activating fallback', {
+                error: errorMessage,
+                query,
+                reason: 'api_error',
+                fallbackSource: 'openfoodfacts',
+                timestamp: new Date().toISOString()
+            })
+
+            // Track fallback activation
+            trackFallbackActivation('api_error', 'openfoodfacts')
+
+            // 3. Fallback: ищем через Open Food Facts
+            try {
+                logger.debug('Products: attempting Open Food Facts API search', {
+                    query,
+                    remainingLimit
+                })
+
+                const openFoodFactsResults = await searchProductsInAPI(query, remainingLimit)
+                apiResults = openFoodFactsResults
+
+                // Track successful Open Food Facts search
+                trackProductSearch('openfoodfacts', openFoodFactsResults.length)
+
+                // Сохраняем результаты из Open Food Facts в БД (асинхронно)
+                openFoodFactsResults.forEach(product => {
+                    saveProductToDB(product).then(productId => {
+                        if (productId) {
+                            product.id = productId
+                        }
+                    }).catch(err => {
+                        logger.warn('Products: ошибка сохранения продукта Open Food Facts в БД', {
+                            error: err instanceof Error ? err.message : String(err),
+                            productName: product.name
+                        })
+                    })
+                })
+
+                logger.info('Products: Open Food Facts API search successful (fallback)', {
+                    query,
+                    resultsCount: openFoodFactsResults.length,
+                    source: 'openfoodfacts',
+                    fallbackActivated: true
+                })
+            } catch (openFoodFactsError) {
+                logger.error('Products: both APIs failed, returning database results only', {
+                    fatSecretError: errorMessage,
+                    openFoodFactsError: openFoodFactsError instanceof Error ? openFoodFactsError.message : String(openFoodFactsError),
+                    query,
+                    dbResultsCount: dbResults.length,
+                    timestamp: new Date().toISOString()
+                })
+                // Возвращаем только результаты из БД
+                return dbResults
+            }
+        }
 
         // Объединяем результаты: сначала из БД (популярные), потом из API
-        return [...dbResults, ...apiResults].slice(0, limit)
+        const combinedResults = [...dbResults, ...apiResults].slice(0, limit)
+
+        logger.info('Products: search completed successfully', {
+            query,
+            totalResults: combinedResults.length,
+            dbResults: dbResults.length,
+            apiResults: apiResults.length
+        })
+
+        return combinedResults
     } catch (error) {
-        logger.error('Products: ошибка поиска продуктов', error, { query })
+        logger.error('Products: search failed completely', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            query,
+            timestamp: new Date().toISOString()
+        })
         // Fallback: пытаемся вернуть результаты из БД, если они есть
-        const dbResults = await searchProductsInDB(query, limit)
-        return dbResults
+        try {
+            const dbResults = await searchProductsInDB(query, limit)
+            logger.info('Products: returning database results after error', {
+                query,
+                resultsCount: dbResults.length
+            })
+            return dbResults
+        } catch (dbError) {
+            logger.error('Products: database fallback also failed', {
+                error: dbError instanceof Error ? dbError.message : String(dbError),
+                query
+            })
+            return []
+        }
     }
 }
 
 /**
- * Получение продукта по штрих-коду (сначала БД, потом API)
+ * Получение продукта по штрих-коду (сначала БД, потом FatSecret, потом Open Food Facts)
  */
 export async function getProductByBarcode(barcode: string): Promise<Product | null> {
     try {
-        // Сначала проверяем БД
+        logger.debug('Products: starting barcode search', {
+            barcode,
+            timestamp: new Date().toISOString()
+        })
+
+        // 1. Сначала проверяем БД
         const supabase = createClient()
         const { data: dbProduct } = await supabase
             .from('products')
@@ -280,6 +488,13 @@ export async function getProductByBarcode(barcode: string): Promise<Product | nu
             .single()
 
         if (dbProduct) {
+            logger.info('Products: product found in database by barcode', {
+                barcode,
+                productId: dbProduct.id,
+                productName: dbProduct.name,
+                source: 'database'
+            })
+            trackBarcodeSearch('database')
             return {
                 id: dbProduct.id,
                 name: dbProduct.name,
@@ -295,10 +510,83 @@ export async function getProductByBarcode(barcode: string): Promise<Product | nu
             }
         }
 
-        // Если не нашли в БД, ищем через API
-        const url = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
+        logger.debug('Products: product not in database, trying FatSecret', {
+            barcode
+        })
 
-        logger.debug('Products API: получение продукта по штрих-коду', { barcode })
+        // 2. Если не нашли в БД, пробуем FatSecret API
+        try {
+            const config = getFatSecretConfig()
+
+            if (config.enabled) {
+                logger.debug('Products: attempting FatSecret barcode search', {
+                    barcode
+                })
+
+                const client = getFatSecretClient()
+                const food = await client.findFoodByBarcode(barcode)
+
+                if (food) {
+                    const product = transformFatSecretFood(food)
+                    product.barcode = barcode // Добавляем штрих-код к продукту
+
+                    logger.info('Products: product found in FatSecret by barcode', {
+                        barcode,
+                        productName: product.name,
+                        source: 'fatsecret'
+                    })
+
+                    trackBarcodeSearch('fatsecret')
+
+                    // Сохраняем в БД (асинхронно)
+                    saveProductToDB(product).then(productId => {
+                        if (productId) {
+                            product.id = productId
+                            logger.debug('Products: FatSecret product cached to database', {
+                                barcode,
+                                productId
+                            })
+                        }
+                    }).catch(err => {
+                        logger.warn('Products: failed to cache FatSecret product', {
+                            error: err instanceof Error ? err.message : String(err),
+                            barcode,
+                            productName: product.name
+                        })
+                    })
+
+                    return product
+                }
+
+                logger.debug('Products: product not found in FatSecret, trying fallback', {
+                    barcode
+                })
+            } else {
+                logger.debug('Products: FatSecret disabled, skipping to fallback', {
+                    barcode
+                })
+            }
+        } catch (fatSecretError) {
+            const errorMessage = fatSecretError instanceof Error ? fatSecretError.message : String(fatSecretError)
+
+            logger.warn('Products: FatSecret barcode search failed, activating fallback', {
+                error: errorMessage,
+                barcode,
+                reason: 'api_error',
+                fallbackSource: 'openfoodfacts',
+                timestamp: new Date().toISOString()
+            })
+
+            // Track fallback activation
+            trackFallbackActivation('api_error', 'openfoodfacts')
+        }
+
+        // 3. Fallback: пробуем Open Food Facts API
+        logger.debug('Products: attempting Open Food Facts barcode search', {
+            barcode
+        })
+
+        const url = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
 
         const response = await fetch(url, {
             method: 'GET',
@@ -309,31 +597,71 @@ export async function getProductByBarcode(barcode: string): Promise<Product | nu
 
         if (!response.ok) {
             if (response.status === 404) {
+                logger.info('Products: product not found by barcode in any source', {
+                    barcode,
+                    checkedSources: ['database', 'fatsecret', 'openfoodfacts']
+                })
                 return null
             }
-            throw new Error(`Open Food Facts API error: ${response.status}`)
+
+            const errorMessage = `Open Food Facts API error: ${response.status}`
+            logger.error('Products: Open Food Facts barcode search failed', {
+                barcode,
+                status: response.status,
+                statusText: response.statusText,
+                error: errorMessage,
+                timestamp: new Date().toISOString()
+            })
+            throw new Error(errorMessage)
         }
 
         const data = await response.json()
 
         if (data.status === 0 || !data.product) {
+            logger.info('Products: product not found by barcode in any source', {
+                barcode,
+                checkedSources: ['database', 'fatsecret', 'openfoodfacts']
+            })
+            trackBarcodeSearch('not_found')
             return null
         }
 
         const product = transformProduct(data.product)
 
+        logger.info('Products: product found in Open Food Facts by barcode (fallback)', {
+            barcode,
+            productName: product.name,
+            source: 'openfoodfacts',
+            fallbackActivated: true
+        })
+
+        trackBarcodeSearch('openfoodfacts')
+
         // Сохраняем в БД (асинхронно)
         saveProductToDB(product).then(productId => {
             if (productId) {
                 product.id = productId
+                logger.debug('Products: Open Food Facts product cached to database', {
+                    barcode,
+                    productId
+                })
             }
-        }).catch(() => {
-            // Игнорируем ошибки сохранения
+        }).catch(err => {
+            logger.warn('Products: failed to cache Open Food Facts product', {
+                error: err instanceof Error ? err.message : String(err),
+                barcode,
+                productName: product.name
+            })
         })
 
         return product
     } catch (error) {
-        logger.error('Products API: ошибка получения продукта по штрих-коду', error, { barcode })
-        throw error
+        logger.error('Products: barcode search failed completely', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            barcode,
+            timestamp: new Date().toISOString()
+        })
+        return null
     }
 }

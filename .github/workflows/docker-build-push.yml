@@ -49,8 +49,8 @@ jobs:
             type=semver,pattern={{major}}
             # Latest tag for main branch
             type=raw,value=latest,enable={{is_default_branch}}
-            # SHA-based tag for traceability
-            type=sha,prefix={{branch}}-
+            # SHA-based tag for traceability (only for branches, not PRs)
+            type=sha,prefix={{branch}}-,enable=${{ github.event_name != 'pull_request' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -66,6 +66,8 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxMjM0NTYsImV4cCI6MTk2MDY5OTQ1Nn0.placeholder-key' }}
             NEXT_PUBLIC_APP_VERSION=${{ github.ref_name }}
           no-cache: true
+          # Load image locally for PRs so Trivy can scan it
+          load: ${{ github.event_name == 'pull_request' }}
 
       - name: Run security scan with Trivy
         if: success()
