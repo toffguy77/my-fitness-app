@@ -74,6 +74,28 @@ interface ConnectionStatus {
 }
 ```
 
+### 4. Message Validation
+
+**Interface:**
+```typescript
+interface MessageValidator {
+  validateMessage(content: string): ValidationResult
+  isEmptyOrWhitespace(content: string): boolean
+  exceedsMaxLength(content: string): boolean
+}
+
+interface ValidationResult {
+  valid: boolean
+  error?: 'empty' | 'too_long' | null
+  message?: string
+}
+
+interface MessageValidationRules {
+  maxLength: 5000  // Requirements 2.5
+  minLength: 1     // Requirements 2.4
+}
+```
+
 ## Data Models
 
 ### Message Model (unchanged)
@@ -117,11 +139,15 @@ interface ChatErrorLog {
 *For any* set of messages in a chat, they should be displayed in chronological order based on created_at timestamp
 **Validates: Requirements 1.5**
 
-### Property 4: Message Validation
-*For any* message input, invalid messages (empty, too long, or containing forbidden content) should be rejected before sending
+### Property 4: Empty Message Rejection
+*For any* message input that is empty or contains only whitespace, the system should reject it before sending
 **Validates: Requirements 2.4**
 
-### Property 5: Complete Message Loading
+### Property 5: Message Length Validation
+*For any* message input longer than 5000 characters, the system should reject it before sending
+**Validates: Requirements 2.5**
+
+### Property 6: Complete Message Loading
 *For any* chat conversation, opening the chat should load all existing messages between the two users
 **Validates: Requirements 1.1**
 
@@ -131,6 +157,7 @@ interface ChatErrorLog {
 - **Timeout handling**: Exponential backoff for reconnection attempts
 - **Max retry limit**: 5 attempts before showing permanent error
 - **User feedback**: Clear status indicators for connection state
+- **Logging**: Log error type, error message, and timestamp (Requirements 2.1)
 
 ### 2. Filter Syntax Validation
 - **Development checks**: Validate filter syntax in development mode
@@ -139,8 +166,14 @@ interface ChatErrorLog {
 
 ### 3. Message Delivery Failures
 - **Retry mechanism**: Automatic retry for failed message sends
-- **User notification**: Clear error messages for delivery failures
+- **User notification**: Clear error messages for delivery failures (Requirements 2.3)
 - **Offline support**: Queue messages when connection is lost
+
+### 4. Message Validation
+- **Empty message check**: Reject messages that are empty or contain only whitespace (Requirements 2.4)
+- **Length validation**: Reject messages longer than 5000 characters (Requirements 2.5)
+- **User feedback**: Show specific validation error to user
+- **Pre-send validation**: Validate before attempting to send to database
 
 ## Testing Strategy
 
@@ -160,8 +193,9 @@ interface ChatErrorLog {
 - **Property 1**: Message delivery reliability across different network conditions
 - **Property 2**: Bidirectional communication consistency
 - **Property 3**: Message ordering preservation
-- **Property 4**: Input validation effectiveness
-- **Property 5**: Complete message loading accuracy
+- **Property 4**: Empty message rejection
+- **Property 5**: Message length validation
+- **Property 6**: Complete message loading accuracy
 
 Each property test should run minimum 100 iterations and be tagged with:
 **Feature: chat-realtime-fix, Property {number}: {property_text}**
@@ -199,9 +233,11 @@ Each property test should run minimum 100 iterations and be tagged with:
 
 ### Logging Enhancements
 - Structured logging for realtime events
-- Error categorization
+- Error categorization with type, message, and timestamp (Requirements 2.1)
 - Performance metrics
 - User session tracking
+- Connection state transitions
+- Message validation failures
 
 ## Security Considerations
 

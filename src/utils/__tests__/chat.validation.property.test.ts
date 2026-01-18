@@ -1,18 +1,17 @@
 /**
- * Property-Based Tests: Chat Message Validation
- * **Feature: chat-realtime-fix, Property 4: Message Validation**
+ * Property-Based Tests: Chat Message Empty Validation
+ * **Feature: chat-realtime-fix, Property 4: Empty Message Rejection**
  * **Validates: Requirements 2.4**
  */
 
 import fc from 'fast-check'
 import { validateMessage, sanitizeMessage, isSpamMessage, type MessageValidationOptions } from '../chat/validation'
 
-describe('Chat Message Validation - Property Tests', () => {
-    describe('Property 4: Message Validation', () => {
+describe('Chat Message Empty Validation - Property Tests', () => {
+    describe('Property 4: Empty Message Rejection', () => {
         /**
-         * **Property 4: Message Validation**
-         * *For any* message input, invalid messages (empty, too long, or containing forbidden content)
-         * should be rejected before sending
+         * **Property 4: Empty Message Rejection**
+         * *For any* message input that is empty or contains only whitespace, the system should reject it before sending
          * **Validates: Requirements 2.4**
          */
         it('should reject empty or whitespace-only messages', () => {
@@ -24,29 +23,6 @@ describe('Chat Message Validation - Property Tests', () => {
                         expect(result.isValid).toBe(false)
                         expect(result.errorType).toBe('empty')
                         expect(result.error).toContain('пустым')
-                    }
-                ),
-                { numRuns: 100 }
-            )
-        })
-
-        it('should reject messages that exceed maximum length', () => {
-            fc.assert(
-                fc.property(
-                    fc.integer({ min: 10, max: 100 }), // Random max length (increased minimum to avoid edge cases)
-                    fc.string({ minLength: 1 }).filter(s => s.trim().length > 0), // Base string that's not just whitespace
-                    (maxLength, baseString) => {
-                        // Create a string that exceeds maxLength
-                        const longMessage = baseString.repeat(Math.ceil((maxLength + 1) / baseString.length))
-                        const options: MessageValidationOptions = { maxLength }
-
-                        const result = validateMessage(longMessage, options)
-
-                        if (longMessage.length > maxLength) {
-                            expect(result.isValid).toBe(false)
-                            expect(result.errorType).toBe('too_long')
-                            expect(result.error).toContain('слишком длинное')
-                        }
                     }
                 ),
                 { numRuns: 100 }

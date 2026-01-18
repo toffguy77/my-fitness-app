@@ -1,0 +1,19 @@
+{
+  "jobId": "threshold-test-1768671570674",
+  "jobName": "threshold-test",
+  "runId": null,
+  "startTime": 1768671570674,
+  "status": "success",
+  "resources": {
+    "initialMemory": 29,
+    "initialCpu": 50,
+    "initialDisk": 8,
+    "finalMemory": 29,
+    "finalCpu": 50,
+    "finalDisk": 8,
+    "peakMemory": 29,
+    "peakCpu": 50
+  },
+  "endTime": 1768671570803,
+  "duration": 129
+}

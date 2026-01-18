@@ -7,6 +7,7 @@ import ChatWidget from './ChatWidget'
 import { getUserProfile, hasActiveSubscription, type UserProfile } from '@/utils/supabase/profile'
 import { checkSubscriptionStatus } from '@/utils/supabase/subscription'
 import { logger } from '@/utils/logger'
+import { useAbortController } from '@/hooks/useAbortController'
 
 /**
  * Глобальный виджет чата, который показывается на всех страницах приложения
@@ -18,6 +19,7 @@ export default function GlobalChatWidget() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isPremium, setIsPremium] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { signal } = useAbortController()
 
   useEffect(() => {
     const loadUserData = async () => {

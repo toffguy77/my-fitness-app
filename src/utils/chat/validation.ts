@@ -16,7 +16,7 @@ export interface MessageValidationOptions {
 }
 
 const DEFAULT_OPTIONS: Required<MessageValidationOptions> = {
-    maxLength: 1000,
+    maxLength: 5000, // Requirements 2.5: максимальная длина сообщения
     allowEmptyMessages: false,
     forbiddenWords: ['spam', 'scam', 'phishing'],
     allowedCharacters: /^[\s\S]*$/, // Allow all characters by default
