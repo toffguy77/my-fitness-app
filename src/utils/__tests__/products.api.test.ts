@@ -3,6 +3,7 @@
  * Tests product search and API functions
  */
 
+import type { Product } from '@/types/products'
 import {
   transformProduct,
   searchProductsInDB,
@@ -10,7 +11,6 @@ import {
   incrementProductUsage,
   searchProducts,
   getProductByBarcode,
-  type Product,
   type OpenFoodFactsProduct,
 } from '../products/api'
 
@@ -39,7 +39,7 @@ jest.mock('../logger', () => ({
 describe('Products API', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    ;(global.fetch as jest.Mock).mockClear()
+      ; (global.fetch as jest.Mock).mockClear()
   })
 
   describe('transformProduct', () => {
@@ -370,10 +370,10 @@ describe('Products API', () => {
         }),
       })
 
-      ;(global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => ({ status: 0 }),
-      })
+        ; (global.fetch as jest.Mock).mockResolvedValue({
+          ok: true,
+          json: async () => ({ status: 0 }),
+        })
 
       const result = await getProductByBarcode('123456789')
 
