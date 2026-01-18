@@ -68,11 +68,13 @@ describe('Products INSERT RLS Property Tests', () => {
                     }),
                     async (productData) => {
                         // Execute: Insert product
-                        const { data, error, status } = await supabase
+                        const result = await supabase
                             .from('products')
-                            .insert(productData)
+                            .insert(productData as any)
                             .select()
                             .single()
+
+                        const { data, error, status } = result
 
                         // Property 1: No error should occur
                         expect(error).toBeNull()
@@ -85,18 +87,19 @@ describe('Products INSERT RLS Property Tests', () => {
 
                         // Property 4: Inserted data should match input (within floating point precision)
                         if (data) {
-                            expect(data.name).toBe(productData.name)
-                            expect(data.brand).toBe(productData.brand)
-                            expect(data.source).toBe(productData.source)
+                            const typedData = data as any
+                            expect(typedData.name).toBe(productData.name)
+                            expect(typedData.brand).toBe(productData.brand)
+                            expect(typedData.source).toBe(productData.source)
 
                             // Check numeric values with tolerance for floating point
-                            expect(Math.abs(data.calories_per_100g - productData.calories_per_100g)).toBeLessThan(0.01)
-                            expect(Math.abs(data.protein_per_100g - productData.protein_per_100g)).toBeLessThan(0.01)
-                            expect(Math.abs(data.fats_per_100g - productData.fats_per_100g)).toBeLessThan(0.01)
-                            expect(Math.abs(data.carbs_per_100g - productData.carbs_per_100g)).toBeLessThan(0.01)
+                            expect(Math.abs(typedData.calories_per_100g - productData.calories_per_100g)).toBeLessThan(0.01)
+                            expect(Math.abs(typedData.protein_per_100g - productData.protein_per_100g)).toBeLessThan(0.01)
+                            expect(Math.abs(typedData.fats_per_100g - productData.fats_per_100g)).toBeLessThan(0.01)
+                            expect(Math.abs(typedData.carbs_per_100g - productData.carbs_per_100g)).toBeLessThan(0.01)
 
                             // Store for cleanup
-                            createdProductIds.push(data.id)
+                            createdProductIds.push(typedData.id)
                         }
                     }
                 ),
@@ -122,11 +125,13 @@ describe('Products INSERT RLS Property Tests', () => {
                         carbs_per_100g: fc.double({ min: 0, max: 100, noNaN: true }),
                     }),
                     async (productData) => {
-                        const { data, error, status } = await supabase
+                        const result = await supabase
                             .from('products')
-                            .insert(productData)
+                            .insert(productData as any)
                             .select()
                             .single()
+
+                        const { data, error, status } = result
 
                         // Property: INSERT should succeed with minimal fields
                         expect(error).toBeNull()
@@ -134,7 +139,7 @@ describe('Products INSERT RLS Property Tests', () => {
                         expect(data).toBeTruthy()
 
                         if (data) {
-                            createdProductIds.push(data.id)
+                            createdProductIds.push((data as any).id)
                         }
                     }
                 ),
@@ -168,11 +173,13 @@ describe('Products INSERT RLS Property Tests', () => {
                             carbs_per_100g: carbs,
                         }
 
-                        const { data, error, status } = await supabase
+                        const result = await supabase
                             .from('products')
-                            .insert(productData)
+                            .insert(productData as any)
                             .select()
                             .single()
+
+                        const { data, error, status } = result
 
                         // Property: All source types should be allowed
                         expect(error).toBeNull()
@@ -180,8 +187,9 @@ describe('Products INSERT RLS Property Tests', () => {
                         expect(data).toBeTruthy()
 
                         if (data) {
-                            expect(data.source).toBe(source)
-                            createdProductIds.push(data.id)
+                            const typedData = data as any
+                            expect(typedData.source).toBe(source)
+                            createdProductIds.push(typedData.id)
                         }
                     }
                 ),
@@ -210,15 +218,17 @@ describe('Products INSERT RLS Property Tests', () => {
                         { minLength: 1, maxLength: 3 } // Small batches for database
                     ),
                     async (products) => {
-                        const insertedProducts = []
+                        const insertedProducts: any[] = []
 
                         // Insert all products
                         for (const product of products) {
-                            const { data, error, status } = await supabase
+                            const result = await supabase
                                 .from('products')
-                                .insert(product)
+                                .insert(product as any)
                                 .select()
                                 .single()
+
+                            const { data, error, status } = result
 
                             // Property: Each INSERT should succeed independently
                             expect(error).toBeNull()
@@ -227,7 +237,7 @@ describe('Products INSERT RLS Property Tests', () => {
 
                             if (data) {
                                 insertedProducts.push(data)
-                                createdProductIds.push(data.id)
+                                createdProductIds.push((data as any).id)
                             }
                         }
 

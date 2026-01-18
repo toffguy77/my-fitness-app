@@ -106,7 +106,7 @@ describe('Products SELECT RLS Property Tests', () => {
                         // Property: All returned products should match the filter
                         if (data && data.length > 0) {
                             data.forEach(product => {
-                                expect(product.source).toBe(source)
+                                expect((product as any).source).toBe(source)
                             })
                         }
                     }
@@ -184,7 +184,7 @@ describe('Products SELECT RLS Property Tests', () => {
             await fc.assert(
                 fc.asyncProperty(
                     // Pick random product ID from existing products
-                    fc.constantFrom(...existingProducts.map(p => p.id)),
+                    fc.constantFrom(...existingProducts.map(p => (p as any).id)),
                     async (productId) => {
                         // Execute: SELECT specific product by ID
                         const { data, error, status } = await supabase
@@ -200,7 +200,7 @@ describe('Products SELECT RLS Property Tests', () => {
 
                         // Property: Returned product should have the correct ID
                         if (data) {
-                            expect(data.id).toBe(productId)
+                            expect((data as any).id).toBe(productId)
                         }
                     }
                 ),
@@ -236,7 +236,7 @@ describe('Products SELECT RLS Property Tests', () => {
                         if (data && data.length > 0) {
                             data.forEach(product => {
                                 expect(
-                                    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+                                    (product as any).name.toLowerCase().includes(searchTerm.toLowerCase())
                                 ).toBe(true)
                             })
                         }
@@ -277,8 +277,9 @@ describe('Products SELECT RLS Property Tests', () => {
                         // Property: All returned products should be within the range
                         if (data && data.length > 0) {
                             data.forEach(product => {
-                                expect(product.calories_per_100g).toBeGreaterThanOrEqual(range.minCalories)
-                                expect(product.calories_per_100g).toBeLessThanOrEqual(range.maxCalories)
+                                const typedProduct = product as any
+                                expect(typedProduct.calories_per_100g).toBeGreaterThanOrEqual(range.minCalories)
+                                expect(typedProduct.calories_per_100g).toBeLessThanOrEqual(range.maxCalories)
                             })
                         }
                     }
@@ -319,7 +320,7 @@ describe('Products SELECT RLS Property Tests', () => {
                         if (data1 && data2 && data1.length > 0) {
                             // Check that IDs match (assuming stable ordering)
                             data1.forEach((product, index) => {
-                                expect(product.id).toBe(data2[index].id)
+                                expect((product as any).id).toBe((data2[index] as any).id)
                             })
                         }
                     }

@@ -98,7 +98,7 @@ describe('Chat Message Length Validation - Property Tests', () => {
         it('should handle edge case at boundary (5000 vs 5001 characters)', () => {
             fc.assert(
                 fc.property(
-                    fc.char(),
+                    fc.string({ minLength: 1, maxLength: 1 }),
                     (char) => {
                         // Create messages at the boundary
                         const at5000 = char.repeat(5000)
