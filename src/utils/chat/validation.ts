@@ -31,6 +31,16 @@ export function validateMessage(
 ): MessageValidationResult {
     const opts = { ...DEFAULT_OPTIONS, ...options }
 
+    // Check message length FIRST (before trimming)
+    // This ensures that 5001 spaces is "too_long", not "empty"
+    if (content.length > opts.maxLength) {
+        return {
+            isValid: false,
+            error: `Сообщение слишком длинное (максимум ${opts.maxLength} символов)`,
+            errorType: 'too_long'
+        }
+    }
+
     // Check if message is empty or only whitespace
     const trimmedContent = content.trim()
     if (!opts.allowEmptyMessages && trimmedContent.length === 0) {
@@ -38,15 +48,6 @@ export function validateMessage(
             isValid: false,
             error: 'Сообщение не может быть пустым',
             errorType: 'empty'
-        }
-    }
-
-    // Check message length
-    if (content.length > opts.maxLength) {
-        return {
-            isValid: false,
-            error: `Сообщение слишком длинное (максимум ${opts.maxLength} символов)`,
-            errorType: 'too_long'
         }
     }
 
@@ -106,9 +107,10 @@ export function isSpamMessage(content: string): boolean {
     }
 
     // Check for excessive punctuation
+    // Only flag as spam if message is long enough (>20 chars) to avoid false positives
     const punctuationCount = (content.match(/[!?.,;:]/g) || []).length
-    if (punctuationCount > content.length * 0.3 && content.length > 10) {
-        return true // More than 30% punctuation
+    if (punctuationCount > content.length * 0.3 && content.length > 20) {
+        return true // More than 30% punctuation in messages longer than 20 chars
     }
 
     return false
