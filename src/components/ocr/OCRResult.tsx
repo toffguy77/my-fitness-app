@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Check, X, Edit2, Search, Loader2 } from 'lucide-react'
 import type { OCRResult, ExtractedNutritionData } from '@/types/ocr'
 import type { Product } from '@/types/products'
-import { searchProducts } from '@/utils/products/api'
+import { searchProducts } from '@/utils/products/actions'
 import { validateExtractedData } from '@/utils/ocr/extract'
 import toast from 'react-hot-toast'
 

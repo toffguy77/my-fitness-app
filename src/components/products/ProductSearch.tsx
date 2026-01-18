@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Loader2, Plus, Clock, Star, Scan } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
-import { searchProducts, getProductByBarcode } from '@/utils/products/api'
+import { searchProducts, getProductByBarcode } from '@/utils/products/actions'
 import { getFavoriteProducts, addToFavorites, removeFromFavorites, isFavorite } from '@/utils/products/favorites'
 import { productSearchCache } from '@/utils/products/cache'
 import ProductCard from './ProductCard'
