@@ -7,12 +7,14 @@ import { createClient } from '@/utils/supabase/client'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import { getUserProfile, type UserProfile } from '@/utils/supabase/profile'
 import Logo from '@/components/Logo'
+import { useAbortController } from '@/hooks/useAbortController'
 
 export default function Header() {
   const router = useRouter()
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const { signal } = useAbortController()
 
   useEffect(() => {
     const fetchUser = async () => {

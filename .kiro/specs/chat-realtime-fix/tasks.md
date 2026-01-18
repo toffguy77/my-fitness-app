@@ -4,6 +4,9 @@
 
 Исправление критической ошибки в real-time чате и улучшение обработки ошибок с добавлением comprehensive тестирования.
 
+**Branch:** `feature/fatsecret-support`
+**Repository:** https://github.com/toffguy77/my-fitness-app/tree/feature/fatsecret-support
+
 ## Tasks
 
 - [x] 1. Критическое исправление фильтра Realtime
@@ -32,11 +35,15 @@
   - Добавить retry логику для неудачных отправок сообщений
   - Показывать пользователю статус отправки и возможность повтора
   - Добавить валидацию сообщений перед отправкой
-  - _Requirements: 2.3, 2.4_
+  - _Requirements: 2.3, 2.4, 2.5_
 
-- [x] 3.1 Написать property тест для валидации сообщений
-  - **Property 4: Message Validation**
+- [x] 3.1 Написать property тест для валидации пустых сообщений
+  - **Property 4: Empty Message Rejection**
   - **Validates: Requirements 2.4**
+
+- [x] 3.2 Написать property тест для валидации длины сообщений
+  - **Property 5: Message Length Validation**
+  - **Validates: Requirements 2.5**
 
 - [x] 4. Checkpoint - Тестирование критических исправлений
   - Ensure all tests pass, ask the user if questions arise.
@@ -57,7 +64,7 @@
   - **Validates: Requirements 1.5**
 
 - [x] 5.4 Написать property тест для complete message loading
-  - **Property 5: Complete Message Loading**
+  - **Property 6: Complete Message Loading**
   - **Validates: Requirements 1.1**
 
 - [x] 6. Добавление E2E тестов для чата
@@ -71,7 +78,7 @@
   - Тестировать reconnection scenarios
   - _Requirements: 2.1, 2.2_
 
-- [ ] 7. Улучшение мониторинга и observability
+- [x] 7. Улучшение мониторинга и observability
 - [x] 7.1 Добавить метрики для chat системы
   - Message delivery success rate
   - Connection failure rate

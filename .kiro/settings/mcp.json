@@ -1,9 +1,9 @@
 {
     "mcpServers": {
         "supabase": {
-            "command": "uvx",
+            "command": "/opt/homebrew/bin/uvx",
             "args": [
-                "mcp-server-supabase@latest",
+                "supabase-mcp-server@latest",
                 "https://mcp.supabase.com/mcp?project_ref=kvdusetwlsxcusbjwvdu&read_only=false"
             ],
             "env": {

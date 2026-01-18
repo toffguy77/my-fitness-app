@@ -10,6 +10,7 @@ import EmptyState from './EmptyState'
 import { validateNutritionTargets } from '@/utils/validation/nutrition'
 import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
+import { useAbortController } from '@/hooks/useAbortController'
 
 type Meal = {
   id: string
@@ -75,6 +76,7 @@ export default function ClientDashboardView({
   const [weekLogs, setWeekLogs] = useState<DailyLog[]>([])
   const [editingTargets, setEditingTargets] = useState<NutritionTarget | null>(null)
   const [savingTargets, setSavingTargets] = useState(false)
+  const { signal } = useAbortController()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -604,7 +606,7 @@ export default function ClientDashboardView({
         {editingTargets ? (
           <div className="space-y-4">
             <div className="mb-4">
-                <label className="block text-sm font-medium text-zinc-100 mb-2">Тип дня</label>
+              <label className="block text-sm font-medium text-zinc-100 mb-2">Тип дня</label>
               <DayToggle
                 value={editingTargets.day_type as 'training' | 'rest'}
                 onChange={(newDayType) => {

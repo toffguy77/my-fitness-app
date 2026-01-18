@@ -7,6 +7,7 @@ import { User } from '@supabase/supabase-js'
 import { AlertTriangle, X } from 'lucide-react'
 import { checkSubscriptionStatus, SubscriptionInfo } from '@/utils/supabase/subscription'
 import { logger } from '@/utils/logger'
+import { useAbortController } from '@/hooks/useAbortController'
 
 export default function SubscriptionBanner() {
   const supabase = createClient()
@@ -15,6 +16,7 @@ export default function SubscriptionBanner() {
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [dismissed, setDismissed] = useState(false)
+  const { signal } = useAbortController()
 
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {

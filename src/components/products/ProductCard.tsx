@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import type { Product } from '@/types/products'
+import { loadImage, getPlaceholder } from '@/utils/image-loader'
 
 interface ProductCardProps {
   product: Product
@@ -24,6 +25,14 @@ export default function ProductCard({
   onFavorite,
 }: ProductCardProps) {
   const [weight, setWeight] = useState(selectedWeight)
+  const [imageUrl, setImageUrl] = useState<string>(product.image_url || getPlaceholder())
+
+  // Load image with fallback
+  useEffect(() => {
+    if (product.image_url) {
+      loadImage(product.image_url).then(setImageUrl)
+    }
+  }, [product.image_url])
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newWeight = parseInt(e.target.value) || 100
@@ -44,15 +53,11 @@ export default function ProductCard({
   return (
     <div className="p-3 hover:bg-zinc-800 transition-colors">
       <div className="flex items-start gap-3">
-        {product.image_url && (
+        {imageUrl && (
           <img
-            src={product.image_url}
+            src={imageUrl}
             alt={product.name}
             className="w-16 h-16 object-cover rounded-lg"
-            onError={(e) => {
-              // Скрываем изображение при ошибке загрузки
-              e.currentTarget.style.display = 'none'
-            }}
           />
         )}
 
@@ -63,9 +68,9 @@ export default function ProductCard({
                 <h4 className="font-medium text-zinc-100 text-sm truncate">{product.name}</h4>
                 {product.source && (
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${product.source === 'fatsecret' ? 'bg-green-900/30 text-green-400' :
-                      product.source === 'openfoodfacts' ? 'bg-blue-900/30 text-blue-400' :
-                        product.source === 'usda' ? 'bg-purple-900/30 text-purple-400' :
-                          'bg-zinc-800 text-zinc-400'
+                    product.source === 'openfoodfacts' ? 'bg-blue-900/30 text-blue-400' :
+                      product.source === 'usda' ? 'bg-purple-900/30 text-purple-400' :
+                        'bg-zinc-800 text-zinc-400'
                     }`}>
                     {product.source === 'fatsecret' ? 'FS' :
                       product.source === 'openfoodfacts' ? 'OFF' :
