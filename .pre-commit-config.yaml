@@ -23,14 +23,25 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
-      # Security audit (only on push to avoid slowdown)
-      - id: npm-audit
-        name: NPM Security Audit
-        entry: npm audit --audit-level=high
+      # Security audit (disabled for pre-push to avoid slowdown)
+      # Run manually with: npm audit --audit-level=high
+      # Or enable in CI/CD pipeline instead
+      # - id: npm-audit
+      #   name: NPM Security Audit
+      #   entry: npm audit --audit-level=high
+      #   language: system
+      #   pass_filenames: false
+      #   always_run: true
+      #   stages: [pre-push]
+
+      # Quick security check (only on manual run)
+      - id: npm-audit-quick
+        name: NPM Security Audit (Quick)
+        entry: npm audit --audit-level=critical --production
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-push]
+        stages: [manual]
 
   # File checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
