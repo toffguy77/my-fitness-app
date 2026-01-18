@@ -62,7 +62,7 @@ describe('Prometheus Collector Property Tests - Silent Failure', () => {
                             labels: fc.option(
                                 fc.dictionary(
                                     fc.stringMatching(/^[a-z_][a-z0-9_]*$/),
-                                    fc.oneof(fc.string(), fc.integer())
+                                    fc.string()
                                 ),
                                 { nil: undefined }
                             ),

@@ -19,7 +19,7 @@ export function isRLSError(error: unknown): boolean {
     const pgError = error as PostgrestError
 
     // Check for RLS-specific error codes
-    return (
+    return Boolean(
         pgError.code === '42501' || // insufficient_privilege
         pgError.code === 'PGRST301' || // PostgREST RLS violation
         (pgError.message && (

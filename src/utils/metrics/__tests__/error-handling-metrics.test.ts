@@ -42,7 +42,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('abort_errors_total')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(1)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(1)
+            }
             expect(metrics[0].labels).toEqual({
                 component: 'TestComponent',
                 reason: 'user_navigation'
@@ -55,7 +58,10 @@ describe('Error Handling Metrics', () => {
             trackAbortError({ component: 'TestComponent' })
 
             const metrics = metricsCollector.getMetricsByName('abort_errors_total')
-            expect(metrics[0].value).toBe(3)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(3)
+            }
         })
 
         it('should use default values for missing context', () => {
@@ -85,7 +91,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('rls_violations_total')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(1)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(1)
+            }
             expect(metrics[0].labels).toEqual({
                 table: 'products',
                 operation: 'INSERT',
@@ -123,7 +132,10 @@ describe('Error Handling Metrics', () => {
 
             const retryMetrics = metricsCollector.getMetricsByName('network_retries_total')
             expect(retryMetrics).toHaveLength(1)
-            expect(retryMetrics[0].value).toBe(1)
+            expect(retryMetrics[0]).toHaveProperty('value')
+            if ('value' in retryMetrics[0]) {
+                expect(retryMetrics[0].value).toBe(1)
+            }
             expect(retryMetrics[0].labels).toEqual({
                 success: 'false',
                 attempt: '1',
@@ -144,7 +156,10 @@ describe('Error Handling Metrics', () => {
 
             expect(retryMetrics).toHaveLength(1)
             expect(successMetrics).toHaveLength(1)
-            expect(successMetrics[0].value).toBe(1)
+            expect(successMetrics[0]).toHaveProperty('value')
+            if ('value' in successMetrics[0]) {
+                expect(successMetrics[0].value).toBe(1)
+            }
         })
 
         it('should not record success metric for failed retries', () => {
@@ -182,7 +197,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('image_fallback_total')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(1)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(1)
+            }
             expect(metrics[0].labels).toEqual({
                 reason: 'timeout',
                 component: 'ProductCard'
@@ -228,7 +246,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('prometheus_connection_status')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(1)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(1)
+            }
         })
 
         it('should record disconnected status', () => {
@@ -236,7 +257,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('prometheus_connection_status')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(0)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(0)
+            }
         })
 
         it('should update status on multiple calls', () => {
@@ -246,7 +270,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('prometheus_connection_status')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(1) // Last value
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(1) // Last value
+            }
         })
     })
 
@@ -256,7 +283,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('prometheus_recovery_total')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(1)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(1)
+            }
         })
 
         it('should increment on multiple recoveries', () => {
@@ -265,7 +295,10 @@ describe('Error Handling Metrics', () => {
             trackPrometheusRecovery()
 
             const metrics = metricsCollector.getMetricsByName('prometheus_recovery_total')
-            expect(metrics[0].value).toBe(3)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(3)
+            }
         })
     })
 
@@ -394,7 +427,10 @@ describe('Error Handling Metrics', () => {
 
             const metrics = metricsCollector.getMetricsByName('abort_errors_total')
             expect(metrics).toHaveLength(1)
-            expect(metrics[0].value).toBe(3)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(3)
+            }
         })
 
         it('should keep separate counters for different labels', () => {
@@ -412,7 +448,10 @@ describe('Error Handling Metrics', () => {
             }
 
             const metrics = metricsCollector.getMetricsByName('abort_errors_total')
-            expect(metrics[0].value).toBe(100)
+            expect(metrics[0]).toHaveProperty('value')
+            if ('value' in metrics[0]) {
+                expect(metrics[0].value).toBe(100)
+            }
         })
     })
 })

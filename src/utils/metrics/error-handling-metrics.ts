@@ -14,6 +14,7 @@
 
 import { metricsCollector } from './collector'
 import { prometheusCollector } from './prometheus-collector'
+import type { Metric } from './types'
 
 /**
  * Track AbortError occurrence
@@ -188,8 +189,19 @@ export function getErrorHandlingMetricsSummary(): {
     const imageFallbackMetrics = metricsCollector.getMetricsByName('image_fallback_total')
     const prometheusStatusMetrics = metricsCollector.getMetricsByName('prometheus_connection_status')
 
-    const sumMetrics = (metrics: Array<{ value: number }>) =>
-        metrics.reduce((sum, m) => sum + m.value, 0)
+    const sumMetrics = (metrics: Metric[]) =>
+        metrics.reduce((sum, m) => {
+            if ('value' in m) {
+                return sum + (m.value as number)
+            }
+            return sum
+        }, 0)
+
+    const getMetricValue = (metrics: Metric[]): number => {
+        if (metrics.length === 0) return 0
+        const metric = metrics[0]
+        return 'value' in metric ? (metric.value as number) : 0
+    }
 
     return {
         abortErrors: sumMetrics(abortErrorMetrics),
@@ -197,7 +209,7 @@ export function getErrorHandlingMetricsSummary(): {
         networkRetries: sumMetrics(networkRetryMetrics),
         networkRetrySuccesses: sumMetrics(networkRetrySuccessMetrics),
         imageFallbacks: sumMetrics(imageFallbackMetrics),
-        prometheusConnected: prometheusStatusMetrics.length > 0 && prometheusStatusMetrics[0].value === 1
+        prometheusConnected: getMetricValue(prometheusStatusMetrics) === 1
     }
 }
 
@@ -221,8 +233,8 @@ export async function pushErrorHandlingMetrics(): Promise<void> {
             await prometheusCollector.pushMetrics(
                 errorHandlingMetrics.map(m => ({
                     name: m.name,
-                    value: m.value,
-                    labels: m.labels
+                    value: 'value' in m ? (m.value as number) : 0,
+                    labels: m.labels as Record<string, string>
                 })),
                 'error_handling_metrics'
             )

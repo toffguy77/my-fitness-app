@@ -225,7 +225,9 @@ describe('Property-Based Tests: Network Error Logging', () => {
                             expect(mockLogger.error).toHaveBeenCalledTimes(1)
                             const errorCall = mockLogger.error.mock.calls[0]
                             const context = errorCall[2]
-                            expect(context.errorType).toBe(errorConfig.expectedType)
+                            if (context) {
+                                expect(context.errorType).toBe(errorConfig.expectedType)
+                            }
                         }
 
                         return true

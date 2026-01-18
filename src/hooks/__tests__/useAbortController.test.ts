@@ -157,7 +157,7 @@ describe('useAbortController', () => {
                         reject(error)
                     })
                 })
-            )
+            ) as typeof fetch
 
             global.fetch = mockFetch
 

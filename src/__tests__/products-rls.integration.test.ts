@@ -64,21 +64,23 @@ describeIfEnvSet('Products RLS Integration Tests', () => {
                 source: 'user' as const,
             }
 
-            const { data, error, status } = await supabase
+            const result = await supabase
                 .from('products')
-                .insert(testProduct)
+                .insert(testProduct as any)
                 .select()
                 .single()
+
+            const { data, error, status } = result
 
             // Should return HTTP 200 (or 201) and successfully create the record
             expect(error).toBeNull()
             expect(status).toBe(201)
             expect(data).toBeTruthy()
-            expect(data?.name).toBe(testProduct.name)
+            expect((data as any)?.name).toBe(testProduct.name)
 
             // Store for cleanup
             if (data) {
-                testProductId = data.id
+                testProductId = (data as any).id
             }
         })
 
@@ -100,7 +102,7 @@ describeIfEnvSet('Products RLS Integration Tests', () => {
 
             const { data, error } = await unauthClient
                 .from('products')
-                .insert(testProduct)
+                .insert(testProduct as any)
                 .select()
 
             // Should fail for unauthenticated users
@@ -156,7 +158,7 @@ describeIfEnvSet('Products RLS Integration Tests', () => {
                 return
             }
 
-            const productId = products[0].id
+            const productId = (products[0] as any).id
 
             // Now try to read that specific product
             const { data, error, status } = await supabase
@@ -169,7 +171,7 @@ describeIfEnvSet('Products RLS Integration Tests', () => {
             expect(error).toBeNull()
             expect(status).toBe(200)
             expect(data).toBeTruthy()
-            expect(data?.id).toBe(productId)
+            expect((data as any)?.id).toBe(productId)
         })
     })
 
@@ -210,17 +212,19 @@ describeIfEnvSet('Products RLS Integration Tests', () => {
                 source: 'user' as const,
             }
 
-            const { status, data } = await supabase
+            const result = await supabase
                 .from('products')
-                .insert(testProduct)
+                .insert(testProduct as any)
                 .select()
                 .single()
+
+            const { status, data } = result
 
             expect(status).toBe(201)
 
             // Store for cleanup
             if (data) {
-                testProductId = data.id
+                testProductId = (data as any).id
             }
         })
     })
