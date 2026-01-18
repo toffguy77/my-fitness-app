@@ -185,7 +185,7 @@ describe('Chat Realtime Integration Tests', () => {
 
             // Test message too long
             const longMessage = 'a'.repeat(1001)
-            const longValidationResult = validateMessage(longMessage)
+            const longValidationResult = validateMessage(longMessage, { maxLength: 1000 })
             expect(longValidationResult.isValid).toBe(false)
             expect(longValidationResult.errorType).toBe('too_long')
 
