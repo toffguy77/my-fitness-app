@@ -126,7 +126,8 @@ jest.mock('@/utils/logger', () => ({
 // Silence noisy console errors in tests (act warnings, jsdom navigation)
 const originalConsoleError = console.error
 console.error = (...args) => {
-  const msg = args?.[0]?.toString?.() || ''
+  // Sanitize arguments to prevent log injection
+  const msg = typeof args?.[0] === 'string' ? args[0] : String(args?.[0] || '')
   if (
     msg.includes('not wrapped in act(...)') ||
     msg.includes('Not implemented: navigation (except hash changes)') ||
@@ -137,5 +138,13 @@ console.error = (...args) => {
   ) {
     return
   }
-  originalConsoleError(...args)
+  // Sanitize all arguments before logging to prevent injection
+  const sanitizedArgs = args.map(arg => {
+    if (typeof arg === 'string') {
+      // Remove potential control characters and newlines
+      return arg.replace(/[\r\n\x00-\x1F\x7F]/g, '')
+    }
+    return arg
+  })
+  originalConsoleError(...sanitizedArgs)
 }
