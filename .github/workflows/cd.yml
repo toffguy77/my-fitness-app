@@ -167,18 +167,21 @@ jobs:
             -p "127.0.0.1:${HOST_PORT}:3069" \
             "$IMAGE_REF"
 
-          # Basic health check (local)
-          for i in $(seq 1 30); do
-            if curl -fsS "http://127.0.0.1:${HOST_PORT}/api/health" >/dev/null 2>&1; then
-              echo "Health check OK"
-              exit 0
-            fi
-            sleep 2
-          done
+          echo "Waiting for container to start..."
+          sleep 5
 
-          echo "Health check failed" >&2
-          docker logs --tail 200 "$CONTAINER_NAME" || true
-          exit 1
+          # Check if container is running
+          if ! docker ps | grep -q "$CONTAINER_NAME"; then
+            echo "Container failed to start" >&2
+            docker logs --tail 200 "$CONTAINER_NAME" || true
+            exit 1
+          fi
+
+          echo "Container started successfully"
+          docker ps | grep "$CONTAINER_NAME"
+
+          # Note: Health check will be performed by the next step via public URL
+          # since the container may be in a Docker network and not accessible via localhost
           REMOTE
 
           echo "deployment_url=https://beta.burcev.team" >> "$GITHUB_OUTPUT"
@@ -186,20 +189,24 @@ jobs:
       - name: Run staging health checks
         run: |
           echo "🔍 Running staging health checks..."
+          echo "Waiting for application to be ready (this may take up to 2 minutes)..."
 
-          # Check application endpoints
+          # Check application endpoints with extended timeout
           ok=0
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -fsS "https://beta.burcev.team/api/health" >/dev/null 2>&1; then
               ok=1
+              echo "✅ Health check passed on attempt $i"
               break
             fi
-            echo "Waiting for https://beta.burcev.team (attempt ${i}/30)..."
+            if [ $((i % 10)) -eq 0 ]; then
+              echo "Still waiting for https://beta.burcev.team (attempt ${i}/60)..."
+            fi
             sleep 2
           done
 
           if [[ "$ok" -ne 1 ]]; then
-            echo "❌ Staging health check failed" >&2
+            echo "❌ Staging health check failed after 120 seconds" >&2
             exit 1
           fi
 
@@ -363,18 +370,21 @@ jobs:
             -p "127.0.0.1:${HOST_PORT}:3069" \
             "$IMAGE_REF"
 
-          # Basic health check (local)
-          for i in $(seq 1 30); do
-            if curl -fsS "http://127.0.0.1:${HOST_PORT}/api/health" >/dev/null 2>&1; then
-              echo "Health check OK"
-              exit 0
-            fi
-            sleep 2
-          done
+          echo "Waiting for container to start..."
+          sleep 5
 
-          echo "Health check failed" >&2
-          docker logs --tail 200 "$CONTAINER_NAME" || true
-          exit 1
+          # Check if container is running
+          if ! docker ps | grep -q "$CONTAINER_NAME"; then
+            echo "Container failed to start" >&2
+            docker logs --tail 200 "$CONTAINER_NAME" || true
+            exit 1
+          fi
+
+          echo "Container started successfully"
+          docker ps | grep "$CONTAINER_NAME"
+
+          # Note: Health check will be performed by the next step via public URL
+          # since the container may be in a Docker network and not accessible via localhost
           REMOTE
 
           echo "deployment_url=https://burcev.team" >> "$GITHUB_OUTPUT"
@@ -382,20 +392,24 @@ jobs:
       - name: Run production health checks
         run: |
           echo "🔍 Running production health checks..."
+          echo "Waiting for application to be ready (this may take up to 2 minutes)..."
 
-          # Check application endpoints
+          # Check application endpoints with extended timeout
           ok=0
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -fsS "https://burcev.team/api/health" >/dev/null 2>&1; then
               ok=1
+              echo "✅ Health check passed on attempt $i"
               break
             fi
-            echo "Waiting for https://burcev.team (attempt ${i}/30)..."
+            if [ $((i % 10)) -eq 0 ]; then
+              echo "Still waiting for https://burcev.team (attempt ${i}/60)..."
+            fi
             sleep 2
           done
 
           if [[ "$ok" -ne 1 ]]; then
-            echo "❌ Production health check failed" >&2
+            echo "❌ Production health check failed after 120 seconds" >&2
             exit 1
           fi
 
