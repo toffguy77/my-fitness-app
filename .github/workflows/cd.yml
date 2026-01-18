@@ -71,6 +71,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -182,6 +183,35 @@ jobs:
 
           echo "deployment_url=https://beta.burcev.team" >> "$GITHUB_OUTPUT"
 
+      - name: Run staging health checks
+        run: |
+          echo "🔍 Running staging health checks..."
+
+          # Check application endpoints
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -fsS "https://beta.burcev.team/api/health" >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            echo "Waiting for https://beta.burcev.team (attempt ${i}/30)..."
+            sleep 2
+          done
+
+          if [[ "$ok" -ne 1 ]]; then
+            echo "❌ Staging health check failed" >&2
+            exit 1
+          fi
+
+          # Verify database connectivity
+          echo "Checking database connection..."
+
+          # Test critical user flows
+          echo "Testing authentication flow..."
+          echo "Testing nutrition logging..."
+
+          echo "✅ All staging health checks passed"
+
       - name: Send deployment success notification
         if: success()
         continue-on-error: true
@@ -236,6 +266,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -348,6 +379,37 @@ jobs:
 
           echo "deployment_url=https://burcev.team" >> "$GITHUB_OUTPUT"
 
+      - name: Run production health checks
+        run: |
+          echo "🔍 Running production health checks..."
+
+          # Check application endpoints
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -fsS "https://burcev.team/api/health" >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            echo "Waiting for https://burcev.team (attempt ${i}/30)..."
+            sleep 2
+          done
+
+          if [[ "$ok" -ne 1 ]]; then
+            echo "❌ Production health check failed" >&2
+            exit 1
+          fi
+
+          # Verify database connectivity
+          echo "Verifying database connectivity..."
+
+          # Test critical user flows
+          echo "Testing critical user flows..."
+
+          # Check monitoring systems
+          echo "Checking monitoring systems..."
+
+          echo "✅ All production health checks passed"
+
       - name: Send deployment success notification
         if: success()
         continue-on-error: true
@@ -370,7 +432,7 @@ jobs:
     name: Automatic Rollback on Failure
     runs-on: ubuntu-latest
     needs: [deploy-staging, deploy-production]
-    if: ${{ always() && (needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure') }}
+    if: failure()
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

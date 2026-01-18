@@ -176,14 +176,13 @@ describe('CD Pipeline Configuration', () => {
       expect(existsSync(rollbackWorkflowPath)).toBe(true)
     })
 
-    it('should have CD rollback job wired to staging+production results', () => {
+    it('should have CD rollback job enabled on failures', () => {
       const rollbackJob = cdWorkflowConfig?.jobs?.rollback
       expect(rollbackJob).toBeDefined()
       expect(rollbackJob.name).toBe('Automatic Rollback on Failure')
       expect(rollbackJob.needs).toContain('deploy-staging')
       expect(rollbackJob.needs).toContain('deploy-production')
-      expect(rollbackJob.if).toContain('needs.deploy-staging.result')
-      expect(rollbackJob.if).toContain('needs.deploy-production.result')
+      expect(rollbackJob.if).toBe('failure()')
     })
 
     it('should have manual rollback workflow trigger with proper inputs', () => {
