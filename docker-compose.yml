@@ -29,7 +29,10 @@ services:
       start_period: 40s
     restart: unless-stopped
     networks:
-      - app-network
+      app-network: {}
+      burcev_shared:
+        aliases:
+          - my-fitness-app
 
   # Development version with hot reload
   app-dev:
@@ -68,6 +71,9 @@ services:
 networks:
   app-network:
     driver: bridge
+
+  burcev_shared:
+    external: true
 
 volumes:
   node_modules:
