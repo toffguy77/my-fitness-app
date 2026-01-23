@@ -139,6 +139,28 @@ export function validateFatSecretConfig(): boolean {
 }
 
 /**
+ * Check if FatSecret integration is enabled
+ *
+ * Simple boolean check for whether FatSecret is configured and enabled.
+ * Use this throughout the codebase to check if FatSecret features should be available.
+ *
+ * @returns true if FatSecret integration is enabled and configured
+ *
+ * @example
+ * ```typescript
+ * if (isFatSecretEnabled()) {
+ *   // Use FatSecret API
+ * } else {
+ *   // Fall back to OpenFoodFacts
+ * }
+ * ```
+ */
+export function isFatSecretEnabled(): boolean {
+    const config = getFatSecretConfig()
+    return config.enabled && !!config.clientId && !!config.clientSecret
+}
+
+/**
  * Configuration health check status
  */
 export interface ConfigHealthCheck {

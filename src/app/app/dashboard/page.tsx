@@ -21,6 +21,7 @@ import { logger } from '@/utils/logger'
 import toast from 'react-hot-toast'
 import { checkAchievementsAfterWeightLog } from '@/utils/achievements/check'
 import { usePageView } from '@/hooks/useAnalytics'
+import { useAbortController } from '@/hooks/useAbortController'
 
 type Meal = {
   id: string
@@ -67,6 +68,7 @@ type NutritionTarget = {
 export default function ClientDashboard() {
   const supabase = createClient()
   const router = useRouter()
+  const { signal } = useAbortController()
 
   // Отслеживаем просмотр страницы
   usePageView('dashboard')
@@ -85,6 +87,35 @@ export default function ClientDashboard() {
   const [completingDay, setCompletingDay] = useState<boolean>(false) // Состояние завершения дня
   const [reloadKey, setReloadKey] = useState<number>(0) // Триггер перезагрузки данных при возврате на страницу
   const [deleteMealModal, setDeleteMealModal] = useState<{ isOpen: boolean; mealId: string | null }>({ isOpen: false, mealId: null })
+
+  // Helper function for retrying fetch operations
+  const fetchWithRetry = async <T,>(
+    fetcher: () => Promise<T>,
+    maxRetries: number = 2
+  ): Promise<T> => {
+    let lastError: Error | null = null
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fetcher()
+      } catch (error) {
+        lastError = error as Error
+
+        // Don't retry on AbortError
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw error
+        }
+
+        // Wait before retry (exponential backoff)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
+          logger.debug('Dashboard: повтор запроса', { attempt: attempt + 1, maxRetries })
+        }
+      }
+    }
+
+    throw lastError
+  }
 
   // Перезагружаем данные, когда пользователь возвращается на вкладку/страницу
   useEffect(() => {
