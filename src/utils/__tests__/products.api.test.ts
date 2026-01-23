@@ -209,13 +209,31 @@ describe('Products API', () => {
         source: 'openfoodfacts',
       }
 
+      // Mock for checking existing product - returns existing product
+      const mockSelectSingle = jest.fn()
+        .mockResolvedValueOnce({
+          data: { id: 'existing-id' },
+          error: null,
+        })
+        // Mock for getting usage_count
+        .mockResolvedValueOnce({
+          data: { usage_count: 5 },
+          error: null,
+        })
+
+      // Mock for update
+      const mockUpdate = jest.fn().mockReturnThis()
+      const mockEq = jest.fn().mockResolvedValue({
+        error: null,
+      })
+
       mockFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: { id: 'existing-id' },
-          error: null,
-        }),
+        single: mockSelectSingle,
+        update: jest.fn().mockImplementation(() => ({
+          eq: mockEq,
+        })),
       })
 
       const result = await saveProductToDB(product)
