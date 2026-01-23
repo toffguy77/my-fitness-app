@@ -3,7 +3,7 @@
  */
 
 import { createClient } from '@/utils/supabase/client'
-import { logger } from '@/utils/logger'
+import { logger, logRLSError, handleSupabaseError } from '@/utils/logger'
 import { getFatSecretClient } from './fatsecret'
 import { transformFatSecretFood } from './transform'
 import { getFatSecretConfig } from '@/config/fatsecret'
@@ -122,12 +122,37 @@ export async function saveProductToDB(product: Product): Promise<string | null> 
         }
 
         if (existingProduct) {
-            // Продукт уже существует, возвращаем его ID
-            logger.debug('Products DB: продукт уже существует', {
-                productId: existingProduct.id,
-                source: product.source,
-                source_id: product.source_id
-            })
+            // Продукт уже существует, увеличиваем usage_count
+            // Сначала получаем текущее значение
+            const { data: currentProduct } = await supabase
+                .from('products')
+                .select('usage_count')
+                .eq('id', existingProduct.id)
+                .single()
+
+            const currentCount = currentProduct?.usage_count || 0
+
+            const { error: updateError } = await supabase
+                .from('products')
+                .update({
+                    usage_count: currentCount + 1
+                })
+                .eq('id', existingProduct.id)
+
+            if (updateError) {
+                logger.warn('Products DB: ошибка увеличения usage_count', {
+                    error: updateError,
+                    productId: existingProduct.id
+                })
+            } else {
+                logger.debug('Products DB: продукт уже существует, usage_count увеличен', {
+                    productId: existingProduct.id,
+                    source: product.source,
+                    source_id: product.source_id,
+                    newCount: currentCount + 1
+                })
+            }
+
             return existingProduct.id
         }
 
@@ -150,7 +175,11 @@ export async function saveProductToDB(product: Product): Promise<string | null> 
             .single()
 
         if (error) {
-            logger.warn('Products DB: ошибка сохранения продукта', { error, product })
+            // Use enhanced error logging for RLS violations
+            handleSupabaseError(error, {
+                table: 'products',
+                operation: 'INSERT'
+            })
             return null
         }
 

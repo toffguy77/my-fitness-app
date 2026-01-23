@@ -46,7 +46,7 @@ class Logger {
         // Включаем логирование flow пользователя если включен debug режим
         this.enableUserFlowLogging = this.isDebugMode ||
             (this.isClient ? process.env.NEXT_PUBLIC_ENABLE_USER_FLOW_LOGGING === 'true'
-                          : process.env.ENABLE_USER_FLOW_LOGGING === 'true');
+                : process.env.ENABLE_USER_FLOW_LOGGING === 'true');
     }
 
     private parseLogLevel(level?: string): LogLevel | null {
@@ -96,8 +96,8 @@ class Logger {
         // В Edge Runtime (middleware) process.stdout/stderr недоступны, используем только console
         // Проверяем, что мы не в Edge Runtime через проверку доступности process
         const isNodeRuntime = !this.isClient && typeof process !== 'undefined' &&
-                              'stdout' in process && 'stderr' in process &&
-                              typeof (process as any).stdout?.write === 'function';
+            'stdout' in process && 'stderr' in process &&
+            typeof (process as any).stdout?.write === 'function';
 
         if (isNodeRuntime) {
             // Для Node.js серверной среды используем process.stdout/stderr напрямую
@@ -375,10 +375,10 @@ class Logger {
         if (error instanceof Error) {
             const message = error.message.toLowerCase();
             return message.includes('critical') ||
-                   message.includes('fatal') ||
-                   message.includes('database') ||
-                   message.includes('connection') ||
-                   message.includes('environment');
+                message.includes('fatal') ||
+                message.includes('database') ||
+                message.includes('connection') ||
+                message.includes('environment');
         }
         return false;
     }
@@ -417,3 +417,157 @@ export const logger = new Logger();
 
 // Экспортируем класс для создания кастомных логгеров
 export { Logger };
+
+/**
+ * Enhanced error logging utilities for specific error types
+ */
+
+/**
+ * RLS Error Context
+ */
+export interface RLSErrorContext {
+    table: string
+    operation: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE'
+    userId?: string
+    errorCode: string
+    errorMessage: string
+    additionalContext?: Record<string, unknown>
+}
+
+/**
+ * Log RLS (Row Level Security) policy violations
+ *
+ * Use this function when detecting RLS errors (42501, PGRST116) to log
+ * detailed context about the violation for debugging.
+ *
+ * @param context - RLS error context with table, operation, and error details
+ *
+ * @example
+ * ```typescript
+ * logRLSError({
+ *   table: 'products',
+ *   operation: 'INSERT',
+ *   userId: user.id,
+ *   errorCode: '42501',
+ *   errorMessage: 'new row violates row-level security policy',
+ *   additionalContext: { productId: product.id }
+ * })
+ * ```
+ */
+export function logRLSError(context: RLSErrorContext): void {
+    logger.error('RLS policy violation detected', undefined, {
+        ...context,
+        timestamp: new Date().toISOString(),
+        severity: 'high',
+        errorType: 'rls_violation'
+    })
+}
+
+/**
+ * API Error Context
+ */
+export interface APIErrorContext {
+    endpoint: string
+    method: string
+    statusCode: number
+    errorMessage: string
+    userId?: string
+    requestBody?: unknown
+    responseBody?: unknown
+    additionalContext?: Record<string, unknown>
+}
+
+/**
+ * Log API request failures
+ *
+ * Use this function to log failed API requests with full context
+ * for debugging and monitoring.
+ *
+ * @param context - API error context with endpoint, method, and error details
+ *
+ * @example
+ * ```typescript
+ * logAPIError({
+ *   endpoint: '/api/products/search',
+ *   method: 'POST',
+ *   statusCode: 500,
+ *   errorMessage: 'Internal server error',
+ *   userId: user.id,
+ *   requestBody: { query: 'apple' }
+ * })
+ * ```
+ */
+export function logAPIError(context: APIErrorContext): void {
+    logger.error('API request failed', undefined, {
+        ...context,
+        timestamp: new Date().toISOString(),
+        errorType: 'api_error'
+    })
+}
+
+/**
+ * Handle Supabase errors with automatic error type detection
+ *
+ * This helper detects RLS errors and other Supabase-specific errors
+ * and routes them to the appropriate logging function.
+ *
+ * @param error - The error object from Supabase
+ * @param context - Context about the operation (table, operation type)
+ *
+ * @example
+ * ```typescript
+ * const { error } = await supabase.from('products').insert(product)
+ * if (error) {
+ *   handleSupabaseError(error, { table: 'products', operation: 'INSERT' })
+ * }
+ * ```
+ */
+export function handleSupabaseError(
+    error: any,
+    context: { table: string; operation: 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE'; userId?: string }
+): void {
+    // Check for RLS policy violation (PostgreSQL error code 42501)
+    if (error.code === '42501') {
+        logRLSError({
+            table: context.table,
+            operation: context.operation,
+            userId: context.userId,
+            errorCode: error.code,
+            errorMessage: error.message,
+            additionalContext: {
+                hint: error.hint,
+                details: error.details
+            }
+        })
+        return
+    }
+
+    // Check for PostgREST error PGRST116 (406 Not Acceptable - usually RLS related)
+    if (error.code === 'PGRST116') {
+        logger.error('Supabase query failed (possibly RLS related)', undefined, {
+            table: context.table,
+            operation: context.operation,
+            userId: context.userId,
+            errorCode: error.code,
+            errorMessage: error.message,
+            hint: error.hint,
+            details: error.details,
+            timestamp: new Date().toISOString(),
+            errorType: 'supabase_query_error'
+        })
+        return
+    }
+
+    // Generic Supabase error
+    logger.error('Supabase operation failed', undefined, {
+        table: context.table,
+        operation: context.operation,
+        userId: context.userId,
+        errorCode: error.code,
+        errorMessage: error.message,
+        hint: error.hint,
+        details: error.details,
+        timestamp: new Date().toISOString(),
+        errorType: 'supabase_error'
+    })
+}
