@@ -11,6 +11,7 @@ import { logger } from '@/utils/logger'
 import { getFatSecretConfig, type FatSecretConfiguration } from '@/config/fatsecret'
 import { getFatSecretAuthManager } from './fatsecret-auth'
 import { trackFatSecretApiCall } from './fatsecret-metrics'
+import { getSearchVariants, isCyrillic } from './language'
 
 /**
  * FatSecret serving information
@@ -144,6 +145,9 @@ export class FatSecretClient {
      * Search for foods by query string
      *
      * Uses the foods.search.v4 endpoint to search FatSecret's food database.
+     * Supports multi-strategy search for Russian queries:
+     * 1. Dictionary translation (e.g., "молоко" -> "milk")
+     * 2. Transliteration (e.g., "оладьи" -> "oladi")
      *
      * @param query - Search query (minimum 2 characters)
      * @param maxResults - Maximum number of results to return (default: 20)
@@ -154,6 +158,7 @@ export class FatSecretClient {
      * @example
      * ```typescript
      * const foods = await client.searchFoods('chicken breast', 10, 0)
+     * const foods = await client.searchFoods('молоко', 10, 0) // Will search for 'milk'
      * ```
      */
     async searchFoods(
@@ -169,56 +174,140 @@ export class FatSecretClient {
             return []
         }
 
-        try {
-            logger.debug('FatSecret: searching foods', {
-                query,
-                maxResults,
-                pageNumber,
-                context: 'fatsecret-client'
-            })
+        // Generate search variants for Russian queries
+        const searchVariants = getSearchVariants(query)
+        const isCyrillicQuery = isCyrillic(query)
 
-            const response = await this.makeRequest<FatSecretSearchResponse>('foods.search.v4', {
-                search_expression: query,
-                max_results: maxResults.toString(),
-                page_number: pageNumber.toString(),
-                format: 'json'
-            })
+        logger.debug('FatSecret: starting multi-strategy search', {
+            originalQuery: query,
+            isCyrillic: isCyrillicQuery,
+            variants: searchVariants,
+            variantsCount: searchVariants.length,
+            maxResults,
+            pageNumber,
+            context: 'fatsecret-client'
+        })
 
-            // Handle empty or missing results
-            if (!response.foods || !response.foods.food) {
-                logger.debug('FatSecret: no foods found', {
-                    query,
+        // Try each search variant until we get results
+        for (let i = 0; i < searchVariants.length; i++) {
+            const searchQuery = searchVariants[i]
+            const isLastVariant = i === searchVariants.length - 1
+
+            try {
+                logger.debug('FatSecret: trying search variant', {
+                    originalQuery: query,
+                    searchQuery,
+                    variantIndex: i + 1,
+                    totalVariants: searchVariants.length,
                     context: 'fatsecret-client'
                 })
-                return []
-            }
 
-            // Normalize response (API returns single object or array)
-            const foods = Array.isArray(response.foods.food)
-                ? response.foods.food
-                : [response.foods.food]
+                const response = await this.makeRequest<FatSecretSearchResponse>('foods.search.v4', {
+                    search_expression: searchQuery,
+                    max_results: maxResults.toString(),
+                    page_number: pageNumber.toString(),
+                    region: this.config.region,
+                    language: this.config.language,
+                    format: 'json'
+                })
 
-            // Normalize servings array
-            const normalizedFoods = foods.map(food => ({
-                ...food,
-                servings: {
-                    serving: Array.isArray(food.servings.serving)
-                        ? food.servings.serving
-                        : [food.servings.serving]
+                // Log raw response for debugging
+                logger.debug('FatSecret: raw API response', {
+                    originalQuery: query,
+                    searchQuery,
+                    hasResponse: !!response,
+                    hasFoods: !!response.foods,
+                    hasFood: !!(response.foods?.food),
+                    totalResults: response.foods?.total_results,
+                    context: 'fatsecret-client'
+                })
+
+                // Handle empty or missing results
+                if (!response.foods || !response.foods.food) {
+                    logger.debug('FatSecret: no foods found for variant', {
+                        originalQuery: query,
+                        searchQuery,
+                        variantIndex: i + 1,
+                        totalVariants: searchVariants.length,
+                        willRetry: !isLastVariant,
+                        context: 'fatsecret-client'
+                    })
+
+                    // Try next variant if available
+                    if (!isLastVariant) {
+                        continue
+                    }
+
+                    // No more variants to try
+                    logger.info('FatSecret: no results found for any variant', {
+                        originalQuery: query,
+                        triedVariants: searchVariants,
+                        context: 'fatsecret-client'
+                    })
+                    return []
                 }
-            }))
 
-            logger.info('FatSecret: foods found', {
-                query,
-                count: normalizedFoods.length,
-                context: 'fatsecret-client'
-            })
+                // Normalize response (API returns single object or array)
+                const foods = Array.isArray(response.foods.food)
+                    ? response.foods.food
+                    : [response.foods.food]
 
-            return normalizedFoods
-        } catch (error) {
-            this.handleApiError(error, 'searchFoods', { query, maxResults, pageNumber })
-            throw error
+                // Normalize servings array
+                const normalizedFoods = foods.map(food => ({
+                    ...food,
+                    servings: {
+                        serving: Array.isArray(food.servings.serving)
+                            ? food.servings.serving
+                            : [food.servings.serving]
+                    }
+                }))
+
+                logger.info('FatSecret: foods found successfully', {
+                    originalQuery: query,
+                    searchQuery,
+                    variantIndex: i + 1,
+                    totalVariants: searchVariants.length,
+                    resultsCount: normalizedFoods.length,
+                    usedTranslation: isCyrillicQuery && i === 0,
+                    usedTransliteration: isCyrillicQuery && i === 1,
+                    context: 'fatsecret-client'
+                })
+
+                return normalizedFoods
+            } catch (error) {
+                // Log error but try next variant if available
+                logger.warn('FatSecret: search variant failed', {
+                    originalQuery: query,
+                    searchQuery,
+                    variantIndex: i + 1,
+                    totalVariants: searchVariants.length,
+                    error: error instanceof Error ? error.message : String(error),
+                    willRetry: !isLastVariant,
+                    context: 'fatsecret-client'
+                })
+
+                // If this is the last variant, throw the error
+                if (isLastVariant) {
+                    this.handleApiError(error, 'searchFoods', {
+                        originalQuery: query,
+                        triedVariants: searchVariants,
+                        maxResults,
+                        pageNumber
+                    })
+                    throw error
+                }
+
+                // Otherwise, continue to next variant
+            }
         }
+
+        // Should never reach here, but return empty array as fallback
+        logger.warn('FatSecret: unexpected end of search loop', {
+            originalQuery: query,
+            variants: searchVariants,
+            context: 'fatsecret-client'
+        })
+        return []
     }
 
     /**

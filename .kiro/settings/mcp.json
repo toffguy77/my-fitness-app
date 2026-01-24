@@ -11,6 +11,20 @@
             },
             "disabled": false,
             "autoApprove": []
+        },
+        "git": {
+            "command": "/opt/homebrew/bin/uvx",
+            "args": [
+                "mcp-server-git",
+                "--repository",
+                "/Users/thatguy/src/my-fitness-app"
+            ],
+            "autoApprove": [
+                "git_diff_unstaged",
+                "git_status",
+                "git_diff_staged",
+                "git_log"
+            ]
         }
     }
 }

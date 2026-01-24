@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Git Push & Monitor GitHub Actions",
+  "description": "Automatically stages all changes, commits with a descriptive message, pushes to remote, monitors GitHub Actions workflow execution, and iteratively fixes any issues until all jobs pass successfully",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Execute the following workflow:\n\n1. Stage all changes: `git add .`\n2. Create a commit with a descriptive message based on the changes\n3. Push to the remote repository: `git push`\n4. Monitor GitHub Actions workflow execution using the scripts/github-status.js script\n5. If any jobs fail:\n   - Analyze the failure logs\n   - Identify the root cause\n   - Fix the issues in the codebase\n   - Repeat steps 1-4 until all jobs pass\n6. Continue monitoring and fixing iteratively until the entire workflow is green\n7. Provide a summary of all fixes applied and final workflow status\n\nUse the existing monitoring scripts in the scripts/ folder and ensure all CI/CD checks pass before considering the task complete."
+  }
+}
