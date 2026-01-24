@@ -24,6 +24,10 @@ export interface FatSecretConfiguration {
     maxResults: number
     /** Whether to fallback to Open Food Facts when FatSecret fails */
     fallbackEnabled: boolean
+    /** Region code for localization (e.g., 'RU' for Russia, 'US' for United States) */
+    region: string
+    /** Language code for localization (e.g., 'ru' for Russian, 'en' for English) */
+    language: string
 }
 
 /**
@@ -62,7 +66,9 @@ export function getFatSecretConfig(): FatSecretConfiguration {
             baseUrl: 'https://platform.fatsecret.com/rest/server.api',
             timeout: 5000,
             maxResults: 20,
-            fallbackEnabled: true
+            fallbackEnabled: true,
+            region: 'US',
+            language: 'en'
         }
     }
 
@@ -77,7 +83,9 @@ export function getFatSecretConfig(): FatSecretConfiguration {
         baseUrl: process.env.FATSECRET_BASE_URL || 'https://platform.fatsecret.com/rest/server.api',
         timeout: isNaN(timeoutValue) ? 5000 : timeoutValue,
         maxResults: isNaN(maxResultsValue) ? 20 : maxResultsValue,
-        fallbackEnabled: process.env.FATSECRET_FALLBACK_ENABLED !== 'false'
+        fallbackEnabled: process.env.FATSECRET_FALLBACK_ENABLED !== 'false',
+        region: process.env.FATSECRET_REGION || 'US',
+        language: process.env.FATSECRET_LANGUAGE || 'en'
     }
 
     // Log configuration on startup (without sensitive data)
@@ -87,6 +95,8 @@ export function getFatSecretConfig(): FatSecretConfiguration {
             timeout: config.timeout,
             maxResults: config.maxResults,
             fallbackEnabled: config.fallbackEnabled,
+            region: config.region,
+            language: config.language,
             context: 'fatsecret-config'
         })
     }

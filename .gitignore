@@ -37,6 +37,9 @@ yarn-error.log*
 # cursor
 .cursor
 
+# kiro
+/kiro
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
