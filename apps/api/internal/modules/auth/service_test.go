@@ -15,7 +15,7 @@ func setupTestService() *Service {
 	cfg := &config.Config{
 		JWTSecret: "test-secret-key",
 	}
-	log := logger.NewLogger("test", "test")
+	log := logger.New()
 	return NewService(cfg, log)
 }
 
