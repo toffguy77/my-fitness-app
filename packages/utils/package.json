@@ -1,0 +1,13 @@
+{
+    "name": "@burcev/utils",
+    "version": "0.1.0",
+    "private": true,
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "scripts": {},
+    "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "jest": "^30.2.0",
+        "typescript": "^5"
+    }
+}

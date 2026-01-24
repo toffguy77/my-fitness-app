@@ -1,0 +1,15 @@
+{
+    "name": "@burcev/api",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "air -c .air.toml",
+        "build": "go build -o bin/server ./cmd/server",
+        "start": "./bin/server",
+        "test": "go test ./... -v",
+        "test:coverage": "go test ./... -coverprofile=coverage.out && go tool cover -html=coverage.out",
+        "lint": "golangci-lint run",
+        "fmt": "go fmt ./..."
+    },
+    "description": "BURCEV API - Go backend"
+}
