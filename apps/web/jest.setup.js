@@ -1,11 +1,10 @@
 import '@testing-library/jest-dom'
-import { server } from './__mocks__/server'
+import 'whatwg-fetch'
 
-// Establish API mocking before all tests
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// MSW temporarily disabled due to Jest compatibility issues
+// Will be re-enabled after resolving ESM/CJS conflicts
+// import { server } from './__mocks__/server'
 
-// Reset any request handlers that we may add during the tests
-afterEach(() => server.resetHandlers())
-
-// Clean up after the tests are finished
-afterAll(() => server.close())
+// beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+// afterEach(() => server.resetHandlers())
+// afterAll(() => server.close())
