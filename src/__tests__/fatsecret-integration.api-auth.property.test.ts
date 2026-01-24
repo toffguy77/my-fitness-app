@@ -68,7 +68,9 @@ describe('Property-Based Tests: FatSecret API Request Authentication', () => {
         baseUrl: 'https://platform.fatsecret.com/rest/server.api',
         timeout: 5000,
         maxResults: 20,
-        fallbackEnabled: true
+        fallbackEnabled: true,
+        region: 'US',
+        language: 'en'
     }
 
     describe('Property: All API requests include valid auth token', () => {
