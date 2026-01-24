@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/burcev/api/internal/config"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,7 @@ import (
 func TestAuthMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	secret := "test-secret"
+	cfg := &config.Config{JWTSecret: secret}
 
 	// Helper to generate valid token
 	generateToken := func(userID, email, role string) string {
@@ -87,10 +89,10 @@ func TestAuthMiddleware(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			c, r := gin.CreateTestContext(w)
+			_, r := gin.CreateTestContext(w)
 
 			// Setup middleware
-			r.Use(AuthMiddleware(secret))
+			r.Use(RequireAuth(cfg))
 			r.GET("/test", func(c *gin.Context) {
 				if tt.checkContext != nil {
 					tt.checkContext(t, c)
@@ -136,14 +138,14 @@ func TestRoleMiddleware(t *testing.T) {
 			name:           "missing role in context",
 			userRole:       "",
 			allowedRoles:   []string{"admin"},
-			expectedStatus: http.StatusForbidden,
+			expectedStatus: http.StatusUnauthorized,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			c, r := gin.CreateTestContext(w)
+			_, r := gin.CreateTestContext(w)
 
 			// Setup middleware
 			r.Use(func(c *gin.Context) {
@@ -152,7 +154,7 @@ func TestRoleMiddleware(t *testing.T) {
 				}
 				c.Next()
 			})
-			r.Use(RoleMiddleware(tt.allowedRoles...))
+			r.Use(RequireRole(tt.allowedRoles...))
 			r.GET("/test", func(c *gin.Context) {
 				c.JSON(http.StatusOK, gin.H{"message": "success"})
 			})

@@ -19,7 +19,7 @@ func setupTestHandler() *Handler {
 	cfg := &config.Config{
 		JWTSecret: "test-secret",
 	}
-	log := logger.NewLogger("test", "test")
+	log := logger.New()
 	return NewHandler(cfg, log)
 }
 
