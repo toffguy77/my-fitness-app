@@ -154,13 +154,22 @@ export PATH=/opt/homebrew/bin:/opt/homebrew/opt/go/libexec/bin:$GOPATH/bin:$PATH
 - Ошибка "command not found: brew"
 - Powerlevel10k показывает предупреждения
 
+**Причина:**
+Autoenv вызывает зависание при инициализации shell.
+
 **Решение:**
 ```bash
-# Запустите fix скрипт
-bash scripts/fix-zshrc.sh
+# Отключите autoenv в ~/.zshrc
+# Закомментируйте или удалите эти строки:
+# if [[ -f "/opt/homebrew/opt/autoenv/activate.sh" ]]; then
+#   source /opt/homebrew/opt/autoenv/activate.sh
+# fi
 
 # Перезапустите терминал
+source ~/.zshrc
 ```
+
+**Альтернатива:** Используйте direnv вместо autoenv - он более стабильный.
 
 ### Go не найден в Kiro
 
@@ -177,6 +186,17 @@ go build ./cmd/server
 
 # ✅ Работает в Kiro
 make build-api
+```
+
+**Важно:** Если Go Setup был отключен в ~/.zshrc (закомментирован), включите его обратно:
+
+```bash
+# Go Setup (after Homebrew is in PATH)
+if command -v brew &> /dev/null; then
+  export GOPATH="$HOME/src/go"
+  export GOROOT="$(brew --prefix go)/libexec"
+  export PATH="$PATH:$GOPATH/bin:$GOROOT/bin"
+fi
 ```
 
 ### npm не найден
