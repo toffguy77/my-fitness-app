@@ -35,3 +35,23 @@ func SuccessWithMessage(c *gin.Context, statusCode int, message string, data int
 		Data:    data,
 	})
 }
+
+// Unauthorized sends unauthorized response
+func Unauthorized(c *gin.Context, message string) {
+	Error(c, 401, message)
+}
+
+// Forbidden sends forbidden response
+func Forbidden(c *gin.Context, message string) {
+	Error(c, 403, message)
+}
+
+// NotFound sends not found response
+func NotFound(c *gin.Context, message string) {
+	Error(c, 404, message)
+}
+
+// InternalError sends internal server error response
+func InternalError(c *gin.Context, message string) {
+	Error(c, 500, message)
+}
