@@ -1,80 +1,113 @@
 version: '3.8'
 
 services:
-  # Main application - production build
-  app:
+  # Frontend - Next.js
+  web:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: runner
-      args:
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-https://placeholder.supabase.co}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-placeholder-key}
-        - NEXT_PUBLIC_APP_VERSION=${NEXT_PUBLIC_APP_VERSION:-production}
-    ports:
-      - "127.0.0.1:3069:3069"
-    environment:
-      - NODE_ENV=production
-      - PORT=3069
-      - HOSTNAME=0.0.0.0
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    env_file:
-      - .env.production
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3069/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-    networks:
-      app-network: {}
-      burcev_shared:
-        aliases:
-          - my-fitness-app
-
-  # Development version with hot reload
-  app-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile
+      dockerfile: apps/web/Dockerfile
       target: development
+    container_name: burcev-web
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"
     volumes:
-      - .:/app
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
       - /app/node_modules
-      - /app/.next
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
     environment:
       - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://api:4000
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     env_file:
       - .env.local
+    depends_on:
+      - api
     networks:
-      - app-network
-    profiles:
-      - development
+      - burcev-network
+    restart: unless-stopped
 
-  # Security scanner service for CI/CD
-  security-scan:
+  # Backend API - Go
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      target: development
+    container_name: burcev-api
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./apps/api:/app
+      - api_cache:/go/pkg/mod
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGIN=http://localhost:3000
+    env_file:
+      - .env.local
+    networks:
+      - burcev-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Production Web
+  web-prod:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: security-scan
-    volumes:
-      - ./docker-scan-results:/app/scan-results
+      dockerfile: apps/web/Dockerfile
+      target: production
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    container_name: burcev-web-prod
+    ports:
+      - "3069:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - burcev-network
     profiles:
-      - security
+      - production
+    restart: unless-stopped
+
+  # Production API
+  api-prod:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    container_name: burcev-api-prod
+    ports:
+      - "4069:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+    env_file:
+      - .env.production
+    networks:
+      - burcev-network
+    profiles:
+      - production
+    restart: unless-stopped
 
 networks:
-  app-network:
+  burcev-network:
     driver: bridge
-
-  burcev_shared:
-    external: true
 
 volumes:
   node_modules:
-  next_cache:
+  web_node_modules:
+  api_cache:
