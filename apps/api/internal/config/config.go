@@ -14,7 +14,18 @@ type Config struct {
 	Port       int
 	CORSOrigin string
 
-	// Supabase
+	// PostgreSQL
+	DatabaseURL      string
+	DatabaseHost     string
+	DatabasePort     int
+	DatabaseName     string
+	DatabaseUser     string
+	DatabasePassword string
+	DatabaseSSLMode  string
+	MaxOpenConns     int
+	MaxIdleConns     int
+
+	// Supabase (optional, for migration compatibility)
 	SupabaseURL        string
 	SupabaseServiceKey string
 
@@ -35,6 +46,18 @@ func Load() (*Config, error) {
 		Port:       getEnvAsInt("PORT", 4000),
 		CORSOrigin: getEnv("CORS_ORIGIN", "http://localhost:3000"),
 
+		// PostgreSQL configuration
+		DatabaseURL:      getEnv("DATABASE_URL", ""),
+		DatabaseHost:     getEnv("DB_HOST", "localhost"),
+		DatabasePort:     getEnvAsInt("DB_PORT", 5432),
+		DatabaseName:     getEnv("DB_NAME", "web-app-db"),
+		DatabaseUser:     getEnv("DB_USER", "web-app-user"),
+		DatabasePassword: getEnv("DB_PASSWORD", ""),
+		DatabaseSSLMode:  getEnv("DB_SSL_MODE", "require"),
+		MaxOpenConns:     getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+		MaxIdleConns:     getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+
+		// Supabase (optional)
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 
@@ -44,11 +67,8 @@ func Load() (*Config, error) {
 	}
 
 	// Validate required configuration
-	if cfg.SupabaseURL == "" {
-		return nil, fmt.Errorf("SUPABASE_URL is required")
-	}
-	if cfg.SupabaseServiceKey == "" {
-		return nil, fmt.Errorf("SUPABASE_SERVICE_KEY is required")
+	if cfg.DatabaseURL == "" && cfg.DatabasePassword == "" {
+		return nil, fmt.Errorf("DATABASE_URL or DB_PASSWORD is required")
 	}
 
 	return cfg, nil

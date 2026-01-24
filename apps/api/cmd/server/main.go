@@ -14,6 +14,7 @@ import (
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/nutrition"
 	"github.com/burcev/api/internal/modules/users"
+	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/gin-contrib/cors"
@@ -30,6 +31,33 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to load configuration", "error", err)
 	}
+
+	// Initialize database
+	var db *database.DB
+	if cfg.DatabaseURL != "" {
+		db, err = database.NewPostgresFromURL(cfg.DatabaseURL, cfg.MaxOpenConns, cfg.MaxIdleConns)
+	} else {
+		db, err = database.NewPostgres(database.PostgresConfig{
+			Host:         cfg.DatabaseHost,
+			Port:         cfg.DatabasePort,
+			Database:     cfg.DatabaseName,
+			User:         cfg.DatabaseUser,
+			Password:     cfg.DatabasePassword,
+			SSLMode:      cfg.DatabaseSSLMode,
+			MaxOpenConns: cfg.MaxOpenConns,
+			MaxIdleConns: cfg.MaxIdleConns,
+		})
+	}
+	if err != nil {
+		log.Fatal("Failed to connect to database", "error", err)
+	}
+	defer db.Close()
+
+	log.Info("Database connected successfully",
+		"host", cfg.DatabaseHost,
+		"database", cfg.DatabaseName,
+		"max_open_conns", cfg.MaxOpenConns,
+	)
 
 	// Set Gin mode
 	if cfg.Env == "production" {
@@ -56,10 +84,18 @@ func main() {
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
+		// Check database health
+		dbStatus := "ok"
+		if err := db.Health(c.Request.Context()); err != nil {
+			dbStatus = "unhealthy"
+			log.Error("Database health check failed", "error", err)
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"status":      "ok",
 			"timestamp":   time.Now().Format(time.RFC3339),
 			"environment": cfg.Env,
+			"database":    dbStatus,
 		})
 	})
 

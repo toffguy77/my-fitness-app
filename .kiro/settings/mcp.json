@@ -1,5 +1,21 @@
 {
     "mcpServers": {
+        "postgres": {
+            "command": "/opt/homebrew/bin/uvx",
+            "args": [
+                "mcp-server-postgres",
+                "postgresql://web-app-user:ycDoQH[YqDBz<Uq^#w:d)%ct6RY3~XA>iN\\G@c-c9q1384cb8tqrg09o8n4.rw.mdb.yandexcloud.net:6432/web-app-db?sslmode=require"
+            ],
+            "env": {
+                "FASTMCP_LOG_LEVEL": "ERROR"
+            },
+            "disabled": false,
+            "autoApprove": [
+                "read-query",
+                "list-tables",
+                "describe-table"
+            ]
+        },
         "supabase": {
             "command": "/opt/homebrew/bin/uvx",
             "args": [
@@ -9,7 +25,7 @@
             "env": {
                 "FASTMCP_LOG_LEVEL": "ERROR"
             },
-            "disabled": false,
+            "disabled": true,
             "autoApprove": []
         },
         "git": {

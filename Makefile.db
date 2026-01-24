@@ -1,0 +1,148 @@
+# Database Management Commands for PostgreSQL
+# Include this in main Makefile or use directly: make -f Makefile.db <command>
+
+# Colors
+BLUE := \033[36m
+GREEN := \033[32m
+YELLOW := \033[33m
+RED := \033[31m
+RESET := \033[0m
+
+.PHONY: db-connect db-status db-migrate db-tables db-schema db-backup db-reset
+
+db-connect: ## Connect to PostgreSQL database
+	@echo "$(BLUE)Connecting to PostgreSQL...$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+		echo "$(YELLOW)Create it from apps/api/.env.example$(RESET)"; \
+	fi
+
+db-status: ## Check database connection status
+	@echo "$(BLUE)Checking database status...$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL" -c "SELECT version();" -c "SELECT current_database(), current_user, pg_backend_pid();" 2>/dev/null && \
+		echo "$(GREEN)✓ Database connection successful$(RESET)" || \
+		echo "$(RED)✗ Database connection failed$(RESET)"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-migrate: ## Run all database migrations
+	@echo "$(BLUE)Running database migrations...$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && \
+		for file in migrations/*.sql; do \
+			if [ -f "$$file" ]; then \
+				echo "$(YELLOW)→ Running $$file$(RESET)"; \
+				psql "$$DATABASE_URL" -f "$$file" || exit 1; \
+			fi; \
+		done; \
+		echo "$(GREEN)✓ Migrations completed$(RESET)"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-migrate-file: ## Run specific migration (usage: make -f Makefile.db db-migrate-file FILE=migrations/v1.0.sql)
+	@echo "$(BLUE)Running migration: $(FILE)$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL" -f "$(FILE)"; \
+		echo "$(GREEN)✓ Migration completed$(RESET)"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-tables: ## List all database tables
+	@echo "$(BLUE)Database tables:$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL" -c "\dt"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-schema: ## Show table schema (usage: make -f Makefile.db db-schema TABLE=users)
+	@echo "$(BLUE)Schema for table: $(TABLE)$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL" -c "\d $(TABLE)"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-query: ## Run SQL query (usage: make -f Makefile.db db-query SQL="SELECT * FROM users LIMIT 5")
+	@echo "$(BLUE)Running query...$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL" -c "$(SQL)"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-backup: ## Backup database to file
+	@echo "$(BLUE)Creating database backup...$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && \
+		BACKUP_FILE="backups/db_backup_$$(date +%Y%m%d_%H%M%S).sql"; \
+		mkdir -p backups; \
+		pg_dump "$$DATABASE_URL" > "$$BACKUP_FILE"; \
+		echo "$(GREEN)✓ Backup created: $$BACKUP_FILE$(RESET)"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-restore: ## Restore from backup (usage: make -f Makefile.db db-restore FILE=backups/db_backup.sql)
+	@echo "$(RED)⚠ This will restore database from backup!$(RESET)"
+	@read -p "Are you sure? (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		if [ -f apps/api/.env ]; then \
+			. apps/api/.env && psql "$$DATABASE_URL" -f "$(FILE)"; \
+			echo "$(GREEN)✓ Database restored$(RESET)"; \
+		else \
+			echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+		fi; \
+	else \
+		echo "$(YELLOW)Restore cancelled$(RESET)"; \
+	fi
+
+db-reset: ## Reset database (WARNING: destructive!)
+	@echo "$(RED)⚠ This will drop and recreate all tables!$(RESET)"
+	@read -p "Are you sure? Type 'yes' to confirm: " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo "$(YELLOW)→ Dropping all tables...$(RESET)"; \
+		if [ -f apps/api/.env ]; then \
+			. apps/api/.env && \
+			psql "$$DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO PUBLIC;" && \
+			echo "$(GREEN)✓ Database reset$(RESET)" && \
+			echo "$(YELLOW)→ Run 'make -f Makefile.db db-migrate' to recreate tables$(RESET)"; \
+		else \
+			echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+		fi; \
+	else \
+		echo "$(YELLOW)Reset cancelled$(RESET)"; \
+	fi
+
+db-stats: ## Show database statistics
+	@echo "$(BLUE)Database statistics:$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL" -c "\
+			SELECT \
+				schemaname, \
+				tablename, \
+				pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size, \
+				n_live_tup AS rows \
+			FROM pg_stat_user_tables \
+			ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
+
+db-connections: ## Show active database connections
+	@echo "$(BLUE)Active connections:$(RESET)"
+	@if [ -f apps/api/.env ]; then \
+		. apps/api/.env && psql "$$DATABASE_URL" -c "\
+			SELECT pid, usename, application_name, client_addr, state, query_start \
+			FROM pg_stat_activity \
+			WHERE datname = current_database() \
+			ORDER BY query_start DESC;"; \
+	else \
+		echo "$(RED)Error: apps/api/.env not found$(RESET)"; \
+	fi
