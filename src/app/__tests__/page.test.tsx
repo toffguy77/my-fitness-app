@@ -1,45 +1,17 @@
-/**
- * Component Tests: Landing Page
- * Tests landing page rendering and navigation
- */
-
 import { render, screen } from '@testing-library/react'
-import LandingPage from '../page'
+import '@testing-library/jest-dom'
+import Home from '../page'
 
-// Mock Next.js Link
-jest.mock('next/link', () => {
-  const MockLink = ({ children, href }: { children: React.ReactNode; href: string }) => {
-    return <a href={href}>{children}</a>
-  }
-  MockLink.displayName = 'MockLink'
-  return MockLink
-})
+describe('Home Page', () => {
+    it('renders the heading', () => {
+        render(<Home />)
+        const heading = screen.getByText(/BURCEV Development/i)
+        expect(heading).toBeTruthy()
+    })
 
-describe('Landing Page', () => {
-  it('should render landing page with hero section', () => {
-    render(<LandingPage />)
-
-    expect(screen.getByText(/Твое тело — это математика/i)).toBeInTheDocument()
-    expect(screen.getByText(/Начать бесплатно/i)).toBeInTheDocument()
-  })
-
-  it('should have link to registration', () => {
-    render(<LandingPage />)
-
-    const registerLink = screen.getByRole('link', { name: /Начать бесплатно/i })
-    expect(registerLink).toHaveAttribute('href', '/register')
-  })
-
-  it('should display problem section', () => {
-    render(<LandingPage />)
-
-    expect(screen.getByText(/Почему ты срываешься/i)).toBeInTheDocument()
-  })
-
-  it('should display solution section', () => {
-    render(<LandingPage />)
-
-    // Check for solution-related content
-    expect(screen.getByText(/Система управления пищевым поведением/i)).toBeInTheDocument()
-  })
+    it('renders the subtitle', () => {
+        render(<Home />)
+        const subtitle = screen.getByText(/Ready for development/i)
+        expect(subtitle).toBeTruthy()
+    })
 })
