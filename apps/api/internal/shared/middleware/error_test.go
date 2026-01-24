@@ -21,7 +21,7 @@ func TestErrorHandlerMiddleware(t *testing.T) {
 
 		r.Use(ErrorHandler(log))
 		r.GET("/test", func(c *gin.Context) {
-			c.Error(errors.New("test error"))
+			_ = c.Error(errors.New("test error"))
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -54,7 +54,7 @@ func TestErrorHandlerMiddleware(t *testing.T) {
 		r.Use(ErrorHandler(log))
 		r.GET("/test", func(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "custom error"})
-			c.Error(errors.New("test error"))
+			_ = c.Error(errors.New("test error"))
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -70,8 +70,8 @@ func TestErrorHandlerMiddleware(t *testing.T) {
 
 		r.Use(ErrorHandler(log))
 		r.GET("/test", func(c *gin.Context) {
-			c.Error(errors.New("first error"))
-			c.Error(errors.New("second error"))
+			_ = c.Error(errors.New("first error"))
+			_ = c.Error(errors.New("second error"))
 		})
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)

@@ -253,7 +253,7 @@ func (l *Logger) withFields() *zap.SugaredLogger {
 		keysAndValues = append(keysAndValues, k, v)
 	}
 
-	return l.SugaredLogger.With(keysAndValues...)
+	return l.With(keysAndValues...)
 }
 
 // Sync flushes any buffered log entries

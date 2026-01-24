@@ -23,7 +23,7 @@ import (
 func main() {
 	// Initialize logger
 	log := logger.New()
-	defer log.Sync()
+	defer func() { _ = log.Sync() }()
 
 	// Load configuration
 	cfg, err := config.Load()

@@ -74,7 +74,7 @@ func TestLoggerMiddleware(t *testing.T) {
 
 		r.Use(Logger(log))
 		r.GET("/test", func(c *gin.Context) {
-			c.Error(assert.AnError)
+			_ = c.Error(assert.AnError)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		})
 

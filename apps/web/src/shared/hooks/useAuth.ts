@@ -68,7 +68,7 @@ export function useAuth(): AuthState {
             }
 
             return { success: false, error: data.message || 'Login failed' }
-        } catch (err) {
+        } catch {
             return { success: false, error: 'Network error' }
         }
     }

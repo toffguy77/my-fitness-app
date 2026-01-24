@@ -18,12 +18,19 @@ func TestNew(t *testing.T) {
 	})
 }
 
+type contextKey string
+
+const (
+	requestIDKey contextKey = "request_id"
+	userIDKey    contextKey = "user_id"
+)
+
 func TestWithContext(t *testing.T) {
 	log := New()
 
 	t.Run("adds context values", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "request_id", "req-123")
-		ctx = context.WithValue(ctx, "user_id", "user-456")
+		ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
+		ctx = context.WithValue(ctx, userIDKey, "user-456")
 
 		logWithCtx := log.WithContext(ctx)
 
