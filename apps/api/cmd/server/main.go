@@ -11,6 +11,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/nutrition"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/shared/logger"
@@ -94,6 +95,15 @@ func main() {
 			nutritionGroup.GET("/entries/:id", nutritionHandler.GetEntry)
 			nutritionGroup.PUT("/entries/:id", nutritionHandler.UpdateEntry)
 			nutritionGroup.DELETE("/entries/:id", nutritionHandler.DeleteEntry)
+		}
+
+		// Logs routes (public for frontend logging)
+		logsHandler := logs.NewHandler(cfg, log)
+		logsGroup := v1.Group("/logs")
+		{
+			logsGroup.POST("", logsHandler.ReceiveLogs)
+			// Protected stats endpoint
+			logsGroup.GET("/stats", middleware.RequireAuth(cfg), middleware.RequireRole("admin"), logsHandler.GetLogStats)
 		}
 	}
 

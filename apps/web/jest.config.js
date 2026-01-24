@@ -5,6 +5,7 @@ const createJestConfig = nextJest({
 })
 
 const customJestConfig = {
+    setupFiles: ['<rootDir>/jest.polyfills.js'],
     setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     testEnvironment: 'jest-environment-jsdom',
     moduleNameMapper: {
@@ -20,7 +21,7 @@ const customJestConfig = {
         '!src/**/*.stories.{js,jsx,ts,tsx}',
         '!src/**/__tests__/**',
     ],
-    coverageThresholds: {
+    coverageThreshold: {
         global: {
             branches: 80,
             functions: 80,
@@ -28,6 +29,9 @@ const customJestConfig = {
             statements: 80,
         },
     },
+    transformIgnorePatterns: [
+        'node_modules/(?!(msw|@mswjs|until-async)/)',
+    ],
 }
 
 module.exports = createJestConfig(customJestConfig)
