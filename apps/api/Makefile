@@ -1,5 +1,11 @@
 .PHONY: help dev build run test lint fmt clean
 
+# Setup Go environment
+SHELL := /bin/bash
+export GOROOT := /opt/homebrew/opt/go/libexec
+export GOPATH := $(HOME)/src/go
+export PATH := /opt/homebrew/bin:$(GOROOT)/bin:$(GOPATH)/bin:$(PATH)
+
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 

@@ -1,6 +1,11 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Setup environment for Homebrew tools (macOS)
+export GOROOT=/opt/homebrew/opt/go/libexec
+export GOPATH=$HOME/src/go
+export PATH=/opt/homebrew/bin:/opt/homebrew/opt/go/libexec/bin:$GOPATH/bin:$PATH
+
 echo "🔍 Running pre-commit checks..."
 
 # Get list of staged files
@@ -30,17 +35,23 @@ fi
 if [ -n "$STAGED_API_FILES" ]; then
   echo "\n🔧 Backend checks..."
 
-  # Format check
-  echo "  ⚡ Format checking..."
-  cd apps/api && go fmt ./... || exit 1
-  cd ../..
-
-  # Run tests for changed packages
-  echo "  ⚡ Running tests..."
-  CHANGED_PACKAGES=$(echo "$STAGED_API_FILES" | sed 's|apps/api/||g' | xargs -I {} dirname {} | sort -u | sed 's|^|./|' | tr '\n' ' ')
-  if [ -n "$CHANGED_PACKAGES" ]; then
-    cd apps/api && go test $CHANGED_PACKAGES -short || exit 1
+  # Check if Go is available
+  if ! command -v go &> /dev/null; then
+    echo "  ⚠️  Go not found in PATH, skipping backend checks"
+    echo "  💡 See .kiro/ENVIRONMENT_SETUP.md for setup instructions"
+  else
+    # Format check
+    echo "  ⚡ Format checking..."
+    cd apps/api && go fmt ./... || exit 1
     cd ../..
+
+    # Run tests for changed packages
+    echo "  ⚡ Running tests..."
+    CHANGED_PACKAGES=$(echo "$STAGED_API_FILES" | sed 's|apps/api/||g' | xargs -I {} dirname {} | sort -u | sed 's|^|./|' | tr '\n' ' ')
+    if [ -n "$CHANGED_PACKAGES" ]; then
+      cd apps/api && go test $CHANGED_PACKAGES -short || exit 1
+      cd ../..
+    fi
   fi
 fi
 
