@@ -56,7 +56,7 @@ func TestReceiveLogs(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.Equal(t, float64(1), response["data"].(map[string]interface{})["received"])
 	})
 
@@ -95,7 +95,7 @@ func TestReceiveLogs(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.Equal(t, float64(3), response["data"].(map[string]interface{})["received"])
 	})
 
@@ -160,7 +160,7 @@ func TestGetLogStats(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
+		_ = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NotNil(t, response["data"])
 	})
 }
