@@ -1,32 +1,41 @@
 # Product Overview
 
-## BURCEV - Fitness App
+BURCEV is a Freemium SaaS fitness and nutrition tracking platform designed for clients working with fitness trainers and nutritionists.
 
-A freemium SaaS platform for nutrition tracking and fitness coaching. Digital food diary with trainer support for KBJU (calories, proteins, fats, carbohydrates) tracking and eating behavior management.
+## Core Purpose
 
-### Core Features
+Digital nutrition diary with KBЖУ tracking (calories, protein, fat, carbs), trainer collaboration features, and progress visualization.
 
-- **Nutrition Tracking**: Daily food logging with macro/calorie tracking
-- **OCR Integration**: Photo-based food recognition using Tesseract.js and OpenRouter API
-- **Role-Based Access**: Client (Free/Premium), Coordinator (Coach), Super Admin
-- **Premium Features**: Advanced reports, coach access, enhanced analytics
-- **PWA Support**: Offline functionality, installable web app
-- **Achievement System**: Gamification with progress tracking
-- **Real-time Chat**: Communication between clients and coordinators
+## Key Features
 
-### User Roles
+**Free Tier:**
+- Daily nutrition logging with multiple meals
+- Weight tracking
+- Basic dashboard with weekly summary
+- Automatic BMR/TDEE calculation
+- Data validation
 
-- **Client (Free)**: Basic nutrition diary
-- **Client (Premium)**: Full functionality with trainer support
-- **Coordinator**: Client management and coaching tools
-- **Super Admin**: Platform administration
+**Premium Tier:**
+- Trainer collaboration (notes, feedback, real-time chat)
+- Advanced reports and analytics
+- Progress charts (weight, macros)
+- Data export (CSV, JSON, PDF)
+- OCR label recognition
+- Achievement system
+- Product database with autocomplete
 
-### Business Model
+## User Roles
 
-Freemium SaaS with subscription tiers:
-- Basic (Free): Core nutrition tracking
-- Premium: Advanced features, coach access, detailed reports
+- **Client**: End users tracking nutrition (Free or Premium)
+- **Coach**: Trainers monitoring client progress, providing feedback
+- **Super Admin**: Platform administrators managing users and subscriptions
 
-### Target Market
+## Tech Stack
 
-Russian-speaking users focused on nutrition tracking and fitness coaching.
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4
+- **Backend**: Go (Gin framework) + PostgreSQL on Yandex.Cloud
+- **Infrastructure**: Docker, nginx
+
+## Current Status
+
+Version 4.0+ with Phases 1-7 implemented (95% complete). Production-ready with active deployment on burcev.team.

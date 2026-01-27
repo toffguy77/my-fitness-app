@@ -10,6 +10,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
     ({ className, label, error, helperText, id, ...props }, ref) => {
         const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
+        const errorId = error ? `${inputId}-error` : undefined
+        const helperId = helperText ? `${inputId}-helper` : undefined
 
         return (
             <div className="w-full">
@@ -21,6 +23,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 <input
                     ref={ref}
                     id={inputId}
+                    aria-label={label || props['aria-label']}
+                    aria-required={props.required}
+                    aria-invalid={!!error}
+                    aria-describedby={error ? errorId : helperId}
                     className={cn(
                         'flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm',
                         'placeholder:text-gray-400',
@@ -32,10 +38,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                     {...props}
                 />
                 {error && (
-                    <p className="mt-1 text-sm text-red-600">{error}</p>
+                    <p id={errorId} className="mt-1 text-sm text-red-600" role="alert">
+                        {error}
+                    </p>
                 )}
                 {helperText && !error && (
-                    <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+                    <p id={helperId} className="mt-1 text-sm text-gray-500">
+                        {helperText}
+                    </p>
                 )}
             </div>
         )

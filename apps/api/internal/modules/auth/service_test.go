@@ -101,7 +101,7 @@ func TestLoginService(t *testing.T) {
 	}
 }
 
-func TestGenerateToken(t *testing.T) {
+func TestGenerateJWTToken(t *testing.T) {
 	service := setupTestService()
 
 	user := &User{
@@ -149,7 +149,7 @@ func BenchmarkLogin(b *testing.B) {
 	}
 }
 
-func BenchmarkGenerateToken(b *testing.B) {
+func BenchmarkGenerateJWTToken(b *testing.B) {
 	service := setupTestService()
 	user := &User{
 		ID:    "user-123",

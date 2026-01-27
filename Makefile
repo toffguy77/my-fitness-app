@@ -48,12 +48,12 @@ dev: ## Start development servers (frontend + backend)
 	@echo "$(YELLOW)→ Frontend: http://localhost:3069$(RESET)"
 	@echo "$(YELLOW)→ Backend: http://localhost:4000$(RESET)"
 	@trap 'kill 0' EXIT; \
-	(cd apps/web && npm run dev) & \
+	(cd apps/web && NODE_OPTIONS='--max-old-space-size=4096' npm run dev) & \
 	(cd apps/api && air -c .air.toml)
 
 dev-web: ## Start frontend development server only
 	@echo "$(BLUE)Starting frontend dev server...$(RESET)"
-	cd apps/web && npm run dev
+	cd apps/web && NODE_OPTIONS='--max-old-space-size=4096' npm run dev
 
 dev-api: ## Start backend development server only
 	@echo "$(BLUE)Starting backend dev server...$(RESET)"
@@ -67,7 +67,7 @@ build: build-web build-api ## Build frontend and backend
 
 build-web: ## Build frontend for production
 	@echo "$(BLUE)Building frontend...$(RESET)"
-	cd apps/web && npm run build
+	cd apps/web && NODE_OPTIONS='--max-old-space-size=4096' npm run build
 	@echo "$(GREEN)✓ Frontend built$(RESET)"
 
 build-api: ## Build backend binary
@@ -194,7 +194,7 @@ deploy-prod: ## Deploy to production environment
 
 db-migrate: ## Run database migrations
 	@echo "$(BLUE)Running database migrations...$(RESET)"
-	@echo "$(YELLOW)→ Connect to Supabase and run migrations from migrations/ folder$(RESET)"
+	@echo "$(YELLOW)→ Connect to database and run migrations from apps/api/migrations/ folder$(RESET)"
 
 db-reset: ## Reset database (WARNING: destructive)
 	@echo "$(RED)⚠ This will reset the database!$(RESET)"

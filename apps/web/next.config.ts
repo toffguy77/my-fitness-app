@@ -7,7 +7,7 @@ const packageJson = require('./package.json');
 const appVersion = packageJson.version;
 
 const baseConfig: NextConfig = {
-  reactCompiler: true,
+  reactCompiler: false, // Disabled: babel-plugin-react-compiler not installed
   output: 'standalone',
   turbopack: {},
   experimental: {

@@ -1,0 +1,64 @@
+# Development Branch .gitignore
+# In dev branch, we commit .env files for shared development
+# Use this file: cp .gitignore.dev .gitignore (only in dev branch!)
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Testing
+coverage/
+*.out
+bin/
+
+# Build
+.next/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment - ALLOW .env files in dev branch
+# .env
+# .env.local
+# .env*.local
+
+# Production environment files (never commit)
+.env.production
+.env.production.local
+.env.staging
+.env.staging.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache
+.cache/
+.swc/
+
+# Misc
+*.pem
+.vercel
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# Temporary files
+tmp/
+temp/
+*.tmp

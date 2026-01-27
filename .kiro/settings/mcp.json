@@ -1,46 +1,45 @@
 {
-    "mcpServers": {
-        "postgres": {
-            "command": "/opt/homebrew/bin/uvx",
-            "args": [
-                "mcp-server-postgres",
-                "postgresql://web-app-user:ycDoQH[YqDBz<Uq^#w:d)%ct6RY3~XA>iN\\G@c-c9q1384cb8tqrg09o8n4.rw.mdb.yandexcloud.net:6432/web-app-db?sslmode=require"
-            ],
-            "env": {
-                "FASTMCP_LOG_LEVEL": "ERROR"
-            },
-            "disabled": false,
-            "autoApprove": [
-                "read-query",
-                "list-tables",
-                "describe-table"
-            ]
-        },
-        "supabase": {
-            "command": "/opt/homebrew/bin/uvx",
-            "args": [
-                "supabase-mcp-server@latest",
-                "https://mcp.supabase.com/mcp?project_ref=kvdusetwlsxcusbjwvdu&read_only=false"
-            ],
-            "env": {
-                "FASTMCP_LOG_LEVEL": "ERROR"
-            },
-            "disabled": true,
-            "autoApprove": []
-        },
-        "git": {
-            "command": "/opt/homebrew/bin/uvx",
-            "args": [
-                "mcp-server-git",
-                "--repository",
-                "/Users/thatguy/src/my-fitness-app"
-            ],
-            "autoApprove": [
-                "git_diff_unstaged",
-                "git_status",
-                "git_diff_staged",
-                "git_log"
-            ]
-        }
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://web-app-user:ycDoQH%5BYqDBz%3CUq%5E%23w%3Ad%29%25ct6RY3~XA%3EiN%5CG@c-c9q1384cb8tqrg09o8n4.rw.mdb.yandexcloud.net:6432/web-app-db?sslmode=no-verify"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "read-query",
+        "list-tables",
+        "describe-table",
+        "query"
+      ]
+    },
+    "supabase": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "supabase-mcp-server@latest",
+        "https://mcp.supabase.com/mcp?project_ref=kvdusetwlsxcusbjwvdu&read_only=false"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": true,
+      "autoApprove": []
+    },
+    "git": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "/Users/thatguy/src/my-fitness-app"
+      ],
+      "autoApprove": [
+        "git_diff_unstaged",
+        "git_status",
+        "git_diff_staged",
+        "git_log"
+      ]
     }
+  }
 }
