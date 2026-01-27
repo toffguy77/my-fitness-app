@@ -15,6 +15,7 @@ import (
 	"github.com/burcev/api/internal/modules/nutrition"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/shared/database"
+	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/gin-contrib/cors"
@@ -59,6 +60,30 @@ func main() {
 		"max_open_conns", cfg.MaxOpenConns,
 	)
 
+	// Initialize email service
+	emailService, err := email.NewService(email.Config{
+		SMTPHost:     cfg.SMTPHost,
+		SMTPPort:     cfg.SMTPPort,
+		SMTPUsername: cfg.SMTPUsername,
+		SMTPPassword: cfg.SMTPPassword,
+		FromAddress:  cfg.SMTPFromAddress,
+		FromName:     cfg.SMTPFromName,
+	}, log)
+	if err != nil {
+		log.Fatal("Failed to initialize email service", "error", err)
+	}
+
+	log.Info("Email service initialized successfully",
+		"smtp_host", cfg.SMTPHost,
+		"smtp_port", cfg.SMTPPort,
+	)
+
+	// Initialize rate limiter
+	rateLimiter := middleware.NewRateLimiter(db.DB, log)
+
+	// Initialize reset service
+	resetService := auth.NewResetService(db.DB, cfg, log, emailService, rateLimiter)
+
 	// Set Gin mode
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -72,9 +97,15 @@ func main() {
 	router.Use(middleware.Logger(log))
 	router.Use(middleware.ErrorHandler(log))
 
-	// CORS configuration
+	// CORS configuration - allow both 3000 and 3069 for development
+	corsOrigins := []string{cfg.CORSOrigin}
+	// Add port 3000 if not already included
+	if cfg.CORSOrigin == "http://localhost:3069" {
+		corsOrigins = append(corsOrigins, "http://localhost:3000")
+	}
+
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.CORSOrigin},
+		AllowOrigins:     corsOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -104,12 +135,18 @@ func main() {
 	{
 		// Auth routes
 		authHandler := auth.NewHandler(cfg, log)
+		resetHandler := auth.NewResetHandler(cfg, log, resetService)
 		authGroup := v1.Group("/auth")
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 			authGroup.POST("/logout", authHandler.Logout)
 			authGroup.GET("/me", middleware.RequireAuth(cfg), authHandler.GetCurrentUser)
+
+			// Password reset routes
+			authGroup.POST("/forgot-password", resetHandler.ForgotPassword)
+			authGroup.POST("/reset-password", resetHandler.ResetPassword)
+			authGroup.GET("/validate-reset-token", resetHandler.ValidateResetToken)
 		}
 
 		// Users routes (protected)

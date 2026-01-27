@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Test Coverage Check",
+  "description": "Automatically checks test coverage when code files are edited, fixes broken tests, improves functionality, and ensures coverage meets expected levels. Uses mocks, tracks performance, and classifies tests (moving slow but critical tests to CI).",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "*.ts",
+      "*.tsx",
+      "*.go"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check test coverage for the edited file and related tests:\n\n1. **Fix broken tests**: Run tests and fix any failures\n2. **Improve functionality**: Ensure tests cover edge cases and error scenarios\n3. **Achieve coverage targets**: Aim for 60%+ coverage (frontend) and comprehensive coverage (backend)\n\nWhen creating/updating tests:\n- Use mocks (MSW for frontend API calls, testify mocks for Go)\n- Track test performance (identify slow tests >1s)\n- Classify tests:\n  - Fast unit tests: Run locally and in CI\n  - Slow integration tests: Mark with appropriate tags and run in CI only\n  - E2E tests: Run in CI only\n\nFor frontend (TypeScript/React):\n- Use Jest + React Testing Library\n- Mock API calls with MSW\n- Co-locate tests or use __tests__ directory\n- Test files: *.test.ts or *.test.tsx\n\nFor backend (Go):\n- Use Go testing package + testify\n- Table-driven tests preferred\n- Test files: *_test.go\n- Mock external dependencies\n\nRun coverage reports and show results."
+  }
+}

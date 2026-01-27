@@ -187,12 +187,14 @@ The MCP server for PostgreSQL is configured in `.kiro/settings/mcp.json`:
 
 ### Migration Files
 
-Store migrations in `migrations/` directory:
+Store migrations in `apps/api/migrations/` directory:
 
 ```
-migrations/
-├── v1.0_initial_schema.sql
-├── v1.1_add_users_table.sql
+apps/api/migrations/
+├── 000_create_users_table_up.sql
+├── 000_create_users_table_down.sql
+├── 001_password_reset_schema_up.sql
+├── 001_password_reset_schema_down.sql
 └── v1.2_add_nutrition_tables.sql
 ```
 
@@ -200,10 +202,10 @@ migrations/
 
 ```bash
 # Using psql
-psql "postgresql://web-app-user:PASSWORD@HOST:6432/web-app-db?sslmode=require" -f migrations/v1.0_initial_schema.sql
+psql "postgresql://web-app-user:PASSWORD@HOST:6432/web-app-db?sslmode=require" -f apps/api/migrations/000_create_users_table_up.sql
 
-# Using MCP
-@postgres write-query "$(cat migrations/v1.0_initial_schema.sql)"
+# Using make
+make -f Makefile.db db-migrate
 ```
 
 ## Connection Pool Settings

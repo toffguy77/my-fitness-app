@@ -1,108 +1,146 @@
-# Technology Stack
+# Technical Stack & Build System
 
-## Framework & Runtime
+## Architecture
 
-- **Next.js 16** with App Router
-- **React 19** with React Compiler enabled
-- **TypeScript 5** with strict mode
-- **Node.js 20+** runtime requirement
+Monorepo with feature-based organization using npm workspaces.
 
-## Styling & UI
+## Frontend Stack
 
-- **Tailwind CSS v4** with PostCSS
-- **Lucide React** for icons
-- **Geist fonts** (Sans & Mono) with system fallbacks
-- **Responsive design** with mobile-first approach
+- **Framework**: Next.js 16 (App Router with SSR/CSR)
+- **Language**: TypeScript 5
+- **UI**: React 19 with React Compiler
+- **Styling**: Tailwind CSS v4
+- **State**: Zustand for global state, React hooks for local
+- **Testing**: Jest, React Testing Library, Playwright (E2E)
+- **Mocking**: MSW (Mock Service Worker)
+- **Icons**: Lucide React
+- **Charts**: Recharts
+- **Notifications**: react-hot-toast
 
-## Backend & Database
+## Backend Stack
 
-- **Supabase** (PostgreSQL + Auth + Storage + Real-time)
-- **Row Level Security (RLS)** for data protection
-- **SQL migrations** in `migrations/` folder
-- **Supabase Edge Functions** for serverless logic
+- **Language**: Go 1.22
+- **Framework**: Gin (HTTP router)
+- **Database**: PostgreSQL on Yandex.Cloud
+- **Auth**: JWT-based authentication
+- **Logging**: Zap (structured logging)
+- **Testing**: Go testing package with testify
 
-## Key Libraries
+## Infrastructure
 
-- **@supabase/ssr** - Server-side rendering support
-- **zod** - Runtime type validation
-- **recharts** - Data visualization
-- **tesseract.js** - OCR processing
-- **jspdf** - PDF generation
-- **papaparse** - CSV parsing
-- **react-hot-toast** - Notifications
-- **resend** - Email service
+- **Containerization**: Docker + Docker Compose
+- **Reverse Proxy**: nginx
+- **CI/CD**: GitHub Actions (planned)
+- **Deployment**: VPS with Docker
 
-## Development Tools
+## Common Commands
 
-- **ESLint** with Next.js config + security plugins
-- **Jest** for unit/integration testing
-- **Playwright** for E2E testing
-- **MSW** for API mocking
-- **Docker** for containerization
-
-## Build & Deployment
-
-### Common Commands
-
+### Development
 ```bash
-# Development
-npm run dev                    # Start dev server (localhost:3069)
-
-# Building
-npm run build                  # Production build
-npm start                      # Start production server
-npm run type-check            # TypeScript validation
-
-# Testing
-npm test                      # Unit/integration tests (Jest)
-npm run test:coverage         # Tests with coverage report
-npm run test:e2e             # E2E tests (Playwright)
-npm run test:all             # All tests
-
-# Code Quality
-npm run lint                  # ESLint validation
-npm run lint:security        # Security-focused linting
-
-# Docker
-make build                    # Build Docker image
-make deploy                   # Build and start containers
-make update                   # Git pull + rebuild + restart
+make dev              # Start both frontend and backend
+make dev-web          # Frontend only (port 3069)
+make dev-api          # Backend only (port 4000)
+npm run dev           # Alternative: start both apps
 ```
 
-### Environment Variables
-
-Required variables in `.env.local`:
-
+### Building
 ```bash
-# Supabase (Required)
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Email (Optional - Resend)
-RESEND_API_KEY=re_xxxxx
-RESEND_FROM_EMAIL=noreply@yourdomain.com
-
-# OCR Enhancement (Optional)
-NEXT_PUBLIC_OPENROUTER_API_KEY=sk-or-v1-xxxxx
-
-# App Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3069
+make build            # Build all
+make build-web        # Build Next.js app
+make build-api        # Build Go binary
 ```
 
-## Architecture Patterns
+### Testing
+```bash
+make test             # Run all tests
+make test-web         # Frontend tests (Jest)
+make test-api         # Backend tests (Go test)
+make test-coverage    # Tests with coverage reports
+npm test              # Alternative: run workspace tests
+```
 
-- **App Router** with file-based routing
-- **Server Components** by default, Client Components when needed
-- **Middleware** for authentication and role-based routing
-- **Centralized logging** with `@/utils/logger`
-- **Type-safe database** queries with Supabase TypeScript
-- **Error boundaries** for graceful error handling
-- **PWA** with service worker and offline support
+### Code Quality
+```bash
+make lint             # Lint all code
+make type-check       # TypeScript type checking
+npm run lint          # ESLint for frontend
+```
 
-## Performance
+### Docker
+```bash
+make docker-build     # Build images
+make docker-up        # Start containers
+make docker-down      # Stop containers
+make docker-logs      # View logs
+```
 
-- **React Compiler** for automatic optimization
-- **Next.js Image** optimization
-- **Standalone output** for Docker
-- **Bundle analysis** and code splitting
-- **Metrics collection** with custom collector
+### Database
+```bash
+# Migrations managed through migration files
+# Connection via DATABASE_URL or individual DB_* env vars
+# PostgreSQL hosted on Yandex.Cloud
+```
+
+## Project Structure
+
+```
+apps/
+  web/              # Next.js frontend
+    src/
+      app/          # App Router pages
+      features/     # Feature modules (auth, nutrition, etc.)
+      shared/       # Shared components, utils, hooks
+      styles/       # Design tokens
+  api/              # Go backend
+    cmd/server/     # Entry point
+    internal/
+      modules/      # Business modules (auth, users, etc.)
+      shared/       # Shared utilities (database, logger, middleware)
+      config/       # Configuration
+packages/           # Shared packages (types, ui, utils, config)
+```
+
+## Environment Variables
+
+Required env vars in `.env.local`:
+- `DATABASE_URL` or `DB_*` vars (PostgreSQL on Yandex.Cloud)
+- `JWT_SECRET`
+- `API_URL` / `NEXT_PUBLIC_API_URL`
+
+## Key Dependencies
+
+**Frontend:**
+- next@16.0.10
+- react@19.2.1
+- typescript@5
+- tailwindcss@4
+- zustand@5
+- zod@4 (validation)
+
+**Backend:**
+- gin-gonic/gin@1.10
+- lib/pq@1.10 (PostgreSQL driver)
+- golang-jwt/jwt@5
+- uber-go/zap@1.27 (logging)
+
+## Development Workflow
+
+1. Install: `make install` or `npm install`
+2. Setup env: Copy `env.example` to `.env.local`
+3. Start dev: `make dev`
+4. Run tests: `make test`
+5. Build: `make build`
+6. Deploy: `make deploy-{dev|staging|prod}`
+
+# Terminal Guidelines
+
+## IMPORTANT: Avoid commands that cause output buffering issues
+- DO NOT pipe output through head, tail, less, or more when monitoring or checking command output
+- DO NOT use | head -n X or | tail -n X to truncate output - these cause buffering problems
+- Instead, let commands complete fully, or use `- -max-lines` flags if the command supports them
+- For log monitoring, prefer reading files directly rather than piping through filters
+
+## When checking command output:
+- Run commands directly without pipes when possible
+- If you need to limit output, use command-specific flags (e.g., git log -n 10 instead of `git log | head -10`)
+- Avoid chained pipes that can cause output to buffer indefinitely

@@ -56,37 +56,42 @@ burcev-monorepo/
 │   │   ├── tsconfig.json
 │   │   └── next.config.ts
 │   │
-│   └── api/                          # Backend (Express + TypeScript)
-│       ├── src/
+│   └── api/                          # Backend (Go + Gin)
+│       ├── cmd/
+│       │   └── server/               # Entry point
+│       │       └── main.go
+│       ├── internal/
 │       │   ├── modules/              # 📦 Business Modules
 │       │   │   ├── auth/
-│       │   │   │   ├── auth.controller.ts
-│       │   │   │   ├── auth.service.ts
-│       │   │   │   ├── auth.routes.ts
-│       │   │   │   └── auth.types.ts
+│       │   │   │   ├── handler.go
+│       │   │   │   ├── service.go
+│       │   │   │   ├── reset_handler.go
+│       │   │   │   ├── reset_service.go
+│       │   │   │   └── *_test.go
 │       │   │   ├── users/
 │       │   │   ├── nutrition/
-│       │   │   └── reports/
+│       │   │   └── logs/
 │       │   ├── shared/               # 🔧 Shared Resources
-│       │   │   ├── database/         # DB utilities
-│       │   │   ├── logger/           # Winston logger
-│       │   │   ├── middleware/       # Express middleware
-│       │   │   │   ├── auth.ts
-│       │   │   │   ├── errorHandler.ts
-│       │   │   │   └── requestLogger.ts
-│       │   │   ├── validation/       # Input validation
-│       │   │   └── types/            # Shared types
-│       │   ├── config/               # Configuration
-│       │   │   └── index.ts
-│       │   └── main.ts               # Entry point
-│       ├── __tests__/                # Tests
-│       │   ├── unit/
-│       │   ├── integration/
-│       │   └── e2e/
-│       ├── __mocks__/                # Test mocks
+│       │   │   ├── database/         # PostgreSQL utilities
+│       │   │   ├── logger/           # Zap logger
+│       │   │   ├── middleware/       # Gin middleware
+│       │   │   │   ├── auth.go
+│       │   │   │   ├── error.go
+│       │   │   │   ├── logger.go
+│       │   │   │   └── rate_limiter.go
+│       │   │   ├── email/            # Email service
+│       │   │   └── response/         # Response helpers
+│       │   └── config/               # Configuration
+│       │       └── config.go
+│       ├── migrations/               # 🗄️ Database Migrations
+│       │   ├── README.md
+│       │   ├── 000_create_users_table_up.sql
+│       │   ├── 000_create_users_table_down.sql
+│       │   ├── 001_password_reset_schema_up.sql
+│       │   └── 001_password_reset_schema_down.sql
 │       ├── Dockerfile
-│       ├── package.json
-│       └── tsconfig.json
+│       ├── go.mod
+│       └── go.sum
 │
 ├── 📦 packages/                      # Shared Packages
 │   ├── types/                        # Shared TypeScript types
@@ -201,12 +206,12 @@ docker-compose up
 - **Mocking**: MSW (Mock Service Worker)
 
 ### Backend
-- **Runtime**: Node.js 20
-- **Framework**: Express.js
-- **Language**: TypeScript 5
-- **Database**: Supabase (PostgreSQL)
-- **Logging**: Winston
-- **Testing**: Jest + Supertest
+- **Language**: Go 1.22
+- **Framework**: Gin (HTTP router)
+- **Database**: PostgreSQL (Yandex.Cloud)
+- **Auth**: JWT-based authentication
+- **Logging**: Zap (structured logging)
+- **Testing**: Go testing + testify
 
 ### DevOps
 - **Containerization**: Docker + Docker Compose
@@ -343,9 +348,9 @@ PUT    /users/profile
 - [Zustand](https://zustand-demo.pmnd.rs)
 
 ### Backend
-- [Express.js](https://expressjs.com)
-- [TypeScript](https://www.typescriptlang.org)
-- [Supabase](https://supabase.com/docs)
+- [Go Documentation](https://go.dev/doc/)
+- [Gin Framework](https://gin-gonic.com/docs/)
+- [PostgreSQL](https://www.postgresql.org/docs/)
 
 ### Testing
 - [Jest](https://jestjs.io)

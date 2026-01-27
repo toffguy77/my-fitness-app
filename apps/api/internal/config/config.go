@@ -32,6 +32,17 @@ type Config struct {
 	// JWT
 	JWTSecret string
 
+	// SMTP Configuration (Yandex Mail)
+	SMTPHost        string
+	SMTPPort        int
+	SMTPUsername    string
+	SMTPPassword    string
+	SMTPFromAddress string
+	SMTPFromName    string
+
+	// Password Reset
+	ResetPasswordURL string
+
 	// Logging
 	LogLevel string
 }
@@ -62,6 +73,17 @@ func Load() (*Config, error) {
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-key"),
+
+		// SMTP Configuration (Yandex Mail)
+		SMTPHost:        getEnv("SMTP_HOST", "smtp.yandex.ru"),
+		SMTPPort:        getEnvAsInt("SMTP_PORT", 465),
+		SMTPUsername:    getEnv("SMTP_USERNAME", ""),
+		SMTPPassword:    getEnv("SMTP_PASSWORD", ""),
+		SMTPFromAddress: getEnv("SMTP_FROM_ADDRESS", ""),
+		SMTPFromName:    getEnv("SMTP_FROM_NAME", "BURCEV"),
+
+		// Password Reset
+		ResetPasswordURL: getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
