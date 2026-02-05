@@ -43,6 +43,13 @@ type Config struct {
 	// Password Reset
 	ResetPasswordURL string
 
+	// Yandex Cloud S3 (Object Storage)
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3Bucket          string
+	S3Region          string
+	S3Endpoint        string
+
 	// Logging
 	LogLevel string
 }
@@ -84,6 +91,13 @@ func Load() (*Config, error) {
 
 		// Password Reset
 		ResetPasswordURL: getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
+
+		// Yandex Cloud S3 (Object Storage)
+		S3AccessKeyID:     getEnv("S3_ACCESS_KEY_ID", ""),
+		S3SecretAccessKey: getEnv("S3_SECRET_ACCESS_KEY", ""),
+		S3Bucket:          getEnv("S3_BUCKET", "weekly-progress-photos"),
+		S3Region:          getEnv("S3_REGION", "ru-central1"),
+		S3Endpoint:        getEnv("S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}

@@ -1,0 +1,301 @@
+/**
+ * WeightBlock component for daily weight tracking
+ *
+ * Displays input field for weight entry, shows previous weight for comparison,
+ * quick add functionality, completion indicator, and validation.
+ *
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
+ */
+
+import { useState, useCallback } from 'react'
+import { Plus, Check, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
+import { Button } from '@/shared/components/ui/Button'
+import { Input } from '@/shared/components/ui/Input'
+import { cn } from '@/shared/utils/cn'
+import { useDashboardStore } from '../store/dashboardStore'
+import { validateWeight } from '../utils/validation'
+import toast from 'react-hot-toast'
+
+/**
+ * Props for WeightBlock component
+ */
+export interface WeightBlockProps {
+    date: Date
+    className?: string
+}
+
+/**
+ * WeightBlock component
+ */
+export function WeightBlock({ date, className }: WeightBlockProps) {
+    const [inputValue, setInputValue] = useState('')
+    const [isEditing, setIsEditing] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [validationError, setValidationError] = useState<string | null>(null)
+
+    // Get data from store
+    const { dailyData, updateMetric } = useDashboardStore()
+    const dateStr = date.toISOString().split('T')[0]
+    const dayData = dailyData[dateStr]
+
+    // Get current and previous weight
+    const currentWeight = dayData?.weight
+    const isWeightLogged = currentWeight !== null && currentWeight !== undefined
+
+    // Get previous day's weight for comparison
+    const previousDate = new Date(date)
+    previousDate.setDate(date.getDate() - 1)
+    const previousDateStr = previousDate.toISOString().split('T')[0]
+    const previousWeight = dailyData[previousDateStr]?.weight
+
+    // Calculate weight change
+    const weightChange = currentWeight && previousWeight
+        ? currentWeight - previousWeight
+        : null
+
+    // Format weight display
+    const formatWeight = (weight: number) => {
+        return weight % 1 === 0 ? weight.toString() : weight.toFixed(1)
+    }
+
+    // Handle input change with validation
+    const handleInputChange = useCallback((value: string) => {
+        setInputValue(value)
+        setValidationError(null)
+
+        // Clear validation error when user starts typing
+        if (value.trim() === '') {
+            return
+        }
+
+        // Parse and validate input
+        const numericValue = parseFloat(value)
+        const validation = validateWeight(numericValue)
+
+        if (!validation.isValid) {
+            setValidationError(validation.error || 'Неверное значение')
+        }
+    }, [])
+
+    // Handle save weight
+    const handleSave = useCallback(async () => {
+        if (!inputValue.trim()) {
+            setValidationError('Введите вес')
+            return
+        }
+
+        const numericValue = parseFloat(inputValue)
+        const validation = validateWeight(numericValue)
+
+        if (!validation.isValid) {
+            setValidationError(validation.error || 'Неверное значение')
+            return
+        }
+
+        setIsSaving(true)
+        setValidationError(null)
+
+        try {
+            await updateMetric(dateStr, {
+                type: 'weight',
+                data: { weight: numericValue }
+            })
+
+            setInputValue('')
+            setIsEditing(false)
+            toast.success('Вес сохранен')
+        } catch (error) {
+            console.error('Failed to save weight:', error)
+            setValidationError('Не удалось сохранить вес')
+        } finally {
+            setIsSaving(false)
+        }
+    }, [inputValue, dateStr, updateMetric])
+
+    // Handle quick add button
+    const handleQuickAdd = useCallback(() => {
+        if (isWeightLogged) {
+            // If weight is already logged, allow editing
+            setInputValue(formatWeight(currentWeight))
+            setIsEditing(true)
+        } else {
+            // If no weight logged, start editing
+            setIsEditing(true)
+        }
+    }, [isWeightLogged, currentWeight])
+
+    // Handle cancel editing
+    const handleCancel = useCallback(() => {
+        setInputValue('')
+        setIsEditing(false)
+        setValidationError(null)
+    }, [])
+
+    // Handle key press
+    const handleKeyPress = useCallback((event: React.KeyboardEvent) => {
+        if (event.key === 'Enter') {
+            handleSave()
+        } else if (event.key === 'Escape') {
+            handleCancel()
+        }
+    }, [handleSave, handleCancel])
+
+    return (
+        <Card className={cn('h-full', className)} variant="bordered">
+            <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold text-gray-900">
+                        Вес
+                    </CardTitle>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleQuickAdd}
+                        className="h-8 w-8 p-0"
+                        aria-label={isWeightLogged ? "Изменить вес" : "Добавить вес"}
+                    >
+                        <Plus className="h-4 w-4" />
+                    </Button>
+                </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+                {/* Current weight display or input */}
+                {isEditing ? (
+                    <div className="space-y-3">
+                        <Input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            max="500"
+                            placeholder="Введите вес в кг"
+                            value={inputValue}
+                            onChange={(e) => handleInputChange(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            error={validationError || undefined}
+                            autoFocus
+                            aria-label="Вес в килограммах"
+                        />
+                        <div className="flex gap-2">
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={handleSave}
+                                isLoading={isSaving}
+                                disabled={!!validationError || !inputValue.trim()}
+                                className="flex-1"
+                            >
+                                <Check className="h-4 w-4 mr-2" />
+                                Сохранить
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCancel}
+                                disabled={isSaving}
+                            >
+                                Отмена
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center space-y-4">
+                        {/* Current weight display */}
+                        {isWeightLogged ? (
+                            <div className="space-y-2">
+                                <div className="text-4xl font-bold text-gray-900">
+                                    {formatWeight(currentWeight)}
+                                    <span className="text-lg text-gray-500 ml-1">кг</span>
+                                </div>
+
+                                {/* Completion indicator */}
+                                <div className="flex items-center justify-center gap-2 text-green-600">
+                                    <Check className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Вес записан</span>
+                                </div>
+
+                                {/* Weight change comparison */}
+                                {weightChange !== null && (
+                                    <div className={cn(
+                                        'flex items-center justify-center gap-1 text-sm',
+                                        weightChange > 0 ? 'text-red-600' :
+                                            weightChange < 0 ? 'text-green-600' : 'text-gray-600'
+                                    )}>
+                                        {weightChange > 0 ? (
+                                            <TrendingUp className="h-4 w-4" />
+                                        ) : weightChange < 0 ? (
+                                            <TrendingDown className="h-4 w-4" />
+                                        ) : (
+                                            <Minus className="h-4 w-4" />
+                                        )}
+                                        <span>
+                                            {weightChange > 0 ? '+' : ''}
+                                            {formatWeight(Math.abs(weightChange))} кг
+                                        </span>
+                                        {weightChange !== 0 && (
+                                            <span className="text-gray-500">
+                                                с вчера
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Previous weight reference */}
+                                {previousWeight && (
+                                    <div className="text-xs text-gray-500">
+                                        Вчера: {formatWeight(previousWeight)} кг
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* Empty state */
+                            <div className="py-8 space-y-3">
+                                <div className="text-gray-400">
+                                    <svg
+                                        className="h-12 w-12 mx-auto mb-3"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        aria-hidden="true"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={1.5}
+                                            d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                                        />
+                                    </svg>
+                                </div>
+                                <p className="text-sm text-gray-500 mb-3">
+                                    Вес не записан
+                                </p>
+                                {previousWeight && (
+                                    <p className="text-xs text-gray-400 mb-3">
+                                        Вчера: {formatWeight(previousWeight)} кг
+                                    </p>
+                                )}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleQuickAdd}
+                                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Записать вес
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Helper text */}
+                {!isEditing && (
+                    <div className="text-xs text-gray-400 text-center">
+                        Рекомендуется взвешиваться утром натощак
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}

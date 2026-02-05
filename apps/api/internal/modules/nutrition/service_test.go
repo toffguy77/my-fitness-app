@@ -30,12 +30,12 @@ func TestService_GetEntries(t *testing.T) {
 	service := setupTestService()
 	ctx := context.Background()
 
-	entries, err := service.GetEntries(ctx, "test-user-123")
+	entries, err := service.GetEntries(ctx, int64(123))
 
 	require.NoError(t, err)
 	assert.NotNil(t, entries)
 	assert.NotEmpty(t, entries)
-	assert.Equal(t, "test-user-123", entries[0].UserID)
+	assert.Equal(t, int64(123), entries[0].UserID)
 }
 
 func TestService_CreateEntry(t *testing.T) {
@@ -52,11 +52,11 @@ func TestService_CreateEntry(t *testing.T) {
 		Fat:      3,
 	}
 
-	entry, err := service.CreateEntry(ctx, "test-user-123", req)
+	entry, err := service.CreateEntry(ctx, int64(123), req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, entry)
-	assert.Equal(t, "test-user-123", entry.UserID)
+	assert.Equal(t, int64(123), entry.UserID)
 	assert.Equal(t, "2026-01-26", entry.Date)
 	assert.Equal(t, "breakfast", entry.Meal)
 	assert.Equal(t, "Oatmeal", entry.Food)
@@ -80,7 +80,7 @@ func TestService_CreateEntry_WithZeroMacros(t *testing.T) {
 		Fat:      0,
 	}
 
-	entry, err := service.CreateEntry(ctx, "test-user-123", req)
+	entry, err := service.CreateEntry(ctx, int64(123), req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, entry)
@@ -102,7 +102,7 @@ func TestService_CreateEntry_DifferentMeals(t *testing.T) {
 				Calories: 100,
 			}
 
-			entry, err := service.CreateEntry(ctx, "test-user-123", req)
+			entry, err := service.CreateEntry(ctx, int64(123), req)
 			require.NoError(t, err)
 			assert.Equal(t, meal, entry.Meal)
 		})
@@ -113,12 +113,12 @@ func TestService_GetEntry(t *testing.T) {
 	service := setupTestService()
 	ctx := context.Background()
 
-	entry, err := service.GetEntry(ctx, "test-user-123", "entry-123")
+	entry, err := service.GetEntry(ctx, int64(123), "entry-123")
 
 	require.NoError(t, err)
 	assert.NotNil(t, entry)
 	assert.Equal(t, "entry-123", entry.ID)
-	assert.Equal(t, "test-user-123", entry.UserID)
+	assert.Equal(t, int64(123), entry.UserID)
 	assert.NotEmpty(t, entry.Food)
 }
 
@@ -136,7 +136,7 @@ func TestService_UpdateEntry(t *testing.T) {
 		Fat:      5,
 	}
 
-	entry, err := service.UpdateEntry(ctx, "test-user-123", "entry-123", req)
+	entry, err := service.UpdateEntry(ctx, int64(123), "entry-123", req)
 
 	require.NoError(t, err)
 	assert.NotNil(t, entry)
@@ -157,7 +157,7 @@ func TestService_UpdateEntry_PartialUpdate(t *testing.T) {
 		// Protein, Carbs, Fat are zero values
 	}
 
-	entry, err := service.UpdateEntry(ctx, "test-user-123", "entry-123", req)
+	entry, err := service.UpdateEntry(ctx, int64(123), "entry-123", req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Partial Update", entry.Food)
@@ -168,7 +168,7 @@ func TestService_DeleteEntry(t *testing.T) {
 	service := setupTestService()
 	ctx := context.Background()
 
-	err := service.DeleteEntry(ctx, "test-user-123", "entry-123")
+	err := service.DeleteEntry(ctx, int64(123), "entry-123")
 
 	require.NoError(t, err)
 }
@@ -181,7 +181,7 @@ func TestService_DeleteEntry_DifferentIDs(t *testing.T) {
 
 	for _, entryID := range entryIDs {
 		t.Run(entryID, func(t *testing.T) {
-			err := service.DeleteEntry(ctx, "test-user-123", entryID)
+			err := service.DeleteEntry(ctx, int64(123), entryID)
 			require.NoError(t, err)
 		})
 	}
@@ -201,7 +201,7 @@ func TestService_CreateEntry_HighCalories(t *testing.T) {
 		Fat:      100,
 	}
 
-	entry, err := service.CreateEntry(ctx, "test-user-123", req)
+	entry, err := service.CreateEntry(ctx, int64(123), req)
 
 	require.NoError(t, err)
 	assert.Equal(t, 2500.0, entry.Calories)
@@ -221,7 +221,7 @@ func TestService_CreateEntry_CyrillicFood(t *testing.T) {
 		Fat:      12,
 	}
 
-	entry, err := service.CreateEntry(ctx, "test-user-123", req)
+	entry, err := service.CreateEntry(ctx, int64(123), req)
 
 	require.NoError(t, err)
 	assert.Equal(t, "Борщ с хлебом", entry.Food)

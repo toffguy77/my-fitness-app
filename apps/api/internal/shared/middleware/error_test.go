@@ -28,7 +28,7 @@ func TestErrorHandlerMiddleware(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "Internal server error")
+		assert.Contains(t, w.Body.String(), "Внутренняя ошибка сервера")
 	})
 
 	t.Run("does not interfere with successful requests", func(t *testing.T) {

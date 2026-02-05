@@ -37,7 +37,7 @@ func TestGetEntries(t *testing.T) {
 	router := gin.New()
 
 	router.GET("/entries", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.GetEntries(c)
 	})
 
@@ -63,7 +63,7 @@ func TestCreateEntry_Success(t *testing.T) {
 	router := gin.New()
 
 	router.POST("/entries", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.CreateEntry(c)
 	})
 
@@ -102,7 +102,7 @@ func TestCreateEntry_MissingRequiredFields(t *testing.T) {
 	router := gin.New()
 
 	router.POST("/entries", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.CreateEntry(c)
 	})
 
@@ -160,7 +160,7 @@ func TestCreateEntry_MissingRequiredFields(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, "error", response["status"])
-			assert.Equal(t, "Invalid request data", response["message"])
+			assert.Equal(t, "Неверные данные запроса", response["message"])
 		})
 	}
 }
@@ -170,7 +170,7 @@ func TestCreateEntry_InvalidJSON(t *testing.T) {
 	router := gin.New()
 
 	router.POST("/entries", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.CreateEntry(c)
 	})
 
@@ -188,7 +188,7 @@ func TestGetEntry(t *testing.T) {
 	router := gin.New()
 
 	router.GET("/entries/:id", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.GetEntry(c)
 	})
 
@@ -214,7 +214,7 @@ func TestUpdateEntry_Success(t *testing.T) {
 	router := gin.New()
 
 	router.PUT("/entries/:id", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.UpdateEntry(c)
 	})
 
@@ -252,7 +252,7 @@ func TestUpdateEntry_InvalidJSON(t *testing.T) {
 	router := gin.New()
 
 	router.PUT("/entries/:id", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.UpdateEntry(c)
 	})
 
@@ -270,7 +270,7 @@ func TestDeleteEntry(t *testing.T) {
 	router := gin.New()
 
 	router.DELETE("/entries/:id", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.DeleteEntry(c)
 	})
 

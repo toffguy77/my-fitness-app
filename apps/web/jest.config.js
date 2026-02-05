@@ -21,6 +21,7 @@ const customJestConfig = {
         '!src/**/*.stories.{js,jsx,ts,tsx}',
         '!src/**/*.example.{js,jsx,ts,tsx}',
         '!src/**/__tests__/**',
+        '!src/**/testing/**',
     ],
     coverageThreshold: {
         global: {

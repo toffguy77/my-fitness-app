@@ -12,6 +12,7 @@ import (
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/logs"
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/modules/nutrition"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/shared/database"
@@ -97,21 +98,28 @@ func main() {
 	router.Use(middleware.Logger(log))
 	router.Use(middleware.ErrorHandler(log))
 
-	// CORS configuration - allow both 3000 and 3069 for development
-	corsOrigins := []string{cfg.CORSOrigin}
-	// Add port 3000 if not already included
-	if cfg.CORSOrigin == "http://localhost:3069" {
-		corsOrigins = append(corsOrigins, "http://localhost:3000")
+	// CORS configuration
+	if cfg.Env == "development" {
+		// In development, allow all origins for easier testing
+		router.Use(cors.New(cors.Config{
+			AllowAllOrigins:  true,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
+			ExposeHeaders:    []string{"Content-Length"},
+			AllowCredentials: false, // Must be false when AllowAllOrigins is true
+			MaxAge:           12 * time.Hour,
+		}))
+	} else {
+		// In production, use specific origins
+		router.Use(cors.New(cors.Config{
+			AllowOrigins:     []string{cfg.CORSOrigin},
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
+			ExposeHeaders:    []string{"Content-Length"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}))
 	}
-
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     corsOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
@@ -168,6 +176,17 @@ func main() {
 			nutritionGroup.GET("/entries/:id", nutritionHandler.GetEntry)
 			nutritionGroup.PUT("/entries/:id", nutritionHandler.UpdateEntry)
 			nutritionGroup.DELETE("/entries/:id", nutritionHandler.DeleteEntry)
+		}
+
+		// Notifications routes (protected)
+		notificationsHandler := notifications.NewHandler(cfg, log, db)
+		notificationsGroup := v1.Group("/notifications")
+		notificationsGroup.Use(middleware.RequireAuth(cfg))
+		{
+			notificationsGroup.GET("", notificationsHandler.GetNotifications)
+			notificationsGroup.POST("/:id/read", notificationsHandler.MarkAsRead)
+			notificationsGroup.GET("/unread-counts", notificationsHandler.GetUnreadCounts)
+			notificationsGroup.POST("/mark-all-read", notificationsHandler.MarkAllAsRead)
 		}
 
 		// Logs routes (public for frontend logging)

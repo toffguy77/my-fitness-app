@@ -12,7 +12,7 @@ import (
 
 // UserClaims represents JWT claims
 type UserClaims struct {
-	UserID string `json:"user_id"`
+	UserID int64  `json:"user_id"`
 	Email  string `json:"email"`
 	Role   string `json:"role"`
 	jwt.RegisteredClaims
@@ -24,7 +24,7 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 		// Get token from Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			response.Error(c, http.StatusUnauthorized, "Authorization header required")
+			response.Error(c, http.StatusUnauthorized, "Требуется заголовок авторизации")
 			c.Abort()
 			return
 		}
@@ -32,7 +32,7 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 		// Extract token
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			response.Error(c, http.StatusUnauthorized, "Invalid authorization header format")
+			response.Error(c, http.StatusUnauthorized, "Неверный формат заголовка авторизации")
 			c.Abort()
 			return
 		}
@@ -45,7 +45,7 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			response.Error(c, http.StatusUnauthorized, "Invalid or expired token")
+			response.Error(c, http.StatusUnauthorized, "Неверный или истекший токен")
 			c.Abort()
 			return
 		}
@@ -56,7 +56,7 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 			c.Set("user_email", claims.Email)
 			c.Set("user_role", claims.Role)
 		} else {
-			response.Error(c, http.StatusUnauthorized, "Invalid token claims")
+			response.Error(c, http.StatusUnauthorized, "Неверные данные токена")
 			c.Abort()
 			return
 		}
@@ -70,7 +70,7 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("user_role")
 		if !exists {
-			response.Error(c, http.StatusUnauthorized, "User role not found")
+			response.Error(c, http.StatusUnauthorized, "Роль пользователя не найдена")
 			c.Abort()
 			return
 		}
@@ -83,7 +83,7 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 			}
 		}
 
-		response.Error(c, http.StatusForbidden, "Insufficient permissions")
+		response.Error(c, http.StatusForbidden, "Недостаточно прав")
 		c.Abort()
 	}
 }

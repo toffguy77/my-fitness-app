@@ -56,7 +56,7 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "Sh0rt!",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must be at least 8 characters long",
+				"Пароль должен содержать минимум 8 символов",
 			},
 		},
 		{
@@ -64,7 +64,7 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "lowercase123!",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must contain at least one uppercase letter",
+				"Пароль должен содержать хотя бы одну заглавную букву",
 			},
 		},
 		{
@@ -72,7 +72,7 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "UPPERCASE123!",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must contain at least one lowercase letter",
+				"Пароль должен содержать хотя бы одну строчную букву",
 			},
 		},
 		{
@@ -80,7 +80,7 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "NoNumbers!",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must contain at least one number",
+				"Пароль должен содержать хотя бы одну цифру",
 			},
 		},
 		{
@@ -88,7 +88,7 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "NoSpecial123",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must contain at least one special character",
+				"Пароль должен содержать хотя бы один специальный символ",
 			},
 		},
 		{
@@ -96,10 +96,10 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "short",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must be at least 8 characters long",
-				"Password must contain at least one uppercase letter",
-				"Password must contain at least one number",
-				"Password must contain at least one special character",
+				"Пароль должен содержать минимум 8 символов",
+				"Пароль должен содержать хотя бы одну заглавную букву",
+				"Пароль должен содержать хотя бы одну цифру",
+				"Пароль должен содержать хотя бы один специальный символ",
 			},
 		},
 		{
@@ -107,9 +107,9 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "alllowercase",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must contain at least one uppercase letter",
-				"Password must contain at least one number",
-				"Password must contain at least one special character",
+				"Пароль должен содержать хотя бы одну заглавную букву",
+				"Пароль должен содержать хотя бы одну цифру",
+				"Пароль должен содержать хотя бы один специальный символ",
 			},
 		},
 		{
@@ -117,11 +117,11 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must be at least 8 characters long",
-				"Password must contain at least one uppercase letter",
-				"Password must contain at least one lowercase letter",
-				"Password must contain at least one number",
-				"Password must contain at least one special character",
+				"Пароль должен содержать минимум 8 символов",
+				"Пароль должен содержать хотя бы одну заглавную букву",
+				"Пароль должен содержать хотя бы одну строчную букву",
+				"Пароль должен содержать хотя бы одну цифру",
+				"Пароль должен содержать хотя бы один специальный символ",
 			},
 		},
 		{
@@ -147,9 +147,9 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "!@#$%^&*()",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must contain at least one uppercase letter",
-				"Password must contain at least one lowercase letter",
-				"Password must contain at least one number",
+				"Пароль должен содержать хотя бы одну заглавную букву",
+				"Пароль должен содержать хотя бы одну строчную букву",
+				"Пароль должен содержать хотя бы одну цифру",
 			},
 		},
 		{
@@ -157,9 +157,9 @@ func TestPasswordValidator_Validate(t *testing.T) {
 			password:    "12345678",
 			expectValid: false,
 			expectErrors: []string{
-				"Password must contain at least one uppercase letter",
-				"Password must contain at least one lowercase letter",
-				"Password must contain at least one special character",
+				"Пароль должен содержать хотя бы одну заглавную букву",
+				"Пароль должен содержать хотя бы одну строчную букву",
+				"Пароль должен содержать хотя бы один специальный символ",
 			},
 		},
 	}

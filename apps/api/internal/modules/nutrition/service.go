@@ -25,7 +25,7 @@ func NewService(cfg *config.Config, log *logger.Logger) *Service {
 // Entry represents a nutrition entry
 type Entry struct {
 	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
+	UserID    int64     `json:"user_id"`
 	Date      string    `json:"date"`
 	Meal      string    `json:"meal"`
 	Food      string    `json:"food"`
@@ -37,7 +37,7 @@ type Entry struct {
 }
 
 // GetEntries retrieves nutrition entries for user
-func (s *Service) GetEntries(ctx context.Context, userID string) ([]*Entry, error) {
+func (s *Service) GetEntries(ctx context.Context, userID int64) ([]*Entry, error) {
 	// TODO: Implement Supabase query
 	s.log.Infow("Get entries", "user_id", userID)
 
@@ -59,7 +59,7 @@ func (s *Service) GetEntries(ctx context.Context, userID string) ([]*Entry, erro
 }
 
 // CreateEntry creates a new nutrition entry
-func (s *Service) CreateEntry(ctx context.Context, userID string, req *CreateEntryRequest) (*Entry, error) {
+func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntryRequest) (*Entry, error) {
 	// TODO: Implement Supabase insert
 	s.log.Infow("Create entry", "user_id", userID, "food", req.Food)
 
@@ -79,7 +79,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID string, req *CreateEnt
 }
 
 // GetEntry retrieves a single nutrition entry
-func (s *Service) GetEntry(ctx context.Context, userID, entryID string) (*Entry, error) {
+func (s *Service) GetEntry(ctx context.Context, userID int64, entryID string) (*Entry, error) {
 	// TODO: Implement Supabase query
 	s.log.Infow("Get entry", "user_id", userID, "entry_id", entryID)
 
@@ -99,7 +99,7 @@ func (s *Service) GetEntry(ctx context.Context, userID, entryID string) (*Entry,
 }
 
 // UpdateEntry updates a nutrition entry
-func (s *Service) UpdateEntry(ctx context.Context, userID, entryID string, req *CreateEntryRequest) (*Entry, error) {
+func (s *Service) UpdateEntry(ctx context.Context, userID int64, entryID string, req *CreateEntryRequest) (*Entry, error) {
 	// TODO: Implement Supabase update
 	s.log.Infow("Update entry", "user_id", userID, "entry_id", entryID)
 
@@ -119,7 +119,7 @@ func (s *Service) UpdateEntry(ctx context.Context, userID, entryID string, req *
 }
 
 // DeleteEntry deletes a nutrition entry
-func (s *Service) DeleteEntry(ctx context.Context, userID, entryID string) error {
+func (s *Service) DeleteEntry(ctx context.Context, userID int64, entryID string) error {
 	// TODO: Implement Supabase delete
 	s.log.Infow("Delete entry", "user_id", userID, "entry_id", entryID)
 

@@ -52,9 +52,6 @@ describe('Email Validation', () => {
 
             validEmails.forEach(email => {
                 const result = emailSchema.safeParse(email);
-                if (!result.success) {
-                    console.log(`Failed to validate: ${email}`, result.error.issues);
-                }
                 expect(result.success).toBe(true);
             });
         });
@@ -154,9 +151,6 @@ describe('Password Validation', () => {
 
             validPasswords.forEach(password => {
                 const result = passwordSchema.safeParse(password);
-                if (!result.success) {
-                    console.log(`Failed to validate: "${password}" (length: ${password.length})`, result.error.issues);
-                }
                 expect(result.success).toBe(true);
             });
         });

@@ -27,12 +27,17 @@ func NewHandler(cfg *config.Config, log *logger.Logger) *Handler {
 
 // GetProfile returns user profile
 func (h *Handler) GetProfile(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userIDInterface, _ := c.Get("user_id")
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
 
-	profile, err := h.service.GetProfile(c.Request.Context(), userID.(string))
+	profile, err := h.service.GetProfile(c.Request.Context(), userID)
 	if err != nil {
-		h.log.Errorw("Failed to get profile", "error", err, "user_id", userID)
-		response.Error(c, http.StatusInternalServerError, "Failed to get profile")
+		h.log.Errorw("Не удалось получить профиль", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось получить профиль")
 		return
 	}
 
@@ -46,18 +51,23 @@ type UpdateProfileRequest struct {
 
 // UpdateProfile updates user profile
 func (h *Handler) UpdateProfile(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-
-	var req UpdateProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid request data")
+	userIDInterface, _ := c.Get("user_id")
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
 		return
 	}
 
-	profile, err := h.service.UpdateProfile(c.Request.Context(), userID.(string), req.Name)
+	var req UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	profile, err := h.service.UpdateProfile(c.Request.Context(), userID, req.Name)
 	if err != nil {
-		h.log.Errorw("Failed to update profile", "error", err, "user_id", userID)
-		response.Error(c, http.StatusInternalServerError, "Failed to update profile")
+		h.log.Errorw("Не удалось обновить профиль", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось обновить профиль")
 		return
 	}
 

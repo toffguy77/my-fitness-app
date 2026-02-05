@@ -105,7 +105,7 @@ func TestGenerateJWTToken(t *testing.T) {
 	service := setupTestService()
 
 	user := &User{
-		ID:    "user-123",
+		ID:    123,
 		Email: "test@example.com",
 		Role:  "client",
 	}
@@ -124,7 +124,8 @@ func TestGenerateJWTToken(t *testing.T) {
 	// Verify claims
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	require.True(t, ok)
-	assert.Equal(t, user.ID, claims["user_id"])
+	// JWT MapClaims stores numbers as float64, so we need to convert
+	assert.Equal(t, float64(user.ID), claims["user_id"])
 	assert.Equal(t, user.Email, claims["email"])
 	assert.Equal(t, user.Role, claims["role"])
 }
@@ -152,7 +153,7 @@ func BenchmarkLogin(b *testing.B) {
 func BenchmarkGenerateJWTToken(b *testing.B) {
 	service := setupTestService()
 	user := &User{
-		ID:    "user-123",
+		ID:    123,
 		Email: "test@example.com",
 		Role:  "client",
 	}

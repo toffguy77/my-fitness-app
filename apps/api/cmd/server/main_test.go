@@ -26,24 +26,24 @@ func TestCORSConfiguration(t *testing.T) {
 		expectedOrigins []string
 	}{
 		{
-			name:           "Port 3069 includes both 3069 and 3000",
+			name:           "Port 3069 includes both 3069, 3000, and local network IP",
 			corsOrigin:     "http://localhost:3069",
-			expectedOrigins: []string{"http://localhost:3069", "http://localhost:3000"},
+			expectedOrigins: []string{"http://localhost:3069", "http://localhost:3000", "http://192.168.1.34:3069"},
 		},
 		{
-			name:           "Port 3000 only includes 3000",
+			name:           "Port 3000 includes 3000 and local network IP",
 			corsOrigin:     "http://localhost:3000",
-			expectedOrigins: []string{"http://localhost:3000"},
+			expectedOrigins: []string{"http://localhost:3000", "http://192.168.1.34:3069"},
 		},
 		{
-			name:           "Production origin unchanged",
+			name:           "Production origin includes local network IP",
 			corsOrigin:     "https://burcev.team",
-			expectedOrigins: []string{"https://burcev.team"},
+			expectedOrigins: []string{"https://burcev.team", "http://192.168.1.34:3069"},
 		},
 		{
-			name:           "Custom port unchanged",
+			name:           "Custom port includes local network IP",
 			corsOrigin:     "http://localhost:8080",
-			expectedOrigins: []string{"http://localhost:8080"},
+			expectedOrigins: []string{"http://localhost:8080", "http://192.168.1.34:3069"},
 		},
 	}
 
@@ -54,6 +54,8 @@ func TestCORSConfiguration(t *testing.T) {
 			if tt.corsOrigin == "http://localhost:3069" {
 				corsOrigins = append(corsOrigins, "http://localhost:3000")
 			}
+			// Add local network IP for mobile testing
+			corsOrigins = append(corsOrigins, "http://192.168.1.34:3069")
 
 			assert.Equal(t, tt.expectedOrigins, corsOrigins)
 		})
@@ -97,6 +99,18 @@ func TestCORSHeaders(t *testing.T) {
 			corsOrigin:    "https://burcev.team",
 			expectAllowed: false,
 		},
+		{
+			name:          "Local network IP allowed for all origins",
+			origin:        "http://192.168.1.34:3069",
+			corsOrigin:    "http://localhost:3069",
+			expectAllowed: true,
+		},
+		{
+			name:          "Local network IP allowed for production",
+			origin:        "http://192.168.1.34:3069",
+			corsOrigin:    "https://burcev.team",
+			expectAllowed: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -109,6 +123,8 @@ func TestCORSHeaders(t *testing.T) {
 			if tt.corsOrigin == "http://localhost:3069" {
 				corsOrigins = append(corsOrigins, "http://localhost:3000")
 			}
+			// Add local network IP for mobile testing
+			corsOrigins = append(corsOrigins, "http://192.168.1.34:3069")
 
 			// Simple CORS check function
 			router.Use(func(c *gin.Context) {
@@ -202,13 +218,14 @@ func TestCORSMethods(t *testing.T) {
 }
 
 func TestCORSAllowedHeaders(t *testing.T) {
-	allowedHeaders := []string{"Origin", "Content-Type", "Authorization"}
+	allowedHeaders := []string{"Origin", "Content-Type", "Authorization", "Accept"}
 	exposedHeaders := []string{"Content-Length"}
 
 	// Verify required headers
 	assert.Contains(t, allowedHeaders, "Origin")
 	assert.Contains(t, allowedHeaders, "Content-Type")
 	assert.Contains(t, allowedHeaders, "Authorization")
+	assert.Contains(t, allowedHeaders, "Accept")
 	assert.Contains(t, exposedHeaders, "Content-Length")
 }
 
