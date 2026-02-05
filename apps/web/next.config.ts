@@ -11,7 +11,13 @@ const baseConfig: NextConfig = {
   output: 'standalone',
   turbopack: {},
   experimental: {
-    optimizePackageImports: [],
+    optimizePackageImports: ['lucide-react', 'react-window', 'zustand'],
+  },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 768, 1024, 1280, 1536],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    minimumCacheTTL: 60 * 60 * 24 * 7, // 7 days
   },
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
@@ -27,7 +33,17 @@ if (!isTest) {
     skipWaiting: true,
     disable: process.env.NODE_ENV === 'development',
   });
-  nextConfig = withPWA(baseConfig);
+
+  // Enable bundle analyzer when ANALYZE=true
+  if (process.env.ANALYZE === 'true') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const withBundleAnalyzer = require('@next/bundle-analyzer')({
+      enabled: true,
+    });
+    nextConfig = withBundleAnalyzer(withPWA(baseConfig));
+  } else {
+    nextConfig = withPWA(baseConfig);
+  }
 } else {
   nextConfig = baseConfig;
 }

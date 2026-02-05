@@ -25,7 +25,7 @@ func ErrorHandler(log *logger.Logger) gin.HandlerFunc {
 
 			// If response not already written
 			if !c.Writer.Written() {
-				response.Error(c, http.StatusInternalServerError, "Internal server error")
+				response.Error(c, http.StatusInternalServerError, "Внутренняя ошибка сервера")
 			}
 		}
 	}

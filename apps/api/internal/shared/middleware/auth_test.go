@@ -18,7 +18,7 @@ func TestAuthMiddleware(t *testing.T) {
 	cfg := &config.Config{JWTSecret: secret}
 
 	// Helper to generate valid token
-	generateToken := func(userID, email, role string) string {
+	generateToken := func(userID int64, email, role string) string {
 		claims := jwt.MapClaims{
 			"user_id": userID,
 			"email":   email,
@@ -39,12 +39,12 @@ func TestAuthMiddleware(t *testing.T) {
 	}{
 		{
 			name:           "valid token",
-			token:          generateToken("user-123", "test@example.com", "client"),
+			token:          generateToken(123, "test@example.com", "client"),
 			expectedStatus: http.StatusOK,
 			checkContext: func(t *testing.T, c *gin.Context) {
 				userID, exists := c.Get("user_id")
 				assert.True(t, exists)
-				assert.Equal(t, "user-123", userID)
+				assert.Equal(t, int64(123), userID)
 
 				email, exists := c.Get("user_email")
 				assert.True(t, exists)
@@ -71,7 +71,7 @@ func TestAuthMiddleware(t *testing.T) {
 			name: "expired token",
 			token: func() string {
 				claims := jwt.MapClaims{
-					"user_id": "user-123",
+					"user_id": int64(123),
 					"email":   "test@example.com",
 					"role":    "client",
 					"exp":     time.Now().Add(-time.Hour).Unix(), // Expired

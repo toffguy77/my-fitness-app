@@ -23,14 +23,14 @@ func NewService(cfg *config.Config, log *logger.Logger) *Service {
 
 // Profile represents user profile
 type Profile struct {
-	ID    string `json:"id"`
+	ID    int64  `json:"id"`
 	Email string `json:"email"`
 	Name  string `json:"name"`
 	Role  string `json:"role"`
 }
 
 // GetProfile retrieves user profile
-func (s *Service) GetProfile(ctx context.Context, userID string) (*Profile, error) {
+func (s *Service) GetProfile(ctx context.Context, userID int64) (*Profile, error) {
 	// TODO: Implement Supabase query
 	s.log.Infow("Get profile", "user_id", userID)
 
@@ -44,7 +44,7 @@ func (s *Service) GetProfile(ctx context.Context, userID string) (*Profile, erro
 }
 
 // UpdateProfile updates user profile
-func (s *Service) UpdateProfile(ctx context.Context, userID, name string) (*Profile, error) {
+func (s *Service) UpdateProfile(ctx context.Context, userID int64, name string) (*Profile, error) {
 	// TODO: Implement Supabase update
 	s.log.Infow("Update profile", "user_id", userID, "name", name)
 

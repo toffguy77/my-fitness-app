@@ -4,6 +4,37 @@
 
 Feature-based architecture with clear separation between apps and shared packages.
 
+## Localization
+
+**CRITICAL: All user-facing messages MUST be in Russian**
+
+- Error messages in validation functions
+- Form validation errors
+- API error responses
+- User notifications
+- UI labels and text
+- Toast messages
+- Zod schema error messages
+
+**Examples:**
+```typescript
+// ✅ CORRECT - Russian
+error: 'Вес должен быть положительным'
+error: 'Шаги должны быть не более 100,000'
+error: 'Фото должно быть в формате JPEG, PNG или WebP'
+
+// ❌ WRONG - English
+error: 'Weight must be positive'
+error: 'Steps must be 100,000 or less'
+error: 'Photo must be JPEG, PNG, or WebP format'
+```
+
+**When writing validation:**
+- Use Russian for all error messages
+- Update tests to expect Russian messages
+- Check both unit tests and property-based tests
+- Verify Zod schema messages are in Russian
+
 ## Directory Structure
 
 ```
@@ -14,6 +45,14 @@ apps/web/src/
       components/   # Feature-specific UI
       hooks/        # Feature-specific hooks
       utils/        # Feature-specific utilities
+      index.ts      # Public API exports
+    notifications/  # Notifications feature module (FULLY IMPLEMENTED)
+      components/   # NotificationsTabs, NotificationList, NotificationItem, etc.
+      hooks/        # useNotifications, useNotificationPolling, useAutoMarkAsRead
+      store/        # Zustand store for notification state
+      utils/        # Date grouping, timestamp formatting, icon mapping
+      types/        # TypeScript type definitions
+      testing/      # Test generators for property-based tests
       index.ts      # Public API exports
   shared/           # Cross-feature shared code
     components/
@@ -30,7 +69,13 @@ apps/web/src/
   lib/              # Third-party library wrappers
 
 apps/api/internal/
-  modules/          # Business modules (auth, users, nutrition)
+  modules/          # Business modules (auth, users, nutrition, notifications)
+    notifications/  # Notifications module (FULLY IMPLEMENTED)
+      handler.go    # HTTP endpoints (GET, POST for notifications)
+      service.go    # Business logic (fetch, mark as read, polling)
+      types.go      # Go type definitions and validation
+      handler_test.go    # Handler tests
+      service_test.go    # Service tests
     {module}/
       handler.go    # HTTP handlers
       service.go    # Business logic
@@ -92,7 +137,49 @@ packages/           # Shared across apps
 - Consistent spacing scale
 - Accessibility (WCAG 2.1)
 
+## Layout Conventions
+
+### Authenticated Pages
+- **All pages behind authentication MUST use consistent header and footer**
+- Use shared layout components from `shared/components/layout/`
+- Header should include: logo, navigation, user menu
+- Footer should include: links, copyright, version info
+- Implement via Next.js layout.tsx for authenticated routes
+- Ensures uniform user experience across all protected pages
+
 ## Component Patterns
+
+### Feature Module Pattern (Notifications Example)
+
+```typescript
+// Feature structure following notifications module
+features/notifications/
+  components/       # UI components
+    NotificationsTabs.tsx
+    NotificationList.tsx
+    NotificationItem.tsx
+    NotificationIcon.tsx
+    NotificationsLayout.tsx
+    NotificationsPage.tsx
+  hooks/           # Custom hooks
+    useNotifications.ts
+    useNotificationPolling.ts
+    useAutoMarkAsRead.ts
+  store/           # State management
+    notificationsStore.ts
+  utils/           # Utilities
+    dateGrouping.ts
+    formatTimestamp.ts
+    iconMapping.ts
+  types/           # Type definitions
+    index.ts
+  testing/         # Test utilities
+    generators.ts
+  index.ts         # Public API
+
+// Usage
+import { useNotifications, NotificationsTabs } from '@/features/notifications';
+```
 
 ### UI Components
 ```typescript
@@ -108,6 +195,29 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     // Implementation
   }
 )
+```
+
+### Zustand Store Pattern (Notifications Example)
+
+```typescript
+// State management with Zustand
+interface NotificationsState {
+  notifications: Record<NotificationCategory, Notification[]>
+  unreadCounts: Record<NotificationCategory, number>
+  isLoading: boolean
+  error: Error | null
+  
+  // Actions
+  fetchNotifications: (category: NotificationCategory) => Promise<void>
+  markAsRead: (id: string, category: NotificationCategory) => Promise<void>
+  pollForUpdates: () => Promise<void>
+  startPolling: () => void
+  stopPolling: () => void
+}
+
+export const useNotificationsStore = create<NotificationsState>((set, get) => ({
+  // Implementation with optimistic updates and rollback
+}))
 ```
 
 ### Custom Hooks
@@ -138,6 +248,26 @@ func (h *Handler) HandleRequest(c *gin.Context) {
 }
 ```
 
+### Go Service Pattern (Notifications Example)
+
+```go
+// Service layer with business logic
+type Service struct {
+    db  *sql.DB
+    log *logger.Logger
+}
+
+func (s *Service) GetNotifications(ctx context.Context, userID string, category string, limit, offset int) ([]Notification, int, error) {
+    // Query database with pagination
+    // Return notifications and total count
+}
+
+func (s *Service) MarkAsRead(ctx context.Context, userID, notificationID string) error {
+    // Update notification read status
+    // Verify user ownership
+}
+```
+
 ## Testing Conventions
 
 ### Frontend
@@ -146,6 +276,37 @@ func (h *Handler) HandleRequest(c *gin.Context) {
 - Use React Testing Library for components
 - Use MSW for API mocking
 - Minimum 60% coverage
+- Property-based tests with fast-check for universal properties
+
+### Frontend Testing Example (Notifications)
+```typescript
+// Unit test
+describe('NotificationItem', () => {
+  it('renders unread notification with correct styling', () => {
+    const notification = { id: '1', title: 'Test', readAt: undefined }
+    render(<NotificationItem notification={notification} onMarkAsRead={jest.fn()} />)
+    expect(screen.getByText('Test')).toHaveClass('font-semibold')
+  })
+})
+
+// Property-based test
+describe('Property: Read Status Styling', () => {
+  it('applies distinct styling for unread notifications', () => {
+    fc.assert(
+      fc.property(
+        notificationGenerator(),
+        (notification) => {
+          const { container } = render(
+            <NotificationItem notification={notification} onMarkAsRead={jest.fn()} />
+          )
+          // Verify property holds for all inputs
+        }
+      ),
+      { numRuns: 100 }
+    )
+  })
+})
+```
 
 ### Backend
 - Test files: `*_test.go`
@@ -153,6 +314,43 @@ func (h *Handler) HandleRequest(c *gin.Context) {
 - Use testify for assertions
 - Table-driven tests preferred
 - Test both success and error cases
+- Property-based tests with gopter for universal properties
+
+### Backend Testing Example (Notifications)
+```go
+// Unit test
+func TestGetNotifications(t *testing.T) {
+    tests := []struct {
+        name     string
+        userID   string
+        category string
+        want     int
+        wantErr  bool
+    }{
+        {"valid request", "user-1", "main", 10, false},
+        {"invalid category", "user-1", "invalid", 0, true},
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // Test implementation
+        })
+    }
+}
+
+// Property-based test with gopter
+func TestPaginationProperty(t *testing.T) {
+    properties := gopter.NewProperties(nil)
+    properties.Property("pagination returns at most limit items", prop.ForAll(
+        func(limit int) bool {
+            result := service.GetNotifications(ctx, userID, "main", limit, 0)
+            return len(result) <= limit
+        },
+        gen.IntRange(1, 100),
+    ))
+    properties.TestingRun(t)
+}
+```
 
 ## Import Organization
 

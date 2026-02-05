@@ -42,7 +42,7 @@ type LoginRequest struct {
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid request data")
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
 		return
 	}
 
@@ -60,14 +60,14 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid request data")
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
 		return
 	}
 
 	result, err := h.service.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		h.log.Errorw("Login failed", "error", err, "email", req.Email)
-		response.Error(c, http.StatusUnauthorized, "Invalid credentials")
+		response.Error(c, http.StatusUnauthorized, "Неверные учетные данные")
 		return
 	}
 

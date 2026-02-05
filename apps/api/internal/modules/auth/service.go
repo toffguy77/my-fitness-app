@@ -26,7 +26,7 @@ func NewService(cfg *config.Config, log *logger.Logger) *Service {
 
 // User represents a user
 type User struct {
-	ID        string    `json:"id"`
+	ID        int64     `json:"id"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name,omitempty"`
 	Role      string    `json:"role"`
@@ -46,7 +46,7 @@ func (s *Service) Register(ctx context.Context, email, password, name string) (*
 
 	// Placeholder implementation
 	user := &User{
-		ID:        "user-123",
+		ID:        123,
 		Email:     email,
 		Name:      name,
 		Role:      "client",
@@ -63,7 +63,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 
 	// Placeholder implementation
 	user := &User{
-		ID:        "user-123",
+		ID:        123,
 		Email:     email,
 		Role:      "client",
 		CreatedAt: time.Now(),

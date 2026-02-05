@@ -54,7 +54,7 @@ type ReceiveLogsRequest struct {
 func (h *Handler) ReceiveLogs(c *gin.Context) {
 	var req ReceiveLogsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid request data")
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
 		return
 	}
 

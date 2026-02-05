@@ -38,12 +38,17 @@ type CreateEntryRequest struct {
 
 // GetEntries returns nutrition entries
 func (h *Handler) GetEntries(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userIDInterface, _ := c.Get("user_id")
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
 
-	entries, err := h.service.GetEntries(c.Request.Context(), userID.(string))
+	entries, err := h.service.GetEntries(c.Request.Context(), userID)
 	if err != nil {
-		h.log.Errorw("Failed to get entries", "error", err, "user_id", userID)
-		response.Error(c, http.StatusInternalServerError, "Failed to get entries")
+		h.log.Errorw("Не удалось получить записи", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось получить записи")
 		return
 	}
 
@@ -52,18 +57,23 @@ func (h *Handler) GetEntries(c *gin.Context) {
 
 // CreateEntry creates a new nutrition entry
 func (h *Handler) CreateEntry(c *gin.Context) {
-	userID, _ := c.Get("user_id")
-
-	var req CreateEntryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid request data")
+	userIDInterface, _ := c.Get("user_id")
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
 		return
 	}
 
-	entry, err := h.service.CreateEntry(c.Request.Context(), userID.(string), &req)
+	var req CreateEntryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	entry, err := h.service.CreateEntry(c.Request.Context(), userID, &req)
 	if err != nil {
-		h.log.Errorw("Failed to create entry", "error", err, "user_id", userID)
-		response.Error(c, http.StatusInternalServerError, "Failed to create entry")
+		h.log.Errorw("Не удалось создать запись", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось создать запись")
 		return
 	}
 
@@ -73,12 +83,17 @@ func (h *Handler) CreateEntry(c *gin.Context) {
 // GetEntry returns a single nutrition entry
 func (h *Handler) GetEntry(c *gin.Context) {
 	entryID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userIDInterface, _ := c.Get("user_id")
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
 
-	entry, err := h.service.GetEntry(c.Request.Context(), userID.(string), entryID)
+	entry, err := h.service.GetEntry(c.Request.Context(), userID, entryID)
 	if err != nil {
 		h.log.Errorw("Failed to get entry", "error", err, "entry_id", entryID)
-		response.Error(c, http.StatusNotFound, "Entry not found")
+		response.Error(c, http.StatusNotFound, "Запись не найдена")
 		return
 	}
 
@@ -88,18 +103,23 @@ func (h *Handler) GetEntry(c *gin.Context) {
 // UpdateEntry updates a nutrition entry
 func (h *Handler) UpdateEntry(c *gin.Context) {
 	entryID := c.Param("id")
-	userID, _ := c.Get("user_id")
-
-	var req CreateEntryRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid request data")
+	userIDInterface, _ := c.Get("user_id")
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
 		return
 	}
 
-	entry, err := h.service.UpdateEntry(c.Request.Context(), userID.(string), entryID, &req)
+	var req CreateEntryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	entry, err := h.service.UpdateEntry(c.Request.Context(), userID, entryID, &req)
 	if err != nil {
-		h.log.Errorw("Failed to update entry", "error", err, "entry_id", entryID)
-		response.Error(c, http.StatusInternalServerError, "Failed to update entry")
+		h.log.Errorw("Не удалось обновить запись", "error", err, "entry_id", entryID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось обновить запись")
 		return
 	}
 
@@ -109,11 +129,16 @@ func (h *Handler) UpdateEntry(c *gin.Context) {
 // DeleteEntry deletes a nutrition entry
 func (h *Handler) DeleteEntry(c *gin.Context) {
 	entryID := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userIDInterface, _ := c.Get("user_id")
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
 
-	if err := h.service.DeleteEntry(c.Request.Context(), userID.(string), entryID); err != nil {
-		h.log.Errorw("Failed to delete entry", "error", err, "entry_id", entryID)
-		response.Error(c, http.StatusInternalServerError, "Failed to delete entry")
+	if err := h.service.DeleteEntry(c.Request.Context(), userID, entryID); err != nil {
+		h.log.Errorw("Не удалось удалить запись", "error", err, "entry_id", entryID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось удалить запись")
 		return
 	}
 

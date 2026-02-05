@@ -122,7 +122,7 @@ func TestRenderTemplate(t *testing.T) {
 		body, err := service.renderTemplate("password_reset", data)
 
 		assert.NoError(t, err)
-		assert.Contains(t, body, "Password Reset Request")
+		assert.Contains(t, body, "Запрос на сброс пароля")
 		assert.Contains(t, body, data.UserEmail)
 		assert.Contains(t, body, data.ResetURL)
 		assert.Contains(t, body, data.SupportEmail)
@@ -140,7 +140,7 @@ func TestRenderTemplate(t *testing.T) {
 		body, err := service.renderTemplate("password_changed", data)
 
 		assert.NoError(t, err)
-		assert.Contains(t, body, "Password Successfully Changed")
+		assert.Contains(t, body, "Пароль успешно изменен")
 		assert.Contains(t, body, data.UserEmail)
 		assert.Contains(t, body, data.IPAddress)
 		assert.Contains(t, body, data.SupportEmail)
@@ -179,13 +179,13 @@ func TestPasswordResetEmailContent(t *testing.T) {
 
 	// Verify all required content is present
 	requiredContent := []string{
-		"Password Reset Request",
+		"Запрос на сброс пароля",
 		"user@example.com",
 		"https://burcev.team/reset-password?token=abc123",
-		"Reset Password",
-		"This link will expire",
-		"Security Notice",
-		"If you did not request a password reset",
+		"Сбросить пароль",
+		"Срок действия ссылки истекает",
+		"Уведомление о безопасности",
+		"Если вы не запрашивали сброс пароля",
 		"support@burcev.team",
 	}
 
@@ -220,12 +220,12 @@ func TestPasswordChangedEmailContent(t *testing.T) {
 
 	// Verify all required content is present
 	requiredContent := []string{
-		"Password Successfully Changed",
+		"Пароль успешно изменен",
 		"user@example.com",
 		"192.168.1.1",
-		"Changed at:",
-		"IP Address:",
-		"Did not make this change?",
+		"Изменено:",
+		"IP адрес:",
+		"Это были не вы?",
 		"support@burcev.team",
 	}
 

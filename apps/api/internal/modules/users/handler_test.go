@@ -37,7 +37,7 @@ func TestGetProfile(t *testing.T) {
 	router := gin.New()
 
 	router.GET("/profile", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.GetProfile(c)
 	})
 
@@ -57,7 +57,7 @@ func TestGetProfile(t *testing.T) {
 
 	data := response["data"].(map[string]interface{})
 	profile := data["profile"].(map[string]interface{})
-	assert.Equal(t, "test-user-123", profile["id"])
+	assert.Equal(t, float64(123), profile["id"]) // JSON numbers are float64
 	assert.NotEmpty(t, profile["email"])
 	assert.NotEmpty(t, profile["name"])
 	assert.NotEmpty(t, profile["role"])
@@ -68,7 +68,7 @@ func TestUpdateProfile_Success(t *testing.T) {
 	router := gin.New()
 
 	router.PUT("/profile", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.UpdateProfile(c)
 	})
 
@@ -100,7 +100,7 @@ func TestUpdateProfile_InvalidJSON(t *testing.T) {
 	router := gin.New()
 
 	router.PUT("/profile", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.UpdateProfile(c)
 	})
 
@@ -117,7 +117,7 @@ func TestUpdateProfile_InvalidJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "error", response["status"])
-	assert.Equal(t, "Invalid request data", response["message"])
+	assert.Equal(t, "Неверные данные запроса", response["message"])
 }
 
 func TestUpdateProfile_EmptyName(t *testing.T) {
@@ -125,7 +125,7 @@ func TestUpdateProfile_EmptyName(t *testing.T) {
 	router := gin.New()
 
 	router.PUT("/profile", func(c *gin.Context) {
-		c.Set("user_id", "test-user-123")
+		c.Set("user_id", int64(123))
 		handler.UpdateProfile(c)
 	})
 

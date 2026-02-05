@@ -1,0 +1,755 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>notifications: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+
+				<option value="file0">github.com/burcev/api/internal/modules/notifications/handler.go (65.9%)</option>
+
+				<option value="file1">github.com/burcev/api/internal/modules/notifications/service.go (79.2%)</option>
+
+				<option value="file2">github.com/burcev/api/internal/modules/notifications/types.go (100.0%)</option>
+
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+
+			</div>
+		</div>
+		<div id="content">
+
+		<pre class="file" id="file0" style="display: none">package notifications
+
+import (
+        "context"
+        "net/http"
+        "time"
+
+        "github.com/burcev/api/internal/config"
+        "github.com/burcev/api/internal/shared/database"
+        "github.com/burcev/api/internal/shared/logger"
+        "github.com/burcev/api/internal/shared/response"
+        "github.com/gin-gonic/gin"
+)
+
+// ServiceInterface defines the interface for notification service operations
+type ServiceInterface interface {
+        GetNotifications(ctx context.Context, userID int64, category NotificationCategory, limit, offset int) (*GetNotificationsResponse, error)
+        MarkAsRead(ctx context.Context, userID int64, notificationID string) (*time.Time, error)
+        MarkAllAsRead(ctx context.Context, userID int64, category NotificationCategory) (int, error)
+        GetUnreadCounts(ctx context.Context, userID int64) (*UnreadCountsResponse, error)
+        CreateNotification(ctx context.Context, notification *Notification) error
+}
+
+// Handler handles notification requests
+type Handler struct {
+        cfg     *config.Config
+        log     *logger.Logger
+        service ServiceInterface
+}
+
+// NewHandler creates a new notifications handler
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handler <span class="cov0" title="0">{
+        return &amp;Handler{
+                cfg:     cfg,
+                log:     log,
+                service: NewService(db, log),
+        }
+}</span>
+
+// GetNotifications handles GET /api/notifications
+// Retrieves notifications for the authenticated user with pagination and filtering
+func (h *Handler) GetNotifications(c *gin.Context) <span class="cov8" title="1">{
+        // Get user ID from context (set by auth middleware)
+        userIDInterface, exists := c.Get("user_id")
+        if !exists </span><span class="cov8" title="1">{
+                response.Unauthorized(c, "Пользователь не аутентифицирован")
+                return
+        }</span>
+
+        // Convert to int64
+        <span class="cov8" title="1">userID, ok := userIDInterface.(int64)
+        if !ok </span><span class="cov0" title="0">{
+                h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+                response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+                return
+        }</span>
+
+        // Bind and validate query parameters
+        <span class="cov8" title="1">var req GetNotificationsRequest
+        if err := c.ShouldBindQuery(&amp;req); err != nil </span><span class="cov8" title="1">{
+                h.log.Errorw("Неверные параметры запроса", "error", err)
+                response.Error(c, http.StatusBadRequest, "Неверные параметры запроса")
+                return
+        }</span>
+
+        // Set default values if not provided
+        <span class="cov8" title="1">if req.Limit &lt;= 0 </span><span class="cov0" title="0">{
+                req.Limit = 50
+        }</span>
+        <span class="cov8" title="1">if req.Offset &lt; 0 </span><span class="cov0" title="0">{
+                req.Offset = 0
+        }</span>
+
+        // Call service to get notifications
+        <span class="cov8" title="1">result, err := h.service.GetNotifications(c.Request.Context(), userID, req.Category, req.Limit, req.Offset)
+        if err != nil </span><span class="cov0" title="0">{
+                h.log.Errorw("Failed to get notifications", "error", err, "user_id", userID, "category", req.Category)
+                response.InternalError(c, "Не удалось получить уведомления")
+                return
+        }</span>
+
+        <span class="cov8" title="1">response.Success(c, http.StatusOK, result)</span>
+}
+
+// MarkAsRead handles POST /api/notifications/:id/read
+// Marks a single notification as read for the authenticated user
+func (h *Handler) MarkAsRead(c *gin.Context) <span class="cov8" title="1">{
+        // Get user ID from context (set by auth middleware)
+        userIDInterface, exists := c.Get("user_id")
+        if !exists </span><span class="cov8" title="1">{
+                response.Unauthorized(c, "Пользователь не аутентифицирован")
+                return
+        }</span>
+
+        // Convert to int64
+        <span class="cov8" title="1">userID, ok := userIDInterface.(int64)
+        if !ok </span><span class="cov0" title="0">{
+                h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+                response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+                return
+        }</span>
+
+        // Get notification ID from URL parameter
+        <span class="cov8" title="1">notificationID := c.Param("id")
+        if notificationID == "" </span><span class="cov0" title="0">{
+                response.Error(c, http.StatusBadRequest, "ID уведомления обязателен")
+                return
+        }</span>
+
+        // Call service to mark notification as read
+        <span class="cov8" title="1">readAt, err := h.service.MarkAsRead(c.Request.Context(), userID, notificationID)
+        if err != nil </span><span class="cov8" title="1">{
+                h.log.Errorw("Не удалось отметить уведомление как прочитанное", "error", err, "user_id", userID, "notification_id", notificationID)
+
+                // Check if it's a not found error
+                if err.Error() == "notification not found or already read" </span><span class="cov8" title="1">{
+                        response.NotFound(c, "Notification not found or already read")
+                        return
+                }</span>
+
+                <span class="cov0" title="0">response.InternalError(c, "Не удалось отметить уведомление как прочитанное")
+                return</span>
+        }
+
+        <span class="cov8" title="1">response.Success(c, http.StatusOK, &amp;MarkAsReadResponse{
+                Success: true,
+                ReadAt:  readAt,
+        })</span>
+}
+
+// GetUnreadCounts handles GET /api/notifications/unread-counts
+// Returns the count of unread notifications for both categories
+func (h *Handler) GetUnreadCounts(c *gin.Context) <span class="cov8" title="1">{
+        // Get user ID from context (set by auth middleware)
+        userIDInterface, exists := c.Get("user_id")
+        if !exists </span><span class="cov8" title="1">{
+                response.Unauthorized(c, "Пользователь не аутентифицирован")
+                return
+        }</span>
+
+        // Convert to int64
+        <span class="cov8" title="1">userID, ok := userIDInterface.(int64)
+        if !ok </span><span class="cov0" title="0">{
+                h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+                response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+                return
+        }</span>
+
+        // Call service to get unread counts
+        <span class="cov8" title="1">counts, err := h.service.GetUnreadCounts(c.Request.Context(), userID)
+        if err != nil </span><span class="cov0" title="0">{
+                h.log.Errorw("Failed to get unread counts", "error", err, "user_id", userID)
+                response.InternalError(c, "Не удалось получить количество непрочитанных")
+                return
+        }</span>
+
+        <span class="cov8" title="1">response.Success(c, http.StatusOK, counts)</span>
+}
+
+// MarkAllAsRead handles POST /api/notifications/mark-all-read
+// Marks all notifications in a category as read for the authenticated user
+func (h *Handler) MarkAllAsRead(c *gin.Context) <span class="cov8" title="1">{
+        // Get user ID from context (set by auth middleware)
+        userIDInterface, exists := c.Get("user_id")
+        if !exists </span><span class="cov8" title="1">{
+                response.Unauthorized(c, "Пользователь не аутентифицирован")
+                return
+        }</span>
+
+        // Convert to int64
+        <span class="cov8" title="1">userID, ok := userIDInterface.(int64)
+        if !ok </span><span class="cov0" title="0">{
+                h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+                response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+                return
+        }</span>
+
+        // Bind and validate request body
+        <span class="cov8" title="1">var req MarkAllAsReadRequest
+        if err := c.ShouldBindJSON(&amp;req); err != nil </span><span class="cov8" title="1">{
+                h.log.Errorw("Неверные данные запроса", "error", err)
+                response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+                return
+        }</span>
+
+        // Call service to mark all notifications as read
+        <span class="cov8" title="1">markedCount, err := h.service.MarkAllAsRead(c.Request.Context(), userID, req.Category)
+        if err != nil </span><span class="cov0" title="0">{
+                h.log.Errorw("Не удалось отметить все уведомления как прочитанные", "error", err, "user_id", userID, "category", req.Category)
+                response.InternalError(c, "Не удалось отметить все уведомления как прочитанные")
+                return
+        }</span>
+
+        <span class="cov8" title="1">response.Success(c, http.StatusOK, &amp;MarkAllAsReadResponse{
+                Success:     true,
+                MarkedCount: markedCount,
+        })</span>
+}
+</pre>
+
+		<pre class="file" id="file1" style="display: none">package notifications
+
+import (
+        "context"
+        "database/sql"
+        "fmt"
+        "time"
+
+        "github.com/burcev/api/internal/shared/database"
+        "github.com/burcev/api/internal/shared/logger"
+        "github.com/google/uuid"
+)
+
+// Service handles notifications business logic
+type Service struct {
+        db  *database.DB
+        log *logger.Logger
+}
+
+// NewService creates a new notifications service
+func NewService(db *database.DB, log *logger.Logger) *Service <span class="cov8" title="1">{
+        return &amp;Service{
+                db:  db,
+                log: log,
+        }
+}</span>
+
+// GetNotifications retrieves notifications for a user with pagination and filtering
+func (s *Service) GetNotifications(ctx context.Context, userID int64, category NotificationCategory, limit, offset int) (*GetNotificationsResponse, error) <span class="cov8" title="1">{
+        startTime := time.Now()
+
+        // Validate category
+        if !category.IsValid() </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("invalid category: %s", category)
+        }</span>
+
+        // Set default limit if not provided
+        <span class="cov8" title="1">if limit &lt;= 0 </span><span class="cov8" title="1">{
+                limit = 50
+        }</span>
+        <span class="cov8" title="1">if limit &gt; 100 </span><span class="cov8" title="1">{
+                limit = 100
+        }</span>
+
+        // Query to get notifications with pagination
+        <span class="cov8" title="1">query := `
+                SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at
+                FROM notifications
+                WHERE user_id = $1 AND category = $2
+                ORDER BY created_at DESC
+                LIMIT $3 OFFSET $4
+        `
+
+        rows, err := s.db.QueryContext(ctx, query, userID, category, limit, offset)
+        if err != nil </span><span class="cov0" title="0">{
+                s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+                        "user_id":  userID,
+                        "category": category,
+                        "limit":    limit,
+                        "offset":   offset,
+                })
+                return nil, fmt.Errorf("failed to query notifications: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+
+        notifications := make([]Notification, 0)
+        for rows.Next() </span><span class="cov8" title="1">{
+                var n Notification
+                err := rows.Scan(
+                        &amp;n.ID,
+                        &amp;n.UserID,
+                        &amp;n.Category,
+                        &amp;n.Type,
+                        &amp;n.Title,
+                        &amp;n.Content,
+                        &amp;n.IconURL,
+                        &amp;n.CreatedAt,
+                        &amp;n.ReadAt,
+                )
+                if err != nil </span><span class="cov0" title="0">{
+                        s.log.Error("Failed to scan notification", "error", err)
+                        return nil, fmt.Errorf("failed to scan notification: %w", err)
+                }</span>
+                <span class="cov8" title="1">notifications = append(notifications, n)</span>
+        }
+
+        <span class="cov8" title="1">if err := rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error iterating notifications: %w", err)
+        }</span>
+
+        // Get total count for this category
+        <span class="cov8" title="1">countQuery := `
+                SELECT COUNT(*)
+                FROM notifications
+                WHERE user_id = $1 AND category = $2
+        `
+
+        var total int
+        err = s.db.QueryRowContext(ctx, countQuery, userID, category).Scan(&amp;total)
+        if err != nil </span><span class="cov0" title="0">{
+                s.log.LogDatabaseQuery(countQuery, time.Since(startTime), err, map[string]interface{}{
+                        "user_id":  userID,
+                        "category": category,
+                })
+                return nil, fmt.Errorf("failed to count notifications: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+                "user_id":  userID,
+                "category": category,
+                "count":    len(notifications),
+                "total":    total,
+        })
+
+        // Determine if there are more notifications
+        hasMore := (offset + len(notifications)) &lt; total
+
+        return &amp;GetNotificationsResponse{
+                Notifications: notifications,
+                Total:         total,
+                HasMore:       hasMore,
+        }, nil</span>
+}
+
+// MarkAsRead marks a single notification as read
+func (s *Service) MarkAsRead(ctx context.Context, userID int64, notificationID string) (*time.Time, error) <span class="cov8" title="1">{
+        startTime := time.Now()
+
+        // Validate notification ID is a valid UUID
+        if _, err := uuid.Parse(notificationID); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("invalid notification ID format: %w", err)
+        }</span>
+
+        // Update query with user_id check to ensure user owns the notification
+        <span class="cov8" title="1">query := `
+                UPDATE notifications
+                SET read_at = NOW()
+                WHERE id = $1 AND user_id = $2 AND read_at IS NULL
+                RETURNING read_at
+        `
+
+        var readAt time.Time
+        err := s.db.QueryRowContext(ctx, query, notificationID, userID).Scan(&amp;readAt)
+        if err != nil </span><span class="cov8" title="1">{
+                if err == sql.ErrNoRows </span><span class="cov8" title="1">{
+                        s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+                                "notification_id": notificationID,
+                                "user_id":         userID,
+                        })
+                        return nil, fmt.Errorf("notification not found or already read")
+                }</span>
+                <span class="cov0" title="0">s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+                        "notification_id": notificationID,
+                        "user_id":         userID,
+                })
+                return nil, fmt.Errorf("failed to mark notification as read: %w", err)</span>
+        }
+
+        <span class="cov8" title="1">s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+                "notification_id": notificationID,
+                "user_id":         userID,
+                "read_at":         readAt,
+        })
+
+        return &amp;readAt, nil</span>
+}
+
+// MarkAllAsRead marks all notifications in a category as read
+func (s *Service) MarkAllAsRead(ctx context.Context, userID int64, category NotificationCategory) (int, error) <span class="cov8" title="1">{
+        startTime := time.Now()
+
+        // Validate category
+        if !category.IsValid() </span><span class="cov8" title="1">{
+                return 0, fmt.Errorf("invalid category: %s", category)
+        }</span>
+
+        // Update all unread notifications for the user in the specified category
+        <span class="cov8" title="1">query := `
+                UPDATE notifications
+                SET read_at = NOW()
+                WHERE user_id = $1 AND category = $2 AND read_at IS NULL
+        `
+
+        result, err := s.db.ExecContext(ctx, query, userID, category)
+        if err != nil </span><span class="cov0" title="0">{
+                s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+                        "user_id":  userID,
+                        "category": category,
+                })
+                return 0, fmt.Errorf("failed to mark all notifications as read: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">rowsAffected, err := result.RowsAffected()
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("failed to get rows affected: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+                "user_id":       userID,
+                "category":      category,
+                "rows_affected": rowsAffected,
+        })
+
+        return int(rowsAffected), nil</span>
+}
+
+// GetUnreadCounts returns the count of unread notifications for both categories
+func (s *Service) GetUnreadCounts(ctx context.Context, userID int64) (*UnreadCountsResponse, error) <span class="cov8" title="1">{
+        startTime := time.Now()
+
+        query := `
+                SELECT
+                        category,
+                        COUNT(*) as count
+                FROM notifications
+                WHERE user_id = $1 AND read_at IS NULL
+                GROUP BY category
+        `
+
+        rows, err := s.db.QueryContext(ctx, query, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+                        "user_id": userID,
+                })
+                return nil, fmt.Errorf("failed to query unread counts: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer rows.Close()
+
+        counts := &amp;UnreadCountsResponse{
+                Main:    0,
+                Content: 0,
+        }
+
+        for rows.Next() </span><span class="cov8" title="1">{
+                var category NotificationCategory
+                var count int
+                if err := rows.Scan(&amp;category, &amp;count); err != nil </span><span class="cov0" title="0">{
+                        s.log.Error("Failed to scan unread count", "error", err)
+                        return nil, fmt.Errorf("failed to scan unread count: %w", err)
+                }</span>
+
+                <span class="cov8" title="1">switch category </span>{
+                case CategoryMain:<span class="cov8" title="1">
+                        counts.Main = count</span>
+                case CategoryContent:<span class="cov8" title="1">
+                        counts.Content = count</span>
+                }
+        }
+
+        <span class="cov8" title="1">if err := rows.Err(); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error iterating unread counts: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+                "user_id":      userID,
+                "main_count":   counts.Main,
+                "content_count": counts.Content,
+        })
+
+        return counts, nil</span>
+}
+
+// CreateNotification creates a new notification (for testing/admin use)
+func (s *Service) CreateNotification(ctx context.Context, notification *Notification) error <span class="cov8" title="1">{
+        startTime := time.Now()
+
+        // Validate notification
+        if err := notification.Validate(); err != nil </span><span class="cov8" title="1">{
+                return fmt.Errorf("validation failed: %w", err)
+        }</span>
+
+        // Generate UUID if not provided
+        <span class="cov8" title="1">if notification.ID == "" </span><span class="cov8" title="1">{
+                notification.ID = uuid.New().String()
+        }</span>
+
+        // Set created_at if not provided
+        <span class="cov8" title="1">if notification.CreatedAt.IsZero() </span><span class="cov0" title="0">{
+                notification.CreatedAt = time.Now()
+        }</span>
+
+        <span class="cov8" title="1">query := `
+                INSERT INTO notifications (id, user_id, category, type, title, content, icon_url, created_at, read_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                RETURNING id, created_at
+        `
+
+        err := s.db.QueryRowContext(
+                ctx,
+                query,
+                notification.ID,
+                notification.UserID,
+                notification.Category,
+                notification.Type,
+                notification.Title,
+                notification.Content,
+                notification.IconURL,
+                notification.CreatedAt,
+                notification.ReadAt,
+        ).Scan(&amp;notification.ID, &amp;notification.CreatedAt)
+
+        if err != nil </span><span class="cov0" title="0">{
+                s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+                        "user_id":  notification.UserID,
+                        "category": notification.Category,
+                        "type":     notification.Type,
+                })
+                return fmt.Errorf("failed to create notification: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+                "notification_id": notification.ID,
+                "user_id":         notification.UserID,
+                "category":        notification.Category,
+                "type":            notification.Type,
+        })
+
+        s.log.LogBusinessEvent("notification_created", map[string]interface{}{
+                "notification_id": notification.ID,
+                "user_id":         notification.UserID,
+                "category":        notification.Category,
+                "type":            notification.Type,
+        })
+
+        return nil</span>
+}
+</pre>
+
+		<pre class="file" id="file2" style="display: none">package notifications
+
+import (
+        "fmt"
+        "time"
+)
+
+// NotificationCategory represents the category of a notification
+type NotificationCategory string
+
+const (
+        CategoryMain    NotificationCategory = "main"
+        CategoryContent NotificationCategory = "content"
+)
+
+// IsValid checks if the notification category is valid
+func (c NotificationCategory) IsValid() bool <span class="cov8" title="1">{
+        switch c </span>{
+        case CategoryMain, CategoryContent:<span class="cov8" title="1">
+                return true</span>
+        }
+        <span class="cov8" title="1">return false</span>
+}
+
+// NotificationType represents the type of a notification
+type NotificationType string
+
+const (
+        TypeTrainerFeedback NotificationType = "trainer_feedback"
+        TypeAchievement     NotificationType = "achievement"
+        TypeReminder        NotificationType = "reminder"
+        TypeSystemUpdate    NotificationType = "system_update"
+        TypeNewFeature      NotificationType = "new_feature"
+        TypeGeneral         NotificationType = "general"
+)
+
+// IsValid checks if the notification type is valid
+func (t NotificationType) IsValid() bool <span class="cov8" title="1">{
+        switch t </span>{
+        case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral:<span class="cov8" title="1">
+                return true</span>
+        }
+        <span class="cov8" title="1">return false</span>
+}
+
+// Notification represents a user notification
+type Notification struct {
+        ID        string               `json:"id" db:"id"`
+        UserID    int64                `json:"user_id" db:"user_id"`
+        Category  NotificationCategory `json:"category" db:"category"`
+        Type      NotificationType     `json:"type" db:"type"`
+        Title     string               `json:"title" db:"title"`
+        Content   string               `json:"content" db:"content"`
+        IconURL   *string              `json:"icon_url,omitempty" db:"icon_url"`
+        CreatedAt time.Time            `json:"created_at" db:"created_at"`
+        ReadAt    *time.Time           `json:"read_at,omitempty" db:"read_at"`
+}
+
+// Validate validates the notification fields
+func (n *Notification) Validate() error <span class="cov8" title="1">{
+        if n.UserID &lt;= 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("user_id is required and must be positive")
+        }</span>
+        <span class="cov8" title="1">if !n.Category.IsValid() </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid category: %s", n.Category)
+        }</span>
+        <span class="cov8" title="1">if !n.Type.IsValid() </span><span class="cov8" title="1">{
+                return fmt.Errorf("invalid type: %s", n.Type)
+        }</span>
+        <span class="cov8" title="1">if n.Title == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("title is required")
+        }</span>
+        <span class="cov8" title="1">if len(n.Title) &gt; 255 </span><span class="cov8" title="1">{
+                return fmt.Errorf("title must be 255 characters or less")
+        }</span>
+        <span class="cov8" title="1">if n.Content == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("content is required")
+        }</span>
+        <span class="cov8" title="1">if n.IconURL != nil &amp;&amp; len(*n.IconURL) &gt; 500 </span><span class="cov8" title="1">{
+                return fmt.Errorf("icon_url must be 500 characters or less")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetNotificationsRequest represents the request to get notifications
+type GetNotificationsRequest struct {
+        Category NotificationCategory `form:"category" binding:"required,oneof=main content"`
+        Limit    int                  `form:"limit" binding:"omitempty,min=1,max=100"`
+        Offset   int                  `form:"offset" binding:"omitempty,min=0"`
+}
+
+// GetNotificationsResponse represents the response for getting notifications
+type GetNotificationsResponse struct {
+        Notifications []Notification `json:"notifications"`
+        Total         int            `json:"total"`
+        HasMore       bool           `json:"has_more"`
+}
+
+// MarkAsReadResponse represents the response for marking a notification as read
+type MarkAsReadResponse struct {
+        Success bool       `json:"success"`
+        ReadAt  *time.Time `json:"read_at,omitempty"`
+}
+
+// MarkAllAsReadRequest represents the request to mark all notifications as read
+type MarkAllAsReadRequest struct {
+        Category NotificationCategory `json:"category" binding:"required,oneof=main content"`
+}
+
+// MarkAllAsReadResponse represents the response for marking all notifications as read
+type MarkAllAsReadResponse struct {
+        Success     bool `json:"success"`
+        MarkedCount int  `json:"marked_count"`
+}
+
+// UnreadCountsResponse represents the response for getting unread counts
+type UnreadCountsResponse struct {
+        Main    int `json:"main"`
+        Content int `json:"content"`
+}
+</pre>
+
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

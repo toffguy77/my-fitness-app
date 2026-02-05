@@ -92,7 +92,7 @@ func TestForgotPassword_Success(t *testing.T) {
 	var response map[string]string
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
-	assert.Contains(t, response["message"], "If an account exists")
+	assert.Contains(t, response["message"], "Если аккаунт с этим email существует")
 }
 
 func TestForgotPassword_InvalidEmail(t *testing.T) {
