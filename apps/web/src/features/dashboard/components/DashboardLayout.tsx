@@ -3,10 +3,11 @@
 import { forwardRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardHeader } from './DashboardHeader'
-import { MainContent } from './MainContent'
 import { FooterNavigation } from './FooterNavigation'
+import { OfflineIndicator } from './OfflineIndicator'
 import { cn } from '@/shared/utils/cn'
 import { useNotificationsStore } from '@/features/notifications'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { NavigationItemId } from '../types'
 
 export interface DashboardLayoutProps {
@@ -24,9 +25,9 @@ export interface DashboardLayoutProps {
  *
  * Container component that orchestrates the header, main content, and footer navigation.
  * Implements a full viewport height flexbox layout with fixed header and footer,
- * and scrollable main content area.
+ * and scrollable main content area. Handles orientation changes smoothly.
  *
- * Requirements: 3.1, 4.1, 4.2, 4.3
+ * Requirements: 3.1, 4.1, 4.2, 4.3, 12.6
  */
 export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
     ({
@@ -41,6 +42,9 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         const router = useRouter()
         const { unreadCounts, fetchUnreadCounts, startPolling, stopPolling } = useNotificationsStore()
 
+        // Monitor online/offline status
+        useOnlineStatus()
+
         // Calculate total unread count
         const totalUnreadCount = unreadCounts.main + unreadCounts.content
 
@@ -54,6 +58,33 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
             }
         }, [fetchUnreadCounts, startPolling, stopPolling])
 
+        // Handle orientation changes (Requirement 12.6)
+        useEffect(() => {
+            let timeoutId: NodeJS.Timeout
+
+            const handleOrientationChange = () => {
+                // Add a small delay to allow the browser to complete the orientation change
+                // This ensures smooth adaptation within 300ms
+                timeoutId = setTimeout(() => {
+                    // Force a reflow to ensure layout adapts properly
+                    window.dispatchEvent(new Event('resize'))
+                }, 50)
+            }
+
+            // Listen for orientation change events
+            window.addEventListener('orientationchange', handleOrientationChange)
+            // Also listen for resize as a fallback
+            window.addEventListener('resize', handleOrientationChange)
+
+            return () => {
+                window.removeEventListener('orientationchange', handleOrientationChange)
+                window.removeEventListener('resize', handleOrientationChange)
+                if (timeoutId) {
+                    clearTimeout(timeoutId)
+                }
+            }
+        }, [])
+
         const handleAvatarClick = () => {
             router.push('/profile')
         }
@@ -66,11 +97,14 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
             <div
                 ref={ref}
                 className={cn(
-                    // Full viewport height flexbox layout (Requirement 3.1, 4.1)
-                    'flex flex-col',
-                    'min-h-screen h-screen',
-                    // Prevent overflow on the container
-                    'overflow-hidden',
+                    // Minimum full viewport height (Requirement 3.1, 4.1)
+                    'min-h-screen',
+                    // Ensure full width and prevent horizontal scrolling (Requirement 12.5)
+                    'w-full max-w-full overflow-x-hidden',
+                    // Background color
+                    'bg-gray-50',
+                    // Smooth transitions for orientation changes (Requirement 12.6)
+                    'transition-all duration-300 ease-in-out',
                     className
                 )}
                 data-testid="dashboard-layout"
@@ -84,20 +118,23 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
                     onNotificationClick={handleNotificationClick}
                 />
 
-                {/* Scrollable Main Content Area (Requirement 3.1, 4.3) */}
-                {/* Add top padding to account for fixed header (64px = h-16) */}
-                {/* Add bottom padding to account for fixed footer (64px = h-16) */}
-                <div className="flex-grow overflow-hidden pt-16 pb-16">
-                    <MainContent>
-                        {children}
-                    </MainContent>
-                </div>
+                {/* Main Content Area (Requirement 3.1, 4.3) */}
+                {/* Padding top/bottom to account for fixed header (64px) and footer (64px + safe area) */}
+                <main
+                    className="min-h-screen pt-16 pb-20"
+                    data-testid="main-content"
+                >
+                    {children}
+                </main>
 
                 {/* Fixed Footer Navigation at bottom (Requirement 3.1) */}
                 <FooterNavigation
                     activeItem={activeNavItem}
                     onNavigate={onNavigate}
                 />
+
+                {/* Offline Indicator (Requirement 13.4, 13.5) */}
+                <OfflineIndicator />
             </div>
         )
     }

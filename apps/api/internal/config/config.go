@@ -57,7 +57,9 @@ type Config struct {
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
 	// Load .env file if exists (for local development)
-	_ = godotenv.Load()
+	// Try multiple locations: current dir, project root (when running from apps/api)
+	_ = godotenv.Load()           // ./env
+	_ = godotenv.Load("../../.env") // project root when running from apps/api
 
 	cfg := &Config{
 		Env:        getEnv("NODE_ENV", "development"),

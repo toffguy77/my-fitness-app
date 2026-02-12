@@ -5,9 +5,14 @@
  * quick add functionality, completion indicator, and validation.
  *
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 4.7
+ *
+ * Performance optimizations:
+ * - React.memo to prevent unnecessary re-renders
+ * - Memoized ProgressBar sub-component
+ * - Debounced input validation (300ms)
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, memo, useMemo } from 'react'
 import { Plus, Check, Target } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
@@ -16,6 +21,8 @@ import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validateSteps } from '../utils/validation'
 import { calculatePercentage } from '../utils/calculations'
+import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
+import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
 
 /**
@@ -36,8 +43,9 @@ interface ProgressBarProps {
 
 /**
  * Progress bar component
+ * Memoized to prevent unnecessary re-renders
  */
-function ProgressBar({ percentage, className }: ProgressBarProps) {
+const ProgressBar = memo(function ProgressBar({ percentage, className }: ProgressBarProps) {
     const cappedPercentage = Math.min(percentage, 100)
     const isComplete = percentage >= 100
 
@@ -57,12 +65,13 @@ function ProgressBar({ percentage, className }: ProgressBarProps) {
             />
         </div>
     )
-}
+})
 
 /**
  * StepsBlock component
+ * Wrapped with React.memo to prevent unnecessary re-renders
  */
-export function StepsBlock({ date, className }: StepsBlockProps) {
+export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlockProps) {
     const [inputValue, setInputValue] = useState('')
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -77,9 +86,11 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
     const currentSteps = dayData?.steps || 0
     const stepsGoal = weeklyPlan?.stepsGoal || 10000
 
-    // Calculate percentage and completion
-    const percentage = calculatePercentage(currentSteps, stepsGoal)
-    const isGoalReached = currentSteps >= stepsGoal
+    // Calculate percentage and completion - memoized
+    const { percentage, isGoalReached } = useMemo(() => ({
+        percentage: calculatePercentage(currentSteps, stepsGoal),
+        isGoalReached: currentSteps >= stepsGoal,
+    }), [currentSteps, stepsGoal])
 
     // Format steps display
     const formatSteps = (steps: number) => {
@@ -89,24 +100,32 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
         return steps.toString()
     }
 
-    // Handle input change with validation
-    const handleInputChange = useCallback((value: string) => {
-        setInputValue(value)
-        setValidationError(null)
-
-        // Clear validation error when user starts typing
+    // Debounced validation function (300ms delay)
+    const debouncedValidate = useDebouncedCallback((value: string) => {
         if (value.trim() === '') {
+            setValidationError(null)
             return
         }
 
-        // Parse and validate input
         const numericValue = parseInt(value, 10)
         const validation = validateSteps(numericValue)
 
         if (!validation.isValid) {
             setValidationError(validation.error || 'Неверное значение')
+        } else {
+            setValidationError(null)
         }
-    }, [])
+    }, 300)
+
+    // Handle input change with debounced validation
+    const handleInputChange = useCallback((value: string) => {
+        setInputValue(value)
+        // Clear error immediately for better UX, then validate after debounce
+        if (validationError) {
+            setValidationError(null)
+        }
+        debouncedValidate(value)
+    }, [debouncedValidate, validationError])
 
     // Handle save steps
     const handleSave = useCallback(async () => {
@@ -165,13 +184,25 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
         }
     }, [handleSave, handleCancel])
 
+    // Check if this is today and steps are not logged
+    const isToday = dateStr === new Date().toISOString().split('T')[0]
+    const showAttentionIndicator = isToday && currentSteps === 0
+
     return (
         <Card className={cn('h-full', className)} variant="bordered">
             <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">
-                        Шаги
-                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg font-semibold text-gray-900">
+                            Шаги
+                        </CardTitle>
+                        {showAttentionIndicator && (
+                            <AttentionBadge
+                                urgency="normal"
+                                ariaLabel="Шаги не записаны сегодня"
+                            />
+                        )}
+                    </div>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -186,12 +217,14 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
 
             <CardContent className="space-y-4">
                 {/* Steps display */}
-                <div className="text-center space-y-3">
+                <div className="text-center space-y-3" role="region" aria-label="Прогресс шагов">
                     <div className="space-y-1">
                         <div className="text-3xl font-bold text-gray-900">
-                            {formatSteps(currentSteps)}
+                            <span aria-label={`Текущее количество шагов: ${currentSteps.toLocaleString()}`}>
+                                {formatSteps(currentSteps)}
+                            </span>
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500" aria-label={`Цель: ${stepsGoal.toLocaleString()} шагов`}>
                             из {formatSteps(stepsGoal)} шагов
                         </div>
                         <div className={cn(
@@ -207,8 +240,12 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
 
                     {/* Completion indicator */}
                     {isGoalReached && (
-                        <div className="flex items-center justify-center gap-2 text-green-600">
-                            <Check className="h-4 w-4" />
+                        <div
+                            className="flex items-center justify-center gap-2 text-green-600"
+                            role="status"
+                            aria-label="Цель по шагам достигнута"
+                        >
+                            <Check className="h-4 w-4" aria-hidden="true" />
                             <span className="text-sm font-medium">Цель достигнута!</span>
                         </div>
                     )}
@@ -216,24 +253,42 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
 
                 {/* Input dialog */}
                 {isDialogOpen && (
-                    <div className="space-y-3 p-4 bg-gray-50 rounded-lg border">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <Target className="h-4 w-4" />
+                    <div className="space-y-3 p-4 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="steps-dialog-title">
+                        <div id="steps-dialog-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Target className="h-4 w-4" aria-hidden="true" />
                             <span>Обновить количество шагов</span>
                         </div>
 
-                        <Input
-                            type="number"
-                            min="0"
-                            max="100000"
-                            placeholder="Введите количество шагов"
-                            value={inputValue}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            onKeyDown={handleKeyPress}
-                            error={validationError || undefined}
-                            autoFocus
-                            aria-label="Количество шагов"
-                        />
+                        <div>
+                            <label htmlFor="steps-input" className="sr-only">
+                                Количество шагов
+                            </label>
+                            <Input
+                                id="steps-input"
+                                type="number"
+                                min="0"
+                                max="100000"
+                                placeholder="Введите количество шагов"
+                                value={inputValue}
+                                onChange={(e) => handleInputChange(e.target.value)}
+                                onKeyDown={handleKeyPress}
+                                error={validationError || undefined}
+                                autoFocus
+                                aria-label="Количество шагов"
+                                aria-describedby={validationError ? "steps-error" : undefined}
+                                aria-invalid={!!validationError}
+                            />
+                            {validationError && (
+                                <div
+                                    id="steps-error"
+                                    className="sr-only"
+                                    role="alert"
+                                    aria-live="polite"
+                                >
+                                    {validationError}
+                                </div>
+                            )}
+                        </div>
 
                         <div className="flex gap-2">
                             <Button
@@ -243,8 +298,9 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
                                 isLoading={isSaving}
                                 disabled={!!validationError || !inputValue.trim()}
                                 className="flex-1"
+                                aria-label="Сохранить количество шагов"
                             >
-                                <Check className="h-4 w-4 mr-2" />
+                                <Check className="h-4 w-4 mr-2" aria-hidden="true" />
                                 Сохранить
                             </Button>
                             <Button
@@ -252,6 +308,7 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
                                 size="sm"
                                 onClick={handleCancel}
                                 disabled={isSaving}
+                                aria-label="Отменить ввод шагов"
                             >
                                 Отмена
                             </Button>
@@ -261,7 +318,7 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
 
                 {/* Empty state or motivational message */}
                 {currentSteps === 0 ? (
-                    <div className="text-center py-4">
+                    <div className="text-center py-4" role="status" aria-label="Шаги не записаны">
                         <div className="text-gray-400 mb-3">
                             <svg
                                 className="h-12 w-12 mx-auto"
@@ -286,14 +343,15 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
                             size="sm"
                             onClick={handleQuickAdd}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            aria-label="Добавить шаги"
                         >
-                            <Plus className="h-4 w-4 mr-2" />
+                            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
                             Добавить шаги
                         </Button>
                     </div>
                 ) : !isGoalReached && (
                     <div className="text-center">
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500" aria-label={`Осталось ${(stepsGoal - currentSteps).toLocaleString()} шагов до цели`}>
                             Осталось {(stepsGoal - currentSteps).toLocaleString()} шагов до цели
                         </p>
                     </div>
@@ -306,4 +364,4 @@ export function StepsBlock({ date, className }: StepsBlockProps) {
             </CardContent>
         </Card>
     )
-}
+})

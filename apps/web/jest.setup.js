@@ -48,7 +48,59 @@ if (typeof global.BroadcastChannel === 'undefined') {
 }
 
 // Mock react-window for tests
-jest.mock('react-window', () => require('./__mocks__/react-window'));
+jest.mock('react-window', () => ({
+    List: function MockList({ rowComponent: RowComponent, rowCount, rowHeight, children, listRef, defaultHeight, ...rest }) {
+        const React = require('react');
+        const rows = [];
+        for (let index = 0; index < rowCount; index++) {
+            const style = {
+                position: 'absolute',
+                top: index * (typeof rowHeight === 'number' ? rowHeight : 100),
+                height: typeof rowHeight === 'number' ? rowHeight : 100,
+                width: '100%',
+            };
+            rows.push(
+                React.createElement(RowComponent, {
+                    key: index,
+                    index,
+                    style,
+                })
+            );
+        }
+        return React.createElement(
+            'div',
+            {
+                'data-testid': 'react-window-list',
+                style: { position: 'relative', height: defaultHeight || 600, overflow: 'auto' },
+                ...rest,
+            },
+            rows,
+            children
+        );
+    },
+    FixedSizeList: function MockFixedSizeList({ children, itemCount, itemSize, height, width, ...rest }) {
+        const React = require('react');
+        const rows = [];
+        for (let index = 0; index < itemCount; index++) {
+            const style = {
+                position: 'absolute',
+                top: index * itemSize,
+                height: itemSize,
+                width: '100%',
+            };
+            rows.push(children({ index, style }));
+        }
+        return React.createElement(
+            'div',
+            {
+                'data-testid': 'react-window-list',
+                style: { position: 'relative', height, width, overflow: 'auto' },
+                ...rest,
+            },
+            rows
+        );
+    },
+}));
 
 // MSW temporarily disabled due to Jest compatibility issues with ESM modules
 // Tests will use fetch mocking instead

@@ -2,11 +2,16 @@ package database
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 // PostgresConfig holds PostgreSQL connection configuration
@@ -26,22 +31,37 @@ type DB struct {
 	*sql.DB
 }
 
-// NewPostgres creates a new PostgreSQL connection
+// NewPostgres creates a new PostgreSQL connection for Yandex Cloud
 func NewPostgres(cfg PostgresConfig) (*DB, error) {
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+	connString := fmt.Sprintf(
+		"host=%s port=%d dbname=%s user=%s password=%s sslmode=%s target_session_attrs=read-write",
 		cfg.Host,
 		cfg.Port,
+		cfg.Database,
 		cfg.User,
 		cfg.Password,
-		cfg.Database,
 		cfg.SSLMode,
 	)
 
-	db, err := sql.Open("postgres", dsn)
+	connConfig, err := pgx.ParseConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
+
+	// Configure TLS for Yandex Cloud
+	if cfg.SSLMode == "require" || cfg.SSLMode == "verify-full" || cfg.SSLMode == "verify-ca" {
+		tlsConfig, err := createTLSConfig(cfg.Host)
+		if err != nil {
+			// Fall back to basic TLS if certificate not found
+			tlsConfig = &tls.Config{
+				InsecureSkipVerify: cfg.SSLMode == "require",
+			}
+		}
+		connConfig.TLSConfig = tlsConfig
+	}
+
+	// Register the driver and open connection
+	db := stdlib.OpenDB(*connConfig)
 
 	// Set connection pool settings
 	db.SetMaxOpenConns(cfg.MaxOpenConns)
@@ -49,7 +69,7 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 	db.SetConnMaxLifetime(time.Hour)
 
 	// Verify connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
@@ -61,10 +81,24 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 
 // NewPostgresFromURL creates a new PostgreSQL connection from URL
 func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error) {
-	db, err := sql.Open("postgres", url)
+	connConfig, err := pgx.ParseConfig(url)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
+
+	// Configure TLS for Yandex Cloud if SSL is required
+	if connConfig.TLSConfig != nil || containsSSL(url) {
+		tlsConfig, err := createTLSConfig(connConfig.Host)
+		if err != nil {
+			// Fall back to basic TLS if certificate not found
+			tlsConfig = &tls.Config{
+				InsecureSkipVerify: true,
+			}
+		}
+		connConfig.TLSConfig = tlsConfig
+	}
+
+	db := stdlib.OpenDB(*connConfig)
 
 	// Set connection pool settings
 	db.SetMaxOpenConns(maxOpenConns)
@@ -72,7 +106,7 @@ func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error)
 	db.SetConnMaxLifetime(time.Hour)
 
 	// Verify connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
@@ -80,6 +114,67 @@ func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error)
 	}
 
 	return &DB{DB: db}, nil
+}
+
+// createTLSConfig creates TLS configuration for Yandex Cloud
+func createTLSConfig(host string) (*tls.Config, error) {
+	// Try to find Yandex Cloud root certificate
+	certPaths := []string{
+		filepath.Join(os.Getenv("HOME"), ".postgresql", "root.crt"),
+		"/etc/ssl/certs/yandex-cloud-ca.pem",
+		"./certs/root.crt",
+	}
+
+	var certPool *x509.CertPool
+	var certFound bool
+
+	for _, certPath := range certPaths {
+		pem, err := os.ReadFile(certPath)
+		if err != nil {
+			continue
+		}
+
+		certPool = x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM(pem); ok {
+			certFound = true
+			break
+		}
+	}
+
+	if !certFound {
+		return nil, fmt.Errorf("yandex cloud certificate not found")
+	}
+
+	// Use DB_TLS_SERVER_NAME if set, otherwise use host
+	serverName := os.Getenv("DB_TLS_SERVER_NAME")
+	if serverName == "" {
+		serverName = host
+	}
+
+	return &tls.Config{
+		RootCAs:    certPool,
+		ServerName: serverName,
+	}, nil
+}
+
+// containsSSL checks if URL contains SSL parameters
+func containsSSL(url string) bool {
+	return len(url) > 0 && (contains(url, "sslmode=require") ||
+		contains(url, "sslmode=verify-full") ||
+		contains(url, "sslmode=verify-ca"))
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && findSubstring(s, substr)
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 // Health checks database health

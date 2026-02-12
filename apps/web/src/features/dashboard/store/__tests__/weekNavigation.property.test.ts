@@ -7,7 +7,7 @@
 
 import { renderHook, act } from '@testing-library/react';
 import fc from 'fast-check';
-import { useDashboardStore } from '../dashboardStore';
+import { useDashboardStore, clearMemoryCache } from '../dashboardStore';
 
 /**
  * Helper: Check if date is valid
@@ -75,7 +75,8 @@ function isSameWeek(week1: { start: Date; end: Date }, week2: { start: Date; end
 
 describe('Property 1: Week Navigation Bidirectionality', () => {
     beforeEach(() => {
-        // Reset store state before each test
+        // Clear memory cache and reset store state before each test
+        clearMemoryCache();
         const { result } = renderHook(() => useDashboardStore());
         act(() => {
             result.current.reset();

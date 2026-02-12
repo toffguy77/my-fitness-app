@@ -216,7 +216,7 @@ describe('TasksSection - Property-Based Tests', () => {
 
                         try {
                             // Find and click the completion checkbox
-                            const checkbox = screen.getByLabelText(/отметить как выполненную/i)
+                            const checkbox = screen.getByLabelText(/отметить задачу как выполненную/i)
                             await user.click(checkbox)
 
                             // Should call updateTaskStatus with correct arguments

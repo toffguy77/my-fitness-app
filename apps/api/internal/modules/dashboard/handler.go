@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
@@ -39,11 +40,11 @@ type Handler struct {
 }
 
 // NewHandler creates a new dashboard handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3Client *storage.S3Client) *Handler {
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3Client *storage.S3Client, notificationsSvc *notifications.Service) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(db, log, s3Client),
+		service: NewService(db, log, s3Client, notificationsSvc),
 	}
 }
 

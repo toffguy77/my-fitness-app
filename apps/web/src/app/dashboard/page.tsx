@@ -2,16 +2,41 @@
  * Dashboard Page
  *
  * Main landing page for authenticated users.
- * Displays the dashboard layout with header, main content, and footer navigation.
+ * Displays the complete dashboard with all sections:
+ * - Calendar Navigator (eager-loaded, above the fold)
+ * - Daily Tracking Grid (eager-loaded, above the fold)
+ * - Progress Section (lazy-loaded, below the fold)
+ * - Photo Upload Section (lazy-loaded, below the fold)
+ * - Weekly Plan Section (lazy-loaded, below the fold)
+ * - Tasks Section (lazy-loaded, below the fold)
  *
- * Requirements: 1.1, 1.4
+ * Code Splitting Strategy:
+ * - Above-the-fold components (CalendarNavigator, DailyTrackingGrid) are eager-loaded
+ *   for immediate rendering and optimal LCP (Largest Contentful Paint)
+ * - Below-the-fold components are lazy-loaded with React.lazy() and Suspense
+ *   to reduce initial bundle size and improve TTI (Time to Interactive)
+ *
+ * Requirements: 1.1, 1.4, 13.2, 19.1 (Code Splitting)
  */
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
+import { CalendarNavigator } from '@/features/dashboard/components/CalendarNavigator'
+import { DailyTrackingGrid } from '@/features/dashboard/components/DailyTrackingGrid'
+import {
+    LazyProgressSection,
+    LazyPhotoUploadSection,
+    LazyWeeklyPlanSection,
+    LazyTasksSection,
+    ProgressSectionSkeleton,
+    PhotoUploadSectionSkeleton,
+    WeeklyPlanSectionSkeleton,
+    TasksSectionSkeleton,
+} from '@/features/dashboard'
+import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import type { NavigationItemId } from '@/features/dashboard/types'
 
 interface UserData {
@@ -25,6 +50,19 @@ export default function DashboardPage() {
     const router = useRouter()
     const [userData, setUserData] = useState<UserData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+
+    const {
+        selectedDate,
+        selectedWeek,
+        fetchDailyData,
+        fetchWeekData,
+        fetchWeeklyPlan,
+        fetchTasks,
+        startPolling,
+        stopPolling,
+        setOfflineStatus,
+        loadFromCache,
+    } = useDashboardStore()
 
     useEffect(() => {
         // Check authentication and fetch user data
@@ -67,9 +105,69 @@ export default function DashboardPage() {
         checkAuth()
     }, [router])
 
+    // Fetch dashboard data on mount (Requirement 13.2)
+    useEffect(() => {
+        if (!userData) return
+
+        const fetchData = async () => {
+            try {
+                // Load cached data first for faster initial render
+                loadFromCache()
+
+                // Fetch fresh data
+                await Promise.all([
+                    fetchWeekData(selectedWeek.start, selectedWeek.end),
+                    fetchWeeklyPlan(),
+                    fetchTasks(),
+                ])
+
+                // Start polling for real-time updates
+                startPolling(30000) // Poll every 30 seconds
+            } catch (error) {
+                console.error('Failed to fetch dashboard data:', error)
+            }
+        }
+
+        fetchData()
+
+        // Cleanup on unmount
+        return () => {
+            stopPolling()
+        }
+    }, [
+        userData,
+        selectedWeek,
+        fetchWeekData,
+        fetchWeeklyPlan,
+        fetchTasks,
+        startPolling,
+        stopPolling,
+        loadFromCache,
+    ])
+
+    // Handle online/offline status
+    useEffect(() => {
+        const handleOnline = () => setOfflineStatus(false)
+        const handleOffline = () => setOfflineStatus(true)
+
+        window.addEventListener('online', handleOnline)
+        window.addEventListener('offline', handleOffline)
+
+        return () => {
+            window.removeEventListener('online', handleOnline)
+            window.removeEventListener('offline', handleOffline)
+        }
+    }, [setOfflineStatus])
+
     const handleNavigate = (itemId: NavigationItemId) => {
         // Navigation is handled by the FooterNavigation component
         // This callback can be used for analytics or other side effects
+    }
+
+    const handleSubmitReport = async () => {
+        // TODO: Implement weekly report submission
+        // This will be handled in task 12.3
+        console.log('Submit weekly report')
     }
 
     // Show loading state while checking authentication
@@ -93,56 +191,59 @@ export default function DashboardPage() {
         <DashboardLayout
             userName={userData.name || userData.email}
             avatarUrl={undefined} // Avatar URL not yet implemented in backend
-            notificationCount={0} // Notification count not yet implemented
             activeNavItem="dashboard"
             onNavigate={handleNavigate}
         >
-            {/* Main dashboard content - placeholder for now (Requirement 3.2) */}
-            <div className="space-y-6">
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                        Добро пожаловать, {userData.name || 'пользователь'}!
-                    </h1>
-                    <p className="text-gray-600">
-                        Это ваш дашборд. Здесь будет отображаться информация о вашем прогрессе.
-                    </p>
-                </div>
+            {/* Main dashboard content - responsive layout (Requirements 12.1, 12.2, 12.3, 12.5, 12.6) */}
+            <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 p-3 sm:p-4 md:p-6">
+                {/* Calendar Navigator - full width on all devices */}
+                <CalendarNavigator
+                    onSubmitReport={handleSubmitReport}
+                    className="w-full"
+                />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                            Сегодняшняя статистика
-                        </h2>
-                        <p className="text-gray-600 text-sm">
-                            Данные о питании и тренировках появятся здесь
-                        </p>
+                {/* Daily Tracking Grid - responsive grid layout */}
+                <DailyTrackingGrid
+                    date={selectedDate}
+                    className="w-full"
+                />
+
+                {/* Long-term sections - responsive layout with code splitting */}
+                {/* Mobile: single column, stacked */}
+                {/* Tablet: two-column grid */}
+                {/* Desktop: three-column grid for better space utilization */}
+                {/* These components are lazy-loaded to reduce initial bundle size (Requirement 19.1) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+                    {/* Progress Section - lazy loaded */}
+                    <div className="md:col-span-2 lg:col-span-3">
+                        <Suspense fallback={<ProgressSectionSkeleton className="w-full h-full" />}>
+                            <LazyProgressSection className="w-full h-full" />
+                        </Suspense>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                            Недельный прогресс
-                        </h2>
-                        <p className="text-gray-600 text-sm">
-                            График прогресса появится здесь
-                        </p>
+                    {/* Photo Upload Section - lazy loaded */}
+                    <div className="md:col-span-1 lg:col-span-1">
+                        <Suspense fallback={<PhotoUploadSectionSkeleton className="w-full h-full" />}>
+                            <LazyPhotoUploadSection
+                                weekStart={selectedWeek.start}
+                                weekEnd={selectedWeek.end}
+                                className="w-full h-full"
+                            />
+                        </Suspense>
                     </div>
-                </div>
 
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                        Быстрые действия
-                    </h2>
-                    <div className="grid grid-cols-2 gap-3 mt-4">
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            <span className="text-sm font-medium text-gray-900">
-                                Добавить прием пищи
-                            </span>
-                        </button>
-                        <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            <span className="text-sm font-medium text-gray-900">
-                                Записать вес
-                            </span>
-                        </button>
+                    {/* Weekly Plan Section - lazy loaded */}
+                    <div className="md:col-span-1 lg:col-span-1">
+                        <Suspense fallback={<WeeklyPlanSectionSkeleton className="w-full h-full" />}>
+                            <LazyWeeklyPlanSection className="w-full h-full" />
+                        </Suspense>
+                    </div>
+
+                    {/* Tasks Section - lazy loaded */}
+                    <div className="md:col-span-2 lg:col-span-1">
+                        <Suspense fallback={<TasksSectionSkeleton className="w-full h-full" />}>
+                            <LazyTasksSection className="w-full h-full" />
+                        </Suspense>
                     </div>
                 </div>
             </div>

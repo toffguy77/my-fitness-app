@@ -4,7 +4,7 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useDashboardStore } from '../dashboardStore';
+import { useDashboardStore, clearMemoryCache } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
 
@@ -22,6 +22,7 @@ describe('Dashboard Store Actions', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         localStorage.clear();
+        clearMemoryCache();
 
         // Reset store to initial state
         const { result } = renderHook(() => useDashboardStore());
@@ -59,12 +60,12 @@ describe('Dashboard Store Actions', () => {
             expect(result.current.selectedWeek.end.getDay()).toBe(0); // Sunday
         });
 
-        it('fetches daily data for the new date', async () => {
+        it('fetches week data for the new date using stale-while-revalidate', async () => {
             const { result } = renderHook(() => useDashboardStore());
             const testDate = new Date('2024-01-15');
 
             mockApiClient.get.mockResolvedValue({
-                data: {
+                data: [{
                     date: '2024-01-15',
                     nutrition: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
                     weight: 75.5,
@@ -75,7 +76,7 @@ describe('Dashboard Store Actions', () => {
                         weightLogged: true,
                         activityCompleted: false,
                     },
-                },
+                }],
             });
 
             await act(async () => {
@@ -84,7 +85,7 @@ describe('Dashboard Store Actions', () => {
 
             await waitFor(() => {
                 expect(mockApiClient.get).toHaveBeenCalledWith(
-                    'http://localhost:4000/api/dashboard/daily/2024-01-15'
+                    'http://localhost:4000/api/dashboard/week?start=2024-01-15&end=2024-01-21'
                 );
             });
         });

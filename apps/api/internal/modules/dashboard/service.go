@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/storage"
@@ -16,17 +17,19 @@ import (
 
 // Service handles dashboard business logic
 type Service struct {
-	db        *database.DB
-	log       *logger.Logger
-	s3Client  *storage.S3Client
+	db               *database.DB
+	log              *logger.Logger
+	s3Client         *storage.S3Client
+	notificationsSvc *notifications.Service
 }
 
 // NewService creates a new dashboard service
-func NewService(db *database.DB, log *logger.Logger, s3Client *storage.S3Client) *Service {
+func NewService(db *database.DB, log *logger.Logger, s3Client *storage.S3Client, notificationsSvc *notifications.Service) *Service {
 	return &Service{
-		db:       db,
-		log:      log,
-		s3Client: s3Client,
+		db:               db,
+		log:              log,
+		s3Client:         s3Client,
+		notificationsSvc: notificationsSvc,
 	}
 }
 
@@ -640,6 +643,12 @@ func (s *Service) CreatePlan(ctx context.Context, coachID int64, clientID int64,
 		"client_id": clientID,
 	})
 
+	// Send notification to client
+	if err := s.sendPlanUpdateNotification(ctx, clientID, &result); err != nil {
+		// Log error but don't fail the operation
+		s.log.Error("Failed to send plan creation notification", "error", err)
+	}
+
 	return &result, nil
 }
 
@@ -779,6 +788,12 @@ func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, 
 		"coach_id":  coachID,
 		"client_id": result.UserID,
 	})
+
+	// Send notification to client
+	if err := s.sendPlanUpdateNotification(ctx, result.UserID, &result); err != nil {
+		// Log error but don't fail the operation
+		s.log.Error("Failed to send plan update notification", "error", err)
+	}
 
 	return &result, nil
 }
@@ -946,6 +961,12 @@ func (s *Service) CreateTask(ctx context.Context, coachID int64, clientID int64,
 		"coach_id":  coachID,
 		"client_id": clientID,
 	})
+
+	// Send notification to client
+	if err := s.sendTaskAssignedNotification(ctx, clientID, &result); err != nil {
+		// Log error but don't fail the operation
+		s.log.Error("Failed to send task assigned notification", "error", err)
+	}
 
 	return &result, nil
 }
@@ -1284,7 +1305,11 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		"coach_id":  coachID,
 	})
 
-	// TODO: Trigger coach notification
+	// Send notification to coach
+	if err := s.sendWeeklyReportNotification(ctx, coachID, report); err != nil {
+		// Log error but don't fail the operation
+		s.log.Error("Failed to send weekly report notification", "error", err)
+	}
 
 	return report, nil
 }
@@ -1492,4 +1517,126 @@ func extractS3KeyFromURL(url string) string {
 		return parts[len(parts)-1]
 	}
 	return url
+}
+
+// sendPlanUpdateNotification sends a notification to the client when their plan is updated
+func (s *Service) sendPlanUpdateNotification(ctx context.Context, clientID int64, plan *WeeklyPlan) error {
+	// Skip if notifications service is not configured
+	if s.notificationsSvc == nil {
+		s.log.Warn("Notifications service not configured, skipping plan update notification",
+			"client_id", clientID,
+			"plan_id", plan.ID,
+		)
+		return nil
+	}
+
+	notification := &notifications.Notification{
+		UserID:   clientID,
+		Category: notifications.CategoryMain,
+		Type:     notifications.TypeTrainerFeedback,
+		Title:    "Обновлен план питания",
+		Content:  fmt.Sprintf("Ваш тренер обновил план питания: %d ккал, %d г белка в день", plan.CaloriesGoal, plan.ProteinGoal),
+		IconURL:  nil,
+	}
+
+	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
+		s.log.Error("Failed to send plan update notification",
+			"error", err,
+			"client_id", clientID,
+			"plan_id", plan.ID,
+		)
+		return fmt.Errorf("failed to send plan update notification: %w", err)
+	}
+
+	s.log.Info("Plan update notification sent",
+		"client_id", clientID,
+		"plan_id", plan.ID,
+		"notification_id", notification.ID,
+	)
+
+	return nil
+}
+
+// sendTaskAssignedNotification sends a notification to the client when a task is assigned
+func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int64, task *Task) error {
+	// Skip if notifications service is not configured
+	if s.notificationsSvc == nil {
+		s.log.Warn("Notifications service not configured, skipping task assigned notification",
+			"client_id", clientID,
+			"task_id", task.ID,
+		)
+		return nil
+	}
+
+	notification := &notifications.Notification{
+		UserID:   clientID,
+		Category: notifications.CategoryMain,
+		Type:     notifications.TypeTrainerFeedback,
+		Title:    "Новое задание от тренера",
+		Content:  fmt.Sprintf("Вам назначено новое задание: %s", task.Title),
+		IconURL:  nil,
+	}
+
+	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
+		s.log.Error("Failed to send task assigned notification",
+			"error", err,
+			"client_id", clientID,
+			"task_id", task.ID,
+		)
+		return fmt.Errorf("failed to send task assigned notification: %w", err)
+	}
+
+	s.log.Info("Task assigned notification sent",
+		"client_id", clientID,
+		"task_id", task.ID,
+		"notification_id", notification.ID,
+	)
+
+	return nil
+}
+
+// sendWeeklyReportNotification sends a notification to the coach when a client submits a weekly report
+func (s *Service) sendWeeklyReportNotification(ctx context.Context, coachID int64, report *WeeklyReport) error {
+	// Skip if notifications service is not configured
+	if s.notificationsSvc == nil {
+		s.log.Warn("Notifications service not configured, skipping weekly report notification",
+			"coach_id", coachID,
+			"report_id", report.ID,
+		)
+		return nil
+	}
+
+	// Get client name for better notification message
+	var clientName string
+	nameQuery := `SELECT COALESCE(name, email) FROM users WHERE id = $1`
+	err := s.db.QueryRowContext(ctx, nameQuery, report.UserID).Scan(&clientName)
+	if err != nil {
+		clientName = fmt.Sprintf("Клиент #%d", report.UserID)
+	}
+
+	notification := &notifications.Notification{
+		UserID:   coachID,
+		Category: notifications.CategoryMain,
+		Type:     notifications.TypeTrainerFeedback,
+		Title:    "Получен недельный отчет",
+		Content:  fmt.Sprintf("%s отправил недельный отчет за неделю %d", clientName, report.WeekNumber),
+		IconURL:  nil,
+	}
+
+	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
+		s.log.Error("Failed to send weekly report notification",
+			"error", err,
+			"coach_id", coachID,
+			"report_id", report.ID,
+		)
+		return fmt.Errorf("failed to send weekly report notification: %w", err)
+	}
+
+	s.log.Info("Weekly report notification sent",
+		"coach_id", coachID,
+		"report_id", report.ID,
+		"notification_id", notification.ID,
+	)
+
+	return nil
 }

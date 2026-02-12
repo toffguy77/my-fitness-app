@@ -11,6 +11,15 @@ import fc from 'fast-check';
 import { NotificationItem } from '../NotificationItem';
 import { unreadNotificationGenerator } from '../../testing/generators';
 
+// Mock next/image to avoid hostname configuration issues in tests
+jest.mock('next/image', () => ({
+    __esModule: true,
+    default: (props: { src: string; alt: string;[key: string]: unknown }) => {
+        // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+        return <img {...props} />;
+    },
+}));
+
 describe('Property 9: Visual Update on Read Status Change', () => {
     /**
      * For any notification whose read status changes from false to true,

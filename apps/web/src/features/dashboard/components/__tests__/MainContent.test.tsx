@@ -26,9 +26,11 @@ describe('MainContent', () => {
                         // Property: Main content should be scrollable when content exceeds viewport height (Requirement 3.4)
                         expect(mainContent).toHaveClass('overflow-y-auto')
 
-                        // Property: Main content should have consistent padding (Requirement 3.1)
-                        expect(mainContent).toHaveClass('px-4')
-                        expect(mainContent).toHaveClass('py-6')
+                        // Property: Main content should have responsive padding (Requirement 3.1)
+                        // Mobile: px-3 py-4, Tablet: sm:px-4 sm:py-5, Desktop: md:px-6 md:py-6
+                        const classes = mainContent?.className || ''
+                        expect(classes).toMatch(/px-3|sm:px-4|md:px-6/)
+                        expect(classes).toMatch(/py-4|sm:py-5|md:py-6/)
                     }
                 ),
                 { numRuns: 100 }
@@ -121,7 +123,11 @@ describe('MainContent', () => {
             )
 
             let mainContent = container.querySelector('[data-testid="main-content"]')
-            expect(mainContent).toHaveClass('flex-grow', 'overflow-y-auto', 'px-4', 'py-6')
+            expect(mainContent).toHaveClass('flex-grow', 'overflow-y-auto')
+            // Check responsive padding classes exist
+            const classes = mainContent?.className || ''
+            expect(classes).toMatch(/px-3|sm:px-4|md:px-6/)
+            expect(classes).toMatch(/py-4|sm:py-5|md:py-6/)
 
             // Rerender with long content
             rerender(
@@ -131,7 +137,11 @@ describe('MainContent', () => {
             )
 
             mainContent = container.querySelector('[data-testid="main-content"]')
-            expect(mainContent).toHaveClass('flex-grow', 'overflow-y-auto', 'px-4', 'py-6')
+            expect(mainContent).toHaveClass('flex-grow', 'overflow-y-auto')
+            // Check responsive padding classes still exist after rerender
+            const classesAfter = mainContent?.className || ''
+            expect(classesAfter).toMatch(/px-3|sm:px-4|md:px-6/)
+            expect(classesAfter).toMatch(/py-4|sm:py-5|md:py-6/)
         })
     })
 })

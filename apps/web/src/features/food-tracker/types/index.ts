@@ -1,0 +1,320 @@
+/**
+ * Food Tracker feature type definitions
+ *
+ * Types for КБЖУ (calories, protein, fat, carbs) tracking,
+ * food entries, meal slots, and nutrient recommendations.
+ */
+
+// ============================================================================
+// Core Types
+// ============================================================================
+
+/**
+ * КБЖУ (Калории, Белки, Жиры, Углеводы) nutritional values
+ */
+export interface KBZHU {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+}
+
+/**
+ * Meal type - one of four daily meal categories
+ */
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+/**
+ * Portion measurement type
+ */
+export type PortionType = 'grams' | 'milliliters' | 'portion';
+
+/**
+ * Data source for food items
+ */
+export type FoodSource = 'database' | 'usda' | 'openfoodfacts' | 'user';
+
+// ============================================================================
+// Food Item Types
+// ============================================================================
+
+/**
+ * Food item from database with nutritional information
+ */
+export interface FoodItem {
+    id: string;
+    name: string;
+    brand?: string;
+    category: string;
+    servingSize: number;
+    servingUnit: string;
+    nutritionPer100: KBZHU;
+    barcode?: string;
+    source: FoodSource;
+    verified: boolean;
+    additionalNutrients?: Record<string, number>;
+}
+
+/**
+ * Food entry in user's daily log
+ */
+export interface FoodEntry {
+    id: string;
+    foodId: string;
+    foodName: string;
+    mealType: MealType;
+    portionType: PortionType;
+    portionAmount: number;
+    nutrition: KBZHU;
+    time: string; // HH:mm format
+    date: string; // YYYY-MM-DD format
+    createdAt: string; // ISO 8601 format
+    updatedAt: string; // ISO 8601 format
+}
+
+// ============================================================================
+// AI Recognition Types
+// ============================================================================
+
+/**
+ * AI food recognition result
+ */
+export interface RecognizedFood {
+    name: string;
+    confidence: number;
+    estimatedWeight: number;
+    nutrition: KBZHU;
+    alternatives?: FoodItem[];
+}
+
+// ============================================================================
+// Nutrient Recommendation Types
+// ============================================================================
+
+/**
+ * Nutrient category type
+ */
+export type NutrientCategoryType = 'vitamins' | 'minerals' | 'lipids' | 'fiber' | 'plant';
+
+/**
+ * Nutrient recommendation for daily/weekly tracking
+ */
+export interface NutrientRecommendation {
+    id: string;
+    name: string;
+    category: NutrientCategoryType;
+    dailyTarget: number;
+    unit: string;
+    isWeekly: boolean;
+    isCustom: boolean;
+}
+
+/**
+ * Detailed nutrient information
+ */
+export interface NutrientDetail {
+    id: string;
+    name: string;
+    description: string;
+    benefits: string;
+    effects: string;
+    minRecommendation: number;
+    optimalRecommendation: number;
+    unit: string;
+    sourcesInDiet: NutrientFoodSource[];
+}
+
+/**
+ * Food source contributing to nutrient intake
+ */
+export interface NutrientFoodSource {
+    foodName: string;
+    amount: number;
+    unit: string;
+    contribution: number;
+}
+
+// ============================================================================
+// Water Tracking Types
+// ============================================================================
+
+/**
+ * Daily water intake log
+ */
+export interface WaterLog {
+    date: string; // YYYY-MM-DD format
+    glasses: number;
+    goal: number;
+    glassSize: number; // in milliliters
+}
+
+// ============================================================================
+// Meal Template Types
+// ============================================================================
+
+/**
+ * Saved meal template for quick reuse
+ */
+export interface MealTemplate {
+    id: string;
+    name: string;
+    mealType: MealType;
+    entries: Omit<FoodEntry, 'id' | 'date' | 'createdAt' | 'updatedAt'>[];
+    totalNutrition: KBZHU;
+    createdAt: string; // ISO 8601 format
+}
+
+// ============================================================================
+// Custom Recommendation Types
+// ============================================================================
+
+/**
+ * Unit type for custom recommendations
+ */
+export type CustomRecommendationUnit = 'г' | 'мг' | 'мкг' | 'МЕ';
+
+/**
+ * User-defined custom nutrient recommendation
+ */
+export interface CustomRecommendation {
+    id: string;
+    name: string;
+    dailyTarget: number;
+    unit: CustomRecommendationUnit;
+    currentIntake: number;
+}
+
+// ============================================================================
+// API Request/Response Types
+// ============================================================================
+
+/**
+ * Request to create a new food entry
+ */
+export interface CreateFoodEntryRequest {
+    foodId: string;
+    mealType: MealType;
+    portionType: PortionType;
+    portionAmount: number;
+    time: string;
+    date: string;
+}
+
+/**
+ * Request to update an existing food entry
+ */
+export interface UpdateFoodEntryRequest {
+    mealType?: MealType;
+    portionType?: PortionType;
+    portionAmount?: number;
+    time?: string;
+}
+
+/**
+ * API response for fetching food entries
+ */
+export interface GetFoodEntriesResponse {
+    entries: FoodEntry[];
+    dailyTotals: KBZHU;
+}
+
+/**
+ * API response for food search
+ */
+export interface SearchFoodsResponse {
+    items: FoodItem[];
+    total: number;
+}
+
+/**
+ * API response for barcode lookup
+ */
+export interface BarcodeLookupResponse {
+    found: boolean;
+    item?: FoodItem;
+    cached: boolean;
+}
+
+/**
+ * API response for AI food recognition
+ */
+export interface AIRecognitionResponse {
+    foods: RecognizedFood[];
+    processingTime: number;
+}
+
+/**
+ * API response for water tracking
+ */
+export interface WaterLogResponse {
+    log: WaterLog;
+}
+
+/**
+ * API response for recommendations
+ */
+export interface GetRecommendationsResponse {
+    recommendations: NutrientRecommendation[];
+    customRecommendations: CustomRecommendation[];
+}
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+/**
+ * Error codes for food tracker operations
+ */
+export type FoodTrackerErrorCode =
+    | 'UNAUTHORIZED'
+    | 'NOT_FOUND'
+    | 'VALIDATION_ERROR'
+    | 'NETWORK_ERROR'
+    | 'SERVER_ERROR'
+    | 'CAMERA_PERMISSION_DENIED'
+    | 'BARCODE_NOT_FOUND'
+    | 'AI_SERVICE_UNAVAILABLE';
+
+/**
+ * Error response from API
+ */
+export interface FoodTrackerError {
+    code: FoodTrackerErrorCode;
+    message: string; // Russian error message
+    details?: Record<string, string>;
+}
+
+// ============================================================================
+// UI State Types
+// ============================================================================
+
+/**
+ * Active tab in food tracker
+ */
+export type FoodTrackerTab = 'diet' | 'recommendations';
+
+/**
+ * Entry method tab in food entry modal
+ */
+export type EntryMethodTab = 'search' | 'barcode' | 'photo' | 'chat';
+
+/**
+ * Progress bar color based on percentage
+ */
+export type ProgressColor = 'green' | 'yellow' | 'red';
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+/**
+ * Entries grouped by meal type
+ */
+export type EntriesByMealType = Record<MealType, FoodEntry[]>;
+
+/**
+ * Daily target goals for КБЖУ
+ */
+export interface TargetGoals extends KBZHU {
+    isCustom: boolean;
+}

@@ -1,7 +1,7 @@
 /**
  * Tests for Dashboard Page
  *
- * Validates: Requirements 1.1, 1.4
+ * Validates: Requirements 1.1, 1.4, 13.2
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
@@ -21,6 +21,59 @@ jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
             {children}
         </div>
     ),
+}))
+
+// Mock dashboard components
+jest.mock('@/features/dashboard/components/CalendarNavigator', () => ({
+    CalendarNavigator: () => <div data-testid="calendar-navigator">Calendar Navigator</div>,
+}))
+
+jest.mock('@/features/dashboard/components/DailyTrackingGrid', () => ({
+    DailyTrackingGrid: () => <div data-testid="daily-tracking-grid">Daily Tracking Grid</div>,
+}))
+
+jest.mock('@/features/dashboard/components/ProgressSection', () => ({
+    ProgressSection: () => <div data-testid="progress-section">Progress Section</div>,
+}))
+
+jest.mock('@/features/dashboard/components/PhotoUploadSection', () => ({
+    PhotoUploadSection: () => <div data-testid="photo-upload-section">Photo Upload Section</div>,
+}))
+
+jest.mock('@/features/dashboard/components/WeeklyPlanSection', () => ({
+    WeeklyPlanSection: () => <div data-testid="weekly-plan-section">Weekly Plan Section</div>,
+}))
+
+jest.mock('@/features/dashboard/components/TasksSection', () => ({
+    TasksSection: () => <div data-testid="tasks-section">Tasks Section</div>,
+}))
+
+// Mock dashboard store
+const mockFetchDailyData = jest.fn()
+const mockFetchWeekData = jest.fn()
+const mockFetchWeeklyPlan = jest.fn()
+const mockFetchTasks = jest.fn()
+const mockStartPolling = jest.fn()
+const mockStopPolling = jest.fn()
+const mockSetOfflineStatus = jest.fn()
+const mockLoadFromCache = jest.fn()
+
+jest.mock('@/features/dashboard/store/dashboardStore', () => ({
+    useDashboardStore: () => ({
+        selectedDate: new Date('2024-01-15'),
+        selectedWeek: {
+            start: new Date('2024-01-15'),
+            end: new Date('2024-01-21'),
+        },
+        fetchDailyData: mockFetchDailyData,
+        fetchWeekData: mockFetchWeekData,
+        fetchWeeklyPlan: mockFetchWeeklyPlan,
+        fetchTasks: mockFetchTasks,
+        startPolling: mockStartPolling,
+        stopPolling: mockStopPolling,
+        setOfflineStatus: mockSetOfflineStatus,
+        loadFromCache: mockLoadFromCache,
+    }),
 }))
 
 describe('DashboardPage', () => {
@@ -144,8 +197,8 @@ describe('DashboardPage', () => {
         })
     })
 
-    describe('Placeholder Content (Requirement 3.2)', () => {
-        it('should display placeholder content in main area', async () => {
+    describe('Dashboard Sections (Requirement 13.2)', () => {
+        beforeEach(() => {
             const userData = {
                 id: '123',
                 email: 'test@example.com',
@@ -155,16 +208,175 @@ describe('DashboardPage', () => {
 
             localStorage.setItem('auth_token', 'fake-token')
             localStorage.setItem('user', JSON.stringify(userData))
+        })
 
+        it('should render CalendarNavigator component', async () => {
             render(<DashboardPage />)
 
             await waitFor(() => {
-                expect(screen.getByText(/Добро пожаловать/)).toBeInTheDocument()
+                expect(screen.getByTestId('calendar-navigator')).toBeInTheDocument()
+            })
+        })
+
+        it('should render DailyTrackingGrid component', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('daily-tracking-grid')).toBeInTheDocument()
+            })
+        })
+
+        it('should render ProgressSection component', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('progress-section')).toBeInTheDocument()
+            })
+        })
+
+        it('should render PhotoUploadSection component', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('photo-upload-section')).toBeInTheDocument()
+            })
+        })
+
+        it('should render WeeklyPlanSection component', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('weekly-plan-section')).toBeInTheDocument()
+            })
+        })
+
+        it('should render TasksSection component', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('tasks-section')).toBeInTheDocument()
+            })
+        })
+
+        it('should render all sections in vertical layout', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('calendar-navigator')).toBeInTheDocument()
             })
 
-            expect(screen.getByText(/Сегодняшняя статистика/)).toBeInTheDocument()
-            expect(screen.getByText(/Недельный прогресс/)).toBeInTheDocument()
-            expect(screen.getByText(/Быстрые действия/)).toBeInTheDocument()
+            // Verify all sections are present
+            expect(screen.getByTestId('daily-tracking-grid')).toBeInTheDocument()
+            expect(screen.getByTestId('progress-section')).toBeInTheDocument()
+            expect(screen.getByTestId('photo-upload-section')).toBeInTheDocument()
+            expect(screen.getByTestId('weekly-plan-section')).toBeInTheDocument()
+            expect(screen.getByTestId('tasks-section')).toBeInTheDocument()
+        })
+    })
+
+    describe('Data Fetching on Mount (Requirement 13.2)', () => {
+        beforeEach(() => {
+            const userData = {
+                id: '123',
+                email: 'test@example.com',
+                name: 'Test User',
+                role: 'client' as const,
+            }
+
+            localStorage.setItem('auth_token', 'fake-token')
+            localStorage.setItem('user', JSON.stringify(userData))
+        })
+
+        it('should load cached data on mount', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(mockLoadFromCache).toHaveBeenCalled()
+            })
+        })
+
+        it('should fetch week data on mount', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(mockFetchWeekData).toHaveBeenCalled()
+            })
+        })
+
+        it('should fetch weekly plan on mount', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(mockFetchWeeklyPlan).toHaveBeenCalled()
+            })
+        })
+
+        it('should fetch tasks on mount', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(mockFetchTasks).toHaveBeenCalled()
+            })
+        })
+
+        it('should start polling on mount', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(mockStartPolling).toHaveBeenCalledWith(30000)
+            })
+        })
+
+        it('should stop polling on unmount', async () => {
+            const { unmount } = render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
+            })
+
+            unmount()
+
+            expect(mockStopPolling).toHaveBeenCalled()
+        })
+    })
+
+    describe('Online/Offline Status Handling', () => {
+        beforeEach(() => {
+            const userData = {
+                id: '123',
+                email: 'test@example.com',
+                name: 'Test User',
+                role: 'client' as const,
+            }
+
+            localStorage.setItem('auth_token', 'fake-token')
+            localStorage.setItem('user', JSON.stringify(userData))
+        })
+
+        it('should handle online event', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
+            })
+
+            // Trigger online event
+            window.dispatchEvent(new Event('online'))
+
+            expect(mockSetOfflineStatus).toHaveBeenCalledWith(false)
+        })
+
+        it('should handle offline event', async () => {
+            render(<DashboardPage />)
+
+            await waitFor(() => {
+                expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
+            })
+
+            // Trigger offline event
+            window.dispatchEvent(new Event('offline'))
+
+            expect(mockSetOfflineStatus).toHaveBeenCalledWith(true)
         })
     })
 })

@@ -198,7 +198,7 @@ describe('TasksSection', () => {
 
             render(<TasksSection currentWeek={5} />)
 
-            const checkbox = screen.getByLabelText(/отметить как выполненную/i)
+            const checkbox = screen.getByLabelText(/отметить задачу как выполненную/i)
             await user.click(checkbox)
 
             expect(mockUpdateTaskStatus).toHaveBeenCalledWith('task-1', 'completed')
@@ -215,7 +215,7 @@ describe('TasksSection', () => {
 
             render(<TasksSection currentWeek={5} />)
 
-            const checkbox = screen.getByLabelText(/отметить как выполненную/i)
+            const checkbox = screen.getByLabelText(/отметить задачу как выполненную/i)
             await user.click(checkbox)
 
             // Should not throw error (error handled by store)
@@ -244,7 +244,7 @@ describe('TasksSection', () => {
 
             render(<TasksSection currentWeek={5} />)
 
-            const checkbox = screen.getByLabelText(/отметить как выполненную/i)
+            const checkbox = screen.getByLabelText(/отметить задачу как выполненную/i)
             expect(checkbox).not.toBeDisabled()
         })
     })
@@ -394,7 +394,7 @@ describe('TasksSection', () => {
 
             render(<TasksSection currentWeek={5} />)
 
-            expect(screen.getByLabelText(/отметить как выполненную/i)).toBeInTheDocument()
+            expect(screen.getByLabelText(/отметить задачу как выполненную/i)).toBeInTheDocument()
             expect(screen.getByLabelText(/задача выполнена/i)).toBeInTheDocument()
         })
 
@@ -502,6 +502,111 @@ describe('TasksSection', () => {
             render(<TasksSection currentWeek={5} />)
 
             expect(screen.getByText(longDescription)).toBeInTheDocument()
+        })
+    })
+
+    describe('Attention Indicators (Requirement 15.6)', () => {
+        it('shows attention badge when tasks due within 2 days', () => {
+            const now = new Date()
+            const tomorrow = new Date(now)
+            tomorrow.setDate(now.getDate() + 1)
+
+            const urgentTask = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
+            mockUseDashboardStore.mockReturnValue({
+                tasks: [urgentTask],
+                updateTaskStatus: mockUpdateTaskStatus,
+            } as any)
+
+            render(<TasksSection currentWeek={5} />)
+
+            // Should show attention badge with count
+            expect(screen.getByRole('status')).toBeInTheDocument()
+            expect(screen.getByText('1')).toBeInTheDocument()
+        })
+
+        it('shows correct count for multiple urgent tasks', () => {
+            const now = new Date()
+            const tomorrow = new Date(now)
+            tomorrow.setDate(now.getDate() + 1)
+            const dayAfter = new Date(now)
+            dayAfter.setDate(now.getDate() + 2)
+
+            const urgentTask1 = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
+            const urgentTask2 = createMockTask('task-2', 5, 'active', { dueDate: dayAfter })
+            mockUseDashboardStore.mockReturnValue({
+                tasks: [urgentTask1, urgentTask2],
+                updateTaskStatus: mockUpdateTaskStatus,
+            } as any)
+
+            render(<TasksSection currentWeek={5} />)
+
+            expect(screen.getByText('2')).toBeInTheDocument()
+        })
+
+        it('does not show attention badge when no urgent tasks', () => {
+            const now = new Date()
+            const futureDate = new Date(now)
+            futureDate.setDate(now.getDate() + 7)
+
+            const task = createMockTask('task-1', 5, 'active', { dueDate: futureDate })
+            mockUseDashboardStore.mockReturnValue({
+                tasks: [task],
+                updateTaskStatus: mockUpdateTaskStatus,
+            } as any)
+
+            render(<TasksSection currentWeek={5} />)
+
+            expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        })
+
+        it('does not show attention badge for completed tasks', () => {
+            const now = new Date()
+            const tomorrow = new Date(now)
+            tomorrow.setDate(now.getDate() + 1)
+
+            const completedTask = createMockTask('task-1', 5, 'completed', { dueDate: tomorrow })
+            mockUseDashboardStore.mockReturnValue({
+                tasks: [completedTask],
+                updateTaskStatus: mockUpdateTaskStatus,
+            } as any)
+
+            render(<TasksSection currentWeek={5} />)
+
+            expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        })
+
+        it('has proper ARIA label for attention badge', () => {
+            const now = new Date()
+            const tomorrow = new Date(now)
+            tomorrow.setDate(now.getDate() + 1)
+
+            const urgentTask = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
+            mockUseDashboardStore.mockReturnValue({
+                tasks: [urgentTask],
+                updateTaskStatus: mockUpdateTaskStatus,
+            } as any)
+
+            render(<TasksSection currentWeek={5} />)
+
+            const badge = screen.getByRole('status')
+            expect(badge).toHaveAttribute('aria-label', expect.stringContaining('требует внимания'))
+        })
+
+        it('shows high urgency level for attention badge', () => {
+            const now = new Date()
+            const tomorrow = new Date(now)
+            tomorrow.setDate(now.getDate() + 1)
+
+            const urgentTask = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
+            mockUseDashboardStore.mockReturnValue({
+                tasks: [urgentTask],
+                updateTaskStatus: mockUpdateTaskStatus,
+            } as any)
+
+            render(<TasksSection currentWeek={5} />)
+
+            const badge = screen.getByRole('status')
+            expect(badge).toHaveAttribute('data-urgency', 'high')
         })
     })
 })

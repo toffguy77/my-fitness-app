@@ -42,10 +42,13 @@ const invalidWeightGenerator = () =>
     )
 
 /**
- * Generate date
+ * Generate date - using integer timestamps to avoid NaN dates
  */
 const dateGenerator = () =>
-    fc.date({ min: new Date('2024-01-01'), max: new Date('2024-12-31') })
+    fc.integer({
+        min: new Date('2024-01-01').getTime(),
+        max: new Date('2024-12-31').getTime()
+    }).map(timestamp => new Date(timestamp))
 
 describe('Property 8: Weight Input Validation', () => {
     // Create fresh mock functions for each test

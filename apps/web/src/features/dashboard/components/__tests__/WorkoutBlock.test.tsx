@@ -198,7 +198,7 @@ describe('WorkoutBlock', () => {
 
             // Check for dialog content by looking for workout type buttons
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
         })
 
@@ -212,7 +212,7 @@ describe('WorkoutBlock', () => {
             await waitFor(() => {
                 const workoutTypes = ['Силовая', 'Кардио', 'Йога', 'HIIT', 'Растяжка', 'Плавание', 'Бег', 'Велосипед', 'Другое']
                 workoutTypes.forEach(type => {
-                    expect(screen.getByRole('button', { name: type })).toBeInTheDocument()
+                    expect(screen.getByRole('radio', { name: `Тип тренировки: ${type}` })).toBeInTheDocument()
                 })
             })
         })
@@ -225,10 +225,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Силовая' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             expect(typeButton).toHaveClass('bg-blue-100')
@@ -242,10 +242,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('button', { name: 'Другое' })
+            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             expect(screen.getByPlaceholderText('Укажите тип тренировки')).toBeInTheDocument()
@@ -273,7 +273,7 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
             const saveButtons = screen.getAllByRole('button')
@@ -289,10 +289,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('button', { name: 'Другое' })
+            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -308,10 +308,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Кардио' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Кардио' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -332,10 +332,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Бег' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Бег' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -358,10 +358,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Йога' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Йога' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Йога' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Йога' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -388,10 +388,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'HIIT' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: HIIT' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'HIIT' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: HIIT' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -421,10 +421,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('button', { name: 'Другое' })
+            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             const customInput = screen.getByPlaceholderText('Укажите тип тренировки')
@@ -454,10 +454,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Силовая' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -477,10 +477,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Кардио' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Кардио' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -559,7 +559,7 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
             const allButtons = screen.getAllByRole('button')
@@ -579,10 +579,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Бег' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Бег' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -596,7 +596,7 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                const reopenedTypeButton = screen.getByRole('button', { name: 'Бег' })
+                const reopenedTypeButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
                 expect(reopenedTypeButton).not.toHaveClass('bg-blue-100')
             })
         })
@@ -622,10 +622,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('button', { name: 'Силовая' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -672,16 +672,16 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
             // Try to save without selecting type (button should be disabled, but test the validation)
             // We need to enable the button first by selecting and then deselecting
-            const typeButton = screen.getByRole('button', { name: 'Силовая' })
+            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             // Clear selection by clicking another type and then trying to save with empty custom
-            const otherButton = screen.getByRole('button', { name: 'Другое' })
+            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -699,10 +699,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('button', { name: 'Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('button', { name: 'Другое' })
+            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             // Save button should be disabled when custom type is empty
@@ -736,7 +736,7 @@ describe('WorkoutBlock', () => {
 
             await waitFor(() => {
                 // Check that Йога is selected
-                const yogaButton = screen.getByRole('button', { name: 'Йога' })
+                const yogaButton = screen.getByRole('radio', { name: 'Тип тренировки: Йога' })
                 expect(yogaButton).toHaveClass('bg-blue-100')
 
                 // Check that duration is pre-filled
@@ -763,12 +763,12 @@ describe('WorkoutBlock', () => {
             render(<WorkoutBlock date={mockDate} />)
 
             // Click header quick add button (should have aria-label "Изменить тренировку")
-            const headerButton = screen.getByRole('button', { name: 'Изменить тренировку' })
-            await user.click(headerButton)
+            const headerButtons = screen.getAllByRole('button', { name: 'Изменить тренировку' })
+            await user.click(headerButtons[0])
 
             await waitFor(() => {
                 // Check that Бег is selected
-                const runButton = screen.getByRole('button', { name: 'Бег' })
+                const runButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
                 expect(runButton).toHaveClass('bg-blue-100')
 
                 // Check that duration is pre-filled

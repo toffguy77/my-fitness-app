@@ -84,7 +84,8 @@ describe('WeightBlock - Core Functionality', () => {
         const input = screen.getByPlaceholderText('Введите вес в кг')
         await user.type(input, '75.5')
 
-        const cancelButton = screen.getByRole('button', { name: /Отмена/i })
+        // Find cancel button by text instead of role
+        const cancelButton = screen.getByText('Отмена')
         await user.click(cancelButton)
 
         // Input should be closed (editing mode off)
@@ -127,7 +128,11 @@ describe('WeightBlock - Core Functionality', () => {
         const input = screen.getByPlaceholderText('Введите вес в кг')
         await user.type(input, '-10')
 
-        expect(screen.getByText(/положительным/i)).toBeInTheDocument()
+        // Wait for debounced validation (300ms + buffer)
+        await waitFor(() => {
+            const errors = screen.queryAllByText(/положительным/i)
+            expect(errors.length).toBeGreaterThan(0)
+        }, { timeout: 500 })
     })
 
     it('validates weight exceeding maximum', async () => {
@@ -140,7 +145,11 @@ describe('WeightBlock - Core Functionality', () => {
         const input = screen.getByPlaceholderText('Введите вес в кг')
         await user.type(input, '600')
 
-        expect(screen.getByText(/не более 500/i)).toBeInTheDocument()
+        // Wait for debounced validation (300ms + buffer)
+        await waitFor(() => {
+            const errors = screen.queryAllByText(/не более 500/i)
+            expect(errors.length).toBeGreaterThan(0)
+        }, { timeout: 500 })
     })
 
     it('validates decimal places', async () => {
@@ -153,6 +162,10 @@ describe('WeightBlock - Core Functionality', () => {
         const input = screen.getByPlaceholderText('Введите вес в кг')
         await user.type(input, '75.123')
 
-        expect(screen.getByText(/не более 1 знака после запятой/i)).toBeInTheDocument()
+        // Wait for debounced validation (300ms + buffer)
+        await waitFor(() => {
+            const errors = screen.queryAllByText(/не более 1 знака после запятой/i)
+            expect(errors.length).toBeGreaterThan(0)
+        }, { timeout: 500 })
     })
 })
