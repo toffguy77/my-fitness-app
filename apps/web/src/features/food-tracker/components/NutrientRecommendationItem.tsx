@@ -81,8 +81,8 @@ export function NutrientRecommendationItem({
 
     // Get progress bar color
     const progressColor = useMemo(
-        () => getProgressColor(percentage),
-        [percentage]
+        () => getProgressColor(currentIntake, dailyTarget),
+        [currentIntake, dailyTarget]
     );
 
     // Cap progress bar at 100% for display

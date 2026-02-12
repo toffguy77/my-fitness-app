@@ -9,8 +9,9 @@
  * @module food-tracker/components/VirtualizedFoodList
  */
 
-import { useCallback, memo } from 'react';
-import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
+import { useCallback } from 'react';
+import { List } from 'react-window';
+import type { CSSProperties } from 'react';
 import type { FoodItem } from '../types';
 
 // ============================================================================
@@ -30,7 +31,7 @@ export interface VirtualizedFoodListProps {
     className?: string;
 }
 
-interface RowData {
+interface RowProps {
     foods: FoodItem[];
     onSelect: (food: FoodItem) => void;
 }
@@ -47,12 +48,12 @@ const VIRTUALIZATION_THRESHOLD = 50;
 // Row Component
 // ============================================================================
 
-const FoodRow = memo(function FoodRow({
+function FoodRow({
     index,
     style,
-    data,
-}: ListChildComponentProps<RowData>) {
-    const { foods, onSelect } = data;
+    foods,
+    onSelect,
+}: RowProps & { index: number; style: CSSProperties }) {
     const food = foods[index];
 
     const handleClick = useCallback(() => {
@@ -95,7 +96,7 @@ const FoodRow = memo(function FoodRow({
             </div>
         </div>
     );
-});
+}
 
 // ============================================================================
 // Component
@@ -124,19 +125,15 @@ export function VirtualizedFoodList({
     }
 
     // For large lists, use virtualization
-    const itemData: RowData = { foods, onSelect };
-
     return (
         <div className={className} role="listbox" aria-label="Список продуктов">
-            <List
-                height={height}
-                itemCount={foods.length}
-                itemSize={rowHeight}
-                itemData={itemData}
-                width="100%"
-            >
-                {FoodRow}
-            </List>
+            <List<RowProps>
+                defaultHeight={height}
+                rowComponent={FoodRow}
+                rowCount={foods.length}
+                rowHeight={rowHeight}
+                rowProps={{ foods, onSelect }}
+            />
         </div>
     );
 }

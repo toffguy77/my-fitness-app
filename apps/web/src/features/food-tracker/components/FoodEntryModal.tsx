@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Search, Barcode, Camera, MessageCircle } from 'lucide-react';
-import type { EntryMethodTab, MealType } from '../types';
+import type { EntryMethodTab, FoodEntry, FoodItem, MealType } from '../types';
 
 // ============================================================================
 // Types
@@ -27,6 +27,10 @@ export interface FoodEntryModalProps {
     onClose: () => void;
     /** Pre-selected meal type */
     mealType?: MealType;
+    /** Callback when a food item is selected with portion */
+    onSelectFood?: (food: FoodItem, portionAmount: number, portionType: 'grams' | 'milliliters' | 'portion') => Promise<void>;
+    /** Entry being edited (null for new entry) */
+    editingEntry?: FoodEntry | null;
     /** Callback when entry is saved */
     onSave?: (entry: unknown) => void;
     /** Additional CSS classes */
