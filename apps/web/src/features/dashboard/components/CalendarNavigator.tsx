@@ -5,12 +5,19 @@
  * Shows "Submit weekly report" button on Sunday.
  *
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.8
+ *
+ * Performance optimizations:
+ * - React.memo to prevent unnecessary re-renders
+ * - Memoized DayButton sub-component
+ * - Memoized helper functions
  */
 
 'use client';
 
+import { useRef, memo, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
+import { useRovingTabIndex } from '../hooks/useKeyboardNavigation';
 
 /**
  * Day names in Russian (short form)
@@ -92,9 +99,177 @@ export interface CalendarNavigatorProps {
 }
 
 /**
- * CalendarNavigator Component
+ * DayButton Props
  */
-export function CalendarNavigator({
+interface DayButtonProps {
+    date: Date;
+    isToday: boolean;
+    isSelected: boolean;
+    allGoalsCompleted: boolean;
+    completionStatus: {
+        nutritionFilled: boolean;
+        weightLogged: boolean;
+        activityCompleted: boolean;
+    };
+    dayOfWeek: number;
+    onClick: (date: Date) => void;
+}
+
+/**
+ * DayButton Component
+ * Memoized to prevent unnecessary re-renders
+ */
+const DayButton = memo(function DayButton({
+    date,
+    isToday,
+    isSelected,
+    allGoalsCompleted,
+    completionStatus,
+    dayOfWeek,
+    onClick,
+}: DayButtonProps) {
+    const handleClick = useCallback(() => {
+        onClick(date);
+    }, [date, onClick]);
+
+    return (
+        <button
+            onClick={handleClick}
+            data-navigable="true"
+            role="radio"
+            aria-checked={isSelected}
+            className={`
+                relative flex flex-col items-center justify-center p-3 rounded-lg
+                transition-all duration-200
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                ${isSelected
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-white hover:bg-gray-50 text-gray-700'
+                }
+                ${isToday && !isSelected ? 'ring-2 ring-blue-300' : ''}
+            `}
+            aria-label={`${DAY_NAMES_FULL[dayOfWeek]}, ${formatDayNumber(date)}`}
+            aria-current={isToday ? 'date' : undefined}
+        >
+            {/* Day name */}
+            <span className="text-xs font-medium mb-1">
+                {DAY_NAMES[dayOfWeek]}
+            </span>
+
+            {/* Day number */}
+            <span className="text-lg font-semibold">
+                {formatDayNumber(date)}
+            </span>
+
+            {/* Goal completion indicators */}
+            <div className="flex gap-1 mt-2" role="group" aria-label="Статус целей">
+                {/* Nutrition indicator */}
+                <div
+                    className={`flex items-center justify-center w-4 h-4 rounded-full ${completionStatus.nutritionFilled
+                        ? isSelected
+                            ? 'bg-white'
+                            : 'bg-green-500'
+                        : 'bg-gray-300'
+                        }`}
+                    aria-label={
+                        completionStatus.nutritionFilled
+                            ? 'Питание заполнено'
+                            : 'Питание не заполнено'
+                    }
+                    title={
+                        completionStatus.nutritionFilled
+                            ? 'Питание заполнено'
+                            : 'Питание не заполнено'
+                    }
+                >
+                    {completionStatus.nutritionFilled && (
+                        <Check
+                            className={`w-2.5 h-2.5 ${isSelected ? 'text-green-500' : 'text-white'
+                                }`}
+                            aria-hidden="true"
+                        />
+                    )}
+                </div>
+
+                {/* Weight indicator */}
+                <div
+                    className={`flex items-center justify-center w-4 h-4 rounded-full ${completionStatus.weightLogged
+                        ? isSelected
+                            ? 'bg-white'
+                            : 'bg-green-500'
+                        : 'bg-gray-300'
+                        }`}
+                    aria-label={
+                        completionStatus.weightLogged
+                            ? 'Вес записан'
+                            : 'Вес не записан'
+                    }
+                    title={
+                        completionStatus.weightLogged
+                            ? 'Вес записан'
+                            : 'Вес не записан'
+                    }
+                >
+                    {completionStatus.weightLogged && (
+                        <Check
+                            className={`w-2.5 h-2.5 ${isSelected ? 'text-green-500' : 'text-white'
+                                }`}
+                            aria-hidden="true"
+                        />
+                    )}
+                </div>
+
+                {/* Activity indicator */}
+                <div
+                    className={`flex items-center justify-center w-4 h-4 rounded-full ${completionStatus.activityCompleted
+                        ? isSelected
+                            ? 'bg-white'
+                            : 'bg-green-500'
+                        : 'bg-gray-300'
+                        }`}
+                    aria-label={
+                        completionStatus.activityCompleted
+                            ? 'Активность выполнена'
+                            : 'Активность не выполнена'
+                    }
+                    title={
+                        completionStatus.activityCompleted
+                            ? 'Активность выполнена'
+                            : 'Активность не выполнена'
+                    }
+                >
+                    {completionStatus.activityCompleted && (
+                        <Check
+                            className={`w-2.5 h-2.5 ${isSelected ? 'text-green-500' : 'text-white'
+                                }`}
+                            aria-hidden="true"
+                        />
+                    )}
+                </div>
+            </div>
+
+            {/* All goals completed checkmark */}
+            {allGoalsCompleted && (
+                <div
+                    className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${isSelected ? 'bg-white' : 'bg-green-500'
+                        }`}
+                    aria-label="Все цели выполнены"
+                >
+                    <Check
+                        className={`w-3 h-3 ${isSelected ? 'text-green-500' : 'text-white'
+                            }`}
+                    />
+                </div>
+            )}
+        </button>
+    );
+});
+
+/**
+ * CalendarNavigator Component
+ * Wrapped with React.memo to prevent unnecessary re-renders
+ */
+export const CalendarNavigator = memo(function CalendarNavigator({
     className = '',
     onSubmitReport,
 }: CalendarNavigatorProps) {
@@ -106,45 +281,58 @@ export function CalendarNavigator({
         navigateWeek,
     } = useDashboardStore();
 
-    const today = new Date();
-    const weekDays = getWeekDays(selectedWeek.start);
-    const isCurrentWeek = isSameDay(selectedWeek.start, getWeekStart(today));
+    const today = useMemo(() => new Date(), []);
+    const weekDays = useMemo(() => getWeekDays(selectedWeek.start), [selectedWeek.start]);
+    const isCurrentWeek = useMemo(() => isSameDay(selectedWeek.start, getWeekStart(today)), [selectedWeek.start, today]);
     const showSubmitButton = isCurrentWeek && isSunday(today);
 
+    // Keyboard navigation for calendar days
+    const daysContainerRef = useRef<HTMLDivElement>(null);
+    const selectedDayIndex = useMemo(() =>
+        weekDays.findIndex(day => isSameDay(day, selectedDate)),
+        [weekDays, selectedDate]
+    );
+
+    useRovingTabIndex(daysContainerRef as React.RefObject<HTMLElement>, {
+        orientation: 'horizontal',
+        loop: true,
+        initialIndex: selectedDayIndex >= 0 ? selectedDayIndex : 0,
+    });
+
     /**
-     * Handle day selection
+     * Handle day selection - memoized
      */
-    const handleDayClick = (date: Date) => {
+    const handleDayClick = useCallback((date: Date) => {
         setSelectedDate(date);
-    };
+    }, [setSelectedDate]);
 
     /**
-     * Handle previous week navigation
+     * Handle previous week navigation - memoized
      */
-    const handlePrevWeek = () => {
+    const handlePrevWeek = useCallback(() => {
         navigateWeek('prev');
-    };
+    }, [navigateWeek]);
 
     /**
-     * Handle next week navigation
+     * Handle next week navigation - memoized
      */
-    const handleNextWeek = () => {
+    const handleNextWeek = useCallback(() => {
         navigateWeek('next');
-    };
+    }, [navigateWeek]);
 
     /**
-     * Handle submit report button click
+     * Handle submit report button click - memoized
      */
-    const handleSubmitReport = () => {
+    const handleSubmitReport = useCallback(() => {
         if (onSubmitReport) {
             onSubmitReport();
         }
-    };
+    }, [onSubmitReport]);
 
     /**
      * Check if all goals are completed for a day
      */
-    const isAllGoalsCompleted = (date: Date): boolean => {
+    const isAllGoalsCompleted = useCallback((date: Date): boolean => {
         const dateStr = formatDateISO(date);
         const metrics = dailyData[dateStr];
 
@@ -156,12 +344,12 @@ export function CalendarNavigator({
             completionStatus.weightLogged &&
             completionStatus.activityCompleted
         );
-    };
+    }, [dailyData]);
 
     /**
      * Get completion status for a day
      */
-    const getCompletionStatus = (date: Date) => {
+    const getCompletionStatus = useCallback((date: Date) => {
         const dateStr = formatDateISO(date);
         const metrics = dailyData[dateStr];
 
@@ -174,7 +362,13 @@ export function CalendarNavigator({
         }
 
         return metrics.completionStatus;
-    };
+    }, [dailyData]);
+
+    // Memoize week range display
+    const weekRangeDisplay = useMemo(() =>
+        formatWeekRange(selectedWeek.start, selectedWeek.end),
+        [selectedWeek.start, selectedWeek.end]
+    );
 
     return (
         <div className={`calendar-navigator ${className}`}>
@@ -189,7 +383,7 @@ export function CalendarNavigator({
                 </button>
 
                 <div className="text-sm font-medium text-gray-700">
-                    {formatWeekRange(selectedWeek.start, selectedWeek.end)}
+                    {weekRangeDisplay}
                 </div>
 
                 <button
@@ -202,104 +396,30 @@ export function CalendarNavigator({
             </div>
 
             {/* Days Grid */}
-            <div className="grid grid-cols-7 gap-2">
-                {weekDays.map((date, index) => {
-                    const isToday = isSameDay(date, today);
+            <div
+                ref={daysContainerRef}
+                className="grid grid-cols-7 gap-2"
+                role="radiogroup"
+                aria-label="Выбор дня недели"
+            >
+                {weekDays.map((date) => {
+                    const isTodayDate = isSameDay(date, today);
                     const isSelected = isSameDay(date, selectedDate);
                     const allGoalsCompleted = isAllGoalsCompleted(date);
                     const completionStatus = getCompletionStatus(date);
                     const dayOfWeek = getDayOfWeek(date);
 
                     return (
-                        <button
+                        <DayButton
                             key={date.toISOString()}
-                            onClick={() => handleDayClick(date)}
-                            className={`
-                                relative flex flex-col items-center justify-center p-3 rounded-lg
-                                transition-all duration-200
-                                focus:outline-none focus:ring-2 focus:ring-blue-500
-                                ${isSelected
-                                    ? 'bg-blue-500 text-white shadow-md'
-                                    : 'bg-white hover:bg-gray-50 text-gray-700'
-                                }
-                                ${isToday && !isSelected ? 'ring-2 ring-blue-300' : ''}
-                            `}
-                            aria-label={`${DAY_NAMES_FULL[dayOfWeek]}, ${formatDayNumber(date)}`}
-                            aria-current={isToday ? 'date' : undefined}
-                            aria-pressed={isSelected}
-                        >
-                            {/* Day name */}
-                            <span className="text-xs font-medium mb-1">
-                                {DAY_NAMES[dayOfWeek]}
-                            </span>
-
-                            {/* Day number */}
-                            <span className="text-lg font-semibold">
-                                {formatDayNumber(date)}
-                            </span>
-
-                            {/* Goal completion indicators */}
-                            <div className="flex gap-1 mt-2">
-                                {/* Nutrition indicator */}
-                                <div
-                                    className={`w-1.5 h-1.5 rounded-full ${completionStatus.nutritionFilled
-                                        ? isSelected
-                                            ? 'bg-white'
-                                            : 'bg-green-500'
-                                        : 'bg-gray-300'
-                                        }`}
-                                    aria-label={
-                                        completionStatus.nutritionFilled
-                                            ? 'Питание заполнено'
-                                            : 'Питание не заполнено'
-                                    }
-                                />
-
-                                {/* Weight indicator */}
-                                <div
-                                    className={`w-1.5 h-1.5 rounded-full ${completionStatus.weightLogged
-                                        ? isSelected
-                                            ? 'bg-white'
-                                            : 'bg-green-500'
-                                        : 'bg-gray-300'
-                                        }`}
-                                    aria-label={
-                                        completionStatus.weightLogged
-                                            ? 'Вес записан'
-                                            : 'Вес не записан'
-                                    }
-                                />
-
-                                {/* Activity indicator */}
-                                <div
-                                    className={`w-1.5 h-1.5 rounded-full ${completionStatus.activityCompleted
-                                        ? isSelected
-                                            ? 'bg-white'
-                                            : 'bg-green-500'
-                                        : 'bg-gray-300'
-                                        }`}
-                                    aria-label={
-                                        completionStatus.activityCompleted
-                                            ? 'Активность выполнена'
-                                            : 'Активность не выполнена'
-                                    }
-                                />
-                            </div>
-
-                            {/* All goals completed checkmark */}
-                            {allGoalsCompleted && (
-                                <div
-                                    className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${isSelected ? 'bg-white' : 'bg-green-500'
-                                        }`}
-                                    aria-label="Все цели выполнены"
-                                >
-                                    <Check
-                                        className={`w-3 h-3 ${isSelected ? 'text-green-500' : 'text-white'
-                                            }`}
-                                    />
-                                </div>
-                            )}
-                        </button>
+                            date={date}
+                            isToday={isTodayDate}
+                            isSelected={isSelected}
+                            allGoalsCompleted={allGoalsCompleted}
+                            completionStatus={completionStatus}
+                            dayOfWeek={dayOfWeek}
+                            onClick={handleDayClick}
+                        />
                     );
                 })}
             </div>
@@ -309,7 +429,7 @@ export function CalendarNavigator({
                 <div className="mt-4">
                     <button
                         onClick={handleSubmitReport}
-                        className="w-full py-3 px-4 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        className="w-full py-3 px-4 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 animate-pulse"
                         aria-label="Отправить недельный отчет"
                     >
                         Отправить недельный отчет
@@ -318,7 +438,7 @@ export function CalendarNavigator({
             )}
         </div>
     );
-}
+});
 
 /**
  * Helper: Get start of week (Monday) for a given date

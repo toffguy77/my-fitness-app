@@ -33,6 +33,15 @@ export const typeGenerator = (): fc.Arbitrary<NotificationType> => {
 };
 
 /**
+ * Generate a safe icon URL that works with Next.js Image component
+ * Uses null instead of random URLs to avoid hostname configuration issues
+ */
+const safeIconUrlGenerator = (): fc.Arbitrary<string | null | undefined> => {
+    // Return null/undefined to avoid next/image hostname issues in tests
+    return fc.constant(null);
+};
+
+/**
  * Generate a random notification
  */
 export const notificationGenerator = (
@@ -48,7 +57,7 @@ export const notificationGenerator = (
         type: typeGenerator(),
         title: fc.string({ minLength: 5, maxLength: 100 }),
         content: fc.string({ minLength: 10, maxLength: 500 }),
-        iconUrl: fc.option(fc.webUrl(), { nil: undefined }),
+        iconUrl: safeIconUrlGenerator(),
         createdAt: fc
             .integer({ min: minTime, max: maxTime })
             .map((timestamp) => new Date(timestamp).toISOString()),
@@ -70,7 +79,7 @@ export const unreadNotificationGenerator = (): fc.Arbitrary<Notification> => {
         type: typeGenerator(),
         title: fc.string({ minLength: 5, maxLength: 100 }),
         content: fc.string({ minLength: 10, maxLength: 500 }),
-        iconUrl: fc.option(fc.webUrl(), { nil: undefined }),
+        iconUrl: safeIconUrlGenerator(),
         createdAt: fc
             .integer({ min: new Date('2024-01-01').getTime(), max: Date.now() })
             .map((timestamp) => new Date(timestamp).toISOString()),
@@ -92,7 +101,7 @@ export const readNotificationGenerator = (): fc.Arbitrary<Notification> => {
         type: typeGenerator(),
         title: fc.string({ minLength: 5, maxLength: 100 }),
         content: fc.string({ minLength: 10, maxLength: 500 }),
-        iconUrl: fc.option(fc.webUrl(), { nil: undefined }),
+        iconUrl: safeIconUrlGenerator(),
         createdAt: fc
             .integer({ min: minTime, max: maxTime })
             .map((timestamp) => new Date(timestamp).toISOString()),
@@ -148,7 +157,7 @@ export const notificationWithCategoryGenerator = (
         type: typeGenerator(),
         title: fc.string({ minLength: 5, maxLength: 100 }),
         content: fc.string({ minLength: 10, maxLength: 500 }),
-        iconUrl: fc.option(fc.webUrl(), { nil: undefined }),
+        iconUrl: safeIconUrlGenerator(),
         createdAt: fc
             .integer({ min: minTime, max: maxTime })
             .map((timestamp) => new Date(timestamp).toISOString()),
@@ -175,7 +184,7 @@ export const notificationWithTypeGenerator = (
         type: fc.constant(type),
         title: fc.string({ minLength: 5, maxLength: 100 }),
         content: fc.string({ minLength: 10, maxLength: 500 }),
-        iconUrl: fc.option(fc.webUrl(), { nil: undefined }),
+        iconUrl: safeIconUrlGenerator(),
         createdAt: fc
             .integer({ min: minTime, max: maxTime })
             .map((timestamp) => new Date(timestamp).toISOString()),

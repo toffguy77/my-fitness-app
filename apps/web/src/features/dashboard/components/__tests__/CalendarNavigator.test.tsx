@@ -141,7 +141,7 @@ describe('CalendarNavigator', () => {
             // Find the button for day 15 (Monday)
             const dayButton = screen.getByLabelText(/Понедельник, 15/);
             expect(dayButton).toHaveClass('bg-blue-500', 'text-white');
-            expect(dayButton).toHaveAttribute('aria-pressed', 'true');
+            expect(dayButton).toHaveAttribute('aria-checked', 'true');
         });
 
         it('calls setSelectedDate when day is clicked', () => {
@@ -287,10 +287,11 @@ describe('CalendarNavigator', () => {
 
             render(<CalendarNavigator />);
 
-            // Check icon should be present
-            expect(screen.getByTestId('check-icon')).toBeInTheDocument();
+            // Check icons should be present (3 for individual goals + 1 for all goals completed)
+            const checkIcons = screen.getAllByTestId('check-icon');
+            expect(checkIcons.length).toBeGreaterThanOrEqual(1);
 
-            // Verify aria-label
+            // Verify aria-label for all goals completed
             const checkmark = screen.getByLabelText('Все цели выполнены');
             expect(checkmark).toBeInTheDocument();
         });
@@ -460,10 +461,10 @@ describe('CalendarNavigator', () => {
             render(<CalendarNavigator />);
 
             const mondayButton = screen.getByLabelText(/Понедельник, 15/);
-            expect(mondayButton).toHaveAttribute('aria-pressed', 'true');
+            expect(mondayButton).toHaveAttribute('aria-checked', 'true');
 
             const tuesdayButton = screen.getByLabelText(/Вторник, 16/);
-            expect(tuesdayButton).toHaveAttribute('aria-pressed', 'false');
+            expect(tuesdayButton).toHaveAttribute('aria-checked', 'false');
         });
     });
 
@@ -569,4 +570,109 @@ describe('CalendarNavigator', () => {
             expect(() => render(<CalendarNavigator />)).not.toThrow();
         });
     });
-});
+
+    describe('Attention Indicators (Requirement 15.9)', () => {
+        it('shows pulsing animation on submit button on Sunday', () => {
+            // Mock Date to return Sunday of current week
+            const sunday = new Date('2024-01-21T12:00:00Z')
+            const weekStart = getWeekStart(sunday)
+
+                (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                    selectedDate: sunday,
+                    selectedWeek: {
+                        start: weekStart,
+                        end: getWeekEnd(sunday),
+                    },
+                    dailyData: {},
+                    setSelectedDate: mockSetSelectedDate,
+                    navigateWeek: mockNavigateWeek,
+                });
+
+            // Mock Date.now() to return Sunday
+            jest.spyOn(Date, 'now').mockImplementation(() => sunday.getTime())
+            jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
+                if (args.length === 0) {
+                    return sunday as any
+                }
+                return new (Date as any)(...args)
+            })
+
+            render(<CalendarNavigator />)
+
+            const submitButton = screen.getByLabelText('Отправить недельный отчет')
+            expect(submitButton).toHaveClass('animate-pulse')
+
+            jest.restoreAllMocks()
+        })
+
+        it('submit button calls onSubmitReport when clicked', () => {
+            const mockOnSubmitReport = jest.fn()
+
+            // Mock Date to return Sunday of current week
+            const sunday = new Date('2024-01-21T12:00:00Z')
+            const weekStart = getWeekStart(sunday)
+
+                (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                    selectedDate: sunday,
+                    selectedWeek: {
+                        start: weekStart,
+                        end: getWeekEnd(sunday),
+                    },
+                    dailyData: {},
+                    setSelectedDate: mockSetSelectedDate,
+                    navigateWeek: mockNavigateWeek,
+                });
+
+            // Mock Date.now() to return Sunday
+            jest.spyOn(Date, 'now').mockImplementation(() => sunday.getTime())
+            jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
+                if (args.length === 0) {
+                    return sunday as any
+                }
+                return new (Date as any)(...args)
+            })
+
+            render(<CalendarNavigator onSubmitReport={mockOnSubmitReport} />)
+
+            const submitButton = screen.getByLabelText('Отправить недельный отчет')
+            fireEvent.click(submitButton)
+
+            expect(mockOnSubmitReport).toHaveBeenCalledTimes(1)
+
+            jest.restoreAllMocks()
+        })
+
+        it('has proper ARIA label for submit button', () => {
+            // Mock Date to return Sunday of current week
+            const sunday = new Date('2024-01-21T12:00:00Z')
+            const weekStart = getWeekStart(sunday)
+
+                (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                    selectedDate: sunday,
+                    selectedWeek: {
+                        start: weekStart,
+                        end: getWeekEnd(sunday),
+                    },
+                    dailyData: {},
+                    setSelectedDate: mockSetSelectedDate,
+                    navigateWeek: mockNavigateWeek,
+                });
+
+            // Mock Date.now() to return Sunday
+            jest.spyOn(Date, 'now').mockImplementation(() => sunday.getTime())
+            jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
+                if (args.length === 0) {
+                    return sunday as any
+                }
+                return new (Date as any)(...args)
+            })
+
+            render(<CalendarNavigator />)
+
+            const submitButton = screen.getByLabelText('Отправить недельный отчет')
+            expect(submitButton).toBeInTheDocument()
+
+            jest.restoreAllMocks()
+        })
+    })
+})

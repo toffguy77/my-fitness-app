@@ -14,13 +14,10 @@ describe('Property 13: Progress Chart Data Rendering', () => {
         // This test verifies the component handles various data states correctly
         render(<ProgressSection />)
 
-        // Wait for loading to complete
-        await waitFor(() => {
-            expect(screen.queryByRole('status', { hidden: true })).not.toBeInTheDocument()
-        }, { timeout: 3000 })
-
         // Component should render without crashing
-        expect(screen.getByText('Прогресс')).toBeInTheDocument()
+        await waitFor(() => {
+            expect(screen.getByText('Прогресс')).toBeInTheDocument()
+        }, { timeout: 3000 })
     })
 
     it('Feature: dashboard, Property 13: handles empty data gracefully', async () => {

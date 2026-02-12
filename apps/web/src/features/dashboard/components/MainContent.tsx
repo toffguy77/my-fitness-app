@@ -10,9 +10,10 @@ export interface MainContentProps {
  * MainContent component
  *
  * Scrollable container for dashboard content positioned between header and footer.
- * Provides consistent padding and overflow handling for content that exceeds viewport height.
+ * Provides consistent responsive padding and overflow handling for content that exceeds viewport height.
+ * Ensures no horizontal scrolling on any device size.
  *
- * Requirements: 3.1, 3.2, 3.3, 3.4
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 12.5
  */
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
     ({ children, className }, ref) => {
@@ -24,8 +25,15 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
                     'flex-grow',
                     // Scrollable when content exceeds viewport height (Requirement 3.4)
                     'overflow-y-auto',
-                    // Consistent padding using design tokens (Requirement 3.1)
-                    'px-4 py-6',
+                    // Prevent horizontal scrolling (Requirement 12.5)
+                    'overflow-x-hidden',
+                    // Full width container
+                    'w-full',
+                    // Responsive padding using design tokens (Requirement 3.1, 12.1, 12.2, 12.3)
+                    // Mobile: minimal padding for maximum content space
+                    // Tablet: moderate padding
+                    // Desktop: comfortable padding
+                    'px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6',
                     // Background color from design system
                     'bg-gray-50',
                     className

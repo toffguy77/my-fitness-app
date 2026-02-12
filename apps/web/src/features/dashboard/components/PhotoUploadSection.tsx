@@ -9,15 +9,20 @@
  * - Warning if missing for report submission
  *
  * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7
+ *
+ * Performance optimizations:
+ * - React.memo to prevent unnecessary re-renders
+ * - Memoized helper functions
  */
 
 'use client'
 
-import { useState, useRef, ChangeEvent } from 'react'
+import { useState, useRef, ChangeEvent, memo, useCallback, useMemo } from 'react'
 import { Camera, Upload, CheckCircle, AlertTriangle } from 'lucide-react'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validatePhoto } from '../utils/validation'
 import type { PhotoData } from '../types'
+import { AttentionIcon } from './AttentionBadge'
 
 /**
  * Props for PhotoUploadSection component
@@ -60,9 +65,22 @@ function formatDate(date: Date): string {
 }
 
 /**
- * PhotoUploadSection Component
+ * Helper: Check if date is today
  */
-export function PhotoUploadSection({
+function isToday(date: Date): boolean {
+    const today = new Date()
+    return (
+        date.getFullYear() === today.getFullYear() &&
+        date.getMonth() === today.getMonth() &&
+        date.getDate() === today.getDate()
+    )
+}
+
+/**
+ * PhotoUploadSection Component
+ * Wrapped with React.memo to prevent unnecessary re-renders
+ */
+export const PhotoUploadSection = memo(function PhotoUploadSection({
     weekStart,
     weekEnd,
     photoData,
@@ -77,13 +95,19 @@ export function PhotoUploadSection({
 
     const today = new Date()
     const isWeekendDay = isWeekend(today)
-    const weekIdentifier = getWeekIdentifier(weekStart)
+    const weekIdentifier = useMemo(() => getWeekIdentifier(weekStart), [weekStart])
     const isUploaded = !!photoData
+
+    // Show attention indicator on weekend if not uploaded (only for current day)
+    const showAttentionIndicator = useMemo(() =>
+        isToday(today) && isWeekendDay && !isUploaded,
+        [isWeekendDay, isUploaded]
+    )
 
     /**
      * Handle file selection
      */
-    const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
         if (!file) return
 
@@ -111,33 +135,46 @@ export function PhotoUploadSection({
             // Error is handled by store (toast notification)
             setPreviewUrl(null)
         }
-    }
+    }, [uploadPhoto, weekIdentifier])
 
     /**
      * Handle upload button click
      */
-    const handleUploadClick = () => {
+    const handleUploadClick = useCallback(() => {
         fileInputRef.current?.click()
-    }
+    }, [])
 
     return (
         <section
-            className={`photo-upload-section bg-white rounded-lg shadow-sm p-6 ${className}`}
+            className={`photo-upload-section bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
             aria-labelledby="photo-upload-heading"
+            aria-describedby={showAttentionIndicator ? "photo-upload-attention-indicator" : undefined}
         >
-            <h2
-                id="photo-upload-heading"
-                className="text-lg font-semibold text-gray-900 mb-4"
-            >
-                Фото прогресса
-            </h2>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h2
+                    id="photo-upload-heading"
+                    className="text-base sm:text-lg font-semibold text-gray-900"
+                >
+                    Фото прогресса
+                </h2>
+                {showAttentionIndicator && (
+                    <AttentionIcon
+                        urgency="high"
+                        size="md"
+                        pulse
+                        ariaLabel="Не забудьте загрузить фото прогресса на выходных"
+                        announceChanges={true}
+                        indicatesId="photo-upload-content"
+                    />
+                )}
+            </div>
 
             {/* Upload area */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4" id="photo-upload-content">
                 {/* Preview or upload button */}
                 {previewUrl ? (
                     <div className="space-y-3">
-                        {/* Thumbnail preview */}
+                        {/* Thumbnail preview - responsive aspect ratio */}
                         <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
                             <img
                                 src={previewUrl}
@@ -146,7 +183,7 @@ export function PhotoUploadSection({
                             />
                             {isUploaded && (
                                 <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
-                                    <CheckCircle className="w-5 h-5" aria-hidden="true" />
+                                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                                     <span className="sr-only">Загружено</span>
                                 </div>
                             )}
@@ -154,7 +191,7 @@ export function PhotoUploadSection({
 
                         {/* Upload info */}
                         {photoData && (
-                            <div className="text-sm text-gray-600">
+                            <div className="text-xs sm:text-sm text-gray-600">
                                 <p>
                                     Загружено: {formatDate(new Date(photoData.uploadedAt))}
                                 </p>
@@ -166,10 +203,10 @@ export function PhotoUploadSection({
                             type="button"
                             onClick={handleUploadClick}
                             disabled={isLoading}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 sm:px-4 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                             aria-label="Загрузить другое фото"
                         >
-                            <Upload className="w-5 h-5" aria-hidden="true" />
+                            <Upload className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
                             <span>Загрузить другое фото</span>
                         </button>
                     </div>
@@ -180,14 +217,14 @@ export function PhotoUploadSection({
                             type="button"
                             onClick={handleUploadClick}
                             disabled={isLoading}
-                            className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isWeekendDay
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 sm:px-6 sm:py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isWeekendDay
+                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                             aria-label="Загрузить фото прогресса"
                         >
-                            <Camera className="w-6 h-6" aria-hidden="true" />
-                            <span className="font-medium">
+                            <Camera className="w-5 h-5 sm:w-6 sm:h-6" aria-hidden="true" />
+                            <span className="text-sm sm:text-base font-medium">
                                 {isWeekendDay
                                     ? 'Загрузить фото прогресса'
                                     : 'Загрузить фото'}
@@ -196,12 +233,12 @@ export function PhotoUploadSection({
 
                         {/* Weekend reminder */}
                         {isWeekendDay && (
-                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg" role="alert">
                                 <AlertTriangle
-                                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+                                    className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5"
                                     aria-hidden="true"
                                 />
-                                <p className="text-sm text-blue-800">
+                                <p className="text-xs sm:text-sm text-blue-800">
                                     Не забудьте загрузить фото прогресса для недельного отчета
                                 </p>
                             </div>
@@ -227,10 +264,10 @@ export function PhotoUploadSection({
                         aria-live="polite"
                     >
                         <AlertTriangle
-                            className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                            className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5"
                             aria-hidden="true"
                         />
-                        <p className="text-sm text-red-800">{validationError}</p>
+                        <p className="text-xs sm:text-sm text-red-800">{validationError}</p>
                     </div>
                 )}
 
@@ -245,4 +282,4 @@ export function PhotoUploadSection({
             </div>
         </section>
     )
-}
+})

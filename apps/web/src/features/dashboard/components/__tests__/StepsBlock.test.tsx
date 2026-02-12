@@ -212,8 +212,9 @@ describe('StepsBlock', () => {
         it('opens dialog when quick add button clicked', () => {
             render(<StepsBlock date={testDate} />)
 
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
 
             expect(screen.getByText('Обновить количество шагов')).toBeInTheDocument()
             expect(screen.getByLabelText('Количество шагов')).toBeInTheDocument()
@@ -233,8 +234,9 @@ describe('StepsBlock', () => {
 
             render(<StepsBlock date={testDate} />)
 
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
 
             const input = screen.getByLabelText('Количество шагов') as HTMLInputElement
             expect(input.value).toBe('5000')
@@ -244,8 +246,9 @@ describe('StepsBlock', () => {
     describe('Input Dialog', () => {
         beforeEach(() => {
             render(<StepsBlock date={testDate} />)
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
         })
 
         it('accepts valid steps input', () => {
@@ -256,18 +259,26 @@ describe('StepsBlock', () => {
             expect(screen.queryByText(/Неверное значение/)).not.toBeInTheDocument()
         })
 
-        it('shows validation error for negative steps', () => {
+        it('shows validation error for negative steps', async () => {
             const input = screen.getByLabelText('Количество шагов')
             fireEvent.change(input, { target: { value: '-100' } })
 
-            expect(screen.getByText(/не могут быть отрицательными/)).toBeInTheDocument()
+            // Wait for debounced validation (300ms)
+            await waitFor(() => {
+                const errors = screen.getAllByText(/не могут быть отрицательными/)
+                expect(errors.length).toBeGreaterThan(0)
+            }, { timeout: 500 })
         })
 
-        it('shows validation error for steps exceeding maximum', () => {
+        it('shows validation error for steps exceeding maximum', async () => {
             const input = screen.getByLabelText('Количество шагов')
             fireEvent.change(input, { target: { value: '150000' } })
 
-            expect(screen.getByText(/не более 100,000/)).toBeInTheDocument()
+            // Wait for debounced validation (300ms)
+            await waitFor(() => {
+                const errors = screen.getAllByText(/не более 100,000/)
+                expect(errors.length).toBeGreaterThan(0)
+            }, { timeout: 500 })
         })
 
         it('shows validation error for non-integer steps', () => {
@@ -295,24 +306,33 @@ describe('StepsBlock', () => {
             expect(saveButton).toBeDisabled()
         })
 
-        it('clears validation error when user starts typing valid input', () => {
+        it('clears validation error when user starts typing valid input', async () => {
             const input = screen.getByLabelText('Количество шагов')
 
             // Enter invalid value
             fireEvent.change(input, { target: { value: '-100' } })
-            expect(screen.getByText(/не могут быть отрицательными/)).toBeInTheDocument()
+
+            // Wait for debounced validation (300ms)
+            await waitFor(() => {
+                expect(screen.getAllByText(/не могут быть отрицательными/).length).toBeGreaterThan(0)
+            }, { timeout: 500 })
 
             // Enter valid value
             fireEvent.change(input, { target: { value: '5000' } })
-            expect(screen.queryByText(/не могут быть отрицательными/)).not.toBeInTheDocument()
+
+            // Wait for debounced validation to clear the error
+            await waitFor(() => {
+                expect(screen.queryByText(/не могут быть отрицательными/)).not.toBeInTheDocument()
+            }, { timeout: 500 })
         })
     })
 
     describe('Save Functionality', () => {
         beforeEach(() => {
             render(<StepsBlock date={testDate} />)
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
         })
 
         it('saves valid steps and closes dialog', async () => {
@@ -354,7 +374,8 @@ describe('StepsBlock', () => {
             fireEvent.click(saveButton)
 
             await waitFor(() => {
-                expect(screen.getByText('Не удалось сохранить шаги')).toBeInTheDocument()
+                const errors = screen.getAllByText('Не удалось сохранить шаги')
+                expect(errors.length).toBeGreaterThan(0)
             })
 
             // Dialog should remain open
@@ -383,8 +404,9 @@ describe('StepsBlock', () => {
         it('closes dialog and clears input when cancel clicked', () => {
             render(<StepsBlock date={testDate} />)
 
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
 
             const input = screen.getByLabelText('Количество шагов')
             fireEvent.change(input, { target: { value: '8000' } })
@@ -395,22 +417,26 @@ describe('StepsBlock', () => {
             expect(screen.queryByText('Обновить количество шагов')).not.toBeInTheDocument()
         })
 
-        it('clears validation error when dialog closed', () => {
+        it('clears validation error when dialog closed', async () => {
             render(<StepsBlock date={testDate} />)
 
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
 
             const input = screen.getByLabelText('Количество шагов')
             fireEvent.change(input, { target: { value: '-100' } })
 
-            expect(screen.getByText(/не могут быть отрицательными/)).toBeInTheDocument()
+            // Wait for debounced validation (300ms + buffer)
+            await waitFor(() => {
+                expect(screen.queryAllByText(/не могут быть отрицательными/).length).toBeGreaterThan(0)
+            }, { timeout: 500 })
 
             const cancelButton = screen.getByText('Отмена')
             fireEvent.click(cancelButton)
 
             // Reopen dialog
-            fireEvent.click(quickAddButton)
+            fireEvent.click(quickAddButtons[0])
 
             // Error should be cleared
             expect(screen.queryByText(/не могут быть отрицательными/)).not.toBeInTheDocument()
@@ -420,8 +446,9 @@ describe('StepsBlock', () => {
     describe('Keyboard Navigation', () => {
         beforeEach(() => {
             render(<StepsBlock date={testDate} />)
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
         })
 
         it('saves on Enter key press', async () => {
@@ -449,14 +476,17 @@ describe('StepsBlock', () => {
         it('has accessible labels for buttons', () => {
             render(<StepsBlock date={testDate} />)
 
-            expect(screen.getByLabelText('Добавить шаги')).toBeInTheDocument()
+            // Should have at least one button with this label
+            const buttons = screen.getAllByLabelText('Добавить шаги')
+            expect(buttons.length).toBeGreaterThan(0)
         })
 
         it('has accessible label for input field', () => {
             render(<StepsBlock date={testDate} />)
 
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
 
             expect(screen.getByLabelText('Количество шагов')).toBeInTheDocument()
         })
@@ -485,8 +515,9 @@ describe('StepsBlock', () => {
         it('autofocuses input when dialog opens', () => {
             render(<StepsBlock date={testDate} />)
 
-            const quickAddButton = screen.getByLabelText('Добавить шаги')
-            fireEvent.click(quickAddButton)
+            // Get the quick add button in the header (first one)
+            const quickAddButtons = screen.getAllByLabelText('Добавить шаги')
+            fireEvent.click(quickAddButtons[0])
 
             const input = screen.getByLabelText('Количество шагов')
             // Check that input has autofocus prop (React prop, not HTML attribute)

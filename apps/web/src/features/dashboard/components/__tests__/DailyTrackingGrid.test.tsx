@@ -380,7 +380,8 @@ describe('DailyTrackingGrid', () => {
             )
 
             expect(container.firstChild).toHaveClass(customClass)
-            expect(container.firstChild).toHaveClass('space-y-4')
+            expect(container.firstChild).toHaveClass('space-y-3')
+            expect(container.firstChild).toHaveClass('sm:space-y-4')
         })
 
         it('uses responsive grid layout', () => {
@@ -400,9 +401,9 @@ describe('DailyTrackingGrid', () => {
             expect(gridContainer).toHaveClass(
                 'grid',
                 'grid-cols-1',
-                'md:grid-cols-2',
-                'xl:grid-cols-4',
-                'gap-4'
+                'sm:grid-cols-2',
+                'lg:grid-cols-4',
+                'gap-3'
             )
         })
     })

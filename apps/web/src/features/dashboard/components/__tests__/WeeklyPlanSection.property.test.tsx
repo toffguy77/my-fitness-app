@@ -59,6 +59,7 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
 
                         mockUseDashboardStore.mockReturnValue({
                             weeklyPlan: mockPlan,
+                            dailyData: {}, // Add empty dailyData to prevent undefined access
                         } as any)
 
                         const { unmount } = render(<WeeklyPlanSection />)
@@ -122,6 +123,7 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
 
                         mockUseDashboardStore.mockReturnValue({
                             weeklyPlan: mockPlan,
+                            dailyData: {}, // Add empty dailyData to prevent undefined access
                         } as any)
 
                         const { unmount } = render(<WeeklyPlanSection />)

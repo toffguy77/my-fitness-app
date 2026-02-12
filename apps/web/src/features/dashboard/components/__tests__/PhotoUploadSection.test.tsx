@@ -815,4 +815,145 @@ describe('PhotoUploadSection', () => {
             expect(weekIdentifier).toMatch(/^\d{4}-W\d{2}$/)
         })
     })
+
+    describe('Attention Indicators (Requirement 15.8)', () => {
+        beforeEach(() => {
+            // Setup mock store for attention indicator tests
+            mockUseDashboardStore.mockReturnValue({
+                uploadPhoto: jest.fn().mockResolvedValue(undefined),
+                isLoading: false,
+            } as any)
+        })
+
+        it('shows attention icon on Saturday when photo not uploaded', () => {
+            // Mock Date to return Saturday
+            const saturday = new Date('2024-01-06')
+            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+
+            const weekStart = new Date('2024-01-01')
+            const weekEnd = new Date('2024-01-07')
+
+            render(
+                <PhotoUploadSection
+                    weekStart={weekStart}
+                    weekEnd={weekEnd}
+                />
+            )
+
+            // Should show attention icon
+            const icon = screen.getByRole('img', { name: /не забудьте загрузить фото/i })
+            expect(icon).toBeInTheDocument()
+            expect(icon).toHaveAttribute('data-urgency', 'high')
+
+            jest.restoreAllMocks()
+        })
+
+        it('shows attention icon on Sunday when photo not uploaded', () => {
+            // Mock Date to return Sunday
+            const sunday = new Date('2024-01-07')
+            jest.spyOn(global, 'Date').mockImplementation(() => sunday as any)
+
+            const weekStart = new Date('2024-01-01')
+            const weekEnd = new Date('2024-01-07')
+
+            render(
+                <PhotoUploadSection
+                    weekStart={weekStart}
+                    weekEnd={weekEnd}
+                />
+            )
+
+            // Should show attention icon
+            const icon = screen.getByRole('img', { name: /не забудьте загрузить фото/i })
+            expect(icon).toBeInTheDocument()
+
+            jest.restoreAllMocks()
+        })
+
+        it('does not show attention icon on weekday', () => {
+            // Mock Date to return Monday
+            const monday = new Date('2024-01-01')
+            jest.spyOn(global, 'Date').mockImplementation(() => monday as any)
+
+            const weekStart = new Date('2024-01-01')
+            const weekEnd = new Date('2024-01-07')
+
+            render(
+                <PhotoUploadSection
+                    weekStart={weekStart}
+                    weekEnd={weekEnd}
+                />
+            )
+
+            // Should not show attention icon
+            expect(screen.queryByRole('img', { name: /не забудьте загрузить фото/i })).not.toBeInTheDocument()
+
+            jest.restoreAllMocks()
+        })
+
+        it('does not show attention icon when photo already uploaded', () => {
+            // Mock Date to return Saturday
+            const saturday = new Date('2024-01-06')
+            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+
+            const photoData = createMockPhotoData()
+            const weekStart = new Date('2024-01-01')
+            const weekEnd = new Date('2024-01-07')
+
+            render(
+                <PhotoUploadSection
+                    weekStart={weekStart}
+                    weekEnd={weekEnd}
+                    photoData={photoData}
+                />
+            )
+
+            // Should not show attention icon
+            expect(screen.queryByRole('img', { name: /не забудьте загрузить фото/i })).not.toBeInTheDocument()
+
+            jest.restoreAllMocks()
+        })
+
+        it('attention icon has pulse animation', () => {
+            // Mock Date to return Saturday
+            const saturday = new Date('2024-01-06')
+            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+
+            const weekStart = new Date('2024-01-01')
+            const weekEnd = new Date('2024-01-07')
+
+            render(
+                <PhotoUploadSection
+                    weekStart={weekStart}
+                    weekEnd={weekEnd}
+                />
+            )
+
+            const icon = screen.getByRole('img', { name: /не забудьте загрузить фото/i })
+            expect(icon).toHaveClass('animate-pulse')
+
+            jest.restoreAllMocks()
+        })
+
+        it('has proper ARIA label for attention icon', () => {
+            // Mock Date to return Saturday
+            const saturday = new Date('2024-01-06')
+            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+
+            const weekStart = new Date('2024-01-01')
+            const weekEnd = new Date('2024-01-07')
+
+            render(
+                <PhotoUploadSection
+                    weekStart={weekStart}
+                    weekEnd={weekEnd}
+                />
+            )
+
+            const icon = screen.getByRole('img', { name: /не забудьте загрузить фото прогресса на выходных/i })
+            expect(icon).toBeInTheDocument()
+
+            jest.restoreAllMocks()
+        })
+    })
 })

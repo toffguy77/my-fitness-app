@@ -10,7 +10,9 @@ RESET := \033[0m
 # Environment setup for Go
 export GOROOT := /opt/homebrew/opt/go/libexec
 export GOPATH := $(HOME)/src/go
-export PATH := /opt/homebrew/bin:$(GOROOT)/bin:$(GOPATH)/bin:$(PATH)
+export PATH := $(GOPATH)/bin:/opt/homebrew/bin:$(GOROOT)/bin:$(PATH)
+# Use Go's air (live reload) instead of R's air (language server)
+AIR := $(GOPATH)/bin/air
 
 help: ## Show this help message
 	@echo "$(BLUE)BURCEV Fitness App - Development Commands$(RESET)"
@@ -49,7 +51,7 @@ dev: ## Start development servers (frontend + backend)
 	@echo "$(YELLOW)→ Backend: http://localhost:4000$(RESET)"
 	@trap 'kill 0' EXIT; \
 	(cd apps/web && NODE_OPTIONS='--max-old-space-size=4096' npm run dev) & \
-	(cd apps/api && air -c .air.toml)
+	(cd apps/api && $(AIR) -c .air.toml)
 
 dev-web: ## Start frontend development server only
 	@echo "$(BLUE)Starting frontend dev server...$(RESET)"
@@ -57,7 +59,7 @@ dev-web: ## Start frontend development server only
 
 dev-api: ## Start backend development server only
 	@echo "$(BLUE)Starting backend dev server...$(RESET)"
-	cd apps/api && air -c .air.toml
+	cd apps/api && $(AIR) -c .air.toml
 
 # =============================================================================
 # Building

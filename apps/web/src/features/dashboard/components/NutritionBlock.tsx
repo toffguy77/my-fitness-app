@@ -5,15 +5,20 @@
  * circular progress indicator, and quick add functionality.
  *
  * Requirements: 2.1, 2.2, 2.4, 2.5, 2.6
+ *
+ * Performance optimizations:
+ * - React.memo to prevent unnecessary re-renders
+ * - Memoized sub-components (CircularProgress, MacroProgressBar)
  */
 
-import { useState } from 'react'
+import { useState, memo, useMemo } from 'react'
 import { Plus, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { calculatePercentage } from '../utils/calculations'
+import { AttentionBadge } from './AttentionBadge'
 import type { NutritionData } from '../types'
 
 /**
@@ -37,8 +42,9 @@ interface CircularProgressProps {
 
 /**
  * Circular progress indicator component
+ * Memoized to prevent unnecessary re-renders
  */
-function CircularProgress({
+const CircularProgress = memo(function CircularProgress({
     percentage,
     size = 120,
     strokeWidth = 8,
@@ -60,8 +66,20 @@ function CircularProgress({
 
     const color = getColor(percentage)
 
+    // Get status description for screen readers
+    const getStatusDescription = (pct: number) => {
+        if (pct <= 50) return 'Низкий уровень потребления калорий'
+        if (pct <= 80) return 'Умеренный уровень потребления калорий'
+        if (pct <= 100) return 'Оптимальный уровень потребления калорий'
+        return 'Превышена дневная норма калорий'
+    }
+
     return (
-        <div className={cn('relative inline-flex items-center justify-center', className)}>
+        <div
+            className={cn('relative inline-flex items-center justify-center', className)}
+            role="img"
+            aria-label={`Прогресс калорий: ${percentage.toFixed(1)}%. ${getStatusDescription(percentage)}`}
+        >
             <svg
                 width={size}
                 height={size}
@@ -98,7 +116,7 @@ function CircularProgress({
             </div>
         </div>
     )
-}
+})
 
 /**
  * Props for macro progress bar
@@ -113,8 +131,9 @@ interface MacroProgressBarProps {
 
 /**
  * Macro progress bar component
+ * Memoized to prevent unnecessary re-renders
  */
-function MacroProgressBar({
+const MacroProgressBar = memo(function MacroProgressBar({
     label,
     current,
     goal,
@@ -154,12 +173,13 @@ function MacroProgressBar({
             </div>
         </div>
     )
-}
+})
 
 /**
  * NutritionBlock component
+ * Wrapped with React.memo to prevent unnecessary re-renders when props haven't changed
  */
-export function NutritionBlock({ date, className }: NutritionBlockProps) {
+export const NutritionBlock = memo(function NutritionBlock({ date, className }: NutritionBlockProps) {
     const [isNavigating, setIsNavigating] = useState(false)
 
     // Get data from store
@@ -167,17 +187,23 @@ export function NutritionBlock({ date, className }: NutritionBlockProps) {
     const dateStr = date.toISOString().split('T')[0]
     const dayData = dailyData[dateStr]
 
-    // Get nutrition data and goals
-    const nutrition = dayData?.nutrition || { calories: 0, protein: 0, fat: 0, carbs: 0 }
-    const caloriesGoal = weeklyPlan?.caloriesGoal || 2000
-    const proteinGoal = weeklyPlan?.proteinGoal || 150
-    const fatGoal = weeklyPlan?.fatGoal || 67
-    const carbsGoal = weeklyPlan?.carbsGoal || 250
+    // Get nutrition data and goals - memoized to prevent recalculation
+    const nutrition = useMemo(() =>
+        dayData?.nutrition || { calories: 0, protein: 0, fat: 0, carbs: 0 },
+        [dayData?.nutrition]
+    )
+
+    const goals = useMemo(() => ({
+        caloriesGoal: weeklyPlan?.caloriesGoal || 2000,
+        proteinGoal: weeklyPlan?.proteinGoal || 150,
+        fatGoal: weeklyPlan?.fatGoal || 67,
+        carbsGoal: weeklyPlan?.carbsGoal || 250,
+    }), [weeklyPlan?.caloriesGoal, weeklyPlan?.proteinGoal, weeklyPlan?.fatGoal, weeklyPlan?.carbsGoal])
 
     // Calculate percentages
-    const caloriesPercentage = calculatePercentage(nutrition.calories, caloriesGoal)
+    const caloriesPercentage = calculatePercentage(nutrition.calories, goals.caloriesGoal)
     // Check raw values to avoid rounding issues (e.g., 2002/2001 = 100.05% rounds to 100.0%)
-    const isOverCalorieGoal = nutrition.calories > caloriesGoal
+    const isOverCalorieGoal = nutrition.calories > goals.caloriesGoal
 
     // Handle quick add navigation
     const handleQuickAdd = async () => {
@@ -193,13 +219,25 @@ export function NutritionBlock({ date, className }: NutritionBlockProps) {
         }
     }
 
+    // Check if this is today and nutrition is not logged
+    const isToday = dateStr === new Date().toISOString().split('T')[0]
+    const showAttentionIndicator = isToday && nutrition.calories === 0
+
     return (
         <Card className={cn('h-full', className)} variant="bordered">
             <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">
-                        Питание
-                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg font-semibold text-gray-900">
+                            Питание
+                        </CardTitle>
+                        {showAttentionIndicator && (
+                            <AttentionBadge
+                                urgency="normal"
+                                ariaLabel="Питание не записано сегодня"
+                            />
+                        )}
+                    </div>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -229,7 +267,7 @@ export function NutritionBlock({ date, className }: NutritionBlockProps) {
                                 {nutrition.calories}
                             </div>
                             <div className="text-sm text-gray-500">
-                                из {caloriesGoal} ккал
+                                из {goals.caloriesGoal} ккал
                             </div>
                             <div className={cn(
                                 'text-xs font-medium',
@@ -243,8 +281,12 @@ export function NutritionBlock({ date, className }: NutritionBlockProps) {
 
                 {/* Warning when goal exceeded */}
                 {isOverCalorieGoal && (
-                    <div className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                        <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" />
+                    <div
+                        className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+                        role="alert"
+                        aria-live="polite"
+                    >
+                        <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" aria-hidden="true" />
                         <p className="text-sm text-orange-800">
                             Превышена дневная норма калорий
                         </p>
@@ -260,21 +302,21 @@ export function NutritionBlock({ date, className }: NutritionBlockProps) {
                     <MacroProgressBar
                         label="Белки"
                         current={nutrition.protein}
-                        goal={proteinGoal}
+                        goal={goals.proteinGoal}
                         unit="г"
                     />
 
                     <MacroProgressBar
                         label="Жиры"
                         current={nutrition.fat}
-                        goal={fatGoal}
+                        goal={goals.fatGoal}
                         unit="г"
                     />
 
                     <MacroProgressBar
                         label="Углеводы"
                         current={nutrition.carbs}
-                        goal={carbsGoal}
+                        goal={goals.carbsGoal}
                         unit="г"
                     />
                 </div>
@@ -291,8 +333,9 @@ export function NutritionBlock({ date, className }: NutritionBlockProps) {
                             onClick={handleQuickAdd}
                             isLoading={isNavigating}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                            aria-label="Добавить еду в дневник питания"
                         >
-                            <Plus className="h-4 w-4 mr-2" />
+                            <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
                             Добавить еду
                         </Button>
                     </div>
@@ -300,4 +343,4 @@ export function NutritionBlock({ date, className }: NutritionBlockProps) {
             </CardContent>
         </Card>
     )
-}
+})

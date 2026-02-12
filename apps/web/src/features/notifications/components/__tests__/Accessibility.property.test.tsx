@@ -16,6 +16,15 @@ import { NotificationList } from '../NotificationList';
 import { NotificationsLayout } from '../NotificationsLayout';
 import { notificationGenerator } from '../../testing/generators';
 
+// Mock next/image to avoid hostname configuration issues in tests
+jest.mock('next/image', () => ({
+    __esModule: true,
+    default: (props: { src: string; alt: string;[key: string]: unknown }) => {
+        // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+        return <img {...props} />;
+    },
+}));
+
 // Mock Next.js router (required by NotificationsLayout)
 jest.mock('next/navigation', () => ({
     useRouter: () => ({

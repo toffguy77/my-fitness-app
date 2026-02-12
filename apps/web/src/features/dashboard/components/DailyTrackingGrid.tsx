@@ -5,9 +5,13 @@
  * connects blocks to store, and handles real-time updates.
  *
  * Requirements: 11.1, 11.2, 11.3, 11.4, 12.1, 12.2, 12.3
+ *
+ * Performance optimizations:
+ * - React.memo to prevent unnecessary re-renders
+ * - Memoized child components
  */
 
-import { useEffect } from 'react'
+import { useEffect, memo, useCallback } from 'react'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { NutritionBlock } from './NutritionBlock'
@@ -25,8 +29,9 @@ export interface DailyTrackingGridProps {
 
 /**
  * DailyTrackingGrid container component
+ * Wrapped with React.memo to prevent unnecessary re-renders
  */
-export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
+export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
     const {
         dailyData,
         isLoading,
@@ -41,15 +46,20 @@ export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
     const dateStr = date.toISOString().split('T')[0]
     const dayData = dailyData[dateStr]
 
+    // Memoized fetch callback
+    const handleFetchData = useCallback(() => {
+        fetchDailyData(date)
+    }, [date, fetchDailyData])
+
     // Fetch data and start polling on mount
     useEffect(() => {
-        fetchDailyData(date)
+        handleFetchData()
         startPolling(30000) // Poll every 30 seconds
 
         return () => {
             stopPolling()
         }
-    }, [date, fetchDailyData, startPolling, stopPolling])
+    }, [handleFetchData, startPolling, stopPolling])
 
     // Clear error when date changes
     useEffect(() => {
@@ -106,7 +116,7 @@ export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
                         </p>
                     </div>
                     <button
-                        onClick={() => fetchDailyData(date)}
+                        onClick={() => handleFetchData()}
                         className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
                         Попробовать снова
@@ -117,14 +127,17 @@ export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
     }
 
     return (
-        <div className={cn('space-y-4', className)}>
-            {/* Responsive grid layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className={cn('space-y-3 sm:space-y-4', className)}>
+            {/* Responsive grid layout (Requirements 12.1, 12.2, 12.3) */}
+            {/* Mobile: single column, stacked blocks */}
+            {/* Tablet: two-column grid */}
+            {/* Desktop: four-column grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                 {/* Nutrition Block */}
                 <div className="col-span-1">
                     <NutritionBlock
                         date={date}
-                        className="h-full"
+                        className="h-full min-h-[280px]"
                     />
                 </div>
 
@@ -132,7 +145,7 @@ export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
                 <div className="col-span-1">
                     <WeightBlock
                         date={date}
-                        className="h-full"
+                        className="h-full min-h-[280px]"
                     />
                 </div>
 
@@ -140,7 +153,7 @@ export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
                 <div className="col-span-1">
                     <StepsBlock
                         date={date}
-                        className="h-full"
+                        className="h-full min-h-[280px]"
                     />
                 </div>
 
@@ -148,7 +161,7 @@ export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
                 <div className="col-span-1">
                     <WorkoutBlock
                         date={date}
-                        className="h-full"
+                        className="h-full min-h-[280px]"
                     />
                 </div>
             </div>
@@ -208,4 +221,4 @@ export function DailyTrackingGrid({ date, className }: DailyTrackingGridProps) {
             )}
         </div>
     )
-}
+})

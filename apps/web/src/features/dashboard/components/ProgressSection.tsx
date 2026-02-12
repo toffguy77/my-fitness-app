@@ -5,13 +5,19 @@
  * recent achievements, and navigation to analytics page.
  *
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+ *
+ * Performance optimizations:
+ * - React.memo to prevent unnecessary re-renders
+ * - Memoized sub-components (WeightTrendChart, AdherenceIndicator, AchievementItem)
+ * - Throttled resize handler for chart responsiveness
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo, useMemo, useCallback } from 'react'
 import { TrendingUp, Award, ChevronRight, Activity } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
+import { useThrottledCallback } from '@/shared/hooks/useThrottle'
 import type { ProgressData } from '../types'
 
 /**
@@ -31,43 +37,56 @@ interface WeightTrendChartProps {
 
 /**
  * Simple line chart for weight trend
+ * Memoized to prevent unnecessary re-renders
  */
-function WeightTrendChart({ data, className }: WeightTrendChartProps) {
+const WeightTrendChart = memo(function WeightTrendChart({ data, className }: WeightTrendChartProps) {
     if (data.length === 0) {
         return null
     }
 
-    // Calculate chart dimensions
+    // Calculate chart dimensions - responsive
     const width = 300
     const height = 120
     const padding = { top: 10, right: 10, bottom: 20, left: 40 }
     const chartWidth = width - padding.left - padding.right
     const chartHeight = height - padding.top - padding.bottom
 
-    // Find min and max weights
-    const weights = data.map(d => d.weight)
-    const minWeight = Math.min(...weights)
-    const maxWeight = Math.max(...weights)
-    const weightRange = maxWeight - minWeight || 1 // Avoid division by zero
+    // Find min and max weights - memoized
+    const { minWeight, maxWeight, weightRange } = useMemo(() => {
+        const weights = data.map(d => d.weight)
+        const min = Math.min(...weights)
+        const max = Math.max(...weights)
+        return {
+            minWeight: min,
+            maxWeight: max,
+            weightRange: max - min || 1 // Avoid division by zero
+        }
+    }, [data])
 
-    // Create points for the line
-    const points = data.map((point, index) => {
-        const x = padding.left + (index / (data.length - 1)) * chartWidth
-        const y = padding.top + chartHeight - ((point.weight - minWeight) / weightRange) * chartHeight
-        return { x, y, weight: point.weight, date: point.date }
-    })
+    // Create points for the line - memoized
+    const points = useMemo(() =>
+        data.map((point, index) => {
+            const x = padding.left + (index / (data.length - 1)) * chartWidth
+            const y = padding.top + chartHeight - ((point.weight - minWeight) / weightRange) * chartHeight
+            return { x, y, weight: point.weight, date: point.date }
+        }),
+        [data, minWeight, weightRange, chartWidth, chartHeight]
+    )
 
-    // Create path for the line
-    const pathData = points.map((p, i) =>
-        `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
-    ).join(' ')
+    // Create path for the line - memoized
+    const pathData = useMemo(() =>
+        points.map((p, i) =>
+            `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`
+        ).join(' '),
+        [points]
+    )
 
     return (
-        <div className={cn('relative', className)}>
+        <div className={cn('relative w-full', className)}>
             <svg
-                width={width}
-                height={height}
-                className="w-full h-auto"
+                viewBox={`0 0 ${width} ${height}`}
+                className="w-full h-auto max-w-full"
+                preserveAspectRatio="xMidYMid meet"
                 aria-label="График изменения веса за последние 4 недели"
             >
                 {/* Grid lines */}
@@ -154,7 +173,7 @@ function WeightTrendChart({ data, className }: WeightTrendChartProps) {
             )}
         </div>
     )
-}
+})
 
 /**
  * Props for adherence indicator
@@ -166,8 +185,9 @@ interface AdherenceIndicatorProps {
 
 /**
  * Nutrition adherence indicator
+ * Memoized to prevent unnecessary re-renders
  */
-function AdherenceIndicator({ percentage, className }: AdherenceIndicatorProps) {
+const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, className }: AdherenceIndicatorProps) {
     const getColor = (pct: number) => {
         if (pct >= 90) return 'text-green-600 bg-green-50 border-green-200'
         if (pct >= 70) return 'text-yellow-600 bg-yellow-50 border-yellow-200'
@@ -214,7 +234,7 @@ function AdherenceIndicator({ percentage, className }: AdherenceIndicatorProps) 
             </div>
         </div>
     )
-}
+})
 
 /**
  * Props for achievement item
@@ -226,11 +246,21 @@ interface AchievementItemProps {
 
 /**
  * Achievement item component
+ * Memoized to prevent unnecessary re-renders
  */
-function AchievementItem({ achievement, className }: AchievementItemProps) {
+const AchievementItem = memo(function AchievementItem({ achievement, className }: AchievementItemProps) {
+    const achievedDate = new Date(achievement.achievedAt).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'short',
+    })
+
     return (
-        <div className={cn('flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg', className)}>
-            <div className="flex-shrink-0 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+        <div
+            className={cn('flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg', className)}
+            role="article"
+            aria-label={`Достижение: ${achievement.title}. ${achievement.description}. Получено ${achievedDate}`}
+        >
+            <div className="flex-shrink-0 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center" aria-hidden="true">
                 {achievement.icon ? (
                     <span className="text-white text-lg">{achievement.icon}</span>
                 ) : (
@@ -245,23 +275,25 @@ function AchievementItem({ achievement, className }: AchievementItemProps) {
                     {achievement.description}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                    {new Date(achievement.achievedAt).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'short',
-                    })}
+                    {achievedDate}
                 </p>
             </div>
         </div>
     )
-}
+})
 
 /**
  * Placeholder component when insufficient data
+ * Memoized to prevent unnecessary re-renders
  */
-function InsufficientDataPlaceholder() {
+const InsufficientDataPlaceholder = memo(function InsufficientDataPlaceholder() {
     return (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Activity className="h-12 w-12 text-gray-300 mb-3" />
+        <div
+            className="flex flex-col items-center justify-center py-8 text-center"
+            role="status"
+            aria-label="Недостаточно данных для отображения прогресса"
+        >
+            <Activity className="h-12 w-12 text-gray-300 mb-3" aria-hidden="true" />
             <h4 className="text-sm font-semibold text-gray-700 mb-1">
                 Недостаточно данных
             </h4>
@@ -270,12 +302,13 @@ function InsufficientDataPlaceholder() {
             </p>
         </div>
     )
-}
+})
 
 /**
  * ProgressSection component
+ * Wrapped with React.memo to prevent unnecessary re-renders
  */
-export function ProgressSection({ className }: ProgressSectionProps) {
+export const ProgressSection = memo(function ProgressSection({ className }: ProgressSectionProps) {
     const [progressData, setProgressData] = useState<ProgressData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isNavigating, setIsNavigating] = useState(false)
@@ -309,8 +342,8 @@ export function ProgressSection({ className }: ProgressSectionProps) {
         fetchProgressData()
     }, [])
 
-    // Handle navigation to analytics
-    const handleNavigateToAnalytics = async () => {
+    // Handle navigation to analytics - memoized
+    const handleNavigateToAnalytics = useCallback(async () => {
         setIsNavigating(true)
         try {
             // Navigate to analytics page
@@ -320,13 +353,16 @@ export function ProgressSection({ className }: ProgressSectionProps) {
         } finally {
             setIsNavigating(false)
         }
-    }
+    }, [])
 
-    // Check if we have sufficient data
-    const hasSufficientData = progressData && (
-        progressData.weightTrend.length >= 3 ||
-        progressData.nutritionAdherence > 0 ||
-        progressData.achievements.length > 0
+    // Check if we have sufficient data - memoized
+    const hasSufficientData = useMemo(() =>
+        progressData && (
+            progressData.weightTrend.length >= 3 ||
+            progressData.nutritionAdherence > 0 ||
+            progressData.achievements.length > 0
+        ),
+        [progressData]
     )
 
     return (
@@ -352,17 +388,22 @@ export function ProgressSection({ className }: ProgressSectionProps) {
 
             <CardContent className="space-y-6">
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+                    <div
+                        className="flex items-center justify-center py-8"
+                        role="status"
+                        aria-label="Загрузка данных прогресса"
+                    >
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" aria-hidden="true" />
+                        <span className="sr-only">Загрузка...</span>
                     </div>
-                ) : !hasSufficientData ? (
+                ) : !hasSufficientData || !progressData ? (
                     <InsufficientDataPlaceholder />
                 ) : (
                     <>
                         {/* Weight trend chart */}
                         {progressData.weightTrend.length >= 3 && (
-                            <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <div className="space-y-2" role="region" aria-labelledby="weight-trend-heading">
+                                <h4 id="weight-trend-heading" className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                                     Динамика веса
                                 </h4>
                                 <WeightTrendChart data={progressData.weightTrend} />
@@ -371,21 +412,22 @@ export function ProgressSection({ className }: ProgressSectionProps) {
 
                         {/* Nutrition adherence */}
                         {progressData.nutritionAdherence > 0 && (
-                            <AdherenceIndicator percentage={progressData.nutritionAdherence} />
+                            <div role="region" aria-label="Соблюдение плана питания">
+                                <AdherenceIndicator percentage={progressData.nutritionAdherence} />
+                            </div>
                         )}
 
                         {/* Recent achievements */}
                         {progressData.achievements.length > 0 && (
-                            <div className="space-y-3">
-                                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <div className="space-y-3" role="region" aria-labelledby="achievements-heading">
+                                <h4 id="achievements-heading" className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                                     Недавние достижения
                                 </h4>
-                                <div className="space-y-2">
+                                <div className="space-y-2" role="list">
                                     {progressData.achievements.slice(0, 3).map((achievement) => (
-                                        <AchievementItem
-                                            key={achievement.id}
-                                            achievement={achievement}
-                                        />
+                                        <div key={achievement.id} role="listitem">
+                                            <AchievementItem achievement={achievement} />
+                                        </div>
                                     ))}
                                 </div>
                                 {progressData.achievements.length > 3 && (
@@ -395,6 +437,7 @@ export function ProgressSection({ className }: ProgressSectionProps) {
                                         onClick={handleNavigateToAnalytics}
                                         isLoading={isNavigating}
                                         className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
+                                        aria-label="Показать все достижения"
                                     >
                                         Показать все достижения
                                     </Button>
@@ -406,4 +449,4 @@ export function ProgressSection({ className }: ProgressSectionProps) {
             </CardContent>
         </Card>
     )
-}
+})

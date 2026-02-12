@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, act } from '@testing-library/react'
 import { DashboardLayout } from '../DashboardLayout'
 
 // Mock Next.js router
@@ -28,6 +28,11 @@ jest.mock('@/features/notifications', () => ({
 describe('DashboardLayout', () => {
     beforeEach(() => {
         jest.clearAllMocks()
+        jest.useFakeTimers()
+    })
+
+    afterEach(() => {
+        jest.useRealTimers()
     })
 
     describe('Unit Tests - Component Composition', () => {
@@ -61,13 +66,16 @@ describe('DashboardLayout', () => {
             const layout = container.querySelector('[data-testid="dashboard-layout"]')
             expect(layout).toBeInTheDocument()
 
-            // Verify flexbox column layout
-            expect(layout).toHaveClass('flex')
-            expect(layout).toHaveClass('flex-col')
-
-            // Verify full viewport height
+            // Verify minimum full viewport height
             expect(layout).toHaveClass('min-h-screen')
-            expect(layout).toHaveClass('h-screen')
+
+            // Verify full width and overflow handling
+            expect(layout).toHaveClass('w-full')
+            expect(layout).toHaveClass('max-w-full')
+            expect(layout).toHaveClass('overflow-x-hidden')
+
+            // Verify background color
+            expect(layout).toHaveClass('bg-gray-50')
         })
 
         it('should pass user data to header component', () => {
@@ -115,13 +123,14 @@ describe('DashboardLayout', () => {
                 </DashboardLayout>
             )
 
-            // Verify the wrapper div has padding for header and footer
-            const contentWrapper = container.querySelector('.pt-16.pb-16')
-            expect(contentWrapper).toBeInTheDocument()
+            // Verify the main content has padding for header and footer
+            const mainContent = container.querySelector('[data-testid="main-content"]')
+            expect(mainContent).toBeInTheDocument()
 
-            // Verify it has flex-grow and overflow-hidden
-            expect(contentWrapper).toHaveClass('flex-grow')
-            expect(contentWrapper).toHaveClass('overflow-hidden')
+            // Verify it has proper padding for fixed header (64px) and footer (64px + safe area)
+            expect(mainContent).toHaveClass('min-h-screen')
+            expect(mainContent).toHaveClass('pt-16')
+            expect(mainContent).toHaveClass('pb-20')
         })
 
         it('should render children content inside MainContent', () => {
@@ -188,7 +197,7 @@ describe('DashboardLayout', () => {
             expect(mainContent).toContainElement(container.querySelector('[data-testid="child-content"]'))
         })
 
-        it('should prevent overflow on the container', () => {
+        it('should prevent horizontal overflow on the container', () => {
             const { container } = render(
                 <DashboardLayout userName="Test User">
                     <div>Content</div>
@@ -196,7 +205,7 @@ describe('DashboardLayout', () => {
             )
 
             const layout = container.querySelector('[data-testid="dashboard-layout"]')
-            expect(layout).toHaveClass('overflow-hidden')
+            expect(layout).toHaveClass('overflow-x-hidden')
         })
     })
 
@@ -298,6 +307,94 @@ describe('DashboardLayout', () => {
 
             const header = container.querySelector('[data-testid="dashboard-header"]')
             expect(header).toBeInTheDocument()
+        })
+    })
+
+    describe('Orientation Change Handling', () => {
+        it('should handle orientation change events', () => {
+            const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent')
+
+            render(
+                <DashboardLayout userName="Test User">
+                    <div>Content</div>
+                </DashboardLayout>
+            )
+
+            // Trigger orientation change event
+            act(() => {
+                window.dispatchEvent(new Event('orientationchange'))
+            })
+
+            // Fast-forward timers to trigger the delayed resize event
+            act(() => {
+                jest.advanceTimersByTime(50)
+            })
+
+            // Verify resize event was dispatched after the delay
+            expect(dispatchEventSpy).toHaveBeenCalledWith(expect.any(Event))
+
+            dispatchEventSpy.mockRestore()
+        })
+
+        it('should handle resize events as fallback for orientation changes', () => {
+            const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent')
+
+            render(
+                <DashboardLayout userName="Test User">
+                    <div>Content</div>
+                </DashboardLayout>
+            )
+
+            // Trigger resize event
+            act(() => {
+                window.dispatchEvent(new Event('resize'))
+            })
+
+            // Fast-forward timers
+            act(() => {
+                jest.advanceTimersByTime(50)
+            })
+
+            expect(dispatchEventSpy).toHaveBeenCalled()
+
+            dispatchEventSpy.mockRestore()
+        })
+
+        it('should clean up event listeners and timeout on unmount', () => {
+            const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener')
+
+            const { unmount } = render(
+                <DashboardLayout userName="Test User">
+                    <div>Content</div>
+                </DashboardLayout>
+            )
+
+            // Trigger orientation change to set up a timeout
+            act(() => {
+                window.dispatchEvent(new Event('orientationchange'))
+            })
+
+            // Unmount before timeout completes
+            unmount()
+
+            // Verify event listeners were removed
+            expect(removeEventListenerSpy).toHaveBeenCalledWith('orientationchange', expect.any(Function))
+            expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+
+            removeEventListenerSpy.mockRestore()
+        })
+
+        it('should have smooth transition classes for orientation changes', () => {
+            const { container } = render(
+                <DashboardLayout userName="Test User">
+                    <div>Content</div>
+                </DashboardLayout>
+            )
+
+            const layout = container.querySelector('[data-testid="dashboard-layout"]')
+            expect(layout).toHaveClass('transition-all')
+            expect(layout).toHaveClass('duration-300')
+            expect(layout).toHaveClass('ease-in-out')
         })
     })
 })

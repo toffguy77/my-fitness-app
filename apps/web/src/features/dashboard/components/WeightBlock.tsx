@@ -5,9 +5,13 @@
  * quick add functionality, completion indicator, and validation.
  *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
+ *
+ * Performance optimizations:
+ * - React.memo to prevent unnecessary re-renders
+ * - Debounced input validation (300ms)
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, memo, useMemo } from 'react'
 import { Plus, Check, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
@@ -15,6 +19,8 @@ import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validateWeight } from '../utils/validation'
+import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
+import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
 
 /**
@@ -27,8 +33,9 @@ export interface WeightBlockProps {
 
 /**
  * WeightBlock component
+ * Wrapped with React.memo to prevent unnecessary re-renders
  */
-export function WeightBlock({ date, className }: WeightBlockProps) {
+export const WeightBlock = memo(function WeightBlock({ date, className }: WeightBlockProps) {
     const [inputValue, setInputValue] = useState('')
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -43,11 +50,13 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
     const currentWeight = dayData?.weight
     const isWeightLogged = currentWeight !== null && currentWeight !== undefined
 
-    // Get previous day's weight for comparison
-    const previousDate = new Date(date)
-    previousDate.setDate(date.getDate() - 1)
-    const previousDateStr = previousDate.toISOString().split('T')[0]
-    const previousWeight = dailyData[previousDateStr]?.weight
+    // Get previous day's weight for comparison - memoized
+    const previousWeight = useMemo(() => {
+        const previousDate = new Date(date)
+        previousDate.setDate(date.getDate() - 1)
+        const previousDateStr = previousDate.toISOString().split('T')[0]
+        return dailyData[previousDateStr]?.weight
+    }, [date, dailyData])
 
     // Calculate weight change
     const weightChange = currentWeight && previousWeight
@@ -59,24 +68,32 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
         return weight % 1 === 0 ? weight.toString() : weight.toFixed(1)
     }
 
-    // Handle input change with validation
-    const handleInputChange = useCallback((value: string) => {
-        setInputValue(value)
-        setValidationError(null)
-
-        // Clear validation error when user starts typing
+    // Debounced validation function (300ms delay)
+    const debouncedValidate = useDebouncedCallback((value: string) => {
         if (value.trim() === '') {
+            setValidationError(null)
             return
         }
 
-        // Parse and validate input
         const numericValue = parseFloat(value)
         const validation = validateWeight(numericValue)
 
         if (!validation.isValid) {
             setValidationError(validation.error || 'Неверное значение')
+        } else {
+            setValidationError(null)
         }
-    }, [])
+    }, 300)
+
+    // Handle input change with debounced validation
+    const handleInputChange = useCallback((value: string) => {
+        setInputValue(value)
+        // Clear error immediately for better UX, then validate after debounce
+        if (validationError) {
+            setValidationError(null)
+        }
+        debouncedValidate(value)
+    }, [debouncedValidate, validationError])
 
     // Handle save weight
     const handleSave = useCallback(async () => {
@@ -141,13 +158,25 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
         }
     }, [handleSave, handleCancel])
 
+    // Check if this is today and weight is not logged
+    const isToday = dateStr === new Date().toISOString().split('T')[0]
+    const showAttentionIndicator = isToday && !isWeightLogged
+
     return (
         <Card className={cn('h-full', className)} variant="bordered">
             <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">
-                        Вес
-                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg font-semibold text-gray-900">
+                            Вес
+                        </CardTitle>
+                        {showAttentionIndicator && (
+                            <AttentionBadge
+                                urgency="normal"
+                                ariaLabel="Вес не записан сегодня"
+                            />
+                        )}
+                    </div>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -164,19 +193,37 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
                 {/* Current weight display or input */}
                 {isEditing ? (
                     <div className="space-y-3">
-                        <Input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            max="500"
-                            placeholder="Введите вес в кг"
-                            value={inputValue}
-                            onChange={(e) => handleInputChange(e.target.value)}
-                            onKeyDown={handleKeyPress}
-                            error={validationError || undefined}
-                            autoFocus
-                            aria-label="Вес в килограммах"
-                        />
+                        <div>
+                            <label htmlFor="weight-input" className="sr-only">
+                                Вес в килограммах
+                            </label>
+                            <Input
+                                id="weight-input"
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                max="500"
+                                placeholder="Введите вес в кг"
+                                value={inputValue}
+                                onChange={(e) => handleInputChange(e.target.value)}
+                                onKeyDown={handleKeyPress}
+                                error={validationError || undefined}
+                                autoFocus
+                                aria-label="Вес в килограммах"
+                                aria-describedby={validationError ? "weight-error" : undefined}
+                                aria-invalid={!!validationError}
+                            />
+                            {validationError && (
+                                <div
+                                    id="weight-error"
+                                    className="sr-only"
+                                    role="alert"
+                                    aria-live="polite"
+                                >
+                                    {validationError}
+                                </div>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <Button
                                 variant="primary"
@@ -185,8 +232,9 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
                                 isLoading={isSaving}
                                 disabled={!!validationError || !inputValue.trim()}
                                 className="flex-1"
+                                aria-label="Сохранить вес"
                             >
-                                <Check className="h-4 w-4 mr-2" />
+                                <Check className="h-4 w-4 mr-2" aria-hidden="true" />
                                 Сохранить
                             </Button>
                             <Button
@@ -194,6 +242,7 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
                                 size="sm"
                                 onClick={handleCancel}
                                 disabled={isSaving}
+                                aria-label="Отменить ввод веса"
                             >
                                 Отмена
                             </Button>
@@ -203,31 +252,41 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
                     <div className="text-center space-y-4">
                         {/* Current weight display */}
                         {isWeightLogged ? (
-                            <div className="space-y-2">
+                            <div className="space-y-2" role="region" aria-label="Текущий вес">
                                 <div className="text-4xl font-bold text-gray-900">
-                                    {formatWeight(currentWeight)}
-                                    <span className="text-lg text-gray-500 ml-1">кг</span>
+                                    <span aria-label={`Текущий вес ${formatWeight(currentWeight)} килограмм`}>
+                                        {formatWeight(currentWeight)}
+                                    </span>
+                                    <span className="text-lg text-gray-500 ml-1" aria-hidden="true">кг</span>
                                 </div>
 
                                 {/* Completion indicator */}
-                                <div className="flex items-center justify-center gap-2 text-green-600">
-                                    <Check className="h-4 w-4" />
+                                <div
+                                    className="flex items-center justify-center gap-2 text-green-600"
+                                    role="status"
+                                    aria-label="Вес записан"
+                                >
+                                    <Check className="h-4 w-4" aria-hidden="true" />
                                     <span className="text-sm font-medium">Вес записан</span>
                                 </div>
 
                                 {/* Weight change comparison */}
                                 {weightChange !== null && (
-                                    <div className={cn(
-                                        'flex items-center justify-center gap-1 text-sm',
-                                        weightChange > 0 ? 'text-red-600' :
-                                            weightChange < 0 ? 'text-green-600' : 'text-gray-600'
-                                    )}>
+                                    <div
+                                        className={cn(
+                                            'flex items-center justify-center gap-1 text-sm',
+                                            weightChange > 0 ? 'text-red-600' :
+                                                weightChange < 0 ? 'text-green-600' : 'text-gray-600'
+                                        )}
+                                        role="status"
+                                        aria-label={`Изменение веса: ${weightChange > 0 ? 'увеличение' : weightChange < 0 ? 'уменьшение' : 'без изменений'} на ${Math.abs(weightChange).toFixed(1)} килограмм с вчера`}
+                                    >
                                         {weightChange > 0 ? (
-                                            <TrendingUp className="h-4 w-4" />
+                                            <TrendingUp className="h-4 w-4" aria-hidden="true" />
                                         ) : weightChange < 0 ? (
-                                            <TrendingDown className="h-4 w-4" />
+                                            <TrendingDown className="h-4 w-4" aria-hidden="true" />
                                         ) : (
-                                            <Minus className="h-4 w-4" />
+                                            <Minus className="h-4 w-4" aria-hidden="true" />
                                         )}
                                         <span>
                                             {weightChange > 0 ? '+' : ''}
@@ -243,14 +302,14 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
 
                                 {/* Previous weight reference */}
                                 {previousWeight && (
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500" aria-label={`Вчера вес был ${formatWeight(previousWeight)} килограмм`}>
                                         Вчера: {formatWeight(previousWeight)} кг
                                     </div>
                                 )}
                             </div>
                         ) : (
                             /* Empty state */
-                            <div className="py-8 space-y-3">
+                            <div className="py-8 space-y-3" role="status" aria-label="Вес не записан">
                                 <div className="text-gray-400">
                                     <svg
                                         className="h-12 w-12 mx-auto mb-3"
@@ -271,7 +330,7 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
                                     Вес не записан
                                 </p>
                                 {previousWeight && (
-                                    <p className="text-xs text-gray-400 mb-3">
+                                    <p className="text-xs text-gray-400 mb-3" aria-label={`Вчера вес был ${formatWeight(previousWeight)} килограмм`}>
                                         Вчера: {formatWeight(previousWeight)} кг
                                     </p>
                                 )}
@@ -280,8 +339,9 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
                                     size="sm"
                                     onClick={handleQuickAdd}
                                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                    aria-label="Записать вес"
                                 >
-                                    <Plus className="h-4 w-4 mr-2" />
+                                    <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
                                     Записать вес
                                 </Button>
                             </div>
@@ -298,4 +358,4 @@ export function WeightBlock({ date, className }: WeightBlockProps) {
             </CardContent>
         </Card>
     )
-}
+})

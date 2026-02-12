@@ -7,7 +7,7 @@
 
 import { renderHook, act, waitFor } from '@testing-library/react';
 import fc from 'fast-check';
-import { useDashboardStore } from '../dashboardStore';
+import { useDashboardStore, clearMemoryCache } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 
 // Mock the API client
@@ -15,6 +15,12 @@ jest.mock('@/shared/utils/api-client');
 jest.mock('@/config/api', () => ({
     getApiUrl: (path: string) => `http://localhost:4000/api${path}`,
 }));
+
+// Clear memory cache before each test
+beforeEach(() => {
+    clearMemoryCache();
+    jest.clearAllMocks();
+});
 
 /**
  * Mock weekly plan generator
@@ -144,7 +150,16 @@ describe('Property 17: Plan Polling Updates', () => {
                 fc.integer({ min: 50, max: 300 }),
                 fc.integer({ min: 0, max: 10 }), // Number of tasks
                 async (caloriesGoal, proteinGoal, taskCount) => {
+                    // Clear cache and reset store before each iteration
+                    clearMemoryCache();
+                    jest.clearAllMocks();
+
                     const { result } = renderHook(() => useDashboardStore());
+
+                    // Reset store state
+                    act(() => {
+                        result.current.reset();
+                    });
 
                     // Mock API responses
                     const mockPlan = generateMockWeeklyPlan(caloriesGoal, proteinGoal);
