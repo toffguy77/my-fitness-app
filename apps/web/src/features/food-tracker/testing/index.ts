@@ -1,6 +1,6 @@
 /**
  * Food Tracker testing utilities
- * 
+ *
  * Exports test generators for property-based testing with fast-check.
  */
 

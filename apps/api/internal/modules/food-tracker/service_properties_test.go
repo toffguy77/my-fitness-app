@@ -452,7 +452,6 @@ func TestKBZHUCalculationEdgeCases(t *testing.T) {
 	})
 }
 
-
 // ============================================================================
 // Property 2: Daily Totals Sum
 // **Validates: Requirements 2.4, 2.5, 10.3, 10.5**
@@ -472,11 +471,11 @@ func genMealType() gopter.Gen {
 // genFoodEntry generates a random FoodEntry with valid КБЖУ values
 func genFoodEntry() gopter.Gen {
 	return gopter.CombineGens(
-		gen.Float64Range(0, 500),  // calories
-		gen.Float64Range(0, 50),   // protein
-		gen.Float64Range(0, 50),   // fat
-		gen.Float64Range(0, 50),   // carbs
-		genMealType(),             // meal type
+		gen.Float64Range(0, 500), // calories
+		gen.Float64Range(0, 50),  // protein
+		gen.Float64Range(0, 50),  // fat
+		gen.Float64Range(0, 50),  // carbs
+		genMealType(),            // meal type
 	).Map(func(values []interface{}) FoodEntry {
 		return FoodEntry{
 			Calories: values[0].(float64),

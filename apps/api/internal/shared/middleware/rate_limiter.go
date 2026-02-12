@@ -62,9 +62,9 @@ func (rl *RateLimiter) CheckEmailRateLimit(ctx context.Context, email string) er
 
 	if count >= config.EmailLimit {
 		rl.log.LogSecurityEvent("email_rate_limit_exceeded", "high", map[string]interface{}{
-			"email":        email,
+			"email":         email,
 			"attempt_count": count,
-			"limit":        config.EmailLimit,
+			"limit":         config.EmailLimit,
 		})
 		return fmt.Errorf("rate limit exceeded")
 	}

@@ -1,12 +1,12 @@
 /**
  * Property-Based Test: Attention Indicator Accessibility
- * 
+ *
  * Property 45: Attention Indicator Accessibility
  * Validates: Requirements 15.10, 15.12
- * 
+ *
  * Tests that ALL attention indicators have proper ARIA labels and keyboard navigation
  * regardless of props provided.
- * 
+ *
  * Feature: dashboard, Property 45: Attention Indicator Accessibility
  */
 

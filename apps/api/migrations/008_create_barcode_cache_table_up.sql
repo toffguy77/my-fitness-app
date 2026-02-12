@@ -9,19 +9,19 @@
 
 CREATE TABLE IF NOT EXISTS barcode_cache (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- Barcode identifier (unique)
   barcode TEXT NOT NULL UNIQUE,
-  
+
   -- Cached food data from external API (OpenFoodFacts, USDA)
   food_data JSONB NOT NULL,
-  
+
   -- Data source
   source TEXT NOT NULL DEFAULT 'openfoodfacts' CHECK (source IN ('openfoodfacts', 'usda')),
-  
+
   -- Cache expiration (30-day cache expiry)
   expires_at TIMESTAMPTZ NOT NULL,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -1,10 +1,10 @@
 /**
  * Property-Based Tests for Daily Attention Indicators
- * 
+ *
  * Feature: dashboard
  * Property 39: Attention Indicator Display
  * Property 40: Attention Indicator Removal
- * 
+ *
  * Validates: Requirements 15.1, 15.2, 15.3, 15.4, 15.11
  */
 

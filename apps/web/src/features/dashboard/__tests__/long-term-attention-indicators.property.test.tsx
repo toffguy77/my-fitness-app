@@ -1,12 +1,12 @@
 /**
  * Property-Based Tests for Long-Term Attention Indicators
- * 
+ *
  * Feature: dashboard
  * Property 41: Task Attention Indicator
  * Property 42: Weekly Plan Adherence Indicator
  * Property 43: Photo Upload Attention Indicator
  * Property 44: Weekly Report Submission Indicator
- * 
+ *
  * Validates: Requirements 15.6, 15.7, 15.8, 15.9
  */
 

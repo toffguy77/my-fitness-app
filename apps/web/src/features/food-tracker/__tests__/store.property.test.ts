@@ -101,7 +101,7 @@ describe('Property 16: Entry Persistence Round-Trip', () => {
     /**
      * For any created entry, the retrieved entry should have identical values
      * for all fields that were specified in the creation request.
-     * 
+     *
      * **Validates: Requirements 10.6, 16.1**
      */
     it('Feature: food-tracker, Property 16: created entry has identical values when retrieved', async () => {
@@ -169,7 +169,7 @@ describe('Property 16: Entry Persistence Round-Trip', () => {
     /**
      * For any entry that is created and then fetched, the values should be identical.
      * This tests the full round-trip: create -> store -> retrieve.
-     * 
+     *
      * **Validates: Requirements 10.6, 16.1**
      */
     it('Feature: food-tracker, Property 16: entry values are preserved through store operations', () => {
@@ -225,7 +225,7 @@ describe('Property 16: Entry Persistence Round-Trip', () => {
     /**
      * For any set of entries fetched from API, all entries should be stored
      * with identical values in the correct meal slots.
-     * 
+     *
      * **Validates: Requirements 10.6, 16.1**
      */
     it('Feature: food-tracker, Property 16: fetched entries preserve all values in store', async () => {
@@ -307,7 +307,7 @@ describe('Property 16: Entry Persistence Round-Trip', () => {
     /**
      * For any entry that is updated, the updated values should be persisted
      * and retrievable with identical values.
-     * 
+     *
      * **Validates: Requirements 10.6, 16.1**
      */
     it('Feature: food-tracker, Property 16: updated entry values are persisted correctly', async () => {
@@ -374,7 +374,7 @@ describe('Property 16: Entry Persistence Round-Trip', () => {
     /**
      * For any entry stored in the system, the nutrition values should be
      * exactly preserved without floating point errors.
-     * 
+     *
      * **Validates: Requirements 10.6, 16.1**
      */
     it('Feature: food-tracker, Property 16: nutrition values are preserved exactly', () => {
@@ -418,7 +418,7 @@ describe('Property 16: Entry Persistence Round-Trip', () => {
     /**
      * For any entry, the meal type assignment should be preserved through
      * storage and retrieval operations.
-     * 
+     *
      * **Validates: Requirements 10.6, 16.1**
      */
     it('Feature: food-tracker, Property 16: meal type assignment is preserved', () => {

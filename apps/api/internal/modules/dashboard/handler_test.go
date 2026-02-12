@@ -449,10 +449,10 @@ func TestCreateTask_Success(t *testing.T) {
 	})
 
 	reqBody := CreateTaskRequest{
-		UserID:      1,
-		Title:       "Test Task",
-		WeekNumber:  1,
-		DueDate:     time.Now().AddDate(0, 0, 7),
+		UserID:     1,
+		Title:      "Test Task",
+		WeekNumber: 1,
+		DueDate:    time.Now().AddDate(0, 0, 7),
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewBuffer(body))
@@ -475,10 +475,10 @@ func TestCreateTask_NotCoach(t *testing.T) {
 	})
 
 	reqBody := CreateTaskRequest{
-		UserID:      1,
-		Title:       "Test Task",
-		WeekNumber:  1,
-		DueDate:     time.Now().AddDate(0, 0, 7),
+		UserID:     1,
+		Title:      "Test Task",
+		WeekNumber: 1,
+		DueDate:    time.Now().AddDate(0, 0, 7),
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewBuffer(body))
@@ -926,10 +926,10 @@ func TestCreateTask_Unauthorized(t *testing.T) {
 	router.POST("/tasks", handler.CreateTask)
 
 	reqBody := CreateTaskRequest{
-		UserID:      1,
-		Title:       "Test Task",
-		WeekNumber:  1,
-		DueDate:     time.Now().AddDate(0, 0, 7),
+		UserID:     1,
+		Title:      "Test Task",
+		WeekNumber: 1,
+		DueDate:    time.Now().AddDate(0, 0, 7),
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewBuffer(body))
@@ -1271,10 +1271,10 @@ func TestCreateTask_ServiceError(t *testing.T) {
 	})
 
 	reqBody := CreateTaskRequest{
-		UserID:      1,
-		Title:       "Test Task",
-		WeekNumber:  1,
-		DueDate:     time.Now().AddDate(0, 0, 7),
+		UserID:     1,
+		Title:      "Test Task",
+		WeekNumber: 1,
+		DueDate:    time.Now().AddDate(0, 0, 7),
 	}
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewBuffer(body))

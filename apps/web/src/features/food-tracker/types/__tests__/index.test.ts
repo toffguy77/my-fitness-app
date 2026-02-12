@@ -1,6 +1,6 @@
 /**
  * Unit tests for food tracker types
- * 
+ *
  * Tests type definitions and ensures they are correctly structured.
  * Uses fast-check for property-based testing of type generators.
  */

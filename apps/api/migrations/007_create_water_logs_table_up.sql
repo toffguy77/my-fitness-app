@@ -9,22 +9,22 @@
 
 CREATE TABLE IF NOT EXISTS water_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- User reference
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  
+
   -- Date of the water log
   date DATE NOT NULL,
-  
+
   -- Water intake tracking
   glasses INTEGER NOT NULL DEFAULT 0 CHECK (glasses >= 0),
   goal INTEGER NOT NULL DEFAULT 8 CHECK (goal > 0),
   glass_size INTEGER NOT NULL DEFAULT 250 CHECK (glass_size > 0), -- in milliliters
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   -- Unique constraint: one water log per user per day
   UNIQUE(user_id, date)
 );

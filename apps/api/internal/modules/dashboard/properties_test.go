@@ -1137,11 +1137,11 @@ func TestDataPersistenceReliabilityProperty(t *testing.T) {
 		},
 		gen.Int64Range(1, 1000000),
 		gen.TimeRange(time.Now().AddDate(-1, 0, 0), time.Duration(365*24)*time.Hour),
-		gen.IntRange(0, 5000),   // calories
-		gen.IntRange(0, 500),    // protein
-		gen.IntRange(0, 200),    // fat
-		gen.IntRange(0, 600),    // carbs
-		gen.IntRange(0, 50000),  // steps
+		gen.IntRange(0, 5000),  // calories
+		gen.IntRange(0, 500),   // protein
+		gen.IntRange(0, 200),   // fat
+		gen.IntRange(0, 600),   // carbs
+		gen.IntRange(0, 50000), // steps
 	))
 
 	// Property 2: Weight data persists correctly
@@ -1477,9 +1477,9 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000),   // coach ID
-		gen.Int64Range(1, 1000),   // client ID
-		gen.Bool(),                // has relationship
+		gen.Int64Range(1, 1000), // coach ID
+		gen.Int64Range(1, 1000), // client ID
+		gen.Bool(),              // has relationship
 	))
 
 	// Property 2: UpdatePlan requires active coach-client relationship
@@ -1569,10 +1569,10 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000),                    // coach ID
-		gen.Int64Range(1, 1000),                    // client ID
-		gen.Const(uuid.New().String()),             // plan ID
-		gen.Bool(),                                 // has relationship
+		gen.Int64Range(1, 1000),        // coach ID
+		gen.Int64Range(1, 1000),        // client ID
+		gen.Const(uuid.New().String()), // plan ID
+		gen.Bool(),                     // has relationship
 	))
 
 	// Property 3: Coach cannot update plans created by other coaches
@@ -1631,10 +1631,10 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 100),                 // original coach ID
-		gen.Int64Range(101, 200),               // attempting coach ID (different range)
-		gen.Int64Range(1, 1000),                // client ID
-		gen.Const(uuid.New().String()),         // plan ID
+		gen.Int64Range(1, 100),         // original coach ID
+		gen.Int64Range(101, 200),       // attempting coach ID (different range)
+		gen.Int64Range(1, 1000),        // client ID
+		gen.Const(uuid.New().String()), // plan ID
 	))
 
 	// Property 4: Authorization check happens before data operations
@@ -1688,7 +1688,7 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
 		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-		len(s) > len(substr)+1 && findSubstring(s, substr)))
+			len(s) > len(substr)+1 && findSubstring(s, substr)))
 }
 
 func findSubstring(s, substr string) bool {
@@ -1932,10 +1932,10 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000),   // coach ID
-		gen.Int64Range(1, 1000),   // client ID
-		gen.IntRange(1000, 4000),  // calories goal
-		gen.IntRange(50, 300),     // protein goal
+		gen.Int64Range(1, 1000),  // coach ID
+		gen.Int64Range(1, 1000),  // client ID
+		gen.IntRange(1000, 4000), // calories goal
+		gen.IntRange(50, 300),    // protein goal
 	))
 
 	// Property 2: Plan update sends notification to client
@@ -2101,8 +2101,8 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000),   // coach ID
-		gen.Int64Range(1, 1000),   // client ID
+		gen.Int64Range(1, 1000), // coach ID
+		gen.Int64Range(1, 1000), // client ID
 		gen.AlphaString().SuchThat(func(s string) bool {
 			return len(s) > 0 && len(s) <= 255
 		}), // task title
@@ -2118,9 +2118,9 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 			ctx := context.Background()
 			weekStart := time.Now().AddDate(0, 0, -7)
 			weekEnd := time.Now()
-			
+
 			// Calculate week number (same as service does)
-			weekNumber := int(weekStart.Sub(time.Date(weekStart.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours() / 24 / 7) + 1
+			weekNumber := int(weekStart.Sub(time.Date(weekStart.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours()/24/7) + 1
 
 			// Mock validation queries
 			// Check nutrition days

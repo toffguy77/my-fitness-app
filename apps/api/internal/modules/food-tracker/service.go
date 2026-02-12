@@ -675,7 +675,7 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int) (*Se
 		FROM food_items
 		WHERE to_tsvector('russian', name) @@ plainto_tsquery('russian', $1)
 		   OR name ILIKE '%' || $1 || '%'
-		ORDER BY 
+		ORDER BY
 			CASE WHEN name ILIKE $1 || '%' THEN 0 ELSE 1 END,
 			verified DESC,
 			name ASC
@@ -1123,7 +1123,6 @@ func (s *Service) RemoveFromFavorites(ctx context.Context, userID int64, foodID 
 	return nil
 }
 
-
 // ============================================================================
 // Water Tracking
 // ============================================================================
@@ -1166,8 +1165,8 @@ func (s *Service) GetWaterIntake(ctx context.Context, userID int64, date time.Ti
 				UserID:    userID,
 				Date:      dateStr,
 				Glasses:   0,
-				Goal:      8,         // Default goal: 8 glasses
-				GlassSize: 250,       // Default glass size: 250ml
+				Goal:      8,   // Default goal: 8 glasses
+				GlassSize: 250, // Default glass size: 250ml
 				UpdatedAt: time.Now(),
 			}, nil
 		}
@@ -1246,7 +1245,6 @@ func (s *Service) AddWater(ctx context.Context, userID int64, date time.Time, gl
 
 	return &waterLog, nil
 }
-
 
 // ============================================================================
 // Recommendations

@@ -21,28 +21,28 @@ func TestMain(m *testing.M) {
 
 func TestCORSConfiguration(t *testing.T) {
 	tests := []struct {
-		name           string
-		corsOrigin     string
+		name            string
+		corsOrigin      string
 		expectedOrigins []string
 	}{
 		{
-			name:           "Port 3069 includes both 3069, 3000, and local network IP",
-			corsOrigin:     "http://localhost:3069",
+			name:            "Port 3069 includes both 3069, 3000, and local network IP",
+			corsOrigin:      "http://localhost:3069",
 			expectedOrigins: []string{"http://localhost:3069", "http://localhost:3000", "http://192.168.1.34:3069"},
 		},
 		{
-			name:           "Port 3000 includes 3000 and local network IP",
-			corsOrigin:     "http://localhost:3000",
+			name:            "Port 3000 includes 3000 and local network IP",
+			corsOrigin:      "http://localhost:3000",
 			expectedOrigins: []string{"http://localhost:3000", "http://192.168.1.34:3069"},
 		},
 		{
-			name:           "Production origin includes local network IP",
-			corsOrigin:     "https://burcev.team",
+			name:            "Production origin includes local network IP",
+			corsOrigin:      "https://burcev.team",
 			expectedOrigins: []string{"https://burcev.team", "http://192.168.1.34:3069"},
 		},
 		{
-			name:           "Custom port includes local network IP",
-			corsOrigin:     "http://localhost:8080",
+			name:            "Custom port includes local network IP",
+			corsOrigin:      "http://localhost:8080",
 			expectedOrigins: []string{"http://localhost:8080", "http://192.168.1.34:3069"},
 		},
 	}
@@ -64,10 +64,10 @@ func TestCORSConfiguration(t *testing.T) {
 
 func TestCORSHeaders(t *testing.T) {
 	tests := []struct {
-		name           string
-		origin         string
-		corsOrigin     string
-		expectAllowed  bool
+		name          string
+		origin        string
+		corsOrigin    string
+		expectAllowed bool
 	}{
 		{
 			name:          "Port 3069 allows 3069",
@@ -254,23 +254,23 @@ func TestServerTimeouts(t *testing.T) {
 
 func TestGinModeConfiguration(t *testing.T) {
 	tests := []struct {
-		name        string
-		env         string
+		name         string
+		env          string
 		expectedMode string
 	}{
 		{
-			name:        "Production mode",
-			env:         "production",
+			name:         "Production mode",
+			env:          "production",
 			expectedMode: gin.ReleaseMode,
 		},
 		{
-			name:        "Development mode",
-			env:         "development",
+			name:         "Development mode",
+			env:          "development",
 			expectedMode: gin.DebugMode,
 		},
 		{
-			name:        "Test mode",
-			env:         "test",
+			name:         "Test mode",
+			env:          "test",
 			expectedMode: gin.TestMode,
 		},
 	}

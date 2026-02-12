@@ -9,31 +9,31 @@
 
 CREATE TABLE IF NOT EXISTS food_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- User reference
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  
+
   -- Food reference
   food_id UUID NOT NULL REFERENCES food_items(id) ON DELETE RESTRICT,
   food_name TEXT NOT NULL, -- Denormalized for display
-  
+
   -- Meal categorization
   meal_type TEXT NOT NULL CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')),
-  
+
   -- Portion information
   portion_type TEXT NOT NULL CHECK (portion_type IN ('grams', 'milliliters', 'portion')),
   portion_amount DECIMAL(10,2) NOT NULL CHECK (portion_amount > 0),
-  
+
   -- Calculated nutrition based on portion (КБЖУ)
   calories DECIMAL(10,2) NOT NULL CHECK (calories >= 0),
   protein DECIMAL(10,2) NOT NULL CHECK (protein >= 0),
   fat DECIMAL(10,2) NOT NULL CHECK (fat >= 0),
   carbs DECIMAL(10,2) NOT NULL CHECK (carbs >= 0),
-  
+
   -- Time and date
   time TEXT NOT NULL, -- HH:mm format
   date DATE NOT NULL,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

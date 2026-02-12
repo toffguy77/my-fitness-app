@@ -36,12 +36,13 @@ func NewTokenGenerator() *TokenGenerator {
 //   - error: Any error that occurred during generation
 //
 // Example:
-//   tg := NewTokenGenerator()
-//   plain, hashed, err := tg.GenerateToken()
-//   if err != nil {
-//       // Handle error
-//   }
-//   // Send 'plain' to user, store 'hashed' in database
+//
+//	tg := NewTokenGenerator()
+//	plain, hashed, err := tg.GenerateToken()
+//	if err != nil {
+//	    // Handle error
+//	}
+//	// Send 'plain' to user, store 'hashed' in database
 func (tg *TokenGenerator) GenerateToken() (plainToken string, hashedToken string, err error) {
 	// Generate random bytes using crypto/rand for cryptographic security
 	randomBytes := make([]byte, tg.tokenLength)
@@ -70,8 +71,9 @@ func (tg *TokenGenerator) GenerateToken() (plainToken string, hashedToken string
 //   - The hex-encoded SHA-256 hash of the token
 //
 // Example:
-//   tg := NewTokenGenerator()
-//   hashed := tg.HashToken("abc123...")
+//
+//	tg := NewTokenGenerator()
+//	hashed := tg.HashToken("abc123...")
 func (tg *TokenGenerator) HashToken(plainToken string) string {
 	hash := sha256.Sum256([]byte(plainToken))
 	return hex.EncodeToString(hash[:])
@@ -91,10 +93,11 @@ func (tg *TokenGenerator) HashToken(plainToken string) string {
 //   - true if the tokens match, false otherwise
 //
 // Example:
-//   tg := NewTokenGenerator()
-//   if tg.VerifyToken(userToken, storedHash) {
-//       // Token is valid
-//   }
+//
+//	tg := NewTokenGenerator()
+//	if tg.VerifyToken(userToken, storedHash) {
+//	    // Token is valid
+//	}
 func (tg *TokenGenerator) VerifyToken(plainToken string, hashedToken string) bool {
 	// Hash the plain token and compare with stored hash
 	computedHash := tg.HashToken(plainToken)

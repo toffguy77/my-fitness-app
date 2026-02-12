@@ -79,7 +79,6 @@ func TestWeeklyReportValidationProperty(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-
 // Property 14: Photo File Validation
 // **Validates: Requirements 7.3**
 // Feature: dashboard, Property 14: Photo File Validation
@@ -177,6 +176,7 @@ func TestPhotoFileValidationProperty(t *testing.T) {
 
 	properties.TestingRun(t)
 }
+
 // Property 21: Weekly Report Creation
 // **Validates: Requirements 10.4, 10.5, 10.6, 10.7**
 // Feature: dashboard, Property 21: Weekly Report Creation
@@ -292,7 +292,7 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 
 			return mock.ExpectationsWereMet() == nil
 		},
-		gen.Int64Range(1, 1000),   // userID
+		gen.Int64Range(1, 1000),    // userID
 		gen.Int64Range(1001, 2000), // coachID
 	))
 

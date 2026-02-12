@@ -1,7 +1,7 @@
 /**
  * Zustand store for dashboard state management
  * Handles date navigation, daily metrics, weekly plans, tasks, and reports
- * 
+ *
  * Optimizations implemented:
  * - In-memory caching with TTL for fetched data
  * - Prefetching of adjacent weeks during navigation

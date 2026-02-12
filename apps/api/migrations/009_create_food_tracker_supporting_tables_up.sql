@@ -15,27 +15,27 @@
 
 CREATE TABLE IF NOT EXISTS user_foods (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- User reference
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  
+
   -- Basic info
   name TEXT NOT NULL,
   category TEXT NOT NULL DEFAULT 'custom',
-  
+
   -- Serving info
   serving_size DECIMAL(10,2) NOT NULL DEFAULT 100,
   serving_unit TEXT NOT NULL DEFAULT 'г',
-  
+
   -- Nutrition per 100g/100ml (КБЖУ)
   calories DECIMAL(10,2) NOT NULL CHECK (calories >= 0),
   protein DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (protein >= 0),
   fat DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (fat >= 0),
   carbs DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (carbs >= 0),
-  
+
   -- Sharing option
   is_shared BOOLEAN DEFAULT false,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -65,25 +65,25 @@ COMMENT ON COLUMN user_foods.is_shared IS 'Whether this food is shared with the 
 
 CREATE TABLE IF NOT EXISTS nutrient_recommendations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- Nutrient info
   name TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('vitamins', 'minerals', 'lipids', 'fiber', 'plant')),
-  
+
   -- Recommendation values
   daily_target DECIMAL(10,4) NOT NULL CHECK (daily_target > 0),
   unit TEXT NOT NULL,
   is_weekly BOOLEAN DEFAULT false,
-  
+
   -- Descriptive info
   description TEXT,
   benefits TEXT,
   effects TEXT,
-  
+
   -- Min/optimal recommendations
   min_recommendation DECIMAL(10,4),
   optimal_recommendation DECIMAL(10,4),
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -111,17 +111,17 @@ COMMENT ON COLUMN nutrient_recommendations.optimal_recommendation IS 'Optimal re
 
 CREATE TABLE IF NOT EXISTS user_nutrient_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- References
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   nutrient_id UUID NOT NULL REFERENCES nutrient_recommendations(id) ON DELETE CASCADE,
-  
+
   -- Tracking status
   is_tracked BOOLEAN DEFAULT true,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   -- Unique constraint to prevent duplicates
   UNIQUE(user_id, nutrient_id)
 );
@@ -142,18 +142,18 @@ COMMENT ON COLUMN user_nutrient_preferences.is_tracked IS 'Whether the user is t
 
 CREATE TABLE IF NOT EXISTS user_custom_recommendations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- User reference
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  
+
   -- Custom recommendation info
   name TEXT NOT NULL,
   daily_target DECIMAL(10,4) NOT NULL CHECK (daily_target > 0),
   unit TEXT NOT NULL CHECK (unit IN ('г', 'мг', 'мкг', 'МЕ')),
-  
+
   -- Current intake tracking
   current_intake DECIMAL(10,4) DEFAULT 0 CHECK (current_intake >= 0),
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -176,23 +176,23 @@ COMMENT ON COLUMN user_custom_recommendations.current_intake IS 'Current daily i
 
 CREATE TABLE IF NOT EXISTS meal_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- User reference
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  
+
   -- Template info
   name TEXT NOT NULL,
   meal_type TEXT NOT NULL CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')),
-  
+
   -- Food entries as JSON array
   entries JSONB NOT NULL,
-  
+
   -- Calculated totals (КБЖУ)
   total_calories DECIMAL(10,2) NOT NULL CHECK (total_calories >= 0),
   total_protein DECIMAL(10,2) NOT NULL CHECK (total_protein >= 0),
   total_fat DECIMAL(10,2) NOT NULL CHECK (total_fat >= 0),
   total_carbs DECIMAL(10,2) NOT NULL CHECK (total_carbs >= 0),
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -218,14 +218,14 @@ COMMENT ON COLUMN meal_templates.total_carbs IS 'Total carbohydrates in grams fo
 
 CREATE TABLE IF NOT EXISTS user_favorite_foods (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- References
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   food_id UUID NOT NULL REFERENCES food_items(id) ON DELETE CASCADE,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  
+
   -- Unique constraint to prevent duplicates
   UNIQUE(user_id, food_id)
 );
