@@ -1,4 +1,4 @@
-# Multi-stage build for Next.js production with optimized caching and security
+# Multi-stage build for Next.js production (monorepo) with optimized caching and security
 FROM node:20-alpine AS base
 
 # Security: Update packages and install security updates
@@ -17,74 +17,47 @@ WORKDIR /app
 # Security: Set proper ownership
 RUN chown nextjs:nodejs /app
 
-# Install dependencies only when needed - optimized for caching
+# Install all dependencies (needed for monorepo workspace build)
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files first for better layer caching
+# Copy root and workspace package files for layer caching
 COPY package.json package-lock.json* ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/types/package.json ./packages/types/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/utils/package.json ./packages/utils/
+COPY packages/config/package.json ./packages/config/
 
-# Security: Verify package integrity and install with clean slate
-RUN npm ci --only=production --ignore-scripts && \
-    npm cache clean --force
-
-# Development dependencies stage for building
-FROM base AS dev-deps
-WORKDIR /app
-
-# Copy package files
-COPY package.json package-lock.json* ./
-
-# Install all dependencies including dev dependencies
+# Install all dependencies (workspaces require dev deps for build)
 RUN npm ci --ignore-scripts && \
     npm cache clean --force
 
-# Build stage - optimized for caching
+# Build stage
 FROM base AS builder
 WORKDIR /app
 
-# Copy dependencies from previous stages
-COPY --from=dev-deps /app/node_modules ./node_modules
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
 
-# Copy package files first
-COPY package.json package-lock.json* ./
-
-# Copy source code in optimal order for caching
-COPY next.config.ts ./
-COPY tsconfig.json ./
-COPY postcss.config.mjs ./
-
-# Copy source files
-COPY src ./src
-COPY public ./public
+# Copy all source files (monorepo needs full context)
+COPY . .
 
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build arguments for flexibility
+# Build arguments
 ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-key
 ARG NEXT_PUBLIC_APP_VERSION=unknown
 
-# Set build environment variables
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 
-# Build the application
-RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
-
-# Security scanning stage (for CI/CD)
-FROM builder AS security-scan
-WORKDIR /app
-
-# Install security scanning tools
-RUN npm install -g npm-audit-resolver audit-ci
-
-# Run security audit
-RUN npm audit --audit-level=moderate || true
-RUN npx audit-ci --moderate || true
+# Build the web application
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build --workspace=apps/web
 
 # Production runtime stage - minimal and secure
 FROM base AS runner
@@ -98,13 +71,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN apk del libc6-compat && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
-# Copy production dependencies only
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
-
-# Copy built application
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy built application from monorepo paths
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
 
 # Security: Ensure proper permissions
 RUN chown -R nextjs:nodejs /app && \
@@ -129,26 +99,3 @@ ENV HOSTNAME="0.0.0.0"
 
 # Start the application
 CMD ["node", "server.js"]
-
-# Development stage for local development
-FROM dev-deps AS development
-WORKDIR /app
-
-# Copy source code
-COPY . .
-
-# Security: Set proper ownership
-RUN chown -R nextjs:nodejs /app
-
-# Switch to non-root user
-USER nextjs
-
-# Environment variables for development
-ENV PORT=3069
-ENV HOSTNAME="0.0.0.0"
-
-# Expose port for development
-EXPOSE 3069
-
-# Start development server
-CMD ["npm", "run", "dev"]
