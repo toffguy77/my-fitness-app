@@ -182,7 +182,7 @@ jobs:
           docker ps | grep "$CONTAINER_NAME"
           REMOTE
 
-          echo "deployment_url=https://dev.burcev.team" >> "$GITHUB_OUTPUT"
+          echo "deployment_url=https://new.burcev.team" >> "$GITHUB_OUTPUT"
 
       - name: Run dev health checks
         run: |
@@ -191,13 +191,13 @@ jobs:
 
           ok=0
           for i in $(seq 1 60); do
-            if curl -fsS "https://dev.burcev.team/api/health" >/dev/null 2>&1; then
+            if curl -fsS "https://new.burcev.team/api/health" >/dev/null 2>&1; then
               ok=1
               echo "✅ Health check passed on attempt $i"
               break
             fi
             if [ $((i % 10)) -eq 0 ]; then
-              echo "Still waiting for https://dev.burcev.team (attempt ${i}/60)..."
+              echo "Still waiting for https://new.burcev.team (attempt ${i}/60)..."
             fi
             sleep 2
           done
@@ -716,7 +716,7 @@ jobs:
           elif [[ "${{ steps.rollback-info.outputs.environment }}" == "staging" ]]; then
             echo "deployment_url=https://beta.burcev.team" >> $GITHUB_OUTPUT
           else
-            echo "deployment_url=https://dev.burcev.team" >> $GITHUB_OUTPUT
+            echo "deployment_url=https://new.burcev.team" >> $GITHUB_OUTPUT
           fi
 
           echo "✅ Automatic rollback completed successfully"
