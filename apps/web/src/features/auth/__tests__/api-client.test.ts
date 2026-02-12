@@ -48,7 +48,7 @@ describe('API Client', () => {
 
         it('should make GET request with proper headers', async () => {
             const mockResponse = { data: { id: 1, name: 'Test' } };
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 json: async () => mockResponse,
             });
@@ -70,7 +70,7 @@ describe('API Client', () => {
             const mockResponse = { data: { success: true } };
             const requestBody = { email: 'test@example.com', password: 'password123' };
 
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 json: async () => mockResponse,
             });
@@ -94,7 +94,7 @@ describe('API Client', () => {
             apiClient.setToken(token);
 
             const mockResponse = { data: { id: 1 } };
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 json: async () => mockResponse,
             });
@@ -112,7 +112,7 @@ describe('API Client', () => {
         });
 
         it('should throw error on failed request', async () => {
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 401,
                 json: async () => ({ message: 'Unauthorized' }),

@@ -32,7 +32,7 @@ describe('StepsBlock', () => {
         mockUpdateMetric.mockResolvedValue(undefined)
 
             // Default mock return value
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 weeklyPlan: { stepsGoal: 10000 } as WeeklyPlan,
                 updateMetric: mockUpdateMetric,
@@ -41,7 +41,7 @@ describe('StepsBlock', () => {
 
     describe('Display', () => {
         it('renders with default goal when no weekly plan', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 weeklyPlan: null,
                 updateMetric: mockUpdateMetric,
@@ -54,7 +54,7 @@ describe('StepsBlock', () => {
         })
 
         it('displays current steps and goal', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -73,7 +73,7 @@ describe('StepsBlock', () => {
         })
 
         it('formats steps under 1000 without k suffix', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -90,7 +90,7 @@ describe('StepsBlock', () => {
         })
 
         it('shows completion indicator when goal reached', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -107,7 +107,7 @@ describe('StepsBlock', () => {
         })
 
         it('shows completion indicator when steps exceed goal', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -125,7 +125,7 @@ describe('StepsBlock', () => {
         })
 
         it('shows remaining steps when goal not reached', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -142,7 +142,7 @@ describe('StepsBlock', () => {
         })
 
         it('shows empty state when no steps logged', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -168,7 +168,7 @@ describe('StepsBlock', () => {
 
     describe('Progress Bar', () => {
         it('renders progress bar with correct attributes', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -189,7 +189,7 @@ describe('StepsBlock', () => {
         })
 
         it('caps progress bar at 100% when steps exceed goal', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -221,7 +221,7 @@ describe('StepsBlock', () => {
         })
 
         it('pre-fills input with current steps value', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -492,7 +492,7 @@ describe('StepsBlock', () => {
         })
 
         it('has accessible progress bar with aria attributes', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -529,7 +529,7 @@ describe('StepsBlock', () => {
 
     describe('Edge Cases', () => {
         it('handles zero goal gracefully', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [dateStr]: {
                         date: dateStr,
@@ -547,7 +547,7 @@ describe('StepsBlock', () => {
         })
 
         it('handles missing daily data', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 weeklyPlan: { stepsGoal: 10000 } as WeeklyPlan,
                 updateMetric: mockUpdateMetric,

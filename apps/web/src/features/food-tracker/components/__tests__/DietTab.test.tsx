@@ -106,7 +106,7 @@ describe('DietTab', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         Element.prototype.scrollIntoView = jest.fn();
-        (useFoodTrackerStore as jest.Mock).mockReturnValue(createMockStore());
+        (useFoodTrackerStore as unknown as jest.Mock).mockReturnValue(createMockStore());
     });
 
     afterEach(() => {
@@ -208,7 +208,7 @@ describe('DietTab', () => {
 
     describe('Water Tracker', () => {
         it('displays water intake', () => {
-            (useFoodTrackerStore as jest.Mock).mockReturnValue(createMockStore({
+            (useFoodTrackerStore as unknown as jest.Mock).mockReturnValue(createMockStore({
                 waterIntake: 5,
                 waterGoal: 8,
             }));
@@ -220,7 +220,7 @@ describe('DietTab', () => {
         it('calls addWater when add button clicked', async () => {
             const user = userEvent.setup();
             const addWater = jest.fn();
-            (useFoodTrackerStore as jest.Mock).mockReturnValue(createMockStore({ addWater }));
+            (useFoodTrackerStore as unknown as jest.Mock).mockReturnValue(createMockStore({ addWater }));
 
             render(<DietTab {...createDefaultProps()} />);
 

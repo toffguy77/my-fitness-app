@@ -20,7 +20,7 @@ describe('NotificationsLayout', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        (useRouter as jest.Mock).mockReturnValue({
+        (useRouter as unknown as jest.Mock).mockReturnValue({
             push: mockPush,
         });
     });

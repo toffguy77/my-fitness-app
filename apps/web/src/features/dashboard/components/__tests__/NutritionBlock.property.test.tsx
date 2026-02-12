@@ -78,7 +78,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
             weeklyPlan: null,
         }
 
-            ; (useDashboardStore as jest.Mock).mockReturnValue(mockStore)
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(mockStore)
     })
 
     afterEach(() => {
@@ -120,7 +120,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                             weeklyPlan,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<NutritionBlock date={date} />, { container })
 
@@ -199,7 +199,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                             weeklyPlan,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<NutritionBlock date={date} />, { container })
 
@@ -263,7 +263,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                             weeklyPlan,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<NutritionBlock date={date} />, { container })
 
@@ -325,7 +325,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                             weeklyPlan,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<NutritionBlock date={date} />, { container })
 

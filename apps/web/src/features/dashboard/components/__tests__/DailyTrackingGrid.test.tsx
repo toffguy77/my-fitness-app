@@ -109,7 +109,7 @@ describe('DailyTrackingGrid', () => {
         mockClearError = jest.fn()
 
             // Set default mock return value
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 isLoading: false,
                 error: null,
@@ -150,7 +150,7 @@ describe('DailyTrackingGrid', () => {
         })
 
         it('clears error when date changes and error exists', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 isLoading: false,
                 error: { code: 'SERVER_ERROR', message: 'Server error' },
@@ -182,7 +182,7 @@ describe('DailyTrackingGrid', () => {
 
     describe('Loading States', () => {
         it('shows loading skeleton when loading and no data', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 isLoading: true,
                 error: null,
@@ -206,7 +206,7 @@ describe('DailyTrackingGrid', () => {
         })
 
         it('shows update indicator when loading with existing data', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: { [testDateStr]: mockDailyMetrics },
                 isLoading: true,
                 error: null,
@@ -235,7 +235,7 @@ describe('DailyTrackingGrid', () => {
     describe('Error States', () => {
         it('shows error message with retry button when error and no data', () => {
             const error = { code: 'SERVER_ERROR', message: 'Сервис временно недоступен' }
-                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                     dailyData: {},
                     isLoading: false,
                     error,
@@ -262,7 +262,7 @@ describe('DailyTrackingGrid', () => {
 
         it('calls fetchDailyData when retry button is clicked', () => {
             const error = { code: 'SERVER_ERROR', message: 'Server error' }
-                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                     dailyData: {},
                     isLoading: false,
                     error,
@@ -283,7 +283,7 @@ describe('DailyTrackingGrid', () => {
 
         it('shows offline indicator for network errors with existing data', () => {
             const error = { code: 'NETWORK_ERROR', message: 'Нет подключения к интернету' }
-                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                     dailyData: { [testDateStr]: mockDailyMetrics },
                     isLoading: false,
                     error,
@@ -307,7 +307,7 @@ describe('DailyTrackingGrid', () => {
 
         it('does not show offline indicator for non-network errors', () => {
             const error = { code: 'SERVER_ERROR', message: 'Server error' }
-                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                     dailyData: { [testDateStr]: mockDailyMetrics },
                     isLoading: false,
                     error,
@@ -326,7 +326,7 @@ describe('DailyTrackingGrid', () => {
 
     describe('Success State', () => {
         it('renders all four tracking blocks with correct props', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: { [testDateStr]: mockDailyMetrics },
                 isLoading: false,
                 error: null,
@@ -365,7 +365,7 @@ describe('DailyTrackingGrid', () => {
 
         it('applies custom className when provided', () => {
             const customClass = 'custom-grid-class'
-                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                     dailyData: { [testDateStr]: mockDailyMetrics },
                     isLoading: false,
                     error: null,
@@ -385,7 +385,7 @@ describe('DailyTrackingGrid', () => {
         })
 
         it('uses responsive grid layout', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: { [testDateStr]: mockDailyMetrics },
                 isLoading: false,
                 error: null,
@@ -410,7 +410,7 @@ describe('DailyTrackingGrid', () => {
 
     describe('Accessibility', () => {
         it('provides proper ARIA labels for loading skeletons', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 isLoading: true,
                 error: null,
@@ -428,7 +428,7 @@ describe('DailyTrackingGrid', () => {
 
         it('hides decorative icons from screen readers', () => {
             const error = { code: 'SERVER_ERROR', message: 'Server error' }
-                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                     dailyData: {},
                     isLoading: false,
                     error,
@@ -446,7 +446,7 @@ describe('DailyTrackingGrid', () => {
         })
 
         it('provides accessible loading spinner', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: { [testDateStr]: mockDailyMetrics },
                 isLoading: true,
                 error: null,
@@ -467,7 +467,7 @@ describe('DailyTrackingGrid', () => {
 
     describe('Edge Cases', () => {
         it('handles missing data gracefully', () => {
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: { 'other-date': mockDailyMetrics }, // Data for different date
                 isLoading: false,
                 error: null,

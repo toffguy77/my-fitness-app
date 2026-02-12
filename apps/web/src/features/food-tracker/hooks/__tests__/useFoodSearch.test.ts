@@ -108,7 +108,7 @@ describe('useFoodSearch', () => {
         });
 
         it('triggers search after debounce delay', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
                 total: 2,
             });
@@ -135,7 +135,7 @@ describe('useFoodSearch', () => {
 
     describe('searchNow', () => {
         it('searches immediately without debounce', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
                 total: 2,
             });
@@ -151,7 +151,7 @@ describe('useFoodSearch', () => {
         });
 
         it('updates query state', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: [],
                 total: 0,
             });
@@ -180,7 +180,7 @@ describe('useFoodSearch', () => {
 
     describe('clearSearch', () => {
         it('clears query', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
                 total: 2,
             });
@@ -199,7 +199,7 @@ describe('useFoodSearch', () => {
         });
 
         it('clears results', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
                 total: 2,
             });
@@ -218,7 +218,7 @@ describe('useFoodSearch', () => {
         });
 
         it('clears error', async () => {
-            (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network error'));
+            (apiClient.get as unknown as jest.Mock).mockRejectedValue(new Error('Network error'));
 
             const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
 
@@ -236,7 +236,7 @@ describe('useFoodSearch', () => {
 
     describe('loadRecentFoods', () => {
         it('loads recent foods from API', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
             });
 
@@ -250,7 +250,7 @@ describe('useFoodSearch', () => {
         });
 
         it('handles API error gracefully', async () => {
-            (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network error'));
+            (apiClient.get as unknown as jest.Mock).mockRejectedValue(new Error('Network error'));
 
             const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
 
@@ -265,7 +265,7 @@ describe('useFoodSearch', () => {
 
     describe('loadFavoriteFoods', () => {
         it('loads favorite foods from API', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
             });
 
@@ -279,7 +279,7 @@ describe('useFoodSearch', () => {
         });
 
         it('handles API error gracefully', async () => {
-            (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network error'));
+            (apiClient.get as unknown as jest.Mock).mockRejectedValue(new Error('Network error'));
 
             const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
 
@@ -294,7 +294,7 @@ describe('useFoodSearch', () => {
 
     describe('error handling', () => {
         it('sets Russian error message on search failure', async () => {
-            (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network error'));
+            (apiClient.get as unknown as jest.Mock).mockRejectedValue(new Error('Network error'));
 
             const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
 
@@ -306,7 +306,7 @@ describe('useFoodSearch', () => {
         });
 
         it('clears results on error', async () => {
-            (apiClient.get as jest.Mock).mockRejectedValue(new Error('Network error'));
+            (apiClient.get as unknown as jest.Mock).mockRejectedValue(new Error('Network error'));
 
             const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
 
@@ -320,7 +320,7 @@ describe('useFoodSearch', () => {
 
     describe('pagination', () => {
         it('sets hasMore based on total results', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
                 total: 50, // More than page size
             });
@@ -337,7 +337,7 @@ describe('useFoodSearch', () => {
         });
 
         it('sets hasMore to false when all results loaded', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
                 total: 2, // Same as items length
             });
@@ -354,7 +354,7 @@ describe('useFoodSearch', () => {
         });
 
         it('updates totalResults', async () => {
-            (apiClient.get as jest.Mock).mockResolvedValue({
+            (apiClient.get as unknown as jest.Mock).mockResolvedValue({
                 items: mockFoodItems,
                 total: 100,
             });

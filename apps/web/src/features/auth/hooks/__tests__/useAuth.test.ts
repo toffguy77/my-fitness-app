@@ -36,8 +36,8 @@ jest.mock('@/shared/utils/api-client', () => ({
 
 describe('useAuth', () => {
     const mockPush = jest.fn();
-    const mockLoginUser = authApi.loginUser as jest.MockedFunction<typeof authApi.loginUser>;
-    const mockRegisterUser = authApi.registerUser as jest.MockedFunction<typeof authApi.registerUser>;
+    const mockLoginUser = authApi.loginUser as unknown as jest.MockedFunction<typeof authApi.loginUser>;
+    const mockRegisterUser = authApi.registerUser as unknown as jest.MockedFunction<typeof authApi.registerUser>;
 
     // Mock localStorage at module level
     const localStorageMock: { [key: string]: string } = {};
@@ -54,7 +54,7 @@ describe('useAuth', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
+        (useRouter as unknown as jest.Mock).mockReturnValue({ push: mockPush });
 
         // Clear localStorage data
         Object.keys(localStorageMock).forEach(key => delete localStorageMock[key]);
