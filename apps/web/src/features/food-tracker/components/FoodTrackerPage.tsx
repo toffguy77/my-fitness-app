@@ -122,7 +122,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                     )}
 
                     {activeTab === 'recommendations' && (
-                        <RecommendationsTab />
+                        <RecommendationsTab date={selectedDate.toISOString().split('T')[0]} />
                     )}
                 </div>
 

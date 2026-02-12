@@ -39,41 +39,39 @@ export default function VirtualizedNotificationList({
     // Fixed row height for simplicity (react-window uses fixed heights)
     const rowHeight = 100;
 
-    // Render individual row
-    const Row = useCallback(
-        ({ index, style }: { index: number; style: React.CSSProperties }) => {
-            const item = items[index];
-
-            if (item.type === 'header') {
-                return (
-                    <div style={style}>
-                        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-4">
-                            {item.date}
-                        </h2>
-                    </div>
-                );
-            }
-
-            return (
-                <div style={style}>
-                    <NotificationItem
-                        notification={item.notification}
-                        onMarkAsRead={onMarkAsRead}
-                    />
-                </div>
-            );
-        },
-        [items, onMarkAsRead]
-    );
+    type RowProps = {
+        items: typeof items;
+        onMarkAsRead: (id: string) => void;
+    };
 
     return (
         <div className="h-[calc(100vh-200px)]" data-testid="virtual-list">
-            <List
+            <List<RowProps>
                 listRef={listRef}
                 defaultHeight={typeof window !== 'undefined' ? window.innerHeight - 200 : 600}
                 rowCount={items.length}
                 rowHeight={rowHeight}
-                rowComponent={Row}
+                rowProps={{ items, onMarkAsRead }}
+                rowComponent={({ index, style, items: rowItems, onMarkAsRead: markAsRead }) => {
+                    const item = rowItems[index];
+                    if (item.type === 'header') {
+                        return (
+                            <div style={style}>
+                                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 px-4">
+                                    {item.date}
+                                </h2>
+                            </div>
+                        );
+                    }
+                    return (
+                        <div style={style}>
+                            <NotificationItem
+                                notification={item.notification}
+                                onMarkAsRead={markAsRead}
+                            />
+                        </div>
+                    );
+                }}
             />
 
             {/* Infinite scroll trigger */}

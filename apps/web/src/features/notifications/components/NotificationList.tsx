@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import type { Notification, NotificationCategory } from '../types';
+import type { Notification, NotificationCategory, NotificationError } from '../types';
 import { NotificationItem } from './NotificationItem';
 import { groupNotificationsByDate } from '../utils/dateGrouping';
 import { cn } from '@/shared/utils/cn';
@@ -25,7 +25,7 @@ export interface NotificationListProps {
     /** Loading state indicator */
     isLoading: boolean;
     /** Error state */
-    error: Error | null;
+    error: Error | NotificationError | null;
     /** Callback to load more notifications */
     onLoadMore: () => void;
     /** Whether there are more notifications to load */

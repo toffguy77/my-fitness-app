@@ -153,8 +153,7 @@ export {
     getMealSlotIcon,
     calculateSlotSubtotals,
     getMealTypesInOrder,
-    isValidMealType,
-    MEAL_SLOT_LABELS,
-    MEAL_SLOT_ICONS,
+    MEAL_LABELS,
+    MEAL_ICONS,
     MEAL_TIME_RANGES,
 } from './utils/mealSlotUtils';
