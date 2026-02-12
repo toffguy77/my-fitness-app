@@ -98,7 +98,7 @@ describe('DailyTrackingGrid Property Tests', () => {
         mockClearError = jest.fn()
 
             // Set default mock return value
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 isLoading: false,
                 error: null,
@@ -220,7 +220,7 @@ describe('DailyTrackingGrid Property Tests', () => {
 
                         try {
                             // Mock loading state
-                            ; (useDashboardStore as jest.Mock).mockReturnValue({
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                                 dailyData: {}, // No data for the date
                                 isLoading: true,
                                 error: null,
@@ -272,7 +272,7 @@ describe('DailyTrackingGrid Property Tests', () => {
 
                         try {
                             // Mock error state
-                            ; (useDashboardStore as jest.Mock).mockReturnValue({
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                                 dailyData: {}, // No data for the date
                                 isLoading: false,
                                 error,
@@ -327,7 +327,7 @@ describe('DailyTrackingGrid Property Tests', () => {
                             const dateStr = date.toISOString().split('T')[0]
 
                                 // Mock loading state with existing data
-                                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                                     dailyData: { [dateStr]: metrics }, // Has existing data
                                     isLoading: true,
                                     error: null,
@@ -377,7 +377,7 @@ describe('DailyTrackingGrid Property Tests', () => {
                             const dateStr = date.toISOString().split('T')[0]
 
                                 // Mock offline state with cached data
-                                ; (useDashboardStore as jest.Mock).mockReturnValue({
+                                ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                                     dailyData: { [dateStr]: metrics }, // Has cached data
                                     isLoading: false,
                                     error: { code: 'NETWORK_ERROR', message: 'Нет подключения к интернету' },

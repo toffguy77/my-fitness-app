@@ -84,7 +84,7 @@ describe('FoodTrackerPage', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        (useFoodTracker as jest.Mock).mockReturnValue(defaultMockState);
+        (useFoodTracker as unknown as jest.Mock).mockReturnValue(defaultMockState);
     });
 
     describe('rendering', () => {
@@ -154,7 +154,7 @@ describe('FoodTrackerPage', () => {
 
     describe('offline indicator', () => {
         it('shows offline indicator when offline', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 isOffline: true,
             });
@@ -173,7 +173,7 @@ describe('FoodTrackerPage', () => {
 
     describe('error handling', () => {
         it('shows error message when error exists', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });
@@ -184,7 +184,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('clears error when close button clicked', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });
@@ -219,7 +219,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('offline indicator has proper ARIA attributes', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 isOffline: true,
             });
@@ -231,7 +231,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('error message has proper ARIA attributes', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });
@@ -243,7 +243,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('error close button has descriptive aria-label', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });
@@ -255,7 +255,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('error icon is hidden from screen readers', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });
@@ -287,7 +287,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('error message has responsive positioning classes', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });
@@ -302,7 +302,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('offline indicator has responsive text size', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 isOffline: true,
             });
@@ -342,7 +342,7 @@ describe('FoodTrackerPage', () => {
 
     describe('loading state', () => {
         it('passes isLoading to DietTab', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 isLoading: true,
             });
@@ -434,7 +434,7 @@ describe('FoodTrackerPage', () => {
 
     describe('error display styling', () => {
         it('error container has proper z-index for layering', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });
@@ -446,7 +446,7 @@ describe('FoodTrackerPage', () => {
         });
 
         it('error container has shadow for visibility', () => {
-            (useFoodTracker as jest.Mock).mockReturnValue({
+            (useFoodTracker as unknown as jest.Mock).mockReturnValue({
                 ...defaultMockState,
                 error: { code: 'NETWORK_ERROR', message: 'Ошибка сети' },
             });

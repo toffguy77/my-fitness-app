@@ -128,7 +128,7 @@ describe('DietTab Property Tests', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         Element.prototype.scrollIntoView = jest.fn();
-        (useFoodTrackerStore as jest.Mock).mockReturnValue(createMockStore());
+        (useFoodTrackerStore as unknown as jest.Mock).mockReturnValue(createMockStore());
     });
 
     afterEach(() => {
@@ -206,7 +206,7 @@ describe('DietTab Property Tests', () => {
                     waterGlassesGenerator(),
                     waterGoalGenerator(),
                     (glasses, goal) => {
-                        (useFoodTrackerStore as jest.Mock).mockReturnValue(createMockStore({
+                        (useFoodTrackerStore as unknown as jest.Mock).mockReturnValue(createMockStore({
                             waterIntake: glasses,
                             waterGoal: goal,
                         }));

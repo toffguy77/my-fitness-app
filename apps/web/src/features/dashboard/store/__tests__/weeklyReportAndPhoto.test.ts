@@ -78,7 +78,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekStart = new Date('2024-01-01');
             const weekEnd = new Date('2024-01-07');
 
-            (apiClient.post as jest.Mock).mockResolvedValue({
+            (apiClient.post as unknown as jest.Mock).mockResolvedValue({
                 data: {
                     id: 'report-1',
                     userId: 'user-1',
@@ -111,7 +111,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekStart = new Date('2024-01-01');
             const weekEnd = new Date('2024-01-07');
 
-            (apiClient.post as jest.Mock).mockRejectedValue({
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue({
                 response: {
                     status: 400,
                     data: { message: 'Недостаточно данных для отчета' },
@@ -140,7 +140,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekStart = new Date('2024-01-01');
             const weekEnd = new Date('2024-01-07');
 
-            (apiClient.post as jest.Mock).mockRejectedValue(
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue(
                 new TypeError('Failed to fetch')
             );
 
@@ -167,7 +167,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekEnd = new Date('2024-01-07');
 
             // Fail twice, then succeed
-            (apiClient.post as jest.Mock)
+            (apiClient.post as unknown as jest.Mock)
                 .mockRejectedValueOnce({
                     response: { status: 500 },
                 })
@@ -202,7 +202,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const file = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
             const weekIdentifier = '2024-W01';
 
-            (global.fetch as jest.Mock).mockResolvedValue({
+            (global.fetch as unknown as jest.Mock).mockResolvedValue({
                 ok: true,
                 json: async () => ({
                     data: {
@@ -238,7 +238,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const file = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
             const weekIdentifier = '2024-W01';
 
-            (global.fetch as jest.Mock).mockResolvedValue({
+            (global.fetch as unknown as jest.Mock).mockResolvedValue({
                 ok: false,
                 status: 400,
             });
@@ -262,7 +262,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const file = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
             const weekIdentifier = '2024-W01';
 
-            (global.fetch as jest.Mock).mockRejectedValue(
+            (global.fetch as unknown as jest.Mock).mockRejectedValue(
                 new TypeError('Failed to fetch')
             );
 
@@ -290,7 +290,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
 
             localStorageMock.setItem('auth_token', 'test-token');
 
-            (global.fetch as jest.Mock).mockResolvedValue({
+            (global.fetch as unknown as jest.Mock).mockResolvedValue({
                 ok: true,
                 json: async () => ({ data: {} }),
             });
@@ -315,7 +315,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const { result } = renderHook(() => useDashboardStore());
 
             // Trigger an error by making a failed API call
-            (apiClient.post as jest.Mock).mockRejectedValue({
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue({
                 response: { status: 400, data: { message: 'Test error' } },
             });
 
@@ -347,7 +347,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekStart = new Date('2024-01-01');
             const weekEnd = new Date('2024-01-07');
 
-            (apiClient.post as jest.Mock).mockRejectedValue(
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue(
                 new TypeError('Network error')
             );
 
@@ -369,7 +369,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekStart = new Date('2024-01-01');
             const weekEnd = new Date('2024-01-07');
 
-            (apiClient.post as jest.Mock).mockRejectedValue({
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue({
                 response: { status: 400 },
             });
 

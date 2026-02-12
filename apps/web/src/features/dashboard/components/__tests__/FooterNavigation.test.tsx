@@ -13,7 +13,7 @@ describe('FooterNavigation', () => {
 
     beforeEach(() => {
         mockPush = jest.fn()
-            ; (useRouter as jest.Mock).mockReturnValue({
+            ; (useRouter as unknown as jest.Mock).mockReturnValue({
                 push: mockPush,
             })
     })

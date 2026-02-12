@@ -107,8 +107,8 @@ describe('Property 17: Plan Polling Updates', () => {
 
                     // Mock initial API response
                     const initialPlan = generateMockWeeklyPlan(initialCalories, initialProtein);
-                    (apiClient.get as jest.Mock).mockResolvedValueOnce(initialPlan);
-                    (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: [] }); // tasks
+                    (apiClient.get as unknown as jest.Mock).mockResolvedValueOnce(initialPlan);
+                    (apiClient.get as unknown as jest.Mock).mockResolvedValueOnce({ data: [] }); // tasks
 
                     // Fetch initial plan
                     await act(async () => {
@@ -121,8 +121,8 @@ describe('Property 17: Plan Polling Updates', () => {
 
                     // Mock updated API response for polling
                     const updatedPlan = generateMockWeeklyPlan(updatedCalories, updatedProtein);
-                    (apiClient.get as jest.Mock).mockResolvedValue(updatedPlan);
-                    (apiClient.get as jest.Mock).mockResolvedValue({ data: [] }); // tasks
+                    (apiClient.get as unknown as jest.Mock).mockResolvedValue(updatedPlan);
+                    (apiClient.get as unknown as jest.Mock).mockResolvedValue({ data: [] }); // tasks
 
                     // Manually trigger poll (instead of using interval)
                     await act(async () => {
@@ -165,7 +165,7 @@ describe('Property 17: Plan Polling Updates', () => {
                     const mockPlan = generateMockWeeklyPlan(caloriesGoal, proteinGoal);
                     const mockTasks = generateMockTasks(taskCount);
 
-                    (apiClient.get as jest.Mock)
+                    (apiClient.get as unknown as jest.Mock)
                         .mockResolvedValueOnce(mockPlan)
                         .mockResolvedValueOnce(mockTasks);
 

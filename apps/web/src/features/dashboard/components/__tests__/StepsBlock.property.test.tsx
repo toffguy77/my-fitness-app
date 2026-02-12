@@ -55,7 +55,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
         mockUpdateMetric = jest.fn().mockResolvedValue(undefined)
 
             // Set default mock return value
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 weeklyPlan: null,
                 updateMetric: mockUpdateMetric,
@@ -100,7 +100,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount, container: renderContainer } = render(<StepsBlock date={date} />, { container })
 
@@ -182,7 +182,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<StepsBlock date={date} />, { container })
 
@@ -258,7 +258,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount, container: renderContainer } = render(<StepsBlock date={date} />, { container })
 
@@ -333,7 +333,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount, container: renderContainer } = render(<StepsBlock date={date} />, { container })
 
@@ -399,7 +399,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
             updateMetric: mockUpdateMetric,
         }
 
-            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
         render(<StepsBlock date={date} />)
 

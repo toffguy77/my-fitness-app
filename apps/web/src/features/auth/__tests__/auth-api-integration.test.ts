@@ -14,13 +14,13 @@ const API_BASE = 'http://localhost:4000';
 global.fetch = jest.fn();
 
 beforeEach(() => {
-    (global.fetch as jest.Mock).mockClear();
+    (global.fetch as unknown as jest.Mock).mockClear();
 });
 
 describe('Authentication API Integration', () => {
     describe('loginUser', () => {
         it('should successfully login with valid credentials', async () => {
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({
                     user: {
@@ -47,7 +47,7 @@ describe('Authentication API Integration', () => {
         });
 
         it('should throw invalid credentials error on 401', async () => {
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 401,
                 json: async () => ({
@@ -68,7 +68,7 @@ describe('Authentication API Integration', () => {
         });
 
         it('should throw server error on 500', async () => {
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 500,
                 json: async () => ({}),
@@ -86,7 +86,7 @@ describe('Authentication API Integration', () => {
         });
 
         it('should throw network error on fetch failure', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+            (global.fetch as unknown as jest.Mock).mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
             const credentials: AuthFormData = {
                 email: 'user@example.com',
@@ -102,7 +102,7 @@ describe('Authentication API Integration', () => {
 
     describe('registerUser', () => {
         it('should successfully register with valid data', async () => {
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({
                     user: {
@@ -135,7 +135,7 @@ describe('Authentication API Integration', () => {
         });
 
         it('should throw user exists error on 409', async () => {
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 409,
                 json: async () => ({
@@ -162,7 +162,7 @@ describe('Authentication API Integration', () => {
         });
 
         it('should throw validation error on 400', async () => {
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 400,
                 json: async () => ({
@@ -189,7 +189,7 @@ describe('Authentication API Integration', () => {
         });
 
         it('should throw network error on fetch failure', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+            (global.fetch as unknown as jest.Mock).mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
             const credentials: AuthFormData = {
                 email: 'user@example.com',

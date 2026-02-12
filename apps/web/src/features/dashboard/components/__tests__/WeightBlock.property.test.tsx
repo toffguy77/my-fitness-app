@@ -63,7 +63,7 @@ describe('Property 8: Weight Input Validation', () => {
         mockUpdateMetric = jest.fn().mockResolvedValue(undefined)
 
             // Set default mock return value
-            ; (useDashboardStore as jest.Mock).mockReturnValue({
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {},
                 updateMetric: mockUpdateMetric,
             })
@@ -102,7 +102,7 @@ describe('Property 8: Weight Input Validation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<WeightBlock date={date} />, { container })
 
@@ -170,7 +170,7 @@ describe('Property 8: Weight Input Validation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<WeightBlock date={date} />, { container })
 
@@ -244,7 +244,7 @@ describe('Property 8: Weight Input Validation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<WeightBlock date={date} />, { container })
 
@@ -314,7 +314,7 @@ describe('Property 8: Weight Input Validation', () => {
                             updateMetric: mockUpdateMetric,
                         }
 
-                            ; (useDashboardStore as jest.Mock).mockReturnValue(testStore)
+                            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(testStore)
 
                         const { unmount } = render(<WeightBlock date={date} />, { container })
 
