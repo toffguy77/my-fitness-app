@@ -21,11 +21,11 @@ type S3API interface {
 
 // S3Client handles interactions with Yandex Object Storage (S3-compatible)
 type S3Client struct {
-	client     S3API
-	bucket     string
-	region     string
-	endpoint   string
-	log        *logger.Logger
+	client   S3API
+	bucket   string
+	region   string
+	endpoint string
+	log      *logger.Logger
 }
 
 // S3Config holds S3 configuration

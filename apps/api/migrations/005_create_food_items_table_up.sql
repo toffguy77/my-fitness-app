@@ -9,32 +9,32 @@
 
 CREATE TABLE IF NOT EXISTS food_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
+
   -- Basic info
   name TEXT NOT NULL,
   brand TEXT,
   category TEXT NOT NULL,
-  
+
   -- Serving info
   serving_size DECIMAL(10,2) NOT NULL DEFAULT 100,
   serving_unit TEXT NOT NULL DEFAULT 'г',
-  
+
   -- Nutrition per 100g/100ml (КБЖУ)
   calories DECIMAL(10,2) NOT NULL,
   protein DECIMAL(10,2) NOT NULL DEFAULT 0,
   fat DECIMAL(10,2) NOT NULL DEFAULT 0,
   carbs DECIMAL(10,2) NOT NULL DEFAULT 0,
-  
+
   -- Barcode for product lookup
   barcode TEXT,
-  
+
   -- Source tracking
   source TEXT NOT NULL DEFAULT 'database' CHECK (source IN ('database', 'usda', 'openfoodfacts', 'user')),
   verified BOOLEAN DEFAULT false,
-  
+
   -- Additional nutrients (vitamins, minerals, fiber, etc.)
   additional_nutrients JSONB,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

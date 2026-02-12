@@ -252,8 +252,8 @@ func (s *Service) GetUnreadCounts(ctx context.Context, userID int64) (*UnreadCou
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
-		"user_id":      userID,
-		"main_count":   counts.Main,
+		"user_id":       userID,
+		"main_count":    counts.Main,
 		"content_count": counts.Content,
 	})
 

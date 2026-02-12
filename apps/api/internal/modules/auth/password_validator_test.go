@@ -28,10 +28,10 @@ func TestPasswordValidator_Validate(t *testing.T) {
 	pv := NewPasswordValidator()
 
 	tests := []struct {
-		name          string
-		password      string
-		expectValid   bool
-		expectErrors  []string
+		name         string
+		password     string
+		expectValid  bool
+		expectErrors []string
 	}{
 		{
 			name:         "Valid password with all requirements",

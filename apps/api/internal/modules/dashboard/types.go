@@ -7,20 +7,20 @@ import (
 
 // DailyMetrics represents daily tracking metrics for a user
 type DailyMetrics struct {
-	ID        string    `json:"id" db:"id"`
-	UserID    int64     `json:"user_id" db:"user_id"`
-	Date      time.Time `json:"date" db:"date"`
-	Calories  int       `json:"calories" db:"calories"`
-	Protein   int       `json:"protein" db:"protein"`
-	Fat       int       `json:"fat" db:"fat"`
-	Carbs     int       `json:"carbs" db:"carbs"`
-	Weight    *float64  `json:"weight,omitempty" db:"weight"`
-	Steps     int       `json:"steps" db:"steps"`
-	WorkoutCompleted bool   `json:"workout_completed" db:"workout_completed"`
-	WorkoutType      *string `json:"workout_type,omitempty" db:"workout_type"`
-	WorkoutDuration  *int    `json:"workout_duration,omitempty" db:"workout_duration"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	ID               string    `json:"id" db:"id"`
+	UserID           int64     `json:"user_id" db:"user_id"`
+	Date             time.Time `json:"date" db:"date"`
+	Calories         int       `json:"calories" db:"calories"`
+	Protein          int       `json:"protein" db:"protein"`
+	Fat              int       `json:"fat" db:"fat"`
+	Carbs            int       `json:"carbs" db:"carbs"`
+	Weight           *float64  `json:"weight,omitempty" db:"weight"`
+	Steps            int       `json:"steps" db:"steps"`
+	WorkoutCompleted bool      `json:"workout_completed" db:"workout_completed"`
+	WorkoutType      *string   `json:"workout_type,omitempty" db:"workout_type"`
+	WorkoutDuration  *int      `json:"workout_duration,omitempty" db:"workout_duration"`
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // Validate validates the daily metrics fields
@@ -176,19 +176,19 @@ func (t *Task) Validate() error {
 
 // WeeklyReport represents a weekly report submitted by a client
 type WeeklyReport struct {
-	ID           string    `json:"id" db:"id"`
-	UserID       int64     `json:"user_id" db:"user_id"`
-	CoachID      int64     `json:"coach_id" db:"coach_id"`
-	WeekStart    time.Time `json:"week_start" db:"week_start"`
-	WeekEnd      time.Time `json:"week_end" db:"week_end"`
-	WeekNumber   int       `json:"week_number" db:"week_number"`
-	Summary      string    `json:"summary" db:"summary"` // JSONB stored as string
-	PhotoURL     *string   `json:"photo_url,omitempty" db:"photo_url"`
-	SubmittedAt  time.Time `json:"submitted_at" db:"submitted_at"`
-	ReviewedAt   *time.Time `json:"reviewed_at,omitempty" db:"reviewed_at"`
-	CoachFeedback *string  `json:"coach_feedback,omitempty" db:"coach_feedback"`
-	CreatedAt    time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+	ID            string     `json:"id" db:"id"`
+	UserID        int64      `json:"user_id" db:"user_id"`
+	CoachID       int64      `json:"coach_id" db:"coach_id"`
+	WeekStart     time.Time  `json:"week_start" db:"week_start"`
+	WeekEnd       time.Time  `json:"week_end" db:"week_end"`
+	WeekNumber    int        `json:"week_number" db:"week_number"`
+	Summary       string     `json:"summary" db:"summary"` // JSONB stored as string
+	PhotoURL      *string    `json:"photo_url,omitempty" db:"photo_url"`
+	SubmittedAt   time.Time  `json:"submitted_at" db:"submitted_at"`
+	ReviewedAt    *time.Time `json:"reviewed_at,omitempty" db:"reviewed_at"`
+	CoachFeedback *string    `json:"coach_feedback,omitempty" db:"coach_feedback"`
+	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // Validate validates the weekly report fields

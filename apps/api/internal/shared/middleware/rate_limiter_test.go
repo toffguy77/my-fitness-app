@@ -304,15 +304,15 @@ func TestCleanupOldAttempts(t *testing.T) {
 
 func TestGetAttemptCount(t *testing.T) {
 	tests := []struct {
-		name           string
-		email          string
-		ipAddress      string
-		emailCount     int
-		ipCount        int
-		emailError     error
-		ipError        error
-		expectError    bool
-		errorContains  string
+		name          string
+		email         string
+		ipAddress     string
+		emailCount    int
+		ipCount       int
+		emailError    error
+		ipError       error
+		expectError   bool
+		errorContains string
 	}{
 		{
 			name:       "Both counts successful",

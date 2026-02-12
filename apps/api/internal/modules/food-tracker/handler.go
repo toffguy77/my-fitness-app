@@ -74,7 +74,6 @@ func (h *Handler) getUserID(c *gin.Context) (int64, bool) {
 	return userID, true
 }
 
-
 // ============================================================================
 // Food Entries Handlers
 // ============================================================================
@@ -183,11 +182,11 @@ func (h *Handler) CreateEntry(c *gin.Context) {
 	response.Success(c, http.StatusCreated, entry)
 }
 
-
 // UpdateEntry handles PUT /api/food-tracker/entries/:id
 // Updates an existing food entry for the authenticated user
 // URL parameters:
 //   - id: required, UUID of the entry to update
+//
 // Request body (all optional):
 //   - meal_type: one of: breakfast, lunch, dinner, snack
 //   - portion_type: one of: grams, milliliters, portion

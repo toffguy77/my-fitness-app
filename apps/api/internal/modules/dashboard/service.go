@@ -333,9 +333,9 @@ func (s *Service) GetWeekMetrics(ctx context.Context, userID int64, startDate, e
 // CalculateCompletionStatus calculates the completion status for daily metrics
 func (s *Service) CalculateCompletionStatus(metrics *DailyMetrics, goals *WeeklyPlan) CompletionStatus {
 	status := CompletionStatus{
-		NutritionFilled:    false,
-		WeightLogged:       false,
-		ActivityCompleted:  false,
+		NutritionFilled:   false,
+		WeightLogged:      false,
+		ActivityCompleted: false,
 	}
 
 	// Nutrition is filled if calories > 0
@@ -369,7 +369,6 @@ type CompletionStatus struct {
 	WeightLogged      bool `json:"weight_logged"`
 	ActivityCompleted bool `json:"activity_completed"`
 }
-
 
 // GetWeeklyPlan retrieves the active weekly plan for a user (stub for now)
 func (s *Service) GetWeeklyPlan(ctx context.Context, userID int64) (*WeeklyPlan, error) {
@@ -482,7 +481,6 @@ func (s *Service) GetTasks(ctx context.Context, userID int64, weekNumber int) ([
 
 	return tasks, nil
 }
-
 
 // GetActivePlan retrieves the active weekly plan for a user
 func (s *Service) GetActivePlan(ctx context.Context, userID int64) (*WeeklyPlan, error) {
@@ -816,7 +814,6 @@ func (s *Service) validateCoachClientRelationship(ctx context.Context, coachID i
 	return exists, nil
 }
 
-
 // GetTasksByWeek retrieves tasks for a user filtered by week number
 func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber int) ([]*Task, error) {
 	startTime := time.Now()
@@ -1078,7 +1075,6 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 	return &result, nil
 }
 
-
 // ValidateWeekData validates that sufficient data exists for weekly report
 func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (bool, []string, error) {
 	startTime := time.Now()
@@ -1197,13 +1193,13 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 	`
 
 	var summary struct {
-		DaysWithNutrition  int
-		DaysWithWeight     int
-		DaysWithActivity   int
-		AverageCalories    float64
-		AverageWeight      float64
-		TotalSteps         int
-		WorkoutsCompleted  int
+		DaysWithNutrition int
+		DaysWithWeight    int
+		DaysWithActivity  int
+		AverageCalories   float64
+		AverageWeight     float64
+		TotalSteps        int
+		WorkoutsCompleted int
 	}
 
 	err = s.db.QueryRowContext(ctx, summaryQuery, userID, weekStart, weekEnd).Scan(
@@ -1228,7 +1224,7 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 	}
 
 	// Calculate week number
-	weekNumber := int(weekStart.Sub(time.Date(weekStart.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours() / 24 / 7) + 1
+	weekNumber := int(weekStart.Sub(time.Date(weekStart.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours()/24/7) + 1
 
 	// Create report
 	report := &WeeklyReport{
@@ -1238,7 +1234,7 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		WeekStart:  weekStart,
 		WeekEnd:    weekEnd,
 		WeekNumber: weekNumber,
-		Summary:    fmt.Sprintf(`{"days_with_nutrition":%d,"days_with_weight":%d,"days_with_activity":%d,"average_calories":%.0f,"average_weight":%.1f,"total_steps":%d,"workouts_completed":%d}`,
+		Summary: fmt.Sprintf(`{"days_with_nutrition":%d,"days_with_weight":%d,"days_with_activity":%d,"average_calories":%.0f,"average_weight":%.1f,"total_steps":%d,"workouts_completed":%d}`,
 			summary.DaysWithNutrition, summary.DaysWithWeight, summary.DaysWithActivity,
 			summary.AverageCalories, summary.AverageWeight, summary.TotalSteps, summary.WorkoutsCompleted),
 		PhotoURL:    photoURL,
@@ -1313,7 +1309,6 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 
 	return report, nil
 }
-
 
 // ValidatePhoto validates photo file
 func (s *Service) ValidatePhoto(fileSize int, mimeType string) error {

@@ -402,4 +402,3 @@ This document specifies the requirements for the Food Tracker feature in the BUR
 4. WHEN displaying weekly analytics, THE Food_Tracker SHALL show most frequently logged foods
 5. WHEN displaying weekly analytics, THE Food_Tracker SHALL show adherence percentage to goals
 6. THE Food_Tracker SHALL generate insights about eating patterns (e.g., "Вы часто недобираете углеводов")
-

@@ -55,13 +55,14 @@ func NewPasswordValidator() *PasswordValidator {
 //     or Valid=false with a list of specific error messages
 //
 // Example:
-//   pv := NewPasswordValidator()
-//   result := pv.Validate("weak")
-//   if !result.Valid {
-//       for _, err := range result.Errors {
-//           fmt.Println(err)
-//       }
-//   }
+//
+//	pv := NewPasswordValidator()
+//	result := pv.Validate("weak")
+//	if !result.Valid {
+//	    for _, err := range result.Errors {
+//	        fmt.Println(err)
+//	    }
+//	}
 func (pv *PasswordValidator) Validate(password string) ValidationResult {
 	var errors []string
 
