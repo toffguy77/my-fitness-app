@@ -2179,13 +2179,8 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 					"https://example.com/photo.jpg", time.Now(), nil, nil, time.Now(), time.Now(),
 				))
 
-			// Mock get client name for notification
-			mock.ExpectQuery(`SELECT COALESCE`).
-				WithArgs(clientID).
-				WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("Test Client"))
-
-			// Note: Notification sending is attempted but will fail gracefully with nil service
-			// The service tries to get client name and send notification, but errors are logged not returned
+			// Note: Notification service is nil in test setup, so sendWeeklyReportNotification
+			// returns early without querying for client name
 
 			// Submit weekly report
 			result, err := service.CreateWeeklyReport(ctx, clientID, weekStart, weekEnd)
