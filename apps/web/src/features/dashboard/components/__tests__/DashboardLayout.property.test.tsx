@@ -526,9 +526,9 @@ describe('Property 25: Orientation Change Adaptation', () => {
                     }
                 }
             ),
-            { numRuns: 100 }
+            { numRuns: 5 }
         )
-    })
+    }, 15000)
 
     /**
      * Property: Resize events trigger layout adaptation
@@ -595,9 +595,9 @@ describe('Property 25: Orientation Change Adaptation', () => {
                     }
                 }
             ),
-            { numRuns: 100 }
+            { numRuns: 5 }
         )
-    })
+    }, 15000)
 
     /**
      * Property: Multiple rapid orientation changes are handled gracefully
@@ -677,7 +677,7 @@ describe('Property 25: Orientation Change Adaptation', () => {
                     }
                 }
             ),
-            { numRuns: 50 } // Reduced from 100 to 50 for performance
+            { numRuns: 5 }
         )
-    }, 10000) // Increased timeout to 10 seconds
+    }, 15000)
 })

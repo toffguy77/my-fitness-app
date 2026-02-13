@@ -188,15 +188,17 @@ describe('groupNotificationsByDate', () => {
     });
 
     it('should sort notifications within each group by createdAt (newest first)', () => {
-        const notifications = [
-            createNotification('1', 1),  // 1 hour ago
-            createNotification('2', 5),  // 5 hours ago
-            createNotification('3', 10), // 10 hours ago
-        ];
+        // Use times guaranteed to be within today (minutes ago, not hours)
+        const now = new Date();
+        const notification1 = createNotificationWithDate('1', new Date(now.getTime() - 10 * 60 * 1000)); // 10 min ago
+        const notification2 = createNotificationWithDate('2', new Date(now.getTime() - 30 * 60 * 1000)); // 30 min ago
+        const notification3 = createNotificationWithDate('3', new Date(now.getTime() - 60 * 60 * 1000)); // 60 min ago
+        const notifications = [notification1, notification2, notification3];
 
         const result = groupNotificationsByDate(notifications);
 
-        expect(result).toHaveLength(1);
+        // All should be in "Today" group
+        expect(result[0].date).toBe('Today');
         expect(result[0].notifications[0].id).toBe('1'); // Most recent
         expect(result[0].notifications[1].id).toBe('2');
         expect(result[0].notifications[2].id).toBe('3'); // Oldest
