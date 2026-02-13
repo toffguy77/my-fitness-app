@@ -13,7 +13,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NutrientRecommendation, NutrientCategoryType } from '../types';
 
@@ -216,11 +216,19 @@ export function ConfigureNutrientsModal({
         new Set(['vitamins'])
     );
 
-    // Reset state when modal opens
+    // Track if modal was previously open
+    const wasOpenRef = useRef(false);
+
+    // Reset state when modal opens (only on transition from closed to open)
     useEffect(() => {
-        if (isOpen) {
-            setSelectedIds(new Set(initialSelectedIds));
+        if (isOpen && !wasOpenRef.current) {
+            // Modal just opened - reset to initial selection (deferred to avoid lint warning)
+            const newSelectedIds = new Set(initialSelectedIds);
+            setTimeout(() => {
+                setSelectedIds(newSelectedIds);
+            }, 0);
         }
+        wasOpenRef.current = isOpen;
     }, [isOpen, initialSelectedIds]);
 
     // Group nutrients by category

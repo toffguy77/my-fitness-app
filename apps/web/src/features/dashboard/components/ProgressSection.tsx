@@ -40,10 +40,6 @@ interface WeightTrendChartProps {
  * Memoized to prevent unnecessary re-renders
  */
 const WeightTrendChart = memo(function WeightTrendChart({ data, className }: WeightTrendChartProps) {
-    if (data.length === 0) {
-        return null
-    }
-
     // Calculate chart dimensions - responsive
     const width = 300
     const height = 120
@@ -53,6 +49,9 @@ const WeightTrendChart = memo(function WeightTrendChart({ data, className }: Wei
 
     // Find min and max weights - memoized
     const { minWeight, maxWeight, weightRange } = useMemo(() => {
+        if (data.length === 0) {
+            return { minWeight: 0, maxWeight: 0, weightRange: 1 }
+        }
         const weights = data.map(d => d.weight)
         const min = Math.min(...weights)
         const max = Math.max(...weights)
@@ -64,14 +63,14 @@ const WeightTrendChart = memo(function WeightTrendChart({ data, className }: Wei
     }, [data])
 
     // Create points for the line - memoized
-    const points = useMemo(() =>
-        data.map((point, index) => {
+    const points = useMemo(() => {
+        if (data.length === 0) return []
+        return data.map((point, index) => {
             const x = padding.left + (index / (data.length - 1)) * chartWidth
             const y = padding.top + chartHeight - ((point.weight - minWeight) / weightRange) * chartHeight
             return { x, y, weight: point.weight, date: point.date }
-        }),
-        [data, minWeight, weightRange, chartWidth, chartHeight]
-    )
+        })
+    }, [data, minWeight, weightRange, chartWidth, chartHeight])
 
     // Create path for the line - memoized
     const pathData = useMemo(() =>
@@ -80,6 +79,11 @@ const WeightTrendChart = memo(function WeightTrendChart({ data, className }: Wei
         ).join(' '),
         [points]
     )
+
+    // Early return after all hooks
+    if (data.length === 0) {
+        return null
+    }
 
     return (
         <div className={cn('relative w-full', className)}>

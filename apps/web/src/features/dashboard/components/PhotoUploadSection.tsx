@@ -82,7 +82,7 @@ function isToday(date: Date): boolean {
  */
 export const PhotoUploadSection = memo(function PhotoUploadSection({
     weekStart,
-    weekEnd,
+    // weekEnd is passed but not used - keeping for API compatibility
     photoData,
     className = '',
 }: PhotoUploadSectionProps) {
@@ -93,15 +93,16 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
     )
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const today = new Date()
-    const isWeekendDay = isWeekend(today)
+    const today = useMemo(() => new Date(), [])
+    const isWeekendDay = useMemo(() => isWeekend(today), [today])
     const weekIdentifier = useMemo(() => getWeekIdentifier(weekStart), [weekStart])
     const isUploaded = !!photoData
+    const isTodayFlag = useMemo(() => isToday(today), [today])
 
     // Show attention indicator on weekend if not uploaded (only for current day)
     const showAttentionIndicator = useMemo(() =>
-        isToday(today) && isWeekendDay && !isUploaded,
-        [isWeekendDay, isUploaded]
+        isTodayFlag && isWeekendDay && !isUploaded,
+        [isTodayFlag, isWeekendDay, isUploaded]
     )
 
     /**

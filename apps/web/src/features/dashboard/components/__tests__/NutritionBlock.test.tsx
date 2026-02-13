@@ -9,7 +9,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
-import type { DailyData, WeeklyPlan } from '../../types'
+import type { DailyMetrics, WeeklyPlan } from '../../types'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')
@@ -40,7 +40,7 @@ describe('NutritionBlock', () => {
         createdBy: 'coach-1',
     }
 
-    const mockDailyData: DailyData = {
+    const mockDailyData: DailyMetrics = {
         date: mockDateStr,
         userId: 'user-1',
         nutrition: {

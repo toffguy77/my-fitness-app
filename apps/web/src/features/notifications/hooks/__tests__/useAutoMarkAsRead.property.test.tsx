@@ -92,7 +92,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                     target: firstElement,
                                     isIntersecting: true,
                                     intersectionRatio: 0.5,
-                                } as IntersectionObserverEntry,
+                                } as unknown as IntersectionObserverEntry,
                             ];
                             callback(entries, mockIntersectionObserver() as any);
                         }
@@ -152,7 +152,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                     target: firstElement,
                                     isIntersecting: false,
                                     intersectionRatio: 0,
-                                } as IntersectionObserverEntry,
+                                } as unknown as IntersectionObserverEntry,
                             ];
                             callback(entries, mockIntersectionObserver() as any);
                         }
@@ -208,7 +208,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                         target: firstElement,
                                         isIntersecting: true,
                                         intersectionRatio: 0.5,
-                                    } as IntersectionObserverEntry,
+                                    } as unknown as IntersectionObserverEntry,
                                 ],
                                 mockIntersectionObserver() as any
                             );
@@ -223,7 +223,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                         target: firstElement,
                                         isIntersecting: false,
                                         intersectionRatio: 0,
-                                    } as IntersectionObserverEntry,
+                                    } as unknown as IntersectionObserverEntry,
                                 ],
                                 mockIntersectionObserver() as any
                             );
@@ -285,7 +285,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                         target: firstElement,
                                         isIntersecting: true,
                                         intersectionRatio: 0.5,
-                                    } as IntersectionObserverEntry,
+                                    } as unknown as IntersectionObserverEntry,
                                 ],
                                 mockIntersectionObserver() as any
                             );

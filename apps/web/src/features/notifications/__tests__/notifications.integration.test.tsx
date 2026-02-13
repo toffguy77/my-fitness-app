@@ -31,12 +31,11 @@ describe('Notifications Integration Tests', () => {
             isLoading: false,
             error: null,
             hasMore: { main: false, content: false },
-            lastFetch: { main: null, content: null },
-            pollingInterval: null,
+            pollingIntervalId: null,
             isOffline: false,
             isLoadingFromCache: false,
             retryCount: 0,
-        })
+        } as any)
 
         // Reset mocks
         jest.clearAllMocks()
@@ -45,7 +44,7 @@ describe('Notifications Integration Tests', () => {
     afterEach(() => {
         // Stop any polling
         const store = useNotificationsStore.getState()
-        if (store.pollingInterval) {
+        if (store.pollingIntervalId) {
             store.stopPolling()
         }
     })

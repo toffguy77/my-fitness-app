@@ -197,6 +197,57 @@ describe('useKeyboardNavigation', () => {
         expect(onEnd).not.toHaveBeenCalled();
     });
 
+    it('should call onPageUp when PageUp key is pressed and enablePageKeys is true', () => {
+        const onPageUp = jest.fn();
+        const ref = { current: container };
+
+        renderHook(() =>
+            useKeyboardNavigation(ref, {
+                enablePageKeys: true,
+                onPageUp,
+            })
+        );
+
+        fireEvent.keyDown(container, { key: 'PageUp' });
+
+        expect(onPageUp).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call onPageDown when PageDown key is pressed and enablePageKeys is true', () => {
+        const onPageDown = jest.fn();
+        const ref = { current: container };
+
+        renderHook(() =>
+            useKeyboardNavigation(ref, {
+                enablePageKeys: true,
+                onPageDown,
+            })
+        );
+
+        fireEvent.keyDown(container, { key: 'PageDown' });
+
+        expect(onPageDown).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not call Page callbacks when enablePageKeys is false (default)', () => {
+        const onPageUp = jest.fn();
+        const onPageDown = jest.fn();
+        const ref = { current: container };
+
+        renderHook(() =>
+            useKeyboardNavigation(ref, {
+                onPageUp,
+                onPageDown,
+            })
+        );
+
+        fireEvent.keyDown(container, { key: 'PageUp' });
+        fireEvent.keyDown(container, { key: 'PageDown' });
+
+        expect(onPageUp).not.toHaveBeenCalled();
+        expect(onPageDown).not.toHaveBeenCalled();
+    });
+
     it('should prevent default when preventDefault is true', () => {
         const onArrowLeft = jest.fn();
         const ref = { current: container };

@@ -272,9 +272,10 @@ describe('PortionSelector Property Tests', () => {
                     fc.integer({ min: 1, max: 500 }),
                     (portionAmount) => {
                         const mockFood = createMockFood();
-                        let capturedNutrition: { calories: number; protein: number; fat: number; carbs: number } | null = null;
+                        type NutritionType = { calories: number; protein: number; fat: number; carbs: number };
+                        let capturedNutrition: NutritionType | null = null;
 
-                        const onPortionChange = jest.fn((_, __, nutrition) => {
+                        const onPortionChange = jest.fn((_, __, nutrition: NutritionType) => {
                             capturedNutrition = nutrition;
                         });
 
@@ -288,16 +289,17 @@ describe('PortionSelector Property Tests', () => {
 
                         // Wait for initial render to trigger onPortionChange
                         if (capturedNutrition) {
+                            const nutrition = capturedNutrition as NutritionType;
                             const expectedCalories = (mockFood.nutritionPer100.calories * portionAmount) / 100;
                             const expectedProtein = (mockFood.nutritionPer100.protein * portionAmount) / 100;
                             const expectedFat = (mockFood.nutritionPer100.fat * portionAmount) / 100;
                             const expectedCarbs = (mockFood.nutritionPer100.carbs * portionAmount) / 100;
 
                             // Allow for rounding differences (1 decimal place)
-                            expect(Math.abs(capturedNutrition.calories - expectedCalories)).toBeLessThan(0.2);
-                            expect(Math.abs(capturedNutrition.protein - expectedProtein)).toBeLessThan(0.2);
-                            expect(Math.abs(capturedNutrition.fat - expectedFat)).toBeLessThan(0.2);
-                            expect(Math.abs(capturedNutrition.carbs - expectedCarbs)).toBeLessThan(0.2);
+                            expect(Math.abs(nutrition.calories - expectedCalories)).toBeLessThan(0.2);
+                            expect(Math.abs(nutrition.protein - expectedProtein)).toBeLessThan(0.2);
+                            expect(Math.abs(nutrition.fat - expectedFat)).toBeLessThan(0.2);
+                            expect(Math.abs(nutrition.carbs - expectedCarbs)).toBeLessThan(0.2);
                         }
 
                         cleanup();

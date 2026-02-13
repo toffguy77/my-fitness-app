@@ -97,7 +97,7 @@ describe('NotificationList - Property Tests', () => {
 
                     // Create a mock IntersectionObserver that triggers immediately
                     let observerCallback: IntersectionObserverCallback | null = null;
-                    const mockObserver = jest.fn((callback) => {
+                    const mockObserver = jest.fn((callback: IntersectionObserverCallback) => {
                         observerCallback = callback;
                         return {
                             observe: jest.fn(),
@@ -124,23 +124,24 @@ describe('NotificationList - Property Tests', () => {
                         expect(mockObserver).toHaveBeenCalled();
 
                         // Simulate intersection (scrolling to bottom)
-                        if (observerCallback && hasMore && !isLoading) {
+                        const callback = observerCallback as IntersectionObserverCallback | null;
+                        if (callback && hasMore && !isLoading) {
                             const mockEntry = {
                                 isIntersecting: true,
                                 target: document.createElement('div'),
-                            } as IntersectionObserverEntry;
+                            } as unknown as IntersectionObserverEntry;
 
-                            observerCallback([mockEntry], {} as IntersectionObserver);
+                            callback([mockEntry], {} as IntersectionObserver);
 
                             // Verify onLoadMore was called when hasMore is true and not loading
                             expect(mockOnLoadMore).toHaveBeenCalled();
-                        } else if (observerCallback && (!hasMore || isLoading)) {
+                        } else if (callback && (!hasMore || isLoading)) {
                             const mockEntry = {
                                 isIntersecting: true,
                                 target: document.createElement('div'),
-                            } as IntersectionObserverEntry;
+                            } as unknown as IntersectionObserverEntry;
 
-                            observerCallback([mockEntry], {} as IntersectionObserver);
+                            callback([mockEntry], {} as IntersectionObserver);
 
                             // Verify onLoadMore was NOT called when hasMore is false or isLoading is true
                             expect(mockOnLoadMore).not.toHaveBeenCalled();

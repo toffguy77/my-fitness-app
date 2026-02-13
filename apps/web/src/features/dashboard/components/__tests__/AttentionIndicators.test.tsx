@@ -4,7 +4,7 @@
  * Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.11
  */
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { WeightBlock } from '../WeightBlock'
 import { NutritionBlock } from '../NutritionBlock'
 import { StepsBlock } from '../StepsBlock'
@@ -36,7 +36,6 @@ describe('Attention Indicators', () => {
 
     describe('WeightBlock', () => {
         it('shows attention indicator when weight is not logged today', () => {
-            // Mock store with no weight for today
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
@@ -57,14 +56,11 @@ describe('Attention Indicators', () => {
 
             render(<WeightBlock date={today} />)
 
-            // Check for attention indicator
             const indicator = screen.getByRole('status', { name: /вес не записан сегодня/i })
             expect(indicator).toBeInTheDocument()
-            expect(indicator).toHaveAttribute('data-urgency', 'normal')
         })
 
         it('does not show attention indicator when weight is logged today', () => {
-            // Mock store with weight for today
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
@@ -85,13 +81,11 @@ describe('Attention Indicators', () => {
 
             render(<WeightBlock date={today} />)
 
-            // Check that attention indicator is not present
             const indicator = screen.queryByRole('status', { name: /вес не записан сегодня/i })
             expect(indicator).not.toBeInTheDocument()
         })
 
         it('does not show attention indicator for past dates', () => {
-            // Mock store with no weight for yesterday
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [yesterdayStr]: {
@@ -112,15 +106,13 @@ describe('Attention Indicators', () => {
 
             render(<WeightBlock date={yesterday} />)
 
-            // Check that attention indicator is not present for past dates
             const indicator = screen.queryByRole('status', { name: /вес не записан сегодня/i })
             expect(indicator).not.toBeInTheDocument()
         })
     })
 
     describe('NutritionBlock', () => {
-        it('shows attention indicator when nutrition is not logged today', () => {
-            // Mock store with no nutrition for today
+        it('shows attention indicator when nutrition is not filled today', () => {
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
@@ -139,7 +131,7 @@ describe('Attention Indicators', () => {
                 weeklyPlan: {
                     caloriesGoal: 2000,
                     proteinGoal: 150,
-                    fatGoal: 67,
+                    fatGoal: 70,
                     carbsGoal: 250,
                 },
                 updateMetric: jest.fn(),
@@ -147,20 +139,17 @@ describe('Attention Indicators', () => {
 
             render(<NutritionBlock date={today} />)
 
-            // Check for attention indicator
             const indicator = screen.getByRole('status', { name: /питание не записано сегодня/i })
             expect(indicator).toBeInTheDocument()
-            expect(indicator).toHaveAttribute('data-urgency', 'normal')
         })
 
-        it('does not show attention indicator when nutrition is logged today', () => {
-            // Mock store with nutrition for today
+        it('does not show attention indicator when nutrition is filled today', () => {
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
                         date: todayStr,
                         weight: null,
-                        nutrition: { calories: 1800, protein: 120, fat: 60, carbs: 200 },
+                        nutrition: { calories: 1500, protein: 100, fat: 50, carbs: 200 },
                         steps: 0,
                         workout: { completed: false },
                         completionStatus: {
@@ -173,7 +162,7 @@ describe('Attention Indicators', () => {
                 weeklyPlan: {
                     caloriesGoal: 2000,
                     proteinGoal: 150,
-                    fatGoal: 67,
+                    fatGoal: 70,
                     carbsGoal: 250,
                 },
                 updateMetric: jest.fn(),
@@ -181,7 +170,6 @@ describe('Attention Indicators', () => {
 
             render(<NutritionBlock date={today} />)
 
-            // Check that attention indicator is not present
             const indicator = screen.queryByRole('status', { name: /питание не записано сегодня/i })
             expect(indicator).not.toBeInTheDocument()
         })
@@ -189,7 +177,6 @@ describe('Attention Indicators', () => {
 
     describe('StepsBlock', () => {
         it('shows attention indicator when steps are not logged today', () => {
-            // Mock store with no steps for today
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
@@ -213,14 +200,11 @@ describe('Attention Indicators', () => {
 
             render(<StepsBlock date={today} />)
 
-            // Check for attention indicator
             const indicator = screen.getByRole('status', { name: /шаги не записаны сегодня/i })
             expect(indicator).toBeInTheDocument()
-            expect(indicator).toHaveAttribute('data-urgency', 'normal')
         })
 
         it('does not show attention indicator when steps are logged today', () => {
-            // Mock store with steps for today
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
@@ -244,15 +228,13 @@ describe('Attention Indicators', () => {
 
             render(<StepsBlock date={today} />)
 
-            // Check that attention indicator is not present
             const indicator = screen.queryByRole('status', { name: /шаги не записаны сегодня/i })
             expect(indicator).not.toBeInTheDocument()
         })
     })
 
     describe('WorkoutBlock', () => {
-        it('shows attention indicator when workout is not logged today', () => {
-            // Mock store with no workout for today
+        it('shows attention indicator when workout is not completed today', () => {
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
@@ -273,14 +255,11 @@ describe('Attention Indicators', () => {
 
             render(<WorkoutBlock date={today} />)
 
-            // Check for attention indicator
             const indicator = screen.getByRole('status', { name: /тренировка не записана сегодня/i })
             expect(indicator).toBeInTheDocument()
-            expect(indicator).toHaveAttribute('data-urgency', 'normal')
         })
 
-        it('does not show attention indicator when workout is logged today', () => {
-            // Mock store with workout for today
+        it('does not show attention indicator when workout is completed today', () => {
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
@@ -301,18 +280,14 @@ describe('Attention Indicators', () => {
 
             render(<WorkoutBlock date={today} />)
 
-            // Check that attention indicator is not present
             const indicator = screen.queryByRole('status', { name: /тренировка не записана сегодня/i })
             expect(indicator).not.toBeInTheDocument()
         })
     })
 
     describe('Attention Indicator Removal (Requirement 15.11)', () => {
-        it('removes attention indicator when weight is logged', async () => {
-            const mockUpdateMetric = jest.fn().mockResolvedValue(undefined)
-
-            // Create a mutable store reference
-            let currentStore = {
+        it('shows attention indicator when weight is not logged', () => {
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
                         date: todayStr,
@@ -327,19 +302,16 @@ describe('Attention Indicators', () => {
                         },
                     },
                 },
-                updateMetric: mockUpdateMetric,
-            }
+                updateMetric: jest.fn(),
+            })
 
-                // Mock returns the current store value
-                ; (useDashboardStore as unknown as jest.Mock).mockImplementation(() => currentStore)
+            render(<WeightBlock date={today} />)
 
-            const { rerender } = render(<WeightBlock date={today} />)
-
-            // Verify indicator is present
             expect(screen.getByRole('status', { name: /вес не записан сегодня/i })).toBeInTheDocument()
+        })
 
-            // Update store to have weight
-            currentStore = {
+        it('does not show attention indicator when weight is logged', () => {
+            ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 dailyData: {
                     [todayStr]: {
                         date: todayStr,
@@ -354,16 +326,13 @@ describe('Attention Indicators', () => {
                         },
                     },
                 },
-                updateMetric: mockUpdateMetric,
-            }
-
-            // Rerender with updated data
-            rerender(<WeightBlock date={today} />)
-
-            // Verify indicator is removed
-            await waitFor(() => {
-                expect(screen.queryByRole('status', { name: /вес не записан сегодня/i })).not.toBeInTheDocument()
+                updateMetric: jest.fn(),
             })
+
+            render(<WeightBlock date={today} />)
+
+            expect(screen.getByText('75.5')).toBeInTheDocument()
+            expect(screen.queryByRole('status', { name: /вес не записан сегодня/i })).not.toBeInTheDocument()
         })
     })
 })

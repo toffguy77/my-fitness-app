@@ -336,7 +336,10 @@ describe('NotificationsPage', () => {
 
     describe('Error states', () => {
         it('should display error message when main notifications fail to load', () => {
-            const error = new Error('Failed to fetch main notifications');
+            const error = {
+                code: 'SERVER_ERROR' as const,
+                message: 'Failed to fetch main notifications',
+            };
 
             mockUseNotifications.mockImplementation((category) => {
                 if (category === 'main') {
@@ -355,7 +358,10 @@ describe('NotificationsPage', () => {
         });
 
         it('should display error message when content notifications fail to load', () => {
-            const error = new Error('Failed to fetch content notifications');
+            const error = {
+                code: 'SERVER_ERROR' as const,
+                message: 'Failed to fetch content notifications',
+            };
 
             mockUseNotifications.mockImplementation((category) => {
                 if (category === 'content') {

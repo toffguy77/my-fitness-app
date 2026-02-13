@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { ConfigureNutrientsModal } from '../ConfigureNutrientsModal';
 import type { NutrientRecommendation } from '../../types';
 
@@ -702,7 +702,7 @@ describe('ConfigureNutrientsModal', () => {
     // ========================================================================
 
     describe('state reset', () => {
-        it('resets to initial selection when modal reopens', () => {
+        it('resets to initial selection when modal reopens', async () => {
             const { rerender } = render(
                 <ConfigureNutrientsModal
                     isOpen={true}
@@ -740,9 +740,11 @@ describe('ConfigureNutrientsModal', () => {
                 />
             );
 
-            // Vitamin D should be unchecked again (reset to initial)
-            const vitaminDCheckboxAfter = screen.getByRole('checkbox', { name: /витамин d/i });
-            expect(vitaminDCheckboxAfter).not.toBeChecked();
+            // Vitamin D should be unchecked again (reset to initial) - wait for async reset via setTimeout
+            await waitFor(() => {
+                const vitaminDCheckboxAfter = screen.getByRole('checkbox', { name: /витамин d/i });
+                expect(vitaminDCheckboxAfter).not.toBeChecked();
+            });
         });
     });
 

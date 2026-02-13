@@ -327,7 +327,7 @@ describe('FoodEntryModal', () => {
     });
 
     describe('Modal Reset', () => {
-        it('resets to default tab when reopened', () => {
+        it('resets to default tab when reopened', async () => {
             const { rerender } = render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
 
             // Switch to chat tab
@@ -340,8 +340,10 @@ describe('FoodEntryModal', () => {
             // Reopen modal
             rerender(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
 
-            // Should be back to search tab
-            expect(screen.getByRole('tab', { name: 'Поиск' })).toHaveAttribute('aria-selected', 'true');
+            // Should be back to search tab (wait for async reset via setTimeout)
+            await waitFor(() => {
+                expect(screen.getByRole('tab', { name: 'Поиск' })).toHaveAttribute('aria-selected', 'true');
+            });
         });
     });
 

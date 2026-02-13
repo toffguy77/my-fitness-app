@@ -901,7 +901,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             // Process responses
             const updatedState: Partial<DashboardState> = { isLoading: false };
-            let updatedDailyData = { ...state.dailyData };
+            const updatedDailyData = { ...state.dailyData };
 
             responses.forEach((response, index) => {
                 const type = requestTypes[index];

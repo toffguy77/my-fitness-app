@@ -11,7 +11,14 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import type { NotificationType } from '../types';
-import { getNotificationIcon } from '../utils/iconMapping';
+import {
+    MessageSquare,
+    Trophy,
+    Bell,
+    Settings,
+    Star,
+    Info,
+} from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 
 export interface NotificationIconProps {
@@ -82,27 +89,48 @@ export function NotificationIcon({
     }
 
     // Otherwise, render the appropriate Lucide icon based on type
-    const Icon = getNotificationIcon(type);
+    const iconClassName = cn(
+        'text-gray-600',
+        // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
+        'h-4 w-4',          // Mobile
+        'sm:h-5 sm:w-5',    // Tablet
+        'md:h-6 md:w-6'     // Desktop
+    );
+
+    const containerClassName = cn(
+        'flex items-center justify-center rounded-full bg-gray-100',
+        // Responsive icon container sizing (Requirement 6.1, 6.2, 6.3)
+        'h-8 w-8',          // Mobile: compact
+        'sm:h-10 sm:w-10',  // Tablet: standard
+        'md:h-12 md:w-12',  // Desktop: larger
+        className
+    );
+
+    // Render icon based on notification type
+    const renderIcon = () => {
+        switch (type) {
+            case 'trainer_feedback':
+                return <MessageSquare className={iconClassName} />;
+            case 'achievement':
+                return <Trophy className={iconClassName} />;
+            case 'reminder':
+                return <Bell className={iconClassName} />;
+            case 'system_update':
+                return <Settings className={iconClassName} />;
+            case 'new_feature':
+                return <Star className={iconClassName} />;
+            case 'general':
+            default:
+                return <Info className={iconClassName} />;
+        }
+    };
 
     return (
         <div
-            className={cn(
-                'flex items-center justify-center rounded-full bg-gray-100',
-                // Responsive icon container sizing (Requirement 6.1, 6.2, 6.3)
-                'h-8 w-8',          // Mobile: compact
-                'sm:h-10 sm:w-10',  // Tablet: standard
-                'md:h-12 md:w-12',  // Desktop: larger
-                className
-            )}
+            className={containerClassName}
             aria-hidden="true"
         >
-            <Icon className={cn(
-                'text-gray-600',
-                // Responsive icon sizing (Requirement 6.1, 6.2, 6.3)
-                'h-4 w-4',          // Mobile
-                'sm:h-5 sm:w-5',    // Tablet
-                'md:h-6 md:w-6'     // Desktop
-            )} />
+            {renderIcon()}
         </div>
     );
 }

@@ -42,21 +42,6 @@ export interface AttentionBadgeProps {
 }
 
 /**
- * Get icon component based on urgency level
- */
-function getIcon(urgency: UrgencyLevel) {
-    switch (urgency) {
-        case 'critical':
-            return AlertTriangle;
-        case 'high':
-            return AlertCircle;
-        case 'normal':
-        default:
-            return Info;
-    }
-}
-
-/**
  * Get color classes based on urgency level
  */
 function getColorClasses(urgency: UrgencyLevel): string {
@@ -84,7 +69,6 @@ export function AttentionBadge({
     announceChanges = false,
     indicatesId,
 }: AttentionBadgeProps) {
-    const Icon = getIcon(urgency);
     const colorClasses = getColorClasses(urgency);
     const shouldPulse = pulse || urgency === 'critical';
     const previousCountRef = useRef<number | undefined>(count);
@@ -112,6 +96,20 @@ export function AttentionBadge({
             : 'polite'
         : undefined;
 
+    // Render icon based on urgency level
+    const renderIcon = () => {
+        const iconClass = "w-3 h-3";
+        switch (urgency) {
+            case 'critical':
+                return <AlertTriangle className={iconClass} aria-hidden="true" />;
+            case 'high':
+                return <AlertCircle className={iconClass} aria-hidden="true" />;
+            case 'normal':
+            default:
+                return <Info className={iconClass} aria-hidden="true" />;
+        }
+    };
+
     return (
         <span
             className={cn(
@@ -128,7 +126,7 @@ export function AttentionBadge({
             data-urgency={urgency}
             tabIndex={0}
         >
-            <Icon className="w-3 h-3" aria-hidden="true" />
+            {renderIcon()}
             {count !== undefined && <span>{count}</span>}
             {label && <span>{label}</span>}
         </span>
@@ -212,7 +210,6 @@ export function AttentionIcon({
     announceChanges = false,
     indicatesId,
 }: AttentionIconProps) {
-    const Icon = getIcon(urgency);
     const shouldPulse = pulse || urgency === 'critical';
 
     const sizeClasses = {
@@ -234,21 +231,31 @@ export function AttentionIcon({
             : 'polite'
         : undefined;
 
-    return (
-        <Icon
-            className={cn(
-                sizeClasses[size],
-                colorClasses,
-                shouldPulse && 'animate-pulse',
-                className
-            )}
-            role="img"
-            aria-label={ariaLabel}
-            aria-live={ariaLive}
-            aria-atomic="true"
-            aria-describedby={indicatesId}
-            data-urgency={urgency}
-            tabIndex={0}
-        />
+    const iconClassName = cn(
+        sizeClasses[size],
+        colorClasses,
+        shouldPulse && 'animate-pulse',
+        className
     );
+
+    const commonProps = {
+        className: iconClassName,
+        role: "img" as const,
+        "aria-label": ariaLabel,
+        "aria-live": ariaLive as "assertive" | "polite" | "off" | undefined,
+        "aria-atomic": true as const,
+        "aria-describedby": indicatesId,
+        "data-urgency": urgency,
+        tabIndex: 0,
+    };
+
+    switch (urgency) {
+        case 'critical':
+            return <AlertTriangle {...commonProps} />;
+        case 'high':
+            return <AlertCircle {...commonProps} />;
+        case 'normal':
+        default:
+            return <Info {...commonProps} />;
+    }
 }

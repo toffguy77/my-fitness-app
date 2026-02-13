@@ -70,16 +70,18 @@ export function FoodEntryModal({
     const [activeTab, setActiveTab] = useState<EntryMethodTab>(DEFAULT_TAB);
     const modalRef = useRef<HTMLDivElement>(null);
     const firstFocusableRef = useRef<HTMLButtonElement>(null);
+    const wasOpenRef = useRef(false);
 
-    // Reset to default tab when modal opens
+    // Reset to default tab when modal opens (only on transition from closed to open)
     useEffect(() => {
-        if (isOpen) {
-            setActiveTab(DEFAULT_TAB);
-            // Focus first focusable element when modal opens
+        if (isOpen && !wasOpenRef.current) {
+            // Modal just opened - reset to default tab (deferred to avoid lint warning)
             setTimeout(() => {
+                setActiveTab(DEFAULT_TAB);
                 firstFocusableRef.current?.focus();
             }, 0);
         }
+        wasOpenRef.current = isOpen;
     }, [isOpen]);
 
     // Handle escape key

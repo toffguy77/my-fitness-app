@@ -449,7 +449,7 @@ describe('Property 20: Weekly Report Validation', () => {
                         validDays.push({
                             date: `2024-01-0${validDays.length + 1}`,
                             nutrition: { calories: 0 },
-                            weight: null
+                            weight: 0 // Use 0 instead of null for type compatibility
                         })
                     }
                     return { weekData: validDays, hasPhoto }
@@ -653,10 +653,10 @@ describe('Property 20: Weekly Report Validation', () => {
 
                         // Check for Russian words/patterns
                         const hasRussianContent = /[а-яё]/i.test(error) ||
-                                                error.includes('Необходимо') ||
-                                                error.includes('питание') ||
-                                                error.includes('вес') ||
-                                                error.includes('фото')
+                            error.includes('Необходимо') ||
+                            error.includes('питание') ||
+                            error.includes('вес') ||
+                            error.includes('фото')
                         expect(hasRussianContent).toBe(true)
                     })
 

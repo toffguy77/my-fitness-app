@@ -190,11 +190,11 @@ describe('DashboardLayout', () => {
             expect(footer).toBeInTheDocument()
 
             // Header and footer should be siblings within layout
-            expect(layout).toContainElement(header)
-            expect(layout).toContainElement(footer)
+            expect(layout).toContainElement(header as HTMLElement)
+            expect(layout).toContainElement(footer as HTMLElement)
 
             // Main content should contain children
-            expect(mainContent).toContainElement(container.querySelector('[data-testid="child-content"]'))
+            expect(mainContent).toContainElement(container.querySelector('[data-testid="child-content"]') as HTMLElement)
         })
 
         it('should prevent horizontal overflow on the container', () => {
