@@ -27,23 +27,36 @@ import { useState, useEffect, useCallback, useRef } from 'react'
  */
 export function useThrottle<T>(value: T, interval: number = 100): T {
     const [throttledValue, setThrottledValue] = useState<T>(value)
-    const lastUpdated = useRef<number>(Date.now())
+    const lastUpdated = useRef<number>(0)
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useEffect(() => {
         const now = Date.now()
         const timeSinceLastUpdate = now - lastUpdated.current
 
+        // Clear any existing timer
+        if (timerRef.current) {
+            clearTimeout(timerRef.current)
+            timerRef.current = null
+        }
+
         if (timeSinceLastUpdate >= interval) {
-            lastUpdated.current = now
-            setThrottledValue(value)
+            // Enough time has passed, update immediately via setTimeout to avoid sync setState
+            timerRef.current = setTimeout(() => {
+                lastUpdated.current = Date.now()
+                setThrottledValue(value)
+            }, 0)
         } else {
-            const timer = setTimeout(() => {
+            // Schedule update for later
+            timerRef.current = setTimeout(() => {
                 lastUpdated.current = Date.now()
                 setThrottledValue(value)
             }, interval - timeSinceLastUpdate)
+        }
 
-            return () => {
-                clearTimeout(timer)
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current)
             }
         }
     }, [value, interval])

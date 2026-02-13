@@ -2,6 +2,7 @@
  * Tests for error handling utilities
  */
 
+import toast from 'react-hot-toast';
 import {
     DashboardErrorCode,
     mapApiError,
@@ -9,7 +10,17 @@ import {
     retryWithBackoff,
     isOnline,
     DEFAULT_RETRY_CONFIG,
+    showErrorToast,
+    showValidationErrors,
+    handleError,
+    createErrorHandler,
+    withErrorHandling,
 } from '../errorHandling';
+
+// Mock react-hot-toast
+jest.mock('react-hot-toast', () => ({
+    error: jest.fn(),
+}));
 
 describe('errorHandling utilities', () => {
     describe('isOnline', () => {
@@ -309,5 +320,137 @@ describe('errorHandling utilities', () => {
 
             expect(fn).toHaveBeenCalledTimes(1);
         });
+    });
+});
+
+
+describe('showErrorToast', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('shows error toast with message', () => {
+        const error = {
+            code: DashboardErrorCode.SERVER_ERROR,
+            message: 'Сервис временно недоступен',
+            retryable: true,
+        };
+
+        showErrorToast(error);
+
+        expect(toast.error).toHaveBeenCalledWith(
+            'Сервис временно недоступен',
+            expect.objectContaining({
+                duration: 5000,
+                icon: '❌',
+            })
+        );
+    });
+});
+
+describe('showValidationErrors', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('does nothing for empty errors array', () => {
+        showValidationErrors([]);
+
+        expect(toast.error).not.toHaveBeenCalled();
+    });
+
+    it('shows single error with warning icon', () => {
+        showValidationErrors(['Вес должен быть положительным']);
+
+        expect(toast.error).toHaveBeenCalledWith(
+            'Вес должен быть положительным',
+            expect.objectContaining({
+                duration: 4000,
+                icon: '⚠️',
+            })
+        );
+    });
+
+    it('shows multiple errors as numbered list', () => {
+        showValidationErrors([
+            'Вес должен быть положительным',
+            'Шаги не могут быть отрицательными',
+        ]);
+
+        expect(toast.error).toHaveBeenCalledWith(
+            expect.stringContaining('Исправьте ошибки:'),
+            expect.objectContaining({
+                duration: 6000,
+                icon: '⚠️',
+            })
+        );
+    });
+});
+
+describe('handleError', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        Object.defineProperty(navigator, 'onLine', {
+            writable: true,
+            value: true,
+        });
+    });
+
+    it('maps error and shows toast', () => {
+        const error = { response: { status: 500 } };
+
+        handleError(error, 'TestContext');
+
+        expect(toast.error).toHaveBeenCalled();
+    });
+});
+
+describe('createErrorHandler', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('returns a function that shows error toast', () => {
+        const handler = createErrorHandler('TestComponent');
+        const error = new Error('Test error');
+
+        handler(error);
+
+        expect(toast.error).toHaveBeenCalledWith(
+            'Произошла ошибка. Попробуйте обновить страницу',
+            expect.objectContaining({
+                duration: 5000,
+                icon: '❌',
+            })
+        );
+    });
+});
+
+describe('withErrorHandling', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        Object.defineProperty(navigator, 'onLine', {
+            writable: true,
+            value: true,
+        });
+    });
+
+    it('returns result on success', async () => {
+        const fn = jest.fn().mockResolvedValue('success');
+        const wrapped = withErrorHandling(fn, 'TestContext');
+
+        const result = await wrapped();
+
+        expect(result).toBe('success');
+        expect(toast.error).not.toHaveBeenCalled();
+    });
+
+    it('handles error and rethrows', async () => {
+        const error = { response: { status: 500 } };
+        const fn = jest.fn().mockRejectedValue(error);
+        const wrapped = withErrorHandling(fn, 'TestContext');
+
+        await expect(wrapped()).rejects.toEqual(error);
+        expect(toast.error).toHaveBeenCalled();
     });
 });

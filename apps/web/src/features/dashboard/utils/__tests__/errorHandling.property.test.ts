@@ -86,7 +86,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
 
                     // Should fail immediately without retries
                     expect(fn).toHaveBeenCalledTimes(1);
-                    expect(error.response.status).toBe(statusCode);
+                    expect((error as any).response.status).toBe(statusCode);
                 }
             ),
             { numRuns: 20 }
@@ -143,7 +143,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
                             expect(mappedError.code).toBe(DashboardErrorCode.SERVER_ERROR);
                             expect(mappedError.retryable).toBe(true);
                         }
-                    } else if (error instanceof TypeError || error.message?.includes('network')) {
+                    } else if (error instanceof TypeError || (error as any).message?.includes('network')) {
                         expect(mappedError.code).toBe(DashboardErrorCode.NETWORK_ERROR);
                         expect(mappedError.retryable).toBe(true);
                     }
@@ -157,10 +157,12 @@ describe('Property 28: Save Error Handling with Retry', () => {
         await fc.assert(
             fc.asyncProperty(
                 fc.record({
-                    date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-12-31') }),
+                    // Generate date as timestamp to avoid invalid Date objects
+                    dateTimestamp: fc.integer({ min: new Date('2024-01-01').getTime(), max: new Date('2024-12-31').getTime() }),
                     weight: fc.float({ min: 40, max: 200, noNaN: true }),
                 }),
-                async ({ date, weight }) => {
+                async ({ dateTimestamp, weight }) => {
+                    const date = new Date(dateTimestamp);
                     const dateStr = date.toISOString().split('T')[0];
                     const metric = {
                         type: 'weight' as const,

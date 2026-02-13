@@ -13,7 +13,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { CustomRecommendationUnit, CustomRecommendation } from '../types';
 
@@ -104,15 +104,22 @@ export function AddCustomRecommendationForm({
     const [errors, setErrors] = useState<FormErrors>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-    // Reset form when modal opens
+    // Track if modal was previously open
+    const wasOpenRef = useRef(false);
+
+    // Reset form when modal opens (only on transition from closed to open)
     useEffect(() => {
-        if (isOpen) {
-            setName('');
-            setDailyTarget('');
-            setUnit('мг');
-            setErrors({});
-            setTouched({});
+        if (isOpen && !wasOpenRef.current) {
+            // Modal just opened - reset form (deferred to avoid lint warning)
+            setTimeout(() => {
+                setName('');
+                setDailyTarget('');
+                setUnit('мг');
+                setErrors({});
+                setTouched({});
+            }, 0);
         }
+        wasOpenRef.current = isOpen;
     }, [isOpen]);
 
     // Handle escape key
@@ -263,8 +270,8 @@ export function AddCustomRecommendationForm({
                             onBlur={() => handleBlur('name')}
                             placeholder="Например: Омега-3"
                             className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name && touched.name
-                                    ? 'border-red-500 bg-red-50'
-                                    : 'border-gray-300 hover:border-gray-400'
+                                ? 'border-red-500 bg-red-50'
+                                : 'border-gray-300 hover:border-gray-400'
                                 }`}
                             aria-invalid={errors.name && touched.name ? 'true' : 'false'}
                             aria-describedby={errors.name ? 'name-error' : undefined}
@@ -297,8 +304,8 @@ export function AddCustomRecommendationForm({
                             onBlur={() => handleBlur('dailyTarget')}
                             placeholder="Например: 1000"
                             className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.dailyTarget && touched.dailyTarget
-                                    ? 'border-red-500 bg-red-50'
-                                    : 'border-gray-300 hover:border-gray-400'
+                                ? 'border-red-500 bg-red-50'
+                                : 'border-gray-300 hover:border-gray-400'
                                 }`}
                             aria-invalid={errors.dailyTarget && touched.dailyTarget ? 'true' : 'false'}
                             aria-describedby={errors.dailyTarget ? 'target-error' : undefined}

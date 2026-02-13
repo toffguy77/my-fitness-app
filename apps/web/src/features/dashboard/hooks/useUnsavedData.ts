@@ -69,15 +69,9 @@ function saveUnsavedData(data: UnsavedDataEntry[]): void {
  * Hook for managing unsaved data
  */
 export function useUnsavedData() {
-    const [unsavedData, setUnsavedData] = useState<UnsavedDataEntry[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Load unsaved data on mount
-    useEffect(() => {
-        const data = loadUnsavedData();
-        setUnsavedData(data);
-        setIsLoading(false);
-    }, []);
+    // Initialize state with data from localStorage (lazy initialization)
+    const [unsavedData, setUnsavedData] = useState<UnsavedDataEntry[]>(() => loadUnsavedData());
+    const [isLoading, setIsLoading] = useState(false);
 
     /**
      * Add unsaved data entry

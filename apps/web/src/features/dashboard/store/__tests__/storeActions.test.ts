@@ -42,7 +42,7 @@ describe('Dashboard Store Actions', () => {
                     nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
                     weight: null,
                     steps: 0,
-                    workout: null,
+                    workout: { completed: false },
                     completionStatus: {
                         nutritionFilled: false,
                         weightLogged: false,
@@ -141,14 +141,14 @@ describe('Dashboard Store Actions', () => {
                     nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
                     weight: null,
                     steps: 0,
-                    workout: null,
+                    workout: { completed: false },
                     completionStatus: {
                         nutritionFilled: false,
                         weightLogged: false,
                         activityCompleted: false,
                     },
                     updatedAt: new Date(),
-                };
+                } as any;
             });
 
             mockApiClient.post.mockResolvedValue({ data: {} });
@@ -189,7 +189,7 @@ describe('Dashboard Store Actions', () => {
                 nutrition: { calories: 1500, protein: 100, fat: 50, carbs: 150 },
                 weight: null,
                 steps: 0,
-                workout: null,
+                workout: { completed: false },
                 completionStatus: {
                     nutritionFilled: true,
                     weightLogged: false,
@@ -199,7 +199,7 @@ describe('Dashboard Store Actions', () => {
             };
 
             act(() => {
-                result.current.dailyData[date] = initialData;
+                result.current.dailyData[date] = initialData as any;
             });
 
             mockApiClient.post.mockRejectedValue({
@@ -232,14 +232,14 @@ describe('Dashboard Store Actions', () => {
                     nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
                     weight: null,
                     steps: 0,
-                    workout: null,
+                    workout: { completed: false },
                     completionStatus: {
                         nutritionFilled: false,
                         weightLogged: false,
                         activityCompleted: false,
                     },
                     updatedAt: new Date(),
-                };
+                } as any;
             });
 
             mockApiClient.post.mockResolvedValue({ data: {} });
@@ -249,7 +249,7 @@ describe('Dashboard Store Actions', () => {
                     nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
                     weight: 75.5,
                     steps: 0,
-                    workout: null,
+                    workout: { completed: false },
                     completionStatus: {
                         nutritionFilled: false,
                         weightLogged: true,
@@ -279,12 +279,16 @@ describe('Dashboard Store Actions', () => {
                 result.current.tasks = [
                     {
                         id: taskId,
+                        userId: 'user-1',
+                        coachId: 'coach-1',
                         title: 'Test task',
                         description: 'Test description',
                         status: 'active',
                         weekNumber: 1,
+                        assignedAt: new Date(),
+                        dueDate: new Date(),
                         createdAt: new Date(),
-                        completedAt: null,
+                        updatedAt: new Date(),
                     },
                 ];
             });
@@ -306,12 +310,16 @@ describe('Dashboard Store Actions', () => {
 
             const originalTask = {
                 id: taskId,
+                userId: 'user-1',
+                coachId: 'coach-1',
                 title: 'Test task',
                 description: 'Test description',
                 status: 'active' as const,
                 weekNumber: 1,
+                assignedAt: new Date(),
+                dueDate: new Date(),
                 createdAt: new Date(),
-                completedAt: null,
+                updatedAt: new Date(),
             };
 
             act(() => {
@@ -332,7 +340,7 @@ describe('Dashboard Store Actions', () => {
 
             const task = result.current.tasks.find((t) => t.id === taskId);
             expect(task?.status).toBe('active');
-            expect(task?.completedAt).toBeNull();
+            expect(task?.completedAt).toBeUndefined();
             expect(mockToast.error).toHaveBeenCalled();
         });
     });
@@ -426,7 +434,7 @@ describe('Dashboard Store Actions', () => {
                                         nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
                                         weight: null,
                                         steps: 0,
-                                        workout: null,
+                                        workout: { completed: false },
                                         completionStatus: {
                                             nutritionFilled: false,
                                             weightLogged: false,
@@ -487,7 +495,7 @@ describe('Dashboard Store Actions', () => {
                             nutrition: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
                             weight: 75.5,
                             steps: 8000,
-                            workout: null,
+                            workout: { completed: false },
                             completionStatus: {
                                 nutritionFilled: true,
                                 weightLogged: true,
@@ -495,26 +503,35 @@ describe('Dashboard Store Actions', () => {
                             },
                             updatedAt: new Date(),
                         },
-                    },
+                    } as any,
                     error: { code: 'SERVER_ERROR', message: 'Test error' },
                     isLoading: true,
                     weeklyPlan: {
                         id: 'plan-1',
-                        calorieGoal: 2000,
+                        userId: 'user-1',
+                        coachId: 'coach-1',
+                        caloriesGoal: 2000,
                         proteinGoal: 150,
                         startDate: new Date(),
                         endDate: new Date(),
                         isActive: true,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        createdBy: 'coach-1',
                     },
                     tasks: [
                         {
                             id: 'task-1',
+                            userId: 'user-1',
+                            coachId: 'coach-1',
                             title: 'Test task',
                             description: 'Test',
                             status: 'active',
                             weekNumber: 1,
+                            assignedAt: new Date(),
+                            dueDate: new Date(),
                             createdAt: new Date(),
-                            completedAt: null,
+                            updatedAt: new Date(),
                         },
                     ],
                 });

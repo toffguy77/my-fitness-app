@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { KBZHUSummary } from '../KBZHUSummary';
 import { MealSlot } from '../MealSlot';
 import { WaterTracker } from '../WaterTracker';
@@ -48,6 +48,8 @@ const mockFoodEntry: FoodEntry = {
     },
     time: '08:30',
     date: '2024-01-15',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
 };
 
 const mockWaterLog: WaterLog = {
@@ -337,6 +339,288 @@ describe('Touch Interaction Support', () => {
 
         const dietTab = screen.getByRole('tab', { name: /рацион/i });
         expect(dietTab).toHaveClass('touch-manipulation');
+    });
+});
+
+// ============================================================================
+// DatePicker Functionality Tests
+// ============================================================================
+
+describe('DatePicker Functionality', () => {
+    const defaultProps = {
+        selectedDate: new Date('2024-01-15'),
+        onDateChange: jest.fn(),
+    };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('navigates to previous day when clicking prev button', () => {
+        const onDateChange = jest.fn();
+        render(<DatePicker selectedDate={new Date('2024-01-15')} onDateChange={onDateChange} />);
+
+        const prevButton = screen.getByRole('button', { name: /предыдущий день/i });
+        fireEvent.click(prevButton);
+
+        expect(onDateChange).toHaveBeenCalledWith(expect.any(Date));
+        const calledDate = onDateChange.mock.calls[0][0];
+        expect(calledDate.getDate()).toBe(14);
+    });
+
+    it('navigates to next day when clicking next button', () => {
+        const onDateChange = jest.fn();
+        // Use a date in the past so next day is not in the future
+        render(
+            <DatePicker
+                selectedDate={new Date('2024-01-10')}
+                onDateChange={onDateChange}
+                preventFutureDates={false}
+            />
+        );
+
+        const nextButton = screen.getByRole('button', { name: /следующий день/i });
+        fireEvent.click(nextButton);
+
+        expect(onDateChange).toHaveBeenCalledWith(expect.any(Date));
+        const calledDate = onDateChange.mock.calls[0][0];
+        expect(calledDate.getDate()).toBe(11);
+    });
+
+    it('disables next button when preventFutureDates is true and at today', () => {
+        const today = new Date();
+        render(<DatePicker selectedDate={today} onDateChange={jest.fn()} preventFutureDates={true} />);
+
+        const nextButton = screen.getByRole('button', { name: /следующий день/i });
+        expect(nextButton).toBeDisabled();
+    });
+
+    it('opens calendar when clicking date display', () => {
+        render(<DatePicker {...defaultProps} />);
+
+        const dateButton = screen.getByRole('button', { name: /открыть календарь/i });
+        fireEvent.click(dateButton);
+
+        expect(screen.getByText('Пн')).toBeInTheDocument();
+        expect(screen.getByText('Вт')).toBeInTheDocument();
+    });
+
+    it('displays Russian month names in calendar', () => {
+        render(<DatePicker {...defaultProps} />);
+
+        const dateButton = screen.getByRole('button', { name: /открыть календарь/i });
+        fireEvent.click(dateButton);
+
+        // January in Russian (genitive case, capitalized)
+        expect(screen.getByText(/Января 2024/i)).toBeInTheDocument();
+    });
+
+    it('navigates calendar months with prev/next buttons', () => {
+        render(<DatePicker {...defaultProps} />);
+
+        // Open calendar
+        fireEvent.click(screen.getByRole('button', { name: /открыть календарь/i }));
+
+        // Navigate to previous month
+        const prevMonthButton = screen.getByRole('button', { name: /предыдущий месяц/i });
+        fireEvent.click(prevMonthButton);
+
+        // Should show December
+        expect(screen.getByText(/Декабря 2023/i)).toBeInTheDocument();
+    });
+
+    it('selects date from calendar', () => {
+        const onDateChange = jest.fn();
+        render(<DatePicker selectedDate={new Date('2024-01-15')} onDateChange={onDateChange} />);
+
+        // Open calendar
+        fireEvent.click(screen.getByRole('button', { name: /открыть календарь/i }));
+
+        // Click on day 10
+        const day10Button = screen.getByRole('button', { name: /10 января/i });
+        fireEvent.click(day10Button);
+
+        expect(onDateChange).toHaveBeenCalled();
+    });
+
+    it('shows "Сегодня" button when not on today', () => {
+        render(<DatePicker {...defaultProps} />);
+
+        // Open calendar
+        fireEvent.click(screen.getByRole('button', { name: /открыть календарь/i }));
+
+        expect(screen.getByText('Сегодня')).toBeInTheDocument();
+    });
+
+    it('formats date in Russian with "Сегодня" prefix for today', () => {
+        const today = new Date();
+        render(<DatePicker selectedDate={today} onDateChange={jest.fn()} />);
+
+        expect(screen.getByText(/Сегодня,/)).toBeInTheDocument();
+    });
+
+    it('closes calendar after selecting a date', () => {
+        const onDateChange = jest.fn();
+        render(<DatePicker selectedDate={new Date('2024-01-15')} onDateChange={onDateChange} />);
+
+        // Open calendar
+        fireEvent.click(screen.getByRole('button', { name: /открыть календарь/i }));
+        expect(screen.getByText('Пн')).toBeInTheDocument();
+
+        // Select a date
+        fireEvent.click(screen.getByRole('button', { name: /10 января/i }));
+
+        // Calendar should be closed
+        expect(screen.queryByText('Пн')).not.toBeInTheDocument();
+    });
+
+    it('navigates to next month in calendar', () => {
+        render(<DatePicker {...defaultProps} />);
+
+        // Open calendar
+        fireEvent.click(screen.getByRole('button', { name: /открыть календарь/i }));
+
+        // Navigate to next month
+        const nextMonthButton = screen.getByRole('button', { name: /следующий месяц/i });
+        fireEvent.click(nextMonthButton);
+
+        // Should show February
+        expect(screen.getByText(/Февраля 2024/i)).toBeInTheDocument();
+    });
+
+    it('goes to today when clicking "Сегодня" button', () => {
+        const onDateChange = jest.fn();
+        render(<DatePicker selectedDate={new Date('2024-01-15')} onDateChange={onDateChange} />);
+
+        // Open calendar
+        fireEvent.click(screen.getByRole('button', { name: /открыть календарь/i }));
+
+        // Click "Сегодня" button
+        fireEvent.click(screen.getByText('Сегодня'));
+
+        expect(onDateChange).toHaveBeenCalled();
+    });
+});
+
+// ============================================================================
+// FoodTrackerTabs Functionality Tests
+// ============================================================================
+
+describe('FoodTrackerTabs Functionality', () => {
+    const defaultProps = {
+        activeTab: 'diet' as FoodTrackerTab,
+        onTabChange: jest.fn(),
+    };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('calls onTabChange when clicking inactive tab', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="diet" onTabChange={onTabChange} />);
+
+        const recommendationsTab = screen.getByRole('tab', { name: /рекомендации/i });
+        fireEvent.click(recommendationsTab);
+
+        expect(onTabChange).toHaveBeenCalledWith('recommendations');
+    });
+
+    it('has correct aria-selected state for active tab', () => {
+        render(<FoodTrackerTabs {...defaultProps} />);
+
+        const dietTab = screen.getByRole('tab', { name: /рацион/i });
+        const recommendationsTab = screen.getByRole('tab', { name: /рекомендации/i });
+
+        expect(dietTab).toHaveAttribute('aria-selected', 'true');
+        expect(recommendationsTab).toHaveAttribute('aria-selected', 'false');
+    });
+
+    it('navigates tabs with ArrowRight key', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="diet" onTabChange={onTabChange} />);
+
+        const dietTab = screen.getByRole('tab', { name: /рацион/i });
+        fireEvent.keyDown(dietTab, { key: 'ArrowRight' });
+
+        expect(onTabChange).toHaveBeenCalledWith('recommendations');
+    });
+
+    it('navigates tabs with ArrowLeft key', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="recommendations" onTabChange={onTabChange} />);
+
+        const recommendationsTab = screen.getByRole('tab', { name: /рекомендации/i });
+        fireEvent.keyDown(recommendationsTab, { key: 'ArrowLeft' });
+
+        expect(onTabChange).toHaveBeenCalledWith('diet');
+    });
+
+    it('navigates to first tab with Home key', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="recommendations" onTabChange={onTabChange} />);
+
+        const recommendationsTab = screen.getByRole('tab', { name: /рекомендации/i });
+        fireEvent.keyDown(recommendationsTab, { key: 'Home' });
+
+        expect(onTabChange).toHaveBeenCalledWith('diet');
+    });
+
+    it('navigates to last tab with End key', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="diet" onTabChange={onTabChange} />);
+
+        const dietTab = screen.getByRole('tab', { name: /рацион/i });
+        fireEvent.keyDown(dietTab, { key: 'End' });
+
+        expect(onTabChange).toHaveBeenCalledWith('recommendations');
+    });
+
+    it('wraps around when pressing ArrowRight on last tab', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="recommendations" onTabChange={onTabChange} />);
+
+        const recommendationsTab = screen.getByRole('tab', { name: /рекомендации/i });
+        fireEvent.keyDown(recommendationsTab, { key: 'ArrowRight' });
+
+        expect(onTabChange).toHaveBeenCalledWith('diet');
+    });
+
+    it('wraps around when pressing ArrowLeft on first tab', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="diet" onTabChange={onTabChange} />);
+
+        const dietTab = screen.getByRole('tab', { name: /рацион/i });
+        fireEvent.keyDown(dietTab, { key: 'ArrowLeft' });
+
+        expect(onTabChange).toHaveBeenCalledWith('recommendations');
+    });
+
+    it('has correct tabIndex for active and inactive tabs', () => {
+        render(<FoodTrackerTabs {...defaultProps} />);
+
+        const dietTab = screen.getByRole('tab', { name: /рацион/i });
+        const recommendationsTab = screen.getByRole('tab', { name: /рекомендации/i });
+
+        expect(dietTab).toHaveAttribute('tabIndex', '0');
+        expect(recommendationsTab).toHaveAttribute('tabIndex', '-1');
+    });
+
+    it('has proper tablist role on container', () => {
+        render(<FoodTrackerTabs {...defaultProps} />);
+
+        const tablist = screen.getByRole('tablist');
+        expect(tablist).toHaveAttribute('aria-label', 'Разделы дневника питания');
+    });
+
+    it('ignores unhandled keys', () => {
+        const onTabChange = jest.fn();
+        render(<FoodTrackerTabs activeTab="diet" onTabChange={onTabChange} />);
+
+        const dietTab = screen.getByRole('tab', { name: /рацион/i });
+        fireEvent.keyDown(dietTab, { key: 'Enter' });
+
+        expect(onTabChange).not.toHaveBeenCalled();
     });
 });
 

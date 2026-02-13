@@ -290,12 +290,15 @@ describe('StepsBlock', () => {
             expect(screen.queryByText(/целым числом/)).not.toBeInTheDocument()
         })
 
-        it('disables save button when validation error exists', () => {
+        it('disables save button when validation error exists', async () => {
             const input = screen.getByLabelText('Количество шагов')
             fireEvent.change(input, { target: { value: '-100' } })
 
-            const saveButton = screen.getByText('Сохранить')
-            expect(saveButton).toBeDisabled()
+            // Wait for debounced validation (300ms)
+            await waitFor(() => {
+                const saveButton = screen.getByText('Сохранить')
+                expect(saveButton).toBeDisabled()
+            }, { timeout: 500 })
         })
 
         it('disables save button when input is empty', () => {

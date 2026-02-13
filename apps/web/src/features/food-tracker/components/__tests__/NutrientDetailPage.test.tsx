@@ -39,7 +39,6 @@ jest.mock('lucide-react', () => ({
 const createMockNutrient = (overrides?: Partial<NutrientDetail>): NutrientDetail => ({
     id: 'vitamin-c',
     name: 'Витамин C',
-    category: 'vitamins',
     description: 'Витамин C — мощный антиоксидант, необходимый для иммунной системы.',
     benefits: 'Укрепляет иммунитет, улучшает состояние кожи.',
     effects: 'Участвует в синтезе коллагена, защищает клетки от окислительного стресса.',

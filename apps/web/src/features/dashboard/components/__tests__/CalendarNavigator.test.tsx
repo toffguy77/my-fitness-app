@@ -27,7 +27,7 @@ describe('CalendarNavigator', () => {
     // Helper to create mock daily metrics
     const createMockMetrics = (overrides?: Partial<DailyMetrics>): DailyMetrics => ({
         date: '2024-01-15',
-        userId: 1,
+        userId: '1',
         nutrition: {
             calories: 0,
             protein: 0,
@@ -36,7 +36,7 @@ describe('CalendarNavigator', () => {
         },
         weight: null,
         steps: 0,
-        workout: null,
+        workout: { completed: false },
         completionStatus: {
             nutritionFilled: false,
             weightLogged: false,
@@ -180,24 +180,31 @@ describe('CalendarNavigator', () => {
         });
 
         it('updates week range when navigating', () => {
+            // First render with initial week (Jan 15-21)
             const { rerender } = render(<CalendarNavigator />);
 
-            // Simulate week change
-            const newWeekStart = new Date('2024-01-22T12:00:00Z');
+            // Verify initial week range
+            expect(screen.getByText(/15–21/)).toBeInTheDocument();
+
+            // Now update the mock to simulate navigation to next week
+            const newWeekStart = new Date('2024-01-22T00:00:00');
+            const newWeekEnd = new Date('2024-01-28T00:00:00');
+
             (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 selectedDate: newWeekStart,
                 selectedWeek: {
                     start: newWeekStart,
-                    end: getWeekEnd(newWeekStart),
+                    end: newWeekEnd,
                 },
                 dailyData: {},
                 setSelectedDate: mockSetSelectedDate,
                 navigateWeek: mockNavigateWeek,
             });
 
-            rerender(<CalendarNavigator />);
+            // Force re-render with new key to trigger hook re-evaluation
+            rerender(<CalendarNavigator key="new-week" />);
 
-            // Week range should update (format: "22–28 янв")
+            // Week range should update (format: "22–28 янв.")
             expect(screen.getByText(/22–28/)).toBeInTheDocument();
         });
     });
@@ -573,106 +580,91 @@ describe('CalendarNavigator', () => {
 
     describe('Attention Indicators (Requirement 15.9)', () => {
         it('shows pulsing animation on submit button on Sunday', () => {
-            // Mock Date to return Sunday of current week
-            const sunday = new Date('2024-01-21T12:00:00Z')
-            const weekStart = getWeekStart(sunday)
+            // Use fake timers to control the current date
+            jest.useFakeTimers();
+            const sunday = new Date('2024-01-21T12:00:00Z');
+            jest.setSystemTime(sunday);
 
-                (useDashboardStore as unknown as jest.Mock).mockReturnValue({
-                    selectedDate: sunday,
-                    selectedWeek: {
-                        start: weekStart,
-                        end: getWeekEnd(sunday),
-                    },
-                    dailyData: {},
-                    setSelectedDate: mockSetSelectedDate,
-                    navigateWeek: mockNavigateWeek,
-                });
+            const weekStart = new Date('2024-01-15T00:00:00Z');
+            const weekEnd = new Date('2024-01-21T00:00:00Z');
 
-            // Mock Date.now() to return Sunday
-            jest.spyOn(Date, 'now').mockImplementation(() => sunday.getTime())
-            jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
-                if (args.length === 0) {
-                    return sunday as any
-                }
-                return new (Date as any)(...args)
-            })
+            (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                selectedDate: sunday,
+                selectedWeek: {
+                    start: weekStart,
+                    end: weekEnd,
+                },
+                dailyData: {},
+                setSelectedDate: mockSetSelectedDate,
+                navigateWeek: mockNavigateWeek,
+            });
 
-            render(<CalendarNavigator />)
+            render(<CalendarNavigator />);
 
-            const submitButton = screen.getByLabelText('Отправить недельный отчет')
-            expect(submitButton).toHaveClass('animate-pulse')
+            const submitButton = screen.getByLabelText('Отправить недельный отчет');
+            expect(submitButton).toHaveClass('animate-pulse');
 
-            jest.restoreAllMocks()
-        })
+            jest.useRealTimers();
+        });
 
         it('submit button calls onSubmitReport when clicked', () => {
-            const mockOnSubmitReport = jest.fn()
+            const mockOnSubmitReport = jest.fn();
 
-            // Mock Date to return Sunday of current week
-            const sunday = new Date('2024-01-21T12:00:00Z')
-            const weekStart = getWeekStart(sunday)
+            // Use fake timers to control the current date
+            jest.useFakeTimers();
+            const sunday = new Date('2024-01-21T12:00:00Z');
+            jest.setSystemTime(sunday);
 
-                (useDashboardStore as unknown as jest.Mock).mockReturnValue({
-                    selectedDate: sunday,
-                    selectedWeek: {
-                        start: weekStart,
-                        end: getWeekEnd(sunday),
-                    },
-                    dailyData: {},
-                    setSelectedDate: mockSetSelectedDate,
-                    navigateWeek: mockNavigateWeek,
-                });
+            const weekStart = new Date('2024-01-15T00:00:00Z');
+            const weekEnd = new Date('2024-01-21T00:00:00Z');
 
-            // Mock Date.now() to return Sunday
-            jest.spyOn(Date, 'now').mockImplementation(() => sunday.getTime())
-            jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
-                if (args.length === 0) {
-                    return sunday as any
-                }
-                return new (Date as any)(...args)
-            })
+            (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                selectedDate: sunday,
+                selectedWeek: {
+                    start: weekStart,
+                    end: weekEnd,
+                },
+                dailyData: {},
+                setSelectedDate: mockSetSelectedDate,
+                navigateWeek: mockNavigateWeek,
+            });
 
-            render(<CalendarNavigator onSubmitReport={mockOnSubmitReport} />)
+            render(<CalendarNavigator onSubmitReport={mockOnSubmitReport} />);
 
-            const submitButton = screen.getByLabelText('Отправить недельный отчет')
-            fireEvent.click(submitButton)
+            const submitButton = screen.getByLabelText('Отправить недельный отчет');
+            fireEvent.click(submitButton);
 
-            expect(mockOnSubmitReport).toHaveBeenCalledTimes(1)
+            expect(mockOnSubmitReport).toHaveBeenCalledTimes(1);
 
-            jest.restoreAllMocks()
-        })
+            jest.useRealTimers();
+        });
 
         it('has proper ARIA label for submit button', () => {
-            // Mock Date to return Sunday of current week
-            const sunday = new Date('2024-01-21T12:00:00Z')
-            const weekStart = getWeekStart(sunday)
+            // Use fake timers to control the current date
+            jest.useFakeTimers();
+            const sunday = new Date('2024-01-21T12:00:00Z');
+            jest.setSystemTime(sunday);
 
-                (useDashboardStore as unknown as jest.Mock).mockReturnValue({
-                    selectedDate: sunday,
-                    selectedWeek: {
-                        start: weekStart,
-                        end: getWeekEnd(sunday),
-                    },
-                    dailyData: {},
-                    setSelectedDate: mockSetSelectedDate,
-                    navigateWeek: mockNavigateWeek,
-                });
+            const weekStart = new Date('2024-01-15T00:00:00Z');
+            const weekEnd = new Date('2024-01-21T00:00:00Z');
 
-            // Mock Date.now() to return Sunday
-            jest.spyOn(Date, 'now').mockImplementation(() => sunday.getTime())
-            jest.spyOn(global, 'Date').mockImplementation((...args: any[]) => {
-                if (args.length === 0) {
-                    return sunday as any
-                }
-                return new (Date as any)(...args)
-            })
+            (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                selectedDate: sunday,
+                selectedWeek: {
+                    start: weekStart,
+                    end: weekEnd,
+                },
+                dailyData: {},
+                setSelectedDate: mockSetSelectedDate,
+                navigateWeek: mockNavigateWeek,
+            });
 
-            render(<CalendarNavigator />)
+            render(<CalendarNavigator />);
 
-            const submitButton = screen.getByLabelText('Отправить недельный отчет')
-            expect(submitButton).toBeInTheDocument()
+            const submitButton = screen.getByLabelText('Отправить недельный отчет');
+            expect(submitButton).toBeInTheDocument();
 
-            jest.restoreAllMocks()
-        })
+            jest.useRealTimers();
+        });
     })
 })

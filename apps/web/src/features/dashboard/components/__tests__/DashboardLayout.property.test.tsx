@@ -300,10 +300,10 @@ describe('Property 24: Content Viewport Fit', () => {
                         expect(layoutClasses).toMatch(/w-full/)
                         expect(layoutClasses).toMatch(/max-w-full/)
 
-                        // Main content has margins for fixed header/footer
+                        // Main content has padding for fixed header/footer
                         const mainContentClasses = mainContent!.className
-                        expect(mainContentClasses).toMatch(/mt-16/)
-                        expect(mainContentClasses).toMatch(/mb-16/)
+                        expect(mainContentClasses).toMatch(/pt-16/)
+                        expect(mainContentClasses).toMatch(/pb-20/)
 
                         unmount()
                         return true

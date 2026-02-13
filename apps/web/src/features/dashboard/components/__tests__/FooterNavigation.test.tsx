@@ -80,7 +80,7 @@ describe('FooterNavigation', () => {
             const { container } = render(<FooterNavigation />)
 
             // Initially Dashboard is active
-            let dashboardItem = container.querySelector('[data-testid="nav-item-dashboard"]')
+            const dashboardItem = container.querySelector('[data-testid="nav-item-dashboard"]')
             expect(dashboardItem).toHaveAttribute('aria-current', 'page')
 
             // Click on Chat
