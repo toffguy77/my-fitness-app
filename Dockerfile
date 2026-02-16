@@ -72,9 +72,9 @@ RUN apk del libc6-compat && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
 
 # Copy built application from monorepo paths
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 # Security: Ensure proper permissions
 RUN chown -R nextjs:nodejs /app && \
@@ -97,5 +97,5 @@ ENTRYPOINT ["dumb-init", "--"]
 ENV PORT=3069
 ENV HOSTNAME="0.0.0.0"
 
-# Start the application (standalone server is in apps/web due to monorepo structure)
+# Start the application
 CMD ["node", "apps/web/server.js"]
