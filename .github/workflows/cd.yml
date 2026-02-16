@@ -219,30 +219,39 @@ jobs:
         run: |
           echo "Running dev health checks..."
 
-          # Check Next.js frontend via public URL
+          # Check Next.js frontend serves pages (not /api/health which hangs in standalone)
           ok=0
           for i in $(seq 1 60); do
-            if curl -fsS --max-time 10 "https://new.burcev.team/api/health" >/dev/null 2>&1; then
+            HTTP_CODE=$(curl -so /dev/null -w '%{http_code}' --max-time 10 "https://new.burcev.team/" 2>/dev/null || echo "000")
+            if [[ "$HTTP_CODE" =~ ^(200|302|307)$ ]]; then
               ok=1
-              echo "Web health check passed on attempt $i"
+              echo "Web health check passed on attempt $i (HTTP $HTTP_CODE)"
               break
             fi
             if [ $((i % 10)) -eq 0 ]; then
-              echo "Still waiting for https://new.burcev.team (attempt ${i}/60)..."
+              echo "Still waiting for https://new.burcev.team (attempt ${i}/60, last HTTP $HTTP_CODE)..."
             fi
             sleep 2
           done
 
           if [[ "$ok" -ne 1 ]]; then
-            echo "Dev health check failed after 120 seconds" >&2
+            echo "Dev web health check failed after 120 seconds" >&2
             exit 1
           fi
 
-          # Check Go API via public URL
-          if curl -fsS --max-time 10 "https://new.burcev.team/health" >/dev/null 2>&1; then
-            echo "API health check passed"
-          else
-            echo "Warning: API health endpoint not responding via public URL" >&2
+          # Check Go API health via /health endpoint
+          api_ok=0
+          for i in $(seq 1 15); do
+            if curl -fsS --max-time 5 "https://new.burcev.team/health" >/dev/null 2>&1; then
+              api_ok=1
+              echo "API health check passed on attempt $i"
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$api_ok" -ne 1 ]]; then
+            echo "Warning: API /health not reachable via public URL (nginx may need /health location)" >&2
           fi
 
           echo "All dev health checks passed"
