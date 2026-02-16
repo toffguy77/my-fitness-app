@@ -7,7 +7,6 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 # Copy our vhost config
 COPY new.burcev.team.conf /etc/nginx/conf.d/default.conf
 
-# Ensure config is valid
-RUN nginx -t
+# Note: nginx -t not run at build — SSL certs are mounted on server at runtime
 
 EXPOSE 80 443
