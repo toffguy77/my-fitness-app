@@ -65,14 +65,14 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      target: production
+      target: runner
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
         - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     container_name: burcev-web-prod
     ports:
-      - "3069:3000"
+      - "3069:3069"
     environment:
       - NODE_ENV=production
     networks:
@@ -84,12 +84,18 @@ services:
   # Production API
   api-prod:
     build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+      context: ./apps/api
+      dockerfile: Dockerfile
       target: production
     container_name: burcev-api-prod
     ports:
       - "4069:4000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     environment:
       - NODE_ENV=production
       - PORT=4000

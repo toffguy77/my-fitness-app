@@ -4,22 +4,12 @@ on:
   workflow_run:
     workflows: ["CI Pipeline"]
     types: [completed]
-    branches: [main, develop, dev]
+    branches: [dev]
 
-  # Allow manual deployment
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
-          - staging
-          - production
       ref:
-        description: 'Git ref to deploy (commit SHA, tag, or branch). If empty: dev for dev, develop for staging, main for production.'
+        description: 'Git ref (branch, tag, or SHA). Default: dev'
         required: false
         type: string
 
@@ -28,7 +18,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: cd-${{ github.event_name }}-${{ github.event.workflow_run.head_branch || github.ref_name || 'manual' }}
+  group: cd-dev
   cancel-in-progress: false
 
 env:
@@ -37,58 +27,55 @@ env:
 
 jobs:
   deploy-dev:
-    name: Deploy to Development
+    name: Deploy dev to new.burcev.team
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'dev') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev') }}
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'dev') || github.event_name == 'workflow_dispatch' }}
     environment: dev
     steps:
       - name: Resolve deploy ref
         id: ref
         run: |
-          set -euo pipefail
-
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ -n "${{ github.event.inputs.ref }}" ]]; then
-              echo "ref=${{ github.event.inputs.ref }}" >> "$GITHUB_OUTPUT"
-            else
-              echo "ref=dev" >> "$GITHUB_OUTPUT"
-            fi
+            echo "ref=${{ github.event.inputs.ref || 'dev' }}" >> "$GITHUB_OUTPUT"
           else
             echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.ref.outputs.ref }}
 
       - name: Resolve git sha
         id: git
-        run: |
-          set -euo pipefail
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image (dev)
-        id: build
+      - name: Build and push nginx
+        uses: docker/build-push-action@v5
+        with:
+          context: deploy/nginx
+          file: deploy/nginx/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:nginx-dev
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:nginx-dev-${{ steps.git.outputs.sha }}
+
+      - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: apps/web/Dockerfile
           target: runner
           platforms: linux/amd64
           push: true
@@ -101,9 +88,7 @@ jobs:
             NEXT_PUBLIC_API_URL=https://new.burcev.team
             NEXT_PUBLIC_APP_VERSION=${{ steps.git.outputs.sha }}
 
-
-      - name: Build and push API image (dev)
-        id: build-api
+      - name: Build and push backend
         uses: docker/build-push-action@v5
         with:
           context: apps/api
@@ -114,17 +99,9 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}
-      - name: Send deployment start notification
-        if: ${{ vars.TELEGRAM_BOT_TOKEN != '' && vars.TELEGRAM_CHAT_ID != '' }}
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment dev in_progress ${{ steps.git.outputs.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
 
-      - name: Deploy to Development (VPS via SSH)
-        id: deploy-dev
+      - name: Deploy via SSH
+        id: deploy
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
@@ -133,786 +110,81 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
           DEPLOY_GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
-          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ steps.git.outputs.sha }}
-          API_IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}
-          CONTAINER_NAME: burcev-dev
-          API_CONTAINER_NAME: burcev-api-dev
-          HOST_PORT: '3071'
-          API_HOST_PORT: '4071'
-          ENV_FILE: ${{ secrets.DEPLOY_PATH }}/.env.dev
+          NGINX_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:nginx-dev-${{ steps.git.outputs.sha }}
+          WEB_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ steps.git.outputs.sha }}
+          API_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}
         run: |
           set -euo pipefail
-
           DEPLOY_SSH_PORT=${DEPLOY_SSH_PORT:-22}
 
           if [[ -z "${DEPLOY_SSH_HOST}" || -z "${DEPLOY_SSH_USER}" || -z "${DEPLOY_SSH_PRIVATE_KEY}" || -z "${DEPLOY_PATH}" ]]; then
-            echo "Missing required deployment secrets (DEPLOY_SSH_HOST/DEPLOY_SSH_USER/DEPLOY_SSH_PRIVATE_KEY/DEPLOY_PATH)" >&2
+            echo "Missing required secrets: DEPLOY_SSH_HOST, DEPLOY_SSH_USER, DEPLOY_SSH_PRIVATE_KEY, DEPLOY_PATH" >&2
             exit 1
           fi
 
           mkdir -p ~/.ssh
           printf "%s\n" "${DEPLOY_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Copy compose file to server
+          scp -P "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            deploy/docker-compose.dev.yml "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_PATH}/"
 
           ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "IMAGE_REF='${IMAGE_REF}' API_IMAGE_REF='${API_IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' API_CONTAINER_NAME='${API_CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' API_HOST_PORT='${API_HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
+            "DEPLOY_PATH='${DEPLOY_PATH}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' \
+             NGINX_IMAGE='${NGINX_IMAGE}' WEB_IMAGE='${WEB_IMAGE}' API_IMAGE='${API_IMAGE}' bash -s" <<'REMOTE'
           set -euo pipefail
-
           cd "$DEPLOY_PATH"
 
           if [[ -z "${GHCR_USERNAME}" || -z "${GHCR_TOKEN}" ]]; then
-            echo "Missing GHCR credentials on runner (DEPLOY_GHCR_USERNAME/DEPLOY_GHCR_TOKEN)" >&2
+            echo "Missing DEPLOY_GHCR_USERNAME or DEPLOY_GHCR_TOKEN" >&2
+            exit 1
+          fi
+
+          if [[ ! -f .env.dev ]]; then
+            echo ".env.dev not found in $DEPLOY_PATH" >&2
             exit 1
           fi
 
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
-          docker pull "$IMAGE_REF"
-          docker pull "$API_IMAGE_REF"
+          # Write compose env
+          cat > .env.compose << EOF
+          NGINX_IMAGE=${NGINX_IMAGE}
+          WEB_IMAGE=${WEB_IMAGE}
+          API_IMAGE=${API_IMAGE}
+          EOF
 
-          docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
-          docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
+          # Pull images
+          docker compose -f docker-compose.dev.yml --env-file .env.compose pull
 
-          if [[ ! -f "$ENV_FILE" ]]; then
-            echo "Env file not found on server: $ENV_FILE" >&2
-            exit 1
-          fi
+          # Up
+          docker compose -f docker-compose.dev.yml --env-file .env.compose up -d
 
-          docker run -d \
-            --network burcev_shared \
-            --name "$CONTAINER_NAME" \
-            --restart unless-stopped \
-            --env-file "$ENV_FILE" \
-            -e PORT=3069 \
-            -p "127.0.0.1:${HOST_PORT}:3069" \
-            "$IMAGE_REF"
-
-          echo "Waiting for container to start..."
-          sleep 5
-
-          if ! docker ps | grep -q "$CONTAINER_NAME"; then
-            echo "Container failed to start" >&2
-            docker logs --tail 200 "$CONTAINER_NAME" || true
-            exit 1
-          fi
-
-          echo "Container started successfully"
-
-          # Deploy API container
-          docker stop "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
-          docker rm "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
-
-          docker run -d \
-            --name "$API_CONTAINER_NAME" \
-            --network burcev_shared \
-            --restart unless-stopped \
-            --env-file "$ENV_FILE" \
-            -e PORT=4000 \
-            -p "127.0.0.1:${API_HOST_PORT}:4000" \
-            "$API_IMAGE_REF"
-
-          docker ps | grep "$CONTAINER_NAME"
+          # Cleanup old images
+          docker image prune -f
           REMOTE
 
           echo "deployment_url=https://new.burcev.team" >> "$GITHUB_OUTPUT"
 
-      - name: Run dev health checks
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+      - name: Health check
         run: |
-          echo "Running dev health checks via SSH..."
-
-          DEPLOY_SSH_PORT=${DEPLOY_SSH_PORT:-22}
-          SSH_CMD="ssh -p ${DEPLOY_SSH_PORT} -i ~/.ssh/id_ed25519 ${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-
-          # Check web container responds on localhost
-          ok=0
+          set -euo pipefail
           for i in $(seq 1 30); do
-            if $SSH_CMD "curl -fsS --max-time 5 http://localhost:3071/ >/dev/null 2>&1"; then
-              ok=1
-              echo "Web health check passed on attempt $i"
+            if curl -fsS --max-time 10 https://new.burcev.team/ >/dev/null 2>&1; then
+              echo "Web health check passed"
               break
             fi
-            if [ $((i % 5)) -eq 0 ]; then
-              echo "Still waiting for web container (attempt ${i}/30)..."
-            fi
+            [[ $i -eq 30 ]] && { echo "Web health check failed" >&2; exit 1; }
             sleep 2
           done
-
-          if [[ "$ok" -ne 1 ]]; then
-            echo "Web health check failed" >&2
-            $SSH_CMD "docker logs --tail 30 burcev-dev" || true
-            exit 1
-          fi
-
-          # Check API container responds on localhost
-          api_ok=0
           for i in $(seq 1 15); do
-            if $SSH_CMD "curl -fsS --max-time 5 http://localhost:4071/health >/dev/null 2>&1"; then
-              api_ok=1
-              echo "API health check passed on attempt $i"
+            if curl -fsS --max-time 10 https://new.burcev.team/health >/dev/null 2>&1; then
+              echo "API health check passed"
               break
             fi
+            [[ $i -eq 15 ]] && { echo "API health check failed" >&2; exit 1; }
             sleep 2
           done
-
-          if [[ "$api_ok" -ne 1 ]]; then
-            echo "API health check failed" >&2
-            $SSH_CMD "docker logs --tail 30 burcev-api-dev" || true
-            exit 1
-          fi
-
-          echo "All dev health checks passed"
-
-      - name: Send deployment success notification
-        if: success()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment dev success ${{ steps.git.outputs.sha }} ${{ steps.deploy-dev.outputs.deployment_url }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Send deployment failure notification
-        if: failure()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment dev failure ${{ steps.git.outputs.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'develop') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging') }}
-    environment: staging
-    steps:
-      - name: Resolve deploy ref
-        id: ref
-        run: |
-          set -euo pipefail
-
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ -n "${{ github.event.inputs.ref }}" ]]; then
-              echo "ref=${{ github.event.inputs.ref }}" >> "$GITHUB_OUTPUT"
-            else
-              echo "ref=develop" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.ref.outputs.ref }}
-
-      - name: Resolve git sha
-        id: git
-        run: |
-          set -euo pipefail
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image (staging)
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: runner
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-${{ steps.git.outputs.sha }}
-          build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.STAGING_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.STAGING_SUPABASE_ANON_KEY }}
-            NEXT_PUBLIC_API_URL=https://beta.burcev.team
-            NEXT_PUBLIC_APP_VERSION=${{ steps.git.outputs.sha }}
-
-      - name: Build and push API image (staging)
-        id: build-api
-        uses: docker/build-push-action@v5
-        with:
-          context: apps/api
-          file: apps/api/Dockerfile
-          target: production
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-staging
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-staging-${{ steps.git.outputs.sha }}
-
-      - name: Send deployment start notification
-        if: ${{ vars.TELEGRAM_BOT_TOKEN != '' && vars.TELEGRAM_CHAT_ID != '' }}
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment staging in_progress ${{ steps.git.outputs.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Deploy to Staging (VPS via SSH)
-        id: deploy-staging
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
-          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
-          DEPLOY_GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
-          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-${{ steps.git.outputs.sha }}
-          API_IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-staging-${{ steps.git.outputs.sha }}
-          CONTAINER_NAME: burcev-staging
-          API_CONTAINER_NAME: burcev-api-staging
-          HOST_PORT: '3070'
-          API_HOST_PORT: '4072'
-          ENV_FILE: ${{ secrets.DEPLOY_PATH }}/.env.staging
-        run: |
-          set -euo pipefail
-
-          DEPLOY_SSH_PORT=${DEPLOY_SSH_PORT:-22}
-
-          if [[ -z "${DEPLOY_SSH_HOST}" || -z "${DEPLOY_SSH_USER}" || -z "${DEPLOY_SSH_PRIVATE_KEY}" || -z "${DEPLOY_PATH}" ]]; then
-            echo "Missing required deployment secrets (DEPLOY_SSH_HOST/DEPLOY_SSH_USER/DEPLOY_SSH_PRIVATE_KEY/DEPLOY_PATH)" >&2
-            exit 1
-          fi
-
-          mkdir -p ~/.ssh
-          printf "%s\n" "${DEPLOY_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
-
-          ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "IMAGE_REF='${IMAGE_REF}' API_IMAGE_REF='${API_IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' API_CONTAINER_NAME='${API_CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' API_HOST_PORT='${API_HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
-          set -euo pipefail
-
-          cd "$DEPLOY_PATH"
-
-          if [[ -z "${GHCR_USERNAME}" || -z "${GHCR_TOKEN}" ]]; then
-            echo "Missing GHCR credentials on runner (DEPLOY_GHCR_USERNAME/DEPLOY_GHCR_TOKEN)" >&2
-            exit 1
-          fi
-
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-
-          docker pull "$IMAGE_REF"
-          docker pull "$API_IMAGE_REF"
-
-          docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
-          docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
-
-          if [[ ! -f "$ENV_FILE" ]]; then
-            echo "Env file not found on server: $ENV_FILE" >&2
-            exit 1
-          fi
-
-          docker run -d \
-            --network burcev_shared \
-            --name "$CONTAINER_NAME" \
-            --restart unless-stopped \
-            --env-file "$ENV_FILE" \
-            -e PORT=3069 \
-            -p "127.0.0.1:${HOST_PORT}:3069" \
-            "$IMAGE_REF"
-
-          echo "Waiting for container to start..."
-          sleep 5
-
-          if ! docker ps | grep -q "$CONTAINER_NAME"; then
-            echo "Container failed to start" >&2
-            docker logs --tail 200 "$CONTAINER_NAME" || true
-            exit 1
-          fi
-
-          echo "Container started successfully"
-
-          # Deploy API container
-          docker stop "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
-          docker rm "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
-
-          docker run -d \
-            --name "$API_CONTAINER_NAME" \
-            --network burcev_shared \
-            --restart unless-stopped \
-            --env-file "$ENV_FILE" \
-            -e PORT=4000 \
-            -p "127.0.0.1:${API_HOST_PORT}:4000" \
-            "$API_IMAGE_REF"
-
-          docker ps | grep "$CONTAINER_NAME"
-          REMOTE
-
-          echo "deployment_url=https://beta.burcev.team" >> "$GITHUB_OUTPUT"
-
-      - name: Run staging health checks
-        run: |
-          echo "🔍 Running staging health checks..."
-          echo "Waiting for application to be ready (this may take up to 2 minutes)..."
-
-          # Check application endpoints with extended timeout
-          ok=0
-          for i in $(seq 1 60); do
-            if curl -fsS "https://beta.burcev.team/api/health" >/dev/null 2>&1; then
-              ok=1
-              echo "✅ Health check passed on attempt $i"
-              break
-            fi
-            if [ $((i % 10)) -eq 0 ]; then
-              echo "Still waiting for https://beta.burcev.team (attempt ${i}/60)..."
-            fi
-            sleep 2
-          done
-
-          if [[ "$ok" -ne 1 ]]; then
-            echo "❌ Staging health check failed after 120 seconds" >&2
-            exit 1
-          fi
-
-          # Verify database connectivity
-          echo "Checking database connection..."
-
-          # Test critical user flows
-          echo "Testing authentication flow..."
-          echo "Testing nutrition logging..."
-
-          echo "✅ All staging health checks passed"
-
-      - name: Send deployment success notification
-        if: success()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment staging success ${{ steps.git.outputs.sha }} ${{ steps.deploy-staging.outputs.deployment_url }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Send deployment failure notification
-        if: failure()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment staging failure ${{ steps.git.outputs.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production') }}
-    environment: production
-    steps:
-      - name: Resolve deploy ref
-        id: ref
-        run: |
-          set -euo pipefail
-
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ -n "${{ github.event.inputs.ref }}" ]]; then
-              echo "ref=${{ github.event.inputs.ref }}" >> "$GITHUB_OUTPUT"
-            else
-              echo "ref=main" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.ref.outputs.ref }}
-
-      - name: Resolve git sha
-        id: git
-        run: |
-          set -euo pipefail
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image (production)
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: runner
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production-${{ steps.git.outputs.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-            NEXT_PUBLIC_API_URL=https://burcev.team
-            NEXT_PUBLIC_APP_VERSION=${{ steps.git.outputs.sha }}
-
-      - name: Build and push API image (production)
-        id: build-api
-        uses: docker/build-push-action@v5
-        with:
-          context: apps/api
-          file: apps/api/Dockerfile
-          target: production
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-production
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-production-${{ steps.git.outputs.sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-latest
-
-      - name: Send deployment start notification
-        if: ${{ vars.TELEGRAM_BOT_TOKEN != '' && vars.TELEGRAM_CHAT_ID != '' }}
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment production in_progress ${{ steps.git.outputs.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Deploy to Production (VPS via SSH)
-        id: deploy-production
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
-          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_GHCR_USERNAME: ${{ secrets.DEPLOY_GHCR_USERNAME }}
-          DEPLOY_GHCR_TOKEN: ${{ secrets.DEPLOY_GHCR_TOKEN }}
-          IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:production-${{ steps.git.outputs.sha }}
-          API_IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-production-${{ steps.git.outputs.sha }}
-          CONTAINER_NAME: burcev-production
-          API_CONTAINER_NAME: burcev-api-production
-          HOST_PORT: '3069'
-          API_HOST_PORT: '4073'
-          ENV_FILE: ${{ secrets.DEPLOY_PATH }}/.env.production
-        run: |
-          set -euo pipefail
-
-          DEPLOY_SSH_PORT=${DEPLOY_SSH_PORT:-22}
-
-          if [[ -z "${DEPLOY_SSH_HOST}" || -z "${DEPLOY_SSH_USER}" || -z "${DEPLOY_SSH_PRIVATE_KEY}" || -z "${DEPLOY_PATH}" ]]; then
-            echo "Missing required deployment secrets (DEPLOY_SSH_HOST/DEPLOY_SSH_USER/DEPLOY_SSH_PRIVATE_KEY/DEPLOY_PATH)" >&2
-            exit 1
-          fi
-
-          mkdir -p ~/.ssh
-          printf "%s\n" "${DEPLOY_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
-
-          ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "IMAGE_REF='${IMAGE_REF}' API_IMAGE_REF='${API_IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' API_CONTAINER_NAME='${API_CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' API_HOST_PORT='${API_HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
-          set -euo pipefail
-
-          cd "$DEPLOY_PATH"
-
-          if [[ -z "${GHCR_USERNAME}" || -z "${GHCR_TOKEN}" ]]; then
-            echo "Missing GHCR credentials on runner (DEPLOY_GHCR_USERNAME/DEPLOY_GHCR_TOKEN)" >&2
-            exit 1
-          fi
-
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-
-          docker pull "$IMAGE_REF"
-          docker pull "$API_IMAGE_REF"
-
-          docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
-          docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
-
-          if [[ ! -f "$ENV_FILE" ]]; then
-            echo "Env file not found on server: $ENV_FILE" >&2
-            exit 1
-          fi
-
-          docker run -d \
-            --network burcev_shared \
-            --name "$CONTAINER_NAME" \
-            --restart unless-stopped \
-            --env-file "$ENV_FILE" \
-            -e PORT=3069 \
-            -p "127.0.0.1:${HOST_PORT}:3069" \
-            "$IMAGE_REF"
-
-          echo "Waiting for container to start..."
-          sleep 5
-
-          if ! docker ps | grep -q "$CONTAINER_NAME"; then
-            echo "Container failed to start" >&2
-            docker logs --tail 200 "$CONTAINER_NAME" || true
-            exit 1
-          fi
-
-          echo "Container started successfully"
-
-          # Deploy API container
-          docker stop "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
-          docker rm "$API_CONTAINER_NAME" >/dev/null 2>&1 || true
-
-          docker run -d \
-            --name "$API_CONTAINER_NAME" \
-            --network burcev_shared \
-            --restart unless-stopped \
-            --env-file "$ENV_FILE" \
-            -e PORT=4000 \
-            -p "127.0.0.1:${API_HOST_PORT}:4000" \
-            "$API_IMAGE_REF"
-
-          docker ps | grep "$CONTAINER_NAME"
-          REMOTE
-
-          echo "deployment_url=https://burcev.team" >> "$GITHUB_OUTPUT"
-
-      - name: Run production health checks
-        run: |
-          echo "🔍 Running production health checks..."
-          echo "Waiting for application to be ready (this may take up to 2 minutes)..."
-
-          # Check application endpoints with extended timeout
-          ok=0
-          for i in $(seq 1 60); do
-            if curl -fsS "https://burcev.team/api/health" >/dev/null 2>&1; then
-              ok=1
-              echo "✅ Health check passed on attempt $i"
-              break
-            fi
-            if [ $((i % 10)) -eq 0 ]; then
-              echo "Still waiting for https://burcev.team (attempt ${i}/60)..."
-            fi
-            sleep 2
-          done
-
-          if [[ "$ok" -ne 1 ]]; then
-            echo "❌ Production health check failed after 120 seconds" >&2
-            exit 1
-          fi
-
-          # Verify database connectivity
-          echo "Verifying database connectivity..."
-
-          # Test critical user flows
-          echo "Testing critical user flows..."
-
-          # Check monitoring systems
-          echo "Checking monitoring systems..."
-
-          echo "✅ All production health checks passed"
-
-      - name: Send deployment success notification
-        if: success()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment production success ${{ steps.git.outputs.sha }} ${{ steps.deploy-production.outputs.deployment_url }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Send deployment failure notification
-        if: failure()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment production failure ${{ steps.git.outputs.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-  rollback:
-    name: Automatic Rollback on Failure
-    runs-on: ubuntu-latest
-    needs: [deploy-dev, deploy-staging, deploy-production]
-    if: failure()
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Determine rollback environment and get previous version
-        id: rollback-info
-        run: |
-          # Determine which environment failed
-          ENVIRONMENT="production"
-          if [[ "${{ needs.deploy-dev.result }}" == "failure" ]]; then
-            ENVIRONMENT="dev"
-          fi
-          if [[ "${{ needs.deploy-staging.result }}" == "failure" ]]; then
-            ENVIRONMENT="staging"
-          fi
-          if [[ "${{ needs.deploy-production.result }}" == "failure" ]]; then
-            ENVIRONMENT="production"
-          fi
-          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
-
-          # Get previous successful deployment version
-          # In real implementation, this would query deployment history
-          # For now, we'll use the previous commit if it exists
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            PREVIOUS_VERSION=$(git rev-parse HEAD~1)
-          else
-            # If no previous commit, use current HEAD
-            PREVIOUS_VERSION=$(git rev-parse HEAD)
-          fi
-          echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
-
-          echo "🔄 Preparing rollback for $ENVIRONMENT to version $PREVIOUS_VERSION"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build previous version
-        run: |
-          echo "📦 Building previous version for rollback..."
-          git checkout ${{ steps.rollback-info.outputs.previous_version }}
-          npm ci
-          npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.rollback-info.outputs.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_URL || secrets.STAGING_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.rollback-info.outputs.environment == 'production' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || secrets.STAGING_SUPABASE_ANON_KEY }}
-
-      - name: Perform automatic rollback
-        id: perform-rollback
-        run: |
-          echo "🔄 Performing automatic rollback..."
-          echo "🌍 Environment: ${{ steps.rollback-info.outputs.environment }}"
-          echo "📦 Rolling back to: ${{ steps.rollback-info.outputs.previous_version }}"
-          echo "❌ Failed version: ${{ github.sha }}"
-
-          # Enhanced rollback logic
-          # In real implementation, this would:
-          # 1. Deploy the previous successful version
-          # 2. Update load balancer configuration
-          # 3. Clear CDN caches
-          # 4. Update monitoring systems
-          # 5. Verify rollback success
-
-          # Simulate enhanced rollback
-          sleep 10
-
-          # Set deployment URL based on environment
-          if [[ "${{ steps.rollback-info.outputs.environment }}" == "production" ]]; then
-            echo "deployment_url=https://burcev.team" >> $GITHUB_OUTPUT
-          elif [[ "${{ steps.rollback-info.outputs.environment }}" == "staging" ]]; then
-            echo "deployment_url=https://beta.burcev.team" >> $GITHUB_OUTPUT
-          else
-            echo "deployment_url=https://new.burcev.team" >> $GITHUB_OUTPUT
-          fi
-
-          echo "✅ Automatic rollback completed successfully"
-
-      - name: Verify rollback success
-        run: |
-          echo "🔍 Verifying rollback was successful..."
-
-          # Enhanced health verification after rollback
-          # In real implementation, this would:
-          # 1. Check application health
-          # 2. Verify database connectivity
-          # 3. Test authentication flows
-          # 4. Check monitoring systems
-          # 5. Validate no data corruption
-
-          # Simulate comprehensive health checks
-          sleep 8
-
-          echo "✅ Rollback health verification passed"
-          echo "🎯 System restored to stable state"
-
-      - name: Create rollback incident record
-        run: |
-          # Create detailed incident record
-          cat > rollback-incident.json << EOF
-          {
-            "incident_id": "auto-rollback-${{ github.run_id }}",
-            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "type": "automatic_rollback",
-            "environment": "${{ steps.rollback-info.outputs.environment }}",
-            "failed_version": "${{ github.sha }}",
-            "rollback_version": "${{ steps.rollback-info.outputs.previous_version }}",
-            "trigger": "deployment_failure",
-            "workflow_run_id": "${{ github.run_id }}",
-            "deployment_url": "${{ steps.perform-rollback.outputs.deployment_url }}",
-            "failed_jobs": {
-              "dev": "${{ needs.deploy-dev.result }}",
-              "staging": "${{ needs.deploy-staging.result }}",
-              "production": "${{ needs.deploy-production.result }}"
-            }
-          }
-          EOF
-
-          echo "📋 Rollback incident record created:"
-          cat rollback-incident.json
-
-      - name: Send enhanced rollback notification
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback ${{ github.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Send rollback success notification
-        if: success()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_success ${{ github.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Send rollback failure notification
-        if: failure()
-        continue-on-error: true
-        run: |
-          node scripts/telegram-notify.js deployment ${{ steps.rollback-info.outputs.environment }} rollback_failure ${{ github.sha }}
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ vars.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
-
-      - name: Upload rollback artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rollback-incident-${{ steps.rollback-info.outputs.environment }}-${{ github.run_id }}
-          path: rollback-incident.json
-          retention-days: 90
+          echo "All health checks passed"

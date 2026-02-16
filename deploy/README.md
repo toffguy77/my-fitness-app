@@ -1,26 +1,47 @@
-# VPS deployment templates
+# Deploy (dev: new.burcev.team)
 
-This directory contains templates to help deploy the app on a VPS with Docker and Nginx.
+## Требования на сервере
 
-## Nginx
+- Docker и Docker Compose v2
+- `.env.dev` в `DEPLOY_PATH` (база Yandex Cloud, JWT, Supabase и т.д.)
+- SSL-сертификаты Let's Encrypt: `/etc/letsencrypt/live/new.burcev.team/`
+- Порты 80 и 443 свободны (если host nginx уже слушает — отключите или настройте проксирование)
 
-Templates:
-- `deploy/nginx/burcev.team.conf` → reverse proxy to `127.0.0.1:3069` (production)
-- `deploy/nginx/beta.burcev.team.conf` → reverse proxy to `127.0.0.1:3070` (staging)
+## GitHub Secrets (environment: dev)
 
-Typical installation on the VPS (example):
-- Copy to `/etc/nginx/sites-available/`
-- Symlink into `/etc/nginx/sites-enabled/`
-- `nginx -t && systemctl reload nginx`
+| Secret | Описание |
+|--------|----------|
+| `DEPLOY_SSH_HOST` | IP или hostname сервера |
+| `DEPLOY_SSH_PORT` | SSH порт (по умолчанию 22) |
+| `DEPLOY_SSH_USER` | SSH пользователь |
+| `DEPLOY_SSH_PRIVATE_KEY` | Приватный SSH ключ (полностью, включая BEGIN/END) |
+| `DEPLOY_PATH` | Путь на сервере (например `/home/user/burcev`) |
+| `DEPLOY_GHCR_USERNAME` | GitHub username для GHCR |
+| `DEPLOY_GHCR_TOKEN` | Personal Access Token с `read:packages` |
+| `DEV_SUPABASE_URL` | Supabase URL для dev |
+| `DEV_SUPABASE_ANON_KEY` | Supabase anon key для dev |
 
-Certs are assumed to be managed by certbot/Let’s Encrypt.
+**`.env.dev` на сервере** должен содержать: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN=https://new.burcev.team`, Supabase, S3 и др.
 
-## Environment files
+## Структура на сервере
 
-Templates:
-- `deploy/env/.env.production.example` → copy to `${DEPLOY_PATH}/.env.production`
-- `deploy/env/.env.staging.example` → copy to `${DEPLOY_PATH}/.env.staging`
+```
+$DEPLOY_PATH/
+├── .env.dev          # Переменные окружения (DB, JWT, Supabase, S3 и т.д.)
+├── docker-compose.dev.yml  # Копируется при деплое
+└── .env.compose      # Создаётся при деплое (образы)
+```
 
-These files are consumed by the CD pipeline when it runs `docker run --env-file ...` on the VPS.
+## Локальный запуск
 
-IMPORTANT: keep real `.env.production` / `.env.staging` out of git.
+```bash
+# Сборка образов
+docker build -t nginx-dev -f deploy/nginx/Dockerfile deploy/nginx
+docker build -t web-dev -f apps/web/Dockerfile .
+docker build -t api-dev -f apps/api/Dockerfile apps/api
+
+# Запуск (нужен .env.dev в deploy/ или в $PWD)
+cd deploy
+NGINX_IMAGE=nginx-dev WEB_IMAGE=web-dev API_IMAGE=api-dev \
+  docker compose -f docker-compose.dev.yml up -d
+```
