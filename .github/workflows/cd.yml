@@ -100,6 +100,19 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.DEV_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_VERSION=${{ steps.git.outputs.sha }}
 
+
+      - name: Build and push API image (dev)
+        id: build-api
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile
+          target: production
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}
       - name: Send deployment start notification
         if: ${{ vars.TELEGRAM_BOT_TOKEN != '' && vars.TELEGRAM_CHAT_ID != '' }}
         continue-on-error: true
@@ -139,7 +152,7 @@ jobs:
           ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
 
           ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "IMAGE_REF='${IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
+            "IMAGE_REF='${IMAGE_REF}' API_IMAGE_REF='${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           cd "$DEPLOY_PATH"
@@ -152,6 +165,8 @@ jobs:
           echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
           docker pull "$IMAGE_REF"
+
+          docker pull \"$API_IMAGE_REF\"
 
           docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
           docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
@@ -180,6 +195,13 @@ jobs:
           fi
 
           echo "Container started successfully"
+
+          # Deploy API container
+          docker stop burcev-api-dev >/dev/null 2>&1 || true
+          docker rm burcev-api-dev >/dev/null 2>&1 || true
+
+          docker run -d             --name burcev-api-dev             --network burcev_shared             --restart unless-stopped             --env-file "$ENV_FILE"             -p 127.0.0.1:4071:4000             "$API_IMAGE_REF"
+
           docker ps | grep "$CONTAINER_NAME"
           REMOTE
 
@@ -292,6 +314,19 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.STAGING_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_VERSION=${{ steps.git.outputs.sha }}
 
+
+      - name: Build and push API image (dev)
+        id: build-api
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile
+          target: production
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}
       - name: Send deployment start notification
         if: ${{ vars.TELEGRAM_BOT_TOKEN != '' && vars.TELEGRAM_CHAT_ID != '' }}
         continue-on-error: true
@@ -331,7 +366,7 @@ jobs:
           ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
 
           ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "IMAGE_REF='${IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
+            "IMAGE_REF='${IMAGE_REF}' API_IMAGE_REF='${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           cd "$DEPLOY_PATH"
@@ -372,6 +407,13 @@ jobs:
           fi
 
           echo "Container started successfully"
+
+          # Deploy API container
+          docker stop burcev-api-dev >/dev/null 2>&1 || true
+          docker rm burcev-api-dev >/dev/null 2>&1 || true
+
+          docker run -d             --name burcev-api-dev             --network burcev_shared             --restart unless-stopped             --env-file "$ENV_FILE"             -p 127.0.0.1:4071:4000             "$API_IMAGE_REF"
+
           docker ps | grep "$CONTAINER_NAME"
 
           # Note: Health check will be performed by the next step via public URL
@@ -496,6 +538,19 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_APP_VERSION=${{ steps.git.outputs.sha }}
 
+
+      - name: Build and push API image (dev)
+        id: build-api
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile
+          target: production
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}
       - name: Send deployment start notification
         if: ${{ vars.TELEGRAM_BOT_TOKEN != '' && vars.TELEGRAM_CHAT_ID != '' }}
         continue-on-error: true
@@ -535,7 +590,7 @@ jobs:
           ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts
 
           ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "IMAGE_REF='${IMAGE_REF}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
+            "IMAGE_REF='${IMAGE_REF}' API_IMAGE_REF='${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:api-dev-${{ steps.git.outputs.sha }}' CONTAINER_NAME='${CONTAINER_NAME}' HOST_PORT='${HOST_PORT}' DEPLOY_PATH='${DEPLOY_PATH}' ENV_FILE='${ENV_FILE}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           cd "$DEPLOY_PATH"
@@ -576,6 +631,13 @@ jobs:
           fi
 
           echo "Container started successfully"
+
+          # Deploy API container
+          docker stop burcev-api-dev >/dev/null 2>&1 || true
+          docker rm burcev-api-dev >/dev/null 2>&1 || true
+
+          docker run -d             --name burcev-api-dev             --network burcev_shared             --restart unless-stopped             --env-file "$ENV_FILE"             -p 127.0.0.1:4071:4000             "$API_IMAGE_REF"
+
           docker ps | grep "$CONTAINER_NAME"
 
           # Note: Health check will be performed by the next step via public URL
