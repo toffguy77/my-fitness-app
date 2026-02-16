@@ -207,6 +207,7 @@ jobs:
             --network burcev_shared \
             --restart unless-stopped \
             --env-file "$ENV_FILE" \
+            -e PORT=4000 \
             -p "127.0.0.1:${API_HOST_PORT}:4000" \
             "$API_IMAGE_REF"
 
@@ -454,6 +455,7 @@ jobs:
             --network burcev_shared \
             --restart unless-stopped \
             --env-file "$ENV_FILE" \
+            -e PORT=4000 \
             -p "127.0.0.1:${API_HOST_PORT}:4000" \
             "$API_IMAGE_REF"
 
@@ -686,6 +688,7 @@ jobs:
             --network burcev_shared \
             --restart unless-stopped \
             --env-file "$ENV_FILE" \
+            -e PORT=4000 \
             -p "127.0.0.1:${API_HOST_PORT}:4000" \
             "$API_IMAGE_REF"
 
