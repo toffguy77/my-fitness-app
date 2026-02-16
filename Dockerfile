@@ -97,5 +97,5 @@ ENTRYPOINT ["dumb-init", "--"]
 ENV PORT=3069
 ENV HOSTNAME="0.0.0.0"
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the application (standalone server is in apps/web due to monorepo structure)
+CMD ["node", "apps/web/server.js"]
