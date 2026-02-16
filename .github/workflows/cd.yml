@@ -167,7 +167,7 @@ jobs:
 
           docker pull "$IMAGE_REF"
 
-          docker pull \"$API_IMAGE_REF\"
+          docker pull "$API_IMAGE_REF"
 
           docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
           docker rm "$CONTAINER_NAME" >/dev/null 2>&1 || true
