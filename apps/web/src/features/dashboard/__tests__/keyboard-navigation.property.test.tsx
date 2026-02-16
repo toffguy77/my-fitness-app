@@ -452,11 +452,12 @@ describe('Property 35: Keyboard Navigation Support', () => {
             fc.assert(
                 fc.property(fc.integer({ min: 3, max: 7 }), (numItems) => {
                     const testId = `container-funcs-${numItems}`;
-                    let hookResult: ReturnType<typeof useRovingTabIndex> | null = null;
+                    const hookResultRef = { current: null as ReturnType<typeof useRovingTabIndex> | null };
 
                     const TestComponent = () => {
                         const ref = useRef<HTMLDivElement>(null);
-                        hookResult = useRovingTabIndex(ref as RefObject<HTMLElement>, {
+                        // eslint-disable-next-line react-hooks/immutability
+                        hookResultRef.current = useRovingTabIndex(ref as RefObject<HTMLElement>, {
                             orientation: 'horizontal',
                             initialIndex: 0,
                         });
@@ -479,12 +480,12 @@ describe('Property 35: Keyboard Navigation Support', () => {
                     render(<TestComponent />);
 
                     // Verify hook returns all expected functions
-                    expect(hookResult).not.toBeNull();
-                    expect(typeof hookResult!.focusItem).toBe('function');
-                    expect(typeof hookResult!.navigateNext).toBe('function');
-                    expect(typeof hookResult!.navigatePrevious).toBe('function');
-                    expect(typeof hookResult!.navigateFirst).toBe('function');
-                    expect(typeof hookResult!.navigateLast).toBe('function');
+                    expect(hookResultRef.current).not.toBeNull();
+                    expect(typeof hookResultRef.current!.focusItem).toBe('function');
+                    expect(typeof hookResultRef.current!.navigateNext).toBe('function');
+                    expect(typeof hookResultRef.current!.navigatePrevious).toBe('function');
+                    expect(typeof hookResultRef.current!.navigateFirst).toBe('function');
+                    expect(typeof hookResultRef.current!.navigateLast).toBe('function');
 
                     cleanup();
                     return true;
