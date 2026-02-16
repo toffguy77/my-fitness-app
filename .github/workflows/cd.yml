@@ -184,6 +184,7 @@ jobs:
             --name "$CONTAINER_NAME" \
             --restart unless-stopped \
             --env-file "$ENV_FILE" \
+            -e PORT=3069 \
             -p "127.0.0.1:${HOST_PORT}:3069" \
             "$IMAGE_REF"
 
@@ -432,6 +433,7 @@ jobs:
             --name "$CONTAINER_NAME" \
             --restart unless-stopped \
             --env-file "$ENV_FILE" \
+            -e PORT=3069 \
             -p "127.0.0.1:${HOST_PORT}:3069" \
             "$IMAGE_REF"
 
@@ -665,6 +667,7 @@ jobs:
             --name "$CONTAINER_NAME" \
             --restart unless-stopped \
             --env-file "$ENV_FILE" \
+            -e PORT=3069 \
             -p "127.0.0.1:${HOST_PORT}:3069" \
             "$IMAGE_REF"
 
