@@ -37,3 +37,18 @@ EXPOSE 4000
 
 # Use air for hot reload
 CMD ["air", "-c", ".air.toml"]
+
+# Production runtime
+FROM alpine:3.19 AS production
+
+RUN apk add --no-cache ca-certificates tzdata \
+    && adduser -S -D -H -u 10001 appuser \
+    && update-ca-certificates
+
+WORKDIR /app
+COPY --from=builder /app/server /app/server
+
+ENV GIN_MODE=release
+EXPOSE 4000
+USER appuser
+CMD ["./server"]
