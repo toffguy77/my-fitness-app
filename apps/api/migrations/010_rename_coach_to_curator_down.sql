@@ -7,7 +7,7 @@
 -- 1. Rename curator_feedback column back to coach_feedback in weekly_reports
 -- ============================================================================
 
-ALTER TABLE weekly_reports 
+ALTER TABLE weekly_reports
 RENAME COLUMN curator_feedback TO coach_feedback;
 
 -- ============================================================================
@@ -15,26 +15,26 @@ RENAME COLUMN curator_feedback TO coach_feedback;
 -- ============================================================================
 
 -- weekly_reports
-ALTER TABLE weekly_reports 
+ALTER TABLE weekly_reports
 RENAME COLUMN curator_id TO coach_id;
 
 -- tasks
-ALTER TABLE tasks 
+ALTER TABLE tasks
 RENAME COLUMN curator_id TO coach_id;
 
 -- weekly_plans
-ALTER TABLE weekly_plans 
+ALTER TABLE weekly_plans
 RENAME COLUMN curator_id TO coach_id;
 
 -- curator_client_relationships (will be renamed to coach_client_relationships)
-ALTER TABLE curator_client_relationships 
+ALTER TABLE curator_client_relationships
 RENAME COLUMN curator_id TO coach_id;
 
 -- ============================================================================
 -- 3. Rename curator_client_relationships table back to coach_client_relationships
 -- ============================================================================
 
-ALTER TABLE curator_client_relationships 
+ALTER TABLE curator_client_relationships
 RENAME TO coach_client_relationships;
 
 -- ============================================================================

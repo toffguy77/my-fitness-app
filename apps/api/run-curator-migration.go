@@ -19,7 +19,7 @@ func checkOldStructureExists(db *sql.DB) bool {
 	var exists bool
 	err := db.QueryRow(`
 		SELECT EXISTS (
-			SELECT FROM information_schema.tables 
+			SELECT FROM information_schema.tables
 			WHERE table_name = 'coach_client_relationships'
 		)
 	`).Scan(&exists)
@@ -35,7 +35,7 @@ func checkNewStructureExists(db *sql.DB) bool {
 	var exists bool
 	err := db.QueryRow(`
 		SELECT EXISTS (
-			SELECT FROM information_schema.tables 
+			SELECT FROM information_schema.tables
 			WHERE table_name = 'curator_client_relationships'
 		)
 	`).Scan(&exists)
@@ -54,7 +54,7 @@ func verifyTableRenamed(db *sql.DB) bool {
 	var oldExists bool
 	err := db.QueryRow(`
 		SELECT EXISTS (
-			SELECT FROM information_schema.tables 
+			SELECT FROM information_schema.tables
 			WHERE table_name = 'coach_client_relationships'
 		)
 	`).Scan(&oldExists)
@@ -72,7 +72,7 @@ func verifyTableRenamed(db *sql.DB) bool {
 	var newExists bool
 	err = db.QueryRow(`
 		SELECT EXISTS (
-			SELECT FROM information_schema.tables 
+			SELECT FROM information_schema.tables
 			WHERE table_name = 'curator_client_relationships'
 		)
 	`).Scan(&newExists)
@@ -111,7 +111,7 @@ func verifyColumnsRenamed(db *sql.DB) bool {
 		var newExists bool
 		err := db.QueryRow(`
 			SELECT EXISTS (
-				SELECT FROM information_schema.columns 
+				SELECT FROM information_schema.columns
 				WHERE table_name = $1 AND column_name = $2
 			)
 		`, col.table, col.newColumn).Scan(&newExists)
@@ -125,7 +125,7 @@ func verifyColumnsRenamed(db *sql.DB) bool {
 		var oldExists bool
 		err = db.QueryRow(`
 			SELECT EXISTS (
-				SELECT FROM information_schema.columns 
+				SELECT FROM information_schema.columns
 				WHERE table_name = $1 AND column_name = $2
 			)
 		`, col.table, col.oldColumn).Scan(&oldExists)
@@ -176,7 +176,7 @@ func verifyIndexesCreated(db *sql.DB) bool {
 		var exists bool
 		err := db.QueryRow(`
 			SELECT EXISTS (
-				SELECT FROM pg_indexes 
+				SELECT FROM pg_indexes
 				WHERE indexname = $1
 			)
 		`, idx).Scan(&exists)
@@ -198,7 +198,7 @@ func verifyIndexesCreated(db *sql.DB) bool {
 		var exists bool
 		err := db.QueryRow(`
 			SELECT EXISTS (
-				SELECT FROM pg_indexes 
+				SELECT FROM pg_indexes
 				WHERE indexname = $1
 			)
 		`, idx).Scan(&exists)
@@ -256,7 +256,7 @@ func verifyRLSPolicies(db *sql.DB) bool {
 		var exists bool
 		err := db.QueryRow(`
 			SELECT EXISTS (
-				SELECT FROM pg_policies 
+				SELECT FROM pg_policies
 				WHERE tablename = $1 AND policyname = $2
 			)
 		`, pol.table, pol.policy).Scan(&exists)
@@ -279,7 +279,7 @@ func verifyRLSPolicies(db *sql.DB) bool {
 		var exists bool
 		err := db.QueryRow(`
 			SELECT EXISTS (
-				SELECT FROM pg_policies 
+				SELECT FROM pg_policies
 				WHERE tablename = $1 AND policyname = $2
 			)
 		`, pol.table, pol.policy).Scan(&exists)
