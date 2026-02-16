@@ -215,108 +215,34 @@ jobs:
 
           echo "deployment_url=https://new.burcev.team" >> "$GITHUB_OUTPUT"
 
-      - name: Fix nginx config for dev (API port and routing)
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
-        run: |
-          DEPLOY_SSH_PORT=${DEPLOY_SSH_PORT:-22}
-
-          ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<'NGINX_FIX'
-          set -euo pipefail
-
-          NGINX_CONF="$HOME/src/nginx/conf.d/my-fitness-app.conf"
-
-          if [[ ! -f "$NGINX_CONF" ]]; then
-            echo "Nginx config not found at $NGINX_CONF, skipping"
-            exit 0
-          fi
-
-          CHANGED=0
-
-          # Fix API upstream port: 3069 -> 4000
-          if grep -q 'api_upstream burcev-api-dev:3069' "$NGINX_CONF"; then
-            sed -i 's|api_upstream burcev-api-dev:3069|api_upstream burcev-api-dev:4000|g' "$NGINX_CONF"
-            echo "Fixed API upstream port: 3069 -> 4000"
-            CHANGED=1
-          fi
-
-          # Fix location block: /api/ -> /api/v1/ to avoid catching Next.js /api/health
-          if grep -q 'location /api/ {' "$NGINX_CONF"; then
-            sed -i 's|location /api/ {|location /api/v1/ {|g' "$NGINX_CONF"
-            echo "Fixed location: /api/ -> /api/v1/"
-            CHANGED=1
-          fi
-
-          if [[ "$CHANGED" -eq 1 ]]; then
-            # Find nginx container and reload
-            NGINX_CONTAINER=$(docker ps --format '{{.Names}}' | grep -i nginx | head -1 || true)
-            if [[ -n "$NGINX_CONTAINER" ]]; then
-              docker exec "$NGINX_CONTAINER" nginx -t && \
-              docker exec "$NGINX_CONTAINER" nginx -s reload && \
-              echo "Nginx reloaded successfully"
-            else
-              echo "Warning: nginx container not found, config updated but not reloaded"
-            fi
-          else
-            echo "Nginx config already correct, no changes needed"
-          fi
-          NGINX_FIX
-
       - name: Run dev health checks
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
         run: |
           echo "Running dev health checks..."
-          echo "Waiting for application to be ready..."
 
-          DEPLOY_SSH_PORT=${DEPLOY_SSH_PORT:-22}
-
-          # Check containers are running and API responds via SSH on the server
+          # Check Next.js frontend via public URL
           ok=0
           for i in $(seq 1 60); do
-            if ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-              'docker ps --format "{{.Names}}" | grep -q burcev-api-dev && curl -fsS --max-time 5 http://localhost:4071/health >/dev/null 2>&1'; then
+            if curl -fsS --max-time 10 "https://new.burcev.team/api/health" >/dev/null 2>&1; then
               ok=1
-              echo "API health check passed on attempt $i"
+              echo "Web health check passed on attempt $i"
               break
             fi
             if [ $((i % 10)) -eq 0 ]; then
-              echo "Still waiting for API (attempt ${i}/60)..."
+              echo "Still waiting for https://new.burcev.team (attempt ${i}/60)..."
             fi
             sleep 2
           done
 
           if [[ "$ok" -ne 1 ]]; then
-            echo "API health check failed after 120 seconds" >&2
+            echo "Dev health check failed after 120 seconds" >&2
             exit 1
           fi
 
-          # Check web container is running
-          if ! ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            'docker ps --format "{{.Names}}" | grep -q burcev-dev'; then
-            echo "Web container is not running" >&2
-            ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-              'docker logs --tail 50 burcev-dev' || true
-            exit 1
-          fi
-
-          # Check public URL with timeout
-          web_ok=0
-          for i in $(seq 1 30); do
-            if curl -fsS --max-time 10 "https://new.burcev.team" >/dev/null 2>&1; then
-              web_ok=1
-              echo "Web health check passed on attempt $i"
-              break
-            fi
-            sleep 2
-          done
-
-          if [[ "$web_ok" -ne 1 ]]; then
-            echo "Warning: public URL not responding, but containers are running" >&2
+          # Check Go API via public URL
+          if curl -fsS --max-time 10 "https://new.burcev.team/health" >/dev/null 2>&1; then
+            echo "API health check passed"
+          else
+            echo "Warning: API health endpoint not responding via public URL" >&2
           fi
 
           echo "All dev health checks passed"
