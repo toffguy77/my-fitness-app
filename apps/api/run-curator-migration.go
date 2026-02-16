@@ -92,9 +92,9 @@ func verifyColumnsRenamed(db *sql.DB) bool {
 	fmt.Println("\n--- Verifying Columns Renamed ---")
 
 	columnsToCheck := []struct {
-		table      string
-		newColumn  string
-		oldColumn  string
+		table     string
+		newColumn string
+		oldColumn string
 	}{
 		{"curator_client_relationships", "curator_id", "coach_id"},
 		{"weekly_plans", "curator_id", "coach_id"},
