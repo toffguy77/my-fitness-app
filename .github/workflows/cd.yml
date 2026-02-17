@@ -124,6 +124,7 @@ jobs:
       - name: Deploy via SSH
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
@@ -136,13 +137,13 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s\n" "${DEPLOY_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+          scp -P "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
             deploy/docker-compose.server.yml \
             "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_PATH}/"
 
-          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
+          ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
             "DEPLOY_PATH='${DEPLOY_PATH}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' \
              REGISTRY='${REGISTRY}' IMAGE_NAME='${IMAGE_NAME}' SHA='${SHA}' bash -s" <<'REMOTE'
           set -euo pipefail
@@ -285,6 +286,7 @@ jobs:
       - name: Deploy via SSH
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
@@ -297,13 +299,13 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s\n" "${DEPLOY_SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -p "${DEPLOY_SSH_PORT}" "${DEPLOY_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+          scp -P "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
             deploy/docker-compose.server.yml \
             "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_PATH}/"
 
-          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
+          ssh -p "${DEPLOY_SSH_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
             "DEPLOY_PATH='${DEPLOY_PATH}' GHCR_USERNAME='${DEPLOY_GHCR_USERNAME}' GHCR_TOKEN='${DEPLOY_GHCR_TOKEN}' \
              REGISTRY='${REGISTRY}' IMAGE_NAME='${IMAGE_NAME}' SHA='${SHA}' bash -s" <<'REMOTE'
           set -euo pipefail
