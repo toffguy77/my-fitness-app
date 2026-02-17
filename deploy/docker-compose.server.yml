@@ -1,0 +1,93 @@
+# Server deployment: dev (new.burcev.team) + prod (burcev.team)
+# Uses pre-built images from GHCR. Image tags passed via env.
+# Requires: .env.dev + .env.prod on server, SSL certs at /etc/letsencrypt
+
+services:
+  nginx:
+    image: ${NGINX_IMAGE}
+    container_name: burcev-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+    depends_on:
+      web-dev:
+        condition: service_started
+      api-dev:
+        condition: service_healthy
+      web-prod:
+        condition: service_started
+      api-prod:
+        condition: service_healthy
+    networks:
+      - burcev_dev
+      - burcev_prod
+    restart: unless-stopped
+
+  web-dev:
+    image: ${WEB_DEV_IMAGE}
+    container_name: burcev-dev
+    env_file:
+      - .env.dev
+    environment:
+      - PORT=3069
+      - NODE_ENV=production
+    networks:
+      - burcev_dev
+    restart: unless-stopped
+
+  api-dev:
+    image: ${API_DEV_IMAGE}
+    container_name: burcev-api-dev
+    env_file:
+      - .env.dev
+    environment:
+      - PORT=4000
+      - GIN_MODE=release
+    networks:
+      - burcev_dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web-prod:
+    image: ${WEB_PROD_IMAGE}
+    container_name: burcev-prod
+    env_file:
+      - .env.prod
+    environment:
+      - PORT=3069
+      - NODE_ENV=production
+    networks:
+      - burcev_prod
+    restart: unless-stopped
+
+  api-prod:
+    image: ${API_PROD_IMAGE}
+    container_name: burcev-api-prod
+    env_file:
+      - .env.prod
+    environment:
+      - PORT=4000
+      - GIN_MODE=release
+    networks:
+      - burcev_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  burcev_dev:
+    driver: bridge
+  burcev_prod:
+    driver: bridge
