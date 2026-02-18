@@ -22,7 +22,7 @@ FROM golang:1.24-alpine AS development
 RUN apk add --no-cache git
 
 # Install air for hot reload
-RUN go install github.com/cosmtrek/air@v1.61.7
+RUN go install github.com/air-verse/air@v1.61.7
 
 WORKDIR /app
 
