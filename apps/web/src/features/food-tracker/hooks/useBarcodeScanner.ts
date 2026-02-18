@@ -1,45 +1,33 @@
 /**
  * useBarcodeScanner Hook
  *
- * Custom hook for barcode scanning functionality.
- * Handles camera access, barcode detection, and product lookup with caching.
+ * Custom hook for barcode scanning using html5-qrcode.
+ * Handles scanner lifecycle, barcode detection, and product lookup with caching.
  *
  * @module food-tracker/hooks/useBarcodeScanner
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { apiClient } from '@/shared/utils/api-client';
+import { getApiUrl } from '@/config/api';
 import type { FoodItem } from '../types';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type CameraStatus = 'idle' | 'requesting' | 'active' | 'denied' | 'error';
+export type ScannerStatus = 'idle' | 'starting' | 'scanning' | 'error';
 
-export interface BarcodeScannerState {
-    cameraStatus: CameraStatus;
+export interface UseBarcodeScanner {
+    scannerStatus: ScannerStatus;
     scannedBarcode: string | null;
     scannedProduct: FoodItem | null;
     isLookingUp: boolean;
     lookupError: string | null;
-}
-
-export interface BarcodeScannerActions {
-    requestCameraAccess: () => Promise<void>;
-    stopCamera: () => void;
+    startScanning: (elementId: string) => Promise<void>;
+    stopScanning: () => Promise<void>;
     lookupBarcode: (barcode: string) => Promise<void>;
     resetScan: () => void;
-}
-
-export interface UseBarcodeScanner extends BarcodeScannerState, BarcodeScannerActions {
-    videoRef: React.RefObject<HTMLVideoElement | null>;
-}
-
-export interface BarcodeScannerOptions {
-    /** Function to lookup barcode in API */
-    onLookupBarcode?: (barcode: string) => Promise<FoodItem | null>;
-    /** Cache duration in days (default: 30) */
-    cacheDurationDays?: number;
 }
 
 // ============================================================================
@@ -47,7 +35,7 @@ export interface BarcodeScannerOptions {
 // ============================================================================
 
 const CACHE_KEY_PREFIX = 'barcode_cache_';
-const DEFAULT_CACHE_DURATION_DAYS = 30;
+const DEFAULT_CACHE_DURATION_DAYS = 90;
 
 // ============================================================================
 // Cache Utilities
@@ -68,6 +56,9 @@ function getCachedBarcode(barcode: string): FoodItem | null {
             localStorage.removeItem(`${CACHE_KEY_PREFIX}${barcode}`);
             return null;
         }
+
+        // Sliding cache: refresh expiresAt on read
+        setCachedBarcode(barcode, data.food, DEFAULT_CACHE_DURATION_DAYS);
 
         return data.food;
     } catch {
@@ -91,74 +82,71 @@ function setCachedBarcode(barcode: string, food: FoodItem, durationDays: number)
 // Hook
 // ============================================================================
 
-export function useBarcodeScanner(options: BarcodeScannerOptions = {}): UseBarcodeScanner {
-    const {
-        onLookupBarcode,
-        cacheDurationDays = DEFAULT_CACHE_DURATION_DAYS,
-    } = options;
-
-    const [cameraStatus, setCameraStatus] = useState<CameraStatus>('idle');
+export function useBarcodeScanner(): UseBarcodeScanner {
+    const [scannerStatus, setScannerStatus] = useState<ScannerStatus>('idle');
     const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
     const [scannedProduct, setScannedProduct] = useState<FoodItem | null>(null);
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [lookupError, setLookupError] = useState<string | null>(null);
 
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const scannerRef = useRef<any>(null);
+    const isStoppingRef = useRef(false);
 
-    // Cleanup camera stream on unmount
+    // Stop scanning
+    const stopScanning = useCallback(async () => {
+        if (isStoppingRef.current) return;
+        isStoppingRef.current = true;
+
+        try {
+            if (scannerRef.current) {
+                try {
+                    const state = scannerRef.current.getState();
+                    // Html5QrcodeScannerState: SCANNING = 2, PAUSED = 3
+                    if (state === 2 || state === 3) {
+                        await scannerRef.current.stop();
+                    }
+                } catch {
+                    // Scanner may already be stopped
+                }
+                scannerRef.current.clear();
+                scannerRef.current = null;
+            }
+        } catch {
+            // Ignore cleanup errors
+            scannerRef.current = null;
+        } finally {
+            isStoppingRef.current = false;
+            setScannerStatus('idle');
+        }
+    }, []);
+
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
+            if (scannerRef.current) {
+                try {
+                    const state = scannerRef.current.getState();
+                    if (state === 2 || state === 3) {
+                        scannerRef.current.stop().then(() => {
+                            scannerRef.current?.clear();
+                            scannerRef.current = null;
+                        }).catch(() => {
+                            scannerRef.current?.clear();
+                            scannerRef.current = null;
+                        });
+                    } else {
+                        scannerRef.current.clear();
+                        scannerRef.current = null;
+                    }
+                } catch {
+                    scannerRef.current = null;
+                }
             }
         };
     }, []);
 
-    // Request camera access
-    const requestCameraAccess = useCallback(async () => {
-        setCameraStatus('requesting');
-        setLookupError(null);
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
-            });
-
-            streamRef.current = stream;
-
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                await videoRef.current.play();
-            }
-
-            setCameraStatus('active');
-        } catch (error) {
-            if (error instanceof DOMException) {
-                if (error.name === 'NotAllowedError') {
-                    setCameraStatus('denied');
-                } else {
-                    setCameraStatus('error');
-                }
-            } else {
-                setCameraStatus('error');
-            }
-        }
-    }, []);
-
-    // Stop camera
-    const stopCamera = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-        setCameraStatus('idle');
-    }, []);
-
-    // Lookup barcode
+    // Lookup barcode via cache or API
     const lookupBarcode = useCallback(async (barcode: string) => {
         if (isLookingUp) return;
 
@@ -177,15 +165,13 @@ export function useBarcodeScanner(options: BarcodeScannerOptions = {}): UseBarco
             }
 
             // Lookup via API
-            if (onLookupBarcode) {
-                const product = await onLookupBarcode(barcode);
-                if (product) {
-                    // Cache the result
-                    setCachedBarcode(barcode, product, cacheDurationDays);
-                    setScannedProduct(product);
-                } else {
-                    setLookupError('Продукт не найден');
-                }
+            const product = await apiClient.get<FoodItem>(
+                getApiUrl(`/food-tracker/barcode/${barcode}`)
+            );
+
+            if (product) {
+                setCachedBarcode(barcode, product, DEFAULT_CACHE_DURATION_DAYS);
+                setScannedProduct(product);
             } else {
                 setLookupError('Продукт не найден');
             }
@@ -194,7 +180,98 @@ export function useBarcodeScanner(options: BarcodeScannerOptions = {}): UseBarco
         } finally {
             setIsLookingUp(false);
         }
-    }, [isLookingUp, onLookupBarcode, cacheDurationDays]);
+    }, [isLookingUp]);
+
+    // Start scanning
+    const startScanning = useCallback(async (elementId: string) => {
+        setScannerStatus('starting');
+        setLookupError(null);
+
+        try {
+            // Dynamic import for SSR safety
+            const { Html5Qrcode } = await import('html5-qrcode');
+
+            // Stop any existing scanner
+            if (scannerRef.current) {
+                try {
+                    const state = scannerRef.current.getState();
+                    if (state === 2 || state === 3) {
+                        await scannerRef.current.stop();
+                    }
+                    scannerRef.current.clear();
+                } catch {
+                    // ignore
+                }
+            }
+
+            const scanner = new Html5Qrcode(elementId);
+            scannerRef.current = scanner;
+
+            await scanner.start(
+                { facingMode: 'environment' },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 150 },
+                },
+                (decodedText: string) => {
+                    // On successful decode: auto-lookup and stop scanning
+                    scanner.stop().then(() => {
+                        scanner.clear();
+                        scannerRef.current = null;
+                        setScannerStatus('idle');
+                    }).catch(() => {
+                        scannerRef.current = null;
+                        setScannerStatus('idle');
+                    });
+
+                    // Trigger lookup
+                    setScannedBarcode(decodedText);
+                    setIsLookingUp(true);
+                    setLookupError(null);
+                    setScannedProduct(null);
+
+                    // Check cache first
+                    const cached = getCachedBarcode(decodedText);
+                    if (cached) {
+                        setScannedProduct(cached);
+                        setIsLookingUp(false);
+                        return;
+                    }
+
+                    // Lookup via API
+                    apiClient.get<FoodItem>(
+                        getApiUrl(`/food-tracker/barcode/${decodedText}`)
+                    ).then((product) => {
+                        if (product) {
+                            setCachedBarcode(decodedText, product, DEFAULT_CACHE_DURATION_DAYS);
+                            setScannedProduct(product);
+                        } else {
+                            setLookupError('Продукт не найден');
+                        }
+                    }).catch(() => {
+                        setLookupError('Ошибка при поиске продукта');
+                    }).finally(() => {
+                        setIsLookingUp(false);
+                    });
+                },
+                () => {
+                    // Ignore scan failures (called on every frame without detection)
+                }
+            );
+
+            setScannerStatus('scanning');
+        } catch (error) {
+            scannerRef.current = null;
+
+            if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                setScannerStatus('error');
+                setLookupError('Доступ к камере запрещен. Разрешите доступ в настройках браузера.');
+            } else {
+                setScannerStatus('error');
+                setLookupError('Не удалось получить доступ к камере. Проверьте подключение камеры.');
+            }
+        }
+    }, []);
 
     // Reset scan
     const resetScan = useCallback(() => {
@@ -204,19 +281,15 @@ export function useBarcodeScanner(options: BarcodeScannerOptions = {}): UseBarco
     }, []);
 
     return {
-        // State
-        cameraStatus,
+        scannerStatus,
         scannedBarcode,
         scannedProduct,
         isLookingUp,
         lookupError,
-        // Actions
-        requestCameraAccess,
-        stopCamera,
+        startScanning,
+        stopScanning,
         lookupBarcode,
         resetScan,
-        // Refs
-        videoRef,
     };
 }
 

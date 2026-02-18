@@ -123,7 +123,7 @@ export { useFoodSearch } from './hooks/useFoodSearch';
 export type { UseFoodSearch, UseFoodSearchOptions } from './hooks/useFoodSearch';
 
 export { useBarcodeScanner } from './hooks/useBarcodeScanner';
-export type { UseBarcodeScanner, BarcodeScannerOptions, CameraStatus } from './hooks/useBarcodeScanner';
+export type { UseBarcodeScanner, ScannerStatus } from './hooks/useBarcodeScanner';
 
 export { useWaterTracker } from './hooks/useWaterTracker';
 export type { UseWaterTracker } from './hooks/useWaterTracker';
