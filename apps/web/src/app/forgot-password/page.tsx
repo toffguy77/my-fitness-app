@@ -38,8 +38,8 @@ export default function ForgotPasswordPage() {
         setIsLoading(true)
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-            const response = await fetch(`${apiUrl}/api/v1/auth/forgot-password`, {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
+            const response = await fetch(`${apiUrl}/backend-api/v1/auth/forgot-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -36,9 +36,9 @@ function ResetPasswordContent() {
         if (!token) return
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
             const response = await fetch(
-                `${apiUrl}/api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
+                `${apiUrl}/backend-api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
             )
 
             const data = await response.json()
@@ -80,8 +80,8 @@ function ResetPasswordContent() {
         setIsLoading(true)
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-            const response = await fetch(`${apiUrl}/api/v1/auth/reset-password`, {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
+            const response = await fetch(`${apiUrl}/backend-api/v1/auth/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

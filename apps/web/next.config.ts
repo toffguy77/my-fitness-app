@@ -22,6 +22,15 @@ const baseConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
+  async rewrites() {
+    const apiBackend = process.env.INTERNAL_API_URL || 'http://api:4000';
+    return [
+      {
+        source: '/backend-api/:path*',
+        destination: `${apiBackend}/api/:path*`,
+      },
+    ];
+  },
 };
 
 let nextConfig: NextConfig;
