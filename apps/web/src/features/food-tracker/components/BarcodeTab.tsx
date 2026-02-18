@@ -3,15 +3,16 @@
 /**
  * BarcodeTab Component
  *
- * Barcode scanning interface for finding food items.
+ * Barcode scanning interface using html5-qrcode for real barcode detection.
  * Features camera viewfinder, barcode detection, and product lookup.
  *
  * @module food-tracker/components/BarcodeTab
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Camera, CameraOff, RefreshCw, AlertCircle, CheckCircle, Plus } from 'lucide-react';
-import type { FoodItem, KBZHU } from '../types';
+import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
+import type { FoodItem } from '../types';
 
 // ============================================================================
 // Types
@@ -22,28 +23,17 @@ export interface BarcodeTabProps {
     onSelectFood: (food: FoodItem) => void;
     /** Callback when manual entry is requested */
     onManualEntry?: () => void;
-    /** External barcode lookup function */
+    /** External barcode lookup function (unused, kept for interface compat) */
     onLookupBarcode?: (barcode: string) => Promise<FoodItem | null>;
     /** Additional CSS classes */
     className?: string;
-}
-
-export type CameraStatus = 'idle' | 'requesting' | 'active' | 'denied' | 'error';
-
-export interface ScannedProduct {
-    barcode: string;
-    food: FoodItem;
 }
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const CAMERA_PERMISSION_MESSAGES = {
-    denied: 'Доступ к камере запрещен. Разрешите доступ в настройках браузера.',
-    error: 'Не удалось получить доступ к камере. Проверьте подключение камеры.',
-    requesting: 'Запрашиваем доступ к камере...',
-};
+const BARCODE_READER_ELEMENT_ID = 'barcode-reader';
 
 // ============================================================================
 // Component
@@ -52,96 +42,36 @@ const CAMERA_PERMISSION_MESSAGES = {
 export function BarcodeTab({
     onSelectFood,
     onManualEntry,
-    onLookupBarcode,
     className = '',
 }: BarcodeTabProps) {
-    const [cameraStatus, setCameraStatus] = useState<CameraStatus>('idle');
-    const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
-    const [scannedProduct, setScannedProduct] = useState<FoodItem | null>(null);
-    const [isLookingUp, setIsLookingUp] = useState(false);
-    const [lookupError, setLookupError] = useState<string | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+    const {
+        scannerStatus,
+        scannedBarcode,
+        scannedProduct,
+        isLookingUp,
+        lookupError,
+        startScanning,
+        stopScanning,
+        lookupBarcode,
+        resetScan,
+    } = useBarcodeScanner();
 
-    // Cleanup camera stream on unmount
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-            }
+            stopScanning();
         };
-    }, []);
+    }, [stopScanning]);
 
-    // Request camera access
-    const requestCameraAccess = useCallback(async () => {
-        setCameraStatus('requesting');
-        setLookupError(null);
+    // Handle start camera
+    const handleStartCamera = useCallback(() => {
+        startScanning(BARCODE_READER_ELEMENT_ID);
+    }, [startScanning]);
 
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
-            });
-
-            streamRef.current = stream;
-
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                await videoRef.current.play();
-            }
-
-            setCameraStatus('active');
-        } catch (error) {
-            if (error instanceof DOMException) {
-                if (error.name === 'NotAllowedError') {
-                    setCameraStatus('denied');
-                } else {
-                    setCameraStatus('error');
-                }
-            } else {
-                setCameraStatus('error');
-            }
-        }
-    }, []);
-
-    // Stop camera
-    const stopCamera = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-        setCameraStatus('idle');
-    }, []);
-
-    // Handle barcode detection (simulated - in real app would use barcode detection library)
-    const handleBarcodeDetected = useCallback(async (barcode: string) => {
-        if (isLookingUp || scannedBarcode === barcode) return;
-
-        setScannedBarcode(barcode);
-        setIsLookingUp(true);
-        setLookupError(null);
-        setScannedProduct(null);
-
-        try {
-            if (onLookupBarcode) {
-                const product = await onLookupBarcode(barcode);
-                if (product) {
-                    setScannedProduct(product);
-                } else {
-                    setLookupError('Продукт не найден');
-                }
-            } else {
-                // Mock lookup for demo
-                setLookupError('Продукт не найден');
-            }
-        } catch {
-            setLookupError('Ошибка при поиске продукта');
-        } finally {
-            setIsLookingUp(false);
-        }
-    }, [isLookingUp, scannedBarcode, onLookupBarcode]);
+    // Handle stop camera
+    const handleStopCamera = useCallback(() => {
+        stopScanning();
+    }, [stopScanning]);
 
     // Handle manual barcode input
     const handleManualBarcodeInput = useCallback((e: React.FormEvent<HTMLFormElement>) => {
@@ -149,9 +79,9 @@ export function BarcodeTab({
         const formData = new FormData(e.currentTarget);
         const barcode = formData.get('barcode') as string;
         if (barcode && barcode.length >= 8) {
-            handleBarcodeDetected(barcode);
+            lookupBarcode(barcode);
         }
-    }, [handleBarcodeDetected]);
+    }, [lookupBarcode]);
 
     // Handle product selection
     const handleSelectProduct = useCallback(() => {
@@ -160,12 +90,10 @@ export function BarcodeTab({
         }
     }, [scannedProduct, onSelectFood]);
 
-    // Reset scan
+    // Handle reset scan
     const handleResetScan = useCallback(() => {
-        setScannedBarcode(null);
-        setScannedProduct(null);
-        setLookupError(null);
-    }, []);
+        resetScan();
+    }, [resetScan]);
 
     // Handle manual entry
     const handleManualEntry = useCallback(() => {
@@ -174,31 +102,16 @@ export function BarcodeTab({
 
     return (
         <div className={`flex flex-col h-full ${className}`}>
-            {/* Camera Viewfinder */}
+            {/* Camera / Scanner Area */}
             <div className="relative flex-1 bg-gray-900 rounded-xl overflow-hidden mb-4">
-                {cameraStatus === 'active' ? (
+                {scannerStatus === 'scanning' ? (
                     <>
-                        <video
-                            ref={videoRef}
-                            className="w-full h-full object-cover"
-                            playsInline
-                            muted
-                            aria-label="Камера для сканирования штрих-кода"
-                        />
-                        {/* Scanning overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-64 h-32 border-2 border-white rounded-lg opacity-70">
-                                <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-blue-500" />
-                                <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-blue-500" />
-                                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-blue-500" />
-                                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-blue-500" />
-                            </div>
-                        </div>
+                        <div id={BARCODE_READER_ELEMENT_ID} className="w-full h-full" />
                         {/* Stop camera button */}
                         <button
                             type="button"
-                            onClick={stopCamera}
-                            className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                            onClick={handleStopCamera}
+                            className="absolute top-2 right-2 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                             aria-label="Остановить камеру"
                         >
                             <CameraOff className="w-5 h-5" />
@@ -206,7 +119,10 @@ export function BarcodeTab({
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                        {cameraStatus === 'idle' && (
+                        {/* Hidden container for html5-qrcode to clean up into */}
+                        <div id={BARCODE_READER_ELEMENT_ID} style={{ display: 'none' }} />
+
+                        {scannerStatus === 'idle' && (
                             <>
                                 <Camera className="w-16 h-16 text-gray-400 mb-4" />
                                 <p className="text-gray-400 mb-4">
@@ -214,7 +130,7 @@ export function BarcodeTab({
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={requestCameraAccess}
+                                    onClick={handleStartCamera}
                                     className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                 >
                                     Включить камеру
@@ -222,41 +138,24 @@ export function BarcodeTab({
                             </>
                         )}
 
-                        {cameraStatus === 'requesting' && (
+                        {scannerStatus === 'starting' && (
                             <>
                                 <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
                                 <p className="text-gray-400">
-                                    {CAMERA_PERMISSION_MESSAGES.requesting}
+                                    Запускаем камеру...
                                 </p>
                             </>
                         )}
 
-                        {cameraStatus === 'denied' && (
+                        {scannerStatus === 'error' && (
                             <>
                                 <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
                                 <p className="text-red-400 mb-4">
-                                    {CAMERA_PERMISSION_MESSAGES.denied}
+                                    {lookupError || 'Не удалось получить доступ к камере.'}
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={requestCameraAccess}
-                                    className="flex items-center gap-2 px-4 py-2 text-blue-400 hover:text-blue-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    <span>Попробовать снова</span>
-                                </button>
-                            </>
-                        )}
-
-                        {cameraStatus === 'error' && (
-                            <>
-                                <AlertCircle className="w-16 h-16 text-yellow-400 mb-4" />
-                                <p className="text-yellow-400 mb-4">
-                                    {CAMERA_PERMISSION_MESSAGES.error}
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={requestCameraAccess}
+                                    onClick={handleStartCamera}
                                     className="flex items-center gap-2 px-4 py-2 text-blue-400 hover:text-blue-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                 >
                                     <RefreshCw className="w-4 h-4" />
@@ -339,7 +238,7 @@ export function BarcodeTab({
             )}
 
             {/* Lookup Error */}
-            {lookupError && !scannedProduct && (
+            {lookupError && !scannedProduct && scannerStatus !== 'error' && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-xl mb-4">
                     <div className="flex items-start gap-3">
                         <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
