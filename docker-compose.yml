@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # Frontend - Next.js
@@ -21,8 +21,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://api:4000
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    env_file:
-      - .env.local
     depends_on:
       - api
     networks:
@@ -48,13 +46,19 @@ services:
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ORIGIN=http://localhost:3000
-    env_file:
-      - .env.local
     networks:
       - burcev-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4069/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:4069/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -91,7 +95,15 @@ services:
     ports:
       - "4000:4070"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4070/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:4070/health",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -101,8 +113,6 @@ services:
       - PORT=4000
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-    env_file:
-      - .env.production
     networks:
       - burcev-network
     profiles:
