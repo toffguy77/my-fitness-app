@@ -3,16 +3,27 @@
 /**
  * BarcodeTab Component
  *
- * Barcode scanning interface using html5-qrcode for real barcode detection.
- * Features camera viewfinder, barcode detection, and product lookup.
+ * Barcode scanning interface with three input methods:
+ * 1. Live camera scanning via html5-qrcode
+ * 2. Photo from gallery (scan barcode from image)
+ * 3. Manual barcode text input
  *
  * @module food-tracker/components/BarcodeTab
  */
 
-import { useCallback, useEffect } from 'react';
-import { Camera, CameraOff, RefreshCw, AlertCircle, CheckCircle, Plus } from 'lucide-react';
+import { useCallback, useEffect, useRef } from 'react';
+import { Camera, CameraOff, RefreshCw, AlertCircle, CheckCircle, Plus, Upload, Image } from 'lucide-react';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import type { FoodItem } from '../types';
+
+// ============================================================================
+// Logger
+// ============================================================================
+
+const LOG_PREFIX = '[BarcodeTab]';
+function log(...args: unknown[]) {
+    console.log(LOG_PREFIX, ...args);
+}
 
 // ============================================================================
 // Types
@@ -52,51 +63,97 @@ export function BarcodeTab({
         lookupError,
         startScanning,
         stopScanning,
+        scanFromFile,
         lookupBarcode,
         resetScan,
     } = useBarcodeScanner();
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+
     // Cleanup on unmount
     useEffect(() => {
+        log('mounted');
         return () => {
+            log('unmounting, stopping scanner');
             stopScanning();
         };
     }, [stopScanning]);
 
-    // Handle start camera
+    // Handle start live camera
     const handleStartCamera = useCallback(() => {
+        log('handleStartCamera: starting live camera scan');
         startScanning(BARCODE_READER_ELEMENT_ID);
     }, [startScanning]);
 
     // Handle stop camera
     const handleStopCamera = useCallback(() => {
+        log('handleStopCamera');
         stopScanning();
     }, [stopScanning]);
+
+    // Handle gallery photo selection (scan barcode from image)
+    const handleGallerySelect = useCallback(() => {
+        log('handleGallerySelect: opening file picker');
+        fileInputRef.current?.click();
+    }, []);
+
+    // Handle native camera capture (take photo of barcode)
+    const handleCameraCapture = useCallback(() => {
+        log('handleCameraCapture: opening native camera');
+        cameraInputRef.current?.click();
+    }, []);
+
+    // Handle file input change (gallery or native camera photo)
+    const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) {
+            log('handleFileChange: no file selected');
+            return;
+        }
+        log('handleFileChange: file selected:', file.name, 'size:', file.size, 'type:', file.type);
+
+        if (!file.type.startsWith('image/')) {
+            log('handleFileChange: not an image, ignoring');
+            return;
+        }
+
+        await scanFromFile(file, BARCODE_READER_ELEMENT_ID);
+
+        // Reset input so the same file can be re-selected
+        e.target.value = '';
+    }, [scanFromFile]);
 
     // Handle manual barcode input
     const handleManualBarcodeInput = useCallback((e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const barcode = formData.get('barcode') as string;
+        log('handleManualBarcodeInput: barcode =', barcode);
         if (barcode && barcode.length >= 8) {
             lookupBarcode(barcode);
+        } else {
+            log('handleManualBarcodeInput: barcode too short, need >= 8 digits');
         }
     }, [lookupBarcode]);
 
     // Handle product selection
     const handleSelectProduct = useCallback(() => {
         if (scannedProduct) {
+            log('handleSelectProduct:', scannedProduct.name);
             onSelectFood(scannedProduct);
         }
     }, [scannedProduct, onSelectFood]);
 
     // Handle reset scan
     const handleResetScan = useCallback(() => {
+        log('handleResetScan');
         resetScan();
     }, [resetScan]);
 
     // Handle manual entry
     const handleManualEntry = useCallback(() => {
+        log('handleManualEntry');
         onManualEntry?.();
     }, [onManualEntry]);
 
@@ -125,16 +182,40 @@ export function BarcodeTab({
                         {scannerStatus === 'idle' && (
                             <>
                                 <Camera className="w-16 h-16 text-gray-400 mb-4" />
-                                <p className="text-gray-400 mb-4">
-                                    Наведите камеру на штрих-код продукта
+                                <p className="text-gray-400 mb-6">
+                                    Сканируйте штрих-код камерой или загрузите фото
                                 </p>
-                                <button
-                                    type="button"
-                                    onClick={handleStartCamera}
-                                    className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                >
-                                    Включить камеру
-                                </button>
+                                <div className="flex flex-col gap-3 w-full max-w-xs">
+                                    {/* Live camera scan */}
+                                    <button
+                                        type="button"
+                                        onClick={handleStartCamera}
+                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    >
+                                        <Camera className="w-5 h-5" />
+                                        <span>Сканировать камерой</span>
+                                    </button>
+                                    <div className="flex gap-3">
+                                        {/* Native camera capture (take photo) */}
+                                        <button
+                                            type="button"
+                                            onClick={handleCameraCapture}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                        >
+                                            <Image className="w-5 h-5" />
+                                            <span>Фото</span>
+                                        </button>
+                                        {/* Gallery selection */}
+                                        <button
+                                            type="button"
+                                            onClick={handleGallerySelect}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                        >
+                                            <Upload className="w-5 h-5" />
+                                            <span>Галерея</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </>
                         )}
 
@@ -153,14 +234,34 @@ export function BarcodeTab({
                                 <p className="text-red-400 mb-4">
                                     {lookupError || 'Не удалось получить доступ к камере.'}
                                 </p>
-                                <button
-                                    type="button"
-                                    onClick={handleStartCamera}
-                                    className="flex items-center gap-2 px-4 py-2 text-blue-400 hover:text-blue-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    <span>Попробовать снова</span>
-                                </button>
+                                <div className="flex flex-col gap-3 w-full max-w-xs">
+                                    <button
+                                        type="button"
+                                        onClick={handleStartCamera}
+                                        className="flex items-center justify-center gap-2 px-4 py-3 text-blue-400 hover:text-blue-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    >
+                                        <RefreshCw className="w-4 h-4" />
+                                        <span>Попробовать снова</span>
+                                    </button>
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleCameraCapture}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                        >
+                                            <Image className="w-5 h-5" />
+                                            <span>Фото</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleGallerySelect}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
+                                        >
+                                            <Upload className="w-5 h-5" />
+                                            <span>Галерея</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </>
                         )}
                     </div>
@@ -193,7 +294,7 @@ export function BarcodeTab({
             {isLookingUp && (
                 <div className="flex items-center justify-center gap-3 p-4 bg-gray-100 rounded-xl mb-4">
                     <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-gray-600">Ищем продукт...</span>
+                    <span className="text-gray-600">Ищем продукт{scannedBarcode ? ` (${scannedBarcode})` : ''}...</span>
                 </div>
             )}
 
@@ -206,6 +307,9 @@ export function BarcodeTab({
                             <h3 className="font-medium text-gray-900">{scannedProduct.name}</h3>
                             {scannedProduct.brand && (
                                 <p className="text-sm text-gray-500">{scannedProduct.brand}</p>
+                            )}
+                            {scannedBarcode && (
+                                <p className="text-xs text-gray-400 mt-1">Штрих-код: {scannedBarcode}</p>
                             )}
                             <div className="mt-2 text-sm text-gray-600">
                                 <p>На 100г:</p>
@@ -286,6 +390,25 @@ export function BarcodeTab({
                     </button>
                 </div>
             )}
+
+            {/* Hidden file inputs for gallery and native camera */}
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                aria-label="Выбрать фото штрих-кода из галереи"
+            />
+            <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                className="hidden"
+                aria-label="Сфотографировать штрих-код"
+            />
         </div>
     );
 }
