@@ -269,7 +269,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const validData: WeeklyPlan = {
                 id: 'plan-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 caloriesGoal: 2000,
                 proteinGoal: 150,
                 fatGoal: 70,
@@ -280,7 +280,7 @@ describe('Dashboard Types - Validation Schemas', () => {
                 isActive: true,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                createdBy: 'coach-456',
+                createdBy: 'curator-456',
             }
 
             const result = weeklyPlanSchema.safeParse(validData)
@@ -291,7 +291,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const validData = {
                 id: 'plan-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 caloriesGoal: 2000,
                 proteinGoal: 150,
                 startDate: new Date('2024-01-29'),
@@ -299,7 +299,7 @@ describe('Dashboard Types - Validation Schemas', () => {
                 isActive: true,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                createdBy: 'coach-456',
+                createdBy: 'curator-456',
             }
 
             const result = weeklyPlanSchema.safeParse(validData)
@@ -310,7 +310,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const invalidData = {
                 id: 'plan-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 caloriesGoal: 2000,
                 proteinGoal: 150,
                 startDate: new Date('2024-02-04'),
@@ -318,7 +318,7 @@ describe('Dashboard Types - Validation Schemas', () => {
                 isActive: true,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                createdBy: 'coach-456',
+                createdBy: 'curator-456',
             }
 
             const result = weeklyPlanSchema.safeParse(invalidData)
@@ -329,7 +329,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const validData = {
                 id: 'plan-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 caloriesGoal: 2000,
                 proteinGoal: 150,
                 startDate: new Date('2024-01-29'),
@@ -337,7 +337,7 @@ describe('Dashboard Types - Validation Schemas', () => {
                 isActive: true,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                createdBy: 'coach-456',
+                createdBy: 'curator-456',
             }
 
             const result = weeklyPlanSchema.safeParse(validData)
@@ -350,7 +350,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const validData: Task = {
                 id: 'task-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 title: 'Complete workout plan',
                 description: 'Follow the strength training routine',
                 weekNumber: 1,
@@ -369,7 +369,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const validData: Task = {
                 id: 'task-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 title: 'Complete workout plan',
                 description: 'Follow the strength training routine',
                 weekNumber: 1,
@@ -389,7 +389,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const invalidData = {
                 id: 'task-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 title: '',
                 description: 'Follow the strength training routine',
                 weekNumber: 1,
@@ -408,7 +408,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const invalidData = {
                 id: 'task-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 title: 'a'.repeat(201),
                 description: 'Description',
                 weekNumber: 1,
@@ -427,7 +427,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const invalidData = {
                 id: 'task-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 title: 'Task',
                 description: 'Description',
                 weekNumber: 0,
@@ -446,7 +446,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const invalidData = {
                 id: 'task-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 title: 'Task',
                 description: 'Description',
                 weekNumber: 1,
@@ -514,7 +514,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const validData: WeeklyReport = {
                 id: 'report-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 weekStart: new Date('2024-01-29'),
                 weekEnd: new Date('2024-02-04'),
                 weekNumber: 5,
@@ -530,7 +530,7 @@ describe('Dashboard Types - Validation Schemas', () => {
                 photoUrl: 'https://example.com/photo.jpg',
                 submittedAt: new Date(),
                 reviewedAt: new Date(),
-                coachFeedback: 'Great progress!',
+                curatorFeedback: 'Great progress!',
                 createdAt: new Date(),
                 updatedAt: new Date(),
             }
@@ -543,7 +543,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const validData = {
                 id: 'report-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 weekStart: new Date('2024-01-29'),
                 weekEnd: new Date('2024-02-04'),
                 weekNumber: 5,
@@ -569,7 +569,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const invalidData = {
                 id: 'report-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 weekStart: new Date('2024-02-04'),
                 weekEnd: new Date('2024-01-29'),
                 weekNumber: 5,
@@ -595,7 +595,7 @@ describe('Dashboard Types - Validation Schemas', () => {
             const invalidData = {
                 id: 'report-123',
                 userId: 'user-123',
-                coachId: 'coach-456',
+                curatorId: 'curator-456',
                 weekStart: new Date('2024-01-29'),
                 weekEnd: new Date('2024-02-04'),
                 weekNumber: 5,

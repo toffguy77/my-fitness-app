@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom'
 import 'whatwg-fetch'
 
+// Mock scrollIntoView (not available in jsdom)
+Element.prototype.scrollIntoView = jest.fn();
+
 // Suppress React act() warnings and expected test errors
 const originalError = console.error;
 beforeAll(() => {

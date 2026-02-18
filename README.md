@@ -1,6 +1,6 @@
 # BURCEV - Fitness & Nutrition Tracking Platform
 
-Modern, scalable monorepo architecture for nutrition tracking and fitness coaching application.
+Modern, scalable monorepo architecture for nutrition tracking and fitness curation application.
 
 ## 🚀 Quick Start
 

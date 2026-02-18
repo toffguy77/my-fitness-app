@@ -27,8 +27,8 @@ The dashboard is the most complex feature in BURCEV, integrating multiple data s
     - _Requirements: 13.1, 14.1, 14.2, 14.3_
 
   - [x] 2.2 Write property tests for validation
-    - **Property 31: Coach Plan Validation**
-    - **Property 32: Coach Task Validation**
+    - **Property 31: Curator Plan Validation**
+    - **Property 32: Curator Task Validation**
     - **Validates: Requirements 14.1, 14.2, 14.3**
 
 - [x] 3. Backend service layer
@@ -45,19 +45,19 @@ The dashboard is the most complex feature in BURCEV, integrating multiple data s
 
   - [x] 3.3 Implement WeeklyPlanService
     - GetActivePlan(ctx, userID) method
-    - CreatePlan(ctx, coachID, clientID, plan) method (coach only)
-    - UpdatePlan(ctx, coachID, planID, updates) method (coach only)
-    - Validate coach-client relationship
+    - CreatePlan(ctx, curatorID, clientID, plan) method (curator only)
+    - UpdatePlan(ctx, curatorID, planID, updates) method (curator only)
+    - Validate curator-client relationship
     - _Requirements: 8.1, 8.2, 8.3, 14.1, 14.2, 14.6_
 
-  - [x] 3.4 Write property test for coach authorization
-    - **Property 34: Coach Authorization**
+  - [x] 3.4 Write property test for curator authorization
+    - **Property 34: Curator Authorization**
     - **Validates: Requirements 14.6**
 
 
   - [x] 3.5 Implement TaskService
     - GetTasks(ctx, userID, weekNumber) method
-    - CreateTask(ctx, coachID, clientID, task) method (coach only)
+    - CreateTask(ctx, curatorID, clientID, task) method (curator only)
     - UpdateTaskStatus(ctx, userID, taskID, status) method
     - Filter tasks by week and status
     - _Requirements: 9.1, 9.2, 9.5, 14.3, 14.6_
@@ -70,7 +70,7 @@ The dashboard is the most complex feature in BURCEV, integrating multiple data s
     - ValidateWeekData(ctx, userID, weekStart, weekEnd) method
     - CreateWeeklyReport(ctx, userID, weekStart, weekEnd) method
     - Calculate summary statistics
-    - Trigger coach notification
+    - Trigger curator notification
     - _Requirements: 10.2, 10.3, 10.4, 10.5_
 
   - [x] 3.8 Write property test for weekly report validation
@@ -99,13 +99,13 @@ The dashboard is the most complex feature in BURCEV, integrating multiple data s
 
   - [x] 4.2 Create WeeklyPlanHandler with endpoints
     - GET /api/dashboard/weekly-plan
-    - POST /api/dashboard/weekly-plan (coach only)
+    - POST /api/dashboard/weekly-plan (curator only)
     - Implement authorization checks
     - _Requirements: 8.1, 8.7, 14.6_
 
   - [x] 4.3 Create TaskHandler with endpoints
     - GET /api/dashboard/tasks
-    - POST /api/dashboard/tasks (coach only)
+    - POST /api/dashboard/tasks (curator only)
     - PATCH /api/dashboard/tasks/:id
     - _Requirements: 9.1, 9.5, 14.6_
 
@@ -359,7 +359,7 @@ The dashboard is the most complex feature in BURCEV, integrating multiple data s
 
   - [x] 12.3 Implement report submission flow
     - Create weekly report record
-    - Trigger coach notification
+    - Trigger curator notification
     - Disable editing for submitted week
     - Display "Report submitted" indicator
     - _Requirements: 10.4, 10.5, 10.6, 10.7_
@@ -513,8 +513,8 @@ The dashboard is the most complex feature in BURCEV, integrating multiple data s
     - Test animation behavior
     - _Requirements: 15.1-15.12_
 
-- [x] 18. Coach notification integration
-  - [x] 18.1 Implement coach notifications
+- [x] 18. Curator notification integration
+  - [x] 18.1 Implement curator notifications
     - Send notification when plan is updated
     - Send notification when task is assigned
     - Send notification when weekly report submitted
@@ -522,7 +522,7 @@ The dashboard is the most complex feature in BURCEV, integrating multiple data s
     - _Requirements: 14.4, 14.5_
 
   - [x] 18.2 Write property test for notifications
-    - **Property 33: Coach-Client Notification**
+    - **Property 33: Curator-Client Notification**
     - **Validates: Requirements 14.4, 14.5**
 
 - [x] 19. Performance optimization

@@ -95,12 +95,12 @@ export interface DailyMetrics {
 }
 
 /**
- * Weekly plan assigned by coach
+ * Weekly plan assigned by curator
  */
 export interface WeeklyPlan {
     id: string
     userId: string
-    coachId: string
+    curatorId: string
 
     // Targets
     caloriesGoal: number
@@ -128,12 +128,12 @@ export interface WeeklyPlan {
 export type TaskStatus = 'active' | 'completed' | 'overdue'
 
 /**
- * Task assigned by coach
+ * Task assigned by curator
  */
 export interface Task {
     id: string
     userId: string
-    coachId: string
+    curatorId: string
 
     // Content
     title: string
@@ -167,12 +167,12 @@ export interface WeeklyReportSummary {
 }
 
 /**
- * Weekly report submitted to coach
+ * Weekly report submitted to curator
  */
 export interface WeeklyReport {
     id: string
     userId: string
-    coachId: string
+    curatorId: string
 
     // Week identifier
     weekStart: Date
@@ -188,7 +188,7 @@ export interface WeeklyReport {
     // Status
     submittedAt: Date
     reviewedAt?: Date
-    coachFeedback?: string
+    curatorFeedback?: string
 
     // Metadata
     createdAt: Date
@@ -307,7 +307,7 @@ export const dailyMetricsSchema = z.object({
 export const weeklyPlanSchema = z.object({
     id: z.string().min(1),
     userId: z.string().min(1),
-    coachId: z.string().min(1),
+    curatorId: z.string().min(1),
     caloriesGoal: z.number().min(0).max(10000),
     proteinGoal: z.number().min(0).max(1000),
     fatGoal: z.number().min(0).max(1000).optional(),
@@ -330,7 +330,7 @@ export const weeklyPlanSchema = z.object({
 export const taskSchema = z.object({
     id: z.string().min(1),
     userId: z.string().min(1),
-    coachId: z.string().min(1),
+    curatorId: z.string().min(1),
     title: z.string().min(1).max(200),
     description: z.string().max(2000),
     weekNumber: z.number().min(1).max(52),
@@ -361,7 +361,7 @@ export const weeklyReportSummarySchema = z.object({
 export const weeklyReportSchema = z.object({
     id: z.string().min(1),
     userId: z.string().min(1),
-    coachId: z.string().min(1),
+    curatorId: z.string().min(1),
     weekStart: z.date(),
     weekEnd: z.date(),
     weekNumber: z.number().min(1).max(52),
@@ -369,7 +369,7 @@ export const weeklyReportSchema = z.object({
     photoUrl: z.string().url().optional(),
     submittedAt: z.date(),
     reviewedAt: z.date().optional(),
-    coachFeedback: z.string().max(2000).optional(),
+    curatorFeedback: z.string().max(2000).optional(),
     createdAt: z.date(),
     updatedAt: z.date(),
 }).refine(data => data.weekEnd >= data.weekStart, {

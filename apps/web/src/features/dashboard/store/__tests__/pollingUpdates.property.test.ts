@@ -30,7 +30,7 @@ function generateMockWeeklyPlan(caloriesGoal: number, proteinGoal: number) {
         data: {
             id: `plan-${Date.now()}`,
             userId: 'user-1',
-            coachId: 'coach-1',
+            curatorId: 'curator-1',
             caloriesGoal,
             proteinGoal,
             startDate: new Date(),
@@ -38,7 +38,7 @@ function generateMockWeeklyPlan(caloriesGoal: number, proteinGoal: number) {
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date(),
-            createdBy: 'coach-1',
+            createdBy: 'curator-1',
         },
     };
 }
@@ -51,7 +51,7 @@ function generateMockTasks(count: number) {
         data: Array.from({ length: count }, (_, i) => ({
             id: `task-${i}`,
             userId: 'user-1',
-            coachId: 'coach-1',
+            curatorId: 'curator-1',
             title: `Task ${i}`,
             description: `Description ${i}`,
             weekNumber: 1,
@@ -85,7 +85,7 @@ describe('Property 17: Plan Polling Updates', () => {
     });
 
     /**
-     * For any weekly plan update by a coach, the client's Weekly_Plan_Section
+     * For any weekly plan update by a curator, the client's Weekly_Plan_Section
      * should reflect the updated targets within 30 seconds through polling.
      *
      * This property validates that polling updates work correctly.

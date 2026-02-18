@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Dashboard is the central interface of the BURCEV platform, providing a comprehensive view of daily fitness tracking, weekly planning, and long-term progress. It combines real-time data entry with historical visualization, enabling clients to monitor their nutrition, weight, physical activity, and coach-assigned tasks in a single, cohesive interface.
+The Dashboard is the central interface of the BURCEV platform, providing a comprehensive view of daily fitness tracking, weekly planning, and long-term progress. It combines real-time data entry with historical visualization, enabling clients to monitor their nutrition, weight, physical activity, and curator-assigned tasks in a single, cohesive interface.
 
 The design follows a mobile-first approach with a vertical layout that prioritizes daily tracking at the top (most frequently accessed) and weekly/long-term sections below. The architecture emphasizes real-time updates, optimistic UI patterns, and seamless integration with existing features (notifications, food tracker, analytics).
 
@@ -84,7 +84,7 @@ interface DashboardState {
 1. **Initial Load**: Dashboard fetches current week data on mount
 2. **Date Navigation**: User selects date → Store updates → Components re-render with new date's data
 3. **Metric Update**: User logs metric → Optimistic update → API call → Rollback on error
-4. **Real-time Sync**: Polling every 30 seconds for coach updates (plans, tasks)
+4. **Real-time Sync**: Polling every 30 seconds for curator updates (plans, tasks)
 
 ## Components and Interfaces
 
@@ -418,7 +418,7 @@ interface DailyMetrics {
 interface WeeklyPlan {
   id: string
   userId: string
-  coachId: string
+  curatorId: string
   
   // Targets
   caloriesGoal: number
@@ -447,7 +447,7 @@ interface WeeklyPlan {
 interface Task {
   id: string
   userId: string
-  coachId: string
+  curatorId: string
   
   // Content
   title: string
@@ -474,7 +474,7 @@ interface Task {
 interface WeeklyReport {
   id: string
   userId: string
-  coachId: string
+  curatorId: string
   
   // Week identifier
   weekStart: Date
@@ -498,7 +498,7 @@ interface WeeklyReport {
   // Status
   submittedAt: Date
   reviewedAt?: Date
-  coachFeedback?: string
+  curatorFeedback?: string
   
   // Metadata
   createdAt: Date
@@ -563,13 +563,13 @@ CREATE POLICY "Users can update own metrics"
   ON daily_metrics FOR UPDATE
   USING (auth.uid() = user_id);
 
--- Coaches can view client metrics
-CREATE POLICY "Coaches can view client metrics"
+-- Curators can view client metrics
+CREATE POLICY "Curators can view client metrics"
   ON daily_metrics FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM coach_client_relationships
-      WHERE coach_id = auth.uid()
+      SELECT 1 FROM curator_client_relationships
+      WHERE curator_id = auth.uid()
       AND client_id = daily_metrics.user_id
       AND status = 'active'
     )
@@ -586,7 +586,7 @@ CREATE INDEX idx_daily_metrics_date ON daily_metrics(date DESC);
 CREATE TABLE weekly_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  coach_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  curator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   
   -- Targets
   calories_goal INTEGER NOT NULL,
@@ -617,13 +617,13 @@ CREATE POLICY "Users can view own plans"
   ON weekly_plans FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Coaches can manage client plans"
+CREATE POLICY "Curators can manage client plans"
   ON weekly_plans FOR ALL
   USING (
-    auth.uid() = coach_id AND
+    auth.uid() = curator_id AND
     EXISTS (
-      SELECT 1 FROM coach_client_relationships
-      WHERE coach_id = auth.uid()
+      SELECT 1 FROM curator_client_relationships
+      WHERE curator_id = auth.uid()
       AND client_id = weekly_plans.user_id
       AND status = 'active'
     )
@@ -640,7 +640,7 @@ CREATE INDEX idx_weekly_plans_dates ON weekly_plans(start_date, end_date);
 CREATE TABLE tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  coach_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  curator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   
   -- Content
   title TEXT NOT NULL,
@@ -672,13 +672,13 @@ CREATE POLICY "Users can update own task status"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Coaches can manage client tasks"
+CREATE POLICY "Curators can manage client tasks"
   ON tasks FOR ALL
   USING (
-    auth.uid() = coach_id AND
+    auth.uid() = curator_id AND
     EXISTS (
-      SELECT 1 FROM coach_client_relationships
-      WHERE coach_id = auth.uid()
+      SELECT 1 FROM curator_client_relationships
+      WHERE curator_id = auth.uid()
       AND client_id = tasks.user_id
       AND status = 'active'
     )
@@ -695,7 +695,7 @@ CREATE INDEX idx_tasks_week ON tasks(user_id, week_number DESC);
 CREATE TABLE weekly_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  coach_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  curator_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   
   -- Week identifier
   week_start DATE NOT NULL,
@@ -711,7 +711,7 @@ CREATE TABLE weekly_reports (
   -- Status
   submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   reviewed_at TIMESTAMP WITH TIME ZONE,
-  coach_feedback TEXT,
+  curator_feedback TEXT,
   
   -- Metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -731,13 +731,13 @@ CREATE POLICY "Users can insert own reports"
   ON weekly_reports FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Coaches can view and update client reports"
+CREATE POLICY "Curators can view and update client reports"
   ON weekly_reports FOR ALL
   USING (
-    auth.uid() = coach_id AND
+    auth.uid() = curator_id AND
     EXISTS (
-      SELECT 1 FROM coach_client_relationships
-      WHERE coach_id = auth.uid()
+      SELECT 1 FROM curator_client_relationships
+      WHERE curator_id = auth.uid()
       AND client_id = weekly_reports.user_id
       AND status = 'active'
     )
@@ -745,7 +745,7 @@ CREATE POLICY "Coaches can view and update client reports"
 
 -- Indexes
 CREATE INDEX idx_weekly_reports_user_week ON weekly_reports(user_id, week_start DESC);
-CREATE INDEX idx_weekly_reports_coach ON weekly_reports(coach_id, submitted_at DESC);
+CREATE INDEX idx_weekly_reports_curator ON weekly_reports(curator_id, submitted_at DESC);
 ```
 
 ### weekly_photos table
@@ -779,12 +779,12 @@ CREATE POLICY "Users can manage own photos"
   ON weekly_photos FOR ALL
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Coaches can view client photos"
+CREATE POLICY "Curators can view client photos"
   ON weekly_photos FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM coach_client_relationships
-      WHERE coach_id = auth.uid()
+      SELECT 1 FROM curator_client_relationships
+      WHERE curator_id = auth.uid()
       AND client_id = weekly_photos.user_id
       AND status = 'active'
     )
@@ -909,7 +909,7 @@ After reflection, the following properties provide unique validation value witho
 
 ### Property 17: Plan Polling Updates
 
-*For any* weekly plan update by a coach, the client's Weekly_Plan_Section should reflect the updated targets within 30 seconds through polling.
+*For any* weekly plan update by a curator, the client's Weekly_Plan_Section should reflect the updated targets within 30 seconds through polling.
 
 **Validates: Requirements 8.7**
 
@@ -933,7 +933,7 @@ After reflection, the following properties provide unique validation value witho
 
 ### Property 21: Weekly Report Creation
 
-*For any* valid week's data (meeting all requirements), submitting the weekly report should create a report record, notify the coach, disable editing for that week, and display a "Report submitted" indicator.
+*For any* valid week's data (meeting all requirements), submitting the weekly report should create a report record, notify the curator, disable editing for that week, and display a "Report submitted" indicator.
 
 **Validates: Requirements 10.4, 10.5, 10.6, 10.7**
 
@@ -991,27 +991,27 @@ After reflection, the following properties provide unique validation value witho
 
 **Validates: Requirements 13.6**
 
-### Property 31: Coach Plan Validation
+### Property 31: Curator Plan Validation
 
-*For any* weekly plan created by a coach, the system should validate that required fields exist (calorie goal, protein goal, valid start/end dates with end >= start) and reject invalid plans with error messages.
+*For any* weekly plan created by a curator, the system should validate that required fields exist (calorie goal, protein goal, valid start/end dates with end >= start) and reject invalid plans with error messages.
 
 **Validates: Requirements 14.1, 14.2**
 
-### Property 32: Coach Task Validation
+### Property 32: Curator Task Validation
 
-*For any* task assigned by a coach, the system should validate that required fields exist (title, description, due date) and reject invalid tasks with error messages.
+*For any* task assigned by a curator, the system should validate that required fields exist (title, description, due date) and reject invalid tasks with error messages.
 
 **Validates: Requirements 14.3**
 
-### Property 33: Coach-Client Notification
+### Property 33: Curator-Client Notification
 
-*For any* coach update (plan or task) or client action (weekly report submission), the system should notify the relevant party (client or coach) within 30 seconds.
+*For any* curator update (plan or task) or client action (weekly report submission), the system should notify the relevant party (client or curator) within 30 seconds.
 
 **Validates: Requirements 14.4, 14.5**
 
-### Property 34: Coach Authorization
+### Property 34: Curator Authorization
 
-*For all* coach actions (create/update plan, assign/update task, view client data), the system should verify the coach has an active relationship with the specific client before processing.
+*For all* curator actions (create/update plan, assign/update task, view client data), the system should verify the curator has an active relationship with the specific client before processing.
 
 **Validates: Requirements 14.6**
 
@@ -1372,7 +1372,7 @@ apps/api/internal/modules/dashboard/
 - Fetch daily metrics for a specific date
 - Query params: `date` (ISO date string)
 - Response: `DailyMetrics` object
-- Auth: Required (user must own data or be assigned coach)
+- Auth: Required (user must own data or be assigned curator)
 
 **POST /api/dashboard/daily**
 - Create or update daily metrics
@@ -1391,11 +1391,11 @@ apps/api/internal/modules/dashboard/
 - Response: `WeeklyPlan` object or null
 - Auth: Required
 
-**POST /api/dashboard/weekly-plan** (Coach only)
+**POST /api/dashboard/weekly-plan** (Curator only)
 - Create or update weekly plan for client
 - Body: `WeeklyPlan` object
 - Response: Created `WeeklyPlan`
-- Auth: Required (coach must have active relationship with client)
+- Auth: Required (curator must have active relationship with client)
 
 **GET /api/dashboard/tasks**
 - Fetch tasks for user
@@ -1403,11 +1403,11 @@ apps/api/internal/modules/dashboard/
 - Response: Array of `Task` objects
 - Auth: Required
 
-**POST /api/dashboard/tasks** (Coach only)
+**POST /api/dashboard/tasks** (Curator only)
 - Create task for client
 - Body: `Task` object
 - Response: Created `Task`
-- Auth: Required (coach must have active relationship with client)
+- Auth: Required (curator must have active relationship with client)
 
 **PATCH /api/dashboard/tasks/:id**
 - Update task status (mark complete)
@@ -1546,12 +1546,12 @@ apps/api/internal/modules/dashboard/
 **Row-Level Security (RLS)**:
 - All database tables have RLS policies
 - Users can only access own data
-- Coaches can access client data (with active relationship)
+- Curators can access client data (with active relationship)
 - Super admins have full access
 
 **Authorization Checks**:
 - Verify user identity on every request
-- Check coach-client relationship for coach actions
+- Check curator-client relationship for curator actions
 - Validate resource ownership before operations
 - Log unauthorized access attempts
 

@@ -375,7 +375,7 @@ func (s *Service) GetWeeklyPlan(ctx context.Context, userID int64) (*WeeklyPlan,
 	startTime := time.Now()
 
 	query := `
-		SELECT id, user_id, coach_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
+		SELECT id, user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
 		       start_date, end_date, is_active, created_at, updated_at, created_by
 		FROM weekly_plans
 		WHERE user_id = $1 AND is_active = true
@@ -387,7 +387,7 @@ func (s *Service) GetWeeklyPlan(ctx context.Context, userID int64) (*WeeklyPlan,
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&plan.ID,
 		&plan.UserID,
-		&plan.CoachID,
+		&plan.CuratorID,
 		&plan.CaloriesGoal,
 		&plan.ProteinGoal,
 		&plan.FatGoal,
@@ -428,7 +428,7 @@ func (s *Service) GetTasks(ctx context.Context, userID int64, weekNumber int) ([
 	startTime := time.Now()
 
 	query := `
-		SELECT id, user_id, coach_id, title, description, week_number, assigned_at,
+		SELECT id, user_id, curator_id, title, description, week_number, assigned_at,
 		       due_date, completed_at, status, created_at, updated_at
 		FROM tasks
 		WHERE user_id = $1 AND week_number = $2
@@ -451,7 +451,7 @@ func (s *Service) GetTasks(ctx context.Context, userID int64, weekNumber int) ([
 		err := rows.Scan(
 			&task.ID,
 			&task.UserID,
-			&task.CoachID,
+			&task.CuratorID,
 			&task.Title,
 			&task.Description,
 			&task.WeekNumber,
@@ -487,7 +487,7 @@ func (s *Service) GetActivePlan(ctx context.Context, userID int64) (*WeeklyPlan,
 	startTime := time.Now()
 
 	query := `
-		SELECT id, user_id, coach_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
+		SELECT id, user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
 		       start_date, end_date, is_active, created_at, updated_at, created_by
 		FROM weekly_plans
 		WHERE user_id = $1 AND is_active = true AND end_date >= CURRENT_DATE
@@ -499,7 +499,7 @@ func (s *Service) GetActivePlan(ctx context.Context, userID int64) (*WeeklyPlan,
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&plan.ID,
 		&plan.UserID,
-		&plan.CoachID,
+		&plan.CuratorID,
 		&plan.CaloriesGoal,
 		&plan.ProteinGoal,
 		&plan.FatGoal,
@@ -536,24 +536,24 @@ func (s *Service) GetActivePlan(ctx context.Context, userID int64) (*WeeklyPlan,
 	return &plan, nil
 }
 
-// CreatePlan creates a new weekly plan (coach only)
-func (s *Service) CreatePlan(ctx context.Context, coachID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error) {
+// CreatePlan creates a new weekly plan (curator only)
+func (s *Service) CreatePlan(ctx context.Context, curatorID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error) {
 	startTime := time.Now()
 
-	// Validate coach-client relationship
-	hasRelationship, err := s.validateCoachClientRelationship(ctx, coachID, clientID)
+	// Validate curator-client relationship
+	hasRelationship, err := s.validateCuratorClientRelationship(ctx, curatorID, clientID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to validate coach-client relationship: %w", err)
+		return nil, fmt.Errorf("failed to validate curator-client relationship: %w", err)
 	}
 	if !hasRelationship {
-		return nil, fmt.Errorf("coach %d does not have an active relationship with client %d", coachID, clientID)
+		return nil, fmt.Errorf("curator %d does not have an active relationship with client %d", curatorID, clientID)
 	}
 
 	// Set required fields
 	plan.ID = uuid.New().String()
 	plan.UserID = clientID
-	plan.CoachID = coachID
-	plan.CreatedBy = coachID
+	plan.CuratorID = curatorID
+	plan.CreatedBy = curatorID
 	plan.IsActive = true
 	plan.CreatedAt = time.Now()
 	plan.UpdatedAt = time.Now()
@@ -581,10 +581,10 @@ func (s *Service) CreatePlan(ctx context.Context, coachID int64, clientID int64,
 	// Insert new plan
 	query := `
 		INSERT INTO weekly_plans (
-			id, user_id, coach_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
+			id, user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
 			start_date, end_date, is_active, created_at, updated_at, created_by
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW(), $12)
-		RETURNING id, user_id, coach_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
+		RETURNING id, user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
 		          start_date, end_date, is_active, created_at, updated_at, created_by
 	`
 
@@ -594,7 +594,7 @@ func (s *Service) CreatePlan(ctx context.Context, coachID int64, clientID int64,
 		query,
 		plan.ID,
 		plan.UserID,
-		plan.CoachID,
+		plan.CuratorID,
 		plan.CaloriesGoal,
 		plan.ProteinGoal,
 		plan.FatGoal,
@@ -607,7 +607,7 @@ func (s *Service) CreatePlan(ctx context.Context, coachID int64, clientID int64,
 	).Scan(
 		&result.ID,
 		&result.UserID,
-		&result.CoachID,
+		&result.CuratorID,
 		&result.CaloriesGoal,
 		&result.ProteinGoal,
 		&result.FatGoal,
@@ -623,22 +623,22 @@ func (s *Service) CreatePlan(ctx context.Context, coachID int64, clientID int64,
 
 	if err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
-			"coach_id":  coachID,
-			"client_id": clientID,
+			"curator_id": curatorID,
+			"client_id":  clientID,
 		})
 		return nil, fmt.Errorf("failed to create plan: %w", err)
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
-		"coach_id":  coachID,
-		"client_id": clientID,
-		"plan_id":   result.ID,
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"plan_id":    result.ID,
 	})
 
 	s.log.LogBusinessEvent("weekly_plan_created", map[string]interface{}{
-		"plan_id":   result.ID,
-		"coach_id":  coachID,
-		"client_id": clientID,
+		"plan_id":    result.ID,
+		"curator_id": curatorID,
+		"client_id":  clientID,
 	})
 
 	// Send notification to client
@@ -650,13 +650,13 @@ func (s *Service) CreatePlan(ctx context.Context, coachID int64, clientID int64,
 	return &result, nil
 }
 
-// UpdatePlan updates an existing weekly plan (coach only)
-func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error) {
+// UpdatePlan updates an existing weekly plan (curator only)
+func (s *Service) UpdatePlan(ctx context.Context, curatorID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error) {
 	startTime := time.Now()
 
 	// Get existing plan
 	existingQuery := `
-		SELECT id, user_id, coach_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
+		SELECT id, user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
 		       start_date, end_date, is_active, created_at, updated_at, created_by
 		FROM weekly_plans
 		WHERE id = $1
@@ -666,7 +666,7 @@ func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, 
 	err := s.db.QueryRowContext(ctx, existingQuery, planID).Scan(
 		&existing.ID,
 		&existing.UserID,
-		&existing.CoachID,
+		&existing.CuratorID,
 		&existing.CaloriesGoal,
 		&existing.ProteinGoal,
 		&existing.FatGoal,
@@ -687,18 +687,18 @@ func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, 
 		return nil, fmt.Errorf("failed to query existing plan: %w", err)
 	}
 
-	// Validate coach-client relationship
-	hasRelationship, err := s.validateCoachClientRelationship(ctx, coachID, existing.UserID)
+	// Validate curator-client relationship
+	hasRelationship, err := s.validateCuratorClientRelationship(ctx, curatorID, existing.UserID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to validate coach-client relationship: %w", err)
+		return nil, fmt.Errorf("failed to validate curator-client relationship: %w", err)
 	}
 	if !hasRelationship {
-		return nil, fmt.Errorf("coach %d does not have an active relationship with client %d", coachID, existing.UserID)
+		return nil, fmt.Errorf("curator %d does not have an active relationship with client %d", curatorID, existing.UserID)
 	}
 
-	// Verify coach owns this plan
-	if existing.CoachID != coachID {
-		return nil, fmt.Errorf("coach %d is not authorized to update plan %s", coachID, planID)
+	// Verify curator owns this plan
+	if existing.CuratorID != curatorID {
+		return nil, fmt.Errorf("curator %d is not authorized to update plan %s", curatorID, planID)
 	}
 
 	// Apply updates
@@ -735,7 +735,7 @@ func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, 
 		SET calories_goal = $1, protein_goal = $2, fat_goal = $3, carbs_goal = $4, steps_goal = $5,
 		    start_date = $6, end_date = $7, updated_at = NOW()
 		WHERE id = $8
-		RETURNING id, user_id, coach_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
+		RETURNING id, user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal,
 		          start_date, end_date, is_active, created_at, updated_at, created_by
 	`
 
@@ -754,7 +754,7 @@ func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, 
 	).Scan(
 		&result.ID,
 		&result.UserID,
-		&result.CoachID,
+		&result.CuratorID,
 		&result.CaloriesGoal,
 		&result.ProteinGoal,
 		&result.FatGoal,
@@ -770,21 +770,21 @@ func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, 
 
 	if err != nil {
 		s.log.LogDatabaseQuery(updateQuery, time.Since(startTime), err, map[string]interface{}{
-			"coach_id": coachID,
-			"plan_id":  planID,
+			"curator_id": curatorID,
+			"plan_id":    planID,
 		})
 		return nil, fmt.Errorf("failed to update plan: %w", err)
 	}
 
 	s.log.LogDatabaseQuery(updateQuery, time.Since(startTime), nil, map[string]interface{}{
-		"coach_id": coachID,
-		"plan_id":  planID,
+		"curator_id": curatorID,
+		"plan_id":    planID,
 	})
 
 	s.log.LogBusinessEvent("weekly_plan_updated", map[string]interface{}{
-		"plan_id":   planID,
-		"coach_id":  coachID,
-		"client_id": result.UserID,
+		"plan_id":    planID,
+		"curator_id": curatorID,
+		"client_id":  result.UserID,
 	})
 
 	// Send notification to client
@@ -796,19 +796,19 @@ func (s *Service) UpdatePlan(ctx context.Context, coachID int64, planID string, 
 	return &result, nil
 }
 
-// validateCoachClientRelationship checks if a coach has an active relationship with a client
-func (s *Service) validateCoachClientRelationship(ctx context.Context, coachID int64, clientID int64) (bool, error) {
+// validateCuratorClientRelationship checks if a curator has an active relationship with a client
+func (s *Service) validateCuratorClientRelationship(ctx context.Context, curatorID int64, clientID int64) (bool, error) {
 	query := `
 		SELECT EXISTS (
-			SELECT 1 FROM coach_client_relationships
-			WHERE coach_id = $1 AND client_id = $2 AND status = 'active'
+			SELECT 1 FROM curator_client_relationships
+			WHERE curator_id = $1 AND client_id = $2 AND status = 'active'
 		)
 	`
 
 	var exists bool
-	err := s.db.QueryRowContext(ctx, query, coachID, clientID).Scan(&exists)
+	err := s.db.QueryRowContext(ctx, query, curatorID, clientID).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("failed to check coach-client relationship: %w", err)
+		return false, fmt.Errorf("failed to check curator-client relationship: %w", err)
 	}
 
 	return exists, nil
@@ -819,7 +819,7 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 	startTime := time.Now()
 
 	query := `
-		SELECT id, user_id, coach_id, title, description, week_number, assigned_at,
+		SELECT id, user_id, curator_id, title, description, week_number, assigned_at,
 		       due_date, completed_at, status, created_at, updated_at
 		FROM tasks
 		WHERE user_id = $1 AND week_number = $2
@@ -842,7 +842,7 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 		err := rows.Scan(
 			&task.ID,
 			&task.UserID,
-			&task.CoachID,
+			&task.CuratorID,
 			&task.Title,
 			&task.Description,
 			&task.WeekNumber,
@@ -873,23 +873,23 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 	return tasks, nil
 }
 
-// CreateTask creates a new task (coach only)
-func (s *Service) CreateTask(ctx context.Context, coachID int64, clientID int64, task *Task) (*Task, error) {
+// CreateTask creates a new task (curator only)
+func (s *Service) CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error) {
 	startTime := time.Now()
 
-	// Validate coach-client relationship
-	hasRelationship, err := s.validateCoachClientRelationship(ctx, coachID, clientID)
+	// Validate curator-client relationship
+	hasRelationship, err := s.validateCuratorClientRelationship(ctx, curatorID, clientID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to validate coach-client relationship: %w", err)
+		return nil, fmt.Errorf("failed to validate curator-client relationship: %w", err)
 	}
 	if !hasRelationship {
-		return nil, fmt.Errorf("coach %d does not have an active relationship with client %d", coachID, clientID)
+		return nil, fmt.Errorf("curator %d does not have an active relationship with client %d", curatorID, clientID)
 	}
 
 	// Set required fields
 	task.ID = uuid.New().String()
 	task.UserID = clientID
-	task.CoachID = coachID
+	task.CuratorID = curatorID
 	task.Status = TaskStatusActive
 	task.AssignedAt = time.Now()
 	task.CreatedAt = time.Now()
@@ -903,10 +903,10 @@ func (s *Service) CreateTask(ctx context.Context, coachID int64, clientID int64,
 	// Insert task
 	query := `
 		INSERT INTO tasks (
-			id, user_id, coach_id, title, description, week_number, assigned_at,
+			id, user_id, curator_id, title, description, week_number, assigned_at,
 			due_date, completed_at, status, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-		RETURNING id, user_id, coach_id, title, description, week_number, assigned_at,
+		RETURNING id, user_id, curator_id, title, description, week_number, assigned_at,
 		          due_date, completed_at, status, created_at, updated_at
 	`
 
@@ -916,7 +916,7 @@ func (s *Service) CreateTask(ctx context.Context, coachID int64, clientID int64,
 		query,
 		task.ID,
 		task.UserID,
-		task.CoachID,
+		task.CuratorID,
 		task.Title,
 		task.Description,
 		task.WeekNumber,
@@ -927,7 +927,7 @@ func (s *Service) CreateTask(ctx context.Context, coachID int64, clientID int64,
 	).Scan(
 		&result.ID,
 		&result.UserID,
-		&result.CoachID,
+		&result.CuratorID,
 		&result.Title,
 		&result.Description,
 		&result.WeekNumber,
@@ -941,22 +941,22 @@ func (s *Service) CreateTask(ctx context.Context, coachID int64, clientID int64,
 
 	if err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
-			"coach_id":  coachID,
-			"client_id": clientID,
+			"curator_id": curatorID,
+			"client_id":  clientID,
 		})
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
-		"coach_id":  coachID,
-		"client_id": clientID,
-		"task_id":   result.ID,
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"task_id":    result.ID,
 	})
 
 	s.log.LogBusinessEvent("task_created", map[string]interface{}{
-		"task_id":   result.ID,
-		"coach_id":  coachID,
-		"client_id": clientID,
+		"task_id":    result.ID,
+		"curator_id": curatorID,
+		"client_id":  clientID,
 	})
 
 	// Send notification to client
@@ -979,7 +979,7 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 
 	// Get existing task to verify ownership
 	existingQuery := `
-		SELECT id, user_id, coach_id, title, description, week_number, assigned_at,
+		SELECT id, user_id, curator_id, title, description, week_number, assigned_at,
 		       due_date, completed_at, status, created_at, updated_at
 		FROM tasks
 		WHERE id = $1
@@ -989,7 +989,7 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 	err := s.db.QueryRowContext(ctx, existingQuery, taskID).Scan(
 		&existing.ID,
 		&existing.UserID,
-		&existing.CoachID,
+		&existing.CuratorID,
 		&existing.Title,
 		&existing.Description,
 		&existing.WeekNumber,
@@ -1025,7 +1025,7 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 		UPDATE tasks
 		SET status = $1, completed_at = $2, updated_at = NOW()
 		WHERE id = $3
-		RETURNING id, user_id, coach_id, title, description, week_number, assigned_at,
+		RETURNING id, user_id, curator_id, title, description, week_number, assigned_at,
 		          due_date, completed_at, status, created_at, updated_at
 	`
 
@@ -1039,7 +1039,7 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 	).Scan(
 		&result.ID,
 		&result.UserID,
-		&result.CoachID,
+		&result.CuratorID,
 		&result.Title,
 		&result.Description,
 		&result.WeekNumber,
@@ -1163,19 +1163,19 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		return nil, fmt.Errorf("validation failed: %v", validationErrors)
 	}
 
-	// Get coach ID
-	var coachID int64
-	coachQuery := `
-		SELECT coach_id FROM coach_client_relationships
+	// Get curator ID
+	var curatorID int64
+	curatorQuery := `
+		SELECT curator_id FROM curator_client_relationships
 		WHERE client_id = $1 AND status = 'active'
 		LIMIT 1
 	`
-	err = s.db.QueryRowContext(ctx, coachQuery, userID).Scan(&coachID)
+	err = s.db.QueryRowContext(ctx, curatorQuery, userID).Scan(&curatorID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("no active coach found for user")
+			return nil, fmt.Errorf("no active curator found for user")
 		}
-		return nil, fmt.Errorf("failed to get coach: %w", err)
+		return nil, fmt.Errorf("failed to get curator: %w", err)
 	}
 
 	// Calculate summary statistics
@@ -1230,7 +1230,7 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 	report := &WeeklyReport{
 		ID:         uuid.New().String(),
 		UserID:     userID,
-		CoachID:    coachID,
+		CuratorID:  curatorID,
 		WeekStart:  weekStart,
 		WeekEnd:    weekEnd,
 		WeekNumber: weekNumber,
@@ -1246,11 +1246,11 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 	// Insert report
 	insertQuery := `
 		INSERT INTO weekly_reports (
-			id, user_id, coach_id, week_start, week_end, week_number, summary, photo_url,
-			submitted_at, reviewed_at, coach_feedback, created_at, updated_at
+			id, user_id, curator_id, week_start, week_end, week_number, summary, photo_url,
+			submitted_at, reviewed_at, curator_feedback, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-		RETURNING id, user_id, coach_id, week_start, week_end, week_number, summary, photo_url,
-		          submitted_at, reviewed_at, coach_feedback, created_at, updated_at
+		RETURNING id, user_id, curator_id, week_start, week_end, week_number, summary, photo_url,
+		          submitted_at, reviewed_at, curator_feedback, created_at, updated_at
 	`
 
 	err = s.db.QueryRowContext(
@@ -1258,7 +1258,7 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		insertQuery,
 		report.ID,
 		report.UserID,
-		report.CoachID,
+		report.CuratorID,
 		report.WeekStart,
 		report.WeekEnd,
 		report.WeekNumber,
@@ -1266,11 +1266,11 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		report.PhotoURL,
 		report.SubmittedAt,
 		report.ReviewedAt,
-		report.CoachFeedback,
+		report.CuratorFeedback,
 	).Scan(
 		&report.ID,
 		&report.UserID,
-		&report.CoachID,
+		&report.CuratorID,
 		&report.WeekStart,
 		&report.WeekEnd,
 		&report.WeekNumber,
@@ -1278,7 +1278,7 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 		&report.PhotoURL,
 		&report.SubmittedAt,
 		&report.ReviewedAt,
-		&report.CoachFeedback,
+		&report.CuratorFeedback,
 		&report.CreatedAt,
 		&report.UpdatedAt,
 	)
@@ -1296,13 +1296,13 @@ func (s *Service) CreateWeeklyReport(ctx context.Context, userID int64, weekStar
 	})
 
 	s.log.LogBusinessEvent("weekly_report_created", map[string]interface{}{
-		"report_id": report.ID,
-		"user_id":   userID,
-		"coach_id":  coachID,
+		"report_id":  report.ID,
+		"user_id":    userID,
+		"curator_id": curatorID,
 	})
 
-	// Send notification to coach
-	if err := s.sendWeeklyReportNotification(ctx, coachID, report); err != nil {
+	// Send notification to curator
+	if err := s.sendWeeklyReportNotification(ctx, curatorID, report); err != nil {
 		// Log error but don't fail the operation
 		s.log.Error("Failed to send weekly report notification", "error", err)
 	}
@@ -1590,12 +1590,12 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 	return nil
 }
 
-// sendWeeklyReportNotification sends a notification to the coach when a client submits a weekly report
-func (s *Service) sendWeeklyReportNotification(ctx context.Context, coachID int64, report *WeeklyReport) error {
+// sendWeeklyReportNotification sends a notification to the curator when a client submits a weekly report
+func (s *Service) sendWeeklyReportNotification(ctx context.Context, curatorID int64, report *WeeklyReport) error {
 	// Skip if notifications service is not configured
 	if s.notificationsSvc == nil {
 		s.log.Warn("Notifications service not configured, skipping weekly report notification",
-			"coach_id", coachID,
+			"curator_id", curatorID,
 			"report_id", report.ID,
 		)
 		return nil
@@ -1610,7 +1610,7 @@ func (s *Service) sendWeeklyReportNotification(ctx context.Context, coachID int6
 	}
 
 	notification := &notifications.Notification{
-		UserID:   coachID,
+		UserID:   curatorID,
 		Category: notifications.CategoryMain,
 		Type:     notifications.TypeTrainerFeedback,
 		Title:    "Получен недельный отчет",
@@ -1621,14 +1621,14 @@ func (s *Service) sendWeeklyReportNotification(ctx context.Context, coachID int6
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
 		s.log.Error("Failed to send weekly report notification",
 			"error", err,
-			"coach_id", coachID,
+			"curator_id", curatorID,
 			"report_id", report.ID,
 		)
 		return fmt.Errorf("failed to send weekly report notification: %w", err)
 	}
 
 	s.log.Info("Weekly report notification sent",
-		"coach_id", coachID,
+		"curator_id", curatorID,
 		"report_id", report.ID,
 		"notification_id", notification.ID,
 	)

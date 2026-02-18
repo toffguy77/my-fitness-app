@@ -16,7 +16,7 @@ import { MealSlot } from './MealSlot';
 import { WaterTracker } from './WaterTracker';
 import { FoodEntryModal } from './FoodEntryModal';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
-import type { MealType, FoodEntry, FoodItem, WaterLog } from '../types';
+import type { MealType, FoodEntry, WaterLog } from '../types';
 
 // ============================================================================
 // Types
@@ -111,34 +111,6 @@ export function DietTab({
         await onDeleteEntry(entry.id, entry.mealType);
     }, [onDeleteEntry]);
 
-    // Handle food selection from modal
-    const handleFoodSelect = useCallback(async (food: FoodItem, portionAmount: number, portionType: 'grams' | 'milliliters' | 'portion') => {
-        const now = new Date();
-        const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-        if (editingEntry) {
-            // Update existing entry
-            await onUpdateEntry(editingEntry.id, {
-                portionType,
-                portionAmount,
-                time,
-            });
-        } else {
-            // Create new entry
-            await onAddEntry(selectedMealType, {
-                foodId: food.id,
-                mealType: selectedMealType,
-                portionType,
-                portionAmount,
-                time,
-                date: selectedDate,
-            });
-        }
-
-        setIsModalOpen(false);
-        setEditingEntry(null);
-    }, [editingEntry, selectedMealType, selectedDate, onAddEntry, onUpdateEntry]);
-
     // Handle modal close
     const handleModalClose = useCallback(() => {
         setIsModalOpen(false);
@@ -211,7 +183,6 @@ export function DietTab({
             <FoodEntryModal
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
-                onSelectFood={handleFoodSelect}
                 mealType={selectedMealType}
                 editingEntry={editingEntry}
             />

@@ -280,7 +280,7 @@ describe('Dashboard Store Actions', () => {
                     {
                         id: taskId,
                         userId: 'user-1',
-                        coachId: 'coach-1',
+                        curatorId: 'curator-1',
                         title: 'Test task',
                         description: 'Test description',
                         status: 'active',
@@ -311,7 +311,7 @@ describe('Dashboard Store Actions', () => {
             const originalTask = {
                 id: taskId,
                 userId: 'user-1',
-                coachId: 'coach-1',
+                curatorId: 'curator-1',
                 title: 'Test task',
                 description: 'Test description',
                 status: 'active' as const,
@@ -509,7 +509,7 @@ describe('Dashboard Store Actions', () => {
                     weeklyPlan: {
                         id: 'plan-1',
                         userId: 'user-1',
-                        coachId: 'coach-1',
+                        curatorId: 'curator-1',
                         caloriesGoal: 2000,
                         proteinGoal: 150,
                         startDate: new Date(),
@@ -517,13 +517,13 @@ describe('Dashboard Store Actions', () => {
                         isActive: true,
                         createdAt: new Date(),
                         updatedAt: new Date(),
-                        createdBy: 'coach-1',
+                        createdBy: 'curator-1',
                     },
                     tasks: [
                         {
                             id: 'task-1',
                             userId: 'user-1',
-                            coachId: 'coach-1',
+                            curatorId: 'curator-1',
                             title: 'Test task',
                             description: 'Test',
                             status: 'active',

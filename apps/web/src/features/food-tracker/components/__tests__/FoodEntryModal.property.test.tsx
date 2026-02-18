@@ -45,24 +45,24 @@ describe('FoodEntryModal Property Tests', () => {
     /**
      * Property 20: Modal Dismiss Without Save
      *
-     * For any dismiss action (Escape/outside click), no changes persisted.
+     * For any dismiss action (Escape/outside click), modal closes without saving.
+     * The modal now handles saving internally via Zustand store, so we verify
+     * that dismiss actions properly trigger onClose.
      * **Validates: Requirements 4.6**
      */
     describe('Property 20: Modal Dismiss Without Save', () => {
-        it('Escape key triggers onClose without calling onSave', () => {
+        it('Escape key triggers onClose', () => {
             fc.assert(
                 fc.property(
                     fc.option(mealTypeGenerator()),
                     (mealType) => {
                         cleanup();
                         const onClose = jest.fn();
-                        const onSave = jest.fn();
 
                         render(
                             <FoodEntryModal
                                 isOpen={true}
                                 onClose={onClose}
-                                onSave={onSave}
                                 mealType={mealType ?? undefined}
                             />
                         );
@@ -72,8 +72,6 @@ describe('FoodEntryModal Property Tests', () => {
 
                         // onClose should be called
                         expect(onClose).toHaveBeenCalledTimes(1);
-                        // onSave should NOT be called
-                        expect(onSave).not.toHaveBeenCalled();
 
                         return true;
                     }
@@ -82,20 +80,18 @@ describe('FoodEntryModal Property Tests', () => {
             );
         });
 
-        it('clicking outside modal triggers onClose without calling onSave', () => {
+        it('clicking outside modal triggers onClose', () => {
             fc.assert(
                 fc.property(
                     fc.option(mealTypeGenerator()),
                     (mealType) => {
                         cleanup();
                         const onClose = jest.fn();
-                        const onSave = jest.fn();
 
                         render(
                             <FoodEntryModal
                                 isOpen={true}
                                 onClose={onClose}
-                                onSave={onSave}
                                 mealType={mealType ?? undefined}
                             />
                         );
@@ -106,8 +102,6 @@ describe('FoodEntryModal Property Tests', () => {
 
                         // onClose should be called
                         expect(onClose).toHaveBeenCalledTimes(1);
-                        // onSave should NOT be called
-                        expect(onSave).not.toHaveBeenCalled();
 
                         return true;
                     }
@@ -116,20 +110,18 @@ describe('FoodEntryModal Property Tests', () => {
             );
         });
 
-        it('clicking close button triggers onClose without calling onSave', () => {
+        it('clicking close button triggers onClose', () => {
             fc.assert(
                 fc.property(
                     fc.option(mealTypeGenerator()),
                     (mealType) => {
                         cleanup();
                         const onClose = jest.fn();
-                        const onSave = jest.fn();
 
                         render(
                             <FoodEntryModal
                                 isOpen={true}
                                 onClose={onClose}
-                                onSave={onSave}
                                 mealType={mealType ?? undefined}
                             />
                         );
@@ -140,8 +132,6 @@ describe('FoodEntryModal Property Tests', () => {
 
                         // onClose should be called
                         expect(onClose).toHaveBeenCalledTimes(1);
-                        // onSave should NOT be called
-                        expect(onSave).not.toHaveBeenCalled();
 
                         return true;
                     }
@@ -150,27 +140,19 @@ describe('FoodEntryModal Property Tests', () => {
             );
         });
 
-        it('dismiss actions do not persist any state changes', () => {
+        it('dismiss actions trigger onClose for escape and button methods', () => {
             fc.assert(
                 fc.property(
                     fc.option(mealTypeGenerator()),
-                    fc.constantFrom('escape', 'backdrop', 'button') as fc.Arbitrary<'escape' | 'backdrop' | 'button'>,
+                    fc.constantFrom('escape', 'button') as fc.Arbitrary<'escape' | 'button'>,
                     (mealType, dismissMethod) => {
                         cleanup();
                         const onClose = jest.fn();
-                        const onSave = jest.fn();
-                        let savedData: unknown = null;
-
-                        const trackingSave = (data: unknown) => {
-                            savedData = data;
-                            onSave(data);
-                        };
 
                         render(
                             <FoodEntryModal
                                 isOpen={true}
                                 onClose={onClose}
-                                onSave={trackingSave}
                                 mealType={mealType ?? undefined}
                             />
                         );
@@ -180,19 +162,14 @@ describe('FoodEntryModal Property Tests', () => {
                             case 'escape':
                                 fireEvent.keyDown(document, { key: 'Escape' });
                                 break;
-                            case 'backdrop':
-                                const backdrop = screen.getByRole('dialog').parentElement;
-                                if (backdrop) fireEvent.click(backdrop);
-                                break;
                             case 'button':
                                 const closeButton = screen.getByRole('button', { name: /закрыть/i });
                                 fireEvent.click(closeButton);
                                 break;
                         }
 
-                        // No data should be saved
-                        expect(savedData).toBeNull();
-                        expect(onSave).not.toHaveBeenCalled();
+                        // onClose should be called for all dismiss methods
+                        expect(onClose).toHaveBeenCalled();
 
                         return true;
                     }
@@ -203,10 +180,10 @@ describe('FoodEntryModal Property Tests', () => {
     });
 
     /**
-     * Additional property: Tab switching does not trigger save
+     * Additional property: Tab switching maintains modal state
      */
-    describe('Property: Tab Switching Without Save', () => {
-        it('switching tabs does not trigger onSave', async () => {
+    describe('Property: Tab Switching Without Closing', () => {
+        it('switching tabs does not close the modal', async () => {
             const user = userEvent.setup();
 
             await fc.assert(
@@ -215,13 +192,11 @@ describe('FoodEntryModal Property Tests', () => {
                     async (tabSequence) => {
                         cleanup();
                         const onClose = jest.fn();
-                        const onSave = jest.fn();
 
                         render(
                             <FoodEntryModal
                                 isOpen={true}
                                 onClose={onClose}
-                                onSave={onSave}
                             />
                         );
 
@@ -237,8 +212,8 @@ describe('FoodEntryModal Property Tests', () => {
                             await user.click(tabButton);
                         }
 
-                        // onSave should never be called just from tab switching
-                        expect(onSave).not.toHaveBeenCalled();
+                        // onClose should never be called just from tab switching
+                        expect(onClose).not.toHaveBeenCalled();
 
                         return true;
                     }

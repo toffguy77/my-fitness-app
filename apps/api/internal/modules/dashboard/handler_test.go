@@ -58,16 +58,16 @@ func (m *MockService) GetActivePlan(ctx context.Context, userID int64) (*WeeklyP
 	return args.Get(0).(*WeeklyPlan), args.Error(1)
 }
 
-func (m *MockService) CreatePlan(ctx context.Context, coachID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error) {
-	args := m.Called(ctx, coachID, clientID, plan)
+func (m *MockService) CreatePlan(ctx context.Context, curatorID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error) {
+	args := m.Called(ctx, curatorID, clientID, plan)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*WeeklyPlan), args.Error(1)
 }
 
-func (m *MockService) UpdatePlan(ctx context.Context, coachID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error) {
-	args := m.Called(ctx, coachID, planID, updates)
+func (m *MockService) UpdatePlan(ctx context.Context, curatorID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error) {
+	args := m.Called(ctx, curatorID, planID, updates)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -82,8 +82,8 @@ func (m *MockService) GetTasksByWeek(ctx context.Context, userID int64, weekNumb
 	return args.Get(0).([]*Task), args.Error(1)
 }
 
-func (m *MockService) CreateTask(ctx context.Context, coachID int64, clientID int64, task *Task) (*Task, error) {
-	args := m.Called(ctx, coachID, clientID, task)
+func (m *MockService) CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error) {
+	args := m.Called(ctx, curatorID, clientID, task)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -283,7 +283,7 @@ func TestGetWeeklyPlan_Success(t *testing.T) {
 	plan := &WeeklyPlan{
 		ID:           uuid.New().String(),
 		UserID:       1,
-		CoachID:      2,
+		CuratorID:      2,
 		CaloriesGoal: 2000,
 		ProteinGoal:  150,
 		IsActive:     true,
@@ -334,7 +334,7 @@ func TestCreateWeeklyPlan_Success(t *testing.T) {
 	plan := &WeeklyPlan{
 		ID:           uuid.New().String(),
 		UserID:       1,
-		CoachID:      2,
+		CuratorID:      2,
 		CaloriesGoal: 2000,
 		ProteinGoal:  150,
 		StartDate:    startDate,
@@ -347,7 +347,7 @@ func TestCreateWeeklyPlan_Success(t *testing.T) {
 	router := gin.New()
 	router.POST("/weekly-plan", func(c *gin.Context) {
 		c.Set("user_id", int64(2))
-		c.Set("user_role", "coach")
+		c.Set("user_role", "curator")
 		handler.CreateWeeklyPlan(c)
 	})
 
@@ -368,7 +368,7 @@ func TestCreateWeeklyPlan_Success(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestCreateWeeklyPlan_NotCoach(t *testing.T) {
+func TestCreateWeeklyPlan_NotCurator(t *testing.T) {
 	handler, _ := setupTestHandlerWithMock()
 
 	router := gin.New()
@@ -402,7 +402,7 @@ func TestGetTasks_Success(t *testing.T) {
 		{
 			ID:         uuid.New().String(),
 			UserID:     1,
-			CoachID:    2,
+			CuratorID:    2,
 			Title:      "Test Task",
 			WeekNumber: 1,
 			Status:     TaskStatusActive,
@@ -432,7 +432,7 @@ func TestCreateTask_Success(t *testing.T) {
 	task := &Task{
 		ID:         uuid.New().String(),
 		UserID:     1,
-		CoachID:    2,
+		CuratorID:    2,
 		Title:      "Test Task",
 		WeekNumber: 1,
 		DueDate:    time.Now().AddDate(0, 0, 7),
@@ -444,7 +444,7 @@ func TestCreateTask_Success(t *testing.T) {
 	router := gin.New()
 	router.POST("/tasks", func(c *gin.Context) {
 		c.Set("user_id", int64(2))
-		c.Set("user_role", "coach")
+		c.Set("user_role", "curator")
 		handler.CreateTask(c)
 	})
 
@@ -464,7 +464,7 @@ func TestCreateTask_Success(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
-func TestCreateTask_NotCoach(t *testing.T) {
+func TestCreateTask_NotCurator(t *testing.T) {
 	handler, _ := setupTestHandlerWithMock()
 
 	router := gin.New()
@@ -497,7 +497,7 @@ func TestUpdateTaskStatus_Success(t *testing.T) {
 	task := &Task{
 		ID:          taskID,
 		UserID:      1,
-		CoachID:     2,
+		CuratorID:     2,
 		Title:       "Test Task",
 		WeekNumber:  1,
 		Status:      TaskStatusCompleted,
@@ -535,7 +535,7 @@ func TestSubmitWeeklyReport_Success(t *testing.T) {
 	report := &WeeklyReport{
 		ID:        uuid.New().String(),
 		UserID:    1,
-		CoachID:   2,
+		CuratorID:   2,
 		WeekStart: weekStart,
 		WeekEnd:   weekEnd,
 	}
@@ -823,7 +823,7 @@ func TestCreateWeeklyPlan_InvalidRequestBody(t *testing.T) {
 	router := gin.New()
 	router.POST("/weekly-plan", func(c *gin.Context) {
 		c.Set("user_id", int64(2))
-		c.Set("user_role", "coach")
+		c.Set("user_role", "curator")
 		handler.CreateWeeklyPlan(c)
 	})
 
@@ -841,7 +841,7 @@ func TestCreateWeeklyPlan_InvalidDateRange(t *testing.T) {
 	router := gin.New()
 	router.POST("/weekly-plan", func(c *gin.Context) {
 		c.Set("user_id", int64(2))
-		c.Set("user_role", "coach")
+		c.Set("user_role", "curator")
 		handler.CreateWeeklyPlan(c)
 	})
 
@@ -907,7 +907,7 @@ func TestCreateTask_InvalidRequestBody(t *testing.T) {
 	router := gin.New()
 	router.POST("/tasks", func(c *gin.Context) {
 		c.Set("user_id", int64(2))
-		c.Set("user_role", "coach")
+		c.Set("user_role", "curator")
 		handler.CreateTask(c)
 	})
 
@@ -1213,12 +1213,12 @@ func TestCreateWeeklyPlan_ServiceError(t *testing.T) {
 	startDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 	endDate := time.Date(2024, 1, 21, 0, 0, 0, 0, time.UTC)
 
-	mockService.On("CreatePlan", mock.Anything, int64(2), int64(1), mock.AnythingOfType("*dashboard.WeeklyPlan")).Return(nil, fmt.Errorf("coach not authorized"))
+	mockService.On("CreatePlan", mock.Anything, int64(2), int64(1), mock.AnythingOfType("*dashboard.WeeklyPlan")).Return(nil, fmt.Errorf("curator not authorized"))
 
 	router := gin.New()
 	router.POST("/weekly-plan", func(c *gin.Context) {
 		c.Set("user_id", int64(2))
-		c.Set("user_role", "coach")
+		c.Set("user_role", "curator")
 		handler.CreateWeeklyPlan(c)
 	})
 
@@ -1261,12 +1261,12 @@ func TestGetTasks_ServiceError(t *testing.T) {
 func TestCreateTask_ServiceError(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	mockService.On("CreateTask", mock.Anything, int64(2), int64(1), mock.AnythingOfType("*dashboard.Task")).Return(nil, fmt.Errorf("coach not authorized"))
+	mockService.On("CreateTask", mock.Anything, int64(2), int64(1), mock.AnythingOfType("*dashboard.Task")).Return(nil, fmt.Errorf("curator not authorized"))
 
 	router := gin.New()
 	router.POST("/tasks", func(c *gin.Context) {
 		c.Set("user_id", int64(2))
-		c.Set("user_role", "coach")
+		c.Set("user_role", "curator")
 		handler.CreateTask(c)
 	})
 

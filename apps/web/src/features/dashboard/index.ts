@@ -61,7 +61,7 @@ export const LazyPhotoUploadSection = lazy(() =>
 
 /**
  * Lazy-loaded WeeklyPlanSection component
- * Displays coach-assigned nutrition plan
+ * Displays curator-assigned nutrition plan
  */
 export const LazyWeeklyPlanSection = lazy(() =>
     import('./components/WeeklyPlanSection').then(module => ({
@@ -71,7 +71,7 @@ export const LazyWeeklyPlanSection = lazy(() =>
 
 /**
  * Lazy-loaded TasksSection component
- * Displays coach-assigned tasks
+ * Displays curator-assigned tasks
  */
 export const LazyTasksSection = lazy(() =>
     import('./components/TasksSection').then(module => ({
