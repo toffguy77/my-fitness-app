@@ -14,16 +14,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Camera, CameraOff, RefreshCw, AlertCircle, CheckCircle, Plus, Upload, Image } from 'lucide-react';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
+import { useLogger } from '@/shared/hooks/useLogger';
 import type { FoodItem } from '../types';
-
-// ============================================================================
-// Logger
-// ============================================================================
-
-const LOG_PREFIX = '[BarcodeTab]';
-function log(...args: unknown[]) {
-    console.log(LOG_PREFIX, ...args);
-}
 
 // ============================================================================
 // Types
@@ -68,6 +60,7 @@ export function BarcodeTab({
         resetScan,
     } = useBarcodeScanner();
 
+    const { info: log } = useLogger({ component: 'BarcodeTab' });
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,31 +71,31 @@ export function BarcodeTab({
             log('unmounting, stopping scanner');
             stopScanning();
         };
-    }, [stopScanning]);
+    }, [stopScanning, log]);
 
     // Handle start live camera
     const handleStartCamera = useCallback(() => {
         log('handleStartCamera: starting live camera scan');
         startScanning(BARCODE_READER_ELEMENT_ID);
-    }, [startScanning]);
+    }, [startScanning, log]);
 
     // Handle stop camera
     const handleStopCamera = useCallback(() => {
         log('handleStopCamera');
         stopScanning();
-    }, [stopScanning]);
+    }, [stopScanning, log]);
 
     // Handle gallery photo selection (scan barcode from image)
     const handleGallerySelect = useCallback(() => {
         log('handleGallerySelect: opening file picker');
         fileInputRef.current?.click();
-    }, []);
+    }, [log]);
 
     // Handle native camera capture (take photo of barcode)
     const handleCameraCapture = useCallback(() => {
         log('handleCameraCapture: opening native camera');
         cameraInputRef.current?.click();
-    }, []);
+    }, [log]);
 
     // Handle file input change (gallery or native camera photo)
     const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,7 +104,7 @@ export function BarcodeTab({
             log('handleFileChange: no file selected');
             return;
         }
-        log('handleFileChange: file selected:', file.name, 'size:', file.size, 'type:', file.type);
+        log('handleFileChange: file selected', { fileName: file.name, fileSize: file.size, fileType: file.type });
 
         if (!file.type.startsWith('image/')) {
             log('handleFileChange: not an image, ignoring');
@@ -122,40 +115,40 @@ export function BarcodeTab({
 
         // Reset input so the same file can be re-selected
         e.target.value = '';
-    }, [scanFromFile]);
+    }, [scanFromFile, log]);
 
     // Handle manual barcode input
     const handleManualBarcodeInput = useCallback((e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const barcode = formData.get('barcode') as string;
-        log('handleManualBarcodeInput: barcode =', barcode);
+        log('handleManualBarcodeInput', { barcode });
         if (barcode && barcode.length >= 8) {
             lookupBarcode(barcode);
         } else {
             log('handleManualBarcodeInput: barcode too short, need >= 8 digits');
         }
-    }, [lookupBarcode]);
+    }, [lookupBarcode, log]);
 
     // Handle product selection
     const handleSelectProduct = useCallback(() => {
         if (scannedProduct) {
-            log('handleSelectProduct:', scannedProduct.name);
+            log('handleSelectProduct', { product: scannedProduct.name });
             onSelectFood(scannedProduct);
         }
-    }, [scannedProduct, onSelectFood]);
+    }, [scannedProduct, onSelectFood, log]);
 
     // Handle reset scan
     const handleResetScan = useCallback(() => {
         log('handleResetScan');
         resetScan();
-    }, [resetScan]);
+    }, [resetScan, log]);
 
     // Handle manual entry
     const handleManualEntry = useCallback(() => {
         log('handleManualEntry');
         onManualEntry?.();
-    }, [onManualEntry]);
+    }, [onManualEntry, log]);
 
     return (
         <div className={`flex flex-col h-full ${className}`}>
