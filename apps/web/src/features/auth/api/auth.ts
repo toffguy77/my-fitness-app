@@ -6,7 +6,7 @@
 import { apiClient } from '@/shared/utils/api-client';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '@/features/auth/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 /**
  * Login user with email and password
@@ -16,7 +16,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
  */
 export async function loginUser(data: AuthFormData): Promise<AuthResponse> {
     try {
-        const response = await apiClient.post<AuthResponse>(`${API_BASE}/api/v1/auth/login`, {
+        const response = await apiClient.post<AuthResponse>(`${API_BASE}/backend-api/v1/auth/login`, {
             email: data.email,
             password: data.password,
         });
@@ -39,7 +39,7 @@ export async function registerUser(
     consents: ConsentState
 ): Promise<AuthResponse> {
     try {
-        const response = await apiClient.post<AuthResponse>(`${API_BASE}/api/v1/auth/register`, {
+        const response = await apiClient.post<AuthResponse>(`${API_BASE}/backend-api/v1/auth/register`, {
             email: data.email,
             password: data.password,
             consents: consents,

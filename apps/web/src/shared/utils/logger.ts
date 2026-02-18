@@ -56,7 +56,7 @@ class Logger {
             minLevel: process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG,
             enableConsole: true,
             enableRemote: process.env.NODE_ENV === 'production',
-            remoteEndpoint: process.env.NEXT_PUBLIC_API_URL + '/api/logs',
+            remoteEndpoint: (process.env.NEXT_PUBLIC_API_URL || '') + '/backend-api/logs',
             includeStackTrace: true,
             includeUserAgent: true,
             maxBatchSize: 50,

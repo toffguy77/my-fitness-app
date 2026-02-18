@@ -3,7 +3,7 @@
  * Handles password reset and recovery operations
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
 export interface RequestPasswordResetParams {
     email: string
@@ -36,7 +36,7 @@ export interface ValidateTokenResponse {
 export async function requestPasswordReset(
     email: string
 ): Promise<RequestPasswordResetResponse> {
-    const response = await fetch(`${API_URL}/api/v1/auth/forgot-password`, {
+    const response = await fetch(`${API_URL}/backend-api/v1/auth/forgot-password`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ export async function resetPassword(
     token: string,
     password: string
 ): Promise<ResetPasswordResponse> {
-    const response = await fetch(`${API_URL}/api/v1/auth/reset-password`, {
+    const response = await fetch(`${API_URL}/backend-api/v1/auth/reset-password`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -87,7 +87,7 @@ export async function resetPassword(
  */
 export async function validateResetToken(token: string): Promise<ValidateTokenResponse> {
     const response = await fetch(
-        `${API_URL}/api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
+        `${API_URL}/backend-api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
     )
 
     const data = await response.json()

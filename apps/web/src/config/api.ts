@@ -7,12 +7,12 @@ export const API_CONFIG = {
     /**
      * Base URL for the Golang backend API
      */
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || '',
 
     /**
      * API version prefix
      */
-    version: '/api/v1',
+    version: '/backend-api/v1',
 
     /**
      * Request timeout in milliseconds
