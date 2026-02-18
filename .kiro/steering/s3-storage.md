@@ -214,7 +214,7 @@ photo: [file]
 
 Database table `weekly_photos` has RLS policies:
 - Users can only access their own photos
-- Coaches can access client photos (via relationship)
+- Curators can access client photos (via relationship)
 
 ## Error Handling
 

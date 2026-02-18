@@ -20,7 +20,7 @@ func checkTablesExist(db *sql.DB) bool {
 		"tasks",
 		"weekly_reports",
 		"photos",
-		"coach_clients",
+		"curator_client_relationships",
 	}
 
 	for _, table := range tables {
@@ -46,7 +46,7 @@ func verifyTablesCreated(db *sql.DB) {
 		"tasks",
 		"weekly_reports",
 		"photos",
-		"coach_clients",
+		"curator_client_relationships",
 	}
 
 	for _, table := range tables {
@@ -71,7 +71,7 @@ func verifyRLSPolicies(db *sql.DB) {
 		"tasks",
 		"weekly_reports",
 		"photos",
-		"coach_clients",
+		"curator_client_relationships",
 	}
 
 	for _, table := range tables {
@@ -115,9 +115,9 @@ func verifyIndexes(db *sql.DB) {
 		{"weekly_reports", "idx_weekly_reports_dates"},
 		{"photos", "idx_photos_user_week"},
 		{"photos", "idx_photos_week_identifier"},
-		{"coach_clients", "idx_coach_clients_coach"},
-		{"coach_clients", "idx_coach_clients_client"},
-		{"coach_clients", "idx_coach_clients_composite"},
+		{"curator_client_relationships", "idx_curator_client_relationships_curator"},
+		{"curator_client_relationships", "idx_curator_client_relationships_client"},
+		{"curator_client_relationships", "idx_curator_client_relationships_composite"},
 	}
 
 	for _, idx := range indexes {

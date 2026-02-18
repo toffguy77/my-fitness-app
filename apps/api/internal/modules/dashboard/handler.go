@@ -21,10 +21,10 @@ type ServiceInterface interface {
 	SaveMetric(ctx context.Context, userID int64, date time.Time, metricUpdate MetricUpdate) (*DailyMetrics, error)
 	GetWeekMetrics(ctx context.Context, userID int64, startDate, endDate time.Time) ([]DailyMetrics, error)
 	GetActivePlan(ctx context.Context, userID int64) (*WeeklyPlan, error)
-	CreatePlan(ctx context.Context, coachID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error)
-	UpdatePlan(ctx context.Context, coachID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error)
+	CreatePlan(ctx context.Context, curatorID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error)
+	UpdatePlan(ctx context.Context, curatorID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error)
 	GetTasksByWeek(ctx context.Context, userID int64, weekNumber int) ([]*Task, error)
-	CreateTask(ctx context.Context, coachID int64, clientID int64, task *Task) (*Task, error)
+	CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error)
 	UpdateTaskStatus(ctx context.Context, userID int64, taskID string, status TaskStatus) (*Task, error)
 	ValidateWeekData(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (bool, []string, error)
 	CreateWeeklyReport(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (*WeeklyReport, error)
@@ -246,7 +246,7 @@ func (h *Handler) GetWeeklyPlan(c *gin.Context) {
 	response.Success(c, http.StatusOK, plan)
 }
 
-// CreateWeeklyPlan handles POST /api/dashboard/weekly-plan (coach only)
+// CreateWeeklyPlan handles POST /api/dashboard/weekly-plan (curator only)
 // Creates a new weekly plan for a client
 func (h *Handler) CreateWeeklyPlan(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
@@ -256,17 +256,17 @@ func (h *Handler) CreateWeeklyPlan(c *gin.Context) {
 		return
 	}
 
-	coachID, ok := userIDInterface.(int64)
+	curatorID, ok := userIDInterface.(int64)
 	if !ok {
 		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
 		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
 		return
 	}
 
-	// Check if user is a coach
+	// Check if user is a curator
 	userRole, roleExists := c.Get("user_role")
-	if !roleExists || userRole != "coach" {
-		response.Forbidden(c, "Только тренеры могут создавать недельные планы")
+	if !roleExists || userRole != "curator" {
+		response.Forbidden(c, "Только кураторы могут создавать недельные планы")
 		return
 	}
 
@@ -296,9 +296,9 @@ func (h *Handler) CreateWeeklyPlan(c *gin.Context) {
 	}
 
 	// Call service to create plan
-	createdPlan, err := h.service.CreatePlan(c.Request.Context(), coachID, req.UserID, plan)
+	createdPlan, err := h.service.CreatePlan(c.Request.Context(), curatorID, req.UserID, plan)
 	if err != nil {
-		h.log.Errorw("Failed to create weekly plan", "error", err, "coach_id", coachID, "client_id", req.UserID)
+		h.log.Errorw("Failed to create weekly plan", "error", err, "curator_id", curatorID, "client_id", req.UserID)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -359,7 +359,7 @@ func (h *Handler) GetTasks(c *gin.Context) {
 	})
 }
 
-// CreateTask handles POST /api/dashboard/tasks (coach only)
+// CreateTask handles POST /api/dashboard/tasks (curator only)
 // Creates a new task for a client
 func (h *Handler) CreateTask(c *gin.Context) {
 	// Get user ID from context (set by auth middleware)
@@ -369,17 +369,17 @@ func (h *Handler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	coachID, ok := userIDInterface.(int64)
+	curatorID, ok := userIDInterface.(int64)
 	if !ok {
 		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
 		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
 		return
 	}
 
-	// Check if user is a coach
+	// Check if user is a curator
 	userRole, roleExists := c.Get("user_role")
-	if !roleExists || userRole != "coach" {
-		response.Forbidden(c, "Только тренеры могут создавать задачи")
+	if !roleExists || userRole != "curator" {
+		response.Forbidden(c, "Только кураторы могут создавать задачи")
 		return
 	}
 
@@ -400,9 +400,9 @@ func (h *Handler) CreateTask(c *gin.Context) {
 	}
 
 	// Call service to create task
-	createdTask, err := h.service.CreateTask(c.Request.Context(), coachID, req.UserID, task)
+	createdTask, err := h.service.CreateTask(c.Request.Context(), curatorID, req.UserID, task)
 	if err != nil {
-		h.log.Errorw("Failed to create task", "error", err, "coach_id", coachID, "client_id", req.UserID)
+		h.log.Errorw("Failed to create task", "error", err, "curator_id", curatorID, "client_id", req.UserID)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -509,7 +509,7 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 		return
 	}
 
-	// TODO: Trigger coach notification
+	// TODO: Trigger curator notification
 
 	response.Success(c, http.StatusCreated, report)
 }

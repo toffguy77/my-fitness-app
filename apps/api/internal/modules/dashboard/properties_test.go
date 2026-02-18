@@ -46,7 +46,7 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 // This property tests that:
 // 1. All database queries include user_id in WHERE clause (authorization check)
 // 2. Users can only access their own data
-// 3. Coaches can only access data for clients they have active relationships with
+// 3. Curators can only access data for clients they have active relationships with
 // 4. Queries are parameterized to prevent SQL injection
 //
 // Feature: dashboard, Property 30: Authentication Validation
@@ -122,7 +122,7 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 
 	// Property 2: Weekly plan queries always include user_id check
 	properties.Property("GetWeeklyPlan includes user_id in WHERE clause", prop.ForAll(
-		func(userID int64, coachID int64) bool {
+		func(userID int64, curatorID int64) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
@@ -130,12 +130,12 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 
 			// Mock expects query with user_id parameter
 			rows := sqlmock.NewRows([]string{
-				"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+				"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 				"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 			}).AddRow(
 				uuid.New().String(),
 				userID,
-				coachID,
+				curatorID,
 				2000,
 				150,
 				nil,
@@ -146,11 +146,11 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 				true,
 				time.Now(),
 				time.Now(),
-				coachID,
+				curatorID,
 			)
 
 			// The query MUST include user_id in WHERE clause for authorization
-			mock.ExpectQuery(`SELECT id, user_id, coach_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal, start_date, end_date, is_active, created_at, updated_at, created_by FROM weekly_plans WHERE user_id = \$1 AND is_active = true ORDER BY start_date DESC LIMIT 1`).
+			mock.ExpectQuery(`SELECT id, user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, steps_goal, start_date, end_date, is_active, created_at, updated_at, created_by FROM weekly_plans WHERE user_id = \$1 AND is_active = true ORDER BY start_date DESC LIMIT 1`).
 				WithArgs(userID).
 				WillReturnRows(rows)
 
@@ -179,7 +179,7 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 		},
 		// Generate random user IDs
 		gen.Int64Range(1, 1000000),
-		// Generate random coach IDs
+		// Generate random curator IDs
 		gen.Int64Range(1, 1000000),
 	))
 
@@ -193,7 +193,7 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 
 			// Mock expects query with user_id parameter
 			rows := sqlmock.NewRows([]string{
-				"id", "user_id", "coach_id", "title", "description", "week_number", "assigned_at",
+				"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
 				"due_date", "completed_at", "status", "created_at", "updated_at",
 			}).AddRow(
 				uuid.New().String(),
@@ -211,7 +211,7 @@ func TestAuthenticationValidationProperty(t *testing.T) {
 			)
 
 			// The query MUST include user_id in WHERE clause for authorization
-			mock.ExpectQuery(`SELECT id, user_id, coach_id, title, description, week_number, assigned_at, due_date, completed_at, status, created_at, updated_at FROM tasks WHERE user_id = \$1 AND week_number = \$2 ORDER BY due_date ASC`).
+			mock.ExpectQuery(`SELECT id, user_id, curator_id, title, description, week_number, assigned_at, due_date, completed_at, status, created_at, updated_at FROM tasks WHERE user_id = \$1 AND week_number = \$2 ORDER BY due_date ASC`).
 				WithArgs(userID, weekNumber).
 				WillReturnRows(rows)
 
@@ -364,9 +364,9 @@ func TestUserIsolationProperty(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-// Property 31: Coach Plan Validation
+// Property 31: Curator Plan Validation
 // **Validates: Requirements 14.1, 14.2**
-// Property: For any weekly plan created by a coach, the system should validate that required
+// Property: For any weekly plan created by a curator, the system should validate that required
 // fields exist (calorie goal, protein goal, valid start/end dates with end >= start) and reject
 // invalid plans with error messages.
 //
@@ -378,20 +378,20 @@ func TestUserIsolationProperty(t *testing.T) {
 // 5. End date must be on or after start date
 // 6. Invalid plans are rejected with specific error messages
 //
-// Feature: dashboard, Property 31: Coach Plan Validation
-func TestCoachPlanValidationProperty(t *testing.T) {
+// Feature: dashboard, Property 31: Curator Plan Validation
+func TestCuratorPlanValidationProperty(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	parameters.MinSuccessfulTests = 100
 	properties := gopter.NewProperties(parameters)
 
 	// Property 1: Valid plans pass validation
 	properties.Property("Valid weekly plans pass validation", prop.ForAll(
-		func(userID int64, coachID int64, caloriesGoal int, proteinGoal int, daysOffset int) bool {
+		func(userID int64, curatorID int64, caloriesGoal int, proteinGoal int, daysOffset int) bool {
 			// Create valid plan
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CoachID:      coachID,
+				CuratorID:      curatorID,
 				CaloriesGoal: caloriesGoal,
 				ProteinGoal:  proteinGoal,
 				StartDate:    time.Now(),
@@ -399,7 +399,7 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 				IsActive:     true,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
-				CreatedBy:    coachID,
+				CreatedBy:    curatorID,
 			}
 
 			// Validate
@@ -415,7 +415,7 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 		},
 		// Generate positive user IDs
 		gen.Int64Range(1, 1000000),
-		// Generate positive coach IDs
+		// Generate positive curator IDs
 		gen.Int64Range(1, 1000000),
 		// Generate positive calorie goals (1000-4000)
 		gen.IntRange(1000, 4000),
@@ -427,11 +427,11 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 
 	// Property 2: Plans with invalid calorie goals are rejected
 	properties.Property("Plans with invalid calorie goals are rejected", prop.ForAll(
-		func(userID int64, coachID int64, caloriesGoal int) bool {
+		func(userID int64, curatorID int64, caloriesGoal int) bool {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CoachID:      coachID,
+				CuratorID:      curatorID,
 				CaloriesGoal: caloriesGoal,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -439,7 +439,7 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 				IsActive:     true,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
-				CreatedBy:    coachID,
+				CreatedBy:    curatorID,
 			}
 
 			err := plan.Validate()
@@ -473,11 +473,11 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 
 	// Property 3: Plans with invalid protein goals are rejected
 	properties.Property("Plans with invalid protein goals are rejected", prop.ForAll(
-		func(userID int64, coachID int64, proteinGoal int) bool {
+		func(userID int64, curatorID int64, proteinGoal int) bool {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CoachID:      coachID,
+				CuratorID:      curatorID,
 				CaloriesGoal: 2000,
 				ProteinGoal:  proteinGoal,
 				StartDate:    time.Now(),
@@ -485,7 +485,7 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 				IsActive:     true,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
-				CreatedBy:    coachID,
+				CreatedBy:    curatorID,
 			}
 
 			err := plan.Validate()
@@ -517,14 +517,14 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 
 	// Property 4: Plans with end_date before start_date are rejected
 	properties.Property("Plans with end_date before start_date are rejected", prop.ForAll(
-		func(userID int64, coachID int64, daysDiff int) bool {
+		func(userID int64, curatorID int64, daysDiff int) bool {
 			startDate := time.Now()
 			endDate := startDate.AddDate(0, 0, daysDiff)
 
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CoachID:      coachID,
+				CuratorID:      curatorID,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    startDate,
@@ -532,7 +532,7 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 				IsActive:     true,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
-				CreatedBy:    coachID,
+				CreatedBy:    curatorID,
 			}
 
 			err := plan.Validate()
@@ -569,7 +569,7 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CoachID:      100,
+				CuratorID:      100,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -604,13 +604,13 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 		gen.Int64Range(-100, 1000000),
 	))
 
-	// Property 6: Plans with missing coach_id are rejected
-	properties.Property("Plans with invalid coach_id are rejected", prop.ForAll(
-		func(coachID int64) bool {
+	// Property 6: Plans with missing curator_id are rejected
+	properties.Property("Plans with invalid curator_id are rejected", prop.ForAll(
+		func(curatorID int64) bool {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       100,
-				CoachID:      coachID,
+				CuratorID:      curatorID,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -618,39 +618,39 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 				IsActive:     true,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
-				CreatedBy:    coachID,
+				CreatedBy:    curatorID,
 			}
 
 			err := plan.Validate()
 
-			if coachID <= 0 {
+			if curatorID <= 0 {
 				if err == nil {
-					t.Logf("Invalid coach_id %d was not rejected", coachID)
+					t.Logf("Invalid curator_id %d was not rejected", curatorID)
 					return false
 				}
-				if err.Error() != "coach_id is required and must be positive" {
-					t.Logf("Wrong error message for invalid coach_id: %v", err)
+				if err.Error() != "curator_id is required and must be positive" {
+					t.Logf("Wrong error message for invalid curator_id: %v", err)
 					return false
 				}
 			} else {
 				if err != nil {
-					t.Logf("Valid coach_id %d was rejected: %v", coachID, err)
+					t.Logf("Valid curator_id %d was rejected: %v", curatorID, err)
 					return false
 				}
 			}
 
 			return true
 		},
-		// Generate both valid and invalid coach IDs
+		// Generate both valid and invalid curator IDs
 		gen.Int64Range(-100, 1000000),
 	))
 
 	properties.TestingRun(t)
 }
 
-// Property 32: Coach Task Validation
+// Property 32: Curator Task Validation
 // **Validates: Requirements 14.3**
-// Property: For any task assigned by a coach, the system should validate that required fields
+// Property: For any task assigned by a curator, the system should validate that required fields
 // exist (title, description, due date) and reject invalid tasks with error messages.
 //
 // This property tests that:
@@ -660,15 +660,15 @@ func TestCoachPlanValidationProperty(t *testing.T) {
 // 4. Week number is required and positive
 // 5. Invalid tasks are rejected with specific error messages
 //
-// Feature: dashboard, Property 32: Coach Task Validation
-func TestCoachTaskValidationProperty(t *testing.T) {
+// Feature: dashboard, Property 32: Curator Task Validation
+func TestCuratorTaskValidationProperty(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	parameters.MinSuccessfulTests = 100
 	properties := gopter.NewProperties(parameters)
 
 	// Property 1: Valid tasks pass validation
 	properties.Property("Valid tasks pass validation", prop.ForAll(
-		func(userID int64, coachID int64, title string, weekNumber int) bool {
+		func(userID int64, curatorID int64, title string, weekNumber int) bool {
 			// Ensure title is within valid length
 			if len(title) == 0 || len(title) > 255 {
 				return true // Skip invalid inputs for this property
@@ -678,7 +678,7 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:          uuid.New().String(),
 				UserID:      userID,
-				CoachID:     coachID,
+				CuratorID:     curatorID,
 				Title:       title,
 				Description: &description,
 				WeekNumber:  weekNumber,
@@ -709,11 +709,11 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 
 	// Property 2: Tasks with empty title are rejected
 	properties.Property("Tasks with empty title are rejected", prop.ForAll(
-		func(userID int64, coachID int64) bool {
+		func(userID int64, curatorID int64) bool {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CoachID:    coachID,
+				CuratorID:    curatorID,
 				Title:      "", // Empty title
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -742,7 +742,7 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 
 	// Property 3: Tasks with title exceeding 255 characters are rejected
 	properties.Property("Tasks with title > 255 chars are rejected", prop.ForAll(
-		func(userID int64, coachID int64, titleLength int) bool {
+		func(userID int64, curatorID int64, titleLength int) bool {
 			// Generate title of specified length
 			title := ""
 			for i := 0; i < titleLength; i++ {
@@ -752,7 +752,7 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CoachID:    coachID,
+				CuratorID:    curatorID,
 				Title:      title,
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -791,7 +791,7 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 
 	// Property 4: Tasks with description exceeding 1000 characters are rejected
 	properties.Property("Tasks with description > 1000 chars are rejected", prop.ForAll(
-		func(userID int64, coachID int64, descLength int) bool {
+		func(userID int64, curatorID int64, descLength int) bool {
 			// Generate description of specified length
 			desc := ""
 			for i := 0; i < descLength; i++ {
@@ -801,7 +801,7 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:          uuid.New().String(),
 				UserID:      userID,
-				CoachID:     coachID,
+				CuratorID:     curatorID,
 				Title:       "Test Task",
 				Description: &desc,
 				WeekNumber:  1,
@@ -841,11 +841,11 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 
 	// Property 5: Tasks with invalid week_number are rejected
 	properties.Property("Tasks with invalid week_number are rejected", prop.ForAll(
-		func(userID int64, coachID int64, weekNumber int) bool {
+		func(userID int64, curatorID int64, weekNumber int) bool {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CoachID:    coachID,
+				CuratorID:    curatorID,
 				Title:      "Test Task",
 				WeekNumber: weekNumber,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -888,7 +888,7 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CoachID:    100,
+				CuratorID:    100,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -921,13 +921,13 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 		gen.Int64Range(-100, 1000000),
 	))
 
-	// Property 7: Tasks with invalid coach_id are rejected
-	properties.Property("Tasks with invalid coach_id are rejected", prop.ForAll(
-		func(coachID int64) bool {
+	// Property 7: Tasks with invalid curator_id are rejected
+	properties.Property("Tasks with invalid curator_id are rejected", prop.ForAll(
+		func(curatorID int64) bool {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     100,
-				CoachID:    coachID,
+				CuratorID:    curatorID,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -938,38 +938,38 @@ func TestCoachTaskValidationProperty(t *testing.T) {
 
 			err := task.Validate()
 
-			if coachID <= 0 {
+			if curatorID <= 0 {
 				if err == nil {
-					t.Logf("Task with invalid coach_id %d was not rejected", coachID)
+					t.Logf("Task with invalid curator_id %d was not rejected", curatorID)
 					return false
 				}
-				if err.Error() != "coach_id is required and must be positive" {
-					t.Logf("Wrong error message for invalid coach_id: %v", err)
+				if err.Error() != "curator_id is required and must be positive" {
+					t.Logf("Wrong error message for invalid curator_id: %v", err)
 					return false
 				}
 			} else {
 				if err != nil {
-					t.Logf("Task with valid coach_id %d was rejected: %v", coachID, err)
+					t.Logf("Task with valid curator_id %d was rejected: %v", curatorID, err)
 					return false
 				}
 			}
 
 			return true
 		},
-		// Generate both valid and invalid coach IDs
+		// Generate both valid and invalid curator IDs
 		gen.Int64Range(-100, 1000000),
 	))
 
 	// Property 8: Tasks with invalid status are rejected
 	properties.Property("Tasks with invalid status are rejected", prop.ForAll(
-		func(userID int64, coachID int64, statusStr string) bool {
+		func(userID int64, curatorID int64, statusStr string) bool {
 			// Convert string to TaskStatus
 			status := TaskStatus(statusStr)
 
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CoachID:    coachID,
+				CuratorID:    curatorID,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -1371,35 +1371,35 @@ func TestDataPersistenceReliabilityProperty(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-// Property 34: Coach Authorization
+// Property 34: Curator Authorization
 // **Validates: Requirements 14.6**
-// Property: For all coach actions (create/update plan, assign/update task, view client data),
-// the system should verify the coach has an active relationship with the specific client before processing.
+// Property: For all curator actions (create/update plan, assign/update task, view client data),
+// the system should verify the curator has an active relationship with the specific client before processing.
 //
 // This property tests that:
-// 1. Coaches can only create plans for clients they have active relationships with
-// 2. Coaches can only update plans for clients they have active relationships with
-// 3. Coaches cannot access data for clients without active relationships
+// 1. Curators can only create plans for clients they have active relationships with
+// 2. Curators can only update plans for clients they have active relationships with
+// 3. Curators cannot access data for clients without active relationships
 // 4. Authorization checks happen before any data operations
 //
-// Feature: dashboard, Property 34: Coach Authorization
-func TestCoachAuthorizationProperty(t *testing.T) {
+// Feature: dashboard, Property 34: Curator Authorization
+func TestCuratorAuthorizationProperty(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	parameters.MinSuccessfulTests = 100
 	properties := gopter.NewProperties(parameters)
 
-	// Property 1: CreatePlan requires active coach-client relationship
-	properties.Property("CreatePlan requires active coach-client relationship", prop.ForAll(
-		func(coachID int64, clientID int64, hasRelationship bool) bool {
+	// Property 1: CreatePlan requires active curator-client relationship
+	properties.Property("CreatePlan requires active curator-client relationship", prop.ForAll(
+		func(curatorID int64, clientID int64, hasRelationship bool) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
 			ctx := context.Background()
 
-			// Mock the coach-client relationship check
+			// Mock the curator-client relationship check
 			relationshipRows := sqlmock.NewRows([]string{"exists"}).AddRow(hasRelationship)
 			mock.ExpectQuery(`SELECT EXISTS`).
-				WithArgs(coachID, clientID).
+				WithArgs(curatorID, clientID).
 				WillReturnRows(relationshipRows)
 
 			if hasRelationship {
@@ -1413,7 +1413,7 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 					WithArgs(
 						sqlmock.AnyArg(), // id
 						clientID,         // user_id
-						coachID,          // coach_id
+						curatorID,          // curator_id
 						2000,             // calories_goal
 						150,              // protein_goal
 						sqlmock.AnyArg(), // fat_goal
@@ -1422,14 +1422,14 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 						sqlmock.AnyArg(), // start_date
 						sqlmock.AnyArg(), // end_date
 						true,             // is_active
-						coachID,          // created_by
+						curatorID,          // created_by
 					).
 					WillReturnRows(sqlmock.NewRows([]string{
-						"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+						"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 						"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 					}).AddRow(
-						uuid.New().String(), clientID, coachID, 2000, 150, nil, nil, nil,
-						time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), coachID,
+						uuid.New().String(), clientID, curatorID, 2000, 150, nil, nil, nil,
+						time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), curatorID,
 					))
 			}
 
@@ -1441,12 +1441,12 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 				EndDate:      time.Now().AddDate(0, 0, 7),
 			}
 
-			result, err := service.CreatePlan(ctx, coachID, clientID, plan)
+			result, err := service.CreatePlan(ctx, curatorID, clientID, plan)
 
 			// Property: If no active relationship, operation should fail
 			if !hasRelationship {
 				if err == nil {
-					t.Logf("CreatePlan succeeded without active relationship (coach %d, client %d)", coachID, clientID)
+					t.Logf("CreatePlan succeeded without active relationship (curator %d, client %d)", curatorID, clientID)
 					return false
 				}
 				// Verify error message mentions relationship
@@ -1464,8 +1464,8 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 					t.Logf("CreatePlan returned nil result with active relationship")
 					return false
 				}
-				if result.UserID != clientID || result.CoachID != coachID {
-					t.Logf("Plan has wrong user_id or coach_id")
+				if result.UserID != clientID || result.CuratorID != curatorID {
+					t.Logf("Plan has wrong user_id or curator_id")
 					return false
 				}
 			}
@@ -1477,34 +1477,34 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000), // coach ID
+		gen.Int64Range(1, 1000), // curator ID
 		gen.Int64Range(1, 1000), // client ID
 		gen.Bool(),              // has relationship
 	))
 
-	// Property 2: UpdatePlan requires active coach-client relationship
-	properties.Property("UpdatePlan requires active coach-client relationship", prop.ForAll(
-		func(coachID int64, clientID int64, planID string, hasRelationship bool) bool {
+	// Property 2: UpdatePlan requires active curator-client relationship
+	properties.Property("UpdatePlan requires active curator-client relationship", prop.ForAll(
+		func(curatorID int64, clientID int64, planID string, hasRelationship bool) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
 			ctx := context.Background()
 
 			// Mock get existing plan
-			mock.ExpectQuery(`SELECT id, user_id, coach_id`).
+			mock.ExpectQuery(`SELECT id, user_id, curator_id`).
 				WithArgs(planID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+					"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 					"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 				}).AddRow(
-					planID, clientID, coachID, 2000, 150, nil, nil, nil,
-					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), coachID,
+					planID, clientID, curatorID, 2000, 150, nil, nil, nil,
+					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), curatorID,
 				))
 
-			// Mock the coach-client relationship check
+			// Mock the curator-client relationship check
 			relationshipRows := sqlmock.NewRows([]string{"exists"}).AddRow(hasRelationship)
 			mock.ExpectQuery(`SELECT EXISTS`).
-				WithArgs(coachID, clientID).
+				WithArgs(curatorID, clientID).
 				WillReturnRows(relationshipRows)
 
 			if hasRelationship {
@@ -1521,11 +1521,11 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 						planID,
 					).
 					WillReturnRows(sqlmock.NewRows([]string{
-						"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+						"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 						"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 					}).AddRow(
-						planID, clientID, coachID, 2500, 150, nil, nil, nil,
-						time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), coachID,
+						planID, clientID, curatorID, 2500, 150, nil, nil, nil,
+						time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), curatorID,
 					))
 			}
 
@@ -1534,7 +1534,7 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 				CaloriesGoal: 2500,
 			}
 
-			result, err := service.UpdatePlan(ctx, coachID, planID, updates)
+			result, err := service.UpdatePlan(ctx, curatorID, planID, updates)
 
 			// Property: If no active relationship, operation should fail
 			if !hasRelationship {
@@ -1569,17 +1569,17 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000),        // coach ID
+		gen.Int64Range(1, 1000),        // curator ID
 		gen.Int64Range(1, 1000),        // client ID
 		gen.Const(uuid.New().String()), // plan ID
 		gen.Bool(),                     // has relationship
 	))
 
-	// Property 3: Coach cannot update plans created by other coaches
-	properties.Property("Coach cannot update plans created by other coaches", prop.ForAll(
-		func(originalCoachID int64, attemptingCoachID int64, clientID int64, planID string) bool {
-			// Skip if same coach
-			if originalCoachID == attemptingCoachID {
+	// Property 3: Curator cannot update plans created by other curators
+	properties.Property("Curator cannot update plans created by other curators", prop.ForAll(
+		func(originalCuratorID int64, attemptingCuratorID int64, clientID int64, planID string) bool {
+			// Skip if same curator
+			if originalCuratorID == attemptingCuratorID {
 				return true
 			}
 
@@ -1588,33 +1588,33 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			ctx := context.Background()
 
-			// Mock get existing plan (created by originalCoachID)
-			mock.ExpectQuery(`SELECT id, user_id, coach_id`).
+			// Mock get existing plan (created by originalCuratorID)
+			mock.ExpectQuery(`SELECT id, user_id, curator_id`).
 				WithArgs(planID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+					"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 					"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 				}).AddRow(
-					planID, clientID, originalCoachID, 2000, 150, nil, nil, nil,
-					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), originalCoachID,
+					planID, clientID, originalCuratorID, 2000, 150, nil, nil, nil,
+					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), originalCuratorID,
 				))
 
-			// Mock the coach-client relationship check (even if true, should still fail)
+			// Mock the curator-client relationship check (even if true, should still fail)
 			relationshipRows := sqlmock.NewRows([]string{"exists"}).AddRow(true)
 			mock.ExpectQuery(`SELECT EXISTS`).
-				WithArgs(attemptingCoachID, clientID).
+				WithArgs(attemptingCuratorID, clientID).
 				WillReturnRows(relationshipRows)
 
-			// Attempt to update plan with different coach
+			// Attempt to update plan with different curator
 			updates := &WeeklyPlan{
 				CaloriesGoal: 2500,
 			}
 
-			_, err := service.UpdatePlan(ctx, attemptingCoachID, planID, updates)
+			_, err := service.UpdatePlan(ctx, attemptingCuratorID, planID, updates)
 
-			// Property: Should fail because coach doesn't own the plan
+			// Property: Should fail because curator doesn't own the plan
 			if err == nil {
-				t.Logf("Coach %d was able to update plan created by coach %d", attemptingCoachID, originalCoachID)
+				t.Logf("Curator %d was able to update plan created by curator %d", attemptingCuratorID, originalCuratorID)
 				return false
 			}
 
@@ -1631,24 +1631,24 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 100),         // original coach ID
-		gen.Int64Range(101, 200),       // attempting coach ID (different range)
+		gen.Int64Range(1, 100),         // original curator ID
+		gen.Int64Range(101, 200),       // attempting curator ID (different range)
 		gen.Int64Range(1, 1000),        // client ID
 		gen.Const(uuid.New().String()), // plan ID
 	))
 
 	// Property 4: Authorization check happens before data operations
 	properties.Property("Authorization check happens before data operations", prop.ForAll(
-		func(coachID int64, clientID int64) bool {
+		func(curatorID int64, clientID int64) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
 			ctx := context.Background()
 
-			// Mock the coach-client relationship check (returns false)
+			// Mock the curator-client relationship check (returns false)
 			relationshipRows := sqlmock.NewRows([]string{"exists"}).AddRow(false)
 			mock.ExpectQuery(`SELECT EXISTS`).
-				WithArgs(coachID, clientID).
+				WithArgs(curatorID, clientID).
 				WillReturnRows(relationshipRows)
 
 			// DO NOT mock any data operations - they should not be called
@@ -1661,7 +1661,7 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 				EndDate:      time.Now().AddDate(0, 0, 7),
 			}
 
-			_, err := service.CreatePlan(ctx, coachID, clientID, plan)
+			_, err := service.CreatePlan(ctx, curatorID, clientID, plan)
 
 			// Property: Should fail at authorization check, not at data operation
 			if err == nil {
@@ -1677,7 +1677,7 @@ func TestCoachAuthorizationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000), // coach ID
+		gen.Int64Range(1, 1000), // curator ID
 		gen.Int64Range(1, 1000), // client ID
 	))
 
@@ -1720,10 +1720,10 @@ func TestTaskStatusUpdateProperty(t *testing.T) {
 			ctx := context.Background()
 
 			// Mock get existing task
-			mock.ExpectQuery(`SELECT id, user_id, coach_id, title`).
+			mock.ExpectQuery(`SELECT id, user_id, curator_id, title`).
 				WithArgs(taskID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "title", "description", "week_number", "assigned_at",
+					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
 					"due_date", "completed_at", "status", "created_at", "updated_at",
 				}).AddRow(
 					taskID, userID, int64(100), "Test Task", "Description", 1, time.Now(),
@@ -1735,7 +1735,7 @@ func TestTaskStatusUpdateProperty(t *testing.T) {
 			mock.ExpectQuery(`UPDATE tasks SET status`).
 				WithArgs(TaskStatusCompleted, sqlmock.AnyArg(), taskID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "title", "description", "week_number", "assigned_at",
+					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
 					"due_date", "completed_at", "status", "created_at", "updated_at",
 				}).AddRow(
 					taskID, userID, int64(100), "Test Task", "Description", 1, time.Now(),
@@ -1792,10 +1792,10 @@ func TestTaskStatusUpdateProperty(t *testing.T) {
 			ctx := context.Background()
 
 			// Mock get existing task (owned by ownerUserID)
-			mock.ExpectQuery(`SELECT id, user_id, coach_id, title`).
+			mock.ExpectQuery(`SELECT id, user_id, curator_id, title`).
 				WithArgs(taskID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "title", "description", "week_number", "assigned_at",
+					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
 					"due_date", "completed_at", "status", "created_at", "updated_at",
 				}).AddRow(
 					taskID, ownerUserID, int64(100), "Test Task", "Description", 1, time.Now(),
@@ -1832,37 +1832,37 @@ func TestTaskStatusUpdateProperty(t *testing.T) {
 	properties.TestingRun(t)
 }
 
-// Property 33: Coach-Client Notification
+// Property 33: Curator-Client Notification
 // **Validates: Requirements 14.4, 14.5**
-// Property: For any coach update (plan or task) or client action (weekly report submission),
-// the system should notify the relevant party (client or coach) within 30 seconds.
+// Property: For any curator update (plan or task) or client action (weekly report submission),
+// the system should notify the relevant party (client or curator) within 30 seconds.
 //
 // This property tests that:
 // 1. Plan updates trigger notifications to clients
 // 2. Task assignments trigger notifications to clients
-// 3. Weekly report submissions trigger notifications to coaches
+// 3. Weekly report submissions trigger notifications to curators
 // 4. Notifications are sent with correct category (main) and type (trainer_feedback)
 // 5. Notifications contain relevant information (plan details, task title, report week)
 // 6. Notification failures are logged but don't fail the operation
 //
-// Feature: dashboard, Property 33: Coach-Client Notification
-func TestCoachClientNotificationProperty(t *testing.T) {
+// Feature: dashboard, Property 33: Curator-Client Notification
+func TestCuratorClientNotificationProperty(t *testing.T) {
 	parameters := gopter.DefaultTestParameters()
 	parameters.MinSuccessfulTests = 100
 	properties := gopter.NewProperties(parameters)
 
 	// Property 1: Plan creation sends notification to client
 	properties.Property("Plan creation sends notification to client", prop.ForAll(
-		func(coachID int64, clientID int64, caloriesGoal int, proteinGoal int) bool {
+		func(curatorID int64, clientID int64, caloriesGoal int, proteinGoal int) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
 			ctx := context.Background()
 
-			// Mock the coach-client relationship check
+			// Mock the curator-client relationship check
 			relationshipRows := sqlmock.NewRows([]string{"exists"}).AddRow(true)
 			mock.ExpectQuery(`SELECT EXISTS`).
-				WithArgs(coachID, clientID).
+				WithArgs(curatorID, clientID).
 				WillReturnRows(relationshipRows)
 
 			// Mock deactivate existing plans
@@ -1876,7 +1876,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 				WithArgs(
 					sqlmock.AnyArg(), // id
 					clientID,         // user_id
-					coachID,          // coach_id
+					curatorID,          // curator_id
 					caloriesGoal,     // calories_goal
 					proteinGoal,      // protein_goal
 					sqlmock.AnyArg(), // fat_goal
@@ -1885,14 +1885,14 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 					sqlmock.AnyArg(), // start_date
 					sqlmock.AnyArg(), // end_date
 					true,             // is_active
-					coachID,          // created_by
+					curatorID,          // created_by
 				).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+					"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 					"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 				}).AddRow(
-					planID, clientID, coachID, caloriesGoal, proteinGoal, nil, nil, nil,
-					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), coachID,
+					planID, clientID, curatorID, caloriesGoal, proteinGoal, nil, nil, nil,
+					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), curatorID,
 				))
 
 			// Note: Notification sending is attempted but will fail gracefully with nil service
@@ -1906,7 +1906,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 				EndDate:      time.Now().AddDate(0, 0, 7),
 			}
 
-			result, err := service.CreatePlan(ctx, coachID, clientID, plan)
+			result, err := service.CreatePlan(ctx, curatorID, clientID, plan)
 
 			// Property: Plan creation should succeed (even if notification fails)
 			if err != nil {
@@ -1932,7 +1932,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000),  // coach ID
+		gen.Int64Range(1, 1000),  // curator ID
 		gen.Int64Range(1, 1000),  // client ID
 		gen.IntRange(1000, 4000), // calories goal
 		gen.IntRange(50, 300),    // protein goal
@@ -1940,27 +1940,27 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 	// Property 2: Plan update sends notification to client
 	properties.Property("Plan update sends notification to client", prop.ForAll(
-		func(coachID int64, clientID int64, planID string, newCalories int, newProtein int) bool {
+		func(curatorID int64, clientID int64, planID string, newCalories int, newProtein int) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
 			ctx := context.Background()
 
 			// Mock get existing plan
-			mock.ExpectQuery(`SELECT id, user_id, coach_id`).
+			mock.ExpectQuery(`SELECT id, user_id, curator_id`).
 				WithArgs(planID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+					"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 					"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 				}).AddRow(
-					planID, clientID, coachID, 2000, 150, nil, nil, nil,
-					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), coachID,
+					planID, clientID, curatorID, 2000, 150, nil, nil, nil,
+					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), curatorID,
 				))
 
-			// Mock the coach-client relationship check
+			// Mock the curator-client relationship check
 			relationshipRows := sqlmock.NewRows([]string{"exists"}).AddRow(true)
 			mock.ExpectQuery(`SELECT EXISTS`).
-				WithArgs(coachID, clientID).
+				WithArgs(curatorID, clientID).
 				WillReturnRows(relationshipRows)
 
 			// Mock update plan
@@ -1976,11 +1976,11 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 					planID,
 				).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
+					"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
 					"start_date", "end_date", "is_active", "created_at", "updated_at", "created_by",
 				}).AddRow(
-					planID, clientID, coachID, newCalories, newProtein, nil, nil, nil,
-					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), coachID,
+					planID, clientID, curatorID, newCalories, newProtein, nil, nil, nil,
+					time.Now(), time.Now().AddDate(0, 0, 7), true, time.Now(), time.Now(), curatorID,
 				))
 
 			// Note: Notification sending is attempted but will fail gracefully with nil service
@@ -1991,7 +1991,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 				ProteinGoal:  newProtein,
 			}
 
-			result, err := service.UpdatePlan(ctx, coachID, planID, updates)
+			result, err := service.UpdatePlan(ctx, curatorID, planID, updates)
 
 			// Property: Plan update should succeed (even if notification fails)
 			if err != nil {
@@ -2017,7 +2017,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000),        // coach ID
+		gen.Int64Range(1, 1000),        // curator ID
 		gen.Int64Range(1, 1000),        // client ID
 		gen.Const(uuid.New().String()), // plan ID
 		gen.IntRange(1000, 4000),       // new calories
@@ -2026,7 +2026,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 	// Property 3: Task assignment sends notification to client
 	properties.Property("Task assignment sends notification to client", prop.ForAll(
-		func(coachID int64, clientID int64, taskTitle string, weekNumber int) bool {
+		func(curatorID int64, clientID int64, taskTitle string, weekNumber int) bool {
 			// Ensure title is within valid length
 			if len(taskTitle) == 0 || len(taskTitle) > 255 {
 				return true // Skip invalid inputs
@@ -2037,10 +2037,10 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 			ctx := context.Background()
 
-			// Mock the coach-client relationship check
+			// Mock the curator-client relationship check
 			relationshipRows := sqlmock.NewRows([]string{"exists"}).AddRow(true)
 			mock.ExpectQuery(`SELECT EXISTS`).
-				WithArgs(coachID, clientID).
+				WithArgs(curatorID, clientID).
 				WillReturnRows(relationshipRows)
 
 			// Mock insert new task
@@ -2049,7 +2049,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 				WithArgs(
 					sqlmock.AnyArg(), // id
 					clientID,         // user_id
-					coachID,          // coach_id
+					curatorID,          // curator_id
 					taskTitle,        // title
 					sqlmock.AnyArg(), // description
 					weekNumber,       // week_number
@@ -2059,10 +2059,10 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 					TaskStatusActive, // status
 				).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "title", "description", "week_number", "assigned_at",
+					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
 					"due_date", "completed_at", "status", "created_at", "updated_at",
 				}).AddRow(
-					taskID, clientID, coachID, taskTitle, nil, weekNumber, time.Now(),
+					taskID, clientID, curatorID, taskTitle, nil, weekNumber, time.Now(),
 					time.Now().AddDate(0, 0, 7), nil, TaskStatusActive, time.Now(), time.Now(),
 				))
 
@@ -2075,7 +2075,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 				DueDate:    time.Now().AddDate(0, 0, 7),
 			}
 
-			result, err := service.CreateTask(ctx, coachID, clientID, task)
+			result, err := service.CreateTask(ctx, curatorID, clientID, task)
 
 			// Property: Task creation should succeed (even if notification fails)
 			if err != nil {
@@ -2101,7 +2101,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000), // coach ID
+		gen.Int64Range(1, 1000), // curator ID
 		gen.Int64Range(1, 1000), // client ID
 		gen.AlphaString().SuchThat(func(s string) bool {
 			return len(s) > 0 && len(s) <= 255
@@ -2109,9 +2109,9 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 		gen.IntRange(1, 52), // week number
 	))
 
-	// Property 4: Weekly report submission sends notification to coach
-	properties.Property("Weekly report submission sends notification to coach", prop.ForAll(
-		func(clientID int64, coachID int64) bool {
+	// Property 4: Weekly report submission sends notification to curator
+	properties.Property("Weekly report submission sends notification to curator", prop.ForAll(
+		func(clientID int64, curatorID int64) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
@@ -2138,10 +2138,10 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 				WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 				WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
-			// Mock get coach ID
-			mock.ExpectQuery(`SELECT coach_id FROM coach_client_relationships`).
+			// Mock get curator ID
+			mock.ExpectQuery(`SELECT curator_id FROM curator_client_relationships`).
 				WithArgs(clientID).
-				WillReturnRows(sqlmock.NewRows([]string{"coach_id"}).AddRow(coachID))
+				WillReturnRows(sqlmock.NewRows([]string{"curator_id"}).AddRow(curatorID))
 
 			// Mock calculate summary (happens before photo URL)
 			mock.ExpectQuery(`SELECT`).
@@ -2161,7 +2161,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 				WithArgs(
 					sqlmock.AnyArg(), // id
 					clientID,         // user_id
-					coachID,          // coach_id
+					curatorID,          // curator_id
 					sqlmock.AnyArg(), // week_start
 					sqlmock.AnyArg(), // week_end
 					weekNumber,       // week_number
@@ -2169,13 +2169,13 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 					sqlmock.AnyArg(), // photo_url
 					sqlmock.AnyArg(), // submitted_at
 					nil,              // reviewed_at
-					nil,              // coach_feedback
+					nil,              // curator_feedback
 				).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "week_start", "week_end", "week_number", "summary",
-					"photo_url", "submitted_at", "reviewed_at", "coach_feedback", "created_at", "updated_at",
+					"id", "user_id", "curator_id", "week_start", "week_end", "week_number", "summary",
+					"photo_url", "submitted_at", "reviewed_at", "curator_feedback", "created_at", "updated_at",
 				}).AddRow(
-					reportID, clientID, coachID, weekStart, weekEnd, weekNumber, `{"days_with_nutrition":5}`,
+					reportID, clientID, curatorID, weekStart, weekEnd, weekNumber, `{"days_with_nutrition":5}`,
 					"https://example.com/photo.jpg", time.Now(), nil, nil, time.Now(), time.Now(),
 				))
 
@@ -2197,7 +2197,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 			}
 
 			// Property: Report should be created with correct data
-			if result.UserID != clientID || result.CoachID != coachID {
+			if result.UserID != clientID || result.CuratorID != curatorID {
 				t.Logf("Report data mismatch")
 				return false
 			}
@@ -2210,16 +2210,16 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 			return true
 		},
 		gen.Int64Range(1, 1000), // client ID
-		gen.Int64Range(1, 1000), // coach ID
+		gen.Int64Range(1, 1000), // curator ID
 	))
 
 	// Property 5: Notifications use correct category and type
-	properties.Property("All coach-client notifications use main category and trainer_feedback type", prop.ForAll(
-		func(coachID int64, clientID int64) bool {
+	properties.Property("All curator-client notifications use main category and trainer_feedback type", prop.ForAll(
+		func(curatorID int64, clientID int64) bool {
 			// This property verifies that the notification constants are correct
-			// All coach-client notifications should use:
+			// All curator-client notifications should use:
 			// - Category: main (personal notifications)
-			// - Type: trainer_feedback (coach-related notifications)
+			// - Type: trainer_feedback (curator-related notifications)
 
 			if notifications.CategoryMain != "main" {
 				t.Logf("CategoryMain constant is incorrect: %s", notifications.CategoryMain)
@@ -2245,7 +2245,7 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 
 			return true
 		},
-		gen.Int64Range(1, 1000), // coach ID
+		gen.Int64Range(1, 1000), // curator ID
 		gen.Int64Range(1, 1000), // client ID
 	))
 
@@ -2254,19 +2254,19 @@ func TestCoachClientNotificationProperty(t *testing.T) {
 		func(caloriesGoal int, proteinGoal int, taskTitle string, weekNumber int) bool {
 			// Verify plan update notification
 			planTitle := "Обновлен план питания"
-			planContent := fmt.Sprintf("Ваш тренер обновил план питания: %d ккал, %d г белка в день", caloriesGoal, proteinGoal)
+			planContent := fmt.Sprintf("Ваш куратор обновил план питания: %d ккал, %d г белка в день", caloriesGoal, proteinGoal)
 
 			if !contains(planTitle, "план") {
 				t.Logf("Plan notification title not in Russian: %s", planTitle)
 				return false
 			}
-			if !contains(planContent, "тренер") || !contains(planContent, "ккал") || !contains(planContent, "белка") {
+			if !contains(planContent, "куратор") || !contains(planContent, "ккал") || !contains(planContent, "белка") {
 				t.Logf("Plan notification content not in Russian: %s", planContent)
 				return false
 			}
 
 			// Verify task assigned notification
-			taskNotifTitle := "Новое задание от тренера"
+			taskNotifTitle := "Новое задание от куратора"
 			taskNotifContent := fmt.Sprintf("Вам назначено новое задание: %s", taskTitle)
 
 			if !contains(taskNotifTitle, "задание") {

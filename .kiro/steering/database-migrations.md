@@ -386,14 +386,14 @@ db.Exec("DELETE FROM table_name WHERE user_id = $1", userID)
      USING (user_id = current_setting('app.current_user_id')::BIGINT);
    ```
 
-3. **Coaches can access client data**
+3. **Curators can access client data**
    ```sql
-   CREATE POLICY "Coaches can view client data"
+   CREATE POLICY "Curators can view client data"
      ON table_name FOR SELECT
      USING (
        EXISTS (
-         SELECT 1 FROM coach_client_relationships
-         WHERE coach_id = current_setting('app.current_user_id')::BIGINT
+         SELECT 1 FROM curator_client_relationships
+         WHERE curator_id = current_setting('app.current_user_id')::BIGINT
          AND client_id = table_name.user_id
          AND status = 'active'
        )

@@ -53,7 +53,7 @@ const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 const MEMORY_CACHE_TTL = {
     DAILY_DATA: 60 * 1000,      // 1 minute for daily metrics
     WEEKLY_DATA: 2 * 60 * 1000, // 2 minutes for week data
-    WEEKLY_PLAN: 30 * 1000,     // 30 seconds for weekly plan (coach updates)
+    WEEKLY_PLAN: 30 * 1000,     // 30 seconds for weekly plan (curator updates)
     TASKS: 30 * 1000,           // 30 seconds for tasks
 } as const;
 

@@ -55,11 +55,11 @@ func (d *DailyMetrics) Validate() error {
 	return nil
 }
 
-// WeeklyPlan represents a weekly nutrition plan assigned by a coach
+// WeeklyPlan represents a weekly nutrition plan assigned by a curator
 type WeeklyPlan struct {
 	ID           string    `json:"id" db:"id"`
 	UserID       int64     `json:"user_id" db:"user_id"`
-	CoachID      int64     `json:"coach_id" db:"coach_id"`
+	CuratorID    int64     `json:"curator_id" db:"curator_id"`
 	CaloriesGoal int       `json:"calories_goal" db:"calories_goal"`
 	ProteinGoal  int       `json:"protein_goal" db:"protein_goal"`
 	FatGoal      *int      `json:"fat_goal,omitempty" db:"fat_goal"`
@@ -78,8 +78,8 @@ func (w *WeeklyPlan) Validate() error {
 	if w.UserID <= 0 {
 		return fmt.Errorf("user_id is required and must be positive")
 	}
-	if w.CoachID <= 0 {
-		return fmt.Errorf("coach_id is required and must be positive")
+	if w.CuratorID <= 0 {
+		return fmt.Errorf("curator_id is required and must be positive")
 	}
 	if w.CaloriesGoal <= 0 {
 		return fmt.Errorf("calories_goal is required and must be positive")
@@ -129,11 +129,11 @@ func (t TaskStatus) IsValid() bool {
 	return false
 }
 
-// Task represents a task assigned by a coach to a client
+// Task represents a task assigned by a curator to a client
 type Task struct {
 	ID          string     `json:"id" db:"id"`
 	UserID      int64      `json:"user_id" db:"user_id"`
-	CoachID     int64      `json:"coach_id" db:"coach_id"`
+	CuratorID   int64      `json:"curator_id" db:"curator_id"`
 	Title       string     `json:"title" db:"title"`
 	Description *string    `json:"description,omitempty" db:"description"`
 	WeekNumber  int        `json:"week_number" db:"week_number"`
@@ -150,8 +150,8 @@ func (t *Task) Validate() error {
 	if t.UserID <= 0 {
 		return fmt.Errorf("user_id is required and must be positive")
 	}
-	if t.CoachID <= 0 {
-		return fmt.Errorf("coach_id is required and must be positive")
+	if t.CuratorID <= 0 {
+		return fmt.Errorf("curator_id is required and must be positive")
 	}
 	if t.Title == "" {
 		return fmt.Errorf("title is required")
@@ -174,19 +174,19 @@ func (t *Task) Validate() error {
 	return nil
 }
 
-// WeeklyReport represents a weekly report submitted by a client
+// WeeklyReport represents a weekly report submitted by a client to a curator
 type WeeklyReport struct {
-	ID            string     `json:"id" db:"id"`
-	UserID        int64      `json:"user_id" db:"user_id"`
-	CoachID       int64      `json:"coach_id" db:"coach_id"`
-	WeekStart     time.Time  `json:"week_start" db:"week_start"`
-	WeekEnd       time.Time  `json:"week_end" db:"week_end"`
-	WeekNumber    int        `json:"week_number" db:"week_number"`
-	Summary       string     `json:"summary" db:"summary"` // JSONB stored as string
-	PhotoURL      *string    `json:"photo_url,omitempty" db:"photo_url"`
-	SubmittedAt   time.Time  `json:"submitted_at" db:"submitted_at"`
-	ReviewedAt    *time.Time `json:"reviewed_at,omitempty" db:"reviewed_at"`
-	CoachFeedback *string    `json:"coach_feedback,omitempty" db:"coach_feedback"`
+	ID              string     `json:"id" db:"id"`
+	UserID          int64      `json:"user_id" db:"user_id"`
+	CuratorID       int64      `json:"curator_id" db:"curator_id"`
+	WeekStart       time.Time  `json:"week_start" db:"week_start"`
+	WeekEnd         time.Time  `json:"week_end" db:"week_end"`
+	WeekNumber      int        `json:"week_number" db:"week_number"`
+	Summary         string     `json:"summary" db:"summary"` // JSONB stored as string
+	PhotoURL        *string    `json:"photo_url,omitempty" db:"photo_url"`
+	SubmittedAt     time.Time  `json:"submitted_at" db:"submitted_at"`
+	ReviewedAt      *time.Time `json:"reviewed_at,omitempty" db:"reviewed_at"`
+	CuratorFeedback *string    `json:"curator_feedback,omitempty" db:"curator_feedback"`
 	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
 }
@@ -196,8 +196,8 @@ func (w *WeeklyReport) Validate() error {
 	if w.UserID <= 0 {
 		return fmt.Errorf("user_id is required and must be positive")
 	}
-	if w.CoachID <= 0 {
-		return fmt.Errorf("coach_id is required and must be positive")
+	if w.CuratorID <= 0 {
+		return fmt.Errorf("curator_id is required and must be positive")
 	}
 	if w.WeekStart.IsZero() {
 		return fmt.Errorf("week_start is required")
@@ -217,8 +217,8 @@ func (w *WeeklyReport) Validate() error {
 	if w.PhotoURL != nil && len(*w.PhotoURL) > 500 {
 		return fmt.Errorf("photo_url must be 500 characters or less")
 	}
-	if w.CoachFeedback != nil && len(*w.CoachFeedback) > 2000 {
-		return fmt.Errorf("coach_feedback must be 2000 characters or less")
+	if w.CuratorFeedback != nil && len(*w.CuratorFeedback) > 2000 {
+		return fmt.Errorf("curator_feedback must be 2000 characters or less")
 	}
 	return nil
 }

@@ -350,9 +350,17 @@ func loadEnv(filePath string) error {
 }
 
 func main() {
-	// Load .env file
-	if err := loadEnv(".env"); err != nil {
-		log.Printf("Warning: Failed to load .env file: %v", err)
+	// Load .env file (try multiple locations)
+	envPaths := []string{".env", "../../.env", "../.env"}
+	envLoaded := false
+	for _, path := range envPaths {
+		if err := loadEnv(path); err == nil {
+			envLoaded = true
+			break
+		}
+	}
+	if !envLoaded {
+		log.Printf("Warning: Failed to load .env file from any location")
 	}
 
 	// Get database URL from environment

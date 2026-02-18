@@ -30,6 +30,8 @@ export interface SearchTabProps {
     popularFoods?: FoodItem[];
     /** External search function */
     onSearch?: (query: string) => Promise<FoodItem[]>;
+    /** External search results (if provided, overrides internal results) */
+    searchResults?: FoodItem[];
     /** Whether search is loading */
     isLoading?: boolean;
     /** Additional CSS classes */
@@ -53,15 +55,19 @@ export function SearchTab({
     recentFoods = [],
     popularFoods = [],
     onSearch,
+    searchResults,
     isLoading = false,
     className = '',
 }: SearchTabProps) {
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState<FoodItem[]>([]);
+    const [internalResults, setInternalResults] = useState<FoodItem[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Use external results if provided, otherwise use internal
+    const results = searchResults !== undefined ? searchResults : internalResults;
 
     // Focus input on mount
     useEffect(() => {
@@ -75,7 +81,7 @@ export function SearchTab({
         }
 
         if (query.length < MIN_SEARCH_LENGTH) {
-            setResults([]);
+            setInternalResults([]);
             setHasSearched(false);
             return;
         }
@@ -85,15 +91,15 @@ export function SearchTab({
         debounceTimerRef.current = setTimeout(async () => {
             try {
                 if (onSearch) {
-                    const searchResults = await onSearch(query);
-                    setResults(searchResults);
+                    const searchResultsFromApi = await onSearch(query);
+                    setInternalResults(searchResultsFromApi);
                 } else {
                     // Mock search for demo
-                    setResults([]);
+                    setInternalResults([]);
                 }
                 setHasSearched(true);
             } catch {
-                setResults([]);
+                setInternalResults([]);
                 setHasSearched(true);
             } finally {
                 setIsSearching(false);
@@ -106,6 +112,13 @@ export function SearchTab({
             }
         };
     }, [query, onSearch]);
+
+    // Update hasSearched when external results change
+    useEffect(() => {
+        if (searchResults !== undefined && query.length >= MIN_SEARCH_LENGTH) {
+            setHasSearched(true);
+        }
+    }, [searchResults, query]);
 
     // Handle input change
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

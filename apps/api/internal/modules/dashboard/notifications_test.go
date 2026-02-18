@@ -51,7 +51,7 @@ func TestSendPlanUpdateNotification(t *testing.T) {
 		plan := &WeeklyPlan{
 			ID:           "plan-1",
 			UserID:       clientID,
-			CoachID:      456,
+			CuratorID:      456,
 			CaloriesGoal: 2000,
 			ProteinGoal:  150,
 			StartDate:    time.Now(),
@@ -83,7 +83,7 @@ func TestSendTaskAssignedNotification(t *testing.T) {
 		task := &Task{
 			ID:          "task-1",
 			UserID:      clientID,
-			CoachID:     456,
+			CuratorID:     456,
 			Title:       taskTitle,
 			Description: nil,
 			WeekNumber:  1,
@@ -108,11 +108,11 @@ func TestSendTaskAssignedNotification(t *testing.T) {
 func TestSendWeeklyReportNotification(t *testing.T) {
 	t.Run("notification has correct structure", func(t *testing.T) {
 		// This test verifies the notification structure without actually sending it
-		coachID := int64(456)
+		curatorID := int64(456)
 		report := &WeeklyReport{
 			ID:         "report-1",
 			UserID:     123,
-			CoachID:    coachID,
+			CuratorID:  curatorID,
 			WeekNumber: 5,
 			WeekStart:  time.Now().AddDate(0, 0, -7),
 			WeekEnd:    time.Now(),
@@ -124,7 +124,7 @@ func TestSendWeeklyReportNotification(t *testing.T) {
 		assert.Contains(t, expectedTitle, "отчет")
 
 		// Verify report data
-		assert.Equal(t, coachID, report.CoachID)
+		assert.Equal(t, curatorID, report.CuratorID)
 		assert.Equal(t, 5, report.WeekNumber)
 	})
 }
@@ -139,13 +139,13 @@ func TestNotificationErrorHandling(t *testing.T) {
 		plan := &WeeklyPlan{
 			ID:           "plan-1",
 			UserID:       123,
-			CoachID:      456,
+			CuratorID:      456,
 			CaloriesGoal: 2000,
 			ProteinGoal:  150,
 			StartDate:    time.Now(),
 			EndDate:      time.Now().AddDate(0, 0, 7),
 			IsActive:     true,
-			CreatedBy:    456, // Coach ID
+			CreatedBy:    456, // Curator ID
 		}
 
 		// Verify plan is valid even if notification would fail
@@ -156,7 +156,7 @@ func TestNotificationErrorHandling(t *testing.T) {
 		task := &Task{
 			ID:          "task-1",
 			UserID:      123,
-			CoachID:     456,
+			CuratorID:     456,
 			Title:       "Test task",
 			Description: nil,
 			WeekNumber:  1,
@@ -172,7 +172,7 @@ func TestNotificationErrorHandling(t *testing.T) {
 		report := &WeeklyReport{
 			ID:         "report-1",
 			UserID:     123,
-			CoachID:    456,
+			CuratorID:    456,
 			WeekNumber: 5,
 			WeekStart:  time.Now().AddDate(0, 0, -7),
 			WeekEnd:    time.Now(),
@@ -187,7 +187,7 @@ func TestNotificationErrorHandling(t *testing.T) {
 
 // TestNotificationCategories tests that notifications use correct categories
 func TestNotificationCategories(t *testing.T) {
-	t.Run("all coach notifications use main category", func(t *testing.T) {
+	t.Run("all curator notifications use main category", func(t *testing.T) {
 		// Plan update notification
 		assert.Equal(t, notifications.CategoryMain, notifications.CategoryMain)
 
@@ -198,7 +198,7 @@ func TestNotificationCategories(t *testing.T) {
 		assert.Equal(t, notifications.CategoryMain, notifications.CategoryMain)
 	})
 
-	t.Run("all coach notifications use trainer feedback type", func(t *testing.T) {
+	t.Run("all curator notifications use trainer feedback type", func(t *testing.T) {
 		// Plan update notification
 		assert.Equal(t, notifications.TypeTrainerFeedback, notifications.TypeTrainerFeedback)
 

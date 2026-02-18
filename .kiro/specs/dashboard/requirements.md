@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Dashboard is the central hub of the BURCEV fitness tracking platform where users monitor daily progress, log key metrics (nutrition, weight, steps, workouts), view weekly plans from coaches, and track long-term progress. It serves as the primary interface for daily engagement and goal tracking.
+The Dashboard is the central hub of the BURCEV fitness tracking platform where users monitor daily progress, log key metrics (nutrition, weight, steps, workouts), view weekly plans from curators, and track long-term progress. It serves as the primary interface for daily engagement and goal tracking.
 
 ## Glossary
 
@@ -15,11 +15,11 @@ The Dashboard is the central hub of the BURCEV fitness tracking platform where u
 - **Workout_Block**: Component for logging workout completion
 - **Progress_Section**: Component displaying trends and analytics preview
 - **Photo_Upload_Section**: Component for weekly body form photo uploads
-- **Weekly_Plan_Section**: Component displaying coach-assigned nutrition plan
-- **Tasks_Section**: Component displaying coach-assigned tasks
+- **Weekly_Plan_Section**: Component displaying curator-assigned nutrition plan
+- **Tasks_Section**: Component displaying curator-assigned tasks
 - **Goal_Completion_Status**: Visual indicator showing if daily goals are met
-- **Weekly_Report**: Summary submitted to coach at end of week
-- **Coach**: Trainer or nutritionist who sets plans and assigns tasks
+- **Weekly_Report**: Summary submitted to curator at end of week
+- **Curator**: Trainer or nutritionist who sets plans and assigns tasks
 - **Client**: End user tracking their fitness and nutrition
 
 ## Requirements
@@ -121,7 +121,7 @@ The Dashboard is the central hub of the BURCEV fitness tracking platform where u
 
 ### Requirement 8: Weekly Plan Display
 
-**User Story:** As a client, I want to see my weekly nutrition plan, so that I know my daily targets set by my coach.
+**User Story:** As a client, I want to see my weekly nutrition plan, so that I know my daily targets set by my curator.
 
 #### Acceptance Criteria
 
@@ -131,11 +131,11 @@ The Dashboard is the central hub of the BURCEV fitness tracking platform where u
 4. WHEN the Weekly_Plan_Section loads with an active plan, THE System SHALL display a visual indicator showing the plan is active
 5. WHEN no active plan exists, THE Weekly_Plan_Section SHALL display a placeholder message "Скоро тут будет твоя планка"
 6. WHEN a plan expires (end date is in the past), THE Weekly_Plan_Section SHALL display the placeholder message
-7. WHEN a coach updates the plan, THE Weekly_Plan_Section SHALL refresh and display the updated targets within 30 seconds
+7. WHEN a curator updates the plan, THE Weekly_Plan_Section SHALL refresh and display the updated targets within 30 seconds
 
 ### Requirement 9: Tasks Display
 
-**User Story:** As a client, I want to see tasks assigned by my coach, so that I can complete them and track my progress.
+**User Story:** As a client, I want to see tasks assigned by my curator, so that I can complete them and track my progress.
 
 #### Acceptance Criteria
 
@@ -150,7 +150,7 @@ The Dashboard is the central hub of the BURCEV fitness tracking platform where u
 
 ### Requirement 10: Weekly Report Submission
 
-**User Story:** As a client, I want to submit a weekly report to my coach, so that they can review my progress and provide feedback.
+**User Story:** As a client, I want to submit a weekly report to my curator, so that they can review my progress and provide feedback.
 
 #### Acceptance Criteria
 
@@ -158,7 +158,7 @@ The Dashboard is the central hub of the BURCEV fitness tracking platform where u
 2. WHEN a user clicks "Submit weekly report", THE System SHALL validate all required data is logged (nutrition for 5+ days, weight for 5+ days, weekly photo)
 3. WHEN required data is missing, THE System SHALL display a validation error listing missing items
 4. WHEN all required data is present and the user confirms submission, THE System SHALL create a weekly report record
-5. WHEN a weekly report is submitted, THE System SHALL notify the assigned coach
+5. WHEN a weekly report is submitted, THE System SHALL notify the assigned curator
 6. WHEN a weekly report is submitted, THE System SHALL disable further editing of that week's data
 7. WHEN a weekly report is already submitted, THE System SHALL display a "Report submitted" indicator instead of the submit button
 
@@ -201,18 +201,18 @@ The Dashboard is the central hub of the BURCEV fitness tracking platform where u
 5. WHEN internet connection is restored, THE System SHALL sync any pending changes to the server
 6. FOR ALL data operations, THE System SHALL validate user authentication and authorization before processing
 
-### Requirement 14: Coach Integration
+### Requirement 14: Curator Integration
 
-**User Story:** As a coach, I want to set weekly plans and assign tasks to clients, so that I can guide their fitness journey.
+**User Story:** As a curator, I want to set weekly plans and assign tasks to clients, so that I can guide their fitness journey.
 
 #### Acceptance Criteria
 
-1. WHEN a coach creates a weekly plan, THE System SHALL validate the plan contains daily calorie and protein targets
-2. WHEN a coach creates a weekly plan, THE System SHALL validate the plan has valid start and end dates
-3. WHEN a coach assigns a task to a client, THE System SHALL validate the task contains a title, description, and due date
-4. WHEN a coach updates a plan or task, THE System SHALL notify the client within 30 seconds
-5. WHEN a client submits a weekly report, THE System SHALL notify the coach immediately
-6. FOR ALL coach actions, THE System SHALL verify the coach has permission to manage the specific client
+1. WHEN a curator creates a weekly plan, THE System SHALL validate the plan contains daily calorie and protein targets
+2. WHEN a curator creates a weekly plan, THE System SHALL validate the plan has valid start and end dates
+3. WHEN a curator assigns a task to a client, THE System SHALL validate the task contains a title, description, and due date
+4. WHEN a curator updates a plan or task, THE System SHALL notify the client within 30 seconds
+5. WHEN a client submits a weekly report, THE System SHALL notify the curator immediately
+6. FOR ALL curator actions, THE System SHALL verify the curator has permission to manage the specific client
 
 ### Requirement 15: Attention Indicators
 
@@ -225,8 +225,8 @@ The Dashboard is the central hub of the BURCEV fitness tracking platform where u
 3. WHEN nutrition is not logged for the current day (calories = 0), THE Nutrition_Block SHALL display an attention indicator
 4. WHEN steps are not logged for the current day (steps = 0), THE Steps_Block SHALL display an attention indicator
 5. WHEN a workout is not logged for the current day AND it's a scheduled workout day, THE Workout_Block SHALL display an attention indicator
-6. WHEN tasks from the coach are incomplete and approaching due date (within 2 days), THE Tasks_Section SHALL display an attention indicator with count
-7. WHEN a weekly plan is set by the coach AND daily goals are not being met (< 80% adherence for 2+ consecutive days), THE Weekly_Plan_Section SHALL display an attention indicator
+6. WHEN tasks from the curator are incomplete and approaching due date (within 2 days), THE Tasks_Section SHALL display an attention indicator with count
+7. WHEN a weekly plan is set by the curator AND daily goals are not being met (< 80% adherence for 2+ consecutive days), THE Weekly_Plan_Section SHALL display an attention indicator
 8. WHEN it's the end of the week (Saturday or Sunday) AND the weekly photo is not uploaded, THE Photo_Upload_Section SHALL display a prominent attention indicator
 9. WHEN it's Sunday AND the weekly report is not submitted, THE Calendar_Navigator SHALL display a pulsing attention indicator on the submit button
 10. FOR ALL attention indicators, THE System SHALL use consistent visual styling (color, icon, animation) across all blocks

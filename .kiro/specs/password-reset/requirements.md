@@ -7,7 +7,7 @@ This document specifies the requirements for implementing secure password reset 
 ## Glossary
 
 - **System**: The BURCEV authentication system including frontend and backend components
-- **User**: A registered account holder on the BURCEV platform (Client, Coach, or Super Admin)
+- **User**: A registered account holder on the BURCEV platform (Client, Curator, or Super Admin)
 - **Reset_Token**: A cryptographically secure, time-limited token used to authorize password reset
 - **Reset_Request**: An action initiated by a user to begin the password reset process
 - **Email_Service**: The system component responsible for sending password reset emails

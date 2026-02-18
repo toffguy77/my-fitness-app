@@ -45,7 +45,7 @@ Digital nutrition diary with KBЖУ tracking (calories, protein, fat, carbs), tr
 ## User Roles
 
 - **Client**: End users tracking nutrition (Free or Premium)
-- **Coach**: Trainers monitoring client progress, providing feedback
+- **Curator**: Curators monitoring client progress, providing feedback
 - **Super Admin**: Platform administrators managing users and subscriptions
 
 ## Tech Stack

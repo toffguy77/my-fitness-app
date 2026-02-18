@@ -91,6 +91,19 @@ export { DatePicker } from './components/DatePicker';
 export { DietTab } from './components/DietTab';
 export { OfflineIndicator } from './components/OfflineIndicator';
 
+// Food entry components
+export { FoodEntryModal } from './components/FoodEntryModal';
+export { SearchTab } from './components/SearchTab';
+export { BarcodeTab } from './components/BarcodeTab';
+export { AIPhotoTab } from './components/AIPhotoTab';
+export { ChatTab } from './components/ChatTab';
+export { PortionSelector } from './components/PortionSelector';
+export { ManualEntryForm } from './components/ManualEntryForm';
+export { MealSlot } from './components/MealSlot';
+export { FoodEntryItem } from './components/FoodEntryItem';
+export { WaterTracker } from './components/WaterTracker';
+export { KBZHUSummary } from './components/KBZHUSummary';
+
 // Recommendations tab components
 export { RecommendationsTab } from './components/RecommendationsTab';
 export { NutrientCategory } from './components/NutrientCategory';

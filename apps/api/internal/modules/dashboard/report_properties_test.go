@@ -187,7 +187,7 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 
 	// Property: Valid week data creates report record
 	properties.Property("Valid week data creates report record", prop.ForAll(
-		func(userID int64, coachID int64) bool {
+		func(userID int64, curatorID int64) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
 
@@ -208,10 +208,10 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 				WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 				WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true)) // photo exists
 
-			// Mock coach lookup
-			mock.ExpectQuery(`SELECT coach_id FROM coach_client_relationships`).
+			// Mock curator lookup
+			mock.ExpectQuery(`SELECT curator_id FROM curator_client_relationships`).
 				WithArgs(userID).
-				WillReturnRows(sqlmock.NewRows([]string{"coach_id"}).AddRow(coachID))
+				WillReturnRows(sqlmock.NewRows([]string{"curator_id"}).AddRow(curatorID))
 
 			// Mock summary calculation
 			mock.ExpectQuery(`SELECT.*FROM daily_metrics`).
@@ -231,7 +231,7 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 				WithArgs(
 					sqlmock.AnyArg(), // id
 					userID,           // user_id
-					coachID,          // coach_id
+					curatorID,        // curator_id
 					sqlmock.AnyArg(), // week_start
 					sqlmock.AnyArg(), // week_end
 					sqlmock.AnyArg(), // week_number
@@ -239,14 +239,14 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 					sqlmock.AnyArg(), // photo_url
 					sqlmock.AnyArg(), // submitted_at
 					sqlmock.AnyArg(), // reviewed_at
-					sqlmock.AnyArg(), // coach_feedback
+					sqlmock.AnyArg(), // curator_feedback
 				).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "coach_id", "week_start", "week_end", "week_number",
-					"summary", "photo_url", "submitted_at", "reviewed_at", "coach_feedback",
+					"id", "user_id", "curator_id", "week_start", "week_end", "week_number",
+					"summary", "photo_url", "submitted_at", "reviewed_at", "curator_feedback",
 					"created_at", "updated_at",
 				}).AddRow(
-					"test-id", userID, coachID, weekStart, weekEnd, 1,
+					"test-id", userID, curatorID, weekStart, weekEnd, 1,
 					`{"days_with_nutrition":5}`, "https://example.com/photo.jpg",
 					time.Now(), nil, nil, time.Now(), time.Now(),
 				))
@@ -270,8 +270,8 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 				return false
 			}
 
-			if report.CoachID != coachID {
-				t.Logf("Report coach_id mismatch: expected %d, got %d", coachID, report.CoachID)
+			if report.CuratorID != curatorID {
+				t.Logf("Report curator_id mismatch: expected %d, got %d", curatorID, report.CuratorID)
 				return false
 			}
 
@@ -293,7 +293,7 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 			return mock.ExpectationsWereMet() == nil
 		},
 		gen.Int64Range(1, 1000),    // userID
-		gen.Int64Range(1001, 2000), // coachID
+		gen.Int64Range(1001, 2000), // curatorID
 	))
 
 	// Property: Report creation fails without valid data
@@ -344,8 +344,8 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 		gen.IntRange(0, 4),      // insufficient nutrition days
 	))
 
-	// Property: Report creation fails without active coach
-	properties.Property("Report creation fails without active coach", prop.ForAll(
+	// Property: Report creation fails without active curator
+	properties.Property("Report creation fails without active curator", prop.ForAll(
 		func(userID int64) bool {
 			service, mock, cleanup := setupTestService(t)
 			defer cleanup()
@@ -367,17 +367,17 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 				WithArgs(userID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 				WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
-			// Mock coach lookup - no active coach
-			mock.ExpectQuery(`SELECT coach_id FROM coach_client_relationships`).
+			// Mock curator lookup - no active curator
+			mock.ExpectQuery(`SELECT curator_id FROM curator_client_relationships`).
 				WithArgs(userID).
 				WillReturnError(sql.ErrNoRows)
 
 			// Create report
 			report, err := service.CreateWeeklyReport(ctx, userID, weekStart, weekEnd)
 
-			// Property: Creation fails when no active coach found
+			// Property: Creation fails when no active curator found
 			if err == nil {
-				t.Logf("Report creation should have failed without active coach")
+				t.Logf("Report creation should have failed without active curator")
 				return false
 			}
 
@@ -386,8 +386,8 @@ func TestWeeklyReportCreationProperty(t *testing.T) {
 				return false
 			}
 
-			if !contains(err.Error(), "coach") {
-				t.Logf("Error should mention coach not found: %v", err)
+			if !contains(err.Error(), "curator") {
+				t.Logf("Error should mention curator not found: %v", err)
 				return false
 			}
 

@@ -113,7 +113,7 @@ function generateMockWeeklyPlan() {
     return {
         id: 'plan-id',
         userId: 'test-user-id',
-        coachId: 'coach-id',
+        curatorId: 'curator-id',
         caloriesGoal: 2000,
         proteinGoal: 150,
         fatGoal: 60,
@@ -124,7 +124,7 @@ function generateMockWeeklyPlan() {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-        createdBy: 'coach-id',
+        createdBy: 'curator-id',
     };
 }
 
@@ -136,7 +136,7 @@ function generateMockTasks() {
         {
             id: 'task-1',
             userId: 'test-user-id',
-            coachId: 'coach-id',
+            curatorId: 'curator-id',
             title: 'Задача 1',
             description: 'Описание задачи 1',
             weekNumber: 1,
@@ -149,7 +149,7 @@ function generateMockTasks() {
         {
             id: 'task-2',
             userId: 'test-user-id',
-            coachId: 'coach-id',
+            curatorId: 'curator-id',
             title: 'Задача 2',
             description: 'Описание задачи 2',
             weekNumber: 1,
@@ -390,7 +390,7 @@ describe('Property 27: Dashboard Load Performance', () => {
                     const mockTasks = Array.from({ length: taskCount }, (_, i) => ({
                         id: `task-${i}`,
                         userId: 'test-user-id',
-                        coachId: 'coach-id',
+                        curatorId: 'curator-id',
                         title: `Задача ${i + 1}`,
                         description: `Описание задачи ${i + 1}`,
                         weekNumber: 1,
