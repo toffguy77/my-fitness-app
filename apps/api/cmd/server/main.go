@@ -11,6 +11,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/modules/nutrition"
@@ -196,6 +197,36 @@ func main() {
 			logsGroup.POST("", logsHandler.ReceiveLogs)
 			// Protected stats endpoint
 			logsGroup.GET("/stats", middleware.RequireAuth(cfg), middleware.RequireRole("admin"), logsHandler.GetLogStats)
+		}
+
+		// Food tracker routes (protected)
+		foodTrackerHandler := foodtracker.NewHandler(cfg, log, db)
+		ftGroup := v1.Group("/food-tracker")
+		ftGroup.Use(middleware.RequireAuth(cfg))
+		{
+			// Food entries
+			ftGroup.GET("/entries", foodTrackerHandler.GetEntries)
+			ftGroup.POST("/entries", foodTrackerHandler.CreateEntry)
+			ftGroup.PUT("/entries/:id", foodTrackerHandler.UpdateEntry)
+			ftGroup.DELETE("/entries/:id", foodTrackerHandler.DeleteEntry)
+
+			// Food search
+			ftGroup.GET("/search", foodTrackerHandler.SearchFoods)
+			ftGroup.GET("/barcode/:code", foodTrackerHandler.LookupBarcode)
+			ftGroup.GET("/recent", foodTrackerHandler.GetRecentFoods)
+			ftGroup.GET("/favorites", foodTrackerHandler.GetFavoriteFoods)
+			ftGroup.POST("/favorites/:foodId", foodTrackerHandler.AddToFavorites)
+			ftGroup.DELETE("/favorites/:foodId", foodTrackerHandler.RemoveFromFavorites)
+
+			// Water tracking
+			ftGroup.GET("/water", foodTrackerHandler.GetWaterIntake)
+			ftGroup.POST("/water", foodTrackerHandler.AddWater)
+
+			// Recommendations
+			ftGroup.GET("/recommendations", foodTrackerHandler.GetRecommendations)
+			ftGroup.GET("/recommendations/:id", foodTrackerHandler.GetRecommendationDetail)
+			ftGroup.PUT("/recommendations/preferences", foodTrackerHandler.UpdatePreferences)
+			ftGroup.POST("/recommendations/custom", foodTrackerHandler.CreateCustomRecommendation)
 		}
 	}
 
