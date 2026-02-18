@@ -81,6 +81,8 @@ export function FoodEntryModal({
     const [portionAmount, setPortionAmount] = useState<number>(100);
     const [calculatedNutrition, setCalculatedNutrition] = useState<KBZHU | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [batchFoods, setBatchFoods] = useState<FoodItem[]>([]);
+    const [batchIndex, setBatchIndex] = useState(0);
 
     // Refs
     const modalRef = useRef<HTMLDivElement>(null);
@@ -100,6 +102,8 @@ export function FoodEntryModal({
             setPortionType('grams');
             setPortionAmount(100);
             setCalculatedNutrition(null);
+            setBatchFoods([]);
+            setBatchIndex(0);
             setTimeout(() => {
                 firstFocusableRef.current?.focus();
             }, 0);
@@ -175,8 +179,8 @@ export function FoodEntryModal({
         if (foods.length === 1) {
             handleSelectFood(foods[0]);
         } else if (foods.length > 1) {
-            // For multiple foods, add them one by one with default portions
-            // TODO: Could show a multi-item portion selector
+            setBatchFoods(foods);
+            setBatchIndex(0);
             handleSelectFood(foods[0]);
         }
     }, [handleSelectFood]);
@@ -212,6 +216,19 @@ export function FoodEntryModal({
         setStep('select-food');
     }, []);
 
+    // Handle skipping a batch item
+    const handleSkipBatchItem = useCallback(() => {
+        const nextIndex = batchIndex + 1;
+        if (nextIndex < batchFoods.length) {
+            setBatchIndex(nextIndex);
+            handleSelectFood(batchFoods[nextIndex]);
+        } else {
+            setBatchFoods([]);
+            setBatchIndex(0);
+            onClose();
+        }
+    }, [batchIndex, batchFoods, handleSelectFood, onClose]);
+
     // Handle save entry
     const handleSaveEntry = useCallback(async () => {
         if (!selectedFood || !calculatedNutrition) return;
@@ -231,13 +248,21 @@ export function FoodEntryModal({
                 date: selectedDate,
             });
 
-            onClose();
+            const nextIndex = batchIndex + 1;
+            if (batchFoods.length > 0 && nextIndex < batchFoods.length) {
+                setBatchIndex(nextIndex);
+                handleSelectFood(batchFoods[nextIndex]);
+            } else {
+                setBatchFoods([]);
+                setBatchIndex(0);
+                onClose();
+            }
         } catch (error) {
             console.error('Failed to save entry:', error);
         } finally {
             setIsSaving(false);
         }
-    }, [selectedFood, calculatedNutrition, mealType, portionType, portionAmount, selectedDate, addEntry, onClose]);
+    }, [selectedFood, calculatedNutrition, mealType, portionType, portionAmount, selectedDate, addEntry, onClose, batchIndex, batchFoods, handleSelectFood]);
 
     if (!isOpen) {
         return null;
@@ -370,6 +395,22 @@ export function FoodEntryModal({
                     <div className="flex-1 overflow-y-auto p-3 sm:p-4">
                         {selectedFood && (
                             <>
+                                {/* Batch Progress Indicator */}
+                                {batchFoods.length > 1 && (
+                                    <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg">
+                                        <p className="text-sm text-blue-700">
+                                            Добавляем {batchIndex + 1} из {batchFoods.length}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={handleSkipBatchItem}
+                                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                        >
+                                            Пропустить
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Food Info */}
                                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                                     <h3 className="font-medium text-gray-900">{selectedFood.name}</h3>
@@ -412,7 +453,11 @@ export function FoodEntryModal({
                                         ) : (
                                             <>
                                                 <Check className="w-5 h-5" />
-                                                <span>Добавить</span>
+                                                <span>
+                                                    {batchFoods.length > 0 && batchIndex + 1 < batchFoods.length
+                                                        ? 'Добавить и далее'
+                                                        : 'Добавить'}
+                                                </span>
                                             </>
                                         )}
                                     </button>
