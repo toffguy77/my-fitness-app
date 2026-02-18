@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       target: development
-    container_name: burcev-web
+    container_name: burcev-web-dev
     ports:
       - "5000:3069"
     volumes:
@@ -33,7 +33,7 @@ services:
       context: ./apps/api
       dockerfile: Dockerfile
       target: development
-    container_name: burcev-api
+    container_name: burcev-api-dev
     ports:
       - "4000:4069"
     volumes:
@@ -82,82 +82,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # Production Web
-  web-prod:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      target: runner
-      args:
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    container_name: burcev-web-prod
-    ports:
-      - "5000:3070"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - burcev-network
-    profiles:
-      - production
-    restart: unless-stopped
-
-  # Production API
-  api-prod:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-      target: production
-    container_name: burcev-api-prod
-    ports:
-      - "4000:4070"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:4070/health",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    environment:
-      - NODE_ENV=production
-      - PORT=4000
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_SSL_MODE=${DB_SSL_MODE}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - SMTP_FROM_ADDRESS=${SMTP_FROM_ADDRESS}
-      - SMTP_FROM_NAME=${SMTP_FROM_NAME}
-      - RESET_PASSWORD_URL=${RESET_PASSWORD_URL}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}
-      - S3_BUCKET=${S3_BUCKET}
-      - S3_REGION=${S3_REGION}
-      - S3_ENDPOINT=${S3_ENDPOINT}
-      - LOG_LEVEL=${LOG_LEVEL}
-    networks:
-      - burcev-network
-    profiles:
-      - production
-    restart: unless-stopped
 
 networks:
   burcev-network:
