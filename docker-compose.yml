@@ -9,7 +9,7 @@ services:
       target: development
     container_name: burcev-web
     ports:
-      - "3000:3069"
+      - "5000:3069"
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
@@ -76,7 +76,7 @@ services:
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     container_name: burcev-web-prod
     ports:
-      - "3000:3070"
+      - "5000:3070"
     environment:
       - NODE_ENV=production
     networks:
