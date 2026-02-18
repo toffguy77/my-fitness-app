@@ -9,7 +9,7 @@ services:
       target: development
     container_name: burcev-web-dev
     ports:
-      - "5000:3069"
+      - "5000:3000"
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
@@ -24,6 +24,7 @@ services:
     depends_on:
       - api
     networks:
+      - dokploy-network
       - burcev-network
     restart: unless-stopped
 
@@ -35,7 +36,7 @@ services:
       target: development
     container_name: burcev-api-dev
     ports:
-      - "4000:4069"
+      - "4000:4000"
     volumes:
       - ./apps/api:/app
       - api_cache:/go/pkg/mod
@@ -66,6 +67,7 @@ services:
       - S3_ENDPOINT=${S3_ENDPOINT}
       - LOG_LEVEL=${LOG_LEVEL}
     networks:
+      - dokploy-network
       - burcev-network
     restart: unless-stopped
     healthcheck:
@@ -76,7 +78,7 @@ services:
           "--no-verbose",
           "--tries=1",
           "--spider",
-          "http://localhost:4069/health",
+          "http://localhost:4000/health",
         ]
       interval: 30s
       timeout: 10s
@@ -84,6 +86,8 @@ services:
       start_period: 40s
 
 networks:
+  dokploy-network:
+    external: true
   burcev-network:
     driver: bridge
 
