@@ -2,7 +2,8 @@
  * useBarcodeScanner Hook
  *
  * Custom hook for barcode scanning using html5-qrcode.
- * Handles scanner lifecycle, barcode detection, and product lookup with caching.
+ * Handles scanner lifecycle, barcode detection, product lookup with caching,
+ * and scanning from image files (gallery).
  *
  * @module food-tracker/hooks/useBarcodeScanner
  */
@@ -11,6 +12,24 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import type { FoodItem } from '../types';
+
+// ============================================================================
+// Logger
+// ============================================================================
+
+const LOG_PREFIX = '[BarcodeScanner]';
+
+function log(...args: unknown[]) {
+    console.log(LOG_PREFIX, ...args);
+}
+
+function logWarn(...args: unknown[]) {
+    console.warn(LOG_PREFIX, ...args);
+}
+
+function logError(...args: unknown[]) {
+    console.error(LOG_PREFIX, ...args);
+}
 
 // ============================================================================
 // Types
@@ -26,6 +45,7 @@ export interface UseBarcodeScanner {
     lookupError: string | null;
     startScanning: (elementId: string) => Promise<void>;
     stopScanning: () => Promise<void>;
+    scanFromFile: (file: File, elementId: string) => Promise<void>;
     lookupBarcode: (barcode: string) => Promise<void>;
     resetScan: () => void;
 }
@@ -49,19 +69,25 @@ interface CachedBarcode {
 function getCachedBarcode(barcode: string): FoodItem | null {
     try {
         const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${barcode}`);
-        if (!cached) return null;
+        if (!cached) {
+            log('Cache miss for barcode:', barcode);
+            return null;
+        }
 
         const data: CachedBarcode = JSON.parse(cached);
         if (Date.now() > data.expiresAt) {
+            log('Cache expired for barcode:', barcode);
             localStorage.removeItem(`${CACHE_KEY_PREFIX}${barcode}`);
             return null;
         }
 
+        log('Cache hit for barcode:', barcode, '-> product:', data.food.name);
         // Sliding cache: refresh expiresAt on read
         setCachedBarcode(barcode, data.food, DEFAULT_CACHE_DURATION_DAYS);
 
         return data.food;
-    } catch {
+    } catch (error) {
+        logWarn('Cache read error for barcode:', barcode, error);
         return null;
     }
 }
@@ -73,8 +99,9 @@ function setCachedBarcode(barcode: string, food: FoodItem, durationDays: number)
             expiresAt: Date.now() + durationDays * 24 * 60 * 60 * 1000,
         };
         localStorage.setItem(`${CACHE_KEY_PREFIX}${barcode}`, JSON.stringify(data));
-    } catch {
-        // Ignore cache errors
+        log('Cached barcode:', barcode, '-> product:', food.name, `(${durationDays} days TTL)`);
+    } catch (error) {
+        logWarn('Cache write error for barcode:', barcode, error);
     }
 }
 
@@ -95,25 +122,34 @@ export function useBarcodeScanner(): UseBarcodeScanner {
 
     // Stop scanning
     const stopScanning = useCallback(async () => {
-        if (isStoppingRef.current) return;
+        if (isStoppingRef.current) {
+            log('stopScanning: already stopping, skip');
+            return;
+        }
         isStoppingRef.current = true;
+        log('stopScanning: stopping scanner...');
 
         try {
             if (scannerRef.current) {
                 try {
                     const state = scannerRef.current.getState();
+                    log('stopScanning: scanner state =', state);
                     // Html5QrcodeScannerState: SCANNING = 2, PAUSED = 3
                     if (state === 2 || state === 3) {
                         await scannerRef.current.stop();
+                        log('stopScanning: scanner.stop() succeeded');
                     }
-                } catch {
-                    // Scanner may already be stopped
+                } catch (error) {
+                    logWarn('stopScanning: scanner.stop() error (may already be stopped):', error);
                 }
                 scannerRef.current.clear();
                 scannerRef.current = null;
+                log('stopScanning: scanner cleared');
+            } else {
+                log('stopScanning: no active scanner');
             }
-        } catch {
-            // Ignore cleanup errors
+        } catch (error) {
+            logError('stopScanning: cleanup error:', error);
             scannerRef.current = null;
         } finally {
             isStoppingRef.current = false;
@@ -124,6 +160,7 @@ export function useBarcodeScanner(): UseBarcodeScanner {
     // Cleanup on unmount
     useEffect(() => {
         return () => {
+            log('unmount: cleaning up scanner');
             if (scannerRef.current) {
                 try {
                     const state = scannerRef.current.getState();
@@ -131,13 +168,16 @@ export function useBarcodeScanner(): UseBarcodeScanner {
                         scannerRef.current.stop().then(() => {
                             scannerRef.current?.clear();
                             scannerRef.current = null;
-                        }).catch(() => {
+                            log('unmount: scanner stopped and cleared');
+                        }).catch((error: unknown) => {
+                            logWarn('unmount: scanner.stop() error:', error);
                             scannerRef.current?.clear();
                             scannerRef.current = null;
                         });
                     } else {
                         scannerRef.current.clear();
                         scannerRef.current = null;
+                        log('unmount: scanner cleared (was not scanning)');
                     }
                 } catch {
                     scannerRef.current = null;
@@ -148,8 +188,12 @@ export function useBarcodeScanner(): UseBarcodeScanner {
 
     // Lookup barcode via cache or API
     const lookupBarcode = useCallback(async (barcode: string) => {
-        if (isLookingUp) return;
+        if (isLookingUp) {
+            log('lookupBarcode: already looking up, skip');
+            return;
+        }
 
+        log('lookupBarcode: starting lookup for', barcode);
         setScannedBarcode(barcode);
         setIsLookingUp(true);
         setLookupError(null);
@@ -159,53 +203,99 @@ export function useBarcodeScanner(): UseBarcodeScanner {
             // Check cache first
             const cached = getCachedBarcode(barcode);
             if (cached) {
+                log('lookupBarcode: found in cache:', cached.name);
                 setScannedProduct(cached);
                 setIsLookingUp(false);
                 return;
             }
 
             // Lookup via API
-            const product = await apiClient.get<FoodItem>(
-                getApiUrl(`/food-tracker/barcode/${barcode}`)
-            );
+            const url = getApiUrl(`/food-tracker/barcode/${barcode}`);
+            log('lookupBarcode: calling API:', url);
+            const product = await apiClient.get<FoodItem>(url);
+            log('lookupBarcode: API response:', product);
 
             if (product) {
                 setCachedBarcode(barcode, product, DEFAULT_CACHE_DURATION_DAYS);
                 setScannedProduct(product);
+                log('lookupBarcode: product found:', product.name);
             } else {
+                log('lookupBarcode: product not found');
                 setLookupError('Продукт не найден');
             }
-        } catch {
+        } catch (error) {
+            logError('lookupBarcode: API error:', error);
             setLookupError('Ошибка при поиске продукта');
         } finally {
             setIsLookingUp(false);
         }
     }, [isLookingUp]);
 
-    // Start scanning
+    // Internal lookup used by camera scan callback (doesn't check isLookingUp state)
+    const doLookup = useCallback(async (barcode: string) => {
+        log('doLookup (camera decode): barcode =', barcode);
+        setScannedBarcode(barcode);
+        setIsLookingUp(true);
+        setLookupError(null);
+        setScannedProduct(null);
+
+        // Check cache first
+        const cached = getCachedBarcode(barcode);
+        if (cached) {
+            log('doLookup: cache hit:', cached.name);
+            setScannedProduct(cached);
+            setIsLookingUp(false);
+            return;
+        }
+
+        // Lookup via API
+        const url = getApiUrl(`/food-tracker/barcode/${barcode}`);
+        log('doLookup: calling API:', url);
+        apiClient.get<FoodItem>(url).then((product) => {
+            log('doLookup: API response:', product);
+            if (product) {
+                setCachedBarcode(barcode, product, DEFAULT_CACHE_DURATION_DAYS);
+                setScannedProduct(product);
+            } else {
+                setLookupError('Продукт не найден');
+            }
+        }).catch((error) => {
+            logError('doLookup: API error:', error);
+            setLookupError('Ошибка при поиске продукта');
+        }).finally(() => {
+            setIsLookingUp(false);
+        });
+    }, []);
+
+    // Start live camera scanning
     const startScanning = useCallback(async (elementId: string) => {
+        log('startScanning: elementId =', elementId);
         setScannerStatus('starting');
         setLookupError(null);
 
         try {
             // Dynamic import for SSR safety
+            log('startScanning: importing html5-qrcode...');
             const { Html5Qrcode } = await import('html5-qrcode');
+            log('startScanning: html5-qrcode imported successfully');
 
             // Stop any existing scanner
             if (scannerRef.current) {
+                log('startScanning: stopping existing scanner first');
                 try {
                     const state = scannerRef.current.getState();
                     if (state === 2 || state === 3) {
                         await scannerRef.current.stop();
                     }
                     scannerRef.current.clear();
-                } catch {
-                    // ignore
+                } catch (error) {
+                    logWarn('startScanning: error stopping existing scanner:', error);
                 }
             }
 
             const scanner = new Html5Qrcode(elementId);
             scannerRef.current = scanner;
+            log('startScanning: Html5Qrcode instance created, calling scanner.start()...');
 
             await scanner.start(
                 { facingMode: 'environment' },
@@ -214,45 +304,20 @@ export function useBarcodeScanner(): UseBarcodeScanner {
                     qrbox: { width: 250, height: 150 },
                 },
                 (decodedText: string) => {
+                    log('startScanning: barcode decoded!', decodedText);
                     // On successful decode: auto-lookup and stop scanning
                     scanner.stop().then(() => {
                         scanner.clear();
                         scannerRef.current = null;
                         setScannerStatus('idle');
-                    }).catch(() => {
+                        log('startScanning: scanner stopped after decode');
+                    }).catch((error) => {
+                        logWarn('startScanning: scanner.stop() after decode error:', error);
                         scannerRef.current = null;
                         setScannerStatus('idle');
                     });
 
-                    // Trigger lookup
-                    setScannedBarcode(decodedText);
-                    setIsLookingUp(true);
-                    setLookupError(null);
-                    setScannedProduct(null);
-
-                    // Check cache first
-                    const cached = getCachedBarcode(decodedText);
-                    if (cached) {
-                        setScannedProduct(cached);
-                        setIsLookingUp(false);
-                        return;
-                    }
-
-                    // Lookup via API
-                    apiClient.get<FoodItem>(
-                        getApiUrl(`/food-tracker/barcode/${decodedText}`)
-                    ).then((product) => {
-                        if (product) {
-                            setCachedBarcode(decodedText, product, DEFAULT_CACHE_DURATION_DAYS);
-                            setScannedProduct(product);
-                        } else {
-                            setLookupError('Продукт не найден');
-                        }
-                    }).catch(() => {
-                        setLookupError('Ошибка при поиске продукта');
-                    }).finally(() => {
-                        setIsLookingUp(false);
-                    });
+                    doLookup(decodedText);
                 },
                 () => {
                     // Ignore scan failures (called on every frame without detection)
@@ -260,21 +325,81 @@ export function useBarcodeScanner(): UseBarcodeScanner {
             );
 
             setScannerStatus('scanning');
+            log('startScanning: camera stream active, scanning');
         } catch (error) {
+            logError('startScanning: FAILED:', error);
             scannerRef.current = null;
 
             if (error instanceof DOMException && error.name === 'NotAllowedError') {
                 setScannerStatus('error');
                 setLookupError('Доступ к камере запрещен. Разрешите доступ в настройках браузера.');
+            } else if (error instanceof DOMException && error.name === 'NotFoundError') {
+                setScannerStatus('error');
+                setLookupError('Камера не найдена на устройстве.');
+            } else if (error instanceof DOMException && error.name === 'NotReadableError') {
+                setScannerStatus('error');
+                setLookupError('Камера занята другим приложением.');
             } else {
                 setScannerStatus('error');
-                setLookupError('Не удалось получить доступ к камере. Проверьте подключение камеры.');
+                const msg = error instanceof Error ? error.message : String(error);
+                setLookupError(`Не удалось запустить камеру: ${msg}`);
             }
         }
-    }, []);
+    }, [doLookup]);
+
+    // Scan barcode from an image file (gallery)
+    const scanFromFile = useCallback(async (file: File, elementId: string) => {
+        log('scanFromFile: file =', file.name, 'size =', file.size, 'type =', file.type);
+        setLookupError(null);
+        setScannedBarcode(null);
+        setScannedProduct(null);
+
+        try {
+            // Dynamic import for SSR safety
+            const { Html5Qrcode } = await import('html5-qrcode');
+            log('scanFromFile: html5-qrcode imported');
+
+            // Stop any live scanner first
+            if (scannerRef.current) {
+                log('scanFromFile: stopping live scanner first');
+                try {
+                    const state = scannerRef.current.getState();
+                    if (state === 2 || state === 3) {
+                        await scannerRef.current.stop();
+                    }
+                    scannerRef.current.clear();
+                } catch (error) {
+                    logWarn('scanFromFile: error stopping scanner:', error);
+                }
+                scannerRef.current = null;
+                setScannerStatus('idle');
+            }
+
+            // Create a temporary scanner instance for file scanning
+            const scanner = new Html5Qrcode(elementId);
+            log('scanFromFile: calling scanner.scanFile()...');
+
+            const decodedText = await scanner.scanFile(file, /* showImage= */ false);
+            log('scanFromFile: decoded barcode from image:', decodedText);
+
+            scanner.clear();
+
+            // Lookup the barcode
+            await lookupBarcode(decodedText);
+        } catch (error) {
+            logError('scanFromFile: FAILED:', error);
+            const msg = error instanceof Error ? error.message : String(error);
+            if (msg.includes('No barcode') || msg.includes('No QR code') || msg.includes('NotFoundException')) {
+                setLookupError('Штрих-код не найден на фото. Попробуйте другое фото или введите код вручную.');
+            } else {
+                setLookupError(`Ошибка сканирования фото: ${msg}`);
+            }
+        }
+    }, [lookupBarcode]);
 
     // Reset scan
     const resetScan = useCallback(() => {
+        log('resetScan');
         setScannedBarcode(null);
         setScannedProduct(null);
         setLookupError(null);
@@ -288,6 +413,7 @@ export function useBarcodeScanner(): UseBarcodeScanner {
         lookupError,
         startScanning,
         stopScanning,
+        scanFromFile,
         lookupBarcode,
         resetScan,
     };

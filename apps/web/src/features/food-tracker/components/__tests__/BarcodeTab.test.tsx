@@ -20,6 +20,7 @@ import type { ScannerStatus } from '../../hooks/useBarcodeScanner';
 
 const mockStartScanning = jest.fn();
 const mockStopScanning = jest.fn();
+const mockScanFromFile = jest.fn();
 const mockLookupBarcode = jest.fn();
 const mockResetScan = jest.fn();
 
@@ -38,6 +39,7 @@ jest.mock('../../hooks/useBarcodeScanner', () => ({
         lookupError: mockLookupError,
         startScanning: mockStartScanning,
         stopScanning: mockStopScanning,
+        scanFromFile: mockScanFromFile,
         lookupBarcode: mockLookupBarcode,
         resetScan: mockResetScan,
     }),
@@ -93,16 +95,23 @@ describe('BarcodeTab', () => {
     });
 
     describe('Initial Rendering', () => {
-        it('renders camera activation button', () => {
+        it('renders live camera scan button', () => {
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            expect(screen.getByText('Включить камеру')).toBeInTheDocument();
+            expect(screen.getByText('Сканировать камерой')).toBeInTheDocument();
+        });
+
+        it('renders photo and gallery buttons', () => {
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByText('Фото')).toBeInTheDocument();
+            expect(screen.getByText('Галерея')).toBeInTheDocument();
         });
 
         it('renders instruction text in Russian', () => {
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            expect(screen.getByText(/наведите камеру на штрих-код продукта/i)).toBeInTheDocument();
+            expect(screen.getByText(/сканируйте штрих-код камерой или загрузите фото/i)).toBeInTheDocument();
         });
 
         it('renders manual barcode input', () => {
@@ -128,6 +137,13 @@ describe('BarcodeTab', () => {
 
             expect(screen.getByText('Ввести вручную')).toBeInTheDocument();
         });
+
+        it('renders hidden file inputs for gallery and camera capture', () => {
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByLabelText(/выбрать фото штрих-кода из галереи/i)).toBeInTheDocument();
+            expect(screen.getByLabelText(/сфотографировать штрих-код/i)).toBeInTheDocument();
+        });
     });
 
     describe('Camera States', () => {
@@ -139,12 +155,12 @@ describe('BarcodeTab', () => {
             expect(screen.getByText(/запускаем камеру/i)).toBeInTheDocument();
         });
 
-        it('calls startScanning when camera button clicked', async () => {
+        it('calls startScanning when live camera button clicked', async () => {
             const user = userEvent.setup();
 
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            await user.click(screen.getByText('Включить камеру'));
+            await user.click(screen.getByText('Сканировать камерой'));
 
             expect(mockStartScanning).toHaveBeenCalledWith('barcode-reader');
         });
@@ -168,11 +184,11 @@ describe('BarcodeTab', () => {
 
         it('shows error message when camera not available', () => {
             mockScannerStatus = 'error';
-            mockLookupError = 'Не удалось получить доступ к камере. Проверьте подключение камеры.';
+            mockLookupError = 'Не удалось запустить камеру: Камера не найдена';
 
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            expect(screen.getByText(/не удалось получить доступ к камере/i)).toBeInTheDocument();
+            expect(screen.getByText(/не удалось запустить камеру/i)).toBeInTheDocument();
         });
 
         it('shows retry button after error', () => {
@@ -182,6 +198,16 @@ describe('BarcodeTab', () => {
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
             expect(screen.getByText('Попробовать снова')).toBeInTheDocument();
+        });
+
+        it('shows photo and gallery buttons in error state as fallback', () => {
+            mockScannerStatus = 'error';
+            mockLookupError = 'Доступ к камере запрещен.';
+
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByText('Фото')).toBeInTheDocument();
+            expect(screen.getByText('Галерея')).toBeInTheDocument();
         });
     });
 
@@ -207,6 +233,15 @@ describe('BarcodeTab', () => {
 
             expect(screen.getByText(/ищем продукт/i)).toBeInTheDocument();
         });
+
+        it('shows barcode in loading state when available', () => {
+            mockIsLookingUp = true;
+            mockScannedBarcode = '4607025392408';
+
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByText(/4607025392408/)).toBeInTheDocument();
+        });
     });
 
     describe('Product Found', () => {
@@ -229,6 +264,15 @@ describe('BarcodeTab', () => {
             expect(screen.getByText(/Б: 3г/)).toBeInTheDocument();
             expect(screen.getByText(/Ж: 3г/)).toBeInTheDocument();
             expect(screen.getByText(/У: 5г/)).toBeInTheDocument();
+        });
+
+        it('displays barcode when product found', () => {
+            mockScannedProduct = createMockFood();
+            mockScannedBarcode = '4607025392408';
+
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByText(/штрих-код: 4607025392408/i)).toBeInTheDocument();
         });
 
         it('shows add button when product found', () => {
@@ -314,6 +358,14 @@ describe('BarcodeTab', () => {
 
             expect(onManualEntry).toHaveBeenCalled();
         });
+
+        it('shows file scan error message', () => {
+            mockLookupError = 'Штрих-код не найден на фото. Попробуйте другое фото или введите код вручную.';
+
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByText(/штрих-код не найден на фото/i)).toBeInTheDocument();
+        });
     });
 
     describe('Reset Scan', () => {
@@ -345,7 +397,7 @@ describe('BarcodeTab', () => {
                 />
             );
 
-            expect(screen.getByText('Включить камеру')).toBeInTheDocument();
+            expect(screen.getByText('Сканировать камерой')).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /найти по штрих-коду/i })).toBeInTheDocument();
             expect(screen.getByText('Ввести вручную')).toBeInTheDocument();
         });
@@ -356,6 +408,13 @@ describe('BarcodeTab', () => {
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
             expect(screen.getByRole('button', { name: /остановить камеру/i })).toBeInTheDocument();
+        });
+
+        it('hidden file inputs have accessible labels', () => {
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByLabelText(/выбрать фото штрих-кода из галереи/i)).toBeInTheDocument();
+            expect(screen.getByLabelText(/сфотографировать штрих-код/i)).toBeInTheDocument();
         });
     });
 
