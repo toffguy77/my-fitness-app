@@ -9,7 +9,7 @@ services:
       target: development
     container_name: burcev-web
     ports:
-      - "3000:3000"
+      - "3000:3069"
     volumes:
       - ./apps/web:/app/apps/web
       - ./packages:/app/packages
@@ -37,7 +37,7 @@ services:
       target: development
     container_name: burcev-api
     ports:
-      - "4000:4000"
+      - "4000:4069"
     volumes:
       - ./apps/api:/app
       - api_cache:/go/pkg/mod
@@ -54,7 +54,7 @@ services:
       - burcev-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4069/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -72,7 +72,7 @@ services:
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
     container_name: burcev-web-prod
     ports:
-      - "3069:3069"
+      - "3000:3070"
     environment:
       - NODE_ENV=production
     networks:
@@ -89,9 +89,9 @@ services:
       target: production
     container_name: burcev-api-prod
     ports:
-      - "4069:4000"
+      - "4000:4070"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4070/health"]
       interval: 30s
       timeout: 5s
       retries: 3
