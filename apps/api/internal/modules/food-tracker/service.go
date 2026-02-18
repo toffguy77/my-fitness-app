@@ -1314,6 +1314,25 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 		daily[cat] = []NutrientRecommendationWithProgress{}
 	}
 
+	// Calculate today's actual intake from food entries
+	today := time.Now()
+	dailyTotals, err := s.CalculateDailyTotals(ctx, userID, today)
+	if err != nil {
+		s.log.Warn("Failed to calculate daily totals for recommendations", "error", err)
+		dailyTotals = &KBZHU{}
+	}
+	if dailyTotals == nil {
+		dailyTotals = &KBZHU{}
+	}
+
+	// Map nutrient names to actual intake values
+	nutrientIntakeMap := map[string]float64{
+		"Белок":    dailyTotals.Protein,
+		"Жиры":     dailyTotals.Fat,
+		"Углеводы": dailyTotals.Carbs,
+		"Калории":  dailyTotals.Calories,
+	}
+
 	for rows.Next() {
 		var rec NutrientRecommendation
 		var isTracked bool
@@ -1341,9 +1360,11 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			continue
 		}
 
-		// Calculate current intake (simplified - would need actual nutrient tracking)
-		// For now, return 0 as placeholder
+		// Get actual intake from today's food entries
 		currentIntake := 0.0
+		if val, ok := nutrientIntakeMap[rec.Name]; ok {
+			currentIntake = val
+		}
 		percentage := 0.0
 		if rec.DailyTarget > 0 {
 			percentage = roundToOneDecimal((currentIntake / rec.DailyTarget) * 100)
@@ -1406,8 +1427,11 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			continue
 		}
 
-		// Calculate weekly progress (placeholder)
+		// Get actual intake from today's food entries
 		currentIntake := 0.0
+		if val, ok := nutrientIntakeMap[rec.Name]; ok {
+			currentIntake = val
+		}
 		percentage := 0.0
 		if rec.DailyTarget > 0 {
 			percentage = roundToOneDecimal((currentIntake / rec.DailyTarget) * 100)
