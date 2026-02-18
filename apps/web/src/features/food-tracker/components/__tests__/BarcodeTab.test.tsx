@@ -2,43 +2,46 @@
  * BarcodeTab Unit Tests
  *
  * Tests for the BarcodeTab component functionality.
+ * Mocks useBarcodeScanner hook to test component behavior in isolation.
  *
  * @module food-tracker/components/__tests__/BarcodeTab.test
  */
 
 import React from 'react';
-import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BarcodeTab } from '../BarcodeTab';
 import type { FoodItem } from '../../types';
+import type { ScannerStatus } from '../../hooks/useBarcodeScanner';
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-// Mock navigator.mediaDevices
-const mockGetUserMedia = jest.fn();
-const mockMediaDevices = {
-    getUserMedia: mockGetUserMedia,
-};
+const mockStartScanning = jest.fn();
+const mockStopScanning = jest.fn();
+const mockLookupBarcode = jest.fn();
+const mockResetScan = jest.fn();
 
-Object.defineProperty(navigator, 'mediaDevices', {
-    value: mockMediaDevices,
-    writable: true,
-});
+let mockScannerStatus: ScannerStatus = 'idle';
+let mockScannedBarcode: string | null = null;
+let mockScannedProduct: FoodItem | null = null;
+let mockIsLookingUp = false;
+let mockLookupError: string | null = null;
 
-// Mock MediaStream
-class MockMediaStream {
-    private tracks: { stop: jest.Mock }[] = [];
-
-    constructor() {
-        this.tracks = [{ stop: jest.fn() }];
-    }
-
-    getTracks() {
-        return this.tracks;
-    }
-}
+jest.mock('../../hooks/useBarcodeScanner', () => ({
+    useBarcodeScanner: () => ({
+        scannerStatus: mockScannerStatus,
+        scannedBarcode: mockScannedBarcode,
+        scannedProduct: mockScannedProduct,
+        isLookingUp: mockIsLookingUp,
+        lookupError: mockLookupError,
+        startScanning: mockStartScanning,
+        stopScanning: mockStopScanning,
+        lookupBarcode: mockLookupBarcode,
+        resetScan: mockResetScan,
+    }),
+}));
 
 // ============================================================================
 // Test Data
@@ -64,13 +67,25 @@ const createMockFood = (overrides: Partial<FoodItem> = {}): FoodItem => ({
 });
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+function resetMocks() {
+    mockScannerStatus = 'idle';
+    mockScannedBarcode = null;
+    mockScannedProduct = null;
+    mockIsLookingUp = false;
+    mockLookupError = null;
+    jest.clearAllMocks();
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
 describe('BarcodeTab', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
-        mockGetUserMedia.mockReset();
+        resetMocks();
     });
 
     afterEach(() => {
@@ -81,7 +96,7 @@ describe('BarcodeTab', () => {
         it('renders camera activation button', () => {
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            expect(screen.getByRole('button', { name: /включить камеру/i })).toBeInTheDocument();
+            expect(screen.getByText('Включить камеру')).toBeInTheDocument();
         });
 
         it('renders instruction text in Russian', () => {
@@ -111,95 +126,70 @@ describe('BarcodeTab', () => {
                 />
             );
 
-            expect(screen.getByRole('button', { name: /ввести вручную/i })).toBeInTheDocument();
+            expect(screen.getByText('Ввести вручную')).toBeInTheDocument();
         });
     });
 
-    describe('Camera Permission', () => {
-        it('shows requesting state when camera access is requested', async () => {
-            const user = userEvent.setup();
-            mockGetUserMedia.mockImplementation(() => new Promise(() => { })); // Never resolves
+    describe('Camera States', () => {
+        it('shows starting state when scanner is starting', () => {
+            mockScannerStatus = 'starting';
 
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const button = screen.getByRole('button', { name: /включить камеру/i });
-            await user.click(button);
-
-            expect(screen.getByText(/запрашиваем доступ к камере/i)).toBeInTheDocument();
+            expect(screen.getByText(/запускаем камеру/i)).toBeInTheDocument();
         });
 
-        it('shows denied message when camera access is denied', async () => {
+        it('calls startScanning when camera button clicked', async () => {
             const user = userEvent.setup();
-            const error = new DOMException('Permission denied', 'NotAllowedError');
-            mockGetUserMedia.mockRejectedValue(error);
 
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const button = screen.getByRole('button', { name: /включить камеру/i });
-            await user.click(button);
+            await user.click(screen.getByText('Включить камеру'));
 
-            await waitFor(() => {
-                expect(screen.getByText(/доступ к камере запрещен/i)).toBeInTheDocument();
-            });
+            expect(mockStartScanning).toHaveBeenCalledWith('barcode-reader');
         });
 
-        it('shows error message when camera access fails', async () => {
-            const user = userEvent.setup();
-            const error = new DOMException('Device not found', 'NotFoundError');
-            mockGetUserMedia.mockRejectedValue(error);
+        it('shows stop button when scanning', () => {
+            mockScannerStatus = 'scanning';
 
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const button = screen.getByRole('button', { name: /включить камеру/i });
-            await user.click(button);
-
-            await waitFor(() => {
-                expect(screen.getByText(/не удалось получить доступ к камере/i)).toBeInTheDocument();
-            });
+            expect(screen.getByRole('button', { name: /остановить камеру/i })).toBeInTheDocument();
         });
 
-        it('shows retry button after permission denied', async () => {
-            const user = userEvent.setup();
-            const error = new DOMException('Permission denied', 'NotAllowedError');
-            mockGetUserMedia.mockRejectedValue(error);
+        it('shows error message when camera access denied', () => {
+            mockScannerStatus = 'error';
+            mockLookupError = 'Доступ к камере запрещен. Разрешите доступ в настройках браузера.';
 
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const button = screen.getByRole('button', { name: /включить камеру/i });
-            await user.click(button);
-
-            await waitFor(() => {
-                expect(screen.getByRole('button', { name: /попробовать снова/i })).toBeInTheDocument();
-            });
+            expect(screen.getByText(/доступ к камере запрещен/i)).toBeInTheDocument();
         });
 
-        it('activates camera when permission granted', async () => {
-            const user = userEvent.setup();
-            const mockStream = new MockMediaStream();
-            mockGetUserMedia.mockResolvedValue(mockStream);
+        it('shows error message when camera not available', () => {
+            mockScannerStatus = 'error';
+            mockLookupError = 'Не удалось получить доступ к камере. Проверьте подключение камеры.';
 
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const button = screen.getByRole('button', { name: /включить камеру/i });
-            await user.click(button);
+            expect(screen.getByText(/не удалось получить доступ к камере/i)).toBeInTheDocument();
+        });
 
-            await waitFor(() => {
-                expect(screen.getByRole('button', { name: /остановить камеру/i })).toBeInTheDocument();
-            });
+        it('shows retry button after error', () => {
+            mockScannerStatus = 'error';
+            mockLookupError = 'Доступ к камере запрещен.';
+
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByText('Попробовать снова')).toBeInTheDocument();
         });
     });
 
     describe('Manual Barcode Input', () => {
-        it('submits barcode when form is submitted', async () => {
+        it('calls lookupBarcode when form is submitted', async () => {
             const user = userEvent.setup();
-            const onLookupBarcode = jest.fn().mockResolvedValue(null);
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
             const input = screen.getByRole('textbox', { name: /штрих-код/i });
             await user.type(input, '4607025392408');
@@ -207,310 +197,139 @@ describe('BarcodeTab', () => {
             const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
             await user.click(submitButton);
 
-            await waitFor(() => {
-                expect(onLookupBarcode).toHaveBeenCalledWith('4607025392408');
-            });
+            expect(mockLookupBarcode).toHaveBeenCalledWith('4607025392408');
         });
 
-        it('shows loading state during lookup', async () => {
-            const user = userEvent.setup();
-            const onLookupBarcode = jest.fn().mockImplementation(() => new Promise(() => { }));
+        it('shows loading state during lookup', () => {
+            mockIsLookingUp = true;
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText(/ищем продукт/i)).toBeInTheDocument();
-            });
+            expect(screen.getByText(/ищем продукт/i)).toBeInTheDocument();
         });
     });
 
     describe('Product Found', () => {
-        it('displays product information when found', async () => {
-            const user = userEvent.setup();
+        it('displays product information when found', () => {
             const mockFood = createMockFood();
-            const onLookupBarcode = jest.fn().mockResolvedValue(mockFood);
+            mockScannedProduct = mockFood;
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText('Молоко 3.2%')).toBeInTheDocument();
-                expect(screen.getByText('Простоквашино')).toBeInTheDocument();
-            });
+            expect(screen.getByText('Молоко 3.2%')).toBeInTheDocument();
+            expect(screen.getByText('Простоквашино')).toBeInTheDocument();
         });
 
-        it('displays КБЖУ information', async () => {
-            const user = userEvent.setup();
-            const mockFood = createMockFood();
-            const onLookupBarcode = jest.fn().mockResolvedValue(mockFood);
+        it('displays КБЖУ information', () => {
+            mockScannedProduct = createMockFood();
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText(/59 ккал/)).toBeInTheDocument();
-                expect(screen.getByText(/Б: 3г/)).toBeInTheDocument();
-                expect(screen.getByText(/Ж: 3г/)).toBeInTheDocument();
-                expect(screen.getByText(/У: 5г/)).toBeInTheDocument();
-            });
+            expect(screen.getByText(/59 ккал/)).toBeInTheDocument();
+            expect(screen.getByText(/Б: 3г/)).toBeInTheDocument();
+            expect(screen.getByText(/Ж: 3г/)).toBeInTheDocument();
+            expect(screen.getByText(/У: 5г/)).toBeInTheDocument();
         });
 
-        it('shows add button when product found', async () => {
-            const user = userEvent.setup();
-            const mockFood = createMockFood();
-            const onLookupBarcode = jest.fn().mockResolvedValue(mockFood);
+        it('shows add button when product found', () => {
+            mockScannedProduct = createMockFood();
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByRole('button', { name: /добавить/i })).toBeInTheDocument();
-            });
+            expect(screen.getByText('Добавить')).toBeInTheDocument();
         });
 
         it('calls onSelectFood when add button clicked', async () => {
             const user = userEvent.setup();
             const mockFood = createMockFood();
-            const onLookupBarcode = jest.fn().mockResolvedValue(mockFood);
+            mockScannedProduct = mockFood;
             const onSelectFood = jest.fn();
 
-            render(
-                <BarcodeTab
-                    onSelectFood={onSelectFood}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={onSelectFood} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByRole('button', { name: /добавить/i })).toBeInTheDocument();
-            });
-
-            const addButton = screen.getByRole('button', { name: /добавить/i });
-            await user.click(addButton);
+            await user.click(screen.getByText('Добавить'));
 
             expect(onSelectFood).toHaveBeenCalledWith(mockFood);
         });
 
-        it('shows scan another button when product found', async () => {
-            const user = userEvent.setup();
-            const mockFood = createMockFood();
-            const onLookupBarcode = jest.fn().mockResolvedValue(mockFood);
+        it('shows scan another button when product found', () => {
+            mockScannedProduct = createMockFood();
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByRole('button', { name: /сканировать другой/i })).toBeInTheDocument();
-            });
+            expect(screen.getByText('Сканировать другой')).toBeInTheDocument();
         });
     });
 
     describe('Product Not Found', () => {
-        it('shows "Продукт не найден" error message', async () => {
-            const user = userEvent.setup();
-            const onLookupBarcode = jest.fn().mockResolvedValue(null);
+        it('shows error message when product not found', () => {
+            mockLookupError = 'Продукт не найден';
+            mockScannedBarcode = '1234567890123';
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '1234567890123');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText(/продукт не найден/i)).toBeInTheDocument();
-            });
+            expect(screen.getByText('Продукт не найден')).toBeInTheDocument();
         });
 
-        it('displays scanned barcode in error state', async () => {
-            const user = userEvent.setup();
-            const onLookupBarcode = jest.fn().mockResolvedValue(null);
+        it('displays scanned barcode in error state', () => {
+            mockLookupError = 'Продукт не найден';
+            mockScannedBarcode = '1234567890123';
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '1234567890123');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText(/штрих-код: 1234567890123/i)).toBeInTheDocument();
-            });
+            expect(screen.getByText(/штрих-код: 1234567890123/i)).toBeInTheDocument();
         });
 
-        it('shows manual entry option in error state', async () => {
-            const user = userEvent.setup();
-            const onLookupBarcode = jest.fn().mockResolvedValue(null);
-            const onManualEntry = jest.fn();
+        it('shows manual entry option in error state', () => {
+            mockLookupError = 'Продукт не найден';
+            mockScannedBarcode = '1234567890123';
 
             render(
                 <BarcodeTab
                     onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                    onManualEntry={onManualEntry}
+                    onManualEntry={jest.fn()}
                 />
             );
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '1234567890123');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                // Should have manual entry button in error state
-                const buttons = screen.getAllByRole('button', { name: /ввести вручную/i });
-                expect(buttons.length).toBeGreaterThanOrEqual(1);
-            });
+            const buttons = screen.getAllByText('Ввести вручную');
+            expect(buttons.length).toBeGreaterThanOrEqual(1);
         });
 
         it('calls onManualEntry when manual entry button clicked in error state', async () => {
             const user = userEvent.setup();
-            const onLookupBarcode = jest.fn().mockResolvedValue(null);
+            mockLookupError = 'Продукт не найден';
+            mockScannedBarcode = '1234567890123';
             const onManualEntry = jest.fn();
 
             render(
                 <BarcodeTab
                     onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
                     onManualEntry={onManualEntry}
                 />
             );
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '1234567890123');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText(/продукт не найден/i)).toBeInTheDocument();
-            });
-
-            // Click the manual entry button in error state
-            const manualEntryButtons = screen.getAllByRole('button', { name: /ввести вручную/i });
-            await user.click(manualEntryButtons[0]);
+            // Click the first manual entry button in error section
+            const buttons = screen.getAllByText('Ввести вручную');
+            await user.click(buttons[0]);
 
             expect(onManualEntry).toHaveBeenCalled();
         });
     });
 
     describe('Reset Scan', () => {
-        it('resets state when scan another button clicked', async () => {
+        it('calls resetScan when scan another button clicked', async () => {
             const user = userEvent.setup();
-            const mockFood = createMockFood();
-            const onLookupBarcode = jest.fn().mockResolvedValue(mockFood);
+            mockScannedProduct = createMockFood();
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
+            await user.click(screen.getByText('Сканировать другой'));
 
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText('Молоко 3.2%')).toBeInTheDocument();
-            });
-
-            const resetButton = screen.getByRole('button', { name: /сканировать другой/i });
-            await user.click(resetButton);
-
-            expect(screen.queryByText('Молоко 3.2%')).not.toBeInTheDocument();
+            expect(mockResetScan).toHaveBeenCalled();
         });
     });
 
     describe('Accessibility', () => {
-        it('has accessible video element label', async () => {
-            const user = userEvent.setup();
-            const mockStream = new MockMediaStream();
-            mockGetUserMedia.mockResolvedValue(mockStream);
-
-            render(<BarcodeTab onSelectFood={jest.fn()} />);
-
-            const button = screen.getByRole('button', { name: /включить камеру/i });
-            await user.click(button);
-
-            await waitFor(() => {
-                const video = document.querySelector('video');
-                expect(video).toHaveAttribute('aria-label', 'Камера для сканирования штрих-кода');
-            });
-        });
-
         it('has accessible input for barcode', () => {
             render(<BarcodeTab onSelectFood={jest.fn()} />);
 
@@ -526,33 +345,27 @@ describe('BarcodeTab', () => {
                 />
             );
 
-            expect(screen.getByRole('button', { name: /включить камеру/i })).toBeInTheDocument();
+            expect(screen.getByText('Включить камеру')).toBeInTheDocument();
             expect(screen.getByRole('button', { name: /найти по штрих-коду/i })).toBeInTheDocument();
-            expect(screen.getByRole('button', { name: /ввести вручную/i })).toBeInTheDocument();
+            expect(screen.getByText('Ввести вручную')).toBeInTheDocument();
+        });
+
+        it('stop camera button has accessible name when scanning', () => {
+            mockScannerStatus = 'scanning';
+
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
+
+            expect(screen.getByRole('button', { name: /остановить камеру/i })).toBeInTheDocument();
         });
     });
 
     describe('Error Handling', () => {
-        it('handles lookup error gracefully', async () => {
-            const user = userEvent.setup();
-            const onLookupBarcode = jest.fn().mockRejectedValue(new Error('Network error'));
+        it('shows lookup error message', () => {
+            mockLookupError = 'Ошибка при поиске продукта';
 
-            render(
-                <BarcodeTab
-                    onSelectFood={jest.fn()}
-                    onLookupBarcode={onLookupBarcode}
-                />
-            );
+            render(<BarcodeTab onSelectFood={jest.fn()} />);
 
-            const input = screen.getByRole('textbox', { name: /штрих-код/i });
-            await user.type(input, '4607025392408');
-
-            const submitButton = screen.getByRole('button', { name: /найти по штрих-коду/i });
-            await user.click(submitButton);
-
-            await waitFor(() => {
-                expect(screen.getByText(/ошибка при поиске продукта/i)).toBeInTheDocument();
-            });
+            expect(screen.getByText('Ошибка при поиске продукта')).toBeInTheDocument();
         });
     });
 });

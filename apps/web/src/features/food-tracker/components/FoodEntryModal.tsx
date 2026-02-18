@@ -91,25 +91,53 @@ export function FoodEntryModal({
 
     // Store hooks
     const addEntry = useFoodTrackerStore((state) => state.addEntry);
+    const updateEntry = useFoodTrackerStore((state) => state.updateEntry);
     const selectedDate = useFoodTrackerStore((state) => state.selectedDate);
 
     // Reset state when modal opens
     useEffect(() => {
         if (isOpen && !wasOpenRef.current) {
-            setActiveTab(DEFAULT_TAB);
-            setStep('select-food');
-            setSelectedFood(null);
-            setPortionType('grams');
-            setPortionAmount(100);
+            if (editingEntry) {
+                // Edit mode: pre-fill with existing data
+                setActiveTab(DEFAULT_TAB);
+                setStep('select-portion');
+                setSelectedFood({
+                    id: editingEntry.foodId,
+                    name: editingEntry.foodName,
+                    nutritionPer100: {
+                        calories: editingEntry.portionAmount > 0
+                            ? (editingEntry.nutrition.calories / editingEntry.portionAmount) * 100
+                            : 0,
+                        protein: editingEntry.portionAmount > 0
+                            ? (editingEntry.nutrition.protein / editingEntry.portionAmount) * 100
+                            : 0,
+                        fat: editingEntry.portionAmount > 0
+                            ? (editingEntry.nutrition.fat / editingEntry.portionAmount) * 100
+                            : 0,
+                        carbs: editingEntry.portionAmount > 0
+                            ? (editingEntry.nutrition.carbs / editingEntry.portionAmount) * 100
+                            : 0,
+                    },
+                    servingSize: editingEntry.portionAmount,
+                    servingUnit: editingEntry.portionType === 'milliliters' ? 'мл' : 'г',
+                } as FoodItem);
+                setPortionType(editingEntry.portionType);
+                setPortionAmount(editingEntry.portionAmount);
+            } else {
+                // New entry mode
+                setActiveTab(DEFAULT_TAB);
+                setStep('select-food');
+                setSelectedFood(null);
+                setPortionType('grams');
+                setPortionAmount(100);
+            }
             setCalculatedNutrition(null);
             setBatchFoods([]);
             setBatchIndex(0);
-            setTimeout(() => {
-                firstFocusableRef.current?.focus();
-            }, 0);
+            setTimeout(() => firstFocusableRef.current?.focus(), 0);
         }
         wasOpenRef.current = isOpen;
-    }, [isOpen]);
+    }, [isOpen, editingEntry]);
 
     // Handle escape key
     useEffect(() => {
@@ -236,33 +264,43 @@ export function FoodEntryModal({
         setIsSaving(true);
 
         try {
-            const now = new Date();
-            const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-            await addEntry(mealType, {
-                foodId: selectedFood.id,
-                mealType,
-                portionType,
-                portionAmount,
-                time,
-                date: selectedDate,
-            });
-
-            const nextIndex = batchIndex + 1;
-            if (batchFoods.length > 0 && nextIndex < batchFoods.length) {
-                setBatchIndex(nextIndex);
-                handleSelectFood(batchFoods[nextIndex]);
-            } else {
-                setBatchFoods([]);
-                setBatchIndex(0);
+            if (editingEntry) {
+                await updateEntry(editingEntry.id, {
+                    mealType,
+                    portionType,
+                    portionAmount,
+                    time: editingEntry.time,
+                });
                 onClose();
+            } else {
+                const now = new Date();
+                const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                await addEntry(mealType, {
+                    foodId: selectedFood.id,
+                    mealType,
+                    portionType,
+                    portionAmount,
+                    time,
+                    date: selectedDate,
+                });
+
+                const nextIndex = batchIndex + 1;
+                if (batchFoods.length > 0 && nextIndex < batchFoods.length) {
+                    setBatchIndex(nextIndex);
+                    handleSelectFood(batchFoods[nextIndex]);
+                } else {
+                    setBatchFoods([]);
+                    setBatchIndex(0);
+                    onClose();
+                }
             }
         } catch (error) {
             console.error('Failed to save entry:', error);
         } finally {
             setIsSaving(false);
         }
-    }, [selectedFood, calculatedNutrition, mealType, portionType, portionAmount, selectedDate, addEntry, onClose, batchIndex, batchFoods, handleSelectFood]);
+    }, [selectedFood, calculatedNutrition, mealType, portionType, portionAmount, selectedDate, addEntry, updateEntry, editingEntry, onClose, batchIndex, batchFoods, handleSelectFood]);
 
     if (!isOpen) {
         return null;
@@ -302,7 +340,9 @@ export function FoodEntryModal({
                             ? 'Добавить запись'
                             : step === 'manual-entry'
                                 ? 'Ввести вручную'
-                                : selectedFood?.name || 'Выбор порции'}
+                                : editingEntry
+                                    ? 'Редактировать'
+                                    : selectedFood?.name || 'Выбор порции'}
                     </h2>
                     <button
                         ref={firstFocusableRef}
@@ -454,9 +494,11 @@ export function FoodEntryModal({
                                             <>
                                                 <Check className="w-5 h-5" />
                                                 <span>
-                                                    {batchFoods.length > 0 && batchIndex + 1 < batchFoods.length
-                                                        ? 'Добавить и далее'
-                                                        : 'Добавить'}
+                                                    {editingEntry
+                                                        ? 'Сохранить'
+                                                        : batchFoods.length > 0 && batchIndex + 1 < batchFoods.length
+                                                            ? 'Добавить и далее'
+                                                            : 'Добавить'}
                                                 </span>
                                             </>
                                         )}
