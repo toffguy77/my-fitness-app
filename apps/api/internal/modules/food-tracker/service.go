@@ -9,20 +9,23 @@ import (
 
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/openfoodfacts"
 	"github.com/google/uuid"
 )
 
 // Service handles food tracker business logic
 type Service struct {
-	db  *database.DB
-	log *logger.Logger
+	db        *database.DB
+	log       *logger.Logger
+	offClient *openfoodfacts.Client
 }
 
 // NewService creates a new food tracker service
 func NewService(db *database.DB, log *logger.Logger) *Service {
 	return &Service{
-		db:  db,
-		log: log,
+		db:        db,
+		log:       log,
+		offClient: openfoodfacts.NewClient(),
 	}
 }
 
@@ -739,71 +742,94 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int) (*Se
 	}, nil
 }
 
-// LookupBarcode looks up a food item by barcode with cache check
+// LookupBarcode looks up a food item by barcode with cascade:
+// local DB → cache (with sliding TTL) → OpenFoodFacts API
 func (s *Service) LookupBarcode(ctx context.Context, barcode string) (*BarcodeResponse, error) {
-	startTime := time.Now()
-
-	// Validate barcode
 	if barcode == "" {
 		return nil, fmt.Errorf("штрих-код обязателен")
 	}
 
-	// First, check cache
+	// 1. Check local food_items table
+	food, err := s.getFoodByBarcode(ctx, barcode)
+	if err == nil {
+		return &BarcodeResponse{Found: true, Food: food, Cached: false}, nil
+	}
+
+	// 2. Check barcode_cache with sliding TTL
 	cacheQuery := `
-		SELECT food_data, source, cached_at, expires_at
-		FROM barcode_cache
+		SELECT food_data FROM barcode_cache
 		WHERE barcode = $1 AND expires_at > NOW()
 	`
-
-	var cache BarcodeCache
-	err := s.db.QueryRowContext(ctx, cacheQuery, barcode).Scan(
-		&cache.FoodData,
-		&cache.Source,
-		&cache.CachedAt,
-		&cache.ExpiresAt,
-	)
-
+	var foodData string
+	err = s.db.QueryRowContext(ctx, cacheQuery, barcode).Scan(&foodData)
 	if err == nil {
-		// Cache hit - parse and return
-		s.log.LogDatabaseQuery(cacheQuery, time.Since(startTime), nil, map[string]interface{}{
-			"barcode": barcode,
-			"cached":  true,
-		})
+		// Cache hit — extend TTL (sliding expiration)
+		extendQuery := `UPDATE barcode_cache SET expires_at = NOW() + INTERVAL '90 days' WHERE barcode = $1`
+		_, _ = s.db.ExecContext(ctx, extendQuery, barcode)
 
-		// Parse cached food data (simplified - in real implementation would use JSON)
-		// For now, look up in food_items by barcode
+		// Try to get the food item (cache stores reference, item was saved to food_items)
 		food, err := s.getFoodByBarcode(ctx, barcode)
 		if err == nil {
-			return &BarcodeResponse{
-				Found:  true,
-				Food:   food,
-				Cached: true,
-			}, nil
+			return &BarcodeResponse{Found: true, Food: food, Cached: true}, nil
 		}
 	}
 
-	// Cache miss or expired - look up in database
-	food, err := s.getFoodByBarcode(ctx, barcode)
+	// 3. Call OpenFoodFacts API
+	product, err := s.offClient.LookupBarcode(ctx, barcode)
 	if err != nil {
-		if err.Error() == "продукт не найден" {
-			message := "Продукт не найден. Попробуйте ввести вручную."
-			return &BarcodeResponse{
-				Found:   false,
-				Cached:  false,
-				Message: &message,
-			}, nil
+		s.log.Warn("OpenFoodFacts lookup failed", "error", err, "barcode", barcode)
+	}
+	if product != nil {
+		// Save to food_items + cache
+		foodItem := s.saveOFFProduct(ctx, barcode, product)
+		if foodItem != nil {
+			s.cacheBarcode(ctx, barcode, foodItem)
+			return &BarcodeResponse{Found: true, Food: foodItem, Cached: false}, nil
 		}
-		return nil, err
 	}
 
-	// Cache the result for 30 days
-	s.cacheBarcode(ctx, barcode, food)
+	// Not found anywhere
+	message := "Продукт не найден. Попробуйте ввести вручную."
+	return &BarcodeResponse{Found: false, Cached: false, Message: &message}, nil
+}
 
-	return &BarcodeResponse{
-		Found:  true,
-		Food:   food,
-		Cached: false,
-	}, nil
+// saveOFFProduct saves an OpenFoodFacts product to the food_items table
+func (s *Service) saveOFFProduct(ctx context.Context, barcode string, product *openfoodfacts.Product) *FoodItem {
+	id := uuid.New().String()
+	query := `
+		INSERT INTO food_items (id, name, brand, category, serving_size, serving_unit,
+			calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			barcode, source, verified, created_at, updated_at)
+		VALUES ($1, $2, $3, 'imported', 100, 'г', $4, $5, $6, $7, $8, 'openfoodfacts', false, NOW(), NOW())
+		ON CONFLICT (barcode) DO UPDATE SET
+			name = EXCLUDED.name, brand = EXCLUDED.brand,
+			calories_per_100 = EXCLUDED.calories_per_100, protein_per_100 = EXCLUDED.protein_per_100,
+			fat_per_100 = EXCLUDED.fat_per_100, carbs_per_100 = EXCLUDED.carbs_per_100,
+			updated_at = NOW()
+		RETURNING id, name, brand, category, serving_size, serving_unit,
+			calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			fiber_per_100, sugar_per_100, sodium_per_100, barcode, source, verified,
+			created_at, updated_at
+	`
+	var item FoodItem
+	err := s.db.QueryRowContext(ctx, query,
+		id, product.Name, product.Brand,
+		product.Calories, product.Protein, product.Fat, product.Carbs,
+		barcode,
+	).Scan(
+		&item.ID, &item.Name, &item.Brand, &item.Category,
+		&item.ServingSize, &item.ServingUnit,
+		&item.CaloriesPer100, &item.ProteinPer100, &item.FatPer100, &item.CarbsPer100,
+		&item.FiberPer100, &item.SugarPer100, &item.SodiumPer100,
+		&item.Barcode, &item.Source, &item.Verified,
+		&item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		s.log.Warn("Failed to save OFF product", "error", err, "barcode", barcode)
+		return nil
+	}
+	item.PopulateNutrition()
+	return &item
 }
 
 // getFoodByBarcode retrieves a food item by barcode
@@ -866,12 +892,12 @@ func (s *Service) getFoodByBarcode(ctx context.Context, barcode string) (*FoodIt
 
 // cacheBarcode caches a barcode lookup result
 func (s *Service) cacheBarcode(ctx context.Context, barcode string, food *FoodItem) {
-	// Cache for 30 days
+	// Cache for 90 days
 	query := `
 		INSERT INTO barcode_cache (barcode, food_data, source, cached_at, expires_at)
-		VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '30 days')
+		VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '90 days')
 		ON CONFLICT (barcode) DO UPDATE
-		SET food_data = $2, source = $3, cached_at = NOW(), expires_at = NOW() + INTERVAL '30 days'
+		SET food_data = $2, source = $3, cached_at = NOW(), expires_at = NOW() + INTERVAL '90 days'
 	`
 
 	// Simplified food data - in real implementation would serialize to JSON
