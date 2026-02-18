@@ -112,7 +112,7 @@ describe('notificationsStore', () => {
             });
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                expect.stringContaining('/api/v1/notifications?category=main&limit=50&offset=0')
+                expect.stringContaining('/backend-api/v1/notifications?category=main&limit=50&offset=0')
             );
             expect(result.current.notifications.main).toEqual(mockNotifications);
             expect(result.current.hasMore.main).toBe(false);
@@ -359,7 +359,7 @@ describe('notificationsStore', () => {
             });
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                expect.stringContaining('/api/v1/notifications/1/read'),
+                expect.stringContaining('/backend-api/v1/notifications/1/read'),
                 {}
             );
 
@@ -502,7 +502,7 @@ describe('notificationsStore', () => {
             });
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                expect.stringContaining('/api/v1/notifications/mark-all-read'),
+                expect.stringContaining('/backend-api/v1/notifications/mark-all-read'),
                 { category: 'main' }
             );
 
@@ -639,7 +639,7 @@ describe('notificationsStore', () => {
             });
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                expect.stringContaining('/api/v1/notifications/unread-counts')
+                expect.stringContaining('/backend-api/v1/notifications/unread-counts')
             );
             expect(result.current.unreadCounts).toEqual({
                 main: 5,

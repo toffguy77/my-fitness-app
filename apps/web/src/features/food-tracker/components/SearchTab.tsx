@@ -34,6 +34,10 @@ export interface SearchTabProps {
     searchResults?: FoodItem[];
     /** Whether search is loading */
     isLoading?: boolean;
+    /** Whether there are more results to load */
+    hasMore?: boolean;
+    /** Callback to load more results */
+    onLoadMore?: () => void;
     /** Additional CSS classes */
     className?: string;
 }
@@ -57,6 +61,8 @@ export function SearchTab({
     onSearch,
     searchResults,
     isLoading = false,
+    hasMore = false,
+    onLoadMore,
     className = '',
 }: SearchTabProps) {
     const [query, setQuery] = useState('');
@@ -65,6 +71,7 @@ export function SearchTab({
     const [hasSearched, setHasSearched] = useState(false);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const sentinelRef = useRef<HTMLDivElement>(null);
 
     // Use external results if provided, otherwise use internal
     const results = searchResults !== undefined ? searchResults : internalResults;
@@ -138,6 +145,24 @@ export function SearchTab({
         onManualEntry?.();
     }, [onManualEntry]);
 
+    // Infinite scroll: IntersectionObserver on sentinel
+    useEffect(() => {
+        if (!hasMore || !onLoadMore) return;
+        const sentinel = sentinelRef.current;
+        if (!sentinel) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    onLoadMore();
+                }
+            },
+            { threshold: 0.1 }
+        );
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasMore, onLoadMore]);
+
     // Determine what to show
     const showResults = query.length >= MIN_SEARCH_LENGTH;
     const showEmptyState = showResults && hasSearched && results.length === 0 && !isSearching;
@@ -175,6 +200,12 @@ export function SearchTab({
                         onSelect={handleSelectFood}
                         emptyMessage=""
                     />
+                    {/* Infinite scroll sentinel */}
+                    {hasMore && (
+                        <div ref={sentinelRef} className="flex justify-center py-4">
+                            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    )}
                 </div>
             )}
 

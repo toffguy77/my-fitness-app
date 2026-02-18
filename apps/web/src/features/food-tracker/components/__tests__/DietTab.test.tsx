@@ -22,7 +22,7 @@ jest.mock('../../store/foodTrackerStore', () => ({
     useFoodTrackerStore: jest.fn(),
 }));
 
-// Mock lucide-react icons
+// Mock lucide-react icons (all icons used by DietTab and its child components)
 jest.mock('lucide-react', () => ({
     Plus: () => <span data-testid="plus-icon">+</span>,
     Sunrise: () => <span data-testid="sunrise-icon">☀</span>,
@@ -31,12 +31,29 @@ jest.mock('lucide-react', () => ({
     Cookie: () => <span data-testid="cookie-icon">🍪</span>,
     Droplets: () => <span data-testid="droplets-icon">💧</span>,
     Check: () => <span data-testid="check-icon">✓</span>,
+    CheckCircle: () => <span data-testid="check-circle-icon">✓</span>,
     X: () => <span data-testid="x-icon">×</span>,
     Search: () => <span data-testid="search-icon">🔍</span>,
     Camera: () => <span data-testid="camera-icon">📷</span>,
+    CameraOff: () => <span data-testid="camera-off-icon">📷</span>,
     Image: () => <span data-testid="image-icon">🖼</span>,
     MessageCircle: () => <span data-testid="message-icon">💬</span>,
     Barcode: () => <span data-testid="barcode-icon">▮</span>,
+    ArrowLeft: () => <span data-testid="arrow-left-icon">←</span>,
+    Clock: () => <span data-testid="clock-icon">🕐</span>,
+    Star: () => <span data-testid="star-icon">★</span>,
+    ChevronRight: () => <span data-testid="chevron-right-icon">›</span>,
+    ChevronLeft: () => <span data-testid="chevron-left-icon">‹</span>,
+    Calendar: () => <span data-testid="calendar-icon">📅</span>,
+    Edit2: () => <span data-testid="edit-icon">✎</span>,
+    Trash2: () => <span data-testid="trash-icon">🗑</span>,
+    Send: () => <span data-testid="send-icon">➤</span>,
+    Upload: () => <span data-testid="upload-icon">⬆</span>,
+    AlertCircle: () => <span data-testid="alert-icon">⚠</span>,
+    RefreshCw: () => <span data-testid="refresh-icon">↻</span>,
+    Save: () => <span data-testid="save-icon">💾</span>,
+    User: () => <span data-testid="user-icon">👤</span>,
+    Bot: () => <span data-testid="bot-icon">🤖</span>,
 }));
 
 // ============================================================================

@@ -319,17 +319,26 @@ func TestLookupBarcode(t *testing.T) {
 		barcode := "4607001234567"
 		foodID := uuid.New().String()
 		now := time.Now()
-		expiresAt := now.Add(30 * 24 * time.Hour)
 
-		// Mock cache hit
-		cacheRows := sqlmock.NewRows([]string{"food_data", "source", "cached_at", "expires_at"}).
-			AddRow(`{"id":"test"}`, "database", now, expiresAt)
+		// Step 1: food_items lookup miss (LookupBarcode first checks food_items table)
+		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
+			WithArgs(barcode).
+			WillReturnError(sql.ErrNoRows)
 
-		mock.ExpectQuery(`SELECT food_data, source, cached_at, expires_at`).
+		// Step 2: Cache hit
+		cacheRows := sqlmock.NewRows([]string{"food_data"}).
+			AddRow(`{"id":"test"}`)
+
+		mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
 			WithArgs(barcode).
 			WillReturnRows(cacheRows)
 
-		// Mock food lookup by barcode (after cache hit)
+		// Step 3: Extend TTL on cache hit
+		mock.ExpectExec(`UPDATE barcode_cache SET expires_at`).
+			WithArgs(barcode).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// Step 4: food_items lookup after cache hit (to get full item)
 		foodRows := sqlmock.NewRows([]string{
 			"id", "name", "brand", "category", "serving_size", "serving_unit",
 			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
@@ -355,7 +364,7 @@ func TestLookupBarcode(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("looks up barcode in database when cache miss", func(t *testing.T) {
+	t.Run("finds product directly in food_items table", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
@@ -363,12 +372,7 @@ func TestLookupBarcode(t *testing.T) {
 		foodID := uuid.New().String()
 		now := time.Now()
 
-		// Mock cache miss
-		mock.ExpectQuery(`SELECT food_data, source, cached_at, expires_at`).
-			WithArgs(barcode).
-			WillReturnError(sql.ErrNoRows)
-
-		// Mock food lookup by barcode
+		// food_items lookup hit (first check in LookupBarcode)
 		foodRows := sqlmock.NewRows([]string{
 			"id", "name", "brand", "category", "serving_size", "serving_unit",
 			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
@@ -381,12 +385,7 @@ func TestLookupBarcode(t *testing.T) {
 			WithArgs(barcode).
 			WillReturnRows(foodRows)
 
-		// Mock cache insert
-		mock.ExpectExec(`INSERT INTO barcode_cache`).
-			WithArgs(barcode, sqlmock.AnyArg(), "database").
-			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		// Execute
+		// Execute — should return immediately from food_items hit, no cache check needed
 		result, err := service.LookupBarcode(ctx, barcode)
 
 		// Assert
@@ -405,15 +404,17 @@ func TestLookupBarcode(t *testing.T) {
 
 		barcode := "0000000000000"
 
-		// Mock cache miss
-		mock.ExpectQuery(`SELECT food_data, source, cached_at, expires_at`).
-			WithArgs(barcode).
-			WillReturnError(sql.ErrNoRows)
-
-		// Mock food not found
+		// Step 1: food_items miss
 		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
 			WithArgs(barcode).
 			WillReturnError(sql.ErrNoRows)
+
+		// Step 2: Cache miss
+		mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
+			WithArgs(barcode).
+			WillReturnError(sql.ErrNoRows)
+
+		// Step 3: OFF API will be called but returns 404 for fake barcode → no DB queries → falls through to "not found"
 
 		// Execute
 		result, err := service.LookupBarcode(ctx, barcode)
@@ -445,7 +446,7 @@ func TestLookupBarcode(t *testing.T) {
 		assert.Contains(t, err.Error(), "штрих-код обязателен")
 	})
 
-	t.Run("handles expired cache and refreshes data", func(t *testing.T) {
+	t.Run("finds product in food_items even with expired cache", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
@@ -453,12 +454,7 @@ func TestLookupBarcode(t *testing.T) {
 		foodID := uuid.New().String()
 		now := time.Now()
 
-		// Mock expired cache (expires_at in the past - query returns no rows because of WHERE expires_at > NOW())
-		mock.ExpectQuery(`SELECT food_data, source, cached_at, expires_at`).
-			WithArgs(barcode).
-			WillReturnError(sql.ErrNoRows)
-
-		// Mock food lookup by barcode
+		// food_items direct hit (first check in LookupBarcode)
 		foodRows := sqlmock.NewRows([]string{
 			"id", "name", "brand", "category", "serving_size", "serving_unit",
 			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
@@ -471,19 +467,14 @@ func TestLookupBarcode(t *testing.T) {
 			WithArgs(barcode).
 			WillReturnRows(foodRows)
 
-		// Mock cache update
-		mock.ExpectExec(`INSERT INTO barcode_cache`).
-			WithArgs(barcode, sqlmock.AnyArg(), "database").
-			WillReturnResult(sqlmock.NewResult(1, 1))
-
-		// Execute
+		// Execute — returns immediately from food_items, cache not checked
 		result, err := service.LookupBarcode(ctx, barcode)
 
 		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.True(t, result.Found)
-		assert.False(t, result.Cached) // Not from cache since it was expired
+		assert.False(t, result.Cached)
 		assert.NotNil(t, result.Food)
 		assert.Equal(t, "Кефир 1%", result.Food.Name)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -495,23 +486,27 @@ func TestLookupBarcode(t *testing.T) {
 
 		barcode := "4607007777777"
 
-		// Mock cache miss
-		mock.ExpectQuery(`SELECT food_data, source, cached_at, expires_at`).
-			WithArgs(barcode).
-			WillReturnError(sql.ErrNoRows)
-
-		// Mock database error
+		// Step 1: food_items query returns a real error (not ErrNoRows) — gracefully falls through
 		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
 			WithArgs(barcode).
 			WillReturnError(sql.ErrConnDone)
 
-		// Execute
+		// Step 2: Cache query also fails (same broken DB)
+		mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
+			WithArgs(barcode).
+			WillReturnError(sql.ErrConnDone)
+
+		// Step 3: OFF API called, returns 404 for fake barcode → not found
+
+		// Execute — graceful degradation, returns not found instead of error
 		result, err := service.LookupBarcode(ctx, barcode)
 
-		// Assert - error message must be in Russian
-		assert.Error(t, err)
-		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "ошибка при поиске по штрих-коду")
+		// Assert — function gracefully degrades to "not found"
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.False(t, result.Found)
+		assert.NotNil(t, result.Message)
+		assert.Contains(t, *result.Message, "Продукт не найден")
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -523,12 +518,7 @@ func TestLookupBarcode(t *testing.T) {
 		foodID := uuid.New().String()
 		now := time.Now()
 
-		// Mock cache miss
-		mock.ExpectQuery(`SELECT food_data, source, cached_at, expires_at`).
-			WithArgs(barcode).
-			WillReturnError(sql.ErrNoRows)
-
-		// Mock food lookup with specific nutrition values
+		// food_items direct hit with specific nutrition values
 		foodRows := sqlmock.NewRows([]string{
 			"id", "name", "brand", "category", "serving_size", "serving_unit",
 			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
@@ -540,11 +530,6 @@ func TestLookupBarcode(t *testing.T) {
 		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
 			WithArgs(barcode).
 			WillReturnRows(foodRows)
-
-		// Mock cache insert
-		mock.ExpectExec(`INSERT INTO barcode_cache`).
-			WithArgs(barcode, sqlmock.AnyArg(), "database").
-			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		// Execute
 		result, err := service.LookupBarcode(ctx, barcode)
@@ -580,13 +565,13 @@ func TestLookupBarcode(t *testing.T) {
 				service, mock, cleanup := setupTestService(t)
 				defer cleanup()
 
-				// Mock cache miss
-				mock.ExpectQuery(`SELECT food_data, source, cached_at, expires_at`).
+				// Step 1: food_items miss
+				mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
 					WithArgs(tc.barcode).
 					WillReturnError(sql.ErrNoRows)
 
-				// Mock food not found
-				mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
+				// Step 2: Cache miss
+				mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
 					WithArgs(tc.barcode).
 					WillReturnError(sql.ErrNoRows)
 
