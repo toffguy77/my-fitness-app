@@ -1,26 +1,18 @@
-version: "3.8"
-
 services:
-  # Frontend - Next.js
+  # Frontend - Next.js (production)
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      target: development
-    container_name: burcev-web-dev
-    ports:
-      - "5000:3000"
-    volumes:
-      - ./apps/web:/app/apps/web
-      - ./packages:/app/packages
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
+      target: runner
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    expose:
+      - "3069"
     environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://api:4000
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NODE_ENV=production
     depends_on:
       - api
     networks:
@@ -28,20 +20,16 @@ services:
       - burcev-network
     restart: unless-stopped
 
-  # Backend API - Go
+  # Backend API - Go (production)
   api:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
-      target: development
-    container_name: burcev-api-dev
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./apps/api:/app
-      - api_cache:/go/pkg/mod
+      target: production
+    expose:
+      - "4000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=4000
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
@@ -52,7 +40,7 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - CORS_ORIGIN=${CORS_ORIGIN}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_USERNAME=${SMTP_USERNAME}
@@ -90,8 +78,3 @@ networks:
     external: true
   burcev-network:
     driver: bridge
-
-volumes:
-  node_modules:
-  web_node_modules:
-  api_cache:
