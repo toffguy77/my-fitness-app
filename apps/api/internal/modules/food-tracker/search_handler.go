@@ -43,7 +43,7 @@ func (h *Handler) SearchFoods(c *gin.Context) {
 	}
 
 	// Call service to search foods
-	result, err := h.service.SearchFoods(c.Request.Context(), req.Query, limit)
+	result, err := h.service.SearchFoods(c.Request.Context(), req.Query, limit, req.Offset)
 	if err != nil {
 		h.log.Errorw("Не удалось выполнить поиск", "error", err, "query", req.Query)
 

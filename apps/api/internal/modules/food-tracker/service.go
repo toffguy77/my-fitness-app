@@ -652,7 +652,7 @@ func roundToOneDecimal(value float64) float64 {
 // ============================================================================
 
 // SearchFoods searches for food items with fuzzy matching (Russian language support)
-func (s *Service) SearchFoods(ctx context.Context, query string, limit int) (*SearchFoodsResponse, error) {
+func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offset int) (*SearchFoodsResponse, error) {
 	startTime := time.Now()
 
 	// Validate query
@@ -667,37 +667,50 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int) (*Se
 	if limit > 50 {
 		limit = 50
 	}
+	if offset < 0 {
+		offset = 0
+	}
 
-	// Use full-text search with Russian language support
-	// Also use ILIKE for partial matching
+	// Use full-text search with Russian language support + brand search + FTS ranking
 	sqlQuery := `
-		SELECT id, name, brand, category, serving_size, serving_unit,
-		       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
-		       fiber_per_100, sugar_per_100, sodium_per_100, barcode, source, verified,
-		       created_at, updated_at
-		FROM food_items
-		WHERE to_tsvector('russian', name) @@ plainto_tsquery('russian', $1)
-		   OR name ILIKE '%' || $1 || '%'
+		WITH matched AS (
+			SELECT id, name, brand, category, serving_size, serving_unit,
+			       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			       fiber_per_100, sugar_per_100, sodium_per_100, barcode, source, verified,
+			       created_at, updated_at,
+			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
+			              plainto_tsquery('russian', $1)) AS rank
+			FROM food_items
+			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
+			   OR name ILIKE '%' || $1 || '%'
+			   OR brand ILIKE '%' || $1 || '%'
+		)
+		SELECT *, COUNT(*) OVER() AS total_count
+		FROM matched
 		ORDER BY
 			CASE WHEN name ILIKE $1 || '%' THEN 0 ELSE 1 END,
+			rank DESC,
 			verified DESC,
 			name ASC
-		LIMIT $2
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := s.db.QueryContext(ctx, sqlQuery, query, limit)
+	rows, err := s.db.QueryContext(ctx, sqlQuery, query, limit, offset)
 	if err != nil {
 		s.log.LogDatabaseQuery(sqlQuery, time.Since(startTime), err, map[string]interface{}{
-			"query": query,
-			"limit": limit,
+			"query":  query,
+			"limit":  limit,
+			"offset": offset,
 		})
 		return nil, fmt.Errorf("ошибка при поиске продуктов: %w", err)
 	}
 	defer rows.Close()
 
 	var foods []FoodItem
+	var totalCount int
 	for rows.Next() {
 		var item FoodItem
+		var rank float64
 		err := rows.Scan(
 			&item.ID,
 			&item.Name,
@@ -717,6 +730,8 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int) (*Se
 			&item.Verified,
 			&item.CreatedAt,
 			&item.UpdatedAt,
+			&rank,
+			&totalCount,
 		)
 		if err != nil {
 			s.log.Error("Failed to scan food item", "error", err)
@@ -733,12 +748,14 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int) (*Se
 	s.log.LogDatabaseQuery(sqlQuery, time.Since(startTime), nil, map[string]interface{}{
 		"query":   query,
 		"limit":   limit,
+		"offset":  offset,
 		"results": len(foods),
+		"total":   totalCount,
 	})
 
 	return &SearchFoodsResponse{
 		Foods: foods,
-		Total: len(foods),
+		Total: totalCount,
 	}, nil
 }
 

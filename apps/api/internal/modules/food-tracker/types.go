@@ -530,8 +530,9 @@ func (r *UpdateEntryRequest) Validate() error {
 
 // SearchFoodsRequest represents the request to search for foods
 type SearchFoodsRequest struct {
-	Query string `form:"q" binding:"required,min=2"`
-	Limit int    `form:"limit" binding:"omitempty,min=1,max=50"`
+	Query  string `form:"q" binding:"required,min=2"`
+	Limit  int    `form:"limit" binding:"omitempty,min=1,max=50"`
+	Offset int    `form:"offset" binding:"omitempty,min=0"`
 }
 
 // Validate validates the search foods request
@@ -721,7 +722,7 @@ type GetEntriesResponse struct {
 
 // SearchFoodsResponse represents the response for searching foods
 type SearchFoodsResponse struct {
-	Foods []FoodItem `json:"foods"`
+	Foods []FoodItem `json:"items"`
 	Total int        `json:"total"`
 }
 

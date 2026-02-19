@@ -39,6 +39,14 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 func TestSearchFoods(t *testing.T) {
 	ctx := context.Background()
 
+	// searchColumns defines the columns returned by the search CTE query
+	searchColumns := []string{
+		"id", "name", "brand", "category", "serving_size", "serving_unit",
+		"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
+		"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
+		"created_at", "updated_at", "rank", "total_count",
+	}
+
 	t.Run("successfully searches foods with Latin query", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
@@ -49,28 +57,21 @@ func TestSearchFoods(t *testing.T) {
 		foodID := uuid.New().String()
 		now := time.Now()
 
-		// Mock the search query
-		rows := sqlmock.NewRows([]string{
-			"id", "name", "brand", "category", "serving_size", "serving_unit",
-			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
-			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-			"created_at", "updated_at",
-		}).
-			AddRow(foodID, "Apple", nil, "fruits", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now)
+		rows := sqlmock.NewRows(searchColumns).
+			AddRow(foodID, "Apple", nil, "fruits", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, limit).
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, limit, 0).
 			WillReturnRows(rows)
 
-		// Execute
-		result, err := service.SearchFoods(ctx, query, limit)
+		result, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Len(t, result.Foods, 1)
 		assert.Equal(t, "Apple", result.Foods[0].Name)
 		assert.Equal(t, 52.0, result.Foods[0].NutritionPer100.Calories)
+		assert.Equal(t, 1, result.Total)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -84,23 +85,15 @@ func TestSearchFoods(t *testing.T) {
 		foodID := uuid.New().String()
 		now := time.Now()
 
-		// Mock the search query with Cyrillic
-		rows := sqlmock.NewRows([]string{
-			"id", "name", "brand", "category", "serving_size", "serving_unit",
-			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
-			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-			"created_at", "updated_at",
-		}).
-			AddRow(foodID, "Яблоко", nil, "фрукты", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now)
+		rows := sqlmock.NewRows(searchColumns).
+			AddRow(foodID, "Яблоко", nil, "фрукты", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, limit).
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, limit, 0).
 			WillReturnRows(rows)
 
-		// Execute
-		result, err := service.SearchFoods(ctx, query, limit)
+		result, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Len(t, result.Foods, 1)
@@ -115,22 +108,14 @@ func TestSearchFoods(t *testing.T) {
 		query := "несуществующий продукт"
 		limit := 20
 
-		// Mock empty result
-		rows := sqlmock.NewRows([]string{
-			"id", "name", "brand", "category", "serving_size", "serving_unit",
-			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
-			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-			"created_at", "updated_at",
-		})
+		rows := sqlmock.NewRows(searchColumns)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, limit).
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, limit, 0).
 			WillReturnRows(rows)
 
-		// Execute
-		result, err := service.SearchFoods(ctx, query, limit)
+		result, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Len(t, result.Foods, 0)
@@ -145,10 +130,8 @@ func TestSearchFoods(t *testing.T) {
 		query := "a" // Only 1 character
 		limit := 20
 
-		// Execute
-		result, err := service.SearchFoods(ctx, query, limit)
+		result, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert - error message must be in Russian
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "минимум 2 символа")
@@ -161,21 +144,14 @@ func TestSearchFoods(t *testing.T) {
 		query := "молоко"
 		limit := 0 // Should default to 20
 
-		rows := sqlmock.NewRows([]string{
-			"id", "name", "brand", "category", "serving_size", "serving_unit",
-			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
-			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-			"created_at", "updated_at",
-		})
+		rows := sqlmock.NewRows(searchColumns)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, 20). // Should be default 20
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, 20, 0). // Should be default 20
 			WillReturnRows(rows)
 
-		// Execute
-		_, err := service.SearchFoods(ctx, query, limit)
+		_, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -187,21 +163,14 @@ func TestSearchFoods(t *testing.T) {
 		query := "хлеб"
 		limit := 100 // Should be capped at 50
 
-		rows := sqlmock.NewRows([]string{
-			"id", "name", "brand", "category", "serving_size", "serving_unit",
-			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
-			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-			"created_at", "updated_at",
-		})
+		rows := sqlmock.NewRows(searchColumns)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, 50). // Should be capped at 50
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, 50, 0). // Should be capped at 50
 			WillReturnRows(rows)
 
-		// Execute
-		_, err := service.SearchFoods(ctx, query, limit)
+		_, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -217,24 +186,16 @@ func TestSearchFoods(t *testing.T) {
 		foodID2 := uuid.New().String()
 		now := time.Now()
 
-		// Mock multiple results
-		rows := sqlmock.NewRows([]string{
-			"id", "name", "brand", "category", "serving_size", "serving_unit",
-			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
-			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-			"created_at", "updated_at",
-		}).
-			AddRow(foodID1, "Курица грудка", nil, "мясо", 100.0, "г", 165.0, 31.0, 3.6, 0.0, nil, nil, nil, nil, "database", true, now, now).
-			AddRow(foodID2, "Курица бедро", nil, "мясо", 100.0, "г", 209.0, 26.0, 10.9, 0.0, nil, nil, nil, nil, "database", true, now, now)
+		rows := sqlmock.NewRows(searchColumns).
+			AddRow(foodID1, "Курица грудка", nil, "мясо", 100.0, "г", 165.0, 31.0, 3.6, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.2, 2).
+			AddRow(foodID2, "Курица бедро", nil, "мясо", 100.0, "г", 209.0, 26.0, 10.9, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 2)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, limit).
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, limit, 0).
 			WillReturnRows(rows)
 
-		// Execute
-		result, err := service.SearchFoods(ctx, query, limit)
+		result, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Len(t, result.Foods, 2)
@@ -249,15 +210,12 @@ func TestSearchFoods(t *testing.T) {
 		query := "тест"
 		limit := 20
 
-		// Mock database error
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, limit).
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, limit, 0).
 			WillReturnError(sql.ErrConnDone)
 
-		// Execute
-		result, err := service.SearchFoods(ctx, query, limit)
+		result, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert - error message must be in Russian
 		assert.Error(t, err)
 		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "ошибка при поиске продуктов")
@@ -274,23 +232,15 @@ func TestSearchFoods(t *testing.T) {
 		foodID := uuid.New().String()
 		now := time.Now()
 
-		// Mock with specific nutrition values
-		rows := sqlmock.NewRows([]string{
-			"id", "name", "brand", "category", "serving_size", "serving_unit",
-			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
-			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-			"created_at", "updated_at",
-		}).
-			AddRow(foodID, "Рис белый", nil, "крупы", 100.0, "г", 130.0, 2.7, 0.3, 28.2, nil, nil, nil, nil, "database", true, now, now)
+		rows := sqlmock.NewRows(searchColumns).
+			AddRow(foodID, "Рис белый", nil, "крупы", 100.0, "г", 130.0, 2.7, 0.3, 28.2, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
-			WithArgs(query, limit).
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, limit, 0).
 			WillReturnRows(rows)
 
-		// Execute
-		result, err := service.SearchFoods(ctx, query, limit)
+		result, err := service.SearchFoods(ctx, query, limit, 0)
 
-		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Len(t, result.Foods, 1)
@@ -300,6 +250,33 @@ func TestSearchFoods(t *testing.T) {
 		assert.Equal(t, 2.7, food.NutritionPer100.Protein)
 		assert.Equal(t, 0.3, food.NutritionPer100.Fat)
 		assert.Equal(t, 28.2, food.NutritionPer100.Carbs)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("supports pagination with offset", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		query := "молоко"
+		limit := 20
+		offset := 20
+
+		foodID := uuid.New().String()
+		now := time.Now()
+
+		rows := sqlmock.NewRows(searchColumns).
+			AddRow(foodID, "Молоко 3.2%", nil, "молочные", 100.0, "мл", 60.0, 2.9, 3.2, 4.7, nil, nil, nil, nil, "database", true, now, now, 0.1, 25)
+
+		mock.ExpectQuery(`SELECT .+, COUNT`).
+			WithArgs(query, limit, offset).
+			WillReturnRows(rows)
+
+		result, err := service.SearchFoods(ctx, query, limit, offset)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Len(t, result.Foods, 1)
+		assert.Equal(t, 25, result.Total)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }

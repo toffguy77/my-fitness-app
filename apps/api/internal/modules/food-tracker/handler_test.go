@@ -55,8 +55,8 @@ func (m *MockService) DeleteEntry(ctx context.Context, userID int64, entryID str
 	return args.Error(0)
 }
 
-func (m *MockService) SearchFoods(ctx context.Context, query string, limit int) (*SearchFoodsResponse, error) {
-	args := m.Called(ctx, query, limit)
+func (m *MockService) SearchFoods(ctx context.Context, query string, limit int, offset int) (*SearchFoodsResponse, error) {
+	args := m.Called(ctx, query, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
