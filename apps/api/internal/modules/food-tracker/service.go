@@ -972,17 +972,38 @@ func (s *Service) GetRecentFoods(ctx context.Context, userID int64, limit int) (
 		limit = 50
 	}
 
-	// Get distinct foods from recent entries
+	// Get distinct foods from recent entries, looking up in both food_items (UUID) and products (integer ID)
 	query := `
-		SELECT DISTINCT ON (fi.id)
-			fi.id, fi.name, fi.brand, fi.category, fi.serving_size, fi.serving_unit,
-			fi.calories_per_100, fi.protein_per_100, fi.fat_per_100, fi.carbs_per_100,
-			fi.fiber_per_100, fi.sugar_per_100, fi.sodium_per_100, fi.barcode, fi.source, fi.verified,
-			fi.created_at, fi.updated_at
-		FROM food_entries fe
-		JOIN food_items fi ON fe.food_id = fi.id
-		WHERE fe.user_id = $1
-		ORDER BY fi.id, fe.created_at DESC
+		WITH recent AS (
+			SELECT DISTINCT ON (fe.food_id) fe.food_id, fe.created_at AS last_used
+			FROM food_entries fe
+			WHERE fe.user_id = $1
+			ORDER BY fe.food_id, fe.created_at DESC
+		)
+		SELECT
+			COALESCE(fi.id, p.id::text) AS id,
+			COALESCE(fi.name, p.name) AS name,
+			COALESCE(fi.brand, p.brand) AS brand,
+			COALESCE(fi.category, COALESCE(p.category_id::text, '')) AS category,
+			COALESCE(fi.serving_size, 100.0) AS serving_size,
+			COALESCE(fi.serving_unit, 'г') AS serving_unit,
+			COALESCE(fi.calories_per_100, COALESCE(p.calories, 0)) AS calories_per_100,
+			COALESCE(fi.protein_per_100, COALESCE(p.proteins, 0)) AS protein_per_100,
+			COALESCE(fi.fat_per_100, COALESCE(p.fats, 0)) AS fat_per_100,
+			COALESCE(fi.carbs_per_100, COALESCE(p.carbs, 0)) AS carbs_per_100,
+			COALESCE(fi.fiber_per_100, p.fiber) AS fiber_per_100,
+			fi.sugar_per_100,
+			fi.sodium_per_100,
+			COALESCE(fi.barcode, p.vendor_code) AS barcode,
+			COALESCE(fi.source, COALESCE(p.source, 'database')) AS source,
+			COALESCE(fi.verified, false) AS verified,
+			COALESCE(fi.created_at, COALESCE(p.created_at, NOW())) AS created_at,
+			COALESCE(fi.updated_at, COALESCE(p.created_at, NOW())) AS updated_at
+		FROM recent r
+		LEFT JOIN food_items fi ON r.food_id = fi.id
+		LEFT JOIN products p ON r.food_id = p.id::text
+		WHERE fi.id IS NOT NULL OR p.id IS NOT NULL
+		ORDER BY r.last_used DESC
 		LIMIT $2
 	`
 
@@ -1055,13 +1076,29 @@ func (s *Service) GetFavoriteFoods(ctx context.Context, userID int64, limit int)
 	}
 
 	query := `
-		SELECT fi.id, fi.name, fi.brand, fi.category, fi.serving_size, fi.serving_unit,
-		       fi.calories_per_100, fi.protein_per_100, fi.fat_per_100, fi.carbs_per_100,
-		       fi.fiber_per_100, fi.sugar_per_100, fi.sodium_per_100, fi.barcode, fi.source, fi.verified,
-		       fi.created_at, fi.updated_at
+		SELECT
+			COALESCE(fi.id, p.id::text) AS id,
+			COALESCE(fi.name, p.name) AS name,
+			COALESCE(fi.brand, p.brand) AS brand,
+			COALESCE(fi.category, COALESCE(p.category_id::text, '')) AS category,
+			COALESCE(fi.serving_size, 100.0) AS serving_size,
+			COALESCE(fi.serving_unit, 'г') AS serving_unit,
+			COALESCE(fi.calories_per_100, COALESCE(p.calories, 0)) AS calories_per_100,
+			COALESCE(fi.protein_per_100, COALESCE(p.proteins, 0)) AS protein_per_100,
+			COALESCE(fi.fat_per_100, COALESCE(p.fats, 0)) AS fat_per_100,
+			COALESCE(fi.carbs_per_100, COALESCE(p.carbs, 0)) AS carbs_per_100,
+			COALESCE(fi.fiber_per_100, p.fiber) AS fiber_per_100,
+			fi.sugar_per_100,
+			fi.sodium_per_100,
+			COALESCE(fi.barcode, p.vendor_code) AS barcode,
+			COALESCE(fi.source, COALESCE(p.source, 'database')) AS source,
+			COALESCE(fi.verified, false) AS verified,
+			COALESCE(fi.created_at, COALESCE(p.created_at, NOW())) AS created_at,
+			COALESCE(fi.updated_at, COALESCE(p.created_at, NOW())) AS updated_at
 		FROM user_favorite_foods uff
-		JOIN food_items fi ON uff.food_id = fi.id
-		WHERE uff.user_id = $1
+		LEFT JOIN food_items fi ON uff.food_id = fi.id
+		LEFT JOIN products p ON uff.food_id = p.id::text
+		WHERE fi.id IS NOT NULL OR p.id IS NOT NULL
 		ORDER BY uff.added_at DESC
 		LIMIT $2
 	`
