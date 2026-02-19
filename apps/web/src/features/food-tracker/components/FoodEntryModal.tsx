@@ -308,7 +308,7 @@ export function FoodEntryModal({
 
     return (
         <div
-            className={`fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center ${className}`}
+            className={`fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center ${className}`}
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"

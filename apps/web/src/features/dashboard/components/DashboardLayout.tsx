@@ -121,7 +121,8 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
                 {/* Main Content Area (Requirement 3.1, 4.3) */}
                 {/* Padding top/bottom to account for fixed header (64px) and footer (64px + safe area) */}
                 <main
-                    className="min-h-screen pt-16 pb-20"
+                    className="min-h-screen pt-16"
+                    style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
                     data-testid="main-content"
                 >
                     {children}
