@@ -154,13 +154,10 @@ export function BarcodeTab({
         <div className={`flex flex-col h-full ${className}`}>
             {/* Camera / Scanner Area */}
             <div className="relative flex-1 bg-gray-900 rounded-xl overflow-hidden mb-4">
-                {/* Single persistent scanner div — NEVER destroyed by React.
-                    html5-qrcode attaches its video stream to this element;
-                    if React removes it from the DOM the scanner breaks. */}
-                <div
-                    id={BARCODE_READER_ELEMENT_ID}
-                    className={scannerStatus === 'scanning' ? 'w-full h-full' : 'absolute w-0 h-0 overflow-hidden'}
-                />
+                {/* Persistent scanner div — always full-size so html5-qrcode
+                    can read container dimensions when starting the camera.
+                    Non-scanning states render as an opaque overlay on top. */}
+                <div id={BARCODE_READER_ELEMENT_ID} className="w-full h-full" />
 
                 {/* Stop camera button (overlay) */}
                 {scannerStatus === 'scanning' && (
@@ -174,9 +171,9 @@ export function BarcodeTab({
                     </button>
                 )}
 
-                {/* Non-scanning states overlay */}
+                {/* Opaque overlay for non-scanning states */}
                 {scannerStatus !== 'scanning' && (
-                    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                    <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
                         {scannerStatus === 'idle' && (
                             <>
                                 <Camera className="w-16 h-16 text-gray-400 mb-4" />
