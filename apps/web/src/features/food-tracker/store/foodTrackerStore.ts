@@ -202,7 +202,9 @@ function mapError(error: any): FoodTrackerError {
     }
 
     // Network errors (fetch failed, timeout, etc.)
-    if (error instanceof TypeError || error.message?.includes('fetch') || error.message?.includes('network')) {
+    // Only classify as network error if the message indicates a fetch/network failure,
+    // not arbitrary TypeErrors from data processing.
+    if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
         return {
             code: 'NETWORK_ERROR',
             message: 'Проверьте подключение к интернету',
@@ -424,8 +426,12 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
                 retryWithBackoff(() => apiClient.get<WaterLogResponse>(waterUrl), 3, 1000).catch(() => null),
             ]);
 
-            // Group entries by meal type
-            const groupedEntries = groupEntriesByMealType(entriesResponse.entries);
+            // Group entries by meal type.
+            // The API may return entries as a flat array OR already grouped by meal type.
+            const rawEntries = entriesResponse.entries;
+            const groupedEntries = Array.isArray(rawEntries)
+                ? groupEntriesByMealType(rawEntries)
+                : (rawEntries as unknown as EntriesByMealType);
 
             // Calculate daily totals
             const dailyTotals = calculateDailyTotals(groupedEntries);

@@ -214,7 +214,8 @@ export interface UpdateFoodEntryRequest {
  * API response for fetching food entries
  */
 export interface GetFoodEntriesResponse {
-    entries: FoodEntry[];
+    /** Entries may be a flat array or already grouped by meal type */
+    entries: FoodEntry[] | Record<string, FoodEntry[]>;
     dailyTotals: KBZHU;
 }
 
