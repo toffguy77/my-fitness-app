@@ -94,6 +94,13 @@ function getCachedBarcode(barcode: string): FoodItem | null {
             return null;
         }
 
+        // Validate cached entry has required FoodItem shape
+        if (!data.food?.name || !data.food?.nutritionPer100) {
+            logWarn('Cache invalid (not a FoodItem), evicting', { barcode });
+            localStorage.removeItem(`${CACHE_KEY_PREFIX}${barcode}`);
+            return null;
+        }
+
         log('Cache hit', { barcode, product: data.food.name });
         // Sliding cache: refresh expiresAt on read
         setCachedBarcode(barcode, data.food, DEFAULT_CACHE_DURATION_DAYS);
