@@ -22,7 +22,7 @@ type ServiceInterface interface {
 	DeleteEntry(ctx context.Context, userID int64, entryID string) error
 
 	// Food search
-	SearchFoods(ctx context.Context, query string, limit int) (*SearchFoodsResponse, error)
+	SearchFoods(ctx context.Context, query string, limit int, offset int) (*SearchFoodsResponse, error)
 	LookupBarcode(ctx context.Context, barcode string) (*BarcodeResponse, error)
 	GetRecentFoods(ctx context.Context, userID int64, limit int) (*GetRecentFoodsResponse, error)
 	GetFavoriteFoods(ctx context.Context, userID int64, limit int) (*GetFavoriteFoodsResponse, error)
