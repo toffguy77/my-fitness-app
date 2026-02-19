@@ -887,6 +887,7 @@ func (s *Service) saveOFFProduct(ctx context.Context, barcode string, product *o
 func (s *Service) getFoodByBarcode(ctx context.Context, barcode string) (*FoodItem, error) {
 	startTime := time.Now()
 
+	// Try food_items table first
 	query := `
 		SELECT id, name, brand, category, serving_size, serving_unit,
 		       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
@@ -898,34 +899,60 @@ func (s *Service) getFoodByBarcode(ctx context.Context, barcode string) (*FoodIt
 
 	var item FoodItem
 	err := s.db.QueryRowContext(ctx, query, barcode).Scan(
-		&item.ID,
-		&item.Name,
-		&item.Brand,
-		&item.Category,
-		&item.ServingSize,
-		&item.ServingUnit,
-		&item.CaloriesPer100,
-		&item.ProteinPer100,
-		&item.FatPer100,
-		&item.CarbsPer100,
-		&item.FiberPer100,
-		&item.SugarPer100,
-		&item.SodiumPer100,
-		&item.Barcode,
-		&item.Source,
-		&item.Verified,
-		&item.CreatedAt,
-		&item.UpdatedAt,
+		&item.ID, &item.Name, &item.Brand, &item.Category,
+		&item.ServingSize, &item.ServingUnit,
+		&item.CaloriesPer100, &item.ProteinPer100, &item.FatPer100, &item.CarbsPer100,
+		&item.FiberPer100, &item.SugarPer100, &item.SodiumPer100,
+		&item.Barcode, &item.Source, &item.Verified,
+		&item.CreatedAt, &item.UpdatedAt,
+	)
+
+	if err == nil {
+		item.PopulateNutrition()
+		s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+			"barcode": barcode, "found": true, "table": "food_items",
+		})
+		return &item, nil
+	}
+	if err != sql.ErrNoRows {
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			"barcode": barcode,
+		})
+		return nil, fmt.Errorf("ошибка при поиске по штрих-коду: %w", err)
+	}
+
+	// Fallback to products table (vendor_code = barcode)
+	pQuery := `
+		SELECT id::text, name, brand,
+		       COALESCE(category_id::text, '') AS category,
+		       100.0 AS serving_size, 'г' AS serving_unit,
+		       COALESCE(calories, 0), COALESCE(proteins, 0),
+		       COALESCE(fats, 0), COALESCE(carbs, 0),
+		       fiber, NULL::numeric, NULL::numeric,
+		       vendor_code, COALESCE(source, 'database'), false,
+		       COALESCE(created_at, NOW()), COALESCE(created_at, NOW())
+		FROM products
+		WHERE vendor_code = $1
+		LIMIT 1
+	`
+
+	err = s.db.QueryRowContext(ctx, pQuery, barcode).Scan(
+		&item.ID, &item.Name, &item.Brand, &item.Category,
+		&item.ServingSize, &item.ServingUnit,
+		&item.CaloriesPer100, &item.ProteinPer100, &item.FatPer100, &item.CarbsPer100,
+		&item.FiberPer100, &item.SugarPer100, &item.SodiumPer100,
+		&item.Barcode, &item.Source, &item.Verified,
+		&item.CreatedAt, &item.UpdatedAt,
 	)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			s.log.LogDatabaseQuery(pQuery, time.Since(startTime), err, map[string]interface{}{
 				"barcode": barcode,
 			})
 			return nil, fmt.Errorf("продукт не найден")
 		}
-		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+		s.log.LogDatabaseQuery(pQuery, time.Since(startTime), err, map[string]interface{}{
 			"barcode": barcode,
 		})
 		return nil, fmt.Errorf("ошибка при поиске по штрих-коду: %w", err)
@@ -933,9 +960,8 @@ func (s *Service) getFoodByBarcode(ctx context.Context, barcode string) (*FoodIt
 
 	item.PopulateNutrition()
 
-	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
-		"barcode": barcode,
-		"found":   true,
+	s.log.LogDatabaseQuery(pQuery, time.Since(startTime), nil, map[string]interface{}{
+		"barcode": barcode, "found": true, "table": "products",
 	})
 
 	return &item, nil
