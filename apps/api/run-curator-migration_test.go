@@ -103,7 +103,6 @@ func TestCheckNewStructureExists(t *testing.T) {
 	}
 }
 
-
 func TestVerifyTableRenamed(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -291,7 +290,6 @@ func TestVerifyColumnsRenamed(t *testing.T) {
 		})
 	}
 }
-
 
 func TestVerifyIndexesCreated(t *testing.T) {
 	tests := []struct {
@@ -517,7 +515,6 @@ func TestVerifyRLSPolicies(t *testing.T) {
 	}
 }
 
-
 func TestRunMigrationFile(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -722,7 +719,6 @@ NORMAL_KEY=normal_value
 		})
 	}
 }
-
 
 // Integration-style test for the complete verification flow
 func TestVerificationFunctionsIntegration(t *testing.T) {

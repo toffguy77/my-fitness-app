@@ -283,7 +283,7 @@ func TestGetWeeklyPlan_Success(t *testing.T) {
 	plan := &WeeklyPlan{
 		ID:           uuid.New().String(),
 		UserID:       1,
-		CuratorID:      2,
+		CuratorID:    2,
 		CaloriesGoal: 2000,
 		ProteinGoal:  150,
 		IsActive:     true,
@@ -334,7 +334,7 @@ func TestCreateWeeklyPlan_Success(t *testing.T) {
 	plan := &WeeklyPlan{
 		ID:           uuid.New().String(),
 		UserID:       1,
-		CuratorID:      2,
+		CuratorID:    2,
 		CaloriesGoal: 2000,
 		ProteinGoal:  150,
 		StartDate:    startDate,
@@ -402,7 +402,7 @@ func TestGetTasks_Success(t *testing.T) {
 		{
 			ID:         uuid.New().String(),
 			UserID:     1,
-			CuratorID:    2,
+			CuratorID:  2,
 			Title:      "Test Task",
 			WeekNumber: 1,
 			Status:     TaskStatusActive,
@@ -432,7 +432,7 @@ func TestCreateTask_Success(t *testing.T) {
 	task := &Task{
 		ID:         uuid.New().String(),
 		UserID:     1,
-		CuratorID:    2,
+		CuratorID:  2,
 		Title:      "Test Task",
 		WeekNumber: 1,
 		DueDate:    time.Now().AddDate(0, 0, 7),
@@ -497,7 +497,7 @@ func TestUpdateTaskStatus_Success(t *testing.T) {
 	task := &Task{
 		ID:          taskID,
 		UserID:      1,
-		CuratorID:     2,
+		CuratorID:   2,
 		Title:       "Test Task",
 		WeekNumber:  1,
 		Status:      TaskStatusCompleted,
@@ -535,7 +535,7 @@ func TestSubmitWeeklyReport_Success(t *testing.T) {
 	report := &WeeklyReport{
 		ID:        uuid.New().String(),
 		UserID:    1,
-		CuratorID:   2,
+		CuratorID: 2,
 		WeekStart: weekStart,
 		WeekEnd:   weekEnd,
 	}

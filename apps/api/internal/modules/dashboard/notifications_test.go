@@ -51,7 +51,7 @@ func TestSendPlanUpdateNotification(t *testing.T) {
 		plan := &WeeklyPlan{
 			ID:           "plan-1",
 			UserID:       clientID,
-			CuratorID:      456,
+			CuratorID:    456,
 			CaloriesGoal: 2000,
 			ProteinGoal:  150,
 			StartDate:    time.Now(),
@@ -83,7 +83,7 @@ func TestSendTaskAssignedNotification(t *testing.T) {
 		task := &Task{
 			ID:          "task-1",
 			UserID:      clientID,
-			CuratorID:     456,
+			CuratorID:   456,
 			Title:       taskTitle,
 			Description: nil,
 			WeekNumber:  1,
@@ -139,7 +139,7 @@ func TestNotificationErrorHandling(t *testing.T) {
 		plan := &WeeklyPlan{
 			ID:           "plan-1",
 			UserID:       123,
-			CuratorID:      456,
+			CuratorID:    456,
 			CaloriesGoal: 2000,
 			ProteinGoal:  150,
 			StartDate:    time.Now(),
@@ -156,7 +156,7 @@ func TestNotificationErrorHandling(t *testing.T) {
 		task := &Task{
 			ID:          "task-1",
 			UserID:      123,
-			CuratorID:     456,
+			CuratorID:   456,
 			Title:       "Test task",
 			Description: nil,
 			WeekNumber:  1,
@@ -172,7 +172,7 @@ func TestNotificationErrorHandling(t *testing.T) {
 		report := &WeeklyReport{
 			ID:         "report-1",
 			UserID:     123,
-			CuratorID:    456,
+			CuratorID:  456,
 			WeekNumber: 5,
 			WeekStart:  time.Now().AddDate(0, 0, -7),
 			WeekEnd:    time.Now(),

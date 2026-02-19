@@ -26,7 +26,7 @@ describe('NutritionBlock', () => {
     const mockWeeklyPlan: WeeklyPlan = {
         id: 'plan-1',
         userId: 'user-1',
-        coachId: 'coach-1',
+        curatorId: 'coach-1',
         caloriesGoal: 2000,
         proteinGoal: 150,
         fatGoal: 67,

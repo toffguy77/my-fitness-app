@@ -46,7 +46,7 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                         const mockPlan: WeeklyPlan = {
                             id: 'plan-123',
                             userId: 'user-123',
-                            coachId: 'coach-123',
+                            curatorId: 'coach-123',
                             caloriesGoal,
                             proteinGoal,
                             startDate: weekStart,
@@ -107,7 +107,7 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                         const mockPlan: WeeklyPlan = {
                             id: 'plan-123',
                             userId: 'user-123',
-                            coachId: 'coach-123',
+                            curatorId: 'coach-123',
                             caloriesGoal,
                             proteinGoal,
                             fatGoal,
@@ -208,7 +208,7 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                         const mockPlan: WeeklyPlan = {
                             id: 'plan-123',
                             userId: 'user-123',
-                            coachId: 'coach-123',
+                            curatorId: 'coach-123',
                             caloriesGoal,
                             proteinGoal,
                             startDate: weekStart,
@@ -259,7 +259,7 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                         const mockPlan: WeeklyPlan = {
                             id: 'plan-123',
                             userId: 'user-123',
-                            coachId: 'coach-123',
+                            curatorId: 'coach-123',
                             caloriesGoal,
                             proteinGoal,
                             startDate: weekStart,

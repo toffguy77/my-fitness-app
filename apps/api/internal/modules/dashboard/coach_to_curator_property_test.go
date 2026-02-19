@@ -499,7 +499,6 @@ func TestAllFilesScanned_Property(t *testing.T) {
 	t.Logf("Scanned %d Go files in dashboard module", len(files))
 }
 
-
 // Property 2: Корректность проверки роли curator
 // **Feature: coach-to-curator-refactoring, Property 2: Корректность проверки роли curator**
 // **Validates: Requirements 1.6**
@@ -793,19 +792,19 @@ func TestCuratorRoleAccess_RandomRoles_Property(t *testing.T) {
 		},
 		// Generate various role strings that are NOT "curator" (edge cases)
 		gen.OneConstOf(
-			"coach",        // old role
-			"client",       // other role
-			"admin",        // other role
-			"CURATOR",      // uppercase (case-sensitive check)
-			"Curator",      // mixed case (case-sensitive check)
-			"curator ",     // trailing space
-			" curator",     // leading space
-			"curator\n",    // newline
-			"curator\t",    // tab
-			"",             // empty
-			"curators",     // plural
-			"cur",          // partial
-			"curatorx",     // extra char
+			"coach",     // old role
+			"client",    // other role
+			"admin",     // other role
+			"CURATOR",   // uppercase (case-sensitive check)
+			"Curator",   // mixed case (case-sensitive check)
+			"curator ",  // trailing space
+			" curator",  // leading space
+			"curator\n", // newline
+			"curator\t", // tab
+			"",          // empty
+			"curators",  // plural
+			"cur",       // partial
+			"curatorx",  // extra char
 		),
 	))
 
@@ -996,7 +995,6 @@ func TestCuratorRoleAccess_CreateTaskCuratorAllowed_Property(t *testing.T) {
 
 	properties.TestingRun(t)
 }
-
 
 // Property 7: Корректность JSON API
 // **Feature: coach-to-curator-refactoring, Property 7: Корректность JSON API**

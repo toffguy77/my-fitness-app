@@ -98,7 +98,7 @@ function createTask(daysUntilDue: number): Task {
     return {
         id: `task-${Math.random().toString(36).substr(2, 9)}`,
         userId: 'test-user',
-        coachId: `coach-${Math.random().toString(36).substr(2, 9)}`,
+        curatorId: `coach-${Math.random().toString(36).substr(2, 9)}`,
         title: `Task ${Math.random().toString(36).substr(2, 9)}`,
         description: `Description ${Math.random().toString(36).substr(2, 9)}`,
         weekNumber: getCurrentWeekNumber(),
@@ -227,7 +227,7 @@ describe('Property 42: Weekly Plan Adherence Indicator', () => {
                     const plan: WeeklyPlan = {
                         id: 'plan-1',
                         userId: 'test-user',
-                        coachId: 'coach-1',
+                        curatorId: 'coach-1',
                         caloriesGoal: 2000,
                         proteinGoal: 150,
                         fatGoal: 67,
