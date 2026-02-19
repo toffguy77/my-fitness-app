@@ -187,9 +187,9 @@ type FoodItem struct {
 	Name            string     `json:"name" db:"name"`
 	Brand           *string    `json:"brand,omitempty" db:"brand"`
 	Category        string     `json:"category" db:"category"`
-	ServingSize     float64    `json:"serving_size" db:"serving_size"`
-	ServingUnit     string     `json:"serving_unit" db:"serving_unit"`
-	NutritionPer100 KBZHU      `json:"nutrition_per_100"`
+	ServingSize     float64    `json:"servingSize" db:"serving_size"`
+	ServingUnit     string     `json:"servingUnit" db:"serving_unit"`
+	NutritionPer100 KBZHU      `json:"nutritionPer100"`
 	CaloriesPer100  float64    `json:"-" db:"calories_per_100"`
 	ProteinPer100   float64    `json:"-" db:"protein_per_100"`
 	FatPer100       float64    `json:"-" db:"fat_per_100"`
