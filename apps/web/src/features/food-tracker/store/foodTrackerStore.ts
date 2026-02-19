@@ -446,6 +446,8 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
                 waterGoal: waterLog?.goal ?? DEFAULT_WATER_GOAL,
                 glassSize: waterLog?.glassSize ?? DEFAULT_GLASS_SIZE,
                 isLoading: false,
+                isOffline: false,
+                error: null,
             });
         } catch (error: any) {
             const mappedError = mapError(error);
