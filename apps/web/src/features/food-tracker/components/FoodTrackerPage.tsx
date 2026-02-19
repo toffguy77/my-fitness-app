@@ -73,7 +73,10 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
     }, []);
 
     return (
-        <div className={`min-h-screen bg-gray-50 pb-20 ${className}`}>
+        <div
+            className={`min-h-screen bg-gray-50 ${className}`}
+            style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
+        >
             {/* Offline indicator */}
             {isOffline && (
                 <div

@@ -130,7 +130,7 @@ describe('DashboardLayout', () => {
             // Verify it has proper padding for fixed header (64px) and footer (64px + safe area)
             expect(mainContent).toHaveClass('min-h-screen')
             expect(mainContent).toHaveClass('pt-16')
-            expect(mainContent).toHaveClass('pb-20')
+            expect((mainContent as HTMLElement).style.paddingBottom).toMatch(/calc.*5rem.*safe-area-inset-bottom/)
         })
 
         it('should render children content inside MainContent', () => {

@@ -335,8 +335,8 @@ describe('FoodTrackerPage', () => {
         it('has padding bottom for footer navigation space', () => {
             const { container } = render(<FoodTrackerPage />);
 
-            const rootElement = container.firstChild;
-            expect(rootElement).toHaveClass('pb-20');
+            const rootElement = container.firstChild as HTMLElement;
+            expect(rootElement.style.paddingBottom).toMatch(/calc.*5rem.*safe-area-inset-bottom/);
         });
     });
 

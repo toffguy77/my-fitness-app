@@ -303,7 +303,7 @@ describe('Property 24: Content Viewport Fit', () => {
                         // Main content has padding for fixed header/footer
                         const mainContentClasses = mainContent!.className
                         expect(mainContentClasses).toMatch(/pt-16/)
-                        expect(mainContentClasses).toMatch(/pb-20/)
+                        expect((mainContent as HTMLElement).style.paddingBottom).toMatch(/calc.*5rem.*safe-area-inset-bottom/)
 
                         unmount()
                         return true
@@ -408,7 +408,7 @@ describe('Property 24: Content Viewport Fit', () => {
                         // The main content uses padding for header/footer spacing
                         const classes = mainContent!.className
                         expect(classes).toMatch(/pt-16/)
-                        expect(classes).toMatch(/pb-20/)
+                        expect((mainContent as HTMLElement).style.paddingBottom).toMatch(/calc.*5rem.*safe-area-inset-bottom/)
                         expect(classes).toMatch(/min-h-screen/)
 
                         unmount()

@@ -338,7 +338,7 @@ export function ConfigureNutrientsModal({
 
     return (
         <div
-            className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 ${className}`}
+            className={`fixed inset-0 z-[60] flex items-center justify-center bg-black/50 ${className}`}
             onClick={handleBackdropClick}
             role="dialog"
             aria-modal="true"
