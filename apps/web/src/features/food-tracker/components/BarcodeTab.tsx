@@ -154,24 +154,29 @@ export function BarcodeTab({
         <div className={`flex flex-col h-full ${className}`}>
             {/* Camera / Scanner Area */}
             <div className="relative flex-1 bg-gray-900 rounded-xl overflow-hidden mb-4">
-                {scannerStatus === 'scanning' ? (
-                    <>
-                        <div id={BARCODE_READER_ELEMENT_ID} className="w-full h-full" />
-                        {/* Stop camera button */}
-                        <button
-                            type="button"
-                            onClick={handleStopCamera}
-                            className="absolute top-2 right-2 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                            aria-label="Остановить камеру"
-                        >
-                            <CameraOff className="w-5 h-5" />
-                        </button>
-                    </>
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                        {/* Hidden container for html5-qrcode to clean up into */}
-                        <div id={BARCODE_READER_ELEMENT_ID} style={{ display: 'none' }} />
+                {/* Single persistent scanner div — NEVER destroyed by React.
+                    html5-qrcode attaches its video stream to this element;
+                    if React removes it from the DOM the scanner breaks. */}
+                <div
+                    id={BARCODE_READER_ELEMENT_ID}
+                    className={scannerStatus === 'scanning' ? 'w-full h-full' : 'absolute w-0 h-0 overflow-hidden'}
+                />
 
+                {/* Stop camera button (overlay) */}
+                {scannerStatus === 'scanning' && (
+                    <button
+                        type="button"
+                        onClick={handleStopCamera}
+                        className="absolute top-2 right-2 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        aria-label="Остановить камеру"
+                    >
+                        <CameraOff className="w-5 h-5" />
+                    </button>
+                )}
+
+                {/* Non-scanning states overlay */}
+                {scannerStatus !== 'scanning' && (
+                    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
                         {scannerStatus === 'idle' && (
                             <>
                                 <Camera className="w-16 h-16 text-gray-400 mb-4" />
