@@ -42,6 +42,14 @@ function logError(message: string, error?: unknown, data?: Record<string, unknow
 
 export type ScannerStatus = 'idle' | 'starting' | 'scanning' | 'error';
 
+/** Backend response from /api/v1/food-tracker/barcode/:code */
+interface BarcodeApiResponse {
+    found: boolean;
+    food?: FoodItem;
+    cached: boolean;
+    message?: string;
+}
+
 export interface UseBarcodeScanner {
     scannerStatus: ScannerStatus;
     scannedBarcode: string | null;
@@ -214,15 +222,15 @@ export function useBarcodeScanner(): UseBarcodeScanner {
 
             const url = getApiUrl(`/food-tracker/barcode/${barcode}`);
             log('lookupBarcode: calling API', { url });
-            const product = await apiClient.get<FoodItem>(url);
+            const result = await apiClient.get<BarcodeApiResponse>(url);
 
-            if (product) {
-                setCachedBarcode(barcode, product, DEFAULT_CACHE_DURATION_DAYS);
-                setScannedProduct(product);
-                log('lookupBarcode: product found', { barcode, product: product.name });
+            if (result.found && result.food) {
+                setCachedBarcode(barcode, result.food, DEFAULT_CACHE_DURATION_DAYS);
+                setScannedProduct(result.food);
+                log('lookupBarcode: product found', { barcode, product: result.food.name });
             } else {
                 log('lookupBarcode: product not found', { barcode });
-                setLookupError('Продукт не найден');
+                setLookupError(result.message || 'Продукт не найден');
             }
         } catch (error) {
             logError('lookupBarcode: API error', error, { barcode });
@@ -250,14 +258,14 @@ export function useBarcodeScanner(): UseBarcodeScanner {
 
         const url = getApiUrl(`/food-tracker/barcode/${barcode}`);
         log('doLookup: calling API', { url });
-        apiClient.get<FoodItem>(url).then((product) => {
-            if (product) {
-                setCachedBarcode(barcode, product, DEFAULT_CACHE_DURATION_DAYS);
-                setScannedProduct(product);
-                log('doLookup: product found', { barcode, product: product.name });
+        apiClient.get<BarcodeApiResponse>(url).then((result) => {
+            if (result.found && result.food) {
+                setCachedBarcode(barcode, result.food, DEFAULT_CACHE_DURATION_DAYS);
+                setScannedProduct(result.food);
+                log('doLookup: product found', { barcode, product: result.food.name });
             } else {
                 log('doLookup: product not found', { barcode });
-                setLookupError('Продукт не найден');
+                setLookupError(result.message || 'Продукт не найден');
             }
         }).catch((error) => {
             logError('doLookup: API error', error, { barcode });
