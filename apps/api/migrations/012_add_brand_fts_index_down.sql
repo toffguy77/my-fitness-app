@@ -1,1 +1,1 @@
-DROP INDEX IF EXISTS idx_food_items_name_brand_fts;
+DROP INDEX IF EXISTS idx_products_name_brand_fts;

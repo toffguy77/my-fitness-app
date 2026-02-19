@@ -497,44 +497,70 @@ func (s *Service) GetUserGoals(ctx context.Context, userID int64) (*KBZHU, error
 // Helper Methods
 // ============================================================================
 
-// getFoodItemByID retrieves a food item by ID
+// getFoodItemByID retrieves a food item by ID.
+// Checks food_items (UUID) first, then falls back to products table (integer ID).
 func (s *Service) getFoodItemByID(ctx context.Context, foodID string) (*FoodItem, error) {
 	startTime := time.Now()
 
-	// Validate food ID
-	if _, err := uuid.Parse(foodID); err != nil {
-		return nil, fmt.Errorf("неверный формат идентификатора продукта")
+	// Try food_items table first (UUID IDs)
+	if _, err := uuid.Parse(foodID); err == nil {
+		query := `
+			SELECT id, name, brand, category, serving_size, serving_unit,
+			       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			       fiber_per_100, sugar_per_100, sodium_per_100, barcode, source, verified,
+			       created_at, updated_at
+			FROM food_items
+			WHERE id = $1
+		`
+
+		var item FoodItem
+		err := s.db.QueryRowContext(ctx, query, foodID).Scan(
+			&item.ID, &item.Name, &item.Brand, &item.Category,
+			&item.ServingSize, &item.ServingUnit,
+			&item.CaloriesPer100, &item.ProteinPer100, &item.FatPer100, &item.CarbsPer100,
+			&item.FiberPer100, &item.SugarPer100, &item.SodiumPer100,
+			&item.Barcode, &item.Source, &item.Verified,
+			&item.CreatedAt, &item.UpdatedAt,
+		)
+
+		if err == nil {
+			item.PopulateNutrition()
+			s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+				"food_id": foodID, "found": true, "table": "food_items",
+			})
+			return &item, nil
+		}
+		if err != sql.ErrNoRows {
+			s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+				"food_id": foodID,
+			})
+			return nil, fmt.Errorf("ошибка при получении продукта: %w", err)
+		}
+		// Not found in food_items — fall through to products
 	}
 
+	// Try products table (integer IDs)
 	query := `
-		SELECT id, name, brand, category, serving_size, serving_unit,
-		       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
-		       fiber_per_100, sugar_per_100, sodium_per_100, barcode, source, verified,
-		       created_at, updated_at
-		FROM food_items
-		WHERE id = $1
+		SELECT id::text, name, brand,
+		       COALESCE(category_id::text, '') AS category,
+		       100.0 AS serving_size, 'г' AS serving_unit,
+		       COALESCE(calories, 0), COALESCE(proteins, 0),
+		       COALESCE(fats, 0), COALESCE(carbs, 0),
+		       fiber, NULL::numeric, NULL::numeric,
+		       vendor_code, COALESCE(source, 'database'), false,
+		       COALESCE(created_at, NOW()), COALESCE(created_at, NOW())
+		FROM products
+		WHERE id::text = $1
 	`
 
 	var item FoodItem
 	err := s.db.QueryRowContext(ctx, query, foodID).Scan(
-		&item.ID,
-		&item.Name,
-		&item.Brand,
-		&item.Category,
-		&item.ServingSize,
-		&item.ServingUnit,
-		&item.CaloriesPer100,
-		&item.ProteinPer100,
-		&item.FatPer100,
-		&item.CarbsPer100,
-		&item.FiberPer100,
-		&item.SugarPer100,
-		&item.SodiumPer100,
-		&item.Barcode,
-		&item.Source,
-		&item.Verified,
-		&item.CreatedAt,
-		&item.UpdatedAt,
+		&item.ID, &item.Name, &item.Brand, &item.Category,
+		&item.ServingSize, &item.ServingUnit,
+		&item.CaloriesPer100, &item.ProteinPer100, &item.FatPer100, &item.CarbsPer100,
+		&item.FiberPer100, &item.SugarPer100, &item.SodiumPer100,
+		&item.Barcode, &item.Source, &item.Verified,
+		&item.CreatedAt, &item.UpdatedAt,
 	)
 
 	if err != nil {
@@ -550,12 +576,10 @@ func (s *Service) getFoodItemByID(ctx context.Context, foodID string) (*FoodItem
 		return nil, fmt.Errorf("ошибка при получении продукта: %w", err)
 	}
 
-	// Populate NutritionPer100 from individual fields
 	item.PopulateNutrition()
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
-		"food_id": foodID,
-		"found":   true,
+		"food_id": foodID, "found": true, "table": "products",
 	})
 
 	return &item, nil
@@ -671,16 +695,27 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 		offset = 0
 	}
 
-	// Use full-text search with Russian language support + brand search + FTS ranking
+	// Search the products table (main food database) with FTS + ILIKE on name/brand
 	sqlQuery := `
 		WITH matched AS (
-			SELECT id, name, brand, category, serving_size, serving_unit,
-			       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
-			       fiber_per_100, sugar_per_100, sodium_per_100, barcode, source, verified,
-			       created_at, updated_at,
+			SELECT id::text AS id, name, brand,
+			       COALESCE(category_id::text, '') AS category,
+			       100.0 AS serving_size, 'г' AS serving_unit,
+			       COALESCE(calories, 0) AS calories_per_100,
+			       COALESCE(proteins, 0) AS protein_per_100,
+			       COALESCE(fats, 0) AS fat_per_100,
+			       COALESCE(carbs, 0) AS carbs_per_100,
+			       fiber AS fiber_per_100,
+			       NULL::numeric AS sugar_per_100,
+			       NULL::numeric AS sodium_per_100,
+			       vendor_code AS barcode,
+			       COALESCE(source, 'database') AS source,
+			       false AS verified,
+			       COALESCE(created_at, NOW()) AS created_at,
+			       COALESCE(created_at, NOW()) AS updated_at,
 			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
 			              plainto_tsquery('russian', $1)) AS rank
-			FROM food_items
+			FROM products
 			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
 			   OR name ILIKE '%' || $1 || '%'
 			   OR brand ILIKE '%' || $1 || '%'
@@ -690,7 +725,6 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 		ORDER BY
 			CASE WHEN name ILIKE $1 || '%' THEN 0 ELSE 1 END,
 			rank DESC,
-			verified DESC,
 			name ASC
 		LIMIT $2 OFFSET $3
 	`
