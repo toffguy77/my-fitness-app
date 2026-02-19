@@ -164,7 +164,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "valid plan",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -177,7 +177,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "invalid user_id",
 			plan: &WeeklyPlan{
 				UserID:       0,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -191,7 +191,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "invalid curator_id",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      0,
+				CuratorID:    0,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -205,7 +205,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "invalid calories_goal",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 0,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -219,7 +219,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "invalid protein_goal",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  0,
 				StartDate:    time.Now(),
@@ -233,7 +233,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "negative fat_goal",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				FatGoal:      ptrInt(-10),
@@ -248,7 +248,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "negative carbs_goal",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				CarbsGoal:    ptrInt(-50),
@@ -263,7 +263,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "negative steps_goal",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StepsGoal:    ptrInt(-1000),
@@ -278,7 +278,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "missing start_date",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				EndDate:      time.Now().AddDate(0, 0, 7),
@@ -291,7 +291,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "missing end_date",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -304,7 +304,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "end_date before start_date",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -318,7 +318,7 @@ func TestWeeklyPlanValidate(t *testing.T) {
 			name: "invalid created_by",
 			plan: &WeeklyPlan{
 				UserID:       1,
-				CuratorID:      2,
+				CuratorID:    2,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -376,7 +376,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "valid task",
 			task: &Task{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -388,7 +388,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "invalid user_id",
 			task: &Task{
 				UserID:     0,
-				CuratorID:    2,
+				CuratorID:  2,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -401,7 +401,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "invalid curator_id",
 			task: &Task{
 				UserID:     1,
-				CuratorID:    0,
+				CuratorID:  0,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -414,7 +414,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "empty title",
 			task: &Task{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				Title:      "",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -427,7 +427,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "title too long",
 			task: &Task{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				Title:      string(make([]byte, 256)),
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -440,7 +440,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "description too long",
 			task: &Task{
 				UserID:      1,
-				CuratorID:     2,
+				CuratorID:   2,
 				Title:       "Test Task",
 				Description: ptrString(string(make([]byte, 1001))),
 				WeekNumber:  1,
@@ -454,7 +454,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "invalid week_number",
 			task: &Task{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				Title:      "Test Task",
 				WeekNumber: 0,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -467,7 +467,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "missing due_date",
 			task: &Task{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				Status:     TaskStatusActive,
@@ -479,7 +479,7 @@ func TestTaskValidate(t *testing.T) {
 			name: "invalid status",
 			task: &Task{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -528,7 +528,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "valid report",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekStart:  time.Now(),
 				WeekEnd:    time.Now().AddDate(0, 0, 7),
 				WeekNumber: 1,
@@ -540,7 +540,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "invalid user_id",
 			report: &WeeklyReport{
 				UserID:     0,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekStart:  time.Now(),
 				WeekEnd:    time.Now().AddDate(0, 0, 7),
 				WeekNumber: 1,
@@ -553,7 +553,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "invalid curator_id",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    0,
+				CuratorID:  0,
 				WeekStart:  time.Now(),
 				WeekEnd:    time.Now().AddDate(0, 0, 7),
 				WeekNumber: 1,
@@ -566,7 +566,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "missing week_start",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekEnd:    time.Now().AddDate(0, 0, 7),
 				WeekNumber: 1,
 				Summary:    "Test summary",
@@ -578,7 +578,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "missing week_end",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekStart:  time.Now(),
 				WeekNumber: 1,
 				Summary:    "Test summary",
@@ -590,7 +590,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "week_end before week_start",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekStart:  time.Now(),
 				WeekEnd:    time.Now().AddDate(0, 0, -7),
 				WeekNumber: 1,
@@ -603,7 +603,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "invalid week_number",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekStart:  time.Now(),
 				WeekEnd:    time.Now().AddDate(0, 0, 7),
 				WeekNumber: 0,
@@ -616,7 +616,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "empty summary",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekStart:  time.Now(),
 				WeekEnd:    time.Now().AddDate(0, 0, 7),
 				WeekNumber: 1,
@@ -629,7 +629,7 @@ func TestWeeklyReportValidate(t *testing.T) {
 			name: "photo_url too long",
 			report: &WeeklyReport{
 				UserID:     1,
-				CuratorID:    2,
+				CuratorID:  2,
 				WeekStart:  time.Now(),
 				WeekEnd:    time.Now().AddDate(0, 0, 7),
 				WeekNumber: 1,
@@ -642,12 +642,12 @@ func TestWeeklyReportValidate(t *testing.T) {
 		{
 			name: "curator_feedback too long",
 			report: &WeeklyReport{
-				UserID:        1,
+				UserID:          1,
 				CuratorID:       2,
-				WeekStart:     time.Now(),
-				WeekEnd:       time.Now().AddDate(0, 0, 7),
-				WeekNumber:    1,
-				Summary:       "Test summary",
+				WeekStart:       time.Now(),
+				WeekEnd:         time.Now().AddDate(0, 0, 7),
+				WeekNumber:      1,
+				Summary:         "Test summary",
 				CuratorFeedback: ptrString(string(make([]byte, 2001))),
 			},
 			wantErr: true,

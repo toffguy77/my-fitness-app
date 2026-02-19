@@ -27,7 +27,7 @@ function createMockWeeklyPlan(overrides?: Partial<WeeklyPlan>): WeeklyPlan {
     return {
         id: 'plan-123',
         userId: 'user-123',
-        coachId: 'coach-123',
+        curatorId: 'coach-123',
         caloriesGoal: 2000,
         proteinGoal: 150,
         fatGoal: 70,

@@ -391,7 +391,7 @@ func TestCuratorPlanValidationProperty(t *testing.T) {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CuratorID:      curatorID,
+				CuratorID:    curatorID,
 				CaloriesGoal: caloriesGoal,
 				ProteinGoal:  proteinGoal,
 				StartDate:    time.Now(),
@@ -431,7 +431,7 @@ func TestCuratorPlanValidationProperty(t *testing.T) {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CuratorID:      curatorID,
+				CuratorID:    curatorID,
 				CaloriesGoal: caloriesGoal,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -477,7 +477,7 @@ func TestCuratorPlanValidationProperty(t *testing.T) {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CuratorID:      curatorID,
+				CuratorID:    curatorID,
 				CaloriesGoal: 2000,
 				ProteinGoal:  proteinGoal,
 				StartDate:    time.Now(),
@@ -524,7 +524,7 @@ func TestCuratorPlanValidationProperty(t *testing.T) {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CuratorID:      curatorID,
+				CuratorID:    curatorID,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    startDate,
@@ -569,7 +569,7 @@ func TestCuratorPlanValidationProperty(t *testing.T) {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       userID,
-				CuratorID:      100,
+				CuratorID:    100,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -610,7 +610,7 @@ func TestCuratorPlanValidationProperty(t *testing.T) {
 			plan := &WeeklyPlan{
 				ID:           uuid.New().String(),
 				UserID:       100,
-				CuratorID:      curatorID,
+				CuratorID:    curatorID,
 				CaloriesGoal: 2000,
 				ProteinGoal:  150,
 				StartDate:    time.Now(),
@@ -678,7 +678,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:          uuid.New().String(),
 				UserID:      userID,
-				CuratorID:     curatorID,
+				CuratorID:   curatorID,
 				Title:       title,
 				Description: &description,
 				WeekNumber:  weekNumber,
@@ -713,7 +713,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CuratorID:    curatorID,
+				CuratorID:  curatorID,
 				Title:      "", // Empty title
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -752,7 +752,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CuratorID:    curatorID,
+				CuratorID:  curatorID,
 				Title:      title,
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -801,7 +801,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:          uuid.New().String(),
 				UserID:      userID,
-				CuratorID:     curatorID,
+				CuratorID:   curatorID,
 				Title:       "Test Task",
 				Description: &desc,
 				WeekNumber:  1,
@@ -845,7 +845,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CuratorID:    curatorID,
+				CuratorID:  curatorID,
 				Title:      "Test Task",
 				WeekNumber: weekNumber,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -888,7 +888,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CuratorID:    100,
+				CuratorID:  100,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -927,7 +927,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     100,
-				CuratorID:    curatorID,
+				CuratorID:  curatorID,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -969,7 +969,7 @@ func TestCuratorTaskValidationProperty(t *testing.T) {
 			task := &Task{
 				ID:         uuid.New().String(),
 				UserID:     userID,
-				CuratorID:    curatorID,
+				CuratorID:  curatorID,
 				Title:      "Test Task",
 				WeekNumber: 1,
 				DueDate:    time.Now().AddDate(0, 0, 7),
@@ -1413,7 +1413,7 @@ func TestCuratorAuthorizationProperty(t *testing.T) {
 					WithArgs(
 						sqlmock.AnyArg(), // id
 						clientID,         // user_id
-						curatorID,          // curator_id
+						curatorID,        // curator_id
 						2000,             // calories_goal
 						150,              // protein_goal
 						sqlmock.AnyArg(), // fat_goal
@@ -1422,7 +1422,7 @@ func TestCuratorAuthorizationProperty(t *testing.T) {
 						sqlmock.AnyArg(), // start_date
 						sqlmock.AnyArg(), // end_date
 						true,             // is_active
-						curatorID,          // created_by
+						curatorID,        // created_by
 					).
 					WillReturnRows(sqlmock.NewRows([]string{
 						"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
@@ -1876,7 +1876,7 @@ func TestCuratorClientNotificationProperty(t *testing.T) {
 				WithArgs(
 					sqlmock.AnyArg(), // id
 					clientID,         // user_id
-					curatorID,          // curator_id
+					curatorID,        // curator_id
 					caloriesGoal,     // calories_goal
 					proteinGoal,      // protein_goal
 					sqlmock.AnyArg(), // fat_goal
@@ -1885,7 +1885,7 @@ func TestCuratorClientNotificationProperty(t *testing.T) {
 					sqlmock.AnyArg(), // start_date
 					sqlmock.AnyArg(), // end_date
 					true,             // is_active
-					curatorID,          // created_by
+					curatorID,        // created_by
 				).
 				WillReturnRows(sqlmock.NewRows([]string{
 					"id", "user_id", "curator_id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal", "steps_goal",
@@ -2049,7 +2049,7 @@ func TestCuratorClientNotificationProperty(t *testing.T) {
 				WithArgs(
 					sqlmock.AnyArg(), // id
 					clientID,         // user_id
-					curatorID,          // curator_id
+					curatorID,        // curator_id
 					taskTitle,        // title
 					sqlmock.AnyArg(), // description
 					weekNumber,       // week_number
@@ -2161,7 +2161,7 @@ func TestCuratorClientNotificationProperty(t *testing.T) {
 				WithArgs(
 					sqlmock.AnyArg(), // id
 					clientID,         // user_id
-					curatorID,          // curator_id
+					curatorID,        // curator_id
 					sqlmock.AnyArg(), // week_start
 					sqlmock.AnyArg(), // week_end
 					weekNumber,       // week_number

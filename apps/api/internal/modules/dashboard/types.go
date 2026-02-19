@@ -187,8 +187,8 @@ type WeeklyReport struct {
 	SubmittedAt     time.Time  `json:"submitted_at" db:"submitted_at"`
 	ReviewedAt      *time.Time `json:"reviewed_at,omitempty" db:"reviewed_at"`
 	CuratorFeedback *string    `json:"curator_feedback,omitempty" db:"curator_feedback"`
-	CreatedAt     time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at" db:"updated_at"`
+	CreatedAt       time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // Validate validates the weekly report fields

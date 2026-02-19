@@ -30,7 +30,7 @@ function createMockTask(
     return {
         id,
         userId: 'user-123',
-        coachId: 'coach-123',
+        curatorId: 'coach-123',
         title: `Task ${id}`,
         description: `Description for task ${id}`,
         weekNumber,
