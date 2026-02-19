@@ -9,6 +9,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
+import { useOnlineStatus } from './useOnlineStatus';
 import type {
     FoodEntry,
     MealType,
@@ -101,6 +102,9 @@ export function useFoodTracker(options: UseFoodTrackerOptions = {}): UseFoodTrac
         initialDate = new Date().toISOString().split('T')[0],
         autoFetch = true,
     } = options;
+
+    // Monitor online/offline status and sync with store
+    useOnlineStatus();
 
     // Get state from store
     const entries = useFoodTrackerStore((state) => state.entries);

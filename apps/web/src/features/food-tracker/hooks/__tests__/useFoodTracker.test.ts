@@ -60,6 +60,8 @@ describe('useFoodTracker', () => {
     const mockSetSelectedDate = jest.fn();
     const mockSetTargetGoals = jest.fn();
     const mockClearError = jest.fn();
+    const mockSetOfflineStatus = jest.fn();
+    const mockSyncWhenOnline = jest.fn();
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -73,6 +75,7 @@ describe('useFoodTracker', () => {
                 isLoading: false,
                 error: null,
                 isOffline: false,
+                pendingOperations: [],
                 fetchDayData: mockFetchDayData,
                 addEntry: mockAddEntry,
                 updateEntry: mockUpdateEntry,
@@ -80,6 +83,8 @@ describe('useFoodTracker', () => {
                 setSelectedDate: mockSetSelectedDate,
                 setTargetGoals: mockSetTargetGoals,
                 clearError: mockClearError,
+                setOfflineStatus: mockSetOfflineStatus,
+                syncWhenOnline: mockSyncWhenOnline,
             };
             return selector(state);
         });
@@ -326,6 +331,9 @@ describe('useFoodTracker', () => {
                     setSelectedDate: mockSetSelectedDate,
                     setTargetGoals: mockSetTargetGoals,
                     clearError: mockClearError,
+                    pendingOperations: [],
+                    setOfflineStatus: mockSetOfflineStatus,
+                    syncWhenOnline: mockSyncWhenOnline,
                 };
                 return selector(state);
             });
@@ -364,6 +372,9 @@ describe('useFoodTracker', () => {
                     setSelectedDate: mockSetSelectedDate,
                     setTargetGoals: mockSetTargetGoals,
                     clearError: mockClearError,
+                    pendingOperations: [],
+                    setOfflineStatus: mockSetOfflineStatus,
+                    syncWhenOnline: mockSyncWhenOnline,
                 };
                 return selector(state);
             });
@@ -418,6 +429,9 @@ describe('useFoodTracker', () => {
                     setSelectedDate: mockSetSelectedDate,
                     setTargetGoals: mockSetTargetGoals,
                     clearError: mockClearError,
+                    pendingOperations: [],
+                    setOfflineStatus: mockSetOfflineStatus,
+                    syncWhenOnline: mockSyncWhenOnline,
                 };
                 return selector(state);
             });
@@ -453,6 +467,9 @@ describe('useFoodTracker', () => {
                     setSelectedDate: mockSetSelectedDate,
                     setTargetGoals: mockSetTargetGoals,
                     clearError: mockClearError,
+                    pendingOperations: [],
+                    setOfflineStatus: mockSetOfflineStatus,
+                    syncWhenOnline: mockSyncWhenOnline,
                 };
                 return selector(state);
             });
@@ -485,6 +502,9 @@ describe('useFoodTracker', () => {
                     setSelectedDate: mockSetSelectedDate,
                     setTargetGoals: mockSetTargetGoals,
                     clearError: mockClearError,
+                    pendingOperations: [],
+                    setOfflineStatus: mockSetOfflineStatus,
+                    syncWhenOnline: mockSyncWhenOnline,
                 };
                 return selector(state);
             });
@@ -512,6 +532,9 @@ describe('useFoodTracker', () => {
                     setSelectedDate: mockSetSelectedDate,
                     setTargetGoals: mockSetTargetGoals,
                     clearError: mockClearError,
+                    pendingOperations: [],
+                    setOfflineStatus: mockSetOfflineStatus,
+                    syncWhenOnline: mockSyncWhenOnline,
                 };
                 return selector(state);
             });
