@@ -152,19 +152,20 @@ export function BarcodeTab({
 
     return (
         <div className={`flex flex-col h-full ${className}`}>
-            {/* Camera / Scanner Area */}
-            <div className="relative flex-1 bg-gray-900 rounded-xl overflow-hidden mb-4">
-                {/* Persistent scanner div — always full-size so html5-qrcode
-                    can read container dimensions when starting the camera.
-                    Non-scanning states render as an opaque overlay on top. */}
-                <div id={BARCODE_READER_ELEMENT_ID} className="w-full h-full" />
+            {/* Camera / Scanner Area — min-h ensures the container never
+                collapses even when all children are absolutely positioned. */}
+            <div className="relative flex-1 bg-gray-900 rounded-xl overflow-hidden mb-4 min-h-[280px]">
+                {/* Persistent scanner div — always in DOM, absolute so it
+                    doesn't affect layout. html5-qrcode needs real dimensions
+                    when scanner.start() is called (during 'starting' state). */}
+                <div id={BARCODE_READER_ELEMENT_ID} className="absolute inset-0" />
 
-                {/* Stop camera button (overlay) */}
+                {/* Stop camera button */}
                 {scannerStatus === 'scanning' && (
                     <button
                         type="button"
                         onClick={handleStopCamera}
-                        className="absolute top-2 right-2 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                        className="absolute top-2 right-2 z-20 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
                         aria-label="Остановить камеру"
                     >
                         <CameraOff className="w-5 h-5" />
@@ -173,7 +174,7 @@ export function BarcodeTab({
 
                 {/* Opaque overlay for non-scanning states */}
                 {scannerStatus !== 'scanning' && (
-                    <div className="absolute inset-0 bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
+                    <div className="absolute inset-0 z-10 bg-gray-900 flex flex-col items-center justify-center p-6 text-center">
                         {scannerStatus === 'idle' && (
                             <>
                                 <Camera className="w-16 h-16 text-gray-400 mb-4" />
