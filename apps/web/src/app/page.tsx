@@ -81,13 +81,13 @@ export default function Home() {
                         Начните следить за питанием сегодня
                     </h2>
                     <p className="mt-4 text-lg text-gray-600">
-                        Регистрация бесплатна. Никаких подписок.
+                        Бесплатно. Без подписок.
                     </p>
                     <Link
                         href="/auth"
                         className="mt-8 inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                     >
-                        Создать аккаунт
+                        Войти в приложение
                     </Link>
                 </div>
             </section>
