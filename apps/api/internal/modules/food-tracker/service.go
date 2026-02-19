@@ -706,7 +706,7 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 	}
 	defer rows.Close()
 
-	var foods []FoodItem
+	foods := make([]FoodItem, 0)
 	var totalCount int
 	for rows.Next() {
 		var item FoodItem
