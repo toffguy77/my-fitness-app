@@ -78,17 +78,25 @@ export default function Home() {
             <section className="bg-gray-50 px-6 py-20">
                 <div className="mx-auto max-w-2xl text-center">
                     <h2 className="text-3xl font-bold text-gray-900">
-                        Начните следить за питанием сегодня
+                        Готовы начать?
                     </h2>
                     <p className="mt-4 text-lg text-gray-600">
                         Бесплатно. Без подписок.
                     </p>
-                    <Link
-                        href="/auth"
-                        className="mt-8 inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-                    >
-                        Войти в приложение
-                    </Link>
+                    <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+                        <Link
+                            href="/auth"
+                            className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                        >
+                            Зарегистрироваться
+                        </Link>
+                        <Link
+                            href="/auth"
+                            className="inline-flex h-12 items-center justify-center rounded-lg border border-gray-300 bg-white px-8 text-lg font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2"
+                        >
+                            Уже есть аккаунт? Войти
+                        </Link>
+                    </div>
                 </div>
             </section>
 
