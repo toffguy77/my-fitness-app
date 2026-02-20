@@ -152,9 +152,6 @@ func main() {
 			authGroup.POST("/logout", authHandler.Logout)
 			authGroup.GET("/me", middleware.RequireAuth(cfg), authHandler.GetCurrentUser)
 
-			// Temporary force reset (remove after fixing DB permissions)
-			authGroup.POST("/force-reset", authHandler.ForceReset)
-
 			// Password reset routes
 			authGroup.POST("/forgot-password", resetHandler.ForgotPassword)
 			authGroup.POST("/reset-password", resetHandler.ResetPassword)

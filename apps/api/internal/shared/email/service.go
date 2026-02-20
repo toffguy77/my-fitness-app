@@ -62,7 +62,7 @@ func NewService(cfg Config, log *logger.Logger) (*Service, error) {
 		return nil, fmt.Errorf("SMTP password is required")
 	}
 	if cfg.FromAddress == "" {
-		return nil, fmt.Errorf("from address is required")
+		cfg.FromAddress = cfg.SMTPUsername
 	}
 
 	// Parse email templates

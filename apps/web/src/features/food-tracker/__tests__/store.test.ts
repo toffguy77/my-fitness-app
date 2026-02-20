@@ -91,12 +91,9 @@ const createMockWaterResponse = (
     goal: number = 8,
     glassSize: number = 250
 ): WaterLogResponse => ({
-    log: {
-        date: '2024-01-15',
-        glasses,
-        goal,
-        glassSize,
-    },
+    glasses,
+    goal,
+    glass_size: glassSize,
 });
 
 // ============================================================================
@@ -1079,12 +1076,9 @@ describe('foodTrackerStore', () => {
             const { result } = renderHook(() => useFoodTrackerStore());
 
             mockApiClient.post.mockResolvedValueOnce({
-                log: {
-                    date: '2024-01-15',
-                    glasses: 1,
-                    goal: 8,
-                    glassSize: 250,
-                },
+                glasses: 1,
+                goal: 8,
+                glass_size: 250,
             });
 
             await act(async () => {
@@ -1103,7 +1097,7 @@ describe('foodTrackerStore', () => {
             });
 
             const apiError = {
-                response: { status: 500, data: { message: 'Server error' } },
+                response: { status: 400, data: { message: 'Bad request' } },
             };
             mockApiClient.post.mockRejectedValueOnce(apiError);
 

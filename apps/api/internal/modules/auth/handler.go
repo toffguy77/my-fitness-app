@@ -81,29 +81,6 @@ func (h *Handler) Logout(c *gin.Context) {
 	response.SuccessWithMessage(c, http.StatusOK, "Logged out successfully", nil)
 }
 
-// ForceResetRequest represents a force password reset request
-type ForceResetRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
-}
-
-// ForceReset directly resets a user's password (temporary endpoint, remove after use)
-func (h *Handler) ForceReset(c *gin.Context) {
-	var req ForceResetRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
-		return
-	}
-
-	if err := h.service.ForceResetPassword(c.Request.Context(), req.Email, req.Password); err != nil {
-		h.log.Errorw("Force reset failed", "error", err, "email", req.Email)
-		response.Error(c, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	response.SuccessWithMessage(c, http.StatusOK, "Пароль успешно изменён", nil)
-}
-
 // GetCurrentUser returns current authenticated user
 func (h *Handler) GetCurrentUser(c *gin.Context) {
 	userID, _ := c.Get("user_id")
