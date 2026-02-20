@@ -506,9 +506,9 @@ describe('NutritionBlock', () => {
 
                 const { container } = render(<NutritionBlock date={mockDate} />)
 
-                // Check that the appropriate color class is applied to the progress circle
-                const progressCircle = container.querySelector('circle:last-child')
-                expect(progressCircle).toHaveClass(expectedClass)
+                // Check that the calorie value text has the appropriate color class
+                const calorieValue = container.querySelector('[data-testid="calorie-value"]')
+                expect(calorieValue).toHaveClass(expectedClass)
             })
         })
 

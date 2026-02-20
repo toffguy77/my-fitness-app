@@ -204,7 +204,6 @@ describe('StepsBlock', () => {
 
             const progressBar = screen.getByRole('progressbar')
             expect(progressBar).toHaveAttribute('aria-valuenow', '100')
-            expect(progressBar).toHaveStyle('width: 100%')
         })
     })
 

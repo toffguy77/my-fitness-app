@@ -137,7 +137,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                 <div className="col-span-1">
                     <NutritionBlock
                         date={date}
-                        className="h-full min-h-[280px]"
+                        className="h-full"
                     />
                 </div>
 
@@ -145,7 +145,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                 <div className="col-span-1">
                     <WeightBlock
                         date={date}
-                        className="h-full min-h-[280px]"
+                        className="h-full"
                     />
                 </div>
 
@@ -153,7 +153,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                 <div className="col-span-1">
                     <StepsBlock
                         date={date}
-                        className="h-full min-h-[280px]"
+                        className="h-full"
                     />
                 </div>
 
@@ -161,7 +161,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                 <div className="col-span-1">
                     <WorkoutBlock
                         date={date}
-                        className="h-full min-h-[280px]"
+                        className="h-full"
                     />
                 </div>
             </div>
