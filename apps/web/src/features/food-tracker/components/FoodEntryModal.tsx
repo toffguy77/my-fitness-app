@@ -12,8 +12,8 @@
  * @module food-tracker/components/FoodEntryModal
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, Barcode, Camera, MessageCircle, ArrowLeft, Check } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { X, Search, Barcode, Camera, MessageCircle, ArrowLeft, Check, Pencil } from 'lucide-react';
 import type { EntryMethodTab, FoodEntry, FoodItem, MealType, PortionType, KBZHU } from '../types';
 import { SearchTab } from './SearchTab';
 import { BarcodeTab } from './BarcodeTab';
@@ -83,6 +83,11 @@ export function FoodEntryModal({
     const [isSaving, setIsSaving] = useState(false);
     const [batchFoods, setBatchFoods] = useState<FoodItem[]>([]);
     const [batchIndex, setBatchIndex] = useState(0);
+    const [isEditingDetails, setIsEditingDetails] = useState(false);
+    const [editedName, setEditedName] = useState('');
+    const [editedNutritionPer100, setEditedNutritionPer100] = useState<KBZHU>({
+        calories: 0, protein: 0, fat: 0, carbs: 0,
+    });
 
     // Refs
     const modalRef = useRef<HTMLDivElement>(null);
@@ -123,6 +128,18 @@ export function FoodEntryModal({
                 } as FoodItem);
                 setPortionType(editingEntry.portionType);
                 setPortionAmount(editingEntry.portionAmount);
+                setEditedName(editingEntry.foodName);
+                const per100 = {
+                    calories: editingEntry.portionAmount > 0
+                        ? (editingEntry.nutrition.calories / editingEntry.portionAmount) * 100 : 0,
+                    protein: editingEntry.portionAmount > 0
+                        ? (editingEntry.nutrition.protein / editingEntry.portionAmount) * 100 : 0,
+                    fat: editingEntry.portionAmount > 0
+                        ? (editingEntry.nutrition.fat / editingEntry.portionAmount) * 100 : 0,
+                    carbs: editingEntry.portionAmount > 0
+                        ? (editingEntry.nutrition.carbs / editingEntry.portionAmount) * 100 : 0,
+                };
+                setEditedNutritionPer100(per100);
             } else {
                 // New entry mode
                 setActiveTab(DEFAULT_TAB);
@@ -134,6 +151,7 @@ export function FoodEntryModal({
             setCalculatedNutrition(null);
             setBatchFoods([]);
             setBatchIndex(0);
+            setIsEditingDetails(false);
             setTimeout(() => firstFocusableRef.current?.focus(), 0);
         }
         wasOpenRef.current = isOpen;
@@ -199,6 +217,9 @@ export function FoodEntryModal({
         setSelectedFood(food);
         setPortionType('grams');
         setPortionAmount(food.servingSize || 100);
+        setEditedName(food.name);
+        setEditedNutritionPer100({ ...food.nutritionPer100 });
+        setIsEditingDetails(false);
         setStep('select-portion');
     }, []);
 
@@ -236,6 +257,9 @@ export function FoodEntryModal({
         setSelectedFood(food);
         setPortionType('grams');
         setPortionAmount(food.servingSize || 100);
+        setEditedName(food.name);
+        setEditedNutritionPer100({ ...food.nutritionPer100 });
+        setIsEditingDetails(false);
         setStep('select-portion');
     }, []);
 
@@ -257,6 +281,22 @@ export function FoodEntryModal({
         }
     }, [batchIndex, batchFoods, handleSelectFood, onClose]);
 
+    // Build effective food with user edits applied (for PortionSelector)
+    const effectiveFood = useMemo(() => {
+        if (!selectedFood) return null;
+        return {
+            ...selectedFood,
+            name: editedName,
+            nutritionPer100: editedNutritionPer100,
+        } as FoodItem;
+    }, [selectedFood, editedName, editedNutritionPer100]);
+
+    // Handle nutrition per-100g field change
+    const handleNutritionPer100Change = useCallback((field: keyof KBZHU, value: string) => {
+        const numValue = parseFloat(value) || 0;
+        setEditedNutritionPer100(prev => ({ ...prev, [field]: numValue }));
+    }, []);
+
     // Handle save entry
     const handleSaveEntry = useCallback(async () => {
         if (!selectedFood || !calculatedNutrition) return;
@@ -270,6 +310,11 @@ export function FoodEntryModal({
                     portionType,
                     portionAmount,
                     time: editingEntry.time,
+                    foodName: editedName,
+                    calories: calculatedNutrition.calories,
+                    protein: calculatedNutrition.protein,
+                    fat: calculatedNutrition.fat,
+                    carbs: calculatedNutrition.carbs,
                 });
                 onClose();
             } else {
@@ -283,6 +328,11 @@ export function FoodEntryModal({
                     portionAmount,
                     time,
                     date: selectedDate,
+                    foodName: editedName,
+                    calories: calculatedNutrition.calories,
+                    protein: calculatedNutrition.protein,
+                    fat: calculatedNutrition.fat,
+                    carbs: calculatedNutrition.carbs,
                 });
 
                 const nextIndex = batchIndex + 1;
@@ -300,7 +350,7 @@ export function FoodEntryModal({
         } finally {
             setIsSaving(false);
         }
-    }, [selectedFood, calculatedNutrition, mealType, portionType, portionAmount, selectedDate, addEntry, updateEntry, editingEntry, onClose, batchIndex, batchFoods, handleSelectFood]);
+    }, [selectedFood, calculatedNutrition, mealType, portionType, portionAmount, selectedDate, addEntry, updateEntry, editingEntry, onClose, batchIndex, batchFoods, handleSelectFood, editedName]);
 
     if (!isOpen) {
         return null;
@@ -451,20 +501,103 @@ export function FoodEntryModal({
                                     </div>
                                 )}
 
-                                {/* Food Info */}
+                                {/* Food Info — Editable */}
                                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                                    <h3 className="font-medium text-gray-900">{selectedFood.name}</h3>
-                                    {selectedFood.brand && (
-                                        <p className="text-sm text-gray-500">{selectedFood.brand}</p>
+                                    {isEditingDetails ? (
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Название</label>
+                                                <input
+                                                    type="text"
+                                                    value={editedName}
+                                                    onChange={(e) => setEditedName(e.target.value)}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 font-medium">КБЖУ на 100г</p>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Ккал</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editedNutritionPer100.calories || ''}
+                                                        onChange={(e) => handleNutritionPer100Change('calories', e.target.value)}
+                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        min="0"
+                                                        step="1"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Белки</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editedNutritionPer100.protein || ''}
+                                                        onChange={(e) => handleNutritionPer100Change('protein', e.target.value)}
+                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        min="0"
+                                                        step="0.1"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Жиры</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editedNutritionPer100.fat || ''}
+                                                        onChange={(e) => handleNutritionPer100Change('fat', e.target.value)}
+                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        min="0"
+                                                        step="0.1"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Углеводы</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editedNutritionPer100.carbs || ''}
+                                                        onChange={(e) => handleNutritionPer100Change('carbs', e.target.value)}
+                                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        min="0"
+                                                        step="0.1"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingDetails(false)}
+                                                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                                            >
+                                                Готово
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <h3 className="font-medium text-gray-900">{editedName}</h3>
+                                                {selectedFood.brand && (
+                                                    <p className="text-sm text-gray-500">{selectedFood.brand}</p>
+                                                )}
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    На 100г: {Math.round(editedNutritionPer100.calories)} ккал
+                                                    · Б {Math.round(editedNutritionPer100.protein)}
+                                                    · Ж {Math.round(editedNutritionPer100.fat)}
+                                                    · У {Math.round(editedNutritionPer100.carbs)}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingDetails(true)}
+                                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                aria-label="Редактировать"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     )}
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        На 100г: {Math.round(selectedFood.nutritionPer100.calories)} ккал
-                                    </p>
                                 </div>
 
                                 {/* Portion Selector */}
                                 <PortionSelector
-                                    food={selectedFood}
+                                    food={effectiveFood!}
                                     initialPortionType={portionType}
                                     initialAmount={portionAmount}
                                     onPortionChange={handlePortionChange}
