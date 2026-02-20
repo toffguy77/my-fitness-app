@@ -436,21 +436,28 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
             // Calculate daily totals
             const dailyTotals = calculateDailyTotals(groupedEntries);
 
-            // Extract water data
-            const waterLog = waterResponse?.log;
+            // Extract water data (backend returns flat object with snake_case keys)
+            const waterGlasses = waterResponse?.glasses ?? 0;
+            const waterGoal = waterResponse?.goal ?? DEFAULT_WATER_GOAL;
+            const waterGlassSize = waterResponse?.glass_size ?? DEFAULT_GLASS_SIZE;
 
             // Save to cache
             saveCachedEntries(date, groupedEntries);
-            if (waterLog) {
-                saveCachedWaterLog(date, waterLog);
+            if (waterResponse) {
+                saveCachedWaterLog(date, {
+                    date,
+                    glasses: waterGlasses,
+                    goal: waterGoal,
+                    glassSize: waterGlassSize,
+                });
             }
 
             set({
                 entries: groupedEntries,
                 dailyTotals,
-                waterIntake: waterLog?.glasses ?? 0,
-                waterGoal: waterLog?.goal ?? DEFAULT_WATER_GOAL,
-                glassSize: waterLog?.glassSize ?? DEFAULT_GLASS_SIZE,
+                waterIntake: waterGlasses,
+                waterGoal: waterGoal,
+                glassSize: waterGlassSize,
                 isLoading: false,
                 isOffline: false,
                 error: null,
@@ -827,15 +834,20 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
                 1000
             );
 
-            // Update with server response
+            // Update with server response (flat object with snake_case keys)
             set({
-                waterIntake: response.log.glasses,
-                waterGoal: response.log.goal,
-                glassSize: response.log.glassSize,
+                waterIntake: response.glasses,
+                waterGoal: response.goal,
+                glassSize: response.glass_size,
             });
 
             // Save to cache
-            saveCachedWaterLog(state.selectedDate, response.log);
+            saveCachedWaterLog(state.selectedDate, {
+                date: state.selectedDate,
+                glasses: response.glasses,
+                goal: response.goal,
+                glassSize: response.glass_size,
+            });
         } catch (error: any) {
             // Rollback optimistic update
             set({

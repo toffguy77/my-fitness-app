@@ -266,9 +266,12 @@ export interface AIRecognitionResponse {
 
 /**
  * API response for water tracking
+ * Backend returns glasses/goal/glass_size directly (snake_case JSON)
  */
 export interface WaterLogResponse {
-    log: WaterLog;
+    glasses: number;
+    goal: number;
+    glass_size: number;
 }
 
 /**
