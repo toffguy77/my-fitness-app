@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/burcev/api/internal/config"
@@ -17,11 +18,11 @@ type Handler struct {
 }
 
 // NewHandler creates a new auth handler
-func NewHandler(cfg *config.Config, log *logger.Logger) *Handler {
+func NewHandler(db *sql.DB, cfg *config.Config, log *logger.Logger) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(cfg, log),
+		service: NewService(db, cfg, log),
 	}
 }
 
