@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { apiClient } from '@/shared/utils/api-client'
 
 interface UserData {
@@ -86,6 +87,13 @@ export default function ProfilePage() {
                         </div>
                     </div>
                 </div>
+
+                <Link
+                    href="/forgot-password"
+                    className="block w-full py-3 px-4 rounded-2xl bg-gray-100 text-gray-700 font-medium text-center hover:bg-gray-200 transition-colors mb-3"
+                >
+                    Сбросить пароль
+                </Link>
 
                 <button
                     onClick={handleLogout}
