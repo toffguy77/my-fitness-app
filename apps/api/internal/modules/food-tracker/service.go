@@ -139,8 +139,25 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		return nil, err
 	}
 
-	// Calculate КБЖУ based on portion
+	// Use overrides if provided, otherwise calculate from DB
+	foodName := foodItem.Name
+	if req.FoodName != nil {
+		foodName = *req.FoodName
+	}
+
 	nutrition := s.CalculateKBZHU(foodItem.NutritionPer100, req.PortionAmount)
+	if req.Calories != nil {
+		nutrition.Calories = *req.Calories
+	}
+	if req.Protein != nil {
+		nutrition.Protein = *req.Protein
+	}
+	if req.Fat != nil {
+		nutrition.Fat = *req.Fat
+	}
+	if req.Carbs != nil {
+		nutrition.Carbs = *req.Carbs
+	}
 
 	// Generate UUID for new entry
 	entryID := uuid.New().String()
@@ -162,7 +179,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		entryID,
 		userID,
 		req.FoodID,
-		foodItem.Name,
+		foodName,
 		req.MealType,
 		req.PortionType,
 		req.PortionAmount,
@@ -248,9 +265,30 @@ func (s *Service) UpdateEntry(ctx context.Context, userID int64, entryID string,
 	if req.Time != nil {
 		existing.Time = *req.Time
 	}
+	if req.FoodName != nil {
+		existing.FoodName = *req.FoodName
+	}
 
-	// If portion amount changed, recalculate КБЖУ
-	if req.PortionAmount != nil && *req.PortionAmount != existing.PortionAmount {
+	// Handle nutrition: direct overrides take priority, otherwise recalculate if portion changed
+	if req.Calories != nil || req.Protein != nil || req.Fat != nil || req.Carbs != nil {
+		// Direct nutrition overrides
+		if req.Calories != nil {
+			existing.Calories = *req.Calories
+		}
+		if req.Protein != nil {
+			existing.Protein = *req.Protein
+		}
+		if req.Fat != nil {
+			existing.Fat = *req.Fat
+		}
+		if req.Carbs != nil {
+			existing.Carbs = *req.Carbs
+		}
+		if req.PortionAmount != nil {
+			existing.PortionAmount = *req.PortionAmount
+		}
+	} else if req.PortionAmount != nil && *req.PortionAmount != existing.PortionAmount {
+		// No direct overrides — recalculate from DB if portion changed
 		existing.PortionAmount = *req.PortionAmount
 
 		// Get food item to recalculate nutrition
@@ -271,8 +309,8 @@ func (s *Service) UpdateEntry(ctx context.Context, userID int64, entryID string,
 	query := `
 		UPDATE food_entries
 		SET meal_type = $1, portion_type = $2, portion_amount = $3,
-		    calories = $4, protein = $5, fat = $6, carbs = $7, time = $8, updated_at = NOW()
-		WHERE id = $9 AND user_id = $10
+		    calories = $4, protein = $5, fat = $6, carbs = $7, time = $8, food_name = $9, updated_at = NOW()
+		WHERE id = $10 AND user_id = $11
 		RETURNING id, user_id, food_id, food_name, meal_type, portion_type, portion_amount,
 		          calories, protein, fat, carbs, time, date, created_at, updated_at
 	`
@@ -289,6 +327,7 @@ func (s *Service) UpdateEntry(ctx context.Context, userID int64, entryID string,
 		existing.Fat,
 		existing.Carbs,
 		existing.Time,
+		existing.FoodName,
 		entryID,
 		userID,
 	).Scan(

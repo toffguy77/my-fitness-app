@@ -483,11 +483,16 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
         const tempEntry: FoodEntry = {
             id: tempId,
             foodId: entryData.foodId,
-            foodName: '', // Will be filled by server
+            foodName: entryData.foodName || '',
             mealType: entryData.mealType,
             portionType: entryData.portionType,
             portionAmount: entryData.portionAmount,
-            nutrition: { ...EMPTY_KBZHU }, // Will be calculated by server
+            nutrition: {
+                calories: entryData.calories ?? 0,
+                protein: entryData.protein ?? 0,
+                fat: entryData.fat ?? 0,
+                carbs: entryData.carbs ?? 0,
+            },
             time: entryData.time,
             date: entryData.date,
             createdAt: new Date().toISOString(),
@@ -592,6 +597,23 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
             return null;
         }
 
+        // Build optimistic entry fields, mapping flat nutrition to nested object
+        const optimisticFields: Partial<FoodEntry> = {
+            ...(updates.mealType && { mealType: updates.mealType }),
+            ...(updates.portionType && { portionType: updates.portionType }),
+            ...(updates.portionAmount != null && { portionAmount: updates.portionAmount }),
+            ...(updates.time && { time: updates.time }),
+            ...(updates.foodName && { foodName: updates.foodName }),
+        };
+        if (updates.calories != null || updates.protein != null || updates.fat != null || updates.carbs != null) {
+            optimisticFields.nutrition = {
+                calories: updates.calories ?? originalEntry.nutrition.calories,
+                protein: updates.protein ?? originalEntry.nutrition.protein,
+                fat: updates.fat ?? originalEntry.nutrition.fat,
+                carbs: updates.carbs ?? originalEntry.nutrition.carbs,
+            };
+        }
+
         // Optimistic update
         set((state) => {
             const newEntries = { ...state.entries };
@@ -604,12 +626,12 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
                 // Add to new meal type
                 newEntries[targetMealType] = [
                     ...newEntries[targetMealType],
-                    { ...originalEntry!, ...updates, mealType: targetMealType },
+                    { ...originalEntry!, ...optimisticFields, mealType: targetMealType },
                 ];
             } else {
                 // Update in place
                 newEntries[entryMealType!] = newEntries[entryMealType!].map((e) =>
-                    e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
+                    e.id === id ? { ...e, ...optimisticFields, updatedAt: new Date().toISOString() } : e
                 );
             }
 

@@ -243,12 +243,12 @@ func (f *FoodItem) PopulateNutrition() {
 // FoodEntry represents a food entry in user's log
 type FoodEntry struct {
 	ID            string      `json:"id" db:"id"`
-	UserID        int64       `json:"user_id" db:"user_id"`
-	FoodID        string      `json:"food_id" db:"food_id"`
-	FoodName      string      `json:"food_name" db:"food_name"`
-	MealType      MealType    `json:"meal_type" db:"meal_type"`
-	PortionType   PortionType `json:"portion_type" db:"portion_type"`
-	PortionAmount float64     `json:"portion_amount" db:"portion_amount"`
+	UserID        int64       `json:"userId" db:"user_id"`
+	FoodID        string      `json:"foodId" db:"food_id"`
+	FoodName      string      `json:"foodName" db:"food_name"`
+	MealType      MealType    `json:"mealType" db:"meal_type"`
+	PortionType   PortionType `json:"portionType" db:"portion_type"`
+	PortionAmount float64     `json:"portionAmount" db:"portion_amount"`
 	Nutrition     KBZHU       `json:"nutrition"`
 	Calories      float64     `json:"-" db:"calories"`
 	Protein       float64     `json:"-" db:"protein"`
@@ -256,8 +256,8 @@ type FoodEntry struct {
 	Carbs         float64     `json:"-" db:"carbs"`
 	Time          string      `json:"time" db:"time"`
 	Date          string      `json:"date" db:"date"`
-	CreatedAt     time.Time   `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at" db:"updated_at"`
+	CreatedAt     time.Time   `json:"createdAt" db:"created_at"`
+	UpdatedAt     time.Time   `json:"updatedAt" db:"updated_at"`
 }
 
 // Validate validates the food entry fields
@@ -475,12 +475,18 @@ type UserFavoriteFood struct {
 
 // CreateEntryRequest represents the request to create a food entry
 type CreateEntryRequest struct {
-	FoodID        string      `json:"food_id" binding:"required"`
-	MealType      MealType    `json:"meal_type" binding:"required,oneof=breakfast lunch dinner snack"`
-	PortionType   PortionType `json:"portion_type" binding:"required,oneof=grams milliliters portion"`
-	PortionAmount float64     `json:"portion_amount" binding:"required,gt=0"`
+	FoodID        string      `json:"foodId" binding:"required"`
+	MealType      MealType    `json:"mealType" binding:"required,oneof=breakfast lunch dinner snack"`
+	PortionType   PortionType `json:"portionType" binding:"required,oneof=grams milliliters portion"`
+	PortionAmount float64     `json:"portionAmount" binding:"required,gt=0"`
 	Time          string      `json:"time" binding:"required"`
 	Date          string      `json:"date" binding:"required"`
+	// Optional overrides — if provided, use these instead of DB-calculated values
+	FoodName *string  `json:"foodName,omitempty"`
+	Calories *float64 `json:"calories,omitempty" binding:"omitempty,gte=0"`
+	Protein  *float64 `json:"protein,omitempty" binding:"omitempty,gte=0"`
+	Fat      *float64 `json:"fat,omitempty" binding:"omitempty,gte=0"`
+	Carbs    *float64 `json:"carbs,omitempty" binding:"omitempty,gte=0"`
 }
 
 // Validate validates the create entry request
@@ -508,10 +514,16 @@ func (r *CreateEntryRequest) Validate() error {
 
 // UpdateEntryRequest represents the request to update a food entry
 type UpdateEntryRequest struct {
-	MealType      *MealType    `json:"meal_type,omitempty" binding:"omitempty,oneof=breakfast lunch dinner snack"`
-	PortionType   *PortionType `json:"portion_type,omitempty" binding:"omitempty,oneof=grams milliliters portion"`
-	PortionAmount *float64     `json:"portion_amount,omitempty" binding:"omitempty,gt=0"`
+	MealType      *MealType    `json:"mealType,omitempty" binding:"omitempty,oneof=breakfast lunch dinner snack"`
+	PortionType   *PortionType `json:"portionType,omitempty" binding:"omitempty,oneof=grams milliliters portion"`
+	PortionAmount *float64     `json:"portionAmount,omitempty" binding:"omitempty,gt=0"`
 	Time          *string      `json:"time,omitempty"`
+	// Optional overrides — if provided, use these instead of recalculating from DB
+	FoodName *string  `json:"foodName,omitempty"`
+	Calories *float64 `json:"calories,omitempty" binding:"omitempty,gte=0"`
+	Protein  *float64 `json:"protein,omitempty" binding:"omitempty,gte=0"`
+	Fat      *float64 `json:"fat,omitempty" binding:"omitempty,gte=0"`
+	Carbs    *float64 `json:"carbs,omitempty" binding:"omitempty,gte=0"`
 }
 
 // Validate validates the update entry request
@@ -716,8 +728,8 @@ func (r *MoveEntryRequest) Validate() error {
 // GetEntriesResponse represents the response for getting food entries
 type GetEntriesResponse struct {
 	Entries     map[MealType][]FoodEntry `json:"entries"`
-	DailyTotals KBZHU                    `json:"daily_totals"`
-	TargetGoals *KBZHU                   `json:"target_goals,omitempty"`
+	DailyTotals KBZHU                    `json:"dailyTotals"`
+	TargetGoals *KBZHU                   `json:"targetGoals,omitempty"`
 }
 
 // SearchFoodsResponse represents the response for searching foods

@@ -198,6 +198,16 @@ export interface CreateFoodEntryRequest {
     portionAmount: number;
     time: string;
     date: string;
+    /** Override food name (per-entry, does not change catalog) */
+    foodName?: string;
+    /** Override calculated calories */
+    calories?: number;
+    /** Override calculated protein */
+    protein?: number;
+    /** Override calculated fat */
+    fat?: number;
+    /** Override calculated carbs */
+    carbs?: number;
 }
 
 /**
@@ -208,6 +218,16 @@ export interface UpdateFoodEntryRequest {
     portionType?: PortionType;
     portionAmount?: number;
     time?: string;
+    /** Override food name (per-entry, does not change catalog) */
+    foodName?: string;
+    /** Override calculated calories */
+    calories?: number;
+    /** Override calculated protein */
+    protein?: number;
+    /** Override calculated fat */
+    fat?: number;
+    /** Override calculated carbs */
+    carbs?: number;
 }
 
 /**
