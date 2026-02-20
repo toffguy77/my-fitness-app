@@ -125,6 +125,32 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 	}, nil
 }
 
+// ForceResetPassword directly resets a user's password by email (temporary admin endpoint)
+func (s *Service) ForceResetPassword(ctx context.Context, email, newPassword string) error {
+	s.log.Infow("Force password reset", "email", email)
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		"UPDATE users SET password = $1, updated_at = NOW() WHERE email = $2",
+		string(hashedPassword), email,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	s.log.Infow("Password force-reset successful", "email", email)
+	return nil
+}
+
 // generateToken generates JWT token for user
 func (s *Service) generateToken(user *User) (string, error) {
 	claims := jwt.MapClaims{
