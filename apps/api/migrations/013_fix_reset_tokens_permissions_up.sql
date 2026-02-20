@@ -1,7 +1,7 @@
 -- Fix permissions on reset_tokens and password_reset_attempts sequences
 -- The application DB user needs INSERT permission on these tables
 
-DO $
+DO $$
 BEGIN
     -- Grant usage on sequences to public (covers all application users)
     IF EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'reset_tokens_id_seq') THEN
@@ -24,4 +24,4 @@ BEGIN
         EXECUTE 'GRANT ALL ON TABLE password_reset_attempts TO PUBLIC';
         RAISE NOTICE 'Granted permissions on password_reset_attempts table';
     END IF;
-END $;
+END $$;
