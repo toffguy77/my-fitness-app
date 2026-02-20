@@ -143,7 +143,7 @@ func main() {
 	v1 := router.Group("/api/v1")
 	{
 		// Auth routes
-		authHandler := auth.NewHandler(cfg, log)
+		authHandler := auth.NewHandler(db.DB, cfg, log)
 		resetHandler := auth.NewResetHandler(cfg, log, resetService)
 		authGroup := v1.Group("/auth")
 		{

@@ -2,23 +2,27 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Service handles auth business logic
 type Service struct {
+	db  *sql.DB
 	cfg *config.Config
 	log *logger.Logger
 }
 
 // NewService creates a new auth service
-func NewService(cfg *config.Config, log *logger.Logger) *Service {
+func NewService(db *sql.DB, cfg *config.Config, log *logger.Logger) *Service {
 	return &Service{
+		db:  db,
 		cfg: cfg,
 		log: log,
 	}
@@ -41,42 +45,68 @@ type LoginResult struct {
 
 // Register registers a new user
 func (s *Service) Register(ctx context.Context, email, password, name string) (*User, error) {
-	// TODO: Implement Supabase user creation
 	s.log.Infow("User registration", "email", email)
 
-	// Placeholder implementation
-	user := &User{
-		ID:        123,
-		Email:     email,
-		Name:      name,
-		Role:      "client",
-		CreatedAt: time.Now(),
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при хешировании пароля: %w", err)
 	}
 
-	return user, nil
+	// Insert user into database
+	query := `
+		INSERT INTO users (email, password, name, role, created_at, updated_at)
+		VALUES ($1, $2, $3, 'client', NOW(), NOW())
+		RETURNING id, email, name, role, created_at
+	`
+
+	var user User
+	err = s.db.QueryRowContext(ctx, query, email, string(hashedPassword), name).Scan(
+		&user.ID, &user.Email, &user.Name, &user.Role, &user.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при регистрации: %w", err)
+	}
+
+	return &user, nil
 }
 
 // Login authenticates a user
 func (s *Service) Login(ctx context.Context, email, password string) (*LoginResult, error) {
-	// TODO: Implement Supabase authentication
 	s.log.Infow("User login", "email", email)
 
-	// Placeholder implementation
-	user := &User{
-		ID:        123,
-		Email:     email,
-		Role:      "client",
-		CreatedAt: time.Now(),
+	// Look up user by email
+	query := `
+		SELECT id, email, name, password, role, created_at
+		FROM users
+		WHERE email = $1
+	`
+
+	var user User
+	var hashedPassword string
+	err := s.db.QueryRowContext(ctx, query, email).Scan(
+		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.CreatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("неверные учетные данные")
+		}
+		return nil, fmt.Errorf("ошибка при входе: %w", err)
+	}
+
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		return nil, fmt.Errorf("неверные учетные данные")
 	}
 
 	// Generate JWT token
-	token, err := s.generateToken(user)
+	token, err := s.generateToken(&user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
 	return &LoginResult{
-		User:  user,
+		User:  &user,
 		Token: token,
 	}, nil
 }
