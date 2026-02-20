@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/config"
@@ -96,7 +97,20 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		return nil, fmt.Errorf("неверные учетные данные")
+		// If stored password is not a bcrypt hash, try plaintext comparison
+		// and migrate to bcrypt on success
+		if strings.HasPrefix(hashedPassword, "$2") {
+			return nil, fmt.Errorf("неверные учетные данные")
+		}
+		if hashedPassword != password {
+			return nil, fmt.Errorf("неверные учетные данные")
+		}
+		// Migrate plaintext password to bcrypt
+		newHash, hashErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if hashErr == nil {
+			_, _ = s.db.ExecContext(ctx, "UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2", string(newHash), user.ID)
+			s.log.Infow("Migrated plaintext password to bcrypt", "user_id", user.ID)
+		}
 	}
 
 	// Generate JWT token
