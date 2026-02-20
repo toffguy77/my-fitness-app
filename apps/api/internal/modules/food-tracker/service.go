@@ -652,6 +652,8 @@ func (s *Service) ensureFoodItemExists(ctx context.Context, foodID string, item 
 		ON CONFLICT (id) DO NOTHING
 	`
 
+	// Force source to 'database' — products table may have values outside
+	// the food_items CHECK constraint ('database','usda','openfoodfacts','user')
 	_, err := s.db.ExecContext(ctx, query,
 		newUUID,
 		item.Name,
@@ -667,8 +669,8 @@ func (s *Service) ensureFoodItemExists(ctx context.Context, foodID string, item 
 		item.SugarPer100,
 		item.SodiumPer100,
 		item.Barcode,
-		item.Source,
-		item.Verified,
+		"database",
+		false,
 	)
 	if err != nil {
 		return "", fmt.Errorf("ошибка при копировании продукта в food_items: %w", err)
