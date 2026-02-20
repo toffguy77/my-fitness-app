@@ -139,6 +139,12 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		return nil, err
 	}
 
+	// Ensure food item exists in food_items table (copies from products table if needed)
+	foodItemID, err := s.ensureFoodItemExists(ctx, req.FoodID, foodItem)
+	if err != nil {
+		return nil, err
+	}
+
 	// Use overrides if provided, otherwise calculate from DB
 	foodName := foodItem.Name
 	if req.FoodName != nil {
@@ -178,7 +184,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		query,
 		entryID,
 		userID,
-		req.FoodID,
+		foodItemID,
 		foodName,
 		req.MealType,
 		req.PortionType,
@@ -624,6 +630,58 @@ func (s *Service) getFoodItemByID(ctx context.Context, foodID string) (*FoodItem
 	return &item, nil
 }
 
+// ensureFoodItemExists ensures the food item exists in food_items table.
+// For products table items (non-UUID IDs), copies them to food_items with a deterministic UUID.
+// Returns the food_items UUID to use for food_entries.
+func (s *Service) ensureFoodItemExists(ctx context.Context, foodID string, item *FoodItem) (string, error) {
+	// If already a valid UUID, it's already in food_items
+	if _, err := uuid.Parse(foodID); err == nil {
+		return foodID, nil
+	}
+
+	// Generate deterministic UUID from product ID so the same product always gets the same UUID
+	newUUID := uuid.NewSHA1(uuid.NameSpaceDNS, []byte("product:"+foodID)).String()
+
+	query := `
+		INSERT INTO food_items (
+			id, name, brand, category, serving_size, serving_unit,
+			calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			fiber_per_100, sugar_per_100, sodium_per_100, barcode, source, verified,
+			created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
+		ON CONFLICT (id) DO NOTHING
+	`
+
+	_, err := s.db.ExecContext(ctx, query,
+		newUUID,
+		item.Name,
+		item.Brand,
+		item.Category,
+		item.ServingSize,
+		item.ServingUnit,
+		item.CaloriesPer100,
+		item.ProteinPer100,
+		item.FatPer100,
+		item.CarbsPer100,
+		item.FiberPer100,
+		item.SugarPer100,
+		item.SodiumPer100,
+		item.Barcode,
+		item.Source,
+		item.Verified,
+	)
+	if err != nil {
+		return "", fmt.Errorf("ошибка при копировании продукта в food_items: %w", err)
+	}
+
+	s.log.LogBusinessEvent("product_copied_to_food_items", map[string]interface{}{
+		"product_id":    foodID,
+		"food_item_id":  newUUID,
+	})
+
+	return newUUID, nil
+}
+
 // getEntryByID retrieves a food entry by ID
 func (s *Service) getEntryByID(ctx context.Context, entryID string) (*FoodEntry, error) {
 	startTime := time.Now()
@@ -1037,7 +1095,8 @@ func (s *Service) GetRecentFoods(ctx context.Context, userID int64, limit int) (
 		limit = 50
 	}
 
-	// Get distinct foods from recent entries, looking up in both food_items (UUID) and products (integer ID)
+	// Get distinct foods from recent entries via food_items table
+	// All food_entries.food_id values are UUIDs referencing food_items
 	query := `
 		WITH recent AS (
 			SELECT DISTINCT ON (fe.food_id) fe.food_id, fe.created_at AS last_used
@@ -1046,28 +1105,26 @@ func (s *Service) GetRecentFoods(ctx context.Context, userID int64, limit int) (
 			ORDER BY fe.food_id, fe.created_at DESC
 		)
 		SELECT
-			COALESCE(fi.id, p.id::text) AS id,
-			COALESCE(fi.name, p.name) AS name,
-			COALESCE(fi.brand, p.brand) AS brand,
-			COALESCE(fi.category, COALESCE(p.category_id::text, '')) AS category,
-			COALESCE(fi.serving_size, 100.0) AS serving_size,
-			COALESCE(fi.serving_unit, 'г') AS serving_unit,
-			COALESCE(fi.calories_per_100, COALESCE(p.calories, 0)) AS calories_per_100,
-			COALESCE(fi.protein_per_100, COALESCE(p.proteins, 0)) AS protein_per_100,
-			COALESCE(fi.fat_per_100, COALESCE(p.fats, 0)) AS fat_per_100,
-			COALESCE(fi.carbs_per_100, COALESCE(p.carbs, 0)) AS carbs_per_100,
-			COALESCE(fi.fiber_per_100, p.fiber) AS fiber_per_100,
+			fi.id,
+			fi.name,
+			fi.brand,
+			fi.category,
+			fi.serving_size,
+			fi.serving_unit,
+			fi.calories_per_100,
+			fi.protein_per_100,
+			fi.fat_per_100,
+			fi.carbs_per_100,
+			fi.fiber_per_100,
 			fi.sugar_per_100,
 			fi.sodium_per_100,
-			COALESCE(fi.barcode, p.vendor_code) AS barcode,
-			COALESCE(fi.source, COALESCE(p.source, 'database')) AS source,
-			COALESCE(fi.verified, false) AS verified,
-			COALESCE(fi.created_at, COALESCE(p.created_at, NOW())) AS created_at,
-			COALESCE(fi.updated_at, COALESCE(p.created_at, NOW())) AS updated_at
+			fi.barcode,
+			fi.source,
+			fi.verified,
+			fi.created_at,
+			fi.updated_at
 		FROM recent r
-		LEFT JOIN food_items fi ON r.food_id = fi.id
-		LEFT JOIN products p ON r.food_id = p.id::text
-		WHERE fi.id IS NOT NULL OR p.id IS NOT NULL
+		JOIN food_items fi ON r.food_id = fi.id
 		ORDER BY r.last_used DESC
 		LIMIT $2
 	`
@@ -1142,29 +1199,28 @@ func (s *Service) GetFavoriteFoods(ctx context.Context, userID int64, limit int)
 
 	query := `
 		SELECT
-			COALESCE(fi.id, p.id::text) AS id,
-			COALESCE(fi.name, p.name) AS name,
-			COALESCE(fi.brand, p.brand) AS brand,
-			COALESCE(fi.category, COALESCE(p.category_id::text, '')) AS category,
-			COALESCE(fi.serving_size, 100.0) AS serving_size,
-			COALESCE(fi.serving_unit, 'г') AS serving_unit,
-			COALESCE(fi.calories_per_100, COALESCE(p.calories, 0)) AS calories_per_100,
-			COALESCE(fi.protein_per_100, COALESCE(p.proteins, 0)) AS protein_per_100,
-			COALESCE(fi.fat_per_100, COALESCE(p.fats, 0)) AS fat_per_100,
-			COALESCE(fi.carbs_per_100, COALESCE(p.carbs, 0)) AS carbs_per_100,
-			COALESCE(fi.fiber_per_100, p.fiber) AS fiber_per_100,
+			fi.id,
+			fi.name,
+			fi.brand,
+			fi.category,
+			fi.serving_size,
+			fi.serving_unit,
+			fi.calories_per_100,
+			fi.protein_per_100,
+			fi.fat_per_100,
+			fi.carbs_per_100,
+			fi.fiber_per_100,
 			fi.sugar_per_100,
 			fi.sodium_per_100,
-			COALESCE(fi.barcode, p.vendor_code) AS barcode,
-			COALESCE(fi.source, COALESCE(p.source, 'database')) AS source,
-			COALESCE(fi.verified, false) AS verified,
-			COALESCE(fi.created_at, COALESCE(p.created_at, NOW())) AS created_at,
-			COALESCE(fi.updated_at, COALESCE(p.created_at, NOW())) AS updated_at
+			fi.barcode,
+			fi.source,
+			fi.verified,
+			fi.created_at,
+			fi.updated_at
 		FROM user_favorite_foods uff
-		LEFT JOIN food_items fi ON uff.food_id = fi.id
-		LEFT JOIN products p ON uff.food_id = p.id::text
-		WHERE fi.id IS NOT NULL OR p.id IS NOT NULL
-		ORDER BY uff.added_at DESC
+		JOIN food_items fi ON uff.food_id = fi.id
+		WHERE uff.user_id = $1
+		ORDER BY uff.created_at DESC
 		LIMIT $2
 	`
 
