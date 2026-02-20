@@ -198,11 +198,6 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         expect(progressBar).toHaveAttribute('aria-valuemin', '0')
                         expect(progressBar).toHaveAttribute('aria-valuemax', '100')
 
-                        // Check progress bar styling
-                        const progressBarStyle = window.getComputedStyle(progressBar)
-                        const expectedWidth = `${expectedPercentage.toFixed(1)}%`
-                        expect(progressBar).toHaveStyle(`width: ${expectedWidth}`)
-
                         // Clean up this iteration
                         unmount()
 

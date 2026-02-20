@@ -1,14 +1,14 @@
 /**
  * NutritionBlock component for daily nutrition tracking
  *
- * Displays calorie goal and current intake, macro breakdown,
- * circular progress indicator, and quick add functionality.
+ * Compact segmented ring design showing calorie progress in center
+ * with color-coded macro segments (protein, fat, carbs).
  *
  * Requirements: 2.1, 2.2, 2.4, 2.5, 2.6
  *
  * Performance optimizations:
  * - React.memo to prevent unnecessary re-renders
- * - Memoized sub-components (CircularProgress, MacroProgressBar)
+ * - Memoized sub-components (SegmentedRing, MacroProgressBar)
  */
 
 import { useState, memo, useMemo } from 'react'
@@ -19,7 +19,6 @@ import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { calculatePercentage } from '../utils/calculations'
 import { AttentionBadge } from './AttentionBadge'
-import type { NutritionData } from '../types'
 
 /**
  * Props for NutritionBlock component
@@ -29,56 +28,55 @@ export interface NutritionBlockProps {
     className?: string
 }
 
+// Macro colors matching the ring segments
+const MACRO_COLORS = {
+    protein: '#3b82f6', // blue-500
+    fat: '#f59e0b',     // amber-500
+    carbs: '#22c55e',   // green-500
+}
+
 /**
- * Props for circular progress indicator
+ * Segment data for the ring
  */
-interface CircularProgressProps {
+interface Segment {
     percentage: number
+    color: string
+    label: string
+}
+
+/**
+ * Props for segmented ring indicator
+ */
+interface SegmentedRingProps {
     size?: number
     strokeWidth?: number
+    segments: Segment[]
     className?: string
     children?: React.ReactNode
 }
 
 /**
- * Circular progress indicator component
+ * Segmented ring progress indicator
+ * Three colored arcs for protein/fat/carbs, each filling proportionally
  * Memoized to prevent unnecessary re-renders
  */
-const CircularProgress = memo(function CircularProgress({
-    percentage,
-    size = 120,
-    strokeWidth = 8,
+const SegmentedRing = memo(function SegmentedRing({
+    size = 88,
+    strokeWidth = 7,
+    segments,
     className,
     children,
-}: CircularProgressProps) {
+}: SegmentedRingProps) {
     const radius = (size - strokeWidth) / 2
-    const circumference = radius * 2 * Math.PI
-    const strokeDasharray = circumference
-    const strokeDashoffset = circumference - (percentage / 100) * circumference
-
-    // Determine color based on percentage
-    const getColor = (pct: number) => {
-        if (pct <= 50) return 'text-red-500'
-        if (pct <= 80) return 'text-yellow-500'
-        if (pct <= 100) return 'text-green-500'
-        return 'text-orange-500' // Over 100%
-    }
-
-    const color = getColor(percentage)
-
-    // Get status description for screen readers
-    const getStatusDescription = (pct: number) => {
-        if (pct <= 50) return 'Низкий уровень потребления калорий'
-        if (pct <= 80) return 'Умеренный уровень потребления калорий'
-        if (pct <= 100) return 'Оптимальный уровень потребления калорий'
-        return 'Превышена дневная норма калорий'
-    }
+    const circumference = 2 * Math.PI * radius
+    const gapLength = 4
+    const segmentMax = (circumference - segments.length * gapLength) / segments.length
 
     return (
         <div
             className={cn('relative inline-flex items-center justify-center', className)}
             role="img"
-            aria-label={`Прогресс калорий: ${percentage.toFixed(1)}%. ${getStatusDescription(percentage)}`}
+            aria-label="Прогресс макронутриентов"
         >
             <svg
                 width={size}
@@ -86,7 +84,7 @@ const CircularProgress = memo(function CircularProgress({
                 className="transform -rotate-90"
                 aria-hidden="true"
             >
-                {/* Background circle */}
+                {/* Background track */}
                 <circle
                     cx={size / 2}
                     cy={size / 2}
@@ -94,23 +92,31 @@ const CircularProgress = memo(function CircularProgress({
                     stroke="currentColor"
                     strokeWidth={strokeWidth}
                     fill="none"
-                    className="text-gray-200"
+                    className="text-gray-100"
                 />
-                {/* Progress circle */}
-                <circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    stroke="currentColor"
-                    strokeWidth={strokeWidth}
-                    fill="none"
-                    strokeDasharray={strokeDasharray}
-                    strokeDashoffset={strokeDashoffset}
-                    strokeLinecap="round"
-                    className={cn('transition-all duration-300', color)}
-                />
+                {/* Colored segments */}
+                {segments.map((seg, i) => {
+                    const startOffset = i * (segmentMax + gapLength)
+                    const filledLength = Math.min(seg.percentage / 100, 1) * segmentMax
+                    if (filledLength <= 0) return null
+                    return (
+                        <circle
+                            key={seg.label}
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            stroke={seg.color}
+                            strokeWidth={strokeWidth}
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeDasharray={`${filledLength} ${circumference - filledLength}`}
+                            strokeDashoffset={-startOffset}
+                            className="transition-all duration-500"
+                        />
+                    )
+                })}
             </svg>
-            {/* Content in center */}
+            {/* Center content */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                 {children}
             </div>
@@ -126,11 +132,12 @@ interface MacroProgressBarProps {
     current: number
     goal: number
     unit?: string
+    color: string
     className?: string
 }
 
 /**
- * Macro progress bar component
+ * Compact macro progress bar with colored dot indicator
  * Memoized to prevent unnecessary re-renders
  */
 const MacroProgressBar = memo(function MacroProgressBar({
@@ -138,6 +145,7 @@ const MacroProgressBar = memo(function MacroProgressBar({
     current,
     goal,
     unit = 'г',
+    color,
     className,
 }: MacroProgressBarProps) {
     const percentage = calculatePercentage(current, goal)
@@ -145,8 +153,15 @@ const MacroProgressBar = memo(function MacroProgressBar({
 
     return (
         <div className={cn('space-y-1', className)}>
-            <div className="flex justify-between text-sm">
-                <span className="font-medium text-gray-700">{label}</span>
+            <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-gray-700 flex items-center gap-1.5">
+                    <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: color }}
+                        aria-hidden="true"
+                    />
+                    {label}
+                </span>
                 <span className={cn(
                     'font-semibold',
                     isOverGoal ? 'text-orange-600' : 'text-gray-900'
@@ -154,7 +169,7 @@ const MacroProgressBar = memo(function MacroProgressBar({
                     {current}{unit} / {goal}{unit}
                 </span>
             </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <div
                     className={cn(
                         'h-full transition-all duration-300 rounded-full',
@@ -202,15 +217,27 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
 
     // Calculate percentages
     const caloriesPercentage = calculatePercentage(nutrition.calories, goals.caloriesGoal)
-    // Check raw values to avoid rounding issues (e.g., 2002/2001 = 100.05% rounds to 100.0%)
     const isOverCalorieGoal = nutrition.calories > goals.caloriesGoal
+
+    // Determine calorie text color based on percentage
+    const getCalorieColor = (pct: number) => {
+        if (pct <= 50) return 'text-red-500'
+        if (pct <= 80) return 'text-yellow-500'
+        if (pct <= 100) return 'text-green-500'
+        return 'text-orange-500'
+    }
+
+    // Ring segments for macros
+    const segments = useMemo<Segment[]>(() => [
+        { percentage: calculatePercentage(nutrition.protein, goals.proteinGoal), color: MACRO_COLORS.protein, label: 'protein' },
+        { percentage: calculatePercentage(nutrition.fat, goals.fatGoal), color: MACRO_COLORS.fat, label: 'fat' },
+        { percentage: calculatePercentage(nutrition.carbs, goals.carbsGoal), color: MACRO_COLORS.carbs, label: 'carbs' },
+    ], [nutrition.protein, nutrition.fat, nutrition.carbs, goals.proteinGoal, goals.fatGoal, goals.carbsGoal])
 
     // Handle quick add navigation
     const handleQuickAdd = async () => {
         setIsNavigating(true)
         try {
-            // Navigate to food tracker with selected date
-            // This would typically use Next.js router
             window.location.href = `/food-tracker?date=${dateStr}`
         } catch (error) {
             console.error('Navigation failed:', error)
@@ -225,10 +252,10 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
 
     return (
         <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
+                        <CardTitle className="text-base font-semibold text-gray-900">
                             Питание
                         </CardTitle>
                         {showAttentionIndicator && (
@@ -251,59 +278,56 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                 </div>
             </CardHeader>
 
-            <CardContent className="space-y-6">
-                {/* Circular progress for calories */}
+            <CardContent className="space-y-3">
+                {/* Segmented ring for macro progress */}
                 <div className="flex justify-center">
-                    <CircularProgress
-                        percentage={Math.min(caloriesPercentage, 150)} // Cap visual at 150%
-                        size={120}
-                        strokeWidth={8}
+                    <SegmentedRing
+                        size={88}
+                        strokeWidth={7}
+                        segments={segments}
                     >
                         <div className="text-center">
                             <div className={cn(
-                                'text-2xl font-bold',
-                                isOverCalorieGoal ? 'text-orange-600' : 'text-gray-900'
-                            )}>
+                                'text-lg font-bold',
+                                getCalorieColor(caloriesPercentage)
+                            )} data-testid="calorie-value">
                                 {nutrition.calories}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-[10px] text-gray-500 leading-tight">
                                 из {goals.caloriesGoal} ккал
                             </div>
                             <div className={cn(
-                                'text-xs font-medium',
+                                'text-[10px] font-medium',
                                 isOverCalorieGoal ? 'text-orange-600' : 'text-gray-600'
                             )}>
                                 {caloriesPercentage.toFixed(1)}%
                             </div>
                         </div>
-                    </CircularProgress>
+                    </SegmentedRing>
                 </div>
 
                 {/* Warning when goal exceeded */}
                 {isOverCalorieGoal && (
                     <div
-                        className="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+                        className="flex items-center gap-2 p-2 bg-orange-50 border border-orange-200 rounded-lg"
                         role="alert"
                         aria-live="polite"
                     >
-                        <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" aria-hidden="true" />
-                        <p className="text-sm text-orange-800">
+                        <AlertTriangle className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" aria-hidden="true" />
+                        <p className="text-xs text-orange-800">
                             Превышена дневная норма калорий
                         </p>
                     </div>
                 )}
 
-                {/* Macro breakdown */}
-                <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                        Макронутриенты
-                    </h4>
-
+                {/* Macro breakdown - compact */}
+                <div className="space-y-2">
                     <MacroProgressBar
                         label="Белки"
                         current={nutrition.protein}
                         goal={goals.proteinGoal}
                         unit="г"
+                        color={MACRO_COLORS.protein}
                     />
 
                     <MacroProgressBar
@@ -311,6 +335,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                         current={nutrition.fat}
                         goal={goals.fatGoal}
                         unit="г"
+                        color={MACRO_COLORS.fat}
                     />
 
                     <MacroProgressBar
@@ -318,13 +343,14 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                         current={nutrition.carbs}
                         goal={goals.carbsGoal}
                         unit="г"
+                        color={MACRO_COLORS.carbs}
                     />
                 </div>
 
                 {/* Empty state */}
                 {nutrition.calories === 0 && (
-                    <div className="text-center py-4">
-                        <p className="text-sm text-gray-500 mb-3">
+                    <div className="text-center py-2">
+                        <p className="text-sm text-gray-500 mb-2">
                             Данные о питании не добавлены
                         </p>
                         <Button

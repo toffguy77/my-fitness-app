@@ -1,14 +1,14 @@
 /**
  * StepsBlock component for daily steps tracking
  *
- * Displays step goal and current count, progress bar indicator,
+ * Compact ring display showing step progress with centered count,
  * quick add functionality, completion indicator, and validation.
  *
  * Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 4.7
  *
  * Performance optimizations:
  * - React.memo to prevent unnecessary re-renders
- * - Memoized ProgressBar sub-component
+ * - Memoized StepsRing sub-component
  * - Debounced input validation (300ms)
  */
 
@@ -34,35 +34,79 @@ export interface StepsBlockProps {
 }
 
 /**
- * Props for progress bar component
+ * Props for steps ring component
  */
-interface ProgressBarProps {
+interface StepsRingProps {
     percentage: number
+    size?: number
+    strokeWidth?: number
     className?: string
+    children?: React.ReactNode
 }
 
 /**
- * Progress bar component
+ * Circular progress ring for steps
  * Memoized to prevent unnecessary re-renders
  */
-const ProgressBar = memo(function ProgressBar({ percentage, className }: ProgressBarProps) {
+const StepsRing = memo(function StepsRing({
+    percentage,
+    size = 72,
+    strokeWidth = 6,
+    className,
+    children,
+}: StepsRingProps) {
+    const radius = (size - strokeWidth) / 2
+    const circumference = radius * 2 * Math.PI
     const cappedPercentage = Math.min(percentage, 100)
+    const strokeDashoffset = circumference - (cappedPercentage / 100) * circumference
     const isComplete = percentage >= 100
 
     return (
-        <div className={cn('w-full bg-gray-200 rounded-full h-3', className)}>
-            <div
-                className={cn(
-                    'h-3 rounded-full transition-all duration-300',
-                    isComplete ? 'bg-green-500' : 'bg-blue-500'
-                )}
-                style={{ width: `${cappedPercentage}%` }}
-                role="progressbar"
-                aria-valuenow={cappedPercentage}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`Прогресс шагов: ${cappedPercentage.toFixed(1)}%`}
-            />
+        <div
+            className={cn('relative inline-flex items-center justify-center', className)}
+            role="progressbar"
+            aria-valuenow={cappedPercentage}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Прогресс шагов: ${percentage.toFixed(1)}%`}
+        >
+            <svg
+                width={size}
+                height={size}
+                className="transform -rotate-90"
+                aria-hidden="true"
+            >
+                {/* Background circle */}
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke="currentColor"
+                    strokeWidth={strokeWidth}
+                    fill="none"
+                    className="text-gray-100"
+                />
+                {/* Progress circle */}
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke="currentColor"
+                    strokeWidth={strokeWidth}
+                    fill="none"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    className={cn(
+                        'transition-all duration-500',
+                        isComplete ? 'text-green-500' : 'text-blue-500'
+                    )}
+                />
+            </svg>
+            {/* Center content */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                {children}
+            </div>
         </div>
     )
 })
@@ -190,10 +234,10 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
     return (
         <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">
+                        <CardTitle className="text-base font-semibold text-gray-900">
                             Шаги
                         </CardTitle>
                         {showAttentionIndicator && (
@@ -215,45 +259,50 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                 </div>
             </CardHeader>
 
-            <CardContent className="space-y-4">
-                {/* Steps display */}
-                <div className="text-center space-y-3" role="region" aria-label="Прогресс шагов">
-                    <div className="space-y-1">
-                        <div className="text-3xl font-bold text-gray-900">
-                            <span aria-label={`Текущее количество шагов: ${currentSteps.toLocaleString()}`}>
+            <CardContent className="space-y-3">
+                {/* Steps ring display */}
+                <div className="text-center space-y-2" role="region" aria-label="Прогресс шагов">
+                    <div className="flex justify-center">
+                        <StepsRing percentage={percentage} size={72} strokeWidth={6}>
+                            <span
+                                className={cn(
+                                    'text-base font-bold leading-tight',
+                                    isGoalReached ? 'text-green-600' : 'text-gray-900'
+                                )}
+                                aria-label={`Текущее количество шагов: ${currentSteps.toLocaleString()}`}
+                            >
                                 {formatSteps(currentSteps)}
                             </span>
-                        </div>
-                        <div className="text-sm text-gray-500" aria-label={`Цель: ${stepsGoal.toLocaleString()} шагов`}>
+                        </StepsRing>
+                    </div>
+                    <div className="space-y-0.5">
+                        <div className="text-xs text-gray-500" aria-label={`Цель: ${stepsGoal.toLocaleString()} шагов`}>
                             из {formatSteps(stepsGoal)} шагов
                         </div>
                         <div className={cn(
-                            'text-sm font-medium',
+                            'text-xs font-medium',
                             isGoalReached ? 'text-green-600' : 'text-gray-600'
                         )}>
                             {percentage.toFixed(1)}%
                         </div>
                     </div>
 
-                    {/* Progress bar */}
-                    <ProgressBar percentage={percentage} />
-
                     {/* Completion indicator */}
                     {isGoalReached && (
                         <div
-                            className="flex items-center justify-center gap-2 text-green-600"
+                            className="flex items-center justify-center gap-1.5 text-green-600"
                             role="status"
                             aria-label="Цель по шагам достигнута"
                         >
-                            <Check className="h-4 w-4" aria-hidden="true" />
-                            <span className="text-sm font-medium">Цель достигнута!</span>
+                            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span className="text-xs font-medium">Цель достигнута!</span>
                         </div>
                     )}
                 </div>
 
                 {/* Input dialog */}
                 {isDialogOpen && (
-                    <div className="space-y-3 p-4 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="steps-dialog-title">
+                    <div className="space-y-2.5 p-3 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="steps-dialog-title">
                         <div id="steps-dialog-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <Target className="h-4 w-4" aria-hidden="true" />
                             <span>Обновить количество шагов</span>
@@ -318,24 +367,8 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
                 {/* Empty state or motivational message */}
                 {currentSteps === 0 ? (
-                    <div className="text-center py-4" role="status" aria-label="Шаги не записаны">
-                        <div className="text-gray-400 mb-3">
-                            <svg
-                                className="h-12 w-12 mx-auto"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={1.5}
-                                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                                />
-                            </svg>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-3">
+                    <div className="text-center py-2" role="status" aria-label="Шаги не записаны">
+                        <p className="text-sm text-gray-500 mb-2">
                             Начните двигаться к цели
                         </p>
                         <Button
