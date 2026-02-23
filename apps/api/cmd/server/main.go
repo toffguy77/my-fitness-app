@@ -202,6 +202,10 @@ func main() {
 		{
 			usersGroup.GET("/profile", usersHandler.GetProfile)
 			usersGroup.PUT("/profile", usersHandler.UpdateProfile)
+			usersGroup.PUT("/settings", usersHandler.UpdateSettings)
+			usersGroup.POST("/avatar", usersHandler.UploadAvatar)
+			usersGroup.DELETE("/avatar", usersHandler.DeleteAvatar)
+			usersGroup.PUT("/onboarding/complete", usersHandler.CompleteOnboarding)
 		}
 
 		// Nutrition routes (protected)
