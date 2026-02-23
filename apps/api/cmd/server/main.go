@@ -37,6 +37,14 @@ func main() {
 		log.Fatal("Failed to load configuration", "error", err)
 	}
 
+	// Diagnostic: check S3 config visibility
+	log.Info("S3 config check",
+		"weekly_key_set", cfg.WeeklyPhotosS3AccessKeyID != "",
+		"weekly_secret_set", cfg.WeeklyPhotosS3SecretAccessKey != "",
+		"profile_key_set", cfg.ProfilePhotosS3AccessKeyID != "",
+		"profile_secret_set", cfg.ProfilePhotosS3SecretAccessKey != "",
+	)
+
 	// Initialize database
 	var db *database.DB
 	if cfg.DatabaseURL != "" {
