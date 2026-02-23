@@ -28,7 +28,8 @@ export interface AuthResponse {
         created_at: string;
         onboarding_completed: boolean;
     };
-    token: string; // JWT token
+    token: string; // JWT access token
+    refresh_token: string; // Opaque refresh token
 }
 
 export interface AuthError {

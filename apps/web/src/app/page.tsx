@@ -1,7 +1,20 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Logo } from '@/shared/components/ui'
+import { isAuthenticated } from '@/shared/utils/token-storage'
 
 export default function Home() {
+    const router = useRouter()
+
+    useEffect(() => {
+        if (isAuthenticated()) {
+            router.replace('/dashboard')
+        }
+    }, [router])
+
     return (
         <main className="min-h-screen bg-white">
             {/* Hero */}

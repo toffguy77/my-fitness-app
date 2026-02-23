@@ -15,17 +15,19 @@ import (
 
 // Service handles auth business logic
 type Service struct {
-	db  *sql.DB
-	cfg *config.Config
-	log *logger.Logger
+	db     *sql.DB
+	cfg    *config.Config
+	log    *logger.Logger
+	tokens *TokenGenerator
 }
 
 // NewService creates a new auth service
 func NewService(db *sql.DB, cfg *config.Config, log *logger.Logger) *Service {
 	return &Service{
-		db:  db,
-		cfg: cfg,
-		log: log,
+		db:     db,
+		cfg:    cfg,
+		log:    log,
+		tokens: NewTokenGenerator(),
 	}
 }
 
@@ -41,12 +43,13 @@ type User struct {
 
 // LoginResult represents login response
 type LoginResult struct {
-	User  *User  `json:"user"`
-	Token string `json:"token"`
+	User         *User  `json:"user"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
-// Register registers a new user
-func (s *Service) Register(ctx context.Context, email, password, name string) (*User, error) {
+// Register registers a new user and returns login result with tokens
+func (s *Service) Register(ctx context.Context, email, password, name, ip, ua string) (*LoginResult, error) {
 	s.log.Infow("User registration", "email", email)
 
 	// Hash password
@@ -73,11 +76,27 @@ func (s *Service) Register(ctx context.Context, email, password, name string) (*
 	// Create default user settings
 	_, _ = s.db.ExecContext(ctx, "INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", user.ID)
 
-	return &user, nil
+	// Generate JWT token
+	token, err := s.generateToken(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	// Generate refresh token
+	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh token: %w", err)
+	}
+
+	return &LoginResult{
+		User:         &user,
+		Token:        token,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
 // Login authenticates a user
-func (s *Service) Login(ctx context.Context, email, password string) (*LoginResult, error) {
+func (s *Service) Login(ctx context.Context, email, password, ip, ua string) (*LoginResult, error) {
 	s.log.Infow("User login", "email", email)
 
 	// Look up user by email
@@ -123,19 +142,159 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
 
+	// Generate refresh token
+	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create refresh token: %w", err)
+	}
+
 	return &LoginResult{
-		User:  &user,
-		Token: token,
+		User:         &user,
+		Token:        token,
+		RefreshToken: refreshToken,
 	}, nil
 }
 
-// generateToken generates JWT token for user
+// RefreshTokens validates a refresh token, rotates it, and returns new tokens
+func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) (*LoginResult, error) {
+	tokenHash := s.tokens.HashToken(plainToken)
+
+	// Look up the refresh token
+	var id, userID int64
+	var expiresAt time.Time
+	var revokedAt sql.NullTime
+
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id, user_id, expires_at, revoked_at FROM refresh_tokens WHERE token_hash = $1`,
+		tokenHash,
+	).Scan(&id, &userID, &expiresAt, &revokedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("invalid refresh token")
+		}
+		return nil, fmt.Errorf("failed to look up refresh token: %w", err)
+	}
+
+	// Reuse detection: if the token was already revoked, someone may have stolen it
+	if revokedAt.Valid {
+		s.log.Warnw("Refresh token reuse detected, revoking all tokens for user", "user_id", userID)
+		s.revokeAllUserRefreshTokens(ctx, userID)
+		return nil, fmt.Errorf("refresh token reuse detected")
+	}
+
+	// Check expiry
+	if time.Now().After(expiresAt) {
+		return nil, fmt.Errorf("refresh token expired")
+	}
+
+	// Token rotation in a transaction: revoke old, create new
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Generate new refresh token
+	newPlain, newHash, err := s.tokens.GenerateToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate new refresh token: %w", err)
+	}
+
+	// Revoke old token and link to new one
+	_, err = tx.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = NOW(), replaced_by_hash = $1 WHERE id = $2`,
+		newHash, id,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to revoke old refresh token: %w", err)
+	}
+
+	// Insert new refresh token
+	expiresAtNew := time.Now().Add(30 * 24 * time.Hour)
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+		 VALUES ($1, $2, $3, $4, $5, NOW())`,
+		userID, newHash, expiresAtNew, ip, ua,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert new refresh token: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Look up user for JWT claims
+	var user User
+	err = s.db.QueryRowContext(ctx,
+		`SELECT id, email, COALESCE(name, ''), role, COALESCE(onboarding_completed, false), created_at
+		 FROM users WHERE id = $1`, userID,
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.OnboardingCompleted, &user.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to look up user: %w", err)
+	}
+
+	// Generate new JWT
+	accessToken, err := s.generateToken(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	return &LoginResult{
+		User:         &user,
+		Token:        accessToken,
+		RefreshToken: newPlain,
+	}, nil
+}
+
+// RevokeRefreshToken revokes a single refresh token (for logout)
+func (s *Service) RevokeRefreshToken(ctx context.Context, plainToken string) error {
+	tokenHash := s.tokens.HashToken(plainToken)
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = $1 AND revoked_at IS NULL`,
+		tokenHash,
+	)
+	return err
+}
+
+// createRefreshToken generates and stores a new refresh token
+func (s *Service) createRefreshToken(ctx context.Context, userID int64, ip, ua string) (string, error) {
+	plainToken, hashedToken, err := s.tokens.GenerateToken()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+	_, err = s.db.ExecContext(ctx,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, created_at)
+		 VALUES ($1, $2, $3, $4, $5, NOW())`,
+		userID, hashedToken, expiresAt, ip, ua,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
+	return plainToken, nil
+}
+
+// revokeAllUserRefreshTokens revokes all refresh tokens for a user (reuse detection)
+func (s *Service) revokeAllUserRefreshTokens(ctx context.Context, userID int64) {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
+		userID,
+	)
+	if err != nil {
+		s.log.Errorw("Failed to revoke all refresh tokens", "user_id", userID, "error", err)
+	}
+}
+
+// generateToken generates JWT token for user (15 min expiry)
 func (s *Service) generateToken(user *User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,
 		"role":    user.Role,
-		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
+		"exp":     time.Now().Add(15 * time.Minute).Unix(),
 		"iat":     time.Now().Unix(),
 	}
 

@@ -11,8 +11,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser, registerUser } from '@/features/auth/api/auth';
 import { apiClient } from '@/shared/utils/api-client';
+import { setRefreshToken, getRefreshToken, clearAuth } from '@/shared/utils/token-storage';
 import type { AuthFormData, ConsentState, AuthError } from '@/features/auth/types';
 import toast from 'react-hot-toast';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 export function useAuth() {
     const router = useRouter();
@@ -33,6 +36,9 @@ export function useAuth() {
 
             // Store JWT token
             apiClient.setToken(response.token);
+
+            // Store refresh token
+            setRefreshToken(response.refresh_token);
 
             // Store user data in localStorage for quick access
             if (typeof window !== 'undefined') {
@@ -69,6 +75,9 @@ export function useAuth() {
             // Store JWT token (auto-login)
             apiClient.setToken(response.token);
 
+            // Store refresh token
+            setRefreshToken(response.refresh_token);
+
             // Store user data
             if (typeof window !== 'undefined') {
                 localStorage.setItem('user', JSON.stringify(response.user));
@@ -87,13 +96,26 @@ export function useAuth() {
 
     /**
      * Logout user
-     * Clears token and user data, redirects to auth page
+     * Revokes refresh token on backend, clears local auth data, redirects to auth page
      */
-    const logout = () => {
-        apiClient.clearToken();
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('user');
+    const logout = async () => {
+        const refreshToken = getRefreshToken();
+
+        // Best-effort backend revocation
+        if (refreshToken) {
+            try {
+                await fetch(`${API_BASE}/backend-api/v1/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                });
+            } catch {
+                // Ignore errors — local cleanup proceeds regardless
+            }
         }
+
+        clearAuth();
+        apiClient.clearToken();
         router.push('/auth');
     };
 
