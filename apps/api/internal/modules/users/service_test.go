@@ -16,7 +16,7 @@ func setupTestService() *Service {
 		JWTSecret: "test-secret",
 	}
 	log := logger.New()
-	return NewService(cfg, log)
+	return NewService(nil, nil, cfg, log)
 }
 
 func TestNewService(t *testing.T) {
