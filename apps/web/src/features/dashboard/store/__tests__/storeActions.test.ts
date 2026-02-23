@@ -37,17 +37,15 @@ describe('Dashboard Store Actions', () => {
             const testDate = new Date('2024-01-15'); // Monday
 
             mockApiClient.get.mockResolvedValue({
-                data: {
-                    date: '2024-01-15',
-                    nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
-                    weight: null,
-                    steps: 0,
-                    workout: { completed: false },
-                    completionStatus: {
-                        nutritionFilled: false,
-                        weightLogged: false,
-                        activityCompleted: false,
-                    },
+                date: '2024-01-15',
+                nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
+                weight: null,
+                steps: 0,
+                workout: { completed: false },
+                completionStatus: {
+                    nutritionFilled: false,
+                    weightLogged: false,
+                    activityCompleted: false,
                 },
             });
 
@@ -65,7 +63,7 @@ describe('Dashboard Store Actions', () => {
             const testDate = new Date('2024-01-15');
 
             mockApiClient.get.mockResolvedValue({
-                data: [{
+                metrics: [{
                     date: '2024-01-15',
                     nutrition: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
                     weight: 75.5,
@@ -77,6 +75,7 @@ describe('Dashboard Store Actions', () => {
                         activityCompleted: false,
                     },
                 }],
+                count: 1,
             });
 
             await act(async () => {
@@ -96,7 +95,7 @@ describe('Dashboard Store Actions', () => {
             const { result } = renderHook(() => useDashboardStore());
             const initialWeekStart = new Date(result.current.selectedWeek.start);
 
-            mockApiClient.get.mockResolvedValue({ data: [] });
+            mockApiClient.get.mockResolvedValue({ metrics: [], count: 0 });
 
             act(() => {
                 result.current.navigateWeek('prev');
@@ -114,7 +113,7 @@ describe('Dashboard Store Actions', () => {
             const { result } = renderHook(() => useDashboardStore());
             const initialWeekStart = new Date(result.current.selectedWeek.start);
 
-            mockApiClient.get.mockResolvedValue({ data: [] });
+            mockApiClient.get.mockResolvedValue({ metrics: [], count: 0 });
 
             act(() => {
                 result.current.navigateWeek('next');
@@ -153,17 +152,15 @@ describe('Dashboard Store Actions', () => {
 
             mockApiClient.post.mockResolvedValue({ data: {} });
             mockApiClient.get.mockResolvedValue({
-                data: {
-                    date,
-                    nutrition: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
-                    weight: null,
-                    steps: 0,
-                    workout: null,
-                    completionStatus: {
-                        nutritionFilled: true,
-                        weightLogged: false,
-                        activityCompleted: false,
-                    },
+                date,
+                nutrition: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
+                weight: null,
+                steps: 0,
+                workout: null,
+                completionStatus: {
+                    nutritionFilled: true,
+                    weightLogged: false,
+                    activityCompleted: false,
                 },
             });
 
@@ -244,17 +241,15 @@ describe('Dashboard Store Actions', () => {
 
             mockApiClient.post.mockResolvedValue({ data: {} });
             mockApiClient.get.mockResolvedValue({
-                data: {
-                    date,
-                    nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
-                    weight: 75.5,
-                    steps: 0,
-                    workout: { completed: false },
-                    completionStatus: {
-                        nutritionFilled: false,
-                        weightLogged: true,
-                        activityCompleted: false,
-                    },
+                date,
+                nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
+                weight: 75.5,
+                steps: 0,
+                workout: { completed: false },
+                completionStatus: {
+                    nutritionFilled: false,
+                    weightLogged: true,
+                    activityCompleted: false,
                 },
             });
 
@@ -429,17 +424,15 @@ describe('Dashboard Store Actions', () => {
                         setTimeout(
                             () =>
                                 resolve({
-                                    data: {
-                                        date: '2024-01-15',
-                                        nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
-                                        weight: null,
-                                        steps: 0,
-                                        workout: { completed: false },
-                                        completionStatus: {
-                                            nutritionFilled: false,
-                                            weightLogged: false,
-                                            activityCompleted: false,
-                                        },
+                                    date: '2024-01-15',
+                                    nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
+                                    weight: null,
+                                    steps: 0,
+                                    workout: { completed: false },
+                                    completionStatus: {
+                                        nutritionFilled: false,
+                                        weightLogged: false,
+                                        activityCompleted: false,
                                     },
                                 }),
                             100
@@ -570,7 +563,7 @@ describe('Polling', () => {
     it('starts polling with default interval', async () => {
         const { result } = renderHook(() => useDashboardStore());
 
-        mockApiClient.get.mockResolvedValue({ data: null });
+        mockApiClient.get.mockResolvedValue({ plan: null, tasks: [], count: 0, week: 1 });
 
         await act(async () => {
             result.current.startPolling();
@@ -582,7 +575,7 @@ describe('Polling', () => {
     it('stops polling', async () => {
         const { result } = renderHook(() => useDashboardStore());
 
-        mockApiClient.get.mockResolvedValue({ data: null });
+        mockApiClient.get.mockResolvedValue({ plan: null, tasks: [], count: 0, week: 1 });
 
         await act(async () => {
             result.current.startPolling();
@@ -601,7 +594,7 @@ describe('Polling', () => {
     it('does not start multiple polling intervals', async () => {
         const { result } = renderHook(() => useDashboardStore());
 
-        mockApiClient.get.mockResolvedValue({ data: null });
+        mockApiClient.get.mockResolvedValue({ plan: null, tasks: [], count: 0, week: 1 });
 
         await act(async () => {
             result.current.startPolling();
@@ -622,17 +615,15 @@ describe('Cache Management', () => {
         const { result } = renderHook(() => useDashboardStore());
 
         mockApiClient.get.mockResolvedValue({
-            data: {
-                date: '2024-01-15',
-                nutrition: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
-                weight: 75.5,
-                steps: 8000,
-                workout: null,
-                completionStatus: {
-                    nutritionFilled: true,
-                    weightLogged: true,
-                    activityCompleted: false,
-                },
+            date: '2024-01-15',
+            nutrition: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
+            weight: 75.5,
+            steps: 8000,
+            workout: null,
+            completionStatus: {
+                nutritionFilled: true,
+                weightLogged: true,
+                activityCompleted: false,
             },
         });
 

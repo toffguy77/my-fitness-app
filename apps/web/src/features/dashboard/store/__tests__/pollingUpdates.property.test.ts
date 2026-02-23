@@ -27,7 +27,7 @@ beforeEach(() => {
  */
 function generateMockWeeklyPlan(caloriesGoal: number, proteinGoal: number) {
     return {
-        data: {
+        plan: {
             id: `plan-${Date.now()}`,
             userId: 'user-1',
             curatorId: 'curator-1',
@@ -48,7 +48,7 @@ function generateMockWeeklyPlan(caloriesGoal: number, proteinGoal: number) {
  */
 function generateMockTasks(count: number) {
     return {
-        data: Array.from({ length: count }, (_, i) => ({
+        tasks: Array.from({ length: count }, (_, i) => ({
             id: `task-${i}`,
             userId: 'user-1',
             curatorId: 'curator-1',
@@ -61,6 +61,8 @@ function generateMockTasks(count: number) {
             createdAt: new Date(),
             updatedAt: new Date(),
         })),
+        count,
+        week: 1,
     };
 }
 
@@ -108,7 +110,7 @@ describe('Property 17: Plan Polling Updates', () => {
                     // Mock initial API response
                     const initialPlan = generateMockWeeklyPlan(initialCalories, initialProtein);
                     (apiClient.get as unknown as jest.Mock).mockResolvedValueOnce(initialPlan);
-                    (apiClient.get as unknown as jest.Mock).mockResolvedValueOnce({ data: [] }); // tasks
+                    (apiClient.get as unknown as jest.Mock).mockResolvedValueOnce({ tasks: [], count: 0, week: 1 }); // tasks
 
                     // Fetch initial plan
                     await act(async () => {
@@ -122,7 +124,7 @@ describe('Property 17: Plan Polling Updates', () => {
                     // Mock updated API response for polling
                     const updatedPlan = generateMockWeeklyPlan(updatedCalories, updatedProtein);
                     (apiClient.get as unknown as jest.Mock).mockResolvedValue(updatedPlan);
-                    (apiClient.get as unknown as jest.Mock).mockResolvedValue({ data: [] }); // tasks
+                    (apiClient.get as unknown as jest.Mock).mockResolvedValue({ tasks: [], count: 0, week: 1 }); // tasks
 
                     // Manually trigger poll (instead of using interval)
                     await act(async () => {

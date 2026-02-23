@@ -39,7 +39,7 @@ class ApiClient {
 
         const data = await response.json();
         // Handle both {data: ...} and direct response formats
-        return data.data || data;
+        return data.data !== undefined ? data.data : data;
     }
 
     /**
