@@ -27,7 +27,7 @@ export function SocialAccountsForm({
                     value={telegram}
                     onChange={(e) => onTelegramChange(e.target.value)}
                     placeholder="@username"
-                    className="w-full rounded-xl bg-violet-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+                    className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                 />
             </div>
 
@@ -45,7 +45,7 @@ export function SocialAccountsForm({
                     value={instagram}
                     onChange={(e) => onInstagramChange(e.target.value)}
                     placeholder="@profile"
-                    className="w-full rounded-xl bg-violet-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+                    className="w-full rounded-xl bg-blue-50 px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                 />
             </div>
         </div>

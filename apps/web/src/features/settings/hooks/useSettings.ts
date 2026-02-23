@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { getProfile, updateSettings, uploadAvatar, deleteAvatar } from '../api/settings'
+import { getProfile, updateProfile, updateSettings, uploadAvatar, deleteAvatar } from '../api/settings'
 import type { FullProfile, UserSettings } from '../api/settings'
 import toast from 'react-hot-toast'
 
@@ -33,6 +33,16 @@ export function useSettings() {
         }
     }, [])
 
+    const saveName = useCallback(async (name: string) => {
+        try {
+            const updated = await updateProfile({ name })
+            setProfile(prev => prev ? { ...prev, name: updated.name } : null)
+            toast.success('Имя обновлено')
+        } catch {
+            toast.error('Не удалось обновить имя')
+        }
+    }, [])
+
     const handleAvatarUpload = useCallback(async (file: File): Promise<string> => {
         const url = await uploadAvatar(file)
         setProfile(prev => prev ? { ...prev, avatar_url: url } : null)
@@ -46,5 +56,5 @@ export function useSettings() {
         toast.success('Фото удалено')
     }, [])
 
-    return { profile, isLoading, loadProfile, saveSettings, handleAvatarUpload, handleAvatarDelete }
+    return { profile, isLoading, loadProfile, saveName, saveSettings, handleAvatarUpload, handleAvatarDelete }
 }

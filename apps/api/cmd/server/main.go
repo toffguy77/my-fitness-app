@@ -115,7 +115,11 @@ func main() {
 			log.Info("Profile photos S3 client initialized", "bucket", cfg.ProfilePhotosS3Bucket)
 		}
 	}
-	_ = profilePhotosS3 // Used by users handler for avatar uploads
+	// Fall back to weekly photos S3 for avatar uploads if profile-specific S3 not configured
+	if profilePhotosS3 == nil && s3Client != nil {
+		profilePhotosS3 = s3Client
+		log.Info("Using weekly photos S3 client for avatar uploads (fallback)")
+	}
 
 	// Initialize rate limiter
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
