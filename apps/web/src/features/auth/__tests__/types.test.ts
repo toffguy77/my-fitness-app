@@ -50,6 +50,7 @@ describe('Auth Types', () => {
                 email: 'test@example.com',
                 role: 'client',
                 created_at: '2024-01-01T00:00:00Z',
+                onboarding_completed: false,
             },
             token: 'jwt-token',
         };
