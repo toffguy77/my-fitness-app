@@ -11,6 +11,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/modules/dashboard"
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
@@ -20,6 +21,7 @@ import (
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
+	"github.com/burcev/api/internal/shared/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -79,6 +81,23 @@ func main() {
 		"smtp_host", cfg.SMTPHost,
 		"smtp_port", cfg.SMTPPort,
 	)
+
+	// Initialize S3 client (optional, for photo uploads)
+	var s3Client *storage.S3Client
+	if cfg.S3AccessKeyID != "" && cfg.S3SecretAccessKey != "" {
+		s3Client, err = storage.NewS3Client(&storage.S3Config{
+			AccessKeyID:    cfg.S3AccessKeyID,
+			SecretAccessKey: cfg.S3SecretAccessKey,
+			Bucket:         cfg.S3Bucket,
+			Region:         cfg.S3Region,
+			Endpoint:       cfg.S3Endpoint,
+		}, log)
+		if err != nil {
+			log.Error("Failed to initialize S3 client (photo uploads will be unavailable)", "error", err)
+		} else {
+			log.Info("S3 client initialized successfully", "bucket", cfg.S3Bucket)
+		}
+	}
 
 	// Initialize rate limiter
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
@@ -227,6 +246,24 @@ func main() {
 			ftGroup.GET("/recommendations/:id", foodTrackerHandler.GetRecommendationDetail)
 			ftGroup.PUT("/recommendations/preferences", foodTrackerHandler.UpdatePreferences)
 			ftGroup.POST("/recommendations/custom", foodTrackerHandler.CreateCustomRecommendation)
+		}
+
+		// Dashboard routes (protected)
+		notificationsSvc := notifications.NewService(db, log)
+		dashboardHandler := dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc)
+		dashGroup := v1.Group("/dashboard")
+		dashGroup.Use(middleware.RequireAuth(cfg))
+		{
+			dashGroup.GET("/daily/:date", dashboardHandler.GetDailyMetrics)
+			dashGroup.POST("/daily", dashboardHandler.SaveMetric)
+			dashGroup.GET("/week", dashboardHandler.GetWeekMetrics)
+			dashGroup.GET("/weekly-plan", dashboardHandler.GetWeeklyPlan)
+			dashGroup.POST("/weekly-plan", dashboardHandler.CreateWeeklyPlan)
+			dashGroup.GET("/tasks", dashboardHandler.GetTasks)
+			dashGroup.POST("/tasks", dashboardHandler.CreateTask)
+			dashGroup.PUT("/tasks/:id", dashboardHandler.UpdateTaskStatus)
+			dashGroup.POST("/weekly-report", dashboardHandler.SubmitWeeklyReport)
+			dashGroup.POST("/photo-upload", dashboardHandler.UploadPhoto)
 		}
 	}
 
