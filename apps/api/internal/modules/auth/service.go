@@ -31,11 +31,12 @@ func NewService(db *sql.DB, cfg *config.Config, log *logger.Logger) *Service {
 
 // User represents a user
 type User struct {
-	ID        int64     `json:"id"`
-	Email     string    `json:"email"`
-	Name      string    `json:"name,omitempty"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                  int64     `json:"id"`
+	Email               string    `json:"email"`
+	Name                string    `json:"name,omitempty"`
+	Role                string    `json:"role"`
+	OnboardingCompleted bool      `json:"onboarding_completed"`
+	CreatedAt           time.Time `json:"created_at"`
 }
 
 // LoginResult represents login response
@@ -58,16 +59,19 @@ func (s *Service) Register(ctx context.Context, email, password, name string) (*
 	query := `
 		INSERT INTO users (email, password, name, role, created_at, updated_at)
 		VALUES ($1, $2, $3, 'client', NOW(), NOW())
-		RETURNING id, email, name, role, created_at
+		RETURNING id, email, COALESCE(name, ''), role, COALESCE(onboarding_completed, false), created_at
 	`
 
 	var user User
 	err = s.db.QueryRowContext(ctx, query, email, string(hashedPassword), name).Scan(
-		&user.ID, &user.Email, &user.Name, &user.Role, &user.CreatedAt,
+		&user.ID, &user.Email, &user.Name, &user.Role, &user.OnboardingCompleted, &user.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при регистрации: %w", err)
 	}
+
+	// Create default user settings
+	_, _ = s.db.ExecContext(ctx, "INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", user.ID)
 
 	return &user, nil
 }
@@ -78,7 +82,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 
 	// Look up user by email
 	query := `
-		SELECT id, email, name, password, role, created_at
+		SELECT id, email, COALESCE(name, ''), password, role, COALESCE(onboarding_completed, false), created_at
 		FROM users
 		WHERE email = $1
 	`
@@ -86,7 +90,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResu
 	var user User
 	var hashedPassword string
 	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.CreatedAt,
+		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.OnboardingCompleted, &user.CreatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
