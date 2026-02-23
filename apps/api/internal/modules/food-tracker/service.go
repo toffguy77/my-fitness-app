@@ -238,6 +238,9 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		"calories":  nutrition.Calories,
 	})
 
+	// Sync nutrition totals to daily_metrics for dashboard
+	s.syncNutritionToDailyMetrics(ctx, userID, entry.Date)
+
 	return &entry, nil
 }
 
@@ -375,6 +378,9 @@ func (s *Service) UpdateEntry(ctx context.Context, userID int64, entryID string,
 		"user_id":  userID,
 	})
 
+	// Sync nutrition totals to daily_metrics for dashboard
+	s.syncNutritionToDailyMetrics(ctx, userID, entry.Date)
+
 	return &entry, nil
 }
 
@@ -387,28 +393,24 @@ func (s *Service) DeleteEntry(ctx context.Context, userID int64, entryID string)
 		return fmt.Errorf("неверный формат идентификатора записи")
 	}
 
-	// Delete entry with ownership check
+	// Delete entry with ownership check, capture date for dashboard sync
 	query := `
 		DELETE FROM food_entries
 		WHERE id = $1 AND user_id = $2
+		RETURNING date
 	`
 
-	result, err := s.db.ExecContext(ctx, query, entryID, userID)
+	var deletedDate string
+	err := s.db.QueryRowContext(ctx, query, entryID, userID).Scan(&deletedDate)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("запись не найдена")
+		}
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
 			"user_id":  userID,
 			"entry_id": entryID,
 		})
 		return fmt.Errorf("ошибка при удалении записи: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("ошибка при проверке удаления: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("запись не найдена")
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
@@ -420,6 +422,9 @@ func (s *Service) DeleteEntry(ctx context.Context, userID int64, entryID string)
 		"entry_id": entryID,
 		"user_id":  userID,
 	})
+
+	// Sync nutrition totals to daily_metrics for dashboard
+	s.syncNutritionToDailyMetrics(ctx, userID, deletedDate)
 
 	return nil
 }
@@ -536,6 +541,47 @@ func (s *Service) GetUserGoals(ctx context.Context, userID int64) (*KBZHU, error
 	}
 
 	return goals, nil
+}
+
+// ============================================================================
+// Dashboard Sync
+// ============================================================================
+
+// syncNutritionToDailyMetrics recalculates nutrition totals from food_entries
+// and upserts into daily_metrics so the dashboard reflects food tracker data.
+// Only updates nutrition columns (calories, protein, fat, carbs), preserving
+// other metrics (weight, steps, workout) if the row already exists.
+func (s *Service) syncNutritionToDailyMetrics(ctx context.Context, userID int64, dateStr string) {
+	query := `
+		WITH totals AS (
+			SELECT
+				COALESCE(SUM(calories), 0)::int AS calories,
+				COALESCE(SUM(protein), 0)::int AS protein,
+				COALESCE(SUM(fat), 0)::int AS fat,
+				COALESCE(SUM(carbs), 0)::int AS carbs
+			FROM food_entries
+			WHERE user_id = $1 AND date = $2
+		)
+		INSERT INTO daily_metrics (id, user_id, date, calories, protein, fat, carbs, weight, steps, workout_completed, workout_type, workout_duration, created_at, updated_at)
+		SELECT $3, $1, $2::date, t.calories, t.protein, t.fat, t.carbs, NULL, 0, false, NULL, NULL, NOW(), NOW()
+		FROM totals t
+		ON CONFLICT (user_id, date)
+		DO UPDATE SET
+			calories = EXCLUDED.calories,
+			protein = EXCLUDED.protein,
+			fat = EXCLUDED.fat,
+			carbs = EXCLUDED.carbs,
+			updated_at = NOW()
+	`
+
+	newID := uuid.New().String()
+	_, err := s.db.ExecContext(ctx, query, userID, dateStr, newID)
+	if err != nil {
+		s.log.Error("Failed to sync nutrition to daily_metrics", "error", err, "user_id", userID, "date", dateStr)
+		return
+	}
+
+	s.log.Info("Synced nutrition to daily_metrics", "user_id", userID, "date", dateStr)
 }
 
 // ============================================================================
