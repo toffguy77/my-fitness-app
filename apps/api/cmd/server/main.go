@@ -275,6 +275,7 @@ func main() {
 		dashboardHandler := dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc)
 		dashGroup := v1.Group("/dashboard")
 		dashGroup.Use(middleware.RequireAuth(cfg))
+		dashGroup.Use(middleware.RLSContext(db, log))
 		{
 			dashGroup.GET("/daily/:date", dashboardHandler.GetDailyMetrics)
 			dashGroup.POST("/daily", dashboardHandler.SaveMetric)
