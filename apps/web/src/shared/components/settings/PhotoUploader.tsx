@@ -79,8 +79,8 @@ export function PhotoUploader({
                 disabled={busy}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                    'mx-auto w-full max-w-xs rounded-xl bg-violet-500 px-6 py-3 text-center font-medium text-white transition-colors',
-                    'hover:bg-violet-600',
+                    'mx-auto w-full max-w-xs rounded-xl bg-blue-600 px-6 py-3 text-center font-medium text-white transition-colors',
+                    'hover:bg-blue-700',
                     'disabled:pointer-events-none disabled:opacity-50'
                 )}
             >

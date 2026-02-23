@@ -37,7 +37,7 @@ export function AppleHealthToggle({ enabled, onChange }: AppleHealthToggleProps)
                         onClick={handleToggle}
                         className={cn(
                             'relative inline-flex h-6 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors',
-                            enabled ? 'bg-violet-500' : 'bg-gray-300'
+                            enabled ? 'bg-blue-600' : 'bg-gray-300'
                         )}
                     >
                         <span
@@ -65,7 +65,7 @@ export function AppleHealthToggle({ enabled, onChange }: AppleHealthToggleProps)
             {/* Help link */}
             <button
                 type="button"
-                className="self-start text-sm text-violet-500 transition-colors hover:text-violet-600"
+                className="self-start text-sm text-blue-600 transition-colors hover:text-blue-700"
             >
                 Как настроить Apple Health
             </button>

@@ -46,7 +46,7 @@ function SocialForm({ profile, onSave }: {
 
             <button
                 onClick={handleSave}
-                className="mt-8 w-full rounded-xl bg-violet-500 py-3 text-white transition-colors hover:bg-violet-600"
+                className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-white font-medium transition-colors hover:bg-blue-700"
             >
                 Сохранить
             </button>
