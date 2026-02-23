@@ -39,6 +39,16 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// RefreshRequest represents token refresh request
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+// LogoutRequest represents logout request
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 // Register handles user registration
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
@@ -47,14 +57,14 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.service.Register(c.Request.Context(), req.Email, req.Password, req.Name)
+	result, err := h.service.Register(c.Request.Context(), req.Email, req.Password, req.Name, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		h.log.Errorw("Registration failed", "error", err, "email", req.Email)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	response.Success(c, http.StatusCreated, gin.H{"user": user})
+	response.Success(c, http.StatusCreated, result)
 }
 
 // Login handles user login
@@ -65,7 +75,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.Login(c.Request.Context(), req.Email, req.Password)
+	result, err := h.service.Login(c.Request.Context(), req.Email, req.Password, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		h.log.Errorw("Login failed", "error", err, "email", req.Email)
 		response.Error(c, http.StatusUnauthorized, "Неверные учетные данные")
@@ -75,9 +85,36 @@ func (h *Handler) Login(c *gin.Context) {
 	response.Success(c, http.StatusOK, result)
 }
 
+// Refresh handles token refresh
+func (h *Handler) Refresh(c *gin.Context) {
+	var req RefreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	result, err := h.service.RefreshTokens(c.Request.Context(), req.RefreshToken, c.ClientIP(), c.Request.UserAgent())
+	if err != nil {
+		h.log.Errorw("Token refresh failed", "error", err)
+		response.Error(c, http.StatusUnauthorized, "Invalid or expired refresh token")
+		return
+	}
+
+	response.Success(c, http.StatusOK, result)
+}
+
 // Logout handles user logout
 func (h *Handler) Logout(c *gin.Context) {
-	// TODO: Implement token invalidation if needed
+	var req LogoutRequest
+	// Best-effort parse — body may be empty for legacy clients
+	_ = c.ShouldBindJSON(&req)
+
+	if req.RefreshToken != "" {
+		if err := h.service.RevokeRefreshToken(c.Request.Context(), req.RefreshToken); err != nil {
+			h.log.Errorw("Failed to revoke refresh token on logout", "error", err)
+		}
+	}
+
 	response.SuccessWithMessage(c, http.StatusOK, "Logged out successfully", nil)
 }
 

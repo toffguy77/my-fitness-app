@@ -53,10 +53,12 @@ describe('Auth Types', () => {
                 onboarding_completed: false,
             },
             token: 'jwt-token',
+            refresh_token: 'refresh-token',
         };
 
         expect(response.user.id).toBe('123');
         expect(response.token).toBe('jwt-token');
+        expect(response.refresh_token).toBe('refresh-token');
     });
 
     it('should define AuthError interface correctly', () => {

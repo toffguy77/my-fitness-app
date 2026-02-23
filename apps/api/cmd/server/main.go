@@ -185,6 +185,7 @@ func main() {
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/refresh", authHandler.Refresh)
 			authGroup.POST("/logout", authHandler.Logout)
 			authGroup.GET("/me", middleware.RequireAuth(cfg), authHandler.GetCurrentUser)
 

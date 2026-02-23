@@ -36,7 +36,7 @@ func setupTestHandler(t *testing.T) (*Handler, sqlmock.Sqlmock, func()) {
 }
 
 func TestRegister(t *testing.T) {
-	t.Run("successful registration", func(t *testing.T) {
+	t.Run("successful registration returns tokens", func(t *testing.T) {
 		handler, mock, cleanup := setupTestHandler(t)
 		defer cleanup()
 
@@ -47,6 +47,10 @@ func TestRegister(t *testing.T) {
 
 		mock.ExpectExec("INSERT INTO user_settings").
 			WithArgs(int64(1)).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		mock.ExpectExec("INSERT INTO refresh_tokens").
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
@@ -71,6 +75,8 @@ func TestRegister(t *testing.T) {
 		user := data["user"].(map[string]interface{})
 		assert.Equal(t, "test@example.com", user["email"])
 		assert.Equal(t, "Test User", user["name"])
+		assert.NotEmpty(t, data["token"])
+		assert.NotEmpty(t, data["refresh_token"])
 	})
 
 	t.Run("invalid email", func(t *testing.T) {
@@ -111,7 +117,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	t.Run("successful login", func(t *testing.T) {
+	t.Run("successful login returns tokens", func(t *testing.T) {
 		handler, mock, cleanup := setupTestHandler(t)
 		defer cleanup()
 
@@ -121,6 +127,10 @@ func TestLogin(t *testing.T) {
 			WithArgs("test@example.com").
 			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
 				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
+
+		mock.ExpectExec("INSERT INTO refresh_tokens").
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -141,6 +151,7 @@ func TestLogin(t *testing.T) {
 		assert.Equal(t, "success", response["status"])
 		data := response["data"].(map[string]interface{})
 		assert.NotEmpty(t, data["token"])
+		assert.NotEmpty(t, data["refresh_token"])
 		user := data["user"].(map[string]interface{})
 		assert.Equal(t, "test@example.com", user["email"])
 	})
@@ -186,6 +197,59 @@ func TestLogin(t *testing.T) {
 		handler.Login(c)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+func TestRefresh(t *testing.T) {
+	t.Run("missing refresh_token returns 400", func(t *testing.T) {
+		handler, _, cleanup := setupTestHandler(t)
+		defer cleanup()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]string{})
+		c.Request = httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.Refresh(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestLogout(t *testing.T) {
+	t.Run("logout with refresh token revokes it", func(t *testing.T) {
+		handler, mock, cleanup := setupTestHandler(t)
+		defer cleanup()
+
+		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+			WithArgs(sqlmock.AnyArg()).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(LogoutRequest{RefreshToken: "some-refresh-token"})
+		c.Request = httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.Logout(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("logout without refresh token still succeeds", func(t *testing.T) {
+		handler, _, cleanup := setupTestHandler(t)
+		defer cleanup()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]string{})
+		c.Request = httptest.NewRequest(http.MethodPost, "/auth/logout", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.Logout(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
 

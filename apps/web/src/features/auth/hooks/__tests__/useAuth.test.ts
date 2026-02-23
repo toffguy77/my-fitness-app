@@ -9,6 +9,7 @@ import fc from 'fast-check';
 import { useAuth } from '../useAuth';
 import * as authApi from '../../api/auth';
 import { apiClient } from '@/shared/utils/api-client';
+import * as tokenStorage from '@/shared/utils/token-storage';
 import toast from 'react-hot-toast';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '../../types';
 
@@ -32,6 +33,12 @@ jest.mock('@/shared/utils/api-client', () => ({
         setToken: jest.fn(),
         clearToken: jest.fn(),
     },
+}));
+
+jest.mock('@/shared/utils/token-storage', () => ({
+    setRefreshToken: jest.fn(),
+    getRefreshToken: jest.fn(),
+    clearAuth: jest.fn(),
 }));
 
 describe('useAuth', () => {
@@ -71,13 +78,17 @@ describe('useAuth', () => {
             },
             writable: true,
         });
+
+        // Mock fetch for logout calls
+        global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
     });
 
     describe('Property 5: Successful Login Flow', () => {
-        it('should store token, show success toast, and redirect to dashboard on successful login', async () => {
-            // Feature: auth-screen, Property 5: Successful Login Flow
-            // **Validates: Requirements AC-1.5**
-
+        it('should store token, refresh token, show success toast, and redirect to dashboard on successful login', async () => {
             const mockResponse: AuthResponse = {
                 user: {
                     id: '123',
@@ -87,6 +98,7 @@ describe('useAuth', () => {
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
+                refresh_token: 'mock-refresh-token',
             };
 
             mockLoginUser.mockResolvedValue(mockResponse);
@@ -104,6 +116,9 @@ describe('useAuth', () => {
 
             // Verify token was stored
             expect(apiClient.setToken).toHaveBeenCalledWith('mock-jwt-token');
+
+            // Verify refresh token was stored
+            expect(tokenStorage.setRefreshToken).toHaveBeenCalledWith('mock-refresh-token');
 
             // Verify user data was stored
             expect(mockSetItem).toHaveBeenCalledWith(
@@ -132,6 +147,7 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'mock-jwt-token',
+                refresh_token: 'mock-refresh-token',
             };
 
             mockLoginUser.mockResolvedValue(mockResponse);
@@ -159,9 +175,6 @@ describe('useAuth', () => {
         });
 
         it('should handle login errors and show error toast', async () => {
-            // Feature: auth-screen, Property 5: Successful Login Flow
-            // **Validates: Requirements AC-1.6**
-
             const mockError: AuthError = {
                 code: 'invalid_credentials',
                 message: 'Неверный логин или пароль',
@@ -198,10 +211,7 @@ describe('useAuth', () => {
     });
 
     describe('Property 6: Successful Registration Flow', () => {
-        it('should auto-login, store token, show success toast, and redirect to onboarding on successful registration', async () => {
-            // Feature: auth-screen, Property 6: Successful Registration Flow
-            // **Validates: Requirements AC-2.7**
-
+        it('should auto-login, store tokens, show success toast, and redirect to onboarding on successful registration', async () => {
             const mockResponse: AuthResponse = {
                 user: {
                     id: '456',
@@ -211,6 +221,7 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
+                refresh_token: 'new-user-refresh-token',
             };
 
             mockRegisterUser.mockResolvedValue(mockResponse);
@@ -236,6 +247,9 @@ describe('useAuth', () => {
             // Verify token was stored (auto-login)
             expect(apiClient.setToken).toHaveBeenCalledWith('new-user-jwt-token');
 
+            // Verify refresh token was stored
+            expect(tokenStorage.setRefreshToken).toHaveBeenCalledWith('new-user-refresh-token');
+
             // Verify user data was stored
             expect(mockSetItem).toHaveBeenCalledWith(
                 'user',
@@ -254,9 +268,6 @@ describe('useAuth', () => {
         });
 
         it('should handle registration errors and show error toast', async () => {
-            // Feature: auth-screen, Property 6: Successful Registration Flow
-            // **Validates: Requirements AC-2.8**
-
             const mockError: AuthError = {
                 code: 'user_exists',
                 message: 'Пользователь уже существует',
@@ -310,6 +321,7 @@ describe('useAuth', () => {
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
+                refresh_token: 'mock-refresh-token',
             };
 
             // Create a promise we can control
@@ -364,6 +376,7 @@ describe('useAuth', () => {
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
+                refresh_token: 'mock-refresh-token',
             };
 
             // First login fails
@@ -405,6 +418,7 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
+                refresh_token: 'new-user-refresh-token',
             };
 
             let resolveRegister: (value: AuthResponse) => void;
@@ -465,6 +479,7 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
+                refresh_token: 'new-user-refresh-token',
             };
 
             // First registration fails
@@ -506,20 +521,62 @@ describe('useAuth', () => {
     });
 
     describe('Logout Flow', () => {
-        it('should clear token, remove user data, and redirect to auth page', () => {
+        it('should revoke refresh token, clear auth, and redirect to auth page', async () => {
+            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue('stored-refresh-token');
+
             const { result } = renderHook(() => useAuth());
 
-            act(() => {
-                result.current.logout();
+            await act(async () => {
+                await result.current.logout();
             });
 
-            // Verify token was cleared
+            // Verify backend revocation was attempted
+            expect(global.fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/auth/logout'),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: JSON.stringify({ refresh_token: 'stored-refresh-token' }),
+                })
+            );
+
+            // Verify local auth was cleared
+            expect(tokenStorage.clearAuth).toHaveBeenCalled();
             expect(apiClient.clearToken).toHaveBeenCalled();
 
-            // Verify user data was removed
-            expect(mockRemoveItem).toHaveBeenCalledWith('user');
-
             // Verify redirect to auth page
+            expect(mockPush).toHaveBeenCalledWith('/auth');
+        });
+
+        it('should still clear auth and redirect even if backend revocation fails', async () => {
+            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue('stored-refresh-token');
+            (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+            const { result } = renderHook(() => useAuth());
+
+            await act(async () => {
+                await result.current.logout();
+            });
+
+            // Verify local auth was still cleared
+            expect(tokenStorage.clearAuth).toHaveBeenCalled();
+            expect(apiClient.clearToken).toHaveBeenCalled();
+            expect(mockPush).toHaveBeenCalledWith('/auth');
+        });
+
+        it('should skip backend call if no refresh token exists', async () => {
+            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue(null);
+
+            const { result } = renderHook(() => useAuth());
+
+            await act(async () => {
+                await result.current.logout();
+            });
+
+            // Verify no backend call was made
+            expect(global.fetch).not.toHaveBeenCalled();
+
+            // Verify local auth was cleared
+            expect(tokenStorage.clearAuth).toHaveBeenCalled();
             expect(mockPush).toHaveBeenCalledWith('/auth');
         });
     });

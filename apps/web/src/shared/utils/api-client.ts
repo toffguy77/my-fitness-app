@@ -1,10 +1,29 @@
 /**
  * HTTP API client utility with fetch wrapper
  * Provides centralized request handling with authentication and error management
+ * Includes automatic token refresh on 401 responses
  */
+
+import { getRefreshToken, setToken, setRefreshToken, clearAuth } from './token-storage';
 
 interface RequestOptions extends RequestInit {
     headers?: Record<string, string>;
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+type RefreshSubscriber = (token: string) => void;
+
+let isRefreshing = false;
+let refreshSubscribers: RefreshSubscriber[] = [];
+
+function onTokenRefreshed(newToken: string) {
+    refreshSubscribers.forEach(cb => cb(newToken));
+    refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(cb: RefreshSubscriber) {
+    refreshSubscribers.push(cb);
 }
 
 class ApiClient {
@@ -28,6 +47,10 @@ class ApiClient {
             headers,
         });
 
+        if (response.status === 401 && !this.isAuthEndpoint(url)) {
+            return this.handleUnauthorized<T>(url, options);
+        }
+
         if (!response.ok) {
             const error: any = new Error('API request failed');
             error.response = {
@@ -40,6 +63,107 @@ class ApiClient {
         const data = await response.json();
         // Handle both {data: ...} and direct response formats
         return data.data !== undefined ? data.data : data;
+    }
+
+    /**
+     * Handle 401 by refreshing the token and retrying the request
+     */
+    private handleUnauthorized<T>(url: string, options: RequestOptions): Promise<T> {
+        if (isRefreshing) {
+            // Another refresh is in progress — queue this request
+            return new Promise<T>((resolve, reject) => {
+                addRefreshSubscriber((newToken: string) => {
+                    const headers: Record<string, string> = {
+                        'Content-Type': 'application/json',
+                        ...options.headers,
+                        'Authorization': `Bearer ${newToken}`,
+                    };
+                    fetch(url, { ...options, headers })
+                        .then(async (res) => {
+                            if (!res.ok) {
+                                const error: any = new Error('API request failed');
+                                error.response = {
+                                    status: res.status,
+                                    data: await res.json().catch(() => ({})),
+                                };
+                                throw error;
+                            }
+                            const data = await res.json();
+                            return data.data !== undefined ? data.data : data;
+                        })
+                        .then(resolve)
+                        .catch(reject);
+                });
+            });
+        }
+
+        isRefreshing = true;
+        const refreshToken = getRefreshToken();
+
+        if (!refreshToken) {
+            isRefreshing = false;
+            clearAuth();
+            if (typeof window !== 'undefined') {
+                window.location.href = '/auth';
+            }
+            return Promise.reject(new Error('No refresh token'));
+        }
+
+        return fetch(`${API_BASE}/backend-api/v1/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        })
+            .then(async (res) => {
+                if (!res.ok) {
+                    throw new Error('Refresh failed');
+                }
+                const json = await res.json();
+                const data = json.data !== undefined ? json.data : json;
+                return data;
+            })
+            .then((data: { token: string; refresh_token: string }) => {
+                setToken(data.token);
+                setRefreshToken(data.refresh_token);
+                isRefreshing = false;
+                onTokenRefreshed(data.token);
+
+                // Retry original request with new token
+                const headers: Record<string, string> = {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                    'Authorization': `Bearer ${data.token}`,
+                };
+                return fetch(url, { ...options, headers });
+            })
+            .then(async (res) => {
+                if (!res.ok) {
+                    const error: any = new Error('API request failed');
+                    error.response = {
+                        status: res.status,
+                        data: await res.json().catch(() => ({})),
+                    };
+                    throw error;
+                }
+                const data = await res.json();
+                return data.data !== undefined ? data.data : data;
+            })
+            .catch((err) => {
+                isRefreshing = false;
+                refreshSubscribers = [];
+                clearAuth();
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/auth';
+                }
+                throw err;
+            });
+    }
+
+    /**
+     * Check if URL is an auth endpoint that should not trigger refresh
+     */
+    private isAuthEndpoint(url: string): boolean {
+        return url.includes('/auth/refresh') || url.includes('/auth/login');
     }
 
     /**

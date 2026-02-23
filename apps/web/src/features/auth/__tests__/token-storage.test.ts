@@ -8,6 +8,9 @@ import {
     getToken,
     clearToken,
     isAuthenticated,
+    setRefreshToken,
+    getRefreshToken,
+    clearRefreshToken,
     setUser,
     getUser,
     clearUser,
@@ -53,6 +56,33 @@ describe('Token Storage', () => {
 
             clearToken();
             expect(isAuthenticated()).toBe(false);
+        });
+    });
+
+    describe('Refresh Token Management', () => {
+        it('should store refresh token', () => {
+            const token = 'test-refresh-token';
+            setRefreshToken(token);
+
+            expect(localStorage.getItem('refresh_token')).toBe(token);
+        });
+
+        it('should retrieve refresh token', () => {
+            const token = 'test-refresh-token';
+            localStorage.setItem('refresh_token', token);
+
+            expect(getRefreshToken()).toBe(token);
+        });
+
+        it('should return null when no refresh token exists', () => {
+            expect(getRefreshToken()).toBeNull();
+        });
+
+        it('should clear refresh token', () => {
+            localStorage.setItem('refresh_token', 'test-token');
+            clearRefreshToken();
+
+            expect(getRefreshToken()).toBeNull();
         });
     });
 
@@ -103,13 +133,15 @@ describe('Token Storage', () => {
     });
 
     describe('Clear All Auth Data', () => {
-        it('should clear both token and user data', () => {
+        it('should clear token, refresh token, and user data', () => {
             setToken('test-token');
+            setRefreshToken('test-refresh-token');
             setUser({ id: '123', email: 'test@example.com' });
 
             clearAuth();
 
             expect(getToken()).toBeNull();
+            expect(getRefreshToken()).toBeNull();
             expect(getUser()).toBeNull();
         });
     });
