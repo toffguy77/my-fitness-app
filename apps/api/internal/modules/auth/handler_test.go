@@ -42,8 +42,12 @@ func TestRegister(t *testing.T) {
 
 		mock.ExpectQuery("INSERT INTO users").
 			WithArgs("test@example.com", sqlmock.AnyArg(), "Test User").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", "client", time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", "client", false, time.Now()))
+
+		mock.ExpectExec("INSERT INTO user_settings").
+			WithArgs(int64(1)).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -113,10 +117,10 @@ func TestLogin(t *testing.T) {
 
 		hashedPw, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 
-		mock.ExpectQuery("SELECT id, email, name, password, role, created_at").
+		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -165,10 +169,10 @@ func TestLogin(t *testing.T) {
 
 		hashedPw, _ := bcrypt.GenerateFromPassword([]byte("correctpassword"), bcrypt.DefaultCost)
 
-		mock.ExpectQuery("SELECT id, email, name, password, role, created_at").
+		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

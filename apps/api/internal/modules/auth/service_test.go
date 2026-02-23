@@ -39,8 +39,12 @@ func TestRegisterService(t *testing.T) {
 
 		mock.ExpectQuery("INSERT INTO users").
 			WithArgs("test@example.com", sqlmock.AnyArg(), "Test User").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", "client", time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", "client", false, time.Now()))
+
+		mock.ExpectExec("INSERT INTO user_settings").
+			WithArgs(int64(1)).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		user, err := service.Register(ctx, "test@example.com", "password123", "Test User")
 		assert.NoError(t, err)
@@ -57,8 +61,12 @@ func TestRegisterService(t *testing.T) {
 
 		mock.ExpectQuery("INSERT INTO users").
 			WithArgs("test2@example.com", sqlmock.AnyArg(), "").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "created_at"}).
-				AddRow(2, "test2@example.com", "", "client", time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
+				AddRow(2, "test2@example.com", "", "client", false, time.Now()))
+
+		mock.ExpectExec("INSERT INTO user_settings").
+			WithArgs(int64(2)).
+			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		user, err := service.Register(ctx, "test2@example.com", "password123", "")
 		assert.NoError(t, err)
@@ -75,10 +83,10 @@ func TestLoginService(t *testing.T) {
 
 		hashedPw, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 
-		mock.ExpectQuery("SELECT id, email, name, password, role, created_at").
+		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
 
 		result, err := service.Login(ctx, "test@example.com", "password123")
 		assert.NoError(t, err)
@@ -95,10 +103,10 @@ func TestLoginService(t *testing.T) {
 
 		hashedPw, _ := bcrypt.GenerateFromPassword([]byte("correctpassword"), bcrypt.DefaultCost)
 
-		mock.ExpectQuery("SELECT id, email, name, password, role, created_at").
+		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
 
 		result, err := service.Login(ctx, "test@example.com", "wrongpassword")
 		assert.Error(t, err)
