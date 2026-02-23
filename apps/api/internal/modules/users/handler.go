@@ -3,6 +3,7 @@ package users
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
@@ -74,4 +75,104 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, gin.H{"profile": profile})
+}
+
+// getUserID extracts user_id from gin context
+func getUserID(c *gin.Context) int64 {
+	userIDInterface, _ := c.Get("user_id")
+	userID, _ := userIDInterface.(int64)
+	return userID
+}
+
+// UpdateSettingsRequest represents settings update request
+type UpdateSettingsRequest struct {
+	Language           string `json:"language"`
+	Units              string `json:"units"`
+	TelegramUsername   string `json:"telegram_username"`
+	InstagramUsername  string `json:"instagram_username"`
+	AppleHealthEnabled bool   `json:"apple_health_enabled"`
+}
+
+// UpdateSettings updates user settings
+func (h *Handler) UpdateSettings(c *gin.Context) {
+	userID := getUserID(c)
+
+	var req UpdateSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	settings, err := h.service.UpdateSettings(c.Request.Context(), userID, Settings{
+		Language:           req.Language,
+		Units:              req.Units,
+		TelegramUsername:   req.TelegramUsername,
+		InstagramUsername:  req.InstagramUsername,
+		AppleHealthEnabled: req.AppleHealthEnabled,
+	})
+	if err != nil {
+		h.log.Errorw("Не удалось обновить настройки", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось обновить настройки")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"settings": settings})
+}
+
+// UploadAvatar handles avatar file upload
+func (h *Handler) UploadAvatar(c *gin.Context) {
+	userID := getUserID(c)
+
+	file, header, err := c.Request.FormFile("avatar")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Файл не найден")
+		return
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		response.Error(c, http.StatusBadRequest, "Допустимы только изображения")
+		return
+	}
+
+	if header.Size > 5*1024*1024 {
+		response.Error(c, http.StatusBadRequest, "Максимальный размер файла 5 МБ")
+		return
+	}
+
+	url, err := h.service.UploadAvatar(c.Request.Context(), userID, file, contentType, header.Size)
+	if err != nil {
+		h.log.Errorw("Не удалось загрузить фото", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось загрузить фото")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"avatar_url": url})
+}
+
+// DeleteAvatar removes the user's avatar
+func (h *Handler) DeleteAvatar(c *gin.Context) {
+	userID := getUserID(c)
+
+	if err := h.service.DeleteAvatar(c.Request.Context(), userID); err != nil {
+		h.log.Errorw("Не удалось удалить фото", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось удалить фото")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Фото удалено"})
+}
+
+// CompleteOnboarding marks user onboarding as complete
+func (h *Handler) CompleteOnboarding(c *gin.Context) {
+	userID := getUserID(c)
+
+	if err := h.service.CompleteOnboarding(c.Request.Context(), userID); err != nil {
+		h.log.Errorw("Не удалось завершить онбординг", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось завершить онбординг")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Онбординг завершён"})
 }
