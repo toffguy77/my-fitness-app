@@ -177,6 +177,46 @@ func findSubstring(s, substr string) bool {
 	return false
 }
 
+// rlsContextKey is the context key for RLS-aware database connections
+type rlsContextKey struct{}
+
+// WithRLSConn stores an RLS-aware connection in the context
+func WithRLSConn(ctx context.Context, conn *sql.Conn) context.Context {
+	return context.WithValue(ctx, rlsContextKey{}, conn)
+}
+
+// rlsConnFromContext retrieves the RLS connection from context
+func rlsConnFromContext(ctx context.Context) *sql.Conn {
+	if conn, ok := ctx.Value(rlsContextKey{}).(*sql.Conn); ok {
+		return conn
+	}
+	return nil
+}
+
+// QueryContext executes a query, using RLS connection if available in context
+func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	if conn := rlsConnFromContext(ctx); conn != nil {
+		return conn.QueryContext(ctx, query, args...)
+	}
+	return db.DB.QueryContext(ctx, query, args...)
+}
+
+// QueryRowContext executes a query returning a single row, using RLS connection if available
+func (db *DB) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	if conn := rlsConnFromContext(ctx); conn != nil {
+		return conn.QueryRowContext(ctx, query, args...)
+	}
+	return db.DB.QueryRowContext(ctx, query, args...)
+}
+
+// ExecContext executes a statement, using RLS connection if available in context
+func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	if conn := rlsConnFromContext(ctx); conn != nil {
+		return conn.ExecContext(ctx, query, args...)
+	}
+	return db.DB.ExecContext(ctx, query, args...)
+}
+
 // Health checks database health
 func (db *DB) Health(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
