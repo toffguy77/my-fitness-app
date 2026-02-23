@@ -229,19 +229,109 @@ interface DashboardError {
 }
 
 /**
+ * Raw backend response for daily metrics (flat structure from Go API)
+ * The backend returns snake_case, flat fields — not the nested shape the frontend uses.
+ */
+interface BackendDailyMetrics {
+    id: string;
+    user_id: number;
+    date: string; // ISO timestamp e.g. "2026-02-23T00:00:00Z"
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+    weight?: number | null;
+    steps: number;
+    workout_completed: boolean;
+    workout_type?: string | null;
+    workout_duration?: number | null;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Map flat backend metrics to nested frontend DailyMetrics shape.
+ * Also handles already-mapped data gracefully (e.g. from cache or test mocks).
+ */
+function mapBackendMetrics(raw: BackendDailyMetrics | DailyMetrics | any): DailyMetrics {
+    // If already in frontend shape (has nested 'nutrition' object), return as-is
+    if (raw.nutrition !== undefined && typeof raw.nutrition === 'object') {
+        return raw as DailyMetrics;
+    }
+
+    // Map from flat backend shape to nested frontend shape
+    return {
+        date: raw.date?.includes?.('T') ? raw.date.split('T')[0] : raw.date,
+        userId: String(raw.user_id ?? raw.userId ?? ''),
+        nutrition: {
+            calories: raw.calories || 0,
+            protein: raw.protein || 0,
+            fat: raw.fat || 0,
+            carbs: raw.carbs || 0,
+        },
+        weight: raw.weight ?? null,
+        steps: raw.steps || 0,
+        workout: {
+            completed: raw.workout_completed || false,
+            type: raw.workout_type ?? undefined,
+            duration: raw.workout_duration ?? undefined,
+        },
+        completionStatus: {
+            nutritionFilled: (raw.calories || 0) > 0,
+            weightLogged: raw.weight != null,
+            activityCompleted: raw.workout_completed || false,
+        },
+        createdAt: raw.created_at ? new Date(raw.created_at) : (raw.createdAt ?? new Date()),
+        updatedAt: raw.updated_at ? new Date(raw.updated_at) : (raw.updatedAt ?? new Date()),
+    };
+}
+
+/**
  * API response interfaces
  * These match the shape returned by apiClient AFTER it unwraps the
  * {status, data} envelope — i.e. the inner payload from the backend.
  */
-interface GetDailyMetricsResponse extends DailyMetrics {}
+interface GetDailyMetricsResponse extends BackendDailyMetrics {}
 
 interface GetWeekMetricsResponse {
-    metrics: DailyMetrics[];
+    metrics: BackendDailyMetrics[];
     count: number;
 }
 
 interface GetWeeklyPlanResponse {
-    plan: WeeklyPlan | null;
+    // When no plan: { plan: null }
+    // When plan exists: the plan object directly (no wrapper)
+    plan?: any;
+    // Backend plan fields (snake_case) may appear at top level
+    [key: string]: any;
+}
+
+/**
+ * Map backend weekly plan (snake_case) to frontend WeeklyPlan (camelCase).
+ * Handles already-mapped data gracefully.
+ */
+function mapBackendWeeklyPlan(raw: any): WeeklyPlan {
+    // If already in frontend shape (has camelCase keys), return as-is
+    if (raw.caloriesGoal !== undefined) {
+        return raw as WeeklyPlan;
+    }
+
+    return {
+        id: raw.id,
+        userId: String(raw.user_id ?? raw.userId ?? ''),
+        curatorId: String(raw.curator_id ?? raw.curatorId ?? ''),
+        caloriesGoal: raw.calories_goal ?? 0,
+        proteinGoal: raw.protein_goal ?? 0,
+        fatGoal: raw.fat_goal ?? undefined,
+        carbsGoal: raw.carbs_goal ?? undefined,
+        stepsGoal: raw.steps_goal ?? undefined,
+        startDate: new Date(raw.start_date ?? raw.startDate),
+        endDate: new Date(raw.end_date ?? raw.endDate),
+        isActive: raw.is_active ?? raw.isActive ?? false,
+        createdAt: new Date(raw.created_at ?? raw.createdAt),
+        updatedAt: new Date(raw.updated_at ?? raw.updatedAt),
+        createdBy: String(raw.created_by ?? raw.createdBy ?? ''),
+    };
 }
 
 interface GetTasksResponse {
@@ -571,13 +661,16 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 1000
             );
 
+            // Map flat backend response to nested frontend shape
+            const mapped = mapBackendMetrics(response);
+
             // Update in-memory cache
-            memoryCache.setDailyData(dateStr, response);
+            memoryCache.setDailyData(dateStr, mapped);
 
             set((state) => {
                 const updatedDailyData = {
                     ...state.dailyData,
-                    [dateStr]: response,
+                    [dateStr]: mapped,
                 };
 
                 saveCachedData(CACHE_KEYS.DAILY_DATA, updatedDailyData);
@@ -639,13 +732,16 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 1000
             );
 
+            // Map flat backend responses to nested frontend shape
+            const mappedMetrics = response.metrics.map(mapBackendMetrics);
+
             // Update in-memory cache
-            memoryCache.setWeekData(weekKey, response.metrics);
+            memoryCache.setWeekData(weekKey, mappedMetrics);
 
             set((state) => {
                 const updatedDailyData = { ...state.dailyData };
 
-                response.metrics.forEach((metrics) => {
+                mappedMetrics.forEach((metrics) => {
                     updatedDailyData[metrics.date] = metrics;
                 });
 
@@ -705,12 +801,13 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
                 const response = await apiClient.get<GetWeekMetricsResponse>(url);
 
-                // Update cache and state with fresh data
-                memoryCache.setWeekData(weekKey, response.metrics);
+                // Map and update cache and state with fresh data
+                const mappedMetrics = response.metrics.map(mapBackendMetrics);
+                memoryCache.setWeekData(weekKey, mappedMetrics);
 
                 set((state) => {
                     const updatedDailyData = { ...state.dailyData };
-                    response.metrics.forEach((metrics) => {
+                    mappedMetrics.forEach((metrics) => {
                         updatedDailyData[metrics.date] = metrics;
                     });
                     saveCachedData(CACHE_KEYS.DAILY_DATA, updatedDailyData);
@@ -768,12 +865,13 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     const url = getApiUrl(`/dashboard/week?start=${startStr}&end=${endStr}`);
 
                     const response = await apiClient.get<GetWeekMetricsResponse>(url);
-                    memoryCache.setWeekData(prevWeekKey, response.metrics);
+                    const mappedMetrics = response.metrics.map(mapBackendMetrics);
+                    memoryCache.setWeekData(prevWeekKey, mappedMetrics);
 
                     // Also update store state
                     set((state) => {
                         const updatedDailyData = { ...state.dailyData };
-                        response.metrics.forEach((metrics) => {
+                        mappedMetrics.forEach((metrics) => {
                             updatedDailyData[metrics.date] = metrics;
                         });
                         return { dailyData: updatedDailyData };
@@ -801,12 +899,13 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     const url = getApiUrl(`/dashboard/week?start=${startStr}&end=${endStr}`);
 
                     const response = await apiClient.get<GetWeekMetricsResponse>(url);
-                    memoryCache.setWeekData(nextWeekKey, response.metrics);
+                    const mappedMetrics = response.metrics.map(mapBackendMetrics);
+                    memoryCache.setWeekData(nextWeekKey, mappedMetrics);
 
                     // Also update store state
                     set((state) => {
                         const updatedDailyData = { ...state.dailyData };
-                        response.metrics.forEach((metrics) => {
+                        mappedMetrics.forEach((metrics) => {
                             updatedDailyData[metrics.date] = metrics;
                         });
                         return { dailyData: updatedDailyData };
@@ -907,7 +1006,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
                 switch (type) {
                     case 'weekData':
-                        const weekData = (response as GetWeekMetricsResponse).metrics;
+                        const weekData = (response as GetWeekMetricsResponse).metrics.map(mapBackendMetrics);
                         memoryCache.setWeekData(weekKey, weekData);
                         weekData.forEach((metrics) => {
                             updatedDailyData[metrics.date] = metrics;
@@ -916,7 +1015,9 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                         break;
 
                     case 'weeklyPlan':
-                        const planData = (response as GetWeeklyPlanResponse).plan;
+                        const rawPlanResp = response as GetWeeklyPlanResponse;
+                        const rawPlan = 'plan' in rawPlanResp ? rawPlanResp.plan : rawPlanResp;
+                        const planData = rawPlan ? mapBackendWeeklyPlan(rawPlan) : null;
                         memoryCache.setWeeklyPlan(planData);
                         updatedState.weeklyPlan = planData;
                         saveCachedData(CACHE_KEYS.WEEKLY_PLAN, planData);
@@ -1093,7 +1194,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             // Update in-memory cache
             // Backend returns plan directly when it exists, or {plan: null} when not
-            const plan = 'plan' in response ? response.plan : response as unknown as WeeklyPlan;
+            const rawPlan = 'plan' in response ? response.plan : response;
+            const plan = rawPlan ? mapBackendWeeklyPlan(rawPlan) : null;
             memoryCache.setWeeklyPlan(plan);
 
             set({ weeklyPlan: plan });
