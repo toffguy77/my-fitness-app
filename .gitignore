@@ -12,6 +12,7 @@ bin/
 dist/
 build/
 *.tsbuildinfo
+apps/api/server
 
 # Environment
 .env
