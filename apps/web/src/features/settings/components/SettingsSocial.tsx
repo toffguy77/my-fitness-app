@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { SocialAccountsForm } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
 
@@ -18,15 +18,8 @@ function SocialForm({ profile, onSave }: {
     profile: { settings: { telegram_username: string; instagram_username: string } } | null;
     onSave: (settings: { telegram_username: string; instagram_username: string }) => void;
 }) {
-    const [telegram, setTelegram] = useState('')
-    const [instagram, setInstagram] = useState('')
-
-    useEffect(() => {
-        if (profile) {
-            setTelegram(profile.settings.telegram_username || '')
-            setInstagram(profile.settings.instagram_username || '')
-        }
-    }, [profile])
+    const [telegram, setTelegram] = useState(profile?.settings.telegram_username || '')
+    const [instagram, setInstagram] = useState(profile?.settings.instagram_username || '')
 
     function handleSave() {
         onSave({

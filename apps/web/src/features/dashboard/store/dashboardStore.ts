@@ -291,7 +291,7 @@ function mapBackendMetrics(raw: BackendDailyMetrics | DailyMetrics | any): Daily
  * These match the shape returned by apiClient AFTER it unwraps the
  * {status, data} envelope — i.e. the inner payload from the backend.
  */
-interface GetDailyMetricsResponse extends BackendDailyMetrics {}
+type GetDailyMetricsResponse = BackendDailyMetrics;
 
 interface GetWeekMetricsResponse {
     metrics: BackendDailyMetrics[];
@@ -340,9 +340,9 @@ interface GetTasksResponse {
     week: number;
 }
 
-interface UploadPhotoResponse extends PhotoData {}
+type UploadPhotoResponse = PhotoData;
 
-interface SubmitWeeklyReportResponse extends WeeklyReport {}
+type SubmitWeeklyReportResponse = WeeklyReport;
 
 /**
  * Helper: Get start of week (Monday) for a given date

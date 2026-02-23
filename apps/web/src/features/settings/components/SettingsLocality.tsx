@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { LanguageSelector, UnitSelector, PhotoUploader } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import toast from 'react-hot-toast'
@@ -30,18 +30,12 @@ function ProfileSettingsForm({
 }: {
     profile: { name: string; email: string; avatar_url: string; settings: { language: string; units: string; telegram_username: string; instagram_username: string; apple_health_enabled: boolean } } | null
     onSaveName: (name: string) => void
-    onSaveSettings: (settings: any) => void
+    onSaveSettings: (settings: Record<string, unknown>) => void
     onAvatarUpload: (file: File) => Promise<string>
     onAvatarDelete: () => Promise<void>
 }) {
-    const [name, setName] = useState('')
+    const [name, setName] = useState(profile?.name || '')
     const [nameChanged, setNameChanged] = useState(false)
-
-    useEffect(() => {
-        if (profile) {
-            setName(profile.name || '')
-        }
-    }, [profile])
 
     function handleNameChange(value: string) {
         setName(value)
