@@ -65,15 +65,14 @@ func TestNewService(t *testing.T) {
 			errorMsg:    "SMTP password is required",
 		},
 		{
-			name: "Missing from address",
+			name: "Missing from address defaults to username",
 			config: Config{
 				SMTPHost:     "smtp.yandex.ru",
 				SMTPPort:     465,
 				SMTPUsername: "test@yandex.ru",
 				SMTPPassword: "password",
 			},
-			expectError: true,
-			errorMsg:    "from address is required",
+			expectError: false,
 		},
 	}
 
@@ -91,7 +90,11 @@ func TestNewService(t *testing.T) {
 				assert.Equal(t, tt.config.SMTPHost, service.smtpHost)
 				assert.Equal(t, tt.config.SMTPPort, service.smtpPort)
 				assert.Equal(t, tt.config.SMTPUsername, service.smtpUsername)
-				assert.Equal(t, tt.config.FromAddress, service.fromAddress)
+				expectedFrom := tt.config.FromAddress
+				if expectedFrom == "" {
+					expectedFrom = tt.config.SMTPUsername
+				}
+				assert.Equal(t, expectedFrom, service.fromAddress)
 			}
 		})
 	}
