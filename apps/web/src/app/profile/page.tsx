@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { apiClient } from '@/shared/utils/api-client'
 import { getProfile } from '@/features/settings/api/settings'
 import type { FullProfile } from '@/features/settings/api/settings'
 
 const menuItems = [
-    { label: 'Фудтрекер', href: '/dashboard' },
     { label: 'Настройки профиля', href: '/settings/profile' },
     { label: 'Аккаунты социальных сетей', href: '/settings/social' },
     { label: 'Apple Health', href: '/settings/apple-health' },
@@ -53,22 +53,11 @@ export default function ProfilePage() {
     const initial = (profile.name || profile.email || '?')[0].toUpperCase()
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-md mx-auto px-4 pt-12 pb-8">
-                {/* Back button */}
-                <button
-                    onClick={() => router.back()}
-                    className="mb-6 text-gray-500 text-sm flex items-center gap-1"
-                >
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Назад
-                </button>
-
-                {/* Header */}
-                <h1 className="text-2xl font-bold text-gray-900 mb-8">Мой профиль</h1>
-
+        <DashboardLayout
+            userName={profile.name || profile.email}
+            avatarUrl={profile.avatar_url || undefined}
+        >
+            <div className="w-full max-w-md mx-auto px-4 py-6">
                 {/* Avatar section */}
                 <div className="flex flex-col items-center mb-8">
                     {profile.avatar_url ? (
@@ -114,6 +103,6 @@ export default function ProfilePage() {
                     Выйти из аккаунта
                 </button>
             </div>
-        </div>
+        </DashboardLayout>
     )
 }

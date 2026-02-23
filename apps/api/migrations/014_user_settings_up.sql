@@ -54,5 +54,22 @@ COMMENT ON COLUMN user_settings.instagram_username IS 'Instagram username for so
 COMMENT ON COLUMN user_settings.apple_health_enabled IS 'Whether Apple Health integration is enabled';
 
 -- ============================================================================
+-- 5. Grant permissions for application DB user
+-- ============================================================================
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_settings') THEN
+        EXECUTE 'GRANT ALL ON TABLE user_settings TO PUBLIC';
+        RAISE NOTICE 'Granted permissions on user_settings table';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'user_settings_id_seq') THEN
+        EXECUTE 'GRANT USAGE, SELECT, UPDATE ON SEQUENCE user_settings_id_seq TO PUBLIC';
+        RAISE NOTICE 'Granted permissions on user_settings_id_seq';
+    END IF;
+END $$;
+
+-- ============================================================================
 -- Migration complete
 -- ============================================================================

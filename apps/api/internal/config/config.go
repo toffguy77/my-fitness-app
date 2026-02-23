@@ -43,12 +43,12 @@ type Config struct {
 	// Password Reset
 	ResetPasswordURL string
 
-	// Yandex Cloud S3 (Object Storage)
-	S3AccessKeyID     string
-	S3SecretAccessKey string
-	S3Bucket          string
-	S3Region          string
-	S3Endpoint        string
+	// Weekly Photos S3 (Object Storage)
+	WeeklyPhotosS3AccessKeyID     string
+	WeeklyPhotosS3SecretAccessKey string
+	WeeklyPhotosS3Bucket          string
+	WeeklyPhotosS3Region          string
+	WeeklyPhotosS3Endpoint        string
 
 	// Profile Photos S3 (separate bucket/credentials)
 	ProfilePhotosS3AccessKeyID     string
@@ -101,12 +101,12 @@ func Load() (*Config, error) {
 		// Password Reset
 		ResetPasswordURL: getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
 
-		// Yandex Cloud S3 (Object Storage)
-		S3AccessKeyID:     getEnv("S3_ACCESS_KEY_ID", ""),
-		S3SecretAccessKey: getEnv("S3_SECRET_ACCESS_KEY", ""),
-		S3Bucket:          getEnv("S3_BUCKET", "weekly-progress-photos"),
-		S3Region:          getEnv("S3_REGION", "ru-central1"),
-		S3Endpoint:        getEnv("S3_ENDPOINT", "https://storage.yandexcloud.net"),
+		// Weekly Photos S3 (Object Storage)
+		WeeklyPhotosS3AccessKeyID:     getEnv("WEEKLY_PHOTOS_S3_ACCESS_KEY_ID", ""),
+		WeeklyPhotosS3SecretAccessKey: getEnv("WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY", ""),
+		WeeklyPhotosS3Bucket:          getEnv("WEEKLY_PHOTOS_S3_BUCKET", "weekly-progress-photos"),
+		WeeklyPhotosS3Region:          getEnv("WEEKLY_PHOTOS_S3_REGION", "ru-central1"),
+		WeeklyPhotosS3Endpoint:        getEnv("WEEKLY_PHOTOS_S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
 		// Profile Photos S3 (separate bucket/credentials)
 		ProfilePhotosS3AccessKeyID:     getEnv("PROFILE_PHOTOS_S3_ACCESS_KEY_ID", ""),
