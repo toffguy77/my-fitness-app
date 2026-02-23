@@ -230,30 +230,29 @@ interface DashboardError {
 
 /**
  * API response interfaces
+ * These match the shape returned by apiClient AFTER it unwraps the
+ * {status, data} envelope — i.e. the inner payload from the backend.
  */
-interface GetDailyMetricsResponse {
-    data: DailyMetrics;
-}
+interface GetDailyMetricsResponse extends DailyMetrics {}
 
 interface GetWeekMetricsResponse {
-    data: DailyMetrics[];
+    metrics: DailyMetrics[];
+    count: number;
 }
 
 interface GetWeeklyPlanResponse {
-    data: WeeklyPlan | null;
+    plan: WeeklyPlan | null;
 }
 
 interface GetTasksResponse {
-    data: Task[];
+    tasks: Task[];
+    count: number;
+    week: number;
 }
 
-interface UploadPhotoResponse {
-    data: PhotoData;
-}
+interface UploadPhotoResponse extends PhotoData {}
 
-interface SubmitWeeklyReportResponse {
-    data: WeeklyReport;
-}
+interface SubmitWeeklyReportResponse extends WeeklyReport {}
 
 /**
  * Helper: Get start of week (Monday) for a given date
@@ -573,12 +572,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             );
 
             // Update in-memory cache
-            memoryCache.setDailyData(dateStr, response.data);
+            memoryCache.setDailyData(dateStr, response);
 
             set((state) => {
                 const updatedDailyData = {
                     ...state.dailyData,
-                    [dateStr]: response.data,
+                    [dateStr]: response,
                 };
 
                 saveCachedData(CACHE_KEYS.DAILY_DATA, updatedDailyData);
@@ -641,12 +640,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             );
 
             // Update in-memory cache
-            memoryCache.setWeekData(weekKey, response.data);
+            memoryCache.setWeekData(weekKey, response.metrics);
 
             set((state) => {
                 const updatedDailyData = { ...state.dailyData };
 
-                response.data.forEach((metrics) => {
+                response.metrics.forEach((metrics) => {
                     updatedDailyData[metrics.date] = metrics;
                 });
 
@@ -707,11 +706,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 const response = await apiClient.get<GetWeekMetricsResponse>(url);
 
                 // Update cache and state with fresh data
-                memoryCache.setWeekData(weekKey, response.data);
+                memoryCache.setWeekData(weekKey, response.metrics);
 
                 set((state) => {
                     const updatedDailyData = { ...state.dailyData };
-                    response.data.forEach((metrics) => {
+                    response.metrics.forEach((metrics) => {
                         updatedDailyData[metrics.date] = metrics;
                     });
                     saveCachedData(CACHE_KEYS.DAILY_DATA, updatedDailyData);
@@ -769,12 +768,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     const url = getApiUrl(`/dashboard/week?start=${startStr}&end=${endStr}`);
 
                     const response = await apiClient.get<GetWeekMetricsResponse>(url);
-                    memoryCache.setWeekData(prevWeekKey, response.data);
+                    memoryCache.setWeekData(prevWeekKey, response.metrics);
 
                     // Also update store state
                     set((state) => {
                         const updatedDailyData = { ...state.dailyData };
-                        response.data.forEach((metrics) => {
+                        response.metrics.forEach((metrics) => {
                             updatedDailyData[metrics.date] = metrics;
                         });
                         return { dailyData: updatedDailyData };
@@ -802,12 +801,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     const url = getApiUrl(`/dashboard/week?start=${startStr}&end=${endStr}`);
 
                     const response = await apiClient.get<GetWeekMetricsResponse>(url);
-                    memoryCache.setWeekData(nextWeekKey, response.data);
+                    memoryCache.setWeekData(nextWeekKey, response.metrics);
 
                     // Also update store state
                     set((state) => {
                         const updatedDailyData = { ...state.dailyData };
-                        response.data.forEach((metrics) => {
+                        response.metrics.forEach((metrics) => {
                             updatedDailyData[metrics.date] = metrics;
                         });
                         return { dailyData: updatedDailyData };
@@ -908,7 +907,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
                 switch (type) {
                     case 'weekData':
-                        const weekData = (response as GetWeekMetricsResponse).data;
+                        const weekData = (response as GetWeekMetricsResponse).metrics;
                         memoryCache.setWeekData(weekKey, weekData);
                         weekData.forEach((metrics) => {
                             updatedDailyData[metrics.date] = metrics;
@@ -917,14 +916,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                         break;
 
                     case 'weeklyPlan':
-                        const planData = (response as GetWeeklyPlanResponse).data;
+                        const planData = (response as GetWeeklyPlanResponse).plan;
                         memoryCache.setWeeklyPlan(planData);
                         updatedState.weeklyPlan = planData;
                         saveCachedData(CACHE_KEYS.WEEKLY_PLAN, planData);
                         break;
 
                     case 'tasks':
-                        const tasksData = (response as GetTasksResponse).data;
+                        const tasksData = (response as GetTasksResponse).tasks;
                         memoryCache.setTasks(tasksData);
                         updatedState.tasks = tasksData;
                         saveCachedData(CACHE_KEYS.TASKS, tasksData);
@@ -1093,10 +1092,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             );
 
             // Update in-memory cache
-            memoryCache.setWeeklyPlan(response.data);
+            // Backend returns plan directly when it exists, or {plan: null} when not
+            const plan = 'plan' in response ? response.plan : response as unknown as WeeklyPlan;
+            memoryCache.setWeeklyPlan(plan);
 
-            set({ weeklyPlan: response.data });
-            saveCachedData(CACHE_KEYS.WEEKLY_PLAN, response.data);
+            set({ weeklyPlan: plan });
+            saveCachedData(CACHE_KEYS.WEEKLY_PLAN, plan);
         } catch (error: any) {
             const mappedError = mapError(error);
             set({
@@ -1142,12 +1143,13 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             );
 
             // Update in-memory cache (only for non-filtered requests)
+            const tasksArray = response.tasks;
             if (!weekNumber) {
-                memoryCache.setTasks(response.data);
+                memoryCache.setTasks(tasksArray);
             }
 
-            set({ tasks: response.data });
-            saveCachedData(CACHE_KEYS.TASKS, response.data);
+            set({ tasks: tasksArray });
+            saveCachedData(CACHE_KEYS.TASKS, tasksArray);
         } catch (error: any) {
             const mappedError = mapError(error);
             set({
