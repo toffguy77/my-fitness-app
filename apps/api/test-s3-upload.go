@@ -28,17 +28,17 @@ func main() {
 	}
 
 	// Check if S3 credentials are configured
-	if cfg.S3AccessKeyID == "" || cfg.S3SecretAccessKey == "" {
+	if cfg.WeeklyPhotosS3AccessKeyID == "" || cfg.WeeklyPhotosS3SecretAccessKey == "" {
 		fmt.Println("❌ S3 credentials not found in .env file")
 		fmt.Println()
 		fmt.Println("Please add the following to apps/api/.env:")
 		fmt.Println()
-		fmt.Println("# Yandex Cloud S3")
-		fmt.Println("S3_ACCESS_KEY_ID=your-access-key-id")
-		fmt.Println("S3_SECRET_ACCESS_KEY=your-secret-access-key")
-		fmt.Println("S3_BUCKET=weekly-progress-photos")
-		fmt.Println("S3_REGION=ru-central1")
-		fmt.Println("S3_ENDPOINT=https://storage.yandexcloud.net")
+		fmt.Println("# Weekly Photos S3")
+		fmt.Println("WEEKLY_PHOTOS_S3_ACCESS_KEY_ID=your-access-key-id")
+		fmt.Println("WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY=your-secret-access-key")
+		fmt.Println("WEEKLY_PHOTOS_S3_BUCKET=weekly-progress-photos")
+		fmt.Println("WEEKLY_PHOTOS_S3_REGION=ru-central1")
+		fmt.Println("WEEKLY_PHOTOS_S3_ENDPOINT=https://storage.yandexcloud.net")
 		fmt.Println()
 		fmt.Println("To get credentials:")
 		fmt.Println("1. Go to https://console.yandex.cloud")
@@ -50,10 +50,10 @@ func main() {
 	}
 
 	fmt.Println("✓ S3 credentials found")
-	fmt.Printf("  Bucket: %s\n", cfg.S3Bucket)
-	fmt.Printf("  Region: %s\n", cfg.S3Region)
-	fmt.Printf("  Endpoint: %s\n", cfg.S3Endpoint)
-	fmt.Printf("  Access Key ID: %s...\n", cfg.S3AccessKeyID[:min(10, len(cfg.S3AccessKeyID))])
+	fmt.Printf("  Bucket: %s\n", cfg.WeeklyPhotosS3Bucket)
+	fmt.Printf("  Region: %s\n", cfg.WeeklyPhotosS3Region)
+	fmt.Printf("  Endpoint: %s\n", cfg.WeeklyPhotosS3Endpoint)
+	fmt.Printf("  Access Key ID: %s...\n", cfg.WeeklyPhotosS3AccessKeyID[:min(10, len(cfg.WeeklyPhotosS3AccessKeyID))])
 	fmt.Println()
 
 	// Initialize logger
@@ -62,11 +62,11 @@ func main() {
 	// Initialize S3 client
 	fmt.Println("Initializing S3 client...")
 	s3Config := &storage.S3Config{
-		AccessKeyID:     cfg.S3AccessKeyID,
-		SecretAccessKey: cfg.S3SecretAccessKey,
-		Bucket:          cfg.S3Bucket,
-		Region:          cfg.S3Region,
-		Endpoint:        cfg.S3Endpoint,
+		AccessKeyID:     cfg.WeeklyPhotosS3AccessKeyID,
+		SecretAccessKey: cfg.WeeklyPhotosS3SecretAccessKey,
+		Bucket:          cfg.WeeklyPhotosS3Bucket,
+		Region:          cfg.WeeklyPhotosS3Region,
+		Endpoint:        cfg.WeeklyPhotosS3Endpoint,
 	}
 
 	s3Client, err := storage.NewS3Client(s3Config, log)
@@ -85,7 +85,7 @@ Test Details:
 - Region: %s
 - Upload Time: %s
 - Test ID: %s
-`, time.Now().Format(time.RFC3339), cfg.S3Bucket, cfg.S3Region, time.Now().Format(time.RFC3339), uuid.New().String())
+`, time.Now().Format(time.RFC3339), cfg.WeeklyPhotosS3Bucket, cfg.WeeklyPhotosS3Region, time.Now().Format(time.RFC3339), uuid.New().String())
 
 	// Generate test file key
 	testKey := fmt.Sprintf("test-uploads/test-%s.txt", time.Now().Format("20060102-150405"))

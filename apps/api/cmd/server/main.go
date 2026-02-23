@@ -82,20 +82,20 @@ func main() {
 		"smtp_port", cfg.SMTPPort,
 	)
 
-	// Initialize S3 client (optional, for photo uploads)
+	// Initialize weekly photos S3 client (optional, for photo uploads)
 	var s3Client *storage.S3Client
-	if cfg.S3AccessKeyID != "" && cfg.S3SecretAccessKey != "" {
+	if cfg.WeeklyPhotosS3AccessKeyID != "" && cfg.WeeklyPhotosS3SecretAccessKey != "" {
 		s3Client, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:    cfg.S3AccessKeyID,
-			SecretAccessKey: cfg.S3SecretAccessKey,
-			Bucket:         cfg.S3Bucket,
-			Region:         cfg.S3Region,
-			Endpoint:       cfg.S3Endpoint,
+			AccessKeyID:    cfg.WeeklyPhotosS3AccessKeyID,
+			SecretAccessKey: cfg.WeeklyPhotosS3SecretAccessKey,
+			Bucket:         cfg.WeeklyPhotosS3Bucket,
+			Region:         cfg.WeeklyPhotosS3Region,
+			Endpoint:       cfg.WeeklyPhotosS3Endpoint,
 		}, log)
 		if err != nil {
-			log.Error("Failed to initialize S3 client (photo uploads will be unavailable)", "error", err)
+			log.Error("Failed to initialize weekly photos S3 client", "error", err)
 		} else {
-			log.Info("S3 client initialized successfully", "bucket", cfg.S3Bucket)
+			log.Info("Weekly photos S3 client initialized", "bucket", cfg.WeeklyPhotosS3Bucket)
 		}
 	}
 
@@ -275,7 +275,6 @@ func main() {
 		dashboardHandler := dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc)
 		dashGroup := v1.Group("/dashboard")
 		dashGroup.Use(middleware.RequireAuth(cfg))
-		dashGroup.Use(middleware.RLSContext(db, log))
 		{
 			dashGroup.GET("/daily/:date", dashboardHandler.GetDailyMetrics)
 			dashGroup.POST("/daily", dashboardHandler.SaveMetric)
