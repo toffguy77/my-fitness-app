@@ -24,6 +24,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
+import { getProfile } from '@/features/settings/api/settings'
 import { CalendarNavigator } from '@/features/dashboard/components/CalendarNavigator'
 import { DailyTrackingGrid } from '@/features/dashboard/components/DailyTrackingGrid'
 import {
@@ -50,6 +51,7 @@ export default function DashboardPage() {
     const router = useRouter()
     const [userData, setUserData] = useState<UserData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
 
     const {
         selectedDate,
@@ -104,6 +106,17 @@ export default function DashboardPage() {
 
         checkAuth()
     }, [router])
+
+    // Fetch avatar from profile
+    useEffect(() => {
+        if (!userData) return
+        getProfile()
+            .then(profile => {
+                if (profile.avatar_url) setAvatarUrl(profile.avatar_url)
+                if (profile.name) setUserData(prev => prev ? { ...prev, name: profile.name } : prev)
+            })
+            .catch(() => {})
+    }, [userData?.id])
 
     // Fetch dashboard data on mount (Requirement 13.2)
     useEffect(() => {
@@ -190,7 +203,7 @@ export default function DashboardPage() {
     return (
         <DashboardLayout
             userName={userData.name || userData.email}
-            avatarUrl={undefined} // Avatar URL not yet implemented in backend
+            avatarUrl={avatarUrl}
             activeNavItem="dashboard"
             onNavigate={handleNavigate}
         >
