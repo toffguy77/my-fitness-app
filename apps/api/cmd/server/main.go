@@ -99,6 +99,24 @@ func main() {
 		}
 	}
 
+	// Initialize profile photos S3 client
+	var profilePhotosS3 *storage.S3Client
+	if cfg.ProfilePhotosS3AccessKeyID != "" && cfg.ProfilePhotosS3SecretAccessKey != "" {
+		profilePhotosS3, err = storage.NewS3Client(&storage.S3Config{
+			AccessKeyID:    cfg.ProfilePhotosS3AccessKeyID,
+			SecretAccessKey: cfg.ProfilePhotosS3SecretAccessKey,
+			Bucket:         cfg.ProfilePhotosS3Bucket,
+			Region:         cfg.ProfilePhotosS3Region,
+			Endpoint:       cfg.ProfilePhotosS3Endpoint,
+		}, log)
+		if err != nil {
+			log.Error("Failed to initialize profile photos S3 client", "error", err)
+		} else {
+			log.Info("Profile photos S3 client initialized", "bucket", cfg.ProfilePhotosS3Bucket)
+		}
+	}
+	_ = profilePhotosS3 // Will be used by users handler in Task 5
+
 	// Initialize rate limiter
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
 

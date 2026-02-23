@@ -50,6 +50,13 @@ type Config struct {
 	S3Region          string
 	S3Endpoint        string
 
+	// Profile Photos S3 (separate bucket/credentials)
+	ProfilePhotosS3AccessKeyID     string
+	ProfilePhotosS3SecretAccessKey string
+	ProfilePhotosS3Bucket          string
+	ProfilePhotosS3Region          string
+	ProfilePhotosS3Endpoint        string
+
 	// Logging
 	LogLevel string
 }
@@ -100,6 +107,13 @@ func Load() (*Config, error) {
 		S3Bucket:          getEnv("S3_BUCKET", "weekly-progress-photos"),
 		S3Region:          getEnv("S3_REGION", "ru-central1"),
 		S3Endpoint:        getEnv("S3_ENDPOINT", "https://storage.yandexcloud.net"),
+
+		// Profile Photos S3 (separate bucket/credentials)
+		ProfilePhotosS3AccessKeyID:     getEnv("PROFILE_PHOTOS_S3_ACCESS_KEY_ID", ""),
+		ProfilePhotosS3SecretAccessKey: getEnv("PROFILE_PHOTOS_S3_SECRET_ACCESS_KEY", ""),
+		ProfilePhotosS3Bucket:          getEnv("PROFILE_PHOTOS_S3_BUCKET", "profiles-photos"),
+		ProfilePhotosS3Region:          getEnv("PROFILE_PHOTOS_S3_REGION", "ru-central1"),
+		ProfilePhotosS3Endpoint:        getEnv("PROFILE_PHOTOS_S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
