@@ -723,8 +723,8 @@ func (s *Service) ensureFoodItemExists(ctx context.Context, foodID string, item 
 	}
 
 	s.log.LogBusinessEvent("product_copied_to_food_items", map[string]interface{}{
-		"product_id":    foodID,
-		"food_item_id":  newUUID,
+		"product_id":   foodID,
+		"food_item_id": newUUID,
 	})
 
 	return newUUID, nil

@@ -86,11 +86,11 @@ func main() {
 	var s3Client *storage.S3Client
 	if cfg.WeeklyPhotosS3AccessKeyID != "" && cfg.WeeklyPhotosS3SecretAccessKey != "" {
 		s3Client, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:    cfg.WeeklyPhotosS3AccessKeyID,
+			AccessKeyID:     cfg.WeeklyPhotosS3AccessKeyID,
 			SecretAccessKey: cfg.WeeklyPhotosS3SecretAccessKey,
-			Bucket:         cfg.WeeklyPhotosS3Bucket,
-			Region:         cfg.WeeklyPhotosS3Region,
-			Endpoint:       cfg.WeeklyPhotosS3Endpoint,
+			Bucket:          cfg.WeeklyPhotosS3Bucket,
+			Region:          cfg.WeeklyPhotosS3Region,
+			Endpoint:        cfg.WeeklyPhotosS3Endpoint,
 		}, log)
 		if err != nil {
 			log.Error("Failed to initialize weekly photos S3 client", "error", err)
@@ -103,11 +103,11 @@ func main() {
 	var profilePhotosS3 *storage.S3Client
 	if cfg.ProfilePhotosS3AccessKeyID != "" && cfg.ProfilePhotosS3SecretAccessKey != "" {
 		profilePhotosS3, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:    cfg.ProfilePhotosS3AccessKeyID,
+			AccessKeyID:     cfg.ProfilePhotosS3AccessKeyID,
 			SecretAccessKey: cfg.ProfilePhotosS3SecretAccessKey,
-			Bucket:         cfg.ProfilePhotosS3Bucket,
-			Region:         cfg.ProfilePhotosS3Region,
-			Endpoint:       cfg.ProfilePhotosS3Endpoint,
+			Bucket:          cfg.ProfilePhotosS3Bucket,
+			Region:          cfg.ProfilePhotosS3Region,
+			Endpoint:        cfg.ProfilePhotosS3Endpoint,
 		}, log)
 		if err != nil {
 			log.Error("Failed to initialize profile photos S3 client", "error", err)

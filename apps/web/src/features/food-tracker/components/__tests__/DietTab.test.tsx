@@ -54,6 +54,7 @@ jest.mock('lucide-react', () => ({
     Save: () => <span data-testid="save-icon">💾</span>,
     User: () => <span data-testid="user-icon">👤</span>,
     Bot: () => <span data-testid="bot-icon">🤖</span>,
+    Pencil: () => <span data-testid="pencil-icon">✏</span>,
 }));
 
 // ============================================================================

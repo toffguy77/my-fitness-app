@@ -5,13 +5,13 @@ import Home from '../page'
 describe('Home Page', () => {
     it('renders the heading', () => {
         render(<Home />)
-        const heading = screen.getByText(/Development Environment/i)
+        const heading = screen.getByText(/Питание под контролем/i)
         expect(heading).toBeTruthy()
     })
 
-    it('renders the subtitle', () => {
+    it('renders the CTA link', () => {
         render(<Home />)
-        const subtitle = screen.getByText(/Ready for development/i)
-        expect(subtitle).toBeTruthy()
+        const link = screen.getByText(/Начать бесплатно/i)
+        expect(link).toBeTruthy()
     })
 })
