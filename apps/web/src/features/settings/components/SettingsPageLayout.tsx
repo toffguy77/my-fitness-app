@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
@@ -16,7 +16,6 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
     const router = useRouter()
     const settingsHook = useSettings()
     const { profile, isLoading } = settingsHook
-    const [userName, setUserName] = useState('')
 
     useEffect(() => {
         if (typeof window !== 'undefined' && !localStorage.getItem('auth_token')) {
@@ -24,18 +23,20 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
         }
     }, [router])
 
-    useEffect(() => {
+    const userName = useMemo(() => {
         if (profile) {
-            setUserName(profile.name || profile.email)
-        } else {
-            const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+            return profile.name || profile.email
+        }
+        if (typeof window !== 'undefined') {
+            const userStr = localStorage.getItem('user')
             if (userStr) {
                 try {
                     const user = JSON.parse(userStr)
-                    setUserName(user.name || user.email || '')
-                } catch {}
+                    return user.name || user.email || ''
+                } catch { /* ignore */ }
             }
         }
+        return ''
     }, [profile])
 
     if (isLoading) {
