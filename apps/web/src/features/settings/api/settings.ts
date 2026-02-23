@@ -20,11 +20,13 @@ export interface UserSettings {
 }
 
 export async function getProfile(): Promise<FullProfile> {
-    return apiClient.get<FullProfile>('/backend-api/v1/users/profile')
+    const res = await apiClient.get<{ profile: FullProfile }>('/backend-api/v1/users/profile')
+    return res.profile
 }
 
 export async function updateProfile(data: { name: string }): Promise<FullProfile> {
-    return apiClient.put<FullProfile>('/backend-api/v1/users/profile', data)
+    const res = await apiClient.put<{ profile: FullProfile }>('/backend-api/v1/users/profile', data)
+    return res.profile
 }
 
 export async function updateSettings(settings: Partial<UserSettings>): Promise<{ settings: UserSettings }> {
