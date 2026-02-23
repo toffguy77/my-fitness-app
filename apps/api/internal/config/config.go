@@ -101,12 +101,12 @@ func Load() (*Config, error) {
 		// Password Reset
 		ResetPasswordURL: getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
 
-		// Weekly Photos S3 (Object Storage)
-		WeeklyPhotosS3AccessKeyID:     getEnv("WEEKLY_PHOTOS_S3_ACCESS_KEY_ID", ""),
-		WeeklyPhotosS3SecretAccessKey: getEnv("WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY", ""),
-		WeeklyPhotosS3Bucket:          getEnv("WEEKLY_PHOTOS_S3_BUCKET", "weekly-progress-photos"),
-		WeeklyPhotosS3Region:          getEnv("WEEKLY_PHOTOS_S3_REGION", "ru-central1"),
-		WeeklyPhotosS3Endpoint:        getEnv("WEEKLY_PHOTOS_S3_ENDPOINT", "https://storage.yandexcloud.net"),
+		// Weekly Photos S3 (Object Storage) — falls back to generic S3_* vars
+		WeeklyPhotosS3AccessKeyID:     getEnvWithFallback("WEEKLY_PHOTOS_S3_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID", ""),
+		WeeklyPhotosS3SecretAccessKey: getEnvWithFallback("WEEKLY_PHOTOS_S3_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY", ""),
+		WeeklyPhotosS3Bucket:          getEnvWithFallback("WEEKLY_PHOTOS_S3_BUCKET", "S3_BUCKET", "weekly-progress-photos"),
+		WeeklyPhotosS3Region:          getEnvWithFallback("WEEKLY_PHOTOS_S3_REGION", "S3_REGION", "ru-central1"),
+		WeeklyPhotosS3Endpoint:        getEnvWithFallback("WEEKLY_PHOTOS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
 		// Profile Photos S3 (separate bucket/credentials)
 		ProfilePhotosS3AccessKeyID:     getEnv("PROFILE_PHOTOS_S3_ACCESS_KEY_ID", ""),
@@ -128,6 +128,16 @@ func Load() (*Config, error) {
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvWithFallback(key, fallbackKey, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	if value := os.Getenv(fallbackKey); value != "" {
 		return value
 	}
 	return defaultValue
