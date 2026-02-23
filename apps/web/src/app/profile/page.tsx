@@ -4,17 +4,20 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiClient } from '@/shared/utils/api-client'
+import { getProfile } from '@/features/settings/api/settings'
+import type { FullProfile } from '@/features/settings/api/settings'
 
-interface UserData {
-    id: string
-    email: string
-    name?: string
-    role: string
-}
+const menuItems = [
+    { label: 'Фудтрекер', href: '/dashboard' },
+    { label: 'Настройки профиля', href: '/settings/profile' },
+    { label: 'Аккаунты социальных сетей', href: '/settings/social' },
+    { label: 'Apple Health', href: '/settings/apple-health' },
+]
 
 export default function ProfilePage() {
     const router = useRouter()
-    const [userData, setUserData] = useState<UserData | null>(null)
+    const [profile, setProfile] = useState<FullProfile | null>(null)
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
@@ -22,14 +25,13 @@ export default function ProfilePage() {
             router.push('/auth')
             return
         }
-        const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null
-        if (userStr) {
-            try {
-                setUserData(JSON.parse(userStr))
-            } catch {
+
+        getProfile()
+            .then(setProfile)
+            .catch(() => {
                 router.push('/auth')
-            }
-        }
+            })
+            .finally(() => setLoading(false))
     }, [router])
 
     const handleLogout = () => {
@@ -40,7 +42,7 @@ export default function ProfilePage() {
         router.push('/auth')
     }
 
-    if (!userData) {
+    if (loading || !profile) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
@@ -48,9 +50,12 @@ export default function ProfilePage() {
         )
     }
 
+    const initial = (profile.name || profile.email || '?')[0].toUpperCase()
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-md mx-auto px-4 pt-12 pb-8">
+                {/* Back button */}
                 <button
                     onClick={() => router.back()}
                     className="mb-6 text-gray-500 text-sm flex items-center gap-1"
@@ -61,43 +66,50 @@ export default function ProfilePage() {
                     Назад
                 </button>
 
-                <h1 className="text-2xl font-bold text-gray-900 mb-8">Профиль</h1>
+                {/* Header */}
+                <h1 className="text-2xl font-bold text-gray-900 mb-8">Мой профиль</h1>
 
-                <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-semibold">
-                            {(userData.name || userData.email)[0].toUpperCase()}
+                {/* Avatar section */}
+                <div className="flex flex-col items-center mb-8">
+                    {profile.avatar_url ? (
+                        <img
+                            src={profile.avatar_url}
+                            alt={profile.name || 'Avatar'}
+                            className="w-24 h-24 rounded-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-3xl font-semibold">
+                            {initial}
                         </div>
-                        <div>
-                            {userData.name && (
-                                <p className="text-lg font-semibold text-gray-900">{userData.name}</p>
-                            )}
-                            <p className="text-sm text-gray-500">{userData.email}</p>
-                        </div>
-                    </div>
-
-                    <div className="border-t border-gray-100 pt-4 space-y-3">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-500">ID</span>
-                            <span className="text-gray-900">{userData.id}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-gray-500">Роль</span>
-                            <span className="text-gray-900">{userData.role}</span>
-                        </div>
-                    </div>
+                    )}
+                    {profile.name && (
+                        <p className="mt-3 text-xl font-semibold text-gray-900">{profile.name}</p>
+                    )}
+                    <p className="mt-1 text-sm text-gray-500">{profile.email}</p>
                 </div>
 
-                <Link
-                    href="/forgot-password"
-                    className="block w-full py-3 px-4 rounded-2xl bg-gray-100 text-gray-700 font-medium text-center hover:bg-gray-200 transition-colors mb-3"
-                >
-                    Сбросить пароль
-                </Link>
+                {/* Menu list */}
+                <div className="bg-white rounded-2xl shadow-sm p-2 mb-8">
+                    {menuItems.map((item, index) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`flex items-center justify-between py-3 px-4${
+                                index < menuItems.length - 1 ? ' border-b border-gray-100' : ''
+                            }`}
+                        >
+                            <span className="text-gray-900">{item.label}</span>
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-gray-400">
+                                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        </Link>
+                    ))}
+                </div>
 
+                {/* Logout button */}
                 <button
                     onClick={handleLogout}
-                    className="w-full py-3 px-4 rounded-2xl bg-red-50 text-red-600 font-medium text-center hover:bg-red-100 transition-colors"
+                    className="w-full py-3 text-red-500 text-center font-medium"
                 >
                     Выйти из аккаунта
                 </button>
