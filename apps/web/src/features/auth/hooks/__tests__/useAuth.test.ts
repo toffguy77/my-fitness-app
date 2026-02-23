@@ -84,6 +84,7 @@ describe('useAuth', () => {
                     email: 'test@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
             };
@@ -115,6 +116,42 @@ describe('useAuth', () => {
 
             // Verify redirect to dashboard
             expect(mockPush).toHaveBeenCalledWith('/dashboard');
+
+            // Verify loading state
+            expect(result.current.isLoading).toBe(false);
+            expect(result.current.error).toBeNull();
+        });
+
+        it('should redirect to onboarding when onboarding is not completed', async () => {
+            const mockResponse: AuthResponse = {
+                user: {
+                    id: '123',
+                    email: 'test@example.com',
+                    role: 'client',
+                    created_at: new Date().toISOString(),
+                    onboarding_completed: false,
+                },
+                token: 'mock-jwt-token',
+            };
+
+            mockLoginUser.mockResolvedValue(mockResponse);
+
+            const { result } = renderHook(() => useAuth());
+
+            const loginData: AuthFormData = {
+                email: 'test@example.com',
+                password: 'password123',
+            };
+
+            await act(async () => {
+                await result.current.login(loginData);
+            });
+
+            // Verify token was stored
+            expect(apiClient.setToken).toHaveBeenCalledWith('mock-jwt-token');
+
+            // Verify redirect to onboarding (not dashboard)
+            expect(mockPush).toHaveBeenCalledWith('/onboarding');
 
             // Verify loading state
             expect(result.current.isLoading).toBe(false);
@@ -171,6 +208,7 @@ describe('useAuth', () => {
                     email: 'newuser@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
             };
@@ -269,6 +307,7 @@ describe('useAuth', () => {
                     email: 'test@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
             };
@@ -322,6 +361,7 @@ describe('useAuth', () => {
                     email: 'test@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
             };
@@ -362,6 +402,7 @@ describe('useAuth', () => {
                     email: 'newuser@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
             };
@@ -421,6 +462,7 @@ describe('useAuth', () => {
                     email: 'newuser@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
             };

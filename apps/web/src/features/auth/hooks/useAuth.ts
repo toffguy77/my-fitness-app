@@ -40,7 +40,11 @@ export function useAuth() {
             }
 
             toast.success('Вход выполнен успешно');
-            router.push('/dashboard');
+            if (!response.user.onboarding_completed) {
+                router.push('/onboarding');
+            } else {
+                router.push('/dashboard');
+            }
         } catch (err) {
             const authError = err as AuthError;
             setError(authError);

@@ -26,6 +26,7 @@ export interface AuthResponse {
         name?: string;
         role: 'client' | 'coordinator' | 'super_admin';
         created_at: string;
+        onboarding_completed: boolean;
     };
     token: string; // JWT token
 }
