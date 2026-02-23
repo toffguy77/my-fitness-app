@@ -115,7 +115,7 @@ func main() {
 			log.Info("Profile photos S3 client initialized", "bucket", cfg.ProfilePhotosS3Bucket)
 		}
 	}
-	_ = profilePhotosS3 // Will be used by users handler in Task 5
+	_ = profilePhotosS3 // Used by users handler for avatar uploads
 
 	// Initialize rate limiter
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
@@ -196,7 +196,7 @@ func main() {
 		}
 
 		// Users routes (protected)
-		usersHandler := users.NewHandler(cfg, log)
+		usersHandler := users.NewHandler(db.DB, profilePhotosS3, cfg, log)
 		usersGroup := v1.Group("/users")
 		usersGroup.Use(middleware.RequireAuth(cfg))
 		{

@@ -1,11 +1,13 @@
 package users
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
+	"github.com/burcev/api/internal/shared/storage"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,11 +19,11 @@ type Handler struct {
 }
 
 // NewHandler creates a new users handler
-func NewHandler(cfg *config.Config, log *logger.Logger) *Handler {
+func NewHandler(db *sql.DB, s3 *storage.S3Client, cfg *config.Config, log *logger.Logger) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(cfg, log),
+		service: NewService(db, s3, cfg, log),
 	}
 }
 
