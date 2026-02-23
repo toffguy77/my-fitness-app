@@ -108,12 +108,12 @@ func Load() (*Config, error) {
 		WeeklyPhotosS3Region:          getEnvWithFallback("WEEKLY_PHOTOS_S3_REGION", "S3_REGION", "ru-central1"),
 		WeeklyPhotosS3Endpoint:        getEnvWithFallback("WEEKLY_PHOTOS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
-		// Profile Photos S3 (separate bucket/credentials)
-		ProfilePhotosS3AccessKeyID:     getEnv("PROFILE_PHOTOS_S3_ACCESS_KEY_ID", ""),
-		ProfilePhotosS3SecretAccessKey: getEnv("PROFILE_PHOTOS_S3_SECRET_ACCESS_KEY", ""),
-		ProfilePhotosS3Bucket:          getEnv("PROFILE_PHOTOS_S3_BUCKET", "profiles-photos"),
-		ProfilePhotosS3Region:          getEnv("PROFILE_PHOTOS_S3_REGION", "ru-central1"),
-		ProfilePhotosS3Endpoint:        getEnv("PROFILE_PHOTOS_S3_ENDPOINT", "https://storage.yandexcloud.net"),
+		// Profile Photos S3 — falls back to generic S3_* vars (same account, different bucket)
+		ProfilePhotosS3AccessKeyID:     getEnvWithFallback("PROFILE_PHOTOS_S3_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID", ""),
+		ProfilePhotosS3SecretAccessKey: getEnvWithFallback("PROFILE_PHOTOS_S3_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY", ""),
+		ProfilePhotosS3Bucket:          getEnvWithFallback("PROFILE_PHOTOS_S3_BUCKET", "S3_BUCKET", "profiles-photos"),
+		ProfilePhotosS3Region:          getEnvWithFallback("PROFILE_PHOTOS_S3_REGION", "S3_REGION", "ru-central1"),
+		ProfilePhotosS3Endpoint:        getEnvWithFallback("PROFILE_PHOTOS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
