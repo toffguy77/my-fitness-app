@@ -52,6 +52,9 @@ func NewService(db *sql.DB, s3 *storage.S3Client, cfg *config.Config, log *logge
 
 // GetProfile retrieves the full user profile with settings
 func (s *Service) GetProfile(ctx context.Context, userID int64) (*FullProfile, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database connection not available")
+	}
 	query := `
 		SELECT u.id, u.email, COALESCE(u.name, ''), u.role, COALESCE(u.avatar_url, ''), COALESCE(u.onboarding_completed, false),
 		       COALESCE(s.language, 'ru'), COALESCE(s.units, 'metric'),
@@ -87,6 +90,9 @@ func (s *Service) GetProfile(ctx context.Context, userID int64) (*FullProfile, e
 
 // UpdateProfile updates the user's name and returns the fresh full profile
 func (s *Service) UpdateProfile(ctx context.Context, userID int64, name string) (*FullProfile, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database connection not available")
+	}
 	query := `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2`
 
 	result, err := s.db.ExecContext(ctx, query, name, userID)
@@ -107,6 +113,9 @@ func (s *Service) UpdateProfile(ctx context.Context, userID int64, name string) 
 
 // UpdateSettings upserts user settings and returns the updated settings
 func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Settings) (*Settings, error) {
+	if s.db == nil {
+		return nil, fmt.Errorf("database connection not available")
+	}
 	query := `
 		INSERT INTO user_settings (user_id, language, units, telegram_username, instagram_username, apple_health_enabled, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, NOW())
@@ -180,6 +189,9 @@ func (s *Service) UploadAvatar(ctx context.Context, userID int64, file io.Reader
 
 // DeleteAvatar removes the user's avatar from S3 and clears the URL in the database
 func (s *Service) DeleteAvatar(ctx context.Context, userID int64) error {
+	if s.db == nil {
+		return fmt.Errorf("database connection not available")
+	}
 	// Get current avatar URL
 	var avatarURL sql.NullString
 	query := `SELECT avatar_url FROM users WHERE id = $1`
@@ -223,6 +235,9 @@ func (s *Service) DeleteAvatar(ctx context.Context, userID int64) error {
 
 // CompleteOnboarding marks the user's onboarding as completed
 func (s *Service) CompleteOnboarding(ctx context.Context, userID int64) error {
+	if s.db == nil {
+		return fmt.Errorf("database connection not available")
+	}
 	query := `UPDATE users SET onboarding_completed = true, updated_at = NOW() WHERE id = $1`
 
 	result, err := s.db.ExecContext(ctx, query, userID)
@@ -243,6 +258,9 @@ func (s *Service) CompleteOnboarding(ctx context.Context, userID int64) error {
 
 // EnsureSettingsExist creates default settings for a user if they don't exist
 func (s *Service) EnsureSettingsExist(ctx context.Context, userID int64) error {
+	if s.db == nil {
+		return fmt.Errorf("database connection not available")
+	}
 	query := `INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`
 
 	_, err := s.db.ExecContext(ctx, query, userID)
