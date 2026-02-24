@@ -13,6 +13,7 @@ dist/
 build/
 *.tsbuildinfo
 apps/api/server
+apps/api/import-openfoodfacts
 
 # Environment
 .env
