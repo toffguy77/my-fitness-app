@@ -5,14 +5,18 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -196,16 +200,14 @@ func firstFromCommaList(s string, maxLen int) string {
 	}
 	parts := strings.SplitN(s, ",", 2)
 	result := strings.TrimSpace(parts[0])
-	if len(result) > maxLen {
-		result = result[:maxLen]
-	}
-	return result
+	return truncate(result, maxLen)
 }
 
 // truncate limits a string to maxLen characters.
 func truncate(s string, maxLen int) string {
-	if len(s) > maxLen {
-		return s[:maxLen]
+	if utf8.RuneCountInString(s) > maxLen {
+		runes := []rune(s)
+		return string(runes[:maxLen])
 	}
 	return s
 }
@@ -362,6 +364,7 @@ func processBatch(ctx context.Context, db *sql.DB, batch []*foodRow, s *stats, d
 	}
 
 	if dryRun {
+		// In dry-run, count as "would insert" (all qualifying rows)
 		s.inserted += int64(len(batch))
 		return nil
 	}
@@ -375,9 +378,10 @@ func processBatch(ctx context.Context, db *sql.DB, batch []*foodRow, s *stats, d
 	for _, row := range batch {
 		if err := processRow(ctx, tx, row, s); err != nil {
 			s.errors++
-			// Log but don't abort the whole batch for a single row failure
-			log.Printf("WARN: row barcode=%s error: %v", row.barcode, err)
-			continue
+			// PostgreSQL aborts the entire transaction on any statement error,
+			// so we must abort the batch and let the deferred Rollback() clean up.
+			log.Printf("WARN: row barcode=%s error (batch aborted): %v", row.barcode, err)
+			return fmt.Errorf("row barcode=%s: %w", row.barcode, err)
 		}
 	}
 
@@ -492,12 +496,16 @@ func enrichByNameBrand(ctx context.Context, tx *sql.Tx, row *foodRow) (bool, err
 			additional_nutrients = CASE WHEN additional_nutrients IS NULL THEN $13::jsonb ELSE additional_nutrients END,
 			source = CASE WHEN source = 'database' THEN 'openfoodfacts' ELSE source END,
 			updated_at = NOW()
-		WHERE barcode IS NULL
-		  AND LOWER(name) = LOWER($2)
-		  AND (
-			($3 IS NULL AND (brand IS NULL OR brand = ''))
-			OR LOWER(brand) = LOWER($3)
-		  )
+		WHERE id = (
+			SELECT id FROM food_items
+			WHERE barcode IS NULL
+			  AND LOWER(name) = LOWER($2)
+			  AND (
+				($3 IS NULL AND (brand IS NULL OR brand = ''))
+				OR LOWER(brand) = LOWER($3)
+			  )
+			LIMIT 1
+		)
 	`
 
 	result, err := tx.ExecContext(ctx, query,
@@ -609,6 +617,9 @@ func main() {
 	if cfg.csvPath == "" {
 		log.Fatal("--csv-path is required")
 	}
+	if cfg.batchSize < 1 {
+		log.Fatal("--batch-size must be at least 1")
+	}
 
 	if !cfg.dryRun && cfg.databaseURL == "" {
 		log.Fatal("--database-url is required (or set DATABASE_URL env var)")
@@ -656,6 +667,7 @@ func main() {
 
 		db.SetMaxOpenConns(4)
 		db.SetMaxIdleConns(2)
+		db.SetConnMaxLifetime(time.Hour)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -667,15 +679,23 @@ func main() {
 		log.Println("DRY RUN mode — no database writes")
 	}
 
-	// Process rows
-	ctx := context.Background()
+	// Process rows with graceful shutdown support
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	s := &stats{}
 	batch := make([]*foodRow, 0, cfg.batchSize)
 	startTime := time.Now()
 
 	for {
+		// Check for shutdown signal
+		if ctx.Err() != nil {
+			log.Println("Shutdown signal received, finishing current batch...")
+			break
+		}
+
 		record, err := reader.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
