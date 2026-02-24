@@ -48,13 +48,13 @@ describe('Token Storage', () => {
             expect(getToken()).toBeNull();
         });
 
-        it('should check authentication status', () => {
+        it('should check authentication status based on refresh token', () => {
             expect(isAuthenticated()).toBe(false);
 
-            setToken('test-token');
+            setRefreshToken('test-refresh-token');
             expect(isAuthenticated()).toBe(true);
 
-            clearToken();
+            clearRefreshToken();
             expect(isAuthenticated()).toBe(false);
         });
     });
