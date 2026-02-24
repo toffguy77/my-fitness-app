@@ -56,10 +56,12 @@ export function clearRefreshToken(): void {
 }
 
 /**
- * Check if user is authenticated (has valid token)
+ * Check if user is authenticated.
+ * Uses refresh token as the source of truth since access tokens are short-lived (15 min).
+ * If a refresh token exists, the API client will auto-refresh the access token on 401.
  */
 export function isAuthenticated(): boolean {
-    return getToken() !== null;
+    return getRefreshToken() !== null;
 }
 
 /**
