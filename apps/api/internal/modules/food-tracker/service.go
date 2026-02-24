@@ -840,9 +840,10 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 		offset = 0
 	}
 
-	// Search the products table (main food database) with FTS + ILIKE on name/brand
+	// Search both products and food_items tables via UNION ALL
 	sqlQuery := `
 		WITH matched AS (
+			-- Products table
 			SELECT id::text AS id, name, brand,
 			       COALESCE(category_id::text, '') AS category,
 			       100.0 AS serving_size, 'г' AS serving_unit,
@@ -859,8 +860,38 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 			       COALESCE(created_at, NOW()) AS created_at,
 			       COALESCE(created_at, NOW()) AS updated_at,
 			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
-			              plainto_tsquery('russian', $1)) AS rank
+			              plainto_tsquery('russian', $1)) AS rank,
+			       CASE WHEN source = 'database' THEN 1 ELSE 2 END AS source_priority
 			FROM products
+			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
+			   OR name ILIKE '%' || $1 || '%'
+			   OR brand ILIKE '%' || $1 || '%'
+
+			UNION ALL
+
+			-- Food items table (includes 3M+ imported products)
+			SELECT id::text AS id, name, brand,
+			       COALESCE(category, '') AS category,
+			       COALESCE(serving_size, 100.0) AS serving_size,
+			       COALESCE(serving_unit, 'г') AS serving_unit,
+			       COALESCE(calories_per_100, 0) AS calories_per_100,
+			       COALESCE(protein_per_100, 0) AS protein_per_100,
+			       COALESCE(fat_per_100, 0) AS fat_per_100,
+			       COALESCE(carbs_per_100, 0) AS carbs_per_100,
+			       fiber_per_100 AS fiber_per_100,
+			       sugar_per_100 AS sugar_per_100,
+			       sodium_per_100 AS sodium_per_100,
+			       barcode,
+			       COALESCE(source, 'database') AS source,
+			       COALESCE(verified, false) AS verified,
+			       COALESCE(created_at, NOW()) AS created_at,
+			       COALESCE(updated_at, NOW()) AS updated_at,
+			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
+			              plainto_tsquery('russian', $1)) AS rank,
+			       CASE WHEN verified = true THEN 0
+			            WHEN source = 'database' THEN 1
+			            ELSE 2 END AS source_priority
+			FROM food_items
 			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
 			   OR name ILIKE '%' || $1 || '%'
 			   OR brand ILIKE '%' || $1 || '%'
@@ -869,6 +900,7 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 		FROM matched
 		ORDER BY
 			CASE WHEN name ILIKE $1 || '%' THEN 0 ELSE 1 END,
+			source_priority,
 			rank DESC,
 			name ASC
 		LIMIT $2 OFFSET $3
@@ -890,6 +922,7 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 	for rows.Next() {
 		var item FoodItem
 		var rank float64
+		var sourcePriority int
 		err := rows.Scan(
 			&item.ID,
 			&item.Name,
@@ -910,6 +943,7 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 			&item.CreatedAt,
 			&item.UpdatedAt,
 			&rank,
+			&sourcePriority,
 			&totalCount,
 		)
 		if err != nil {
@@ -939,52 +973,30 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 }
 
 // LookupBarcode looks up a food item by barcode with cascade:
-// local DB → cache (with sliding TTL) → OpenFoodFacts API
+// local DB (food_items with 3M+ products) → OpenFoodFacts API fallback
 func (s *Service) LookupBarcode(ctx context.Context, barcode string) (*BarcodeResponse, error) {
 	if barcode == "" {
 		return nil, fmt.Errorf("штрих-код обязателен")
 	}
 
-	// 1. Check local food_items table
+	// 1. Check local food_items table (fast — indexed, includes 3M+ imported products)
 	food, err := s.getFoodByBarcode(ctx, barcode)
 	if err == nil {
 		return &BarcodeResponse{Found: true, Food: food, Cached: false}, nil
 	}
 
-	// 2. Check barcode_cache with sliding TTL
-	cacheQuery := `
-		SELECT food_data FROM barcode_cache
-		WHERE barcode = $1 AND expires_at > NOW()
-	`
-	var foodData string
-	err = s.db.QueryRowContext(ctx, cacheQuery, barcode).Scan(&foodData)
-	if err == nil {
-		// Cache hit — extend TTL (sliding expiration)
-		extendQuery := `UPDATE barcode_cache SET expires_at = NOW() + INTERVAL '90 days' WHERE barcode = $1`
-		_, _ = s.db.ExecContext(ctx, extendQuery, barcode)
-
-		// Try to get the food item (cache stores reference, item was saved to food_items)
-		food, err := s.getFoodByBarcode(ctx, barcode)
-		if err == nil {
-			return &BarcodeResponse{Found: true, Food: food, Cached: true}, nil
-		}
-	}
-
-	// 3. Call OpenFoodFacts API
+	// 2. Fallback: Call OpenFoodFacts API
 	product, err := s.offClient.LookupBarcode(ctx, barcode)
 	if err != nil {
 		s.log.Warn("OpenFoodFacts lookup failed", "error", err, "barcode", barcode)
 	}
 	if product != nil {
-		// Save to food_items + cache
 		foodItem := s.saveOFFProduct(ctx, barcode, product)
 		if foodItem != nil {
-			s.cacheBarcode(ctx, barcode, foodItem)
 			return &BarcodeResponse{Found: true, Food: foodItem, Cached: false}, nil
 		}
 	}
 
-	// Not found anywhere
 	message := "Продукт не найден. Попробуйте ввести вручную."
 	return &BarcodeResponse{Found: false, Cached: false, Message: &message}, nil
 }
@@ -1110,25 +1122,6 @@ func (s *Service) getFoodByBarcode(ctx context.Context, barcode string) (*FoodIt
 	})
 
 	return &item, nil
-}
-
-// cacheBarcode caches a barcode lookup result
-func (s *Service) cacheBarcode(ctx context.Context, barcode string, food *FoodItem) {
-	// Cache for 90 days
-	query := `
-		INSERT INTO barcode_cache (barcode, food_data, source, cached_at, expires_at)
-		VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '90 days')
-		ON CONFLICT (barcode) DO UPDATE
-		SET food_data = $2, source = $3, cached_at = NOW(), expires_at = NOW() + INTERVAL '90 days'
-	`
-
-	// Simplified food data - in real implementation would serialize to JSON
-	foodData := fmt.Sprintf(`{"id":"%s","name":"%s"}`, food.ID, food.Name)
-
-	_, err := s.db.ExecContext(ctx, query, barcode, foodData, food.Source)
-	if err != nil {
-		s.log.Warn("Failed to cache barcode", "error", err, "barcode", barcode)
-	}
 }
 
 // GetRecentFoods retrieves recently used foods for a user

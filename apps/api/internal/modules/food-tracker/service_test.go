@@ -44,7 +44,7 @@ func TestSearchFoods(t *testing.T) {
 		"id", "name", "brand", "category", "serving_size", "serving_unit",
 		"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
 		"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
-		"created_at", "updated_at", "rank", "total_count",
+		"created_at", "updated_at", "rank", "source_priority", "total_count",
 	}
 
 	t.Run("successfully searches foods with Latin query", func(t *testing.T) {
@@ -58,7 +58,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Apple", nil, "fruits", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID, "Apple", nil, "fruits", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, 1)
 
 		mock.ExpectQuery(`SELECT .+, COUNT`).
 			WithArgs(query, limit, 0).
@@ -86,7 +86,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Яблоко", nil, "фрукты", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID, "Яблоко", nil, "фрукты", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, 1)
 
 		mock.ExpectQuery(`SELECT .+, COUNT`).
 			WithArgs(query, limit, 0).
@@ -187,8 +187,8 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID1, "Курица грудка", nil, "мясо", 100.0, "г", 165.0, 31.0, 3.6, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.2, 2).
-			AddRow(foodID2, "Курица бедро", nil, "мясо", 100.0, "г", 209.0, 26.0, 10.9, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 2)
+			AddRow(foodID1, "Курица грудка", nil, "мясо", 100.0, "г", 165.0, 31.0, 3.6, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.2, 1, 2).
+			AddRow(foodID2, "Курица бедро", nil, "мясо", 100.0, "г", 209.0, 26.0, 10.9, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, 2)
 
 		mock.ExpectQuery(`SELECT .+, COUNT`).
 			WithArgs(query, limit, 0).
@@ -233,7 +233,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Рис белый", nil, "крупы", 100.0, "г", 130.0, 2.7, 0.3, 28.2, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
+			AddRow(foodID, "Рис белый", nil, "крупы", 100.0, "г", 130.0, 2.7, 0.3, 28.2, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, 1)
 
 		mock.ExpectQuery(`SELECT .+, COUNT`).
 			WithArgs(query, limit, 0).
@@ -265,7 +265,7 @@ func TestSearchFoods(t *testing.T) {
 		now := time.Now()
 
 		rows := sqlmock.NewRows(searchColumns).
-			AddRow(foodID, "Молоко 3.2%", nil, "молочные", 100.0, "мл", 60.0, 2.9, 3.2, 4.7, nil, nil, nil, nil, "database", true, now, now, 0.1, 25)
+			AddRow(foodID, "Молоко 3.2%", nil, "молочные", 100.0, "мл", 60.0, 2.9, 3.2, 4.7, nil, nil, nil, nil, "database", true, now, now, 0.1, 1, 25)
 
 		mock.ExpectQuery(`SELECT .+, COUNT`).
 			WithArgs(query, limit, offset).
@@ -289,7 +289,7 @@ func TestSearchFoods(t *testing.T) {
 func TestLookupBarcode(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("returns cached barcode data when available", func(t *testing.T) {
+	t.Run("finds product via products table fallback", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
@@ -297,26 +297,13 @@ func TestLookupBarcode(t *testing.T) {
 		foodID := uuid.New().String()
 		now := time.Now()
 
-		// Step 1: food_items lookup miss (LookupBarcode first checks food_items table)
+		// Step 1: food_items lookup miss
 		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
 			WithArgs(barcode).
 			WillReturnError(sql.ErrNoRows)
 
-		// Step 2: Cache hit
-		cacheRows := sqlmock.NewRows([]string{"food_data"}).
-			AddRow(`{"id":"test"}`)
-
-		mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
-			WithArgs(barcode).
-			WillReturnRows(cacheRows)
-
-		// Step 3: Extend TTL on cache hit
-		mock.ExpectExec(`UPDATE barcode_cache SET expires_at`).
-			WithArgs(barcode).
-			WillReturnResult(sqlmock.NewResult(0, 1))
-
-		// Step 4: food_items lookup after cache hit (to get full item)
-		foodRows := sqlmock.NewRows([]string{
+		// Step 2: products table fallback hit (inside getFoodByBarcode)
+		productRows := sqlmock.NewRows([]string{
 			"id", "name", "brand", "category", "serving_size", "serving_unit",
 			"calories_per_100", "protein_per_100", "fat_per_100", "carbs_per_100",
 			"fiber_per_100", "sugar_per_100", "sodium_per_100", "barcode", "source", "verified",
@@ -324,9 +311,9 @@ func TestLookupBarcode(t *testing.T) {
 		}).
 			AddRow(foodID, "Молоко 3.2%", stringPtr("Простоквашино"), "молочные", 100.0, "мл", 60.0, 2.9, 3.2, 4.7, nil, nil, nil, &barcode, "database", true, now, now)
 
-		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
+		mock.ExpectQuery(`SELECT id::text, name, brand`).
 			WithArgs(barcode).
-			WillReturnRows(foodRows)
+			WillReturnRows(productRows)
 
 		// Execute
 		result, err := service.LookupBarcode(ctx, barcode)
@@ -335,7 +322,7 @@ func TestLookupBarcode(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.True(t, result.Found)
-		assert.True(t, result.Cached)
+		assert.False(t, result.Cached)
 		assert.NotNil(t, result.Food)
 		assert.Equal(t, "Молоко 3.2%", result.Food.Name)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -386,12 +373,12 @@ func TestLookupBarcode(t *testing.T) {
 			WithArgs(barcode).
 			WillReturnError(sql.ErrNoRows)
 
-		// Step 2: Cache miss
-		mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
+		// Step 2: products table miss (inside getFoodByBarcode fallback)
+		mock.ExpectQuery(`SELECT id::text, name, brand`).
 			WithArgs(barcode).
 			WillReturnError(sql.ErrNoRows)
 
-		// Step 3: OFF API will be called but returns 404 for fake barcode → no DB queries → falls through to "not found"
+		// Step 3: OFF API will be called but returns 404 for fake barcode → falls through to "not found"
 
 		// Execute
 		result, err := service.LookupBarcode(ctx, barcode)
@@ -463,17 +450,13 @@ func TestLookupBarcode(t *testing.T) {
 
 		barcode := "4607007777777"
 
-		// Step 1: food_items query returns a real error (not ErrNoRows) — gracefully falls through
+		// Step 1: food_items query returns a real error (not ErrNoRows) — getFoodByBarcode returns error
 		mock.ExpectQuery(`SELECT id, name, brand, category, serving_size, serving_unit`).
 			WithArgs(barcode).
 			WillReturnError(sql.ErrConnDone)
 
-		// Step 2: Cache query also fails (same broken DB)
-		mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
-			WithArgs(barcode).
-			WillReturnError(sql.ErrConnDone)
-
-		// Step 3: OFF API called, returns 404 for fake barcode → not found
+		// getFoodByBarcode returns error on non-ErrNoRows, LookupBarcode falls through to OFF API
+		// Step 2: OFF API called, returns 404 for fake barcode → not found
 
 		// Execute — graceful degradation, returns not found instead of error
 		result, err := service.LookupBarcode(ctx, barcode)
@@ -547,10 +530,12 @@ func TestLookupBarcode(t *testing.T) {
 					WithArgs(tc.barcode).
 					WillReturnError(sql.ErrNoRows)
 
-				// Step 2: Cache miss
-				mock.ExpectQuery(`SELECT food_data FROM barcode_cache`).
+				// Step 2: products table miss (inside getFoodByBarcode fallback)
+				mock.ExpectQuery(`SELECT id::text, name, brand`).
 					WithArgs(tc.barcode).
 					WillReturnError(sql.ErrNoRows)
+
+				// Step 3: OFF API called, returns 404 for unknown barcode → not found
 
 				// Execute
 				result, err := service.LookupBarcode(ctx, tc.barcode)
