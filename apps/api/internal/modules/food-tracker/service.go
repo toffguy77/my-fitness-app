@@ -1124,25 +1124,6 @@ func (s *Service) getFoodByBarcode(ctx context.Context, barcode string) (*FoodIt
 	return &item, nil
 }
 
-// cacheBarcode caches a barcode lookup result
-func (s *Service) cacheBarcode(ctx context.Context, barcode string, food *FoodItem) {
-	// Cache for 90 days
-	query := `
-		INSERT INTO barcode_cache (barcode, food_data, source, cached_at, expires_at)
-		VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '90 days')
-		ON CONFLICT (barcode) DO UPDATE
-		SET food_data = $2, source = $3, cached_at = NOW(), expires_at = NOW() + INTERVAL '90 days'
-	`
-
-	// Simplified food data - in real implementation would serialize to JSON
-	foodData := fmt.Sprintf(`{"id":"%s","name":"%s"}`, food.ID, food.Name)
-
-	_, err := s.db.ExecContext(ctx, query, barcode, foodData, food.Source)
-	if err != nil {
-		s.log.Warn("Failed to cache barcode", "error", err, "barcode", barcode)
-	}
-}
-
 // GetRecentFoods retrieves recently used foods for a user
 func (s *Service) GetRecentFoods(ctx context.Context, userID int64, limit int) (*GetRecentFoodsResponse, error) {
 	startTime := time.Now()
