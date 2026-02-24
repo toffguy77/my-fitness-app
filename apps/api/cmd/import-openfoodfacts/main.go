@@ -501,8 +501,8 @@ func enrichByNameBrand(ctx context.Context, tx *sql.Tx, row *foodRow) (bool, err
 			WHERE barcode IS NULL
 			  AND LOWER(name) = LOWER($2)
 			  AND (
-				($3 IS NULL AND (brand IS NULL OR brand = ''))
-				OR LOWER(brand) = LOWER($3)
+				($3::text IS NULL AND (brand IS NULL OR brand = ''))
+				OR LOWER(brand) = LOWER($3::text)
 			  )
 			LIMIT 1
 		)
