@@ -10,11 +10,12 @@ export interface NavigationItemProps {
     href: string
     isActive?: boolean
     isDisabled?: boolean
+    badge?: number
     onClick?: (id: NavigationItemId) => void
 }
 
 export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>(
-    ({ id, label, icon: Icon, href, isActive = false, isDisabled = false, onClick }, ref) => {
+    ({ id, label, icon: Icon, href, isActive = false, isDisabled = false, badge, onClick }, ref) => {
         const handleClick = () => {
             if (!isDisabled && onClick) {
                 onClick(id)
@@ -58,14 +59,21 @@ export const NavigationItem = forwardRef<HTMLButtonElement, NavigationItemProps>
                 data-testid={`nav-item-${id}`}
                 data-href={href}
             >
-                <Icon
-                    size={iconSize}
-                    aria-hidden="true"
-                    className={cn(
-                        'transition-colors',
-                        isActive && 'stroke-[2.5]'
+                <span className="relative">
+                    <Icon
+                        size={iconSize}
+                        aria-hidden="true"
+                        className={cn(
+                            'transition-colors',
+                            isActive && 'stroke-[2.5]'
+                        )}
+                    />
+                    {badge != null && badge > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+                            {badge > 99 ? '99+' : badge}
+                        </span>
                     )}
-                />
+                </span>
                 <span
                     className={cn(
                         'text-xs transition-all',
