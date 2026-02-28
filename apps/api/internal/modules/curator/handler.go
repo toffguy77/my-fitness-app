@@ -1,0 +1,97 @@
+package curator
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/database"
+	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/response"
+	"github.com/gin-gonic/gin"
+)
+
+// Handler handles curator dashboard requests
+type Handler struct {
+	cfg     *config.Config
+	log     *logger.Logger
+	service ServiceInterface
+}
+
+// NewHandler creates a new curator handler
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handler {
+	return &Handler{
+		cfg:     cfg,
+		log:     log,
+		service: NewService(db, log),
+	}
+}
+
+// getUserID extracts the authenticated user ID from the Gin context
+func (h *Handler) getUserID(c *gin.Context) (int64, bool) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return 0, false
+	}
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор пользователя")
+		return 0, false
+	}
+	return userID, true
+}
+
+// GetClients handles GET /api/v1/curator/clients
+// Returns all active clients for the authenticated curator with KBZHU summaries and alerts
+func (h *Handler) GetClients(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clients, err := h.service.GetClients(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("Failed to get clients", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить список клиентов")
+		return
+	}
+
+	response.Success(c, http.StatusOK, clients)
+}
+
+// GetClientDetail handles GET /api/v1/curator/clients/:id?date=YYYY-MM-DD
+// Returns detailed view of a specific client including food entries, plan, and alerts
+func (h *Handler) GetClientDetail(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientIDStr := c.Param("id")
+	clientID, err := strconv.ParseInt(clientIDStr, 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	date := c.Query("date")
+
+	detail, err := h.service.GetClientDetail(c.Request.Context(), userID, clientID, date)
+	if err != nil {
+		h.log.Error("Failed to get client detail", "error", err, "curator_id", userID, "client_id", clientID)
+		// Check if it's an authorization error
+		if err.Error() == "unauthorized: no active relationship between curator "+strconv.FormatInt(userID, 10)+" and client "+strconv.FormatInt(clientID, 10) {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if err.Error() == "client not found" {
+			response.NotFound(c, "Клиент не найден")
+			return
+		}
+		response.InternalError(c, "Не удалось загрузить данные клиента")
+		return
+	}
+
+	response.Success(c, http.StatusOK, detail)
+}
