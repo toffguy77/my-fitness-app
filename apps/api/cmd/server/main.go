@@ -116,6 +116,25 @@ func main() {
 		}
 	}
 
+	// Initialize chat attachments S3 client
+	var chatS3 *storage.S3Client
+	if cfg.ChatS3AccessKeyID != "" && cfg.ChatS3SecretAccessKey != "" {
+		chatS3, err = storage.NewS3Client(&storage.S3Config{
+			AccessKeyID:     cfg.ChatS3AccessKeyID,
+			SecretAccessKey: cfg.ChatS3SecretAccessKey,
+			Bucket:          cfg.ChatS3Bucket,
+			Region:          cfg.ChatS3Region,
+			Endpoint:        cfg.ChatS3Endpoint,
+		}, log)
+		if err != nil {
+			log.Error("Failed to initialize chat S3 client", "error", err)
+		} else {
+			log.Info("Chat S3 client initialized", "bucket", cfg.ChatS3Bucket)
+		}
+	}
+
+	_ = chatS3 // Used by chat handler (wired in Task 5)
+
 	// Initialize rate limiter
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
 
