@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/shared/utils/cn'
 import { CURATOR_NAVIGATION_ITEMS } from '../utils/curatorNavigationConfig'
+import { useUnreadCount } from '@/features/chat/hooks/useUnreadCount'
 import type { CuratorNavigationItemId } from '../types'
 
 export interface CuratorFooterNavigationProps {
@@ -23,6 +24,7 @@ export function CuratorFooterNavigation({
 }: CuratorFooterNavigationProps) {
     const router = useRouter()
     const [currentActive, setCurrentActive] = useState<CuratorNavigationItemId>(activeItem)
+    const unreadCount = useUnreadCount()
 
     const handleNavigationClick = (itemId: CuratorNavigationItemId) => {
         setCurrentActive(itemId)
@@ -63,14 +65,21 @@ export function CuratorFooterNavigation({
                         data-testid={`nav-item-${item.id}`}
                         data-href={item.href}
                     >
-                        <Icon
-                            size={24}
-                            aria-hidden="true"
-                            className={cn(
-                                'transition-colors',
-                                isActive && 'stroke-[2.5]'
+                        <span className="relative">
+                            <Icon
+                                size={24}
+                                aria-hidden="true"
+                                className={cn(
+                                    'transition-colors',
+                                    isActive && 'stroke-[2.5]'
+                                )}
+                            />
+                            {item.id === 'chats' && unreadCount > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+                                    {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
                             )}
-                        />
+                        </span>
                         <span
                             className={cn(
                                 'text-xs transition-all',
