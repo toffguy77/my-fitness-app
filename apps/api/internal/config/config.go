@@ -57,6 +57,13 @@ type Config struct {
 	ProfilePhotosS3Region          string
 	ProfilePhotosS3Endpoint        string
 
+	// Chat Attachments S3 (separate bucket for chat files)
+	ChatS3AccessKeyID     string
+	ChatS3SecretAccessKey string
+	ChatS3Bucket          string
+	ChatS3Region          string
+	ChatS3Endpoint        string
+
 	// Logging
 	LogLevel string
 }
@@ -114,6 +121,13 @@ func Load() (*Config, error) {
 		ProfilePhotosS3Bucket:          getEnvWithFallback("PROFILE_PHOTOS_S3_BUCKET", "S3_BUCKET", "profiles-photos"),
 		ProfilePhotosS3Region:          getEnvWithFallback("PROFILE_PHOTOS_S3_REGION", "S3_REGION", "ru-central1"),
 		ProfilePhotosS3Endpoint:        getEnvWithFallback("PROFILE_PHOTOS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
+
+		// Chat Attachments S3 — falls back to generic S3_* vars
+		ChatS3AccessKeyID:     getEnvWithFallback("CHAT_ATTACHMENTS_S3_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID", ""),
+		ChatS3SecretAccessKey: getEnvWithFallback("CHAT_ATTACHMENTS_S3_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY", ""),
+		ChatS3Bucket:          getEnvWithFallback("CHAT_ATTACHMENTS_S3_BUCKET", "S3_BUCKET", "chats"),
+		ChatS3Region:          getEnvWithFallback("CHAT_ATTACHMENTS_S3_REGION", "S3_REGION", "ru-central1"),
+		ChatS3Endpoint:        getEnvWithFallback("CHAT_ATTACHMENTS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
