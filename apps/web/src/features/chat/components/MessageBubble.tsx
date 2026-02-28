@@ -19,6 +19,8 @@ import { FileAttachment } from './FileAttachment'
 interface MessageBubbleProps {
     message: Message
     isOwn: boolean
+    /** Optional callback for image messages from others (e.g. curator adding KBZHU) */
+    onImageAction?: (message: Message) => void
 }
 
 // ============================================================================
@@ -37,7 +39,7 @@ function formatTime(dateStr: string): string {
 // Component
 // ============================================================================
 
-export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, onImageAction }: MessageBubbleProps) {
     const alignment = isOwn ? 'justify-end' : 'justify-start'
     const bubbleBg = isOwn ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900'
     const timeColor = isOwn ? 'text-blue-200' : 'text-gray-400'
@@ -73,6 +75,15 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
                                 />
                             </a>
                         )}
+                        {onImageAction && !isOwn && (
+                            <button
+                                type="button"
+                                onClick={() => onImageAction(message)}
+                                className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                            >
+                                Ввести КБЖУ
+                            </button>
+                        )}
                     </div>
                 )
             }
@@ -106,7 +117,7 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
                     </div>
                 )
         }
-    }, [message, bubbleBg])
+    }, [message, bubbleBg, isOwn, onImageAction])
 
     return (
         <div className={`flex ${alignment} mb-2 px-4`}>
