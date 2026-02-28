@@ -58,14 +58,14 @@ func TestGetClients(t *testing.T) {
 		// Client 3: Charlie - no food entries (yellow alert)
 		clientRows := sqlmock.NewRows(clientColumns).
 			AddRow(1, "Alice", "https://avatar.example.com/alice.jpg",
-				1800.0, 120.0, 60.0, 200.0,       // today KBZHU
-				2000.0, 150.0, 70.0, 250.0).       // plan
+				1800.0, 120.0, 60.0, 200.0, // today KBZHU
+				2000.0, 150.0, 70.0, 250.0). // plan
 			AddRow(2, "Bob", nil,
-				800.0, 50.0, 30.0, 100.0,          // today: low calories
-				2000.0, 150.0, 70.0, 250.0).       // plan
+				800.0, 50.0, 30.0, 100.0, // today: low calories
+				2000.0, 150.0, 70.0, 250.0). // plan
 			AddRow(3, "Charlie", nil,
-				0.0, 0.0, 0.0, 0.0,                // no entries
-				2000.0, 150.0, 70.0, 250.0)        // plan
+				0.0, 0.0, 0.0, 0.0, // no entries
+				2000.0, 150.0, 70.0, 250.0) // plan
 
 		mock.ExpectQuery(`SELECT u\.id, u\.full_name, u\.avatar_url`).
 			WithArgs(curatorID).

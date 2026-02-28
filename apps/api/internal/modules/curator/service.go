@@ -344,13 +344,13 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	}
 
 	s.log.LogDatabaseQuery("GetClientDetail", time.Since(startTime), nil, map[string]interface{}{
-		"curator_id":    curatorID,
-		"client_id":     clientID,
-		"date":          targetDate.Format("2006-01-02"),
-		"food_entries":  len(foodEntries),
-		"has_plan":      weeklyPlan != nil,
-		"has_weight":    lastWeight.Valid,
-		"alert_count":   len(alerts),
+		"curator_id":   curatorID,
+		"client_id":    clientID,
+		"date":         targetDate.Format("2006-01-02"),
+		"food_entries": len(foodEntries),
+		"has_plan":     weeklyPlan != nil,
+		"has_weight":   lastWeight.Valid,
+		"alert_count":  len(alerts),
 	})
 
 	return detail, nil
