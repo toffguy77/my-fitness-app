@@ -11,6 +11,8 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/modules/chat"
+	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/dashboard"
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/logs"
@@ -22,6 +24,7 @@ import (
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/ws"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -133,8 +136,6 @@ func main() {
 		}
 	}
 
-	_ = chatS3 // Used by chat handler (wired in Task 5)
-
 	// Initialize rate limiter
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
 
@@ -193,6 +194,12 @@ func main() {
 			"database":    dbStatus,
 		})
 	})
+
+	// WebSocket hub (shared between chat handler for REST and WS)
+	wsHub := ws.NewHub()
+
+	// Chat handler (used for both REST routes and WebSocket)
+	chatHandler := chat.NewHandler(cfg, log, db, chatS3, wsHub)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -306,7 +313,33 @@ func main() {
 			dashGroup.POST("/weekly-report", dashboardHandler.SubmitWeeklyReport)
 			dashGroup.POST("/photo-upload", dashboardHandler.UploadPhoto)
 		}
+
+		// Chat routes (protected, both roles)
+		convGroup := v1.Group("/conversations")
+		convGroup.Use(middleware.RequireAuth(cfg))
+		{
+			convGroup.GET("", chatHandler.GetConversations)
+			convGroup.GET("/unread", chatHandler.GetUnreadCount)
+			convGroup.GET("/:id/messages", chatHandler.GetMessages)
+			convGroup.POST("/:id/messages", chatHandler.SendMessage)
+			convGroup.POST("/:id/upload", chatHandler.UploadAttachment)
+			convGroup.POST("/:id/read", chatHandler.MarkAsRead)
+			convGroup.POST("/:id/messages/:msgId/food-entry", chatHandler.CreateFoodEntry)
+		}
+
+		// Curator routes (coordinator role only)
+		curatorHandler := curator.NewHandler(cfg, log, db)
+		curatorGroup := v1.Group("/curator")
+		curatorGroup.Use(middleware.RequireAuth(cfg))
+		curatorGroup.Use(middleware.RequireRole("coordinator"))
+		{
+			curatorGroup.GET("/clients", curatorHandler.GetClients)
+			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)
+		}
 	}
+
+	// WebSocket endpoint (JWT checked in handler via query param)
+	router.GET("/ws", chatHandler.HandleWebSocket)
 
 	// Create HTTP server
 	srv := &http.Server{
