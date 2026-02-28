@@ -119,7 +119,7 @@ func main() {
 		}
 	}
 
-	// Initialize chat attachments S3 client
+	// Initialize chat S3 client
 	var chatS3 *storage.S3Client
 	if cfg.ChatS3AccessKeyID != "" && cfg.ChatS3SecretAccessKey != "" {
 		chatS3, err = storage.NewS3Client(&storage.S3Config{
