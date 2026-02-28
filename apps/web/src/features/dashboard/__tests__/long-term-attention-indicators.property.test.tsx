@@ -353,13 +353,13 @@ describe('Property 43: Photo Upload Attention Indicator', () => {
                     const shouldShowIndicator = isWeekend(today) && !isUploaded
 
                     if (shouldShowIndicator) {
-                        // Should show attention indicator
-                        const indicator = screen.getByRole('status', { name: /фото не загружено/i })
+                        // Should show attention indicator (AttentionIcon renders with role="img")
+                        const indicator = screen.getByRole('img', { name: /не забудьте загрузить фото/i })
                         expect(indicator).toBeInTheDocument()
                         expect(indicator).toHaveAttribute('data-urgency', 'high')
                     } else {
                         // Should not show attention indicator
-                        const indicator = screen.queryByRole('status', { name: /фото не загружено/i })
+                        const indicator = screen.queryByRole('img', { name: /не забудьте загрузить фото/i })
                         expect(indicator).not.toBeInTheDocument()
                     }
 

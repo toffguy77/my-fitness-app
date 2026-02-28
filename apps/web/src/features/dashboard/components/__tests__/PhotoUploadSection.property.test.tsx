@@ -56,15 +56,12 @@ function createMockFile(
 }
 
 describe('PhotoUploadSection - Property-Based Tests', () => {
-    let originalDate: DateConstructor
-
-    beforeAll(() => {
-        // Save original Date
-        originalDate = global.Date
-    })
-
     beforeEach(() => {
         jest.clearAllMocks()
+
+        // Mock Date to a weekday to avoid weekend reminder alert interfering
+        jest.useFakeTimers()
+        jest.setSystemTime(new Date('2024-01-01T12:00:00Z')) // Monday
 
         // Default mock implementation
         mockUseDashboardStore.mockReturnValue({
@@ -74,19 +71,7 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
     })
 
     afterEach(() => {
-        // Clean up DOM after each test
-        document.body.innerHTML = ''
-
-        // Restore original Date
-        global.Date = originalDate
-
-        // Force garbage collection of any remaining elements
-        jest.clearAllTimers()
-    })
-
-    afterAll(() => {
-        // Ensure Date is restored
-        global.Date = originalDate
+        jest.useRealTimers()
     })
 
     /**
@@ -106,7 +91,7 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                     fc.constantFrom('image/jpeg', 'image/png', 'image/webp'),
                     fc.integer({ min: 1, max: 1 * 1024 * 1024 }), // 1 byte to 1 MB
                     async (mimeType, fileSize) => {
-                        const user = userEvent.setup()
+                        const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
                         mockUseDashboardStore.mockReturnValue({
@@ -155,7 +140,7 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                     fc.constantFrom('image/jpeg', 'image/png', 'image/webp'),
                     fc.integer({ min: 10 * 1024 * 1024 + 1, max: 11 * 1024 * 1024 }), // > 10 MB
                     async (mimeType, fileSize) => {
-                        const user = userEvent.setup()
+                        const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn()
 
                         mockUseDashboardStore.mockReturnValue({
@@ -210,7 +195,7 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                         'video/mp4'
                     ),
                     async (mimeType) => {
-                        const user = userEvent.setup()
+                        const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn()
 
                         mockUseDashboardStore.mockReturnValue({
@@ -262,7 +247,7 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                 fc.asyncProperty(
                     fc.constantFrom('image/jpeg', 'image/png', 'image/webp'),
                     async (mimeType) => {
-                        const user = userEvent.setup()
+                        const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn()
 
                         mockUseDashboardStore.mockReturnValue({
@@ -380,7 +365,7 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                     fc.integer({ min: 1, max: 52 }), // Week number
                     fc.integer({ min: 2020, max: 2030 }), // Year
                     async (weekNumber, year) => {
-                        const user = userEvent.setup()
+                        const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
                         mockUseDashboardStore.mockReturnValue({

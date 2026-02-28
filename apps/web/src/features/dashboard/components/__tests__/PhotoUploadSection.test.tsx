@@ -59,11 +59,20 @@ describe('PhotoUploadSection', () => {
     beforeEach(() => {
         jest.clearAllMocks()
 
+        // Mock Date to a weekday (Monday) to avoid weekend reminder alert
+        // interfering with getByRole('alert') queries in validation tests
+        jest.useFakeTimers()
+        jest.setSystemTime(new Date('2024-01-01T12:00:00Z')) // Monday
+
         // Default mock implementation
         mockUseDashboardStore.mockReturnValue({
             uploadPhoto: jest.fn().mockResolvedValue(undefined),
             isLoading: false,
         } as any)
+    })
+
+    afterEach(() => {
+        jest.useRealTimers()
     })
 
     describe('Rendering', () => {
@@ -200,9 +209,7 @@ describe('PhotoUploadSection', () => {
 
     describe('Weekend Behavior', () => {
         it('shows prominent button on Saturday', () => {
-            // Mock Date to return Saturday
-            const saturday = new Date('2024-01-06') // Saturday
-            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+            jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -216,14 +223,10 @@ describe('PhotoUploadSection', () => {
 
             const button = screen.getByRole('button', { name: /загрузить фото прогресса/i })
             expect(button).toHaveClass('bg-blue-600')
-
-            jest.restoreAllMocks()
         })
 
         it('shows prominent button on Sunday', () => {
-            // Mock Date to return Sunday
-            const sunday = new Date('2024-01-07') // Sunday
-            jest.spyOn(global, 'Date').mockImplementation(() => sunday as any)
+            jest.setSystemTime(new Date('2024-01-07T12:00:00Z')) // Sunday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -237,14 +240,10 @@ describe('PhotoUploadSection', () => {
 
             const button = screen.getByRole('button', { name: /загрузить фото прогресса/i })
             expect(button).toHaveClass('bg-blue-600')
-
-            jest.restoreAllMocks()
         })
 
         it('shows weekend reminder on Saturday', () => {
-            // Mock Date to return Saturday
-            const saturday = new Date('2024-01-06')
-            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+            jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -257,14 +256,10 @@ describe('PhotoUploadSection', () => {
             )
 
             expect(screen.getByText(/не забудьте загрузить фото прогресса/i)).toBeInTheDocument()
-
-            jest.restoreAllMocks()
         })
 
         it('shows weekend reminder on Sunday', () => {
-            // Mock Date to return Sunday
-            const sunday = new Date('2024-01-07')
-            jest.spyOn(global, 'Date').mockImplementation(() => sunday as any)
+            jest.setSystemTime(new Date('2024-01-07T12:00:00Z')) // Sunday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -277,14 +272,10 @@ describe('PhotoUploadSection', () => {
             )
 
             expect(screen.getByText(/не забудьте загрузить фото прогресса/i)).toBeInTheDocument()
-
-            jest.restoreAllMocks()
         })
 
         it('shows regular button on weekday', () => {
-            // Mock Date to return Monday
-            const monday = new Date('2024-01-01')
-            jest.spyOn(global, 'Date').mockImplementation(() => monday as any)
+            // Already on Monday from beforeEach
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -299,14 +290,10 @@ describe('PhotoUploadSection', () => {
             const button = screen.getByRole('button', { name: /загрузить фото/i })
             expect(button).toHaveClass('bg-gray-100')
             expect(button).not.toHaveClass('bg-blue-600')
-
-            jest.restoreAllMocks()
         })
 
         it('does not show weekend reminder on weekday', () => {
-            // Mock Date to return Monday
-            const monday = new Date('2024-01-01')
-            jest.spyOn(global, 'Date').mockImplementation(() => monday as any)
+            // Already on Monday from beforeEach
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -319,14 +306,12 @@ describe('PhotoUploadSection', () => {
             )
 
             expect(screen.queryByText(/не забудьте загрузить фото прогресса/i)).not.toBeInTheDocument()
-
-            jest.restoreAllMocks()
         })
     })
 
     describe('File Upload', () => {
         it('uploads valid JPEG file', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
             mockUseDashboardStore.mockReturnValue({
@@ -358,7 +343,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('uploads valid PNG file', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
             mockUseDashboardStore.mockReturnValue({
@@ -387,7 +372,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('uploads valid WebP file', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
             mockUseDashboardStore.mockReturnValue({
@@ -416,7 +401,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('shows preview after selecting file', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
             mockUseDashboardStore.mockReturnValue({
@@ -447,7 +432,7 @@ describe('PhotoUploadSection', () => {
 
     describe('File Validation', () => {
         it('rejects file exceeding size limit', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
             mockUseDashboardStore.mockReturnValue({
@@ -478,7 +463,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('rejects unsupported file type (GIF)', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
             mockUseDashboardStore.mockReturnValue({
@@ -511,7 +496,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('rejects unsupported file type (PDF)', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
             mockUseDashboardStore.mockReturnValue({
@@ -544,7 +529,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('rejects empty file', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
             mockUseDashboardStore.mockReturnValue({
@@ -575,7 +560,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('clears previous validation error on new upload', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
             mockUseDashboardStore.mockReturnValue({
@@ -661,7 +646,7 @@ describe('PhotoUploadSection', () => {
 
     describe('Error Handling', () => {
         it('handles upload error gracefully', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockRejectedValue(new Error('Upload failed'))
 
             mockUseDashboardStore.mockReturnValue({
@@ -733,7 +718,7 @@ describe('PhotoUploadSection', () => {
         })
 
         it('announces validation errors with role="alert"', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
             mockUseDashboardStore.mockReturnValue({
@@ -784,7 +769,7 @@ describe('PhotoUploadSection', () => {
 
     describe('Week Identifier', () => {
         it('generates correct week identifier format', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
             mockUseDashboardStore.mockReturnValue({
@@ -817,18 +802,8 @@ describe('PhotoUploadSection', () => {
     })
 
     describe('Attention Indicators (Requirement 15.8)', () => {
-        beforeEach(() => {
-            // Setup mock store for attention indicator tests
-            mockUseDashboardStore.mockReturnValue({
-                uploadPhoto: jest.fn().mockResolvedValue(undefined),
-                isLoading: false,
-            } as any)
-        })
-
         it('shows attention icon on Saturday when photo not uploaded', () => {
-            // Mock Date to return Saturday
-            const saturday = new Date('2024-01-06')
-            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+            jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -840,18 +815,13 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            // Should show attention icon
             const icon = screen.getByRole('img', { name: /не забудьте загрузить фото/i })
             expect(icon).toBeInTheDocument()
             expect(icon).toHaveAttribute('data-urgency', 'high')
-
-            jest.restoreAllMocks()
         })
 
         it('shows attention icon on Sunday when photo not uploaded', () => {
-            // Mock Date to return Sunday
-            const sunday = new Date('2024-01-07')
-            jest.spyOn(global, 'Date').mockImplementation(() => sunday as any)
+            jest.setSystemTime(new Date('2024-01-07T12:00:00Z')) // Sunday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -863,17 +833,12 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            // Should show attention icon
             const icon = screen.getByRole('img', { name: /не забудьте загрузить фото/i })
             expect(icon).toBeInTheDocument()
-
-            jest.restoreAllMocks()
         })
 
         it('does not show attention icon on weekday', () => {
-            // Mock Date to return Monday
-            const monday = new Date('2024-01-01')
-            jest.spyOn(global, 'Date').mockImplementation(() => monday as any)
+            // Already on Monday from beforeEach
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -885,16 +850,11 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            // Should not show attention icon
             expect(screen.queryByRole('img', { name: /не забудьте загрузить фото/i })).not.toBeInTheDocument()
-
-            jest.restoreAllMocks()
         })
 
         it('does not show attention icon when photo already uploaded', () => {
-            // Mock Date to return Saturday
-            const saturday = new Date('2024-01-06')
-            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+            jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const photoData = createMockPhotoData()
             const weekStart = new Date('2024-01-01')
@@ -908,16 +868,11 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            // Should not show attention icon
             expect(screen.queryByRole('img', { name: /не забудьте загрузить фото/i })).not.toBeInTheDocument()
-
-            jest.restoreAllMocks()
         })
 
         it('attention icon has pulse animation', () => {
-            // Mock Date to return Saturday
-            const saturday = new Date('2024-01-06')
-            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+            jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -931,14 +886,10 @@ describe('PhotoUploadSection', () => {
 
             const icon = screen.getByRole('img', { name: /не забудьте загрузить фото/i })
             expect(icon).toHaveClass('animate-pulse')
-
-            jest.restoreAllMocks()
         })
 
         it('has proper ARIA label for attention icon', () => {
-            // Mock Date to return Saturday
-            const saturday = new Date('2024-01-06')
-            jest.spyOn(global, 'Date').mockImplementation(() => saturday as any)
+            jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -952,8 +903,6 @@ describe('PhotoUploadSection', () => {
 
             const icon = screen.getByRole('img', { name: /не забудьте загрузить фото прогресса на выходных/i })
             expect(icon).toBeInTheDocument()
-
-            jest.restoreAllMocks()
         })
     })
 })
