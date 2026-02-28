@@ -17,7 +17,7 @@ func (h *Hub) Register(userID int64, client *Client) {
 	defer h.mu.Unlock()
 	// Close existing connection for this user (if reconnecting)
 	if existing, ok := h.clients[userID]; ok {
-		close(existing.send)
+		existing.CloseSend()
 	}
 	h.clients[userID] = client
 }
@@ -26,7 +26,7 @@ func (h *Hub) Unregister(userID int64) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if client, ok := h.clients[userID]; ok {
-		close(client.send)
+		client.CloseSend()
 		delete(h.clients, userID)
 	}
 }

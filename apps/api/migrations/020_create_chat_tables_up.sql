@@ -15,7 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_conversations_curator ON conversations(curator_id
 CREATE TABLE IF NOT EXISTS messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    sender_id BIGINT NOT NULL REFERENCES users(id),
+    sender_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     type TEXT NOT NULL CHECK (type IN ('text', 'image', 'file', 'food_entry')),
     content TEXT,
     metadata JSONB,

@@ -29,7 +29,10 @@ export function useWebSocket() {
             if (!isMounted.current) return
 
             const token = localStorage.getItem('auth_token')
-            if (!token) return
+            if (!token) {
+                // No token available — don't attempt connection or schedule reconnect
+                return
+            }
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
             const ws = new WebSocket(`${protocol}//${window.location.host}/ws?token=${token}`)
@@ -43,8 +46,12 @@ export function useWebSocket() {
             ws.onclose = () => {
                 if (!isMounted.current) return
                 setIsConnected(false)
-                setTimeout(connect, reconnectDelay.current)
-                reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000)
+                // Only reconnect if token still exists (user hasn't logged out)
+                const currentToken = localStorage.getItem('auth_token')
+                if (currentToken) {
+                    setTimeout(connect, reconnectDelay.current)
+                    reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000)
+                }
             }
 
             ws.onmessage = (e) => {

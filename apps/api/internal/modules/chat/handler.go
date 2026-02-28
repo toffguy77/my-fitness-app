@@ -329,15 +329,19 @@ var upgrader = websocket.Upgrader{
 
 // HandleWebSocket handles GET /ws
 func (h *Handler) HandleWebSocket(c *gin.Context) {
-	// Extract JWT from query param
+	// Extract JWT from query param (standard browser WebSocket limitation —
+	// browsers don't support custom headers in the WebSocket constructor)
 	tokenStr := c.Query("token")
 	if tokenStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "token required"})
 		return
 	}
 
-	// Parse JWT manually
+	// Parse JWT with algorithm validation to prevent algorithm substitution attacks
 	token, err := jwt.ParseWithClaims(tokenStr, &middleware.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
 		return []byte(h.cfg.JWTSecret), nil
 	})
 	if err != nil || !token.Valid {
@@ -351,36 +355,50 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 
+	// Capture values from Gin context before upgrading to WebSocket.
+	// The Gin context lifecycle ends after the HTTP handler returns,
+	// so we must not use it inside goroutines or WebSocket callbacks.
+	userID := claims.UserID
+	requestCtx := c.Request.Context()
+
 	// Upgrade HTTP connection to WebSocket
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		h.log.Error("WebSocket upgrade failed", "error", err, "user_id", claims.UserID)
+		h.log.Error("WebSocket upgrade failed", "error", err, "user_id", userID)
 		return
 	}
 
 	// Create client and register in hub
-	client := ws.NewClient(h.hub, conn, claims.UserID)
-	h.hub.Register(claims.UserID, client)
+	client := ws.NewClient(h.hub, conn, userID)
+	h.hub.Register(userID, client)
 
-	h.log.Info("WebSocket connected", "user_id", claims.UserID)
+	h.log.Info("WebSocket connected", "user_id", userID)
 
 	// Start write pump in goroutine
 	go client.WritePump()
 
 	// Start read pump (blocks until connection closes)
 	// Forward typing events to the other participant in that conversation
-	client.ReadPump(func(userID int64, event ws.IncomingEvent) {
+	_ = requestCtx // available if needed for DB queries in callbacks
+	client.ReadPump(func(senderID int64, event ws.IncomingEvent) {
 		if event.Type == ws.EventTyping {
 			var typing ws.TypingData
 			if err := json.Unmarshal(event.Data, &typing); err != nil {
 				h.log.Warn("Failed to unmarshal typing event", "error", err)
 				return
 			}
-			typing.UserID = userID
+			typing.UserID = senderID
 
-			// Get the other participant and forward the typing event
-			otherID, err := h.getOtherParticipantID(c, typing.ConversationID, userID)
-			if err != nil {
+			// Look up the other participant using a fresh background context
+			query := `
+				SELECT CASE
+					WHEN client_id = $2 THEN curator_id
+					ELSE client_id
+				END
+				FROM conversations WHERE id = $1
+			`
+			var otherID int64
+			if err := h.db.DB.QueryRow(query, typing.ConversationID, senderID).Scan(&otherID); err != nil {
 				return
 			}
 
