@@ -46,7 +46,9 @@ export function useAuth() {
             }
 
             toast.success('Вход выполнен успешно');
-            if (!response.user.onboarding_completed) {
+            if (response.user.role === 'coordinator') {
+                router.push('/curator');
+            } else if (!response.user.onboarding_completed) {
                 router.push('/onboarding');
             } else {
                 router.push('/dashboard');

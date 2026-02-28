@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavigationItem } from './NavigationItem'
 import { NAVIGATION_ITEMS } from '../utils/navigationConfig'
+import { useUnreadCount } from '@/features/chat/hooks/useUnreadCount'
 import type { NavigationItemId } from '../types'
 
 export interface FooterNavigationProps {
@@ -25,6 +26,7 @@ export function FooterNavigation({
 }: FooterNavigationProps) {
     const router = useRouter()
     const [currentActive, setCurrentActive] = useState<NavigationItemId>(activeItem)
+    const unreadCount = useUnreadCount()
 
     const handleNavigationClick = (itemId: NavigationItemId) => {
         // Find the navigation item config
@@ -65,6 +67,7 @@ export function FooterNavigation({
                     href={item.href}
                     isActive={currentActive === item.id}
                     isDisabled={item.isDisabled}
+                    badge={item.id === 'chat' ? unreadCount : undefined}
                     onClick={handleNavigationClick}
                 />
             ))}
