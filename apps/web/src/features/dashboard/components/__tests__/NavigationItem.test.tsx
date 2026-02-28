@@ -45,7 +45,7 @@ describe('NavigationItem', () => {
                             expect(navItem).toHaveAttribute('aria-current', 'page')
 
                             // Label should be bold/semibold
-                            const label = navItem?.querySelector('span')
+                            const label = navItem?.querySelector(':scope > span:last-of-type')
                             expect(label).toHaveClass('font-semibold')
                         } else {
                             // Inactive state: grey color
@@ -239,7 +239,7 @@ describe('NavigationItem', () => {
             expect(navItem).toHaveClass('text-blue-600')
             expect(navItem).toHaveAttribute('aria-current', 'page')
 
-            const label = navItem?.querySelector('span')
+            const label = navItem?.querySelector(':scope > span:last-of-type')
             expect(label).toHaveClass('font-semibold')
         })
 
