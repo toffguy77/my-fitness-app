@@ -20,6 +20,8 @@ interface MessageListProps {
     isLoading: boolean
     hasMore: boolean
     onLoadMore: () => void
+    /** Optional callback for image action button on messages from others */
+    onImageAction?: (message: Message) => void
 }
 
 // ============================================================================
@@ -45,7 +47,7 @@ function getCurrentUserId(): number | null {
 // Component
 // ============================================================================
 
-export function MessageList({ messages, isLoading, hasMore, onLoadMore }: MessageListProps) {
+export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageAction }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const prevLengthRef = useRef(0)
 
@@ -104,6 +106,7 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore }: Messag
                     key={msg.id}
                     message={msg}
                     isOwn={currentUserId !== null && msg.sender_id === currentUserId}
+                    onImageAction={onImageAction}
                 />
             ))}
         </div>
