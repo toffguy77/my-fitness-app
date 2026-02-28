@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,10 +16,11 @@ const (
 
 // Client represents a single WebSocket connection
 type Client struct {
-	hub    *Hub
-	conn   *websocket.Conn
-	send   chan OutgoingEvent
-	userID int64
+	hub       *Hub
+	conn      *websocket.Conn
+	send      chan OutgoingEvent
+	userID    int64
+	closeOnce sync.Once
 }
 
 func NewClient(hub *Hub, conn *websocket.Conn, userID int64) *Client {
@@ -28,6 +30,13 @@ func NewClient(hub *Hub, conn *websocket.Conn, userID int64) *Client {
 		send:   make(chan OutgoingEvent, 256),
 		userID: userID,
 	}
+}
+
+// CloseSend safely closes the send channel exactly once, preventing double-close panics.
+func (c *Client) CloseSend() {
+	c.closeOnce.Do(func() {
+		close(c.send)
+	})
 }
 
 // ReadPump reads incoming JSON events from the WebSocket connection.
