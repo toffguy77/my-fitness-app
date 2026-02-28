@@ -2,6 +2,18 @@ import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import Home from '../page'
 
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({
+        push: jest.fn(),
+        replace: jest.fn(),
+        prefetch: jest.fn(),
+    }),
+}))
+
+jest.mock('@/shared/utils/token-storage', () => ({
+    isAuthenticated: () => false,
+}))
+
 describe('Home Page', () => {
     it('renders the heading', () => {
         render(<Home />)
