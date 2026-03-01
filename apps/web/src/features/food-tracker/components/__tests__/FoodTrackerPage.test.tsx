@@ -321,22 +321,7 @@ describe('FoodTrackerPage', () => {
 
             const rootElement = container.firstChild;
             expect(rootElement).toHaveClass('custom-class');
-            expect(rootElement).toHaveClass('min-h-screen');
-        });
-    });
-
-    describe('footer navigation', () => {
-        it('renders footer navigation', () => {
-            render(<FoodTrackerPage />);
-
-            expect(screen.getByTestId('footer-navigation')).toBeInTheDocument();
-        });
-
-        it('has padding bottom for footer navigation space', () => {
-            const { container } = render(<FoodTrackerPage />);
-
-            const rootElement = container.firstChild as HTMLElement;
-            expect(rootElement.style.paddingBottom).toMatch(/calc.*5rem.*safe-area-inset-bottom/);
+            expect(rootElement).toHaveClass('bg-gray-50');
         });
     });
 

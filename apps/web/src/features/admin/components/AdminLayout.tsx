@@ -27,6 +27,10 @@ export const AdminLayout = forwardRef<HTMLDivElement, AdminLayoutProps>(
     }, ref) => {
         const router = useRouter()
 
+        const handleLogoClick = () => {
+            router.push('/admin')
+        }
+
         const handleAvatarClick = () => {
             router.push('/profile')
         }
@@ -50,6 +54,7 @@ export const AdminLayout = forwardRef<HTMLDivElement, AdminLayoutProps>(
                 <DashboardHeader
                     userName={userName}
                     avatarUrl={avatarUrl}
+                    onLogoClick={handleLogoClick}
                     onAvatarClick={handleAvatarClick}
                     onNotificationClick={handleNotificationClick}
                 />

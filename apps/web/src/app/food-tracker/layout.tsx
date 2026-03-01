@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 
-export default function NotificationsLayout({
+export default function FoodTrackerLayout({
     children,
 }: {
     children: React.ReactNode
@@ -17,7 +17,7 @@ export default function NotificationsLayout({
     }, [])
 
     return (
-        <DashboardLayout userName={userName} activeNavItem="notifications">
+        <DashboardLayout userName={userName} activeNavItem="food-tracker">
             {children}
         </DashboardLayout>
     )

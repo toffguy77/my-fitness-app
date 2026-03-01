@@ -33,6 +33,10 @@ export const CuratorLayout = forwardRef<HTMLDivElement, CuratorLayoutProps>(
     }, ref) => {
         const router = useRouter()
 
+        const handleLogoClick = () => {
+            router.push('/curator')
+        }
+
         const handleAvatarClick = () => {
             router.push('/profile')
         }
@@ -56,6 +60,7 @@ export const CuratorLayout = forwardRef<HTMLDivElement, CuratorLayoutProps>(
                 <DashboardHeader
                     userName={userName}
                     avatarUrl={avatarUrl}
+                    onLogoClick={handleLogoClick}
                     onAvatarClick={handleAvatarClick}
                     onNotificationClick={handleNotificationClick}
                 />

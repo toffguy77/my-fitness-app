@@ -16,9 +16,7 @@ import { FoodTrackerTabs } from './FoodTrackerTabs';
 import { DietTab } from './DietTab';
 import { RecommendationsTab } from './RecommendationsTab';
 import { useFoodTracker } from '../hooks/useFoodTracker';
-import { FooterNavigation } from '@/features/dashboard/components/FooterNavigation';
 import type { FoodTrackerTab } from '../types';
-import type { NavigationItemId } from '@/features/dashboard/types';
 
 // ============================================================================
 // Types
@@ -67,16 +65,8 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
         setActiveTab(tab);
     }, []);
 
-    // Handle navigation (FooterNavigation handles routing internally)
-    const handleNavigate = useCallback((_itemId: NavigationItemId) => {
-        // Navigation is handled by FooterNavigation component
-    }, []);
-
     return (
-        <div
-            className={`min-h-screen bg-gray-50 ${className}`}
-            style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
-        >
+        <div className={`bg-gray-50 ${className}`}>
             {/* Offline indicator */}
             {isOffline && (
                 <div
@@ -154,11 +144,6 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                 )}
             </div>
 
-            {/* Footer Navigation */}
-            <FooterNavigation
-                activeItem="food-tracker"
-                onNavigate={handleNavigate}
-            />
         </div>
     );
 }
