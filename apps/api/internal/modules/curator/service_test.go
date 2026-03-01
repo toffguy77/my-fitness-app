@@ -202,10 +202,17 @@ func TestGetClientDetail(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(planColumns).
 				AddRow(2000.0, 150.0, 70.0, 250.0))
 
-		// Last weight
-		mock.ExpectQuery(`SELECT weight FROM daily_metrics`).
+		// Weight history
+		mock.ExpectQuery(`SELECT date, weight FROM daily_metrics`).
 			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"weight"}).AddRow(75.5))
+			WillReturnRows(sqlmock.NewRows([]string{"date", "weight"}).
+				AddRow(time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC), 76.0).
+				AddRow(time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC), 75.5))
+
+		// Target weight
+		mock.ExpectQuery(`SELECT target_weight FROM user_settings`).
+			WithArgs(clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"target_weight"}).AddRow(70.0))
 
 		// Unread count
 		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
@@ -240,9 +247,17 @@ func TestGetClientDetail(t *testing.T) {
 		assert.Equal(t, 2000.0, detail.WeeklyPlan.Calories)
 		assert.Equal(t, 150.0, detail.WeeklyPlan.Protein)
 
-		// Check weight
+		// Check weight history
+		require.Len(t, detail.WeightHistory, 2)
+		assert.Equal(t, 75.5, detail.WeightHistory[1].Weight)
+
+		// Check weight from embedded ClientCard
 		require.NotNil(t, detail.LastWeight)
 		assert.Equal(t, 75.5, *detail.LastWeight)
+
+		// Check target weight
+		require.NotNil(t, detail.TargetWeight)
+		assert.Equal(t, 70.0, *detail.TargetWeight)
 
 		// Check unread
 		assert.Equal(t, 2, detail.UnreadCount)
@@ -303,10 +318,15 @@ func TestGetClientDetail(t *testing.T) {
 			WithArgs(clientID, sqlmock.AnyArg()).
 			WillReturnRows(sqlmock.NewRows(planColumns))
 
-		// No weight
-		mock.ExpectQuery(`SELECT weight FROM daily_metrics`).
+		// No weight history
+		mock.ExpectQuery(`SELECT date, weight FROM daily_metrics`).
 			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"weight"}))
+			WillReturnRows(sqlmock.NewRows([]string{"date", "weight"}))
+
+		// No target weight
+		mock.ExpectQuery(`SELECT target_weight FROM user_settings`).
+			WithArgs(clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"target_weight"}))
 
 		// No unread
 		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
@@ -320,6 +340,7 @@ func TestGetClientDetail(t *testing.T) {
 		assert.Equal(t, "Default Date Client", detail.Name)
 		assert.Empty(t, detail.FoodEntries)
 		assert.Nil(t, detail.WeeklyPlan)
+		assert.Empty(t, detail.WeightHistory)
 		assert.Nil(t, detail.LastWeight)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})

@@ -86,11 +86,12 @@ func getUserID(c *gin.Context) int64 {
 
 // UpdateSettingsRequest represents settings update request
 type UpdateSettingsRequest struct {
-	Language           string `json:"language"`
-	Units              string `json:"units"`
-	TelegramUsername   string `json:"telegram_username"`
-	InstagramUsername  string `json:"instagram_username"`
-	AppleHealthEnabled bool   `json:"apple_health_enabled"`
+	Language           string   `json:"language"`
+	Units              string   `json:"units"`
+	TelegramUsername   string   `json:"telegram_username"`
+	InstagramUsername  string   `json:"instagram_username"`
+	AppleHealthEnabled bool     `json:"apple_health_enabled"`
+	TargetWeight       *float64 `json:"target_weight"`
 }
 
 // UpdateSettings updates user settings
@@ -109,6 +110,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		TelegramUsername:   req.TelegramUsername,
 		InstagramUsername:  req.InstagramUsername,
 		AppleHealthEnabled: req.AppleHealthEnabled,
+		TargetWeight:       req.TargetWeight,
 	})
 	if err != nil {
 		h.log.Errorw("Не удалось обновить настройки", "error", err, "user_id", userID)

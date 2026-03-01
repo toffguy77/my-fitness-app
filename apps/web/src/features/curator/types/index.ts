@@ -36,6 +36,9 @@ export interface ClientCard {
     plan: PlanKBZHU | null
     alerts: Alert[]
     unread_count: number
+    last_weight: number | null
+    weight_trend: 'up' | 'down' | 'stable' | ''
+    target_weight: number | null
 }
 
 export interface FoodEntryView {
@@ -51,8 +54,13 @@ export interface FoodEntryView {
     time: string
 }
 
+export interface WeightHistoryPoint {
+    date: string
+    weight: number
+}
+
 export interface ClientDetail extends ClientCard {
     food_entries: FoodEntryView[]
     weekly_plan: PlanKBZHU | null
-    last_weight: number | null
+    weight_history: WeightHistoryPoint[]
 }

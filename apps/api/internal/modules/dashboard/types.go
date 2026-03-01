@@ -362,3 +362,16 @@ type SubmitWeeklyReportRequest struct {
 	WeekStart time.Time `json:"week_start" binding:"required"`
 	WeekEnd   time.Time `json:"week_end" binding:"required"`
 }
+
+// WeightTrendPoint represents a single weight data point
+type WeightTrendPoint struct {
+	Date   string  `json:"date"`
+	Weight float64 `json:"weight"`
+}
+
+// ProgressData represents progress metrics for the dashboard
+type ProgressData struct {
+	WeightTrend        []WeightTrendPoint `json:"weight_trend"`
+	NutritionAdherence float64            `json:"nutrition_adherence"`
+	TargetWeight       *float64           `json:"target_weight"`
+}

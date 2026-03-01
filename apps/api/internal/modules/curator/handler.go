@@ -3,6 +3,7 @@ package curator
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/database"
@@ -94,4 +95,41 @@ func (h *Handler) GetClientDetail(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, detail)
+}
+
+// SetTargetWeightRequest represents the request to set a client's target weight
+type SetTargetWeightRequest struct {
+	TargetWeight *float64 `json:"target_weight"`
+}
+
+// SetTargetWeight handles PUT /api/v1/curator/clients/:id/target-weight
+func (h *Handler) SetTargetWeight(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	var req SetTargetWeightRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные")
+		return
+	}
+
+	if err := h.service.SetTargetWeight(c.Request.Context(), userID, clientID, req.TargetWeight); err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to set target weight", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось обновить целевой вес")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Целевой вес обновлён"})
 }

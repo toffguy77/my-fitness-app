@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Button } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
 import { useThrottledCallback } from '@/shared/hooks/useThrottle'
+import { apiClient } from '@/shared/utils/api-client'
 import type { ProgressData } from '../types'
 
 /**
@@ -32,6 +33,7 @@ export interface ProgressSectionProps {
  */
 interface WeightTrendChartProps {
     data: ProgressData['weightTrend']
+    targetWeight?: number | null
     className?: string
 }
 
@@ -39,7 +41,7 @@ interface WeightTrendChartProps {
  * Simple line chart for weight trend
  * Memoized to prevent unnecessary re-renders
  */
-const WeightTrendChart = memo(function WeightTrendChart({ data, className }: WeightTrendChartProps) {
+const WeightTrendChart = memo(function WeightTrendChart({ data, targetWeight, className }: WeightTrendChartProps) {
     // Calculate chart dimensions - responsive
     const width = 300
     const height = 120
@@ -47,12 +49,13 @@ const WeightTrendChart = memo(function WeightTrendChart({ data, className }: Wei
     const chartWidth = width - padding.left - padding.right
     const chartHeight = height - padding.top - padding.bottom
 
-    // Find min and max weights - memoized
+    // Find min and max weights - memoized (include target weight in range)
     const { minWeight, maxWeight, weightRange } = useMemo(() => {
         if (data.length === 0) {
             return { minWeight: 0, maxWeight: 0, weightRange: 1 }
         }
         const weights = data.map(d => d.weight)
+        if (targetWeight != null) weights.push(targetWeight)
         const min = Math.min(...weights)
         const max = Math.max(...weights)
         return {
@@ -60,7 +63,7 @@ const WeightTrendChart = memo(function WeightTrendChart({ data, className }: Wei
             maxWeight: max,
             weightRange: max - min || 1 // Avoid division by zero
         }
-    }, [data])
+    }, [data, targetWeight])
 
     // Create points for the line - memoized
     const points = useMemo(() => {
@@ -104,6 +107,30 @@ const WeightTrendChart = memo(function WeightTrendChart({ data, className }: Wei
                     strokeDasharray="4 4"
                     className="text-gray-200"
                 />
+
+                {/* Target weight line */}
+                {targetWeight != null && (
+                    <>
+                        <line
+                            x1={padding.left}
+                            y1={padding.top + chartHeight - ((targetWeight - minWeight) / weightRange) * chartHeight}
+                            x2={width - padding.right}
+                            y2={padding.top + chartHeight - ((targetWeight - minWeight) / weightRange) * chartHeight}
+                            stroke="currentColor"
+                            strokeWidth="1"
+                            strokeDasharray="6 3"
+                            className="text-green-500"
+                        />
+                        <text
+                            x={width - padding.right}
+                            y={padding.top + chartHeight - ((targetWeight - minWeight) / weightRange) * chartHeight - 4}
+                            textAnchor="end"
+                            className="text-[9px] fill-green-500"
+                        >
+                            Цель
+                        </text>
+                    </>
+                )}
 
                 {/* Line */}
                 <path
@@ -317,23 +344,25 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
     const [isLoading, setIsLoading] = useState(true)
     const [isNavigating, setIsNavigating] = useState(false)
 
-    // Fetch progress data
+    // Fetch progress data from API
     useEffect(() => {
         const fetchProgressData = async () => {
             setIsLoading(true)
             try {
-                // TODO: Replace with actual API call
-                // const response = await apiClient.get('/dashboard/progress?weeks=4')
-                // setProgressData(response.data)
+                const raw = await apiClient.get<{
+                    weight_trend: Array<{ date: string; weight: number }>
+                    nutrition_adherence: number
+                    target_weight: number | null
+                }>('/backend-api/v1/dashboard/progress?weeks=4')
 
-                // Mock data for now
-                await new Promise(resolve => setTimeout(resolve, 500))
-
-                // Simulate empty data for placeholder
                 setProgressData({
-                    weightTrend: [],
-                    nutritionAdherence: 0,
+                    weightTrend: (raw.weight_trend || []).map(p => ({
+                        date: new Date(p.date),
+                        weight: p.weight,
+                    })),
+                    nutritionAdherence: raw.nutrition_adherence || 0,
                     achievements: [],
+                    targetWeight: raw.target_weight,
                 })
             } catch (error) {
                 console.error('Failed to fetch progress data:', error)
@@ -410,7 +439,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                                 <h4 id="weight-trend-heading" className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
                                     Динамика веса
                                 </h4>
-                                <WeightTrendChart data={progressData.weightTrend} />
+                                <WeightTrendChart data={progressData.weightTrend} targetWeight={progressData.targetWeight} />
                             </div>
                         )}
 
