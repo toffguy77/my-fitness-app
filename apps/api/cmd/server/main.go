@@ -202,6 +202,12 @@ func main() {
 	// Chat handler (used for both REST routes and WebSocket)
 	chatHandler := chat.NewHandler(cfg, log, db, chatS3, wsHub)
 
+	// Ensure conversations exist for all active curator-client relationships
+	chatService := chat.NewService(db, log)
+	if err := chatService.EnsureConversationsExist(context.Background()); err != nil {
+		log.Error("Failed to ensure conversations exist", "error", err)
+	}
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{
