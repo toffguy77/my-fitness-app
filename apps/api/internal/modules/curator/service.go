@@ -5,11 +5,23 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 )
+
+// buildPlaceholders returns "($1,$2,$3,...)" and []any args from int64 slice
+func buildPlaceholders(ids []int64, offset int) (string, []any) {
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = fmt.Sprintf("$%d", i+1+offset)
+		args[i] = id
+	}
+	return "(" + strings.Join(placeholders, ",") + ")", args
+}
 
 // ServiceInterface defines the interface for curator service operations
 type ServiceInterface interface {
@@ -523,17 +535,18 @@ func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int
 	}
 
 	// Get last 2 weight entries per client to compute trend
-	query := `
+	inClause, args := buildPlaceholders(clientIDs, 0)
+	query := fmt.Sprintf(`
 		SELECT user_id, weight, date FROM (
 			SELECT user_id, weight, date,
 				ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY date DESC) as rn
 			FROM daily_metrics
-			WHERE user_id = ANY($1) AND weight IS NOT NULL
+			WHERE user_id IN %s AND weight IS NOT NULL
 		) sub WHERE rn <= 2
 		ORDER BY user_id, date DESC
-	`
+	`, inClause)
 
-	rows, err := s.db.QueryContext(ctx, query, clientIDs)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		s.log.Error("Failed to query weight data for clients", "error", err)
 		return weightMap, trendMap
@@ -583,8 +596,9 @@ func (s *Service) getTargetWeights(ctx context.Context, clientIDs []int64) map[i
 		return result
 	}
 
-	query := `SELECT user_id, target_weight FROM user_settings WHERE user_id = ANY($1) AND target_weight IS NOT NULL`
-	rows, err := s.db.QueryContext(ctx, query, clientIDs)
+	inClause, args := buildPlaceholders(clientIDs, 0)
+	query := fmt.Sprintf(`SELECT user_id, target_weight FROM user_settings WHERE user_id IN %s AND target_weight IS NOT NULL`, inClause)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		s.log.Error("Failed to query target weights", "error", err)
 		return result
