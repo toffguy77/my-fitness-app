@@ -28,6 +28,25 @@ services:
       target: production
     expose:
       - "4000"
+    labels:
+      - "traefik.enable=true"
+      # WebSocket: /ws -> API (Traefik handles upgrade natively)
+      - "traefik.http.routers.burcev-api-ws.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/ws`)"
+      - "traefik.http.routers.burcev-api-ws.entrypoints=websecure"
+      - "traefik.http.routers.burcev-api-ws.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.burcev-api-ws.service=burcev-api"
+      # REST API: /api/v1/* -> API (direct, bypasses Next.js rewrite)
+      - "traefik.http.routers.burcev-api-rest.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.burcev-api-rest.entrypoints=websecure"
+      - "traefik.http.routers.burcev-api-rest.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.burcev-api-rest.service=burcev-api"
+      # Health check: /health -> API
+      - "traefik.http.routers.burcev-api-health.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/health`)"
+      - "traefik.http.routers.burcev-api-health.entrypoints=websecure"
+      - "traefik.http.routers.burcev-api-health.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.burcev-api-health.service=burcev-api"
+      # Service definition
+      - "traefik.http.services.burcev-api.loadbalancer.server.port=4000"
     environment:
       - NODE_ENV=production
       - PORT=4000
