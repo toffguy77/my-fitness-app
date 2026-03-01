@@ -20,13 +20,19 @@ export default function ProfilePage() {
     const router = useRouter()
     const [profile, setProfile] = useState<FullProfile | null>(null)
     const [loading, setLoading] = useState(true)
+    const [userRole, setUserRole] = useState<string>('client')
 
     useEffect(() => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+        const token = localStorage.getItem('auth_token')
         if (!token) {
             router.push('/auth')
             return
         }
+
+        try {
+            const role = JSON.parse(localStorage.getItem('user') || '{}').role
+            if (role) setUserRole(role)
+        } catch { /* use default */ }
 
         getProfile()
             .then(setProfile)
@@ -53,11 +59,6 @@ export default function ProfilePage() {
     }
 
     const initial = (profile.name || profile.email || '?')[0].toUpperCase()
-
-    // Determine user role from localStorage
-    const userRole = typeof window !== 'undefined'
-        ? (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').role } catch { return 'client' } })()
-        : 'client'
 
     const content = (
         <div className="w-full max-w-md mx-auto px-4 py-6">
