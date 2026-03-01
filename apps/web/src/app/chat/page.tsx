@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { chatApi } from '@/features/chat/api/chatApi'
 import { useChat } from '@/features/chat/hooks/useChat'
 import { MessageList } from '@/features/chat/components/MessageList'
@@ -9,12 +11,26 @@ import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
 import type { Conversation } from '@/features/chat/types'
 
 export default function ChatPage() {
+    const router = useRouter()
     const [conversation, setConversation] = useState<Conversation | null>(null)
     const [noConversation, setNoConversation] = useState(false)
     const [isTyping, setIsTyping] = useState(false)
     const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+    const userName = useMemo(() => {
+        if (typeof window === 'undefined') return ''
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}')
+            return user.name || user.email || ''
+        } catch { return '' }
+    }, [])
+
     useEffect(() => {
+        if (typeof window !== 'undefined' && !localStorage.getItem('auth_token')) {
+            router.push('/auth')
+            return
+        }
+
         chatApi
             .getConversations()
             .then((convs) => {
@@ -28,7 +44,7 @@ export default function ChatPage() {
             .catch(() => {
                 setNoConversation(true)
             })
-    }, [])
+    }, [router])
 
     const { messages, isLoading, hasMore, loadMore, sendMessage, sendFile, sendTyping, lastEvent } =
         useChat(conversation?.id ?? null)
@@ -54,16 +70,12 @@ export default function ChatPage() {
         }
     }, [])
 
-    if (noConversation) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full px-4 py-20">
-                <p className="text-gray-500">Куратор пока не назначен</p>
-            </div>
-        )
-    }
-
-    return (
-        <div className="flex flex-col h-[calc(100vh-8rem)]">
+    const content = noConversation ? (
+        <div className="flex flex-col items-center justify-center px-4 py-20">
+            <p className="text-gray-500">Куратор пока не назначен</p>
+        </div>
+    ) : (
+        <div className="flex flex-col" style={{ height: 'calc(100dvh - 8rem - env(safe-area-inset-bottom, 0px))' }}>
             {conversation && (
                 <div className="px-4 py-3 border-b border-gray-200 bg-white">
                     <h2 className="text-lg font-medium">{conversation.participant.name}</h2>
@@ -82,5 +94,11 @@ export default function ChatPage() {
                 onTyping={sendTyping}
             />
         </div>
+    )
+
+    return (
+        <DashboardLayout userName={userName} activeNavItem="chat">
+            {content}
+        </DashboardLayout>
     )
 }

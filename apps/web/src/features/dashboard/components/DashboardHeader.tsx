@@ -8,13 +8,14 @@ export interface DashboardHeaderProps {
     userName: string
     avatarUrl?: string
     notificationCount?: number
+    onLogoClick?: () => void
     onAvatarClick: () => void
     onNotificationClick: () => void
     className?: string
 }
 
 export const DashboardHeader = forwardRef<HTMLElement, DashboardHeaderProps>(
-    ({ userName, avatarUrl, notificationCount, onAvatarClick, onNotificationClick, className }, ref) => {
+    ({ userName, avatarUrl, notificationCount, onLogoClick, onAvatarClick, onNotificationClick, className }, ref) => {
         return (
             <header
                 ref={ref}
@@ -30,7 +31,7 @@ export const DashboardHeader = forwardRef<HTMLElement, DashboardHeaderProps>(
             >
                 {/* Left: App Logo */}
                 <div className="flex items-center">
-                    <AppLogo size="sm" />
+                    <AppLogo size="sm" onClick={onLogoClick} />
                 </div>
 
                 {/* Right: User Avatar and Notifications */}

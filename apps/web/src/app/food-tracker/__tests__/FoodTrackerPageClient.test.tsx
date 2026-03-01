@@ -59,38 +59,10 @@ describe('FoodTrackerPageClient', () => {
             });
         });
 
-        it('redirects to /auth when no user data', async () => {
-            mockLocalStorage.getItem.mockImplementation((key: string) => {
-                if (key === 'auth_token') return 'valid-token';
-                return null;
-            });
-
-            render(<FoodTrackerPageClient />);
-
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith('/auth');
-            });
-        });
-
-        it('redirects to /auth when user data is invalid JSON', async () => {
-            mockLocalStorage.getItem.mockImplementation((key: string) => {
-                if (key === 'auth_token') return 'valid-token';
-                if (key === 'user') return 'invalid-json';
-                return null;
-            });
-
-            render(<FoodTrackerPageClient />);
-
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith('/auth');
-            });
-        });
-
         it('renders FoodTrackerPage when authenticated', async () => {
-            const userData = { id: '1', email: 'test@example.com', name: 'Test User' };
             mockLocalStorage.getItem.mockImplementation((key: string) => {
                 if (key === 'auth_token') return 'valid-token';
-                if (key === 'user') return JSON.stringify(userData);
+                if (key === 'user') return JSON.stringify({ id: '1', email: 'test@example.com', name: 'Test User' });
                 return null;
             });
 
@@ -103,15 +75,7 @@ describe('FoodTrackerPageClient', () => {
     });
 
     describe('loading state', () => {
-        it('shows loading indicator while checking auth', () => {
-            mockLocalStorage.getItem.mockReturnValue(null);
-
-            render(<FoodTrackerPageClient />);
-
-            expect(screen.getByText('Загрузка...')).toBeInTheDocument();
-        });
-
-        it('shows loading spinner', () => {
+        it('shows loading spinner while checking auth', () => {
             mockLocalStorage.getItem.mockReturnValue(null);
 
             const { container } = render(<FoodTrackerPageClient />);

@@ -85,6 +85,10 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
             }
         }, [])
 
+        const handleLogoClick = () => {
+            router.push('/dashboard')
+        }
+
         const handleAvatarClick = () => {
             router.push('/profile')
         }
@@ -114,6 +118,7 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
                     userName={userName}
                     avatarUrl={avatarUrl}
                     notificationCount={totalUnreadCount}
+                    onLogoClick={handleLogoClick}
                     onAvatarClick={handleAvatarClick}
                     onNotificationClick={handleNotificationClick}
                 />
