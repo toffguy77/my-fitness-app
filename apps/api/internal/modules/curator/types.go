@@ -6,7 +6,7 @@ type ClientCard struct {
 	Name        string      `json:"name"`
 	AvatarURL   string      `json:"avatar_url,omitempty"`
 	TodayKBZHU  *DailyKBZHU `json:"today_kbzhu"`
-	Plan        *PlanKBZHU  `json:"plan,omitempty"`
+	Plan        *PlanKBZHU  `json:"plan"`
 	Alerts      []Alert     `json:"alerts"`
 	UnreadCount int         `json:"unread_count"`
 }
@@ -37,8 +37,8 @@ type Alert struct {
 type ClientDetail struct {
 	ClientCard
 	FoodEntries []FoodEntryView `json:"food_entries"`
-	WeeklyPlan  *PlanKBZHU      `json:"weekly_plan,omitempty"`
-	LastWeight  *float64        `json:"last_weight,omitempty"`
+	WeeklyPlan  *PlanKBZHU      `json:"weekly_plan"`
+	LastWeight  *float64        `json:"last_weight"`
 }
 
 // FoodEntryView represents a single food entry as seen by the curator

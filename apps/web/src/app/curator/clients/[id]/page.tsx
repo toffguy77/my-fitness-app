@@ -216,7 +216,7 @@ export default function ClientDetailPage() {
                     )}
 
                     {/* Last weight */}
-                    {detail.last_weight !== null && (
+                    {detail.last_weight != null && (
                         <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
                             <h2 className="text-sm font-semibold text-gray-900 mb-1">Последний вес</h2>
                             <p className="text-lg font-semibold text-gray-900">{detail.last_weight} кг</p>

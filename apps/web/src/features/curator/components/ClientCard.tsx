@@ -25,7 +25,7 @@ export function ClientCard({ client }: ClientCardProps) {
         .slice(0, 2)
         .toUpperCase()
 
-    const hasPlan = client.plan !== null
+    const hasPlan = client.plan != null
     const kbzhu = client.today_kbzhu
 
     return (
