@@ -295,7 +295,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	weightQuery := `
 		SELECT weight FROM daily_metrics
 		WHERE user_id = $1 AND weight IS NOT NULL
-		ORDER BY metric_date DESC
+		ORDER BY date DESC
 		LIMIT 1
 	`
 
