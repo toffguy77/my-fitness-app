@@ -63,7 +63,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		       wp.carbs_goal AS plan_carbs
 		FROM curator_client_relationships ccr
 		JOIN users u ON u.id = ccr.client_id
-		LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.entry_date = CURRENT_DATE
+		LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.date = CURRENT_DATE
 		LEFT JOIN weekly_plans wp ON wp.user_id = u.id
 		    AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
 		    AND wp.is_active = true
@@ -219,7 +219,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	entriesQuery := `
 		SELECT id, food_name, meal_type, calories, protein, fat, carbs, weight, created_by, created_at
 		FROM food_entries
-		WHERE user_id = $1 AND entry_date = $2
+		WHERE user_id = $1 AND date = $2
 		ORDER BY created_at ASC
 	`
 

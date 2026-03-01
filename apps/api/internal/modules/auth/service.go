@@ -76,6 +76,9 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	// Create default user settings
 	_, _ = s.db.ExecContext(ctx, "INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", user.ID)
 
+	// Auto-assign curator (coordinator with fewest active clients)
+	s.assignCurator(ctx, user.ID)
+
 	// Generate JWT token
 	token, err := s.generateToken(&user)
 	if err != nil {
@@ -286,6 +289,52 @@ func (s *Service) revokeAllUserRefreshTokens(ctx context.Context, userID int64) 
 	if err != nil {
 		s.log.Errorw("Failed to revoke all refresh tokens", "user_id", userID, "error", err)
 	}
+}
+
+// assignCurator assigns the least-loaded active coordinator to a new client.
+// Creates both the curator_client_relationship and a conversation.
+// Best-effort: registration succeeds even if no coordinator exists.
+func (s *Service) assignCurator(ctx context.Context, clientID int64) {
+	// Pick coordinator with fewest active clients
+	var curatorID int64
+	err := s.db.QueryRowContext(ctx, `
+		SELECT u.id
+		FROM users u
+		LEFT JOIN curator_client_relationships ccr
+			ON ccr.curator_id = u.id AND ccr.status = 'active'
+		WHERE u.role = 'coordinator'
+		GROUP BY u.id
+		ORDER BY COUNT(ccr.client_id) ASC
+		LIMIT 1
+	`).Scan(&curatorID)
+	if err != nil {
+		s.log.Warnw("No coordinator available for auto-assignment", "client_id", clientID, "error", err)
+		return
+	}
+
+	// Create relationship
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO curator_client_relationships (curator_id, client_id, status)
+		VALUES ($1, $2, 'active')
+		ON CONFLICT (curator_id, client_id) DO NOTHING
+	`, curatorID, clientID)
+	if err != nil {
+		s.log.Errorw("Failed to assign curator", "curator_id", curatorID, "client_id", clientID, "error", err)
+		return
+	}
+
+	// Create conversation
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO conversations (client_id, curator_id)
+		VALUES ($1, $2)
+		ON CONFLICT (client_id, curator_id) DO NOTHING
+	`, clientID, curatorID)
+	if err != nil {
+		s.log.Errorw("Failed to create conversation", "curator_id", curatorID, "client_id", clientID, "error", err)
+		return
+	}
+
+	s.log.Infow("Auto-assigned curator to new client", "curator_id", curatorID, "client_id", clientID)
 }
 
 // generateToken generates JWT token for user (15 min expiry)
