@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/admin"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
 	"github.com/burcev/api/internal/modules/curator"
@@ -263,7 +264,7 @@ func main() {
 		{
 			logsGroup.POST("", logsHandler.ReceiveLogs)
 			// Protected stats endpoint
-			logsGroup.GET("/stats", middleware.RequireAuth(cfg), middleware.RequireRole("admin"), logsHandler.GetLogStats)
+			logsGroup.GET("/stats", middleware.RequireAuth(cfg), middleware.RequireRole("super_admin"), logsHandler.GetLogStats)
 		}
 
 		// Food tracker routes (protected)
@@ -335,6 +336,20 @@ func main() {
 		{
 			curatorGroup.GET("/clients", curatorHandler.GetClients)
 			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)
+		}
+
+		// Admin routes (super_admin role only)
+		adminHandler := admin.NewHandler(cfg, log, db)
+		adminGroup := v1.Group("/admin")
+		adminGroup.Use(middleware.RequireAuth(cfg))
+		adminGroup.Use(middleware.RequireRole("super_admin"))
+		{
+			adminGroup.GET("/users", adminHandler.GetUsers)
+			adminGroup.GET("/curators", adminHandler.GetCurators)
+			adminGroup.POST("/users/:id/role", adminHandler.ChangeRole)
+			adminGroup.POST("/assignments", adminHandler.AssignCurator)
+			adminGroup.GET("/conversations", adminHandler.GetConversations)
+			adminGroup.GET("/conversations/:id/messages", adminHandler.GetConversationMessages)
 		}
 	}
 
