@@ -52,7 +52,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 
 	// Main query: get clients with today's food totals and active plan
 	query := `
-		SELECT u.id, u.full_name, u.avatar_url,
+		SELECT u.id, COALESCE(u.name, '') AS name, u.avatar_url,
 		       COALESCE(SUM(fe.calories), 0) AS today_calories,
 		       COALESCE(SUM(fe.protein), 0) AS today_protein,
 		       COALESCE(SUM(fe.fat), 0) AS today_fat,
@@ -68,7 +68,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		    AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
 		    AND wp.is_active = true
 		WHERE ccr.curator_id = $1 AND ccr.status = 'active'
-		GROUP BY u.id, u.full_name, u.avatar_url,
+		GROUP BY u.id, u.name, u.avatar_url,
 		         wp.calories_goal, wp.protein_goal, wp.fat_goal, wp.carbs_goal
 	`
 
@@ -204,7 +204,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	}
 
 	// Get client info
-	clientQuery := `SELECT id, full_name, avatar_url FROM users WHERE id = $1`
+	clientQuery := `SELECT id, COALESCE(name, ''), avatar_url FROM users WHERE id = $1`
 	var clientID64 int64
 	var clientName string
 	var avatarURL sql.NullString

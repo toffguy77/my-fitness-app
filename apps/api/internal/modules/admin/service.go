@@ -39,9 +39,9 @@ func (s *Service) GetUsers(ctx context.Context) ([]AdminUser, error) {
 	startTime := time.Now()
 
 	query := `
-		SELECT u.id, u.email, COALESCE(u.full_name, u.name, '') AS name, u.role,
+		SELECT u.id, u.email, COALESCE(u.name, '') AS name, u.role,
 		       COALESCE(u.avatar_url, '') AS avatar_url,
-		       curator.full_name AS curator_name,
+		       COALESCE(curator.name, '') AS curator_name,
 		       ccr_client.curator_id,
 		       COALESCE(client_counts.cnt, 0) AS client_count,
 		       u.created_at,
@@ -121,14 +121,14 @@ func (s *Service) GetCurators(ctx context.Context) ([]CuratorLoad, error) {
 	startTime := time.Now()
 
 	query := `
-		SELECT u.id, COALESCE(u.full_name, u.name, '') AS name, u.email,
+		SELECT u.id, COALESCE(u.name, '') AS name, u.email,
 		       COALESCE(u.avatar_url, '') AS avatar_url,
 		       COUNT(ccr.client_id) AS client_count
 		FROM users u
 		LEFT JOIN curator_client_relationships ccr
 			ON ccr.curator_id = u.id AND ccr.status = 'active'
 		WHERE u.role = 'coordinator'
-		GROUP BY u.id, u.full_name, u.name, u.email, u.avatar_url
+		GROUP BY u.id, u.name, u.email, u.avatar_url
 		ORDER BY client_count DESC, name ASC
 	`
 
@@ -405,8 +405,8 @@ func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, er
 	startTime := time.Now()
 
 	query := `
-		SELECT c.id, c.client_id, COALESCE(client.full_name, client.name, '') AS client_name,
-		       c.curator_id, COALESCE(curator.full_name, curator.name, '') AS curator_name,
+		SELECT c.id, c.client_id, COALESCE(client.name, '') AS client_name,
+		       c.curator_id, COALESCE(curator.name, '') AS curator_name,
 		       COALESCE(msg_counts.cnt, 0) AS message_count,
 		       c.updated_at
 		FROM conversations c
@@ -481,7 +481,7 @@ func (s *Service) GetConversationMessages(ctx context.Context, conversationID st
 
 	if cursor == "" {
 		query := `
-			SELECT m.id, m.sender_id, COALESCE(u.full_name, u.name, '') AS sender_name,
+			SELECT m.id, m.sender_id, COALESCE(u.name, '') AS sender_name,
 			       m.type, m.content, m.created_at
 			FROM messages m
 			JOIN users u ON u.id = m.sender_id
@@ -492,7 +492,7 @@ func (s *Service) GetConversationMessages(ctx context.Context, conversationID st
 		rows, err = s.db.QueryContext(ctx, query, conversationID, limit)
 	} else {
 		query := `
-			SELECT m.id, m.sender_id, COALESCE(u.full_name, u.name, '') AS sender_name,
+			SELECT m.id, m.sender_id, COALESCE(u.name, '') AS sender_name,
 			       m.type, m.content, m.created_at
 			FROM messages m
 			JOIN users u ON u.id = m.sender_id
