@@ -32,7 +32,7 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 
 // clientColumns defines the columns returned by the main clients query
 var clientColumns = []string{
-	"id", "full_name", "avatar_url",
+	"id", "name", "avatar_url",
 	"today_calories", "today_protein", "today_fat", "today_carbs",
 	"plan_calories", "plan_protein", "plan_fat", "plan_carbs",
 }
@@ -67,7 +67,7 @@ func TestGetClients(t *testing.T) {
 				0.0, 0.0, 0.0, 0.0, // no entries
 				2000.0, 150.0, 70.0, 250.0) // plan
 
-		mock.ExpectQuery(`SELECT u\.id, u\.full_name, u\.avatar_url`).
+		mock.ExpectQuery(`SELECT u\.id, COALESCE`).
 			WithArgs(curatorID).
 			WillReturnRows(clientRows)
 
@@ -115,7 +115,7 @@ func TestGetClients(t *testing.T) {
 		curatorID := int64(100)
 
 		emptyRows := sqlmock.NewRows(clientColumns)
-		mock.ExpectQuery(`SELECT u\.id, u\.full_name, u\.avatar_url`).
+		mock.ExpectQuery(`SELECT u\.id, COALESCE`).
 			WithArgs(curatorID).
 			WillReturnRows(emptyRows)
 
@@ -138,7 +138,7 @@ func TestGetClients(t *testing.T) {
 				500.0, 30.0, 20.0, 60.0,
 				nil, nil, nil, nil)
 
-		mock.ExpectQuery(`SELECT u\.id, u\.full_name, u\.avatar_url`).
+		mock.ExpectQuery(`SELECT u\.id, COALESCE`).
 			WithArgs(curatorID).
 			WillReturnRows(clientRows)
 
@@ -178,9 +178,9 @@ func TestGetClientDetail(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
 		// Client info
-		mock.ExpectQuery(`SELECT id, full_name, avatar_url FROM users`).
+		mock.ExpectQuery(`SELECT id, COALESCE`).
 			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "full_name", "avatar_url"}).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
 				AddRow(clientID, "Test Client", "https://avatar.example.com/test.jpg"))
 
 		// Food entries
@@ -283,9 +283,9 @@ func TestGetClientDetail(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
 		// Client info
-		mock.ExpectQuery(`SELECT id, full_name, avatar_url FROM users`).
+		mock.ExpectQuery(`SELECT id, COALESCE`).
 			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "full_name", "avatar_url"}).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
 				AddRow(clientID, "Default Date Client", nil))
 
 		// Empty food entries

@@ -43,7 +43,7 @@ func (s *Service) GetConversations(ctx context.Context, userID int64) ([]Convers
 
 	query := `
 		SELECT c.id, c.client_id, c.curator_id, c.created_at, c.updated_at,
-		       u.id AS participant_id, u.full_name AS participant_name,
+		       u.id AS participant_id, COALESCE(u.name, '') AS participant_name,
 		       COALESCE(u.avatar_url, '') AS participant_avatar
 		FROM conversations c
 		JOIN users u ON u.id = CASE WHEN c.client_id = $1 THEN c.curator_id ELSE c.client_id END
@@ -169,7 +169,7 @@ func (s *Service) GetOrCreateConversation(ctx context.Context, clientID, curator
 	// Try to find existing conversation
 	query := `
 		SELECT c.id, c.client_id, c.curator_id, c.created_at, c.updated_at,
-		       u.id AS participant_id, u.full_name AS participant_name,
+		       u.id AS participant_id, COALESCE(u.name, '') AS participant_name,
 		       COALESCE(u.avatar_url, '') AS participant_avatar
 		FROM conversations c
 		JOIN users u ON u.id = c.curator_id
@@ -222,7 +222,7 @@ func (s *Service) GetOrCreateConversation(ctx context.Context, clientID, curator
 	}
 
 	// Fetch participant info
-	participantQuery := `SELECT id, full_name, COALESCE(avatar_url, '') FROM users WHERE id = $1`
+	participantQuery := `SELECT id, COALESCE(name, ''), COALESCE(avatar_url, '') FROM users WHERE id = $1`
 	err = s.db.QueryRowContext(ctx, participantQuery, curatorID).Scan(
 		&participant.ID, &participant.Name, &participant.AvatarURL,
 	)
