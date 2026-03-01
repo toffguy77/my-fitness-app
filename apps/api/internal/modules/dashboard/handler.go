@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/burcev/api/internal/config"
@@ -30,6 +31,7 @@ type ServiceInterface interface {
 	CreateWeeklyReport(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (*WeeklyReport, error)
 	ValidatePhoto(fileSize int, mimeType string) error
 	UploadPhoto(ctx context.Context, userID int64, weekIdentifier string, fileData io.Reader, fileSize int, mimeType string) (*PhotoData, error)
+	GetProgressData(ctx context.Context, userID int64, weeks int) (*ProgressData, error)
 }
 
 // Handler handles dashboard requests
@@ -567,4 +569,36 @@ func (h *Handler) UploadPhoto(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusCreated, photo)
+}
+
+// GetProgress handles GET /api/dashboard/progress
+// Retrieves progress data including weight trend and nutrition adherence
+func (h *Handler) GetProgress(c *gin.Context) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	weeksStr := c.DefaultQuery("weeks", "8")
+	weeks, err := strconv.Atoi(weeksStr)
+	if err != nil || weeks < 1 || weeks > 52 {
+		weeks = 8
+	}
+
+	progressData, err := h.service.GetProgressData(c.Request.Context(), userID, weeks)
+	if err != nil {
+		h.log.Errorw("Failed to get progress data", "error", err, "user_id", userID, "weeks", weeks)
+		response.InternalError(c, "Не удалось получить данные прогресса")
+		return
+	}
+
+	response.Success(c, http.StatusOK, progressData)
 }

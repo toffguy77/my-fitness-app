@@ -312,6 +312,7 @@ func main() {
 			dashGroup.GET("/daily/:date", dashboardHandler.GetDailyMetrics)
 			dashGroup.POST("/daily", dashboardHandler.SaveMetric)
 			dashGroup.GET("/week", dashboardHandler.GetWeekMetrics)
+			dashGroup.GET("/progress", dashboardHandler.GetProgress)
 			dashGroup.GET("/weekly-plan", dashboardHandler.GetWeeklyPlan)
 			dashGroup.POST("/weekly-plan", dashboardHandler.CreateWeeklyPlan)
 			dashGroup.GET("/tasks", dashboardHandler.GetTasks)
@@ -342,6 +343,7 @@ func main() {
 		{
 			curatorGroup.GET("/clients", curatorHandler.GetClients)
 			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)
+			curatorGroup.PUT("/clients/:id/target-weight", curatorHandler.SetTargetWeight)
 		}
 
 		// Admin routes (super_admin role only)

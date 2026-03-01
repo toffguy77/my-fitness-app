@@ -1129,7 +1129,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             const url = getApiUrl('/dashboard/daily');
 
             await retryWithBackoff(
-                () => apiClient.post(url, { date, ...metric }),
+                () => apiClient.post(url, { date, metric }),
                 3,
                 1000
             );

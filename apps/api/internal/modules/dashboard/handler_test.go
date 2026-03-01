@@ -124,6 +124,14 @@ func (m *MockService) UploadPhoto(ctx context.Context, userID int64, weekIdentif
 	return args.Get(0).(*PhotoData), args.Error(1)
 }
 
+func (m *MockService) GetProgressData(ctx context.Context, userID int64, weeks int) (*ProgressData, error) {
+	args := m.Called(ctx, userID, weeks)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*ProgressData), args.Error(1)
+}
+
 func setupTestHandlerWithMock() (*Handler, *MockService) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{

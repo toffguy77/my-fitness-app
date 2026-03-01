@@ -1635,3 +1635,78 @@ func (s *Service) sendWeeklyReportNotification(ctx context.Context, curatorID in
 
 	return nil
 }
+
+// GetProgressData retrieves progress data including weight trend and nutrition adherence
+func (s *Service) GetProgressData(ctx context.Context, userID int64, weeks int) (*ProgressData, error) {
+	startDate := time.Now().AddDate(0, 0, -weeks*7)
+
+	// Query weight trend data
+	weightQuery := `
+		SELECT date, weight
+		FROM daily_metrics
+		WHERE user_id = $1 AND weight IS NOT NULL AND date >= $2
+		ORDER BY date ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, weightQuery, userID, startDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query weight trend: %w", err)
+	}
+	defer rows.Close()
+
+	weightTrend := make([]WeightTrendPoint, 0)
+	for rows.Next() {
+		var date time.Time
+		var weight float64
+		if err := rows.Scan(&date, &weight); err != nil {
+			return nil, fmt.Errorf("failed to scan weight data: %w", err)
+		}
+		weightTrend = append(weightTrend, WeightTrendPoint{
+			Date:   date.Format("2006-01-02"),
+			Weight: weight,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating weight data: %w", err)
+	}
+
+	// Query nutrition adherence
+	adherenceQuery := `
+		SELECT
+			COUNT(DISTINCT CASE WHEN calories > 0 THEN date END) as days_with_nutrition,
+			COUNT(DISTINCT date) as total_days
+		FROM daily_metrics
+		WHERE user_id = $1 AND date >= $2
+	`
+
+	var daysWithNutrition, totalDays int
+	err = s.db.QueryRowContext(ctx, adherenceQuery, userID, startDate).Scan(&daysWithNutrition, &totalDays)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query nutrition adherence: %w", err)
+	}
+
+	var nutritionAdherence float64
+	if totalDays > 0 {
+		nutritionAdherence = (float64(daysWithNutrition) / float64(totalDays)) * 100
+	}
+
+	// Query target weight from user_settings
+	targetQuery := `SELECT target_weight FROM user_settings WHERE user_id = $1`
+	var targetWeight sql.NullFloat64
+	err = s.db.QueryRowContext(ctx, targetQuery, userID).Scan(&targetWeight)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to query target weight: %w", err)
+	}
+
+	var targetWeightPtr *float64
+	if targetWeight.Valid {
+		targetWeightPtr = &targetWeight.Float64
+	}
+
+	return &ProgressData{
+		WeightTrend:        weightTrend,
+		NutritionAdherence: nutritionAdherence,
+		TargetWeight:       targetWeightPtr,
+	}, nil
+}

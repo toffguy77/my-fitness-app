@@ -15,6 +15,7 @@ import (
 type ServiceInterface interface {
 	GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error)
 	GetClientDetail(ctx context.Context, curatorID int64, clientID int64, date string) (*ClientDetail, error)
+	SetTargetWeight(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
 }
 
 // Service handles curator business logic
@@ -114,6 +115,10 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		unreadMap = make(map[int64]int)
 	}
 
+	// Get weight data for all clients (last 2 weights + target)
+	weightMap, trendMap := s.getWeightData(ctx, clientIDs)
+	targetMap := s.getTargetWeights(ctx, clientIDs)
+
 	// Build client cards
 	cards := make([]ClientCard, 0, len(clientRows))
 	for _, cr := range clientRows {
@@ -126,8 +131,11 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 				Fat:      cr.todayFat,
 				Carbs:    cr.todayCarbs,
 			},
-			Alerts:      make([]Alert, 0),
-			UnreadCount: unreadMap[cr.id],
+			Alerts:       make([]Alert, 0),
+			UnreadCount:  unreadMap[cr.id],
+			LastWeight:   weightMap[cr.id],
+			WeightTrend:  trendMap[cr.id],
+			TargetWeight: targetMap[cr.id],
 		}
 
 		if cr.avatarURL.Valid {
@@ -291,19 +299,41 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		}
 	}
 
-	// Get last weight from daily_metrics
-	weightQuery := `
-		SELECT weight FROM daily_metrics
-		WHERE user_id = $1 AND weight IS NOT NULL
-		ORDER BY date DESC
-		LIMIT 1
+	// Get weight history (last 8 weeks)
+	historyQuery := `
+		SELECT date, weight FROM daily_metrics
+		WHERE user_id = $1 AND weight IS NOT NULL AND date >= CURRENT_DATE - INTERVAL '56 days'
+		ORDER BY date ASC
 	`
-
-	var lastWeight sql.NullFloat64
-	err = s.db.QueryRowContext(ctx, weightQuery, clientID).Scan(&lastWeight)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, fmt.Errorf("failed to query last weight: %w", err)
+	historyRows, err := s.db.QueryContext(ctx, historyQuery, clientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query weight history: %w", err)
 	}
+	defer historyRows.Close()
+
+	weightHistory := make([]WeightHistoryPoint, 0)
+	var lastWeight sql.NullFloat64
+	for historyRows.Next() {
+		var date time.Time
+		var weight float64
+		if err := historyRows.Scan(&date, &weight); err != nil {
+			return nil, fmt.Errorf("failed to scan weight history: %w", err)
+		}
+		weightHistory = append(weightHistory, WeightHistoryPoint{
+			Date:   date.Format("2006-01-02"),
+			Weight: weight,
+		})
+		lastWeight = sql.NullFloat64{Float64: weight, Valid: true}
+	}
+	if err := historyRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating weight history: %w", err)
+	}
+
+	// Get target weight
+	var targetWeight sql.NullFloat64
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT target_weight FROM user_settings WHERE user_id = $1`, clientID,
+	).Scan(&targetWeight)
 
 	// Get unread count for this client
 	unreadMap, err := s.getUnreadCounts(ctx, curatorID, []int64{clientID})
@@ -330,8 +360,9 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 			Alerts:      alerts,
 			UnreadCount: unreadMap[clientID],
 		},
-		FoodEntries: foodEntries,
-		WeeklyPlan:  weeklyPlan,
+		FoodEntries:   foodEntries,
+		WeeklyPlan:    weeklyPlan,
+		WeightHistory: weightHistory,
 	}
 
 	if avatarURL.Valid {
@@ -341,6 +372,11 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	if lastWeight.Valid {
 		w := lastWeight.Float64
 		detail.LastWeight = &w
+	}
+
+	if targetWeight.Valid {
+		w := targetWeight.Float64
+		detail.TargetWeight = &w
 	}
 
 	s.log.LogDatabaseQuery("GetClientDetail", time.Since(startTime), nil, map[string]interface{}{
@@ -475,4 +511,123 @@ func abs(x float64) float64 {
 		return -x
 	}
 	return x
+}
+
+// getWeightData returns last weight and trend for a list of clients
+func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int64]*float64, map[int64]string) {
+	weightMap := make(map[int64]*float64)
+	trendMap := make(map[int64]string)
+
+	if len(clientIDs) == 0 {
+		return weightMap, trendMap
+	}
+
+	// Get last 2 weight entries per client to compute trend
+	query := `
+		SELECT user_id, weight, date FROM (
+			SELECT user_id, weight, date,
+				ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY date DESC) as rn
+			FROM daily_metrics
+			WHERE user_id = ANY($1) AND weight IS NOT NULL
+		) sub WHERE rn <= 2
+		ORDER BY user_id, date DESC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
+	if err != nil {
+		s.log.Error("Failed to query weight data for clients", "error", err)
+		return weightMap, trendMap
+	}
+	defer rows.Close()
+
+	type weightEntry struct {
+		weight float64
+		rank   int
+	}
+	clientWeights := make(map[int64][]weightEntry)
+
+	for rows.Next() {
+		var userID int64
+		var weight float64
+		var date time.Time
+		if err := rows.Scan(&userID, &weight, &date); err != nil {
+			continue
+		}
+		clientWeights[userID] = append(clientWeights[userID], weightEntry{weight: weight})
+	}
+
+	for userID, entries := range clientWeights {
+		if len(entries) > 0 {
+			w := entries[0].weight
+			weightMap[userID] = &w
+		}
+		if len(entries) >= 2 {
+			if entries[0].weight < entries[1].weight {
+				trendMap[userID] = "down"
+			} else if entries[0].weight > entries[1].weight {
+				trendMap[userID] = "up"
+			} else {
+				trendMap[userID] = "stable"
+			}
+		}
+	}
+
+	return weightMap, trendMap
+}
+
+// getTargetWeights returns target weights for a list of clients
+func (s *Service) getTargetWeights(ctx context.Context, clientIDs []int64) map[int64]*float64 {
+	result := make(map[int64]*float64)
+
+	if len(clientIDs) == 0 {
+		return result
+	}
+
+	query := `SELECT user_id, target_weight FROM user_settings WHERE user_id = ANY($1) AND target_weight IS NOT NULL`
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
+	if err != nil {
+		s.log.Error("Failed to query target weights", "error", err)
+		return result
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID int64
+		var weight float64
+		if err := rows.Scan(&userID, &weight); err != nil {
+			continue
+		}
+		w := weight
+		result[userID] = &w
+	}
+
+	return result
+}
+
+// SetTargetWeight sets the target weight for a client
+func (s *Service) SetTargetWeight(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error {
+	// Verify curator-client relationship
+	var exists bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM curator_client_relationships WHERE curator_id = $1 AND client_id = $2 AND status = 'active')`,
+		curatorID, clientID,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to verify relationship: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("unauthorized")
+	}
+
+	_, err = s.db.ExecContext(ctx,
+		`INSERT INTO user_settings (user_id, target_weight, updated_at)
+		 VALUES ($1, $2, NOW())
+		 ON CONFLICT (user_id) DO UPDATE SET target_weight = $2, updated_at = NOW()`,
+		clientID, targetWeight,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to set target weight: %w", err)
+	}
+
+	return nil
 }

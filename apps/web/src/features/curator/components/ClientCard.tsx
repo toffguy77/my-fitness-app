@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { KBZHUProgress } from './KBZHUProgress'
 import { AlertBadge } from './AlertBadge'
@@ -77,6 +78,27 @@ export function ClientCard({ client }: ClientCardProps) {
                 </div>
             ) : (
                 <p className="text-xs text-gray-400">Нет данных за сегодня</p>
+            )}
+
+            {client.last_weight != null && (
+                <div className="mt-2 flex items-center gap-2 text-xs">
+                    <span className="text-gray-500">Вес:</span>
+                    <span className="font-semibold text-gray-900">{client.last_weight} кг</span>
+                    {client.weight_trend === 'down' && (
+                        <TrendingDown className="h-3.5 w-3.5 text-green-500" />
+                    )}
+                    {client.weight_trend === 'up' && (
+                        <TrendingUp className="h-3.5 w-3.5 text-red-500" />
+                    )}
+                    {client.weight_trend === 'stable' && (
+                        <Minus className="h-3.5 w-3.5 text-gray-400" />
+                    )}
+                    {client.target_weight != null && (
+                        <span className="ml-auto text-gray-400">
+                            Цель: {client.target_weight} кг
+                        </span>
+                    )}
+                </div>
             )}
 
             {client.alerts.length > 0 && (

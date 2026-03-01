@@ -25,11 +25,12 @@ type FullProfile struct {
 
 // Settings represents user preferences
 type Settings struct {
-	Language           string `json:"language"`
-	Units              string `json:"units"`
-	TelegramUsername   string `json:"telegram_username,omitempty"`
-	InstagramUsername  string `json:"instagram_username,omitempty"`
-	AppleHealthEnabled bool   `json:"apple_health_enabled"`
+	Language           string   `json:"language"`
+	Units              string   `json:"units"`
+	TelegramUsername   string   `json:"telegram_username,omitempty"`
+	InstagramUsername  string   `json:"instagram_username,omitempty"`
+	AppleHealthEnabled bool     `json:"apple_health_enabled"`
+	TargetWeight       *float64 `json:"target_weight,omitempty"`
 }
 
 // Service handles users business logic
@@ -58,13 +59,15 @@ func (s *Service) GetProfile(ctx context.Context, userID int64) (*FullProfile, e
 	query := `
 		SELECT u.id, u.email, COALESCE(u.name, ''), u.role, COALESCE(u.avatar_url, ''), COALESCE(u.onboarding_completed, false),
 		       COALESCE(s.language, 'ru'), COALESCE(s.units, 'metric'),
-		       COALESCE(s.telegram_username, ''), COALESCE(s.instagram_username, ''), COALESCE(s.apple_health_enabled, false)
+		       COALESCE(s.telegram_username, ''), COALESCE(s.instagram_username, ''), COALESCE(s.apple_health_enabled, false),
+		       s.target_weight
 		FROM users u
 		LEFT JOIN user_settings s ON s.user_id = u.id
 		WHERE u.id = $1
 	`
 
 	var profile FullProfile
+	var targetWeight sql.NullFloat64
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&profile.ID,
 		&profile.Email,
@@ -77,12 +80,17 @@ func (s *Service) GetProfile(ctx context.Context, userID int64) (*FullProfile, e
 		&profile.Settings.TelegramUsername,
 		&profile.Settings.InstagramUsername,
 		&profile.Settings.AppleHealthEnabled,
+		&targetWeight,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("пользователь не найден")
 		}
 		return nil, fmt.Errorf("ошибка при получении профиля: %w", err)
+	}
+
+	if targetWeight.Valid {
+		profile.Settings.TargetWeight = &targetWeight.Float64
 	}
 
 	return &profile, nil
@@ -117,19 +125,21 @@ func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Set
 		return nil, fmt.Errorf("database connection not available")
 	}
 	query := `
-		INSERT INTO user_settings (user_id, language, units, telegram_username, instagram_username, apple_health_enabled, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		INSERT INTO user_settings (user_id, language, units, telegram_username, instagram_username, apple_health_enabled, target_weight, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
 		ON CONFLICT (user_id) DO UPDATE SET
 		  language = EXCLUDED.language,
 		  units = EXCLUDED.units,
 		  telegram_username = EXCLUDED.telegram_username,
 		  instagram_username = EXCLUDED.instagram_username,
 		  apple_health_enabled = EXCLUDED.apple_health_enabled,
+		  target_weight = EXCLUDED.target_weight,
 		  updated_at = NOW()
-		RETURNING language, units, telegram_username, instagram_username, apple_health_enabled
+		RETURNING language, units, telegram_username, instagram_username, apple_health_enabled, target_weight
 	`
 
 	var result Settings
+	var targetWeight sql.NullFloat64
 	err := s.db.QueryRowContext(ctx, query,
 		userID,
 		settings.Language,
@@ -137,15 +147,21 @@ func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Set
 		settings.TelegramUsername,
 		settings.InstagramUsername,
 		settings.AppleHealthEnabled,
+		settings.TargetWeight,
 	).Scan(
 		&result.Language,
 		&result.Units,
 		&result.TelegramUsername,
 		&result.InstagramUsername,
 		&result.AppleHealthEnabled,
+		&targetWeight,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при обновлении настроек: %w", err)
+	}
+
+	if targetWeight.Valid {
+		result.TargetWeight = &targetWeight.Float64
 	}
 
 	return &result, nil

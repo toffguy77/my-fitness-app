@@ -2,13 +2,16 @@ package curator
 
 // ClientCard represents a summary view of a client for the curator dashboard
 type ClientCard struct {
-	ID          int64       `json:"id"`
-	Name        string      `json:"name"`
-	AvatarURL   string      `json:"avatar_url,omitempty"`
-	TodayKBZHU  *DailyKBZHU `json:"today_kbzhu"`
-	Plan        *PlanKBZHU  `json:"plan"`
-	Alerts      []Alert     `json:"alerts"`
-	UnreadCount int         `json:"unread_count"`
+	ID           int64       `json:"id"`
+	Name         string      `json:"name"`
+	AvatarURL    string      `json:"avatar_url,omitempty"`
+	TodayKBZHU   *DailyKBZHU `json:"today_kbzhu"`
+	Plan         *PlanKBZHU  `json:"plan"`
+	Alerts       []Alert     `json:"alerts"`
+	UnreadCount  int         `json:"unread_count"`
+	LastWeight   *float64    `json:"last_weight"`
+	WeightTrend  string      `json:"weight_trend"`
+	TargetWeight *float64    `json:"target_weight"`
 }
 
 // DailyKBZHU represents daily nutrition totals (calories, protein, fat, carbs)
@@ -33,12 +36,18 @@ type Alert struct {
 	Message string `json:"message"`
 }
 
+// WeightHistoryPoint represents a single weight data point for history
+type WeightHistoryPoint struct {
+	Date   string  `json:"date"`
+	Weight float64 `json:"weight"`
+}
+
 // ClientDetail represents a detailed view of a single client for the curator
 type ClientDetail struct {
 	ClientCard
-	FoodEntries []FoodEntryView `json:"food_entries"`
-	WeeklyPlan  *PlanKBZHU      `json:"weekly_plan"`
-	LastWeight  *float64        `json:"last_weight"`
+	FoodEntries   []FoodEntryView      `json:"food_entries"`
+	WeeklyPlan    *PlanKBZHU           `json:"weekly_plan"`
+	WeightHistory []WeightHistoryPoint `json:"weight_history"`
 }
 
 // FoodEntryView represents a single food entry as seen by the curator

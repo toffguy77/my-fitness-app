@@ -252,6 +252,7 @@ export interface ProgressData {
     weightTrend: WeightTrendPoint[]
     nutritionAdherence: number // percentage (0-100)
     achievements: Achievement[]
+    targetWeight?: number | null
 }
 
 // ============================================================================
