@@ -17,7 +17,7 @@ export default function NotificationsLayout({
     }, [])
 
     return (
-        <DashboardLayout userName={userName} activeNavItem="notifications">
+        <DashboardLayout userName={userName}>
             {children}
         </DashboardLayout>
     )
