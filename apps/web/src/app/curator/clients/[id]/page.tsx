@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, MessageCircle, Loader2, TrendingUp, Check, X } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Loader2, Check, X } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curatorApi'
 import { KBZHUProgress } from '@/features/curator/components/KBZHUProgress'
 import { AlertBadge } from '@/features/curator/components/AlertBadge'
@@ -50,10 +50,12 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
     }
 }
 
+const CHART_PADDING = { top: 10, right: 10, bottom: 20, left: 40 }
+
 function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targetWeight?: number | null }) {
     const width = 300
     const height = 120
-    const padding = { top: 10, right: 10, bottom: 20, left: 40 }
+    const padding = CHART_PADDING
     const chartWidth = width - padding.left - padding.right
     const chartHeight = height - padding.top - padding.bottom
 
@@ -72,7 +74,7 @@ function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targe
             weight: p.weight,
             date: p.date,
         })),
-        [data, minW, range, chartWidth, chartHeight]
+        [data, minW, range, chartWidth, chartHeight, padding.left, padding.top]
     )
 
     const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
