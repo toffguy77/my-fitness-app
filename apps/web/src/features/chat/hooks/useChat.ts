@@ -36,7 +36,8 @@ export function useChat(conversationId: string | null) {
             .getMessages(conversationId)
             .then((msgs) => {
                 if (!cancelled) {
-                    setMessages(msgs)
+                    // API returns DESC order (newest first); reverse for chronological display
+                    setMessages(msgs.reverse())
                     setHasMore(msgs.length >= 50)
                     setIsLoading(false)
                 }
@@ -73,7 +74,8 @@ export function useChat(conversationId: string | null) {
 
         const cursor = messages[0]?.id
         const older = await chatApi.getMessages(conversationId, cursor)
-        setMessages((prev) => [...older, ...prev])
+        // API returns DESC order; reverse and prepend for chronological display
+        setMessages((prev) => [...older.reverse(), ...prev])
         setHasMore(older.length >= 50)
     }, [conversationId, hasMore, isLoading, messages])
 
