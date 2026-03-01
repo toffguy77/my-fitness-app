@@ -217,7 +217,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 	// Get food entries for the date
 	entriesQuery := `
-		SELECT id, food_name, meal_type, calories, protein, fat, carbs, weight, created_by, created_at
+		SELECT id, food_name, meal_type, calories, protein, fat, carbs, portion_amount, created_by, created_at
 		FROM food_entries
 		WHERE user_id = $1 AND date = $2
 		ORDER BY created_at ASC
