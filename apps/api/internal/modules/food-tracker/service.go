@@ -824,9 +824,9 @@ func roundToOneDecimal(value float64) float64 {
 func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offset int) (*SearchFoodsResponse, error) {
 	startTime := time.Now()
 
-	// Validate query
-	if len(query) < 2 {
-		return nil, fmt.Errorf("поисковый запрос должен содержать минимум 2 символа")
+	// Validate query (3+ chars needed for meaningful FTS results with Russian morphology)
+	if len([]rune(query)) < 3 {
+		return nil, fmt.Errorf("поисковый запрос должен содержать минимум 3 символа")
 	}
 
 	// Default and max limit
@@ -841,12 +841,12 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 	}
 
 	// Search both products and food_items tables via UNION ALL
-	// Products table is small — use FTS + ILIKE fallback
-	// Food items table has 3M+ rows — use only FTS (GIN index) to avoid full table scan
+	// Each subquery is capped at 200 rows to avoid sorting huge intermediate sets
+	// We fetch limit+1 to detect hasMore without expensive COUNT(*) OVER()
 	sqlQuery := `
 		WITH matched AS (
 			-- Products table (small, ILIKE is acceptable)
-			SELECT id::text AS id, name, brand,
+			(SELECT id::text AS id, name, brand,
 			       COALESCE(category_id::text, '') AS category,
 			       100.0 AS serving_size, 'г' AS serving_unit,
 			       COALESCE(calories, 0) AS calories_per_100,
@@ -868,11 +868,14 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
 			   OR name ILIKE '%' || $1 || '%'
 			   OR brand ILIKE '%' || $1 || '%'
+			ORDER BY ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
+			              plainto_tsquery('russian', $1)) DESC
+			LIMIT 200)
 
 			UNION ALL
 
 			-- Food items table (3M+ rows, FTS only via GIN index)
-			SELECT id::text AS id, name, brand,
+			(SELECT id::text AS id, name, brand,
 			       COALESCE(category, '') AS category,
 			       COALESCE(serving_size, 100.0) AS serving_size,
 			       COALESCE(serving_unit, 'г') AS serving_unit,
@@ -895,8 +898,11 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 			            ELSE 2 END AS source_priority
 			FROM food_items
 			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
+			ORDER BY ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
+			              plainto_tsquery('russian', $1)) DESC
+			LIMIT 200)
 		)
-		SELECT *, COUNT(*) OVER() AS total_count
+		SELECT *
 		FROM matched
 		ORDER BY
 			CASE WHEN name ILIKE $1 || '%' THEN 0 ELSE 1 END,
@@ -906,7 +912,7 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := s.db.QueryContext(ctx, sqlQuery, query, limit, offset)
+	rows, err := s.db.QueryContext(ctx, sqlQuery, query, limit+1, offset)
 	if err != nil {
 		s.log.LogDatabaseQuery(sqlQuery, time.Since(startTime), err, map[string]interface{}{
 			"query":  query,
@@ -918,7 +924,6 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 	defer rows.Close()
 
 	foods := make([]FoodItem, 0)
-	var totalCount int
 	for rows.Next() {
 		var item FoodItem
 		var rank float64
@@ -944,7 +949,6 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 			&item.UpdatedAt,
 			&rank,
 			&sourcePriority,
-			&totalCount,
 		)
 		if err != nil {
 			s.log.Error("Failed to scan food item", "error", err)
@@ -956,6 +960,16 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("ошибка при обработке результатов поиска: %w", err)
+	}
+
+	// We fetched limit+1 to detect if more results exist
+	hasMore := len(foods) > limit
+	if hasMore {
+		foods = foods[:limit]
+	}
+	totalCount := offset + len(foods)
+	if hasMore {
+		totalCount = offset + limit + 1
 	}
 
 	s.log.LogDatabaseQuery(sqlQuery, time.Since(startTime), nil, map[string]interface{}{

@@ -552,8 +552,8 @@ func (r *SearchFoodsRequest) Validate() error {
 	if r.Query == "" {
 		return fmt.Errorf("поисковый запрос обязателен")
 	}
-	if len(r.Query) < 2 {
-		return fmt.Errorf("поисковый запрос должен содержать минимум 2 символа")
+	if len([]rune(r.Query)) < 3 {
+		return fmt.Errorf("поисковый запрос должен содержать минимум 3 символа")
 	}
 	return nil
 }

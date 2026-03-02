@@ -49,7 +49,7 @@ func (h *Handler) SearchFoods(c *gin.Context) {
 
 		// Check for specific error types
 		errMsg := err.Error()
-		if strings.Contains(errMsg, "минимум 2 символа") {
+		if strings.Contains(errMsg, "минимум 3 символа") {
 			response.Error(c, http.StatusBadRequest, errMsg)
 			return
 		}
