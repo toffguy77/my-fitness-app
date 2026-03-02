@@ -57,7 +57,7 @@ export interface UseFoodSearch extends UseFoodSearchState, UseFoodSearchActions 
 export interface UseFoodSearchOptions {
     /** Debounce delay in milliseconds (default: 300) */
     debounceMs?: number;
-    /** Minimum query length to trigger search (default: 2) */
+    /** Minimum query length to trigger search (default: 3) */
     minQueryLength?: number;
     /** Results per page (default: 20) */
     pageSize?: number;
@@ -70,7 +70,7 @@ export interface UseFoodSearchOptions {
 // ============================================================================
 
 const DEFAULT_DEBOUNCE_MS = 300;
-const DEFAULT_MIN_QUERY_LENGTH = 2;
+const DEFAULT_MIN_QUERY_LENGTH = 3;
 const DEFAULT_PAGE_SIZE = 20;
 
 // ============================================================================
