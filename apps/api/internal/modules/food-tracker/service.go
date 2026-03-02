@@ -841,9 +841,11 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 	}
 
 	// Search both products and food_items tables via UNION ALL
+	// Products table is small — use FTS + ILIKE fallback
+	// Food items table has 3M+ rows — use only FTS (GIN index) to avoid full table scan
 	sqlQuery := `
 		WITH matched AS (
-			-- Products table
+			-- Products table (small, ILIKE is acceptable)
 			SELECT id::text AS id, name, brand,
 			       COALESCE(category_id::text, '') AS category,
 			       100.0 AS serving_size, 'г' AS serving_unit,
@@ -869,7 +871,7 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 
 			UNION ALL
 
-			-- Food items table (includes 3M+ imported products)
+			-- Food items table (3M+ rows, FTS only via GIN index)
 			SELECT id::text AS id, name, brand,
 			       COALESCE(category, '') AS category,
 			       COALESCE(serving_size, 100.0) AS serving_size,
@@ -893,8 +895,6 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 			            ELSE 2 END AS source_priority
 			FROM food_items
 			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
-			   OR name ILIKE '%' || $1 || '%'
-			   OR brand ILIKE '%' || $1 || '%'
 		)
 		SELECT *, COUNT(*) OVER() AS total_count
 		FROM matched
