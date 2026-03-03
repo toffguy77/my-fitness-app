@@ -284,18 +284,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                     </div>
                 ) : (
                     /* Empty state */
-                    <div className="text-center py-6 space-y-4" role="status" aria-label="Тренировка не записана">
-                        <div className="text-gray-400">
-                            <Dumbbell className="h-12 w-12 mx-auto mb-3" aria-hidden="true" />
-                        </div>
-                        <div className="space-y-2">
-                            <p className="text-sm text-gray-500">
-                                Тренировка не записана
-                            </p>
-                            <p className="text-xs text-gray-400">
-                                Добавьте тренировку, чтобы отслеживать активность
-                            </p>
-                        </div>
+                    <div className="text-center py-2 space-y-2" role="status" aria-label="Тренировка не записана">
+                        <Dumbbell className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
+                        <p className="text-sm text-gray-500">Не записано</p>
                         <Button
                             variant="outline"
                             size="sm"
@@ -304,7 +295,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                             aria-label="Добавить тренировку"
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Добавить тренировку
+                            Добавить
                         </Button>
                     </div>
                 )}

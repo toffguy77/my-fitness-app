@@ -18,7 +18,8 @@
 'use client'
 
 import { useState, useRef, ChangeEvent, memo, useCallback, useMemo } from 'react'
-import { Camera, Upload, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Camera, Upload, CheckCircle, AlertTriangle, Plus } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validatePhoto } from '../utils/validation'
 import type { PhotoData } from '../types'
@@ -212,38 +213,20 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                         </button>
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {/* Upload button - prominent on weekend */}
-                        <button
-                            type="button"
+                    <div className="text-center py-2 space-y-2">
+                        <Camera className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
+                        <p className="text-sm text-gray-500">Не записано</p>
+                        <Button
+                            variant="outline"
+                            size="sm"
                             onClick={handleUploadClick}
                             disabled={isLoading}
-                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 sm:px-6 sm:py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isWeekendDay
-                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
+                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
                             aria-label="Загрузить фото прогресса"
                         >
-                            <Camera className="w-5 h-5 sm:w-6 sm:h-6" aria-hidden="true" />
-                            <span className="text-sm sm:text-base font-medium">
-                                {isWeekendDay
-                                    ? 'Загрузить фото прогресса'
-                                    : 'Загрузить фото'}
-                            </span>
-                        </button>
-
-                        {/* Weekend reminder */}
-                        {isWeekendDay && (
-                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg" role="alert">
-                                <AlertTriangle
-                                    className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                                    aria-hidden="true"
-                                />
-                                <p className="text-xs sm:text-sm text-blue-800">
-                                    Не забудьте загрузить фото прогресса для недельного отчета
-                                </p>
-                            </div>
-                        )}
+                            <Camera className="h-4 w-4 mr-2" aria-hidden="true" />
+                            Загрузить фото
+                        </Button>
                     </div>
                 )}
 

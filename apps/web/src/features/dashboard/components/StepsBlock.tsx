@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, memo, useMemo } from 'react'
-import { Plus, Check, Target } from 'lucide-react'
+import { Plus, Check, Target, Footprints } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
@@ -368,10 +368,9 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
                 {/* Empty state or motivational message */}
                 {currentSteps === 0 ? (
-                    <div className="text-center py-2" role="status" aria-label="Шаги не записаны">
-                        <p className="text-sm text-gray-500 mb-2">
-                            Начните двигаться к цели
-                        </p>
+                    <div className="text-center py-2 space-y-2" role="status" aria-label="Шаги не записаны">
+                        <Footprints className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
+                        <p className="text-sm text-gray-500">Не записано</p>
                         <Button
                             variant="outline"
                             size="sm"
@@ -380,7 +379,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                             aria-label="Добавить шаги"
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Добавить шаги
+                            Добавить
                         </Button>
                     </div>
                 ) : !isGoalReached && (

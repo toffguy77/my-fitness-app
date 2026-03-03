@@ -12,7 +12,7 @@
  */
 
 import { useState, memo, useMemo } from 'react'
-import { Plus, AlertTriangle } from 'lucide-react'
+import { Plus, AlertTriangle, UtensilsCrossed } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
@@ -350,10 +350,9 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
 
                 {/* Empty state */}
                 {nutrition.calories === 0 && (
-                    <div className="text-center py-2">
-                        <p className="text-sm text-gray-500 mb-2">
-                            Данные о питании не добавлены
-                        </p>
+                    <div className="text-center py-2 space-y-2">
+                        <UtensilsCrossed className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
+                        <p className="text-sm text-gray-500">Не записано</p>
                         <Button
                             variant="outline"
                             size="sm"
@@ -363,7 +362,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                             aria-label="Добавить еду в дневник питания"
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Добавить еду
+                            Добавить
                         </Button>
                     </div>
                 )}
