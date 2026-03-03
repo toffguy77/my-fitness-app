@@ -50,6 +50,7 @@ type ClientDetail struct {
 	WeeklyPlan    *PlanKBZHU           `json:"weekly_plan"`
 	WeightHistory []WeightHistoryPoint `json:"weight_history"`
 	Photos        []PhotoView          `json:"photos"`
+	WaterGoal     *int                 `json:"water_goal"`
 }
 
 // DayDetail represents a single day's data for the curator client view

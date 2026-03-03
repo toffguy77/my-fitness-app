@@ -144,3 +144,46 @@ func (h *Handler) SetTargetWeight(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, gin.H{"message": "Целевой вес обновлён"})
 }
+
+// SetWaterGoalRequest represents the request to set a client's water goal
+type SetWaterGoalRequest struct {
+	WaterGoal *int `json:"water_goal"`
+}
+
+// SetWaterGoal handles PUT /api/v1/curator/clients/:id/water-goal
+func (h *Handler) SetWaterGoal(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	var req SetWaterGoalRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные")
+		return
+	}
+
+	// Validate range if value is provided
+	if req.WaterGoal != nil && (*req.WaterGoal < 1 || *req.WaterGoal > 30) {
+		response.Error(c, http.StatusBadRequest, "Цель по воде должна быть от 1 до 30 стаканов")
+		return
+	}
+
+	if err := h.service.SetWaterGoal(c.Request.Context(), userID, clientID, req.WaterGoal); err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to set water goal", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось обновить цель по воде")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Цель по воде обновлена"})
+}

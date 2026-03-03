@@ -333,6 +333,7 @@ interface FoodTrackerState {
     waterIntake: number;
     waterGoal: number;
     glassSize: number;
+    waterEnabled: boolean;
 
     // Offline state
     isOffline: boolean;
@@ -377,6 +378,7 @@ const initialState = {
     waterIntake: 0,
     waterGoal: DEFAULT_WATER_GOAL,
     glassSize: DEFAULT_GLASS_SIZE,
+    waterEnabled: true,
     isOffline: false,
     pendingOperations: [],
 };
@@ -441,6 +443,7 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
             const waterGlasses = waterResponse?.glasses ?? 0;
             const waterGoal = waterResponse?.goal ?? DEFAULT_WATER_GOAL;
             const waterGlassSize = waterResponse?.glass_size ?? DEFAULT_GLASS_SIZE;
+            const waterEnabled = waterResponse?.enabled ?? true;
 
             // Save to cache
             saveCachedEntries(date, groupedEntries);
@@ -459,6 +462,7 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
                 waterIntake: waterGlasses,
                 waterGoal: waterGoal,
                 glassSize: waterGlassSize,
+                waterEnabled,
                 isLoading: false,
                 isOffline: false,
                 error: null,

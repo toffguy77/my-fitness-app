@@ -94,6 +94,7 @@ const createMockWaterResponse = (
     glasses,
     goal,
     glass_size: glassSize,
+    enabled: true,
 });
 
 // ============================================================================

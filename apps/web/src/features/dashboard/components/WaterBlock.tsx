@@ -67,20 +67,25 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
     const [goal, setGoal] = useState(8)
     const [glassSize, setGlassSize] = useState(250)
     const [isAdding, setIsAdding] = useState(false)
+    const [enabled, setEnabled] = useState<boolean | null>(null)
 
     const dateStr = formatLocalDate(date)
 
     useEffect(() => {
-        apiClient.get<{ glasses: number; goal: number; glass_size: number }>(
+        apiClient.get<{ glasses: number; goal: number; glass_size: number; enabled: boolean }>(
             `/backend-api/v1/food-tracker/water?date=${dateStr}`
         )
             .then(data => {
                 setGlasses(data.glasses)
                 setGoal(data.goal)
                 setGlassSize(data.glass_size)
+                setEnabled(data.enabled)
             })
             .catch(() => {})
     }, [dateStr])
+
+    if (enabled === false) return null
+    if (enabled === null) return null
 
     const percentage = useMemo(() => goal > 0 ? Math.round((glasses / goal) * 100) : 0, [glasses, goal])
     const isGoalReached = glasses >= goal
@@ -151,11 +156,21 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                                 {percentage}%
                             </div>
                         </div>
-                        {isGoalReached && (
+                        {isGoalReached ? (
                             <div className="flex items-center justify-center gap-1.5 text-green-600" role="status">
                                 <Check className="h-3.5 w-3.5" aria-hidden="true" />
                                 <span className="text-xs font-medium">Цель достигнута!</span>
                             </div>
+                        ) : (
+                            <Button
+                                variant="outline" size="sm"
+                                onClick={handleAddGlass} isLoading={isAdding}
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                aria-label="Добавить стакан воды"
+                            >
+                                <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+                                Добавить
+                            </Button>
                         )}
                     </div>
                 ) : (
@@ -175,7 +190,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                 )}
 
                 <div className="text-xs text-gray-400 text-center">
-                    Рекомендуется 8 стаканов в день
+                    Цель: {goal} стаканов в день
                 </div>
             </CardContent>
         </Card>

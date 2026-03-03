@@ -28,6 +28,7 @@ type ServiceInterface interface {
 	GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error)
 	GetClientDetail(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error)
 	SetTargetWeight(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
+	SetWaterGoal(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error
 }
 
 // Service handles curator business logic
@@ -455,11 +456,12 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		return nil, fmt.Errorf("error iterating weight history: %w", err)
 	}
 
-	// Get target weight
+	// Get target weight and water goal
 	var targetWeight sql.NullFloat64
+	var waterGoal sql.NullInt64
 	_ = s.db.QueryRowContext(ctx,
-		`SELECT target_weight FROM user_settings WHERE user_id = $1`, clientID,
-	).Scan(&targetWeight)
+		`SELECT target_weight, water_goal FROM user_settings WHERE user_id = $1`, clientID,
+	).Scan(&targetWeight, &waterGoal)
 
 	// Get unread count for this client
 	unreadMap, err := s.getUnreadCounts(ctx, curatorID, []int64{clientID})
@@ -542,6 +544,11 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	if targetWeight.Valid {
 		w := targetWeight.Float64
 		detail.TargetWeight = &w
+	}
+
+	if waterGoal.Valid {
+		g := int(waterGoal.Int64)
+		detail.WaterGoal = &g
 	}
 
 	s.log.LogDatabaseQuery("GetClientDetail", time.Since(startTime), nil, map[string]interface{}{
@@ -826,6 +833,34 @@ func (s *Service) SetTargetWeight(ctx context.Context, curatorID int64, clientID
 	)
 	if err != nil {
 		return fmt.Errorf("failed to set target weight: %w", err)
+	}
+
+	return nil
+}
+
+// SetWaterGoal sets the water goal for a client
+func (s *Service) SetWaterGoal(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error {
+	// Verify curator-client relationship
+	var exists bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM curator_client_relationships WHERE curator_id = $1 AND client_id = $2 AND status = 'active')`,
+		curatorID, clientID,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to verify relationship: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("unauthorized")
+	}
+
+	_, err = s.db.ExecContext(ctx,
+		`INSERT INTO user_settings (user_id, water_goal, updated_at)
+		 VALUES ($1, $2, NOW())
+		 ON CONFLICT (user_id) DO UPDATE SET water_goal = $2, updated_at = NOW()`,
+		clientID, waterGoal,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to set water goal: %w", err)
 	}
 
 	return nil

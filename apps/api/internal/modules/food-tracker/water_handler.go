@@ -55,6 +55,7 @@ func (h *Handler) GetWaterIntake(c *gin.Context) {
 		Glasses:   waterLog.Glasses,
 		Goal:      waterLog.Goal,
 		GlassSize: waterLog.GlassSize,
+		Enabled:   waterLog.Enabled,
 	})
 }
 
@@ -128,5 +129,6 @@ func (h *Handler) AddWater(c *gin.Context) {
 		Glasses:   waterLog.Glasses,
 		Goal:      waterLog.Goal,
 		GlassSize: waterLog.GlassSize,
+		Enabled:   waterLog.Enabled,
 	})
 }
