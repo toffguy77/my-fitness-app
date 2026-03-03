@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 )
@@ -33,8 +34,9 @@ func (h *Handler) GetWaterIntake(c *gin.Context) {
 		return
 	}
 
-	// Parse date
-	date, err := time.Parse("2006-01-02", dateStr)
+	// Parse date in user's timezone
+	userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+	date, err := time.ParseInLocation("2006-01-02", dateStr, userLoc)
 	if err != nil {
 		h.log.Errorw("Неверный формат даты", "error", err, "date", dateStr)
 		response.Error(c, http.StatusBadRequest, "Неверный формат даты. Используйте формат ГГГГ-ММ-ДД")
@@ -84,8 +86,9 @@ func (h *Handler) AddWater(c *gin.Context) {
 		return
 	}
 
-	// Parse date
-	date, err := time.Parse("2006-01-02", req.Date)
+	// Parse date in user's timezone
+	userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+	date, err := time.ParseInLocation("2006-01-02", req.Date, userLoc)
 	if err != nil {
 		h.log.Errorw("Неверный формат даты", "error", err, "date", req.Date)
 		response.Error(c, http.StatusBadRequest, "Неверный формат даты. Используйте формат ГГГГ-ММ-ДД")
