@@ -11,6 +11,7 @@ import (
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/gin-gonic/gin"
@@ -38,6 +39,7 @@ type ServiceInterface interface {
 type Handler struct {
 	cfg     *config.Config
 	log     *logger.Logger
+	db      *database.DB
 	service ServiceInterface
 }
 
@@ -46,6 +48,7 @@ func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3Clien
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
+		db:      db,
 		service: NewService(db, log, s3Client, notificationsSvc),
 	}
 }
@@ -92,7 +95,8 @@ func (h *Handler) GetDailyMetrics(c *gin.Context) {
 	}
 
 	// Parse date
-	date, err := time.Parse("2006-01-02", dateStr)
+	userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+	date, err := time.ParseInLocation("2006-01-02", dateStr, userLoc)
 	if err != nil {
 		h.log.Errorw("Invalid date format", "error", err, "date", dateStr)
 		response.Error(c, http.StatusBadRequest, "Неверный формат даты. Используйте YYYY-MM-DD")
@@ -136,7 +140,8 @@ func (h *Handler) SaveMetric(c *gin.Context) {
 	}
 
 	// Parse date
-	date, err := time.Parse("2006-01-02", req.Date)
+	userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+	date, err := time.ParseInLocation("2006-01-02", req.Date, userLoc)
 	if err != nil {
 		h.log.Errorw("Invalid date format", "error", err, "date", req.Date)
 		response.Error(c, http.StatusBadRequest, "Неверный формат даты. Используйте YYYY-MM-DD")
@@ -180,14 +185,15 @@ func (h *Handler) GetWeekMetrics(c *gin.Context) {
 	}
 
 	// Parse dates
-	startDate, err := time.Parse("2006-01-02", req.Start)
+	userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+	startDate, err := time.ParseInLocation("2006-01-02", req.Start, userLoc)
 	if err != nil {
 		h.log.Errorw("Invalid start date format", "error", err, "start", req.Start)
 		response.Error(c, http.StatusBadRequest, "Неверный формат даты начала. Используйте YYYY-MM-DD")
 		return
 	}
 
-	endDate, err := time.Parse("2006-01-02", req.End)
+	endDate, err := time.ParseInLocation("2006-01-02", req.End, userLoc)
 	if err != nil {
 		h.log.Errorw("Invalid end date format", "error", err, "end", req.End)
 		response.Error(c, http.StatusBadRequest, "Неверный формат даты окончания. Используйте YYYY-MM-DD")
