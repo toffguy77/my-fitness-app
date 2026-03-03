@@ -9,6 +9,7 @@ import (
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 )
@@ -44,6 +45,7 @@ type ServiceInterface interface {
 type Handler struct {
 	cfg     *config.Config
 	log     *logger.Logger
+	db      *database.DB
 	service ServiceInterface
 }
 
@@ -52,6 +54,7 @@ func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handle
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
+		db:      db,
 		service: NewService(db, log),
 	}
 }
@@ -103,8 +106,9 @@ func (h *Handler) GetEntries(c *gin.Context) {
 		return
 	}
 
-	// Parse date
-	date, err := time.Parse("2006-01-02", req.Date)
+	// Parse date in user's timezone
+	userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+	date, err := time.ParseInLocation("2006-01-02", req.Date, userLoc)
 	if err != nil {
 		h.log.Errorw("Неверный формат даты", "error", err, "date", req.Date)
 		response.Error(c, http.StatusBadRequest, "Неверный формат даты. Используйте формат ГГГГ-ММ-ДД")
