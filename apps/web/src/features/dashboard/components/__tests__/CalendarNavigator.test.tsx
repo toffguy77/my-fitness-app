@@ -17,7 +17,6 @@ jest.mock('../../store/dashboardStore');
 jest.mock('lucide-react', () => ({
     ChevronLeft: () => <div data-testid="chevron-left" />,
     ChevronRight: () => <div data-testid="chevron-right" />,
-    Check: () => <div data-testid="check-icon" />,
 }));
 
 describe('CalendarNavigator', () => {
@@ -210,100 +209,20 @@ describe('CalendarNavigator', () => {
     });
 
     describe('Goal Completion Indicators', () => {
-        it('shows empty indicators when no data', () => {
-            render(<CalendarNavigator />);
-
-            // All indicators should be gray (not completed)
-            const mondayButton = screen.getByLabelText(/Понедельник, 15/);
-            const indicators = mondayButton.querySelectorAll('.rounded-full');
-
-            // Should have 3 indicators (nutrition, weight, activity)
-            expect(indicators).toHaveLength(3);
-
-            // All should be gray (bg-gray-300)
-            indicators.forEach((indicator) => {
-                expect(indicator).toHaveClass('bg-gray-300');
-            });
-        });
-
-        it('shows green indicators when goals completed', () => {
-            const today = new Date('2024-01-15T12:00:00Z');
-            const weekStart = getWeekStart(today);
-
-            const completedMetrics = createMockMetrics({
-                date: '2024-01-15',
-                completionStatus: {
-                    nutritionFilled: true,
-                    weightLogged: true,
-                    activityCompleted: true,
-                },
-            });
-
-            (useDashboardStore as unknown as jest.Mock).mockReturnValue({
-                selectedDate: today,
-                selectedWeek: {
-                    start: weekStart,
-                    end: getWeekEnd(today),
-                },
-                dailyData: {
-                    '2024-01-15': completedMetrics,
-                },
-                setSelectedDate: mockSetSelectedDate,
-                navigateWeek: mockNavigateWeek,
-            });
-
+        it('shows progress ring with 0 completed when no data', () => {
             render(<CalendarNavigator />);
 
             const mondayButton = screen.getByLabelText(/Понедельник, 15/);
-            const indicators = mondayButton.querySelectorAll('.w-1\\.5.h-1\\.5.rounded-full');
+            const svg = mondayButton.querySelector('svg');
+            expect(svg).toBeInTheDocument();
 
-            // All indicators should be green (bg-green-500) or white (if selected)
-            indicators.forEach((indicator) => {
-                expect(
-                    indicator.classList.contains('bg-green-500') ||
-                    indicator.classList.contains('bg-white')
-                ).toBe(true);
-            });
+            expect(mondayButton).toHaveAttribute(
+                'aria-label',
+                expect.stringContaining('нет выполненных целей'),
+            );
         });
 
-        it('shows checkmark when all goals completed', () => {
-            const today = new Date('2024-01-15T12:00:00Z');
-            const weekStart = getWeekStart(today);
-
-            const completedMetrics = createMockMetrics({
-                date: '2024-01-15',
-                completionStatus: {
-                    nutritionFilled: true,
-                    weightLogged: true,
-                    activityCompleted: true,
-                },
-            });
-
-            (useDashboardStore as unknown as jest.Mock).mockReturnValue({
-                selectedDate: new Date('2024-01-16T12:00:00Z'), // Different day selected
-                selectedWeek: {
-                    start: weekStart,
-                    end: getWeekEnd(today),
-                },
-                dailyData: {
-                    '2024-01-15': completedMetrics,
-                },
-                setSelectedDate: mockSetSelectedDate,
-                navigateWeek: mockNavigateWeek,
-            });
-
-            render(<CalendarNavigator />);
-
-            // Check icons should be present (3 for individual goals + 1 for all goals completed)
-            const checkIcons = screen.getAllByTestId('check-icon');
-            expect(checkIcons.length).toBeGreaterThanOrEqual(1);
-
-            // Verify aria-label for all goals completed
-            const checkmark = screen.getByLabelText('Все цели выполнены');
-            expect(checkmark).toBeInTheDocument();
-        });
-
-        it('shows partial completion correctly', () => {
+        it('shows completion count in aria-label when goals partially completed', () => {
             const today = new Date('2024-01-15T12:00:00Z');
             const weekStart = getWeekStart(today);
 
@@ -331,8 +250,47 @@ describe('CalendarNavigator', () => {
 
             render(<CalendarNavigator />);
 
-            // Should NOT show checkmark (not all goals completed)
-            expect(screen.queryByLabelText('Все цели выполнены')).not.toBeInTheDocument();
+            const mondayButton = screen.getByLabelText(/Понедельник, 15/);
+            expect(mondayButton).toHaveAttribute(
+                'aria-label',
+                expect.stringContaining('выполнено 2 из 3 целей'),
+            );
+            expect(mondayButton.getAttribute('aria-label')).not.toContain('все цели выполнены');
+        });
+
+        it('shows all goals completed in aria-label when 3/3', () => {
+            const today = new Date('2024-01-15T12:00:00Z');
+            const weekStart = getWeekStart(today);
+
+            const completedMetrics = createMockMetrics({
+                date: '2024-01-15',
+                completionStatus: {
+                    nutritionFilled: true,
+                    weightLogged: true,
+                    activityCompleted: true,
+                },
+            });
+
+            (useDashboardStore as unknown as jest.Mock).mockReturnValue({
+                selectedDate: new Date('2024-01-16T12:00:00Z'),
+                selectedWeek: {
+                    start: weekStart,
+                    end: getWeekEnd(today),
+                },
+                dailyData: {
+                    '2024-01-15': completedMetrics,
+                },
+                setSelectedDate: mockSetSelectedDate,
+                navigateWeek: mockNavigateWeek,
+            });
+
+            render(<CalendarNavigator />);
+
+            const mondayButton = screen.getByLabelText(/Понедельник, 15/);
+            expect(mondayButton).toHaveAttribute(
+                'aria-label',
+                expect.stringContaining('все цели выполнены'),
+            );
         });
     });
 
@@ -401,7 +359,7 @@ describe('CalendarNavigator', () => {
             expect(screen.getByLabelText('Следующая неделя')).toBeInTheDocument();
         });
 
-        it('has proper ARIA labels for goal indicators', () => {
+        it('includes completion info in day button aria-label', () => {
             const today = new Date('2024-01-15T12:00:00Z');
             const weekStart = getWeekStart(today);
 
@@ -429,15 +387,11 @@ describe('CalendarNavigator', () => {
 
             render(<CalendarNavigator />);
 
-            // Use getAllByLabelText since there are multiple days with indicators
-            const nutritionFilled = screen.getAllByLabelText('Питание заполнено');
-            expect(nutritionFilled.length).toBeGreaterThan(0);
-
-            const weightNotLogged = screen.getAllByLabelText('Вес не записан');
-            expect(weightNotLogged.length).toBeGreaterThan(0);
-
-            const activityCompleted = screen.getAllByLabelText('Активность выполнена');
-            expect(activityCompleted.length).toBeGreaterThan(0);
+            const mondayButton = screen.getByLabelText(/Понедельник, 15/);
+            expect(mondayButton).toHaveAttribute(
+                'aria-label',
+                expect.stringContaining('выполнено 2 из 3'),
+            );
         });
 
         it('has focus indicators on interactive elements', () => {
@@ -533,15 +487,14 @@ describe('CalendarNavigator', () => {
 
             render(<CalendarNavigator />);
 
-            // Should render without errors
             expect(screen.getByText('Пн')).toBeInTheDocument();
 
-            // All indicators should be gray
             const mondayButton = screen.getByLabelText(/Понедельник, 15/);
-            const indicators = mondayButton.querySelectorAll('.w-1\\.5.h-1\\.5.rounded-full');
-            indicators.forEach((indicator) => {
-                expect(indicator).toHaveClass('bg-gray-300');
-            });
+            expect(mondayButton.querySelector('svg')).toBeInTheDocument();
+            expect(mondayButton).toHaveAttribute(
+                'aria-label',
+                expect.stringContaining('нет выполненных целей'),
+            );
         });
 
         it('handles missing completionStatus gracefully', () => {
