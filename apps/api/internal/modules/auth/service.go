@@ -13,6 +13,34 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Default display names for users who register without a name.
+// Format: "Цвет Животное" — deterministic by user ID.
+var defaultColors = []string{
+	"Синий", "Зелёный", "Красный", "Оранжевый", "Фиолетовый",
+	"Золотой", "Серебряный", "Бирюзовый", "Розовый", "Белый",
+}
+
+var defaultAnimals = []string{
+	"Кот", "Ёж", "Лис", "Медведь", "Волк", "Тигр",
+	"Сокол", "Дельфин", "Панда", "Кролик", "Лев", "Олень",
+}
+
+// Maps animal name to SVG filename for default avatars
+var animalAvatarFile = map[string]string{
+	"Кот": "cat", "Ёж": "hedgehog", "Лис": "fox", "Медведь": "bear",
+	"Волк": "wolf", "Тигр": "tiger", "Сокол": "falcon", "Дельфин": "dolphin",
+	"Панда": "panda", "Кролик": "rabbit", "Лев": "lion", "Олень": "deer",
+}
+
+// generateDefaultIdentity returns a display name and avatar URL for a new user.
+func generateDefaultIdentity(userID int64) (name, avatarURL string) {
+	color := defaultColors[userID%int64(len(defaultColors))]
+	animal := defaultAnimals[(userID/int64(len(defaultColors)))%int64(len(defaultAnimals))]
+	name = color + " " + animal
+	avatarURL = "/avatars/default/" + animalAvatarFile[animal] + ".svg"
+	return name, avatarURL
+}
+
 // Service handles auth business logic
 type Service struct {
 	db     *sql.DB
@@ -71,6 +99,20 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при регистрации: %w", err)
+	}
+
+	// Assign default name and avatar when user registered without a name
+	if strings.TrimSpace(name) == "" {
+		defaultName, avatarURL := generateDefaultIdentity(user.ID)
+		_, err = s.db.ExecContext(ctx,
+			"UPDATE users SET name = $1, avatar_url = $2, updated_at = NOW() WHERE id = $3",
+			defaultName, avatarURL, user.ID,
+		)
+		if err != nil {
+			s.log.Warnw("Failed to set default identity", "user_id", user.ID, "error", err)
+		} else {
+			user.Name = defaultName
+		}
 	}
 
 	// Create default user settings

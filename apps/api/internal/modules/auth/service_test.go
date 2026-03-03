@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,6 +74,11 @@ func TestRegisterService(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
 				AddRow(2, "test2@example.com", "", "client", false, time.Now()))
 
+		// Expect default identity update
+		mock.ExpectExec("UPDATE users SET name").
+			WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), int64(2)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
 		mock.ExpectExec("INSERT INTO user_settings").
 			WithArgs(int64(2)).
 			WillReturnResult(sqlmock.NewResult(1, 1))
@@ -85,6 +91,8 @@ func TestRegisterService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "test2@example.com", result.User.Email)
+		assert.NotEmpty(t, result.User.Name, "should have a default name")
+		assert.Contains(t, result.User.Name, " ", "default name should be 'Color Animal' format")
 	})
 }
 
@@ -291,4 +299,31 @@ func TestGenerateJWTToken(t *testing.T) {
 	exp := int64(claims["exp"].(float64))
 	iat := int64(claims["iat"].(float64))
 	assert.InDelta(t, 15*60, exp-iat, 5) // 15 minutes +/- 5 seconds
+}
+
+func TestGenerateDefaultIdentity(t *testing.T) {
+	t.Run("deterministic by user ID", func(t *testing.T) {
+		name1, avatar1 := generateDefaultIdentity(1)
+		name2, avatar2 := generateDefaultIdentity(1)
+		assert.Equal(t, name1, name2, "same ID should produce same name")
+		assert.Equal(t, avatar1, avatar2, "same ID should produce same avatar")
+	})
+
+	t.Run("different IDs produce different names", func(t *testing.T) {
+		name1, _ := generateDefaultIdentity(1)
+		name2, _ := generateDefaultIdentity(2)
+		assert.NotEqual(t, name1, name2)
+	})
+
+	t.Run("name has color and animal", func(t *testing.T) {
+		name, _ := generateDefaultIdentity(42)
+		parts := strings.Split(name, " ")
+		assert.Len(t, parts, 2, "name should be 'Color Animal'")
+	})
+
+	t.Run("avatar URL points to SVG", func(t *testing.T) {
+		_, avatar := generateDefaultIdentity(42)
+		assert.True(t, strings.HasPrefix(avatar, "/avatars/default/"))
+		assert.True(t, strings.HasSuffix(avatar, ".svg"))
+	})
 }
