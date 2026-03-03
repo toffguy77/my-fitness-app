@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown, Droplets } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curatorApi'
 import { AlertBadge } from '@/features/curator/components/AlertBadge'
 import { DaySection } from '@/features/curator/components/DaySection'
@@ -156,6 +156,96 @@ function WeightSection({ detail, clientId }: { detail: ClientDetail; clientId: n
                     </button>
                 )}
             </div>
+        </section>
+    )
+}
+
+function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId: number }) {
+    const [editing, setEditing] = useState(false)
+    const [goalInput, setGoalInput] = useState('')
+    const [saving, setSaving] = useState(false)
+    const [currentGoal, setCurrentGoal] = useState(detail.water_goal)
+
+    const handleSaveGoal = async () => {
+        const val = parseInt(goalInput, 10)
+        if (isNaN(val) || val < 1 || val > 30) return
+        setSaving(true)
+        try {
+            await curatorApi.setWaterGoal(clientId, val)
+            setCurrentGoal(val)
+            setEditing(false)
+        } catch {
+            // silently fail for now
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleRemoveGoal = async () => {
+        setSaving(true)
+        try {
+            await curatorApi.setWaterGoal(clientId, null)
+            setCurrentGoal(null)
+            setEditing(false)
+        } catch {
+            // silently fail for now
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-2 mb-3">
+                <Droplets className="h-4 w-4 text-blue-500" />
+                <h2 className="text-sm font-semibold text-gray-900">Цель по воде</h2>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+                <span className="text-gray-500">Стаканов в день:</span>
+                {editing ? (
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            max="30"
+                            value={goalInput}
+                            onChange={(e) => setGoalInput(e.target.value)}
+                            className="w-16 rounded border border-gray-300 px-2 py-1 text-xs"
+                            autoFocus
+                        />
+                        <button type="button" onClick={handleSaveGoal} disabled={saving} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                            <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" onClick={() => setEditing(false)} className="p-1 text-gray-400 hover:bg-gray-50 rounded">
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => { setGoalInput(String(currentGoal ?? '')); setEditing(true) }}
+                            className="text-blue-600 hover:underline"
+                        >
+                            {currentGoal != null ? `${currentGoal} стаканов` : 'Установить'}
+                        </button>
+                        {currentGoal != null && (
+                            <button
+                                type="button"
+                                onClick={handleRemoveGoal}
+                                disabled={saving}
+                                className="text-red-400 hover:text-red-600 hover:underline"
+                            >
+                                Убрать
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+            {currentGoal == null && (
+                <p className="mt-2 text-[11px] text-gray-400">Блок воды скрыт у клиента. Задайте цель, чтобы включить.</p>
+            )}
         </section>
     )
 }
@@ -320,6 +410,7 @@ export default function ClientDetailPage() {
                     <WeightSection detail={detail} clientId={clientId} />
                     <StepsChart days={detail.days} />
                     <WaterChart days={detail.days} />
+                    <WaterGoalSection detail={detail} clientId={clientId} />
                     <WorkoutsSection days={detail.days} />
 
                     {/* Photos section */}

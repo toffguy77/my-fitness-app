@@ -347,6 +347,7 @@ type WaterLog struct {
 	Glasses   int       `json:"glasses" db:"glasses"`
 	Goal      int       `json:"goal" db:"goal"`
 	GlassSize int       `json:"glass_size" db:"glass_size"`
+	Enabled   bool      `json:"-"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
@@ -740,9 +741,10 @@ type SearchFoodsResponse struct {
 
 // GetWaterResponse represents the response for getting water intake
 type GetWaterResponse struct {
-	Glasses   int `json:"glasses"`
-	Goal      int `json:"goal"`
-	GlassSize int `json:"glass_size"`
+	Glasses   int  `json:"glasses"`
+	Goal      int  `json:"goal"`
+	GlassSize int  `json:"glass_size"`
+	Enabled   bool `json:"enabled"`
 }
 
 // GetRecommendationsResponse represents the response for getting nutrient recommendations

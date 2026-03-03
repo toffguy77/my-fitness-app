@@ -344,6 +344,7 @@ func main() {
 			curatorGroup.GET("/clients", curatorHandler.GetClients)
 			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)
 			curatorGroup.PUT("/clients/:id/target-weight", curatorHandler.SetTargetWeight)
+			curatorGroup.PUT("/clients/:id/water-goal", curatorHandler.SetWaterGoal)
 		}
 
 		// Admin routes (super_admin role only)

@@ -76,6 +76,7 @@ export function DietTab({
         waterIntake,
         waterGoal,
         glassSize,
+        waterEnabled,
         selectedDate,
         addWater,
     } = useFoodTrackerStore();
@@ -162,11 +163,13 @@ export function DietTab({
             </div>
 
             {/* Water Tracker */}
-            <WaterTracker
-                waterLog={waterLog}
-                onAddGlass={handleAddWater}
-                isLoading={isLoading}
-            />
+            {waterEnabled && (
+                <WaterTracker
+                    waterLog={waterLog}
+                    onAddGlass={handleAddWater}
+                    isLoading={isLoading}
+                />
+            )}
 
             {/* Floating Action Button - responsive positioning */}
             <button

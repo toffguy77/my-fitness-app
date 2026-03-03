@@ -96,4 +96,5 @@ export interface ClientDetail extends ClientCard {
     weekly_plan: PlanKBZHU | null
     weight_history: WeightHistoryPoint[]
     photos: PhotoView[]
+    water_goal: number | null
 }

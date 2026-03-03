@@ -9,4 +9,6 @@ export const curatorApi = {
         apiClient.get<ClientDetail>(`${BASE}/clients/${id}?days=${days ?? 7}`),
     setTargetWeight: (clientId: number, targetWeight: number | null) =>
         apiClient.put(`${BASE}/clients/${clientId}/target-weight`, { target_weight: targetWeight }),
+    setWaterGoal: (clientId: number, waterGoal: number | null) =>
+        apiClient.put(`${BASE}/clients/${clientId}/water-goal`, { water_goal: waterGoal }),
 }

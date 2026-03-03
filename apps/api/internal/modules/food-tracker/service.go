@@ -1417,12 +1417,33 @@ func (s *Service) RemoveFromFavorites(ctx context.Context, userID int64, foodID 
 // Water Tracking
 // ============================================================================
 
+// getUserWaterGoal fetches the curator-set water goal from user_settings.
+// Returns nil if no goal is set (water tracking disabled).
+func (s *Service) getUserWaterGoal(ctx context.Context, userID int64) *int {
+	var goal sql.NullInt64
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT water_goal FROM user_settings WHERE user_id = $1`, userID,
+	).Scan(&goal)
+	if goal.Valid {
+		g := int(goal.Int64)
+		return &g
+	}
+	return nil
+}
+
 // GetWaterIntake retrieves water intake for a user on a specific date
 // Returns default values if no record exists for the date
 func (s *Service) GetWaterIntake(ctx context.Context, userID int64, date time.Time) (*WaterLog, error) {
 	startTime := time.Now()
 
 	dateStr := date.Format("2006-01-02")
+
+	// Fetch curator-set goal
+	userGoal := s.getUserWaterGoal(ctx, userID)
+	goalValue := 8 // default
+	if userGoal != nil {
+		goalValue = *userGoal
+	}
 
 	query := `
 		SELECT id, user_id, date, glasses, goal, glass_size, updated_at
@@ -1443,20 +1464,19 @@ func (s *Service) GetWaterIntake(ctx context.Context, userID int64, date time.Ti
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// No record exists - return default values
 			s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
 				"user_id": userID,
 				"date":    dateStr,
 				"found":   false,
 			})
 
-			// Return default water log with 0 glasses
 			return &WaterLog{
 				UserID:    userID,
 				Date:      dateStr,
 				Glasses:   0,
-				Goal:      8,   // Default goal: 8 glasses
-				GlassSize: 250, // Default glass size: 250ml
+				Goal:      goalValue,
+				GlassSize: 250,
+				Enabled:   userGoal != nil,
 				UpdatedAt: time.Now(),
 			}, nil
 		}
@@ -1467,6 +1487,10 @@ func (s *Service) GetWaterIntake(ctx context.Context, userID int64, date time.Ti
 		})
 		return nil, fmt.Errorf("ошибка при получении данных о воде: %w", err)
 	}
+
+	// Override goal with curator-set value
+	waterLog.Goal = goalValue
+	waterLog.Enabled = userGoal != nil
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
 		"user_id": userID,
@@ -1489,18 +1513,24 @@ func (s *Service) AddWater(ctx context.Context, userID int64, date time.Time, gl
 		glasses = 1
 	}
 
+	// Fetch curator-set goal
+	userGoal := s.getUserWaterGoal(ctx, userID)
+	goalValue := 8
+	if userGoal != nil {
+		goalValue = *userGoal
+	}
+
 	// Use UPSERT to create or update water log
-	// If record exists, increment glasses; otherwise create with default goal and glass size
 	query := `
 		INSERT INTO water_logs (id, user_id, date, glasses, goal, glass_size, updated_at)
-		VALUES (gen_random_uuid(), $1, $2, $3, 8, 250, NOW())
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, 250, NOW())
 		ON CONFLICT (user_id, date) DO UPDATE
-		SET glasses = water_logs.glasses + $3, updated_at = NOW()
+		SET glasses = water_logs.glasses + $3, goal = $4, updated_at = NOW()
 		RETURNING id, user_id, date, glasses, goal, glass_size, updated_at
 	`
 
 	var waterLog WaterLog
-	err := s.db.QueryRowContext(ctx, query, userID, dateStr, glasses).Scan(
+	err := s.db.QueryRowContext(ctx, query, userID, dateStr, glasses, goalValue).Scan(
 		&waterLog.ID,
 		&waterLog.UserID,
 		&waterLog.Date,
@@ -1533,6 +1563,7 @@ func (s *Service) AddWater(ctx context.Context, userID int64, date time.Time, gl
 		"total_glasses": waterLog.Glasses,
 	})
 
+	waterLog.Enabled = userGoal != nil
 	return &waterLog, nil
 }
 

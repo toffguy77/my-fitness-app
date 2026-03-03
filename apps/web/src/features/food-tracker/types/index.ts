@@ -272,6 +272,7 @@ export interface WaterLogResponse {
     glasses: number;
     goal: number;
     glass_size: number;
+    enabled: boolean;
 }
 
 /**
