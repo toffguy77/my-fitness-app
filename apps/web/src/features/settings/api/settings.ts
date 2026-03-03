@@ -14,6 +14,7 @@ export interface FullProfile {
 export interface UserSettings {
     language: string
     units: string
+    timezone: string
     telegram_username: string
     instagram_username: string
     apple_health_enabled: boolean

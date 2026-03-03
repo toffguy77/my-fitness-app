@@ -11,6 +11,18 @@ export const formatDate = (date: Date | string): string => {
     }).format(d)
 }
 
+
+/**
+ * Format a Date to YYYY-MM-DD using local timezone (not UTC).
+ * Use this instead of toISOString().split('T')[0] which converts to UTC.
+ */
+export const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
 export const formatNumber = (num: number, decimals = 0): string => {
     return new Intl.NumberFormat('ru-RU', {
         minimumFractionDigits: decimals,

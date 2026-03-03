@@ -18,6 +18,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { calculatePercentage } from '../utils/calculations'
+import { formatLocalDate } from '@/shared/utils/format'
 import { AttentionBadge } from './AttentionBadge'
 
 /**
@@ -199,7 +200,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
 
     // Get data from store
     const { dailyData, weeklyPlan } = useDashboardStore()
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
 
     // Get nutrition data and goals - memoized to prevent recalculation
@@ -247,7 +248,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
     }
 
     // Check if this is today and nutrition is not logged
-    const isToday = dateStr === new Date().toISOString().split('T')[0]
+    const isToday = dateStr === formatLocalDate(new Date())
     const showAttentionIndicator = isToday && nutrition.calories === 0
 
     return (

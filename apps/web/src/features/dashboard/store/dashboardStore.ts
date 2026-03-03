@@ -10,6 +10,7 @@
  */
 
 import { create } from 'zustand';
+import { formatLocalDate } from '@/shared/utils/format';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
@@ -368,7 +369,7 @@ function getWeekEnd(date: Date): Date {
  * Helper: Format date to ISO string (YYYY-MM-DD)
  */
 function formatDateISO(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return formatLocalDate(date);
 }
 
 /**

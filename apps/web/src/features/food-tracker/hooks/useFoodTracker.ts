@@ -9,6 +9,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
+import { formatLocalDate } from '@/shared/utils/format';
 import { useOnlineStatus } from './useOnlineStatus';
 import type {
     FoodEntry,
@@ -99,7 +100,7 @@ export interface UseFoodTrackerOptions {
  */
 export function useFoodTracker(options: UseFoodTrackerOptions = {}): UseFoodTracker {
     const {
-        initialDate = new Date().toISOString().split('T')[0],
+        initialDate = formatLocalDate(new Date()),
         autoFetch = true,
     } = options;
 

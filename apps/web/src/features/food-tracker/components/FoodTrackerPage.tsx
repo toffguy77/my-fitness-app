@@ -16,6 +16,7 @@ import { FoodTrackerTabs } from './FoodTrackerTabs';
 import { DietTab } from './DietTab';
 import { RecommendationsTab } from './RecommendationsTab';
 import { useFoodTracker } from '../hooks/useFoodTracker';
+import { formatLocalDate } from '@/shared/utils/format';
 import type { FoodTrackerTab } from '../types';
 
 // ============================================================================
@@ -51,7 +52,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
 
     // Fetch data when date changes
     useEffect(() => {
-        const dateString = selectedDate.toISOString().split('T')[0];
+        const dateString = formatLocalDate(selectedDate);
         fetchDayData(dateString);
     }, [selectedDate, fetchDayData]);
 
@@ -115,7 +116,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                     )}
 
                     {activeTab === 'recommendations' && (
-                        <RecommendationsTab date={selectedDate.toISOString().split('T')[0]} />
+                        <RecommendationsTab date={formatLocalDate(selectedDate)} />
                     )}
                 </div>
 

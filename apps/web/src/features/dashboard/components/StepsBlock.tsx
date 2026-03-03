@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
+import { formatLocalDate } from '@/shared/utils/format'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validateSteps } from '../utils/validation'
 import { calculatePercentage } from '../utils/calculations'
@@ -123,7 +124,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
     // Get data from store
     const { dailyData, weeklyPlan, updateMetric } = useDashboardStore()
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
 
     // Get current steps and goal
@@ -229,7 +230,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
     }, [handleSave, handleCancel])
 
     // Check if this is today and steps are not logged
-    const isToday = dateStr === new Date().toISOString().split('T')[0]
+    const isToday = dateStr === formatLocalDate(new Date())
     const showAttentionIndicator = isToday && currentSteps === 0
 
     return (
