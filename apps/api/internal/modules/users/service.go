@@ -27,6 +27,7 @@ type FullProfile struct {
 type Settings struct {
 	Language           string   `json:"language"`
 	Units              string   `json:"units"`
+	Timezone           string   `json:"timezone"`
 	TelegramUsername   string   `json:"telegram_username,omitempty"`
 	InstagramUsername  string   `json:"instagram_username,omitempty"`
 	AppleHealthEnabled bool     `json:"apple_health_enabled"`
@@ -58,7 +59,7 @@ func (s *Service) GetProfile(ctx context.Context, userID int64) (*FullProfile, e
 	}
 	query := `
 		SELECT u.id, u.email, COALESCE(u.name, ''), u.role, COALESCE(u.avatar_url, ''), COALESCE(u.onboarding_completed, false),
-		       COALESCE(s.language, 'ru'), COALESCE(s.units, 'metric'),
+		       COALESCE(s.language, 'ru'), COALESCE(s.units, 'metric'), COALESCE(s.timezone, 'Europe/Moscow'),
 		       COALESCE(s.telegram_username, ''), COALESCE(s.instagram_username, ''), COALESCE(s.apple_health_enabled, false),
 		       s.target_weight
 		FROM users u
@@ -77,6 +78,7 @@ func (s *Service) GetProfile(ctx context.Context, userID int64) (*FullProfile, e
 		&profile.OnboardingCompleted,
 		&profile.Settings.Language,
 		&profile.Settings.Units,
+		&profile.Settings.Timezone,
 		&profile.Settings.TelegramUsername,
 		&profile.Settings.InstagramUsername,
 		&profile.Settings.AppleHealthEnabled,
@@ -125,17 +127,18 @@ func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Set
 		return nil, fmt.Errorf("database connection not available")
 	}
 	query := `
-		INSERT INTO user_settings (user_id, language, units, telegram_username, instagram_username, apple_health_enabled, target_weight, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+		INSERT INTO user_settings (user_id, language, units, timezone, telegram_username, instagram_username, apple_health_enabled, target_weight, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
 		ON CONFLICT (user_id) DO UPDATE SET
 		  language = EXCLUDED.language,
 		  units = EXCLUDED.units,
+		  timezone = EXCLUDED.timezone,
 		  telegram_username = EXCLUDED.telegram_username,
 		  instagram_username = EXCLUDED.instagram_username,
 		  apple_health_enabled = EXCLUDED.apple_health_enabled,
 		  target_weight = EXCLUDED.target_weight,
 		  updated_at = NOW()
-		RETURNING language, units, telegram_username, instagram_username, apple_health_enabled, target_weight
+		RETURNING language, units, timezone, telegram_username, instagram_username, apple_health_enabled, target_weight
 	`
 
 	var result Settings
@@ -144,6 +147,7 @@ func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Set
 		userID,
 		settings.Language,
 		settings.Units,
+		settings.Timezone,
 		settings.TelegramUsername,
 		settings.InstagramUsername,
 		settings.AppleHealthEnabled,
@@ -151,6 +155,7 @@ func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Set
 	).Scan(
 		&result.Language,
 		&result.Units,
+		&result.Timezone,
 		&result.TelegramUsername,
 		&result.InstagramUsername,
 		&result.AppleHealthEnabled,

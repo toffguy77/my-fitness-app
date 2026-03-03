@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
@@ -88,6 +89,7 @@ func getUserID(c *gin.Context) int64 {
 type UpdateSettingsRequest struct {
 	Language           string   `json:"language"`
 	Units              string   `json:"units"`
+	Timezone           string   `json:"timezone"`
 	TelegramUsername   string   `json:"telegram_username"`
 	InstagramUsername  string   `json:"instagram_username"`
 	AppleHealthEnabled bool     `json:"apple_health_enabled"`
@@ -104,9 +106,18 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
+	// Validate timezone if provided
+	if req.Timezone != "" {
+		if _, err := time.LoadLocation(req.Timezone); err != nil {
+			response.Error(c, http.StatusBadRequest, "Неверный часовой пояс")
+			return
+		}
+	}
+
 	settings, err := h.service.UpdateSettings(c.Request.Context(), userID, Settings{
 		Language:           req.Language,
 		Units:              req.Units,
+		Timezone:           req.Timezone,
 		TelegramUsername:   req.TelegramUsername,
 		InstagramUsername:  req.InstagramUsername,
 		AppleHealthEnabled: req.AppleHealthEnabled,
