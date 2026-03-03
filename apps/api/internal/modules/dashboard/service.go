@@ -38,7 +38,7 @@ func (s *Service) GetDailyMetrics(ctx context.Context, userID int64, date time.T
 	startTime := time.Now()
 
 	// Normalize date to start of day
-	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 
 	query := `
 		SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps,
@@ -111,7 +111,7 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 	startTime := time.Now()
 
 	// Normalize date to start of day
-	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 
 	// Validate metric update type
 	if !metricUpdate.Type.IsValid() {
@@ -268,8 +268,8 @@ func (s *Service) GetWeekMetrics(ctx context.Context, userID int64, startDate, e
 	startTime := time.Now()
 
 	// Normalize dates to start of day
-	startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
-	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, time.UTC)
+	startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+	endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, endDate.Location())
 
 	query := `
 		SELECT id, user_id, date, calories, protein, fat, carbs, weight, steps,
@@ -1080,8 +1080,8 @@ func (s *Service) ValidateWeekData(ctx context.Context, userID int64, weekStart,
 	startTime := time.Now()
 
 	// Normalize dates
-	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, time.UTC)
-	weekEnd = time.Date(weekEnd.Year(), weekEnd.Month(), weekEnd.Day(), 0, 0, 0, 0, time.UTC)
+	weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+	weekEnd = time.Date(weekEnd.Year(), weekEnd.Month(), weekEnd.Day(), 0, 0, 0, 0, weekEnd.Location())
 
 	errors := make([]string, 0)
 

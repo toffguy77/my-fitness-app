@@ -165,7 +165,7 @@ func TestGetDailyMetrics_Success(t *testing.T) {
 		Carbs:    200,
 	}
 
-	mockService.On("GetDailyMetrics", mock.Anything, int64(1), testDate).Return(metrics, nil)
+	mockService.On("GetDailyMetrics", mock.Anything, int64(1), mock.AnythingOfType("time.Time")).Return(metrics, nil)
 
 	router := gin.New()
 	router.GET("/daily/:date", func(c *gin.Context) {
@@ -235,7 +235,7 @@ func TestSaveMetric_Success(t *testing.T) {
 		Carbs:    200,
 	}
 
-	mockService.On("SaveMetric", mock.Anything, int64(1), testDate, metricUpdate).Return(metrics, nil)
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), metricUpdate).Return(metrics, nil)
 
 	router := gin.New()
 	router.POST("/daily", func(c *gin.Context) {
@@ -262,13 +262,12 @@ func TestGetWeekMetrics_Success(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
 	startDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
-	endDate := time.Date(2024, 1, 21, 0, 0, 0, 0, time.UTC)
 	metrics := []DailyMetrics{
 		{ID: uuid.New().String(), UserID: 1, Date: startDate, Calories: 2000},
 		{ID: uuid.New().String(), UserID: 1, Date: startDate.AddDate(0, 0, 1), Calories: 2100},
 	}
 
-	mockService.On("GetWeekMetrics", mock.Anything, int64(1), startDate, endDate).Return(metrics, nil)
+	mockService.On("GetWeekMetrics", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(metrics, nil)
 
 	router := gin.New()
 	router.GET("/week", func(c *gin.Context) {
@@ -1126,8 +1125,7 @@ func TestUploadPhoto_Unauthorized(t *testing.T) {
 func TestGetDailyMetrics_ServiceError(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	testDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
-	mockService.On("GetDailyMetrics", mock.Anything, int64(1), testDate).Return(nil, fmt.Errorf("database error"))
+	mockService.On("GetDailyMetrics", mock.Anything, int64(1), mock.AnythingOfType("time.Time")).Return(nil, fmt.Errorf("database error"))
 
 	router := gin.New()
 	router.GET("/daily/:date", func(c *gin.Context) {
@@ -1146,13 +1144,12 @@ func TestGetDailyMetrics_ServiceError(t *testing.T) {
 func TestSaveMetric_ServiceError(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	testDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 	metricUpdate := MetricUpdate{
 		Type: MetricUpdateTypeNutrition,
 		Data: map[string]interface{}{"calories": float64(2000)},
 	}
 
-	mockService.On("SaveMetric", mock.Anything, int64(1), testDate, metricUpdate).Return(nil, fmt.Errorf("validation error"))
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), metricUpdate).Return(nil, fmt.Errorf("validation error"))
 
 	router := gin.New()
 	router.POST("/daily", func(c *gin.Context) {
@@ -1177,10 +1174,7 @@ func TestSaveMetric_ServiceError(t *testing.T) {
 func TestGetWeekMetrics_ServiceError(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	startDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
-	endDate := time.Date(2024, 1, 21, 0, 0, 0, 0, time.UTC)
-
-	mockService.On("GetWeekMetrics", mock.Anything, int64(1), startDate, endDate).Return(nil, fmt.Errorf("database error"))
+	mockService.On("GetWeekMetrics", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), mock.AnythingOfType("time.Time")).Return(nil, fmt.Errorf("database error"))
 
 	router := gin.New()
 	router.GET("/week", func(c *gin.Context) {

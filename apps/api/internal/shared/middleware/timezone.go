@@ -13,6 +13,11 @@ const DefaultTimezone = "Europe/Moscow"
 // GetUserTimezone loads the user's timezone from user_settings.
 // Returns the timezone Location, falling back to Europe/Moscow.
 func GetUserTimezone(ctx context.Context, db *database.DB, userID int64) *time.Location {
+	if db == nil {
+		loc, _ := time.LoadLocation(DefaultTimezone)
+		return loc
+	}
+
 	var tz string
 	err := db.QueryRowContext(ctx,
 		"SELECT COALESCE(timezone, 'Europe/Moscow') FROM user_settings WHERE user_id = $1",
