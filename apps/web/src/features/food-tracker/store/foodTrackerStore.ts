@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { formatLocalDate } from '@/shared/utils/format';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
@@ -361,7 +362,7 @@ interface FoodTrackerState {
  * Initial state
  */
 const initialState = {
-    selectedDate: new Date().toISOString().split('T')[0],
+    selectedDate: formatLocalDate(new Date()),
     entries: { ...EMPTY_ENTRIES },
     isLoading: false,
     error: null,

@@ -18,6 +18,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
 
@@ -58,7 +59,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
     // Get data from store
     const { dailyData, updateMetric } = useDashboardStore()
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
 
     // Get current workout data
@@ -196,7 +197,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     // Check if this is today and workout is not logged
     // Note: In a full implementation, we would check if today is a scheduled workout day
     // For now, we'll show the indicator on all days when workout is not logged
-    const isToday = dateStr === new Date().toISOString().split('T')[0]
+    const isToday = dateStr === formatLocalDate(new Date())
     const showAttentionIndicator = isToday && !isWorkoutCompleted
 
     return (

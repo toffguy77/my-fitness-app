@@ -14,6 +14,7 @@
 import { useEffect, memo, useCallback } from 'react'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import { NutritionBlock } from './NutritionBlock'
 import { WeightBlock } from './WeightBlock'
 import { StepsBlock } from './StepsBlock'
@@ -43,7 +44,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
     } = useDashboardStore()
 
     // Get data for the selected date
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
 
     // Memoized fetch callback

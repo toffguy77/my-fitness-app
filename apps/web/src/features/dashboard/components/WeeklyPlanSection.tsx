@@ -18,6 +18,7 @@
 'use client'
 
 import { memo, useMemo } from 'react'
+import { formatLocalDate } from '@/shared/utils/format'
 import { CheckCircle, Calendar } from 'lucide-react'
 import { useDashboardStore } from '../store/dashboardStore'
 import type { WeeklyPlan } from '../types'
@@ -121,7 +122,7 @@ function hasLowAdherence(
     let consecutiveLowDays = 0
 
     for (const date of dates) {
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
         const metrics = dailyData[dateStr]
 
         if (!metrics) continue

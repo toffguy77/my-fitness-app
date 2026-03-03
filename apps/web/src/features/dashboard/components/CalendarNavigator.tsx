@@ -18,6 +18,7 @@ import { useRef, memo, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useRovingTabIndex } from '../hooks/useKeyboardNavigation';
+import { formatLocalDate } from '@/shared/utils/format';
 
 /**
  * Day names in Russian (short form)
@@ -74,7 +75,7 @@ function isSunday(date: Date): boolean {
  * Helper: Format date to ISO string (YYYY-MM-DD)
  */
 function formatDateISO(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return formatLocalDate(date);
 }
 
 /**

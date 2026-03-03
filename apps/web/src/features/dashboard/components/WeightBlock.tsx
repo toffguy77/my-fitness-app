@@ -18,6 +18,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import { validateWeight } from '../utils/validation'
 import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
 import { AttentionBadge } from './AttentionBadge'
@@ -43,7 +44,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
 
     // Get data from store
     const { dailyData, updateMetric } = useDashboardStore()
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
 
     // Get current and previous weight
@@ -54,7 +55,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     const previousWeight = useMemo(() => {
         const previousDate = new Date(date)
         previousDate.setDate(date.getDate() - 1)
-        const previousDateStr = previousDate.toISOString().split('T')[0]
+        const previousDateStr = formatLocalDate(previousDate)
         return dailyData[previousDateStr]?.weight
     }, [date, dailyData])
 
@@ -159,7 +160,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     }, [handleSave, handleCancel])
 
     // Check if this is today and weight is not logged
-    const isToday = dateStr === new Date().toISOString().split('T')[0]
+    const isToday = dateStr === formatLocalDate(new Date())
     const showAttentionIndicator = isToday && !isWeightLogged
 
     return (
