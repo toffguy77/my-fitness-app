@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Droplets, Footprints, Dumbbell } from 'lucide-react'
+import { ChevronDown, Droplets } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { KBZHUProgress } from './KBZHUProgress'
 import { AlertBadge } from './AlertBadge'
@@ -39,6 +39,15 @@ function formatDateRu(dateStr: string): string {
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+/** Returns Tailwind text color class based on percentage of target */
+function deviationColor(value: number, target: number): string {
+    if (target <= 0) return 'text-gray-600'
+    const pct = (value / target) * 100
+    if (pct >= 80 && pct <= 120) return 'text-green-600'
+    if ((pct >= 50 && pct < 80) || (pct > 120 && pct <= 150)) return 'text-yellow-600'
+    return 'text-red-600'
+}
+
 interface DaySectionProps {
     day: DayDetail
     defaultExpanded?: boolean
@@ -72,23 +81,34 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
                     />
                 </div>
 
-                {/* KBZHU one-liner */}
+                {/* KBZHU one-liner with color coding */}
                 {kbzhu && (
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs">
                         {hasPlan ? (
                             <>
-                                {Math.round(kbzhu.calories)}/{Math.round(plan!.calories)} ккал
-                                {' | Б '}{Math.round(kbzhu.protein)}/{Math.round(plan!.protein)}
-                                {' | Ж '}{Math.round(kbzhu.fat)}/{Math.round(plan!.fat)}
-                                {' | У '}{Math.round(kbzhu.carbs)}/{Math.round(plan!.carbs)}
+                                <span className={deviationColor(kbzhu.calories, plan!.calories)}>
+                                    {Math.round(kbzhu.calories)}/{Math.round(plan!.calories)} ккал
+                                </span>
+                                <span className="text-gray-400">{' | '}</span>
+                                <span className={deviationColor(kbzhu.protein, plan!.protein)}>
+                                    Б {Math.round(kbzhu.protein)}/{Math.round(plan!.protein)}
+                                </span>
+                                <span className="text-gray-400">{' | '}</span>
+                                <span className={deviationColor(kbzhu.fat, plan!.fat)}>
+                                    Ж {Math.round(kbzhu.fat)}/{Math.round(plan!.fat)}
+                                </span>
+                                <span className="text-gray-400">{' | '}</span>
+                                <span className={deviationColor(kbzhu.carbs, plan!.carbs)}>
+                                    У {Math.round(kbzhu.carbs)}/{Math.round(plan!.carbs)}
+                                </span>
                             </>
                         ) : (
-                            <>
+                            <span className="text-gray-600">
                                 {Math.round(kbzhu.calories)} ккал
                                 {' | Б '}{Math.round(kbzhu.protein)}
                                 {' | Ж '}{Math.round(kbzhu.fat)}
                                 {' | У '}{Math.round(kbzhu.carbs)}
-                            </>
+                            </span>
                         )}
                     </p>
                 )}
@@ -102,35 +122,20 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
                     </div>
                 )}
 
-                {/* Water / Steps / Workout summary */}
-                <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-gray-500">
-                    {day.water && (
-                        <span className="flex items-center gap-1">
-                            <Droplets className="h-3 w-3" />
-                            {day.water.glasses}/{day.water.goal}
-                        </span>
-                    )}
-                    {day.steps > 0 && (
-                        <span className="flex items-center gap-1">
-                            <Footprints className="h-3 w-3" />
-                            {day.steps.toLocaleString('ru-RU')}
-                        </span>
-                    )}
-                    {day.workout && day.workout.completed && (
-                        <span className="flex items-center gap-1">
-                            <Dumbbell className="h-3 w-3" />
-                            {day.workout.type || 'Тренировка'}
-                            {day.workout.duration > 0 && ` ${day.workout.duration} мин`}
-                        </span>
-                    )}
-                </div>
+                {/* Water summary only (steps & workouts moved to separate sections) */}
+                {day.water && (
+                    <div className="flex items-center gap-1 mt-1.5 text-xs text-gray-500">
+                        <Droplets className="h-3 w-3" />
+                        <span>{day.water.glasses}/{day.water.goal} стаканов</span>
+                    </div>
+                )}
             </button>
 
             {/* Expanded content */}
             {expanded && (
                 <div className="px-4 pb-4 border-t border-gray-100">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                        {/* Left column: KBZHU progress + metrics */}
+                        {/* Left column: KBZHU progress + water */}
                         <div className="space-y-3">
                             {hasPlan && kbzhu ? (
                                 <div className="space-y-2">
@@ -150,30 +155,11 @@ export function DaySection({ day, defaultExpanded = false }: DaySectionProps) {
                                 </div>
                             ) : null}
 
-                            {/* Water */}
+                            {/* Water detail */}
                             {day.water && (
                                 <div className="flex items-center gap-2 text-xs text-gray-600">
                                     <Droplets className="h-3.5 w-3.5 text-blue-500" />
                                     <span>Вода: {day.water.glasses}/{day.water.goal} стаканов ({day.water.glasses * day.water.glass_size} мл)</span>
-                                </div>
-                            )}
-
-                            {/* Steps */}
-                            {day.steps > 0 && (
-                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                    <Footprints className="h-3.5 w-3.5 text-green-500" />
-                                    <span>Шаги: {day.steps.toLocaleString('ru-RU')}</span>
-                                </div>
-                            )}
-
-                            {/* Workout */}
-                            {day.workout && day.workout.completed && (
-                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                    <Dumbbell className="h-3.5 w-3.5 text-orange-500" />
-                                    <span>
-                                        {day.workout.type || 'Тренировка'}
-                                        {day.workout.duration > 0 && `: ${day.workout.duration} мин`}
-                                    </span>
                                 </div>
                             )}
                         </div>

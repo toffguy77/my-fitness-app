@@ -3,12 +3,16 @@
 import { useEffect, useReducer, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, MessageCircle, Loader2, Check, X } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curatorApi'
 import { AlertBadge } from '@/features/curator/components/AlertBadge'
 import { DaySection } from '@/features/curator/components/DaySection'
+import { StepsChart } from '@/features/curator/components/StepsChart'
+import { WorkoutsSection } from '@/features/curator/components/WorkoutsSection'
 import { PhotosSection } from '@/features/curator/components/PhotosSection'
 import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
+
+const RECENT_DAYS_COUNT = 3
 
 type FetchState = {
     detail: ClientDetail | null
@@ -160,6 +164,7 @@ export default function ClientDetailPage() {
     const params = useParams()
     const clientId = Number(params.id)
     const [state, dispatch] = useReducer(fetchReducer, { detail: null, loading: true, error: null })
+    const [showOlderDays, setShowOlderDays] = useState(false)
     const fetchIdRef = useRef(0)
 
     useEffect(() => {
@@ -188,6 +193,9 @@ export default function ClientDetailPage() {
             .slice(0, 2)
             .toUpperCase()
         : ''
+
+    const recentDays = detail?.days.slice(0, RECENT_DAYS_COUNT) ?? []
+    const olderDays = detail?.days.slice(RECENT_DAYS_COUNT) ?? []
 
     return (
         <div className="px-4 py-6">
@@ -280,16 +288,37 @@ export default function ClientDetailPage() {
                         </section>
                     )}
 
-                    {/* Day sections — collapsible, newest first */}
+                    {/* Питание: last 3 days + "Ранее" */}
                     <div className="space-y-3">
-                        <h2 className="text-sm font-semibold text-gray-900">Последние 7 дней</h2>
-                        {detail.days.map((day) => (
+                        <h2 className="text-sm font-semibold text-gray-900">Питание</h2>
+                        {recentDays.map((day) => (
                             <DaySection key={day.date} day={day} />
                         ))}
+
+                        {olderDays.length > 0 && (
+                            <>
+                                {!showOlderDays ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowOlderDays(true)}
+                                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <ChevronDown className="h-3.5 w-3.5" />
+                                        Ранее ({olderDays.length} дн.)
+                                    </button>
+                                ) : (
+                                    olderDays.map((day) => (
+                                        <DaySection key={day.date} day={day} />
+                                    ))
+                                )}
+                            </>
+                        )}
                     </div>
 
-                    {/* Weight section */}
+                    {/* Dynamics sections: weight, steps, workouts */}
                     <WeightSection detail={detail} clientId={clientId} />
+                    <StepsChart days={detail.days} />
+                    <WorkoutsSection days={detail.days} />
 
                     {/* Photos section */}
                     <PhotosSection photos={detail.photos} />
