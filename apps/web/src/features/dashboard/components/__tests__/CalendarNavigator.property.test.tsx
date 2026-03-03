@@ -41,10 +41,14 @@ function getWeekEnd(date: Date): Date {
 }
 
 /**
- * Helper: Format date to ISO string (YYYY-MM-DD)
+ * Helper: Format date to local ISO string (YYYY-MM-DD)
+ * Uses local time to match the component's formatLocalDate behavior
  */
 function formatDateISO(date: Date): string {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 describe('CalendarNavigator - Property Tests', () => {
@@ -146,74 +150,30 @@ describe('CalendarNavigator - Property Tests', () => {
 
                         const dayButton = Array.from(dayButtons).find((btn) => {
                             const ariaLabel = btn.getAttribute('aria-label') || '';
-                            // Match exact day name and day number
-                            return ariaLabel.includes(expectedDayName) && ariaLabel.includes(`, ${dayNumber}`);
+                            // Match exact day name and day number (followed by comma to avoid partial matches)
+                            return ariaLabel.includes(expectedDayName) && ariaLabel.includes(`, ${dayNumber},`);
                         });
 
                         // Skip if we can't find the button (edge case with week boundaries)
                         if (!dayButton) {
                             return true;
                         }
-                        // Check indicators by aria-label (more reliable than CSS classes)
-                        const allDivs = dayButton.querySelectorAll('div[aria-label]');
-                        const nutritionIndicator = Array.from(allDivs).find(el =>
-                            el.getAttribute('aria-label')?.includes('Питание')
-                        );
-                        const weightIndicator = Array.from(allDivs).find(el =>
-                            el.getAttribute('aria-label')?.includes('Вес')
-                        );
-                        const activityIndicator = Array.from(allDivs).find(el =>
-                            el.getAttribute('aria-label')?.includes('Активность')
-                        );
 
-                        expect(nutritionIndicator).toBeTruthy();
-                        expect(weightIndicator).toBeTruthy();
-                        expect(activityIndicator).toBeTruthy();
+                        // Compute expected completed count from completion booleans
+                        const completedCount =
+                            Number(completionStatus.nutritionFilled) +
+                            Number(completionStatus.weightLogged) +
+                            Number(completionStatus.activityCompleted);
 
-                        // Property: Indicators should reflect completion status via aria-label
-                        // This is more reliable than checking CSS classes which change based on selection
+                        const buttonLabel = dayButton.getAttribute('aria-label') || '';
 
-                        // Nutrition indicator (check aria-label)
-                        if (nutritionIndicator) {
-                            const label = nutritionIndicator.getAttribute('aria-label') || '';
-                            if (completionStatus.nutritionFilled) {
-                                expect(label).toBe('Питание заполнено');
-                            } else {
-                                expect(label).toBe('Питание не заполнено');
-                            }
-                        }
-
-                        // Weight indicator (check aria-label)
-                        if (weightIndicator) {
-                            const label = weightIndicator.getAttribute('aria-label') || '';
-                            if (completionStatus.weightLogged) {
-                                expect(label).toBe('Вес записан');
-                            } else {
-                                expect(label).toBe('Вес не записан');
-                            }
-                        }
-
-                        // Activity indicator (check aria-label)
-                        if (activityIndicator) {
-                            const label = activityIndicator.getAttribute('aria-label') || '';
-                            if (completionStatus.activityCompleted) {
-                                expect(label).toBe('Активность выполнена');
-                            } else {
-                                expect(label).toBe('Активность не выполнена');
-                            }
-                        }
-
-                        // Check for green checkmark when all goals completed
-                        const allCompleted =
-                            completionStatus.nutritionFilled &&
-                            completionStatus.weightLogged &&
-                            completionStatus.activityCompleted;
-
-                        const checkmark = dayButton.querySelector('[aria-label="Все цели выполнены"]');
-                        if (allCompleted) {
-                            expect(checkmark).toBeTruthy();
+                        // Property: Button aria-label contains the correct completion summary
+                        if (completedCount === 0) {
+                            expect(buttonLabel).toContain('нет выполненных целей');
+                        } else if (completedCount === 3) {
+                            expect(buttonLabel).toContain('все цели выполнены');
                         } else {
-                            expect(checkmark).toBeFalsy();
+                            expect(buttonLabel).toContain(`выполнено ${completedCount} из 3 целей`);
                         }
                     }
                 ),
@@ -221,7 +181,7 @@ describe('CalendarNavigator - Property Tests', () => {
             );
         });
 
-        it('Feature: dashboard, Property 3: Green checkmark should only appear when ALL goals are completed', () => {
+        it('Feature: dashboard, Property 3: All-completed label should only appear when ALL goals are completed', () => {
             // **Validates: Requirements 1.6, 1.7**
 
             fc.assert(
@@ -314,7 +274,7 @@ describe('CalendarNavigator - Property Tests', () => {
 
                         const dayButton = Array.from(dayButtons).find((btn) => {
                             const ariaLabel = btn.getAttribute('aria-label') || '';
-                            return ariaLabel.includes(expectedDayName) && ariaLabel.includes(`, ${dayNumber}`);
+                            return ariaLabel.includes(expectedDayName) && ariaLabel.includes(`, ${dayNumber},`);
                         });
 
                         // Skip if we can't find the button
@@ -322,14 +282,14 @@ describe('CalendarNavigator - Property Tests', () => {
                             return true;
                         }
 
-                        const checkmark = dayButton.querySelector('[aria-label="Все цели выполнены"]');
+                        const buttonLabel = dayButton.getAttribute('aria-label') || '';
                         const allCompleted = nutritionFilled && weightLogged && activityCompleted;
 
-                        // Property: Checkmark appears if and only if all goals are completed
+                        // Property: "все цели выполнены" appears if and only if all goals are completed
                         if (allCompleted) {
-                            expect(checkmark).toBeTruthy();
+                            expect(buttonLabel).toContain('все цели выполнены');
                         } else {
-                            expect(checkmark).toBeFalsy();
+                            expect(buttonLabel).not.toContain('все цели выполнены');
                         }
                     }
                 ),
@@ -337,7 +297,7 @@ describe('CalendarNavigator - Property Tests', () => {
             );
         });
 
-        it('Feature: dashboard, Property 3: Indicators should be present for all 7 days of the week', () => {
+        it('Feature: dashboard, Property 3: Progress rings should be present for all 7 days of the week', () => {
             // **Validates: Requirements 1.1, 1.6**
 
             fc.assert(
@@ -430,22 +390,17 @@ describe('CalendarNavigator - Property Tests', () => {
                         });
                         expect(dayButtons.length).toBe(7);
 
-                        // Property: Each day should have 3 indicator dots
+                        // Property: Each day should have a progress ring (svg) and a completion label
                         dayButtons.forEach((dayButton) => {
-                            const allDivs = dayButton.querySelectorAll('div[aria-label]');
-                            const nutritionIndicator = Array.from(allDivs).find(el =>
-                                el.getAttribute('aria-label')?.includes('Питание')
-                            );
-                            const weightIndicator = Array.from(allDivs).find(el =>
-                                el.getAttribute('aria-label')?.includes('Вес')
-                            );
-                            const activityIndicator = Array.from(allDivs).find(el =>
-                                el.getAttribute('aria-label')?.includes('Активность')
-                            );
+                            const svg = dayButton.querySelector('svg');
+                            expect(svg).toBeTruthy();
 
-                            expect(nutritionIndicator).toBeTruthy();
-                            expect(weightIndicator).toBeTruthy();
-                            expect(activityIndicator).toBeTruthy();
+                            const label = dayButton.getAttribute('aria-label') || '';
+                            const hasCompletionText =
+                                label.includes('нет выполненных целей') ||
+                                label.includes('выполнено') ||
+                                label.includes('все цели выполнены');
+                            expect(hasCompletionText).toBe(true);
                         });
                     }
                 ),
