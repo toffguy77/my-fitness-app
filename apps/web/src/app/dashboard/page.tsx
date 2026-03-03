@@ -210,6 +210,11 @@ export default function DashboardPage() {
                     className="w-full"
                 />
 
+                {/* Progress Section — adherence */}
+                <Suspense fallback={<ProgressSectionSkeleton className="w-full" />}>
+                    <LazyProgressSection className="w-full" />
+                </Suspense>
+
                 {/* Daily Tracking Grid: Питание | Шаги | Тренировки */}
                 <DailyTrackingGrid
                     date={selectedDate}
@@ -224,13 +229,6 @@ export default function DashboardPage() {
 
                 {/* Below-the-fold sections */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-                    {/* Progress Section — adherence only */}
-                    <div className="md:col-span-2 lg:col-span-3">
-                        <Suspense fallback={<ProgressSectionSkeleton className="w-full h-full" />}>
-                            <LazyProgressSection className="w-full h-full" />
-                        </Suspense>
-                    </div>
-
                     {/* Photo Upload Section */}
                     <div className="md:col-span-1 lg:col-span-1">
                         <Suspense fallback={<PhotoUploadSectionSkeleton className="w-full h-full" />}>

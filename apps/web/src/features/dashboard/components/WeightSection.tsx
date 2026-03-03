@@ -318,7 +318,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                                 </div>
                             ) : (
                                 <div className="space-y-2 py-2">
-                                    <p className="text-sm text-gray-500">Вес не записан</p>
+                                    <p className="text-sm text-gray-500">Не записано</p>
                                     {previousWeight && (
                                         <p className="text-xs text-gray-400">Вчера: {formatWeight(previousWeight)} кг</p>
                                     )}
