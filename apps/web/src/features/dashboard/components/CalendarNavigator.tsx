@@ -15,7 +15,7 @@
 'use client';
 
 import { useRef, memo, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useRovingTabIndex } from '../hooks/useKeyboardNavigation';
 import { formatLocalDate } from '@/shared/utils/format';
@@ -106,15 +106,64 @@ interface DayButtonProps {
     date: Date;
     isToday: boolean;
     isSelected: boolean;
-    allGoalsCompleted: boolean;
-    completionStatus: {
-        nutritionFilled: boolean;
-        weightLogged: boolean;
-        activityCompleted: boolean;
-    };
+    completedCount: number;
     dayOfWeek: number;
     onClick: (date: Date) => void;
 }
+
+/**
+ * ProgressRing Props
+ */
+interface ProgressRingProps {
+    completedCount: number;
+    isSelected: boolean;
+}
+
+const RING_SIZE = 36;
+const RING_RADIUS = 15;
+const RING_STROKE = 2.5;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const ARC_COUNT = 3;
+const GAP_DEGREES = 4;
+const GAP_LENGTH = (GAP_DEGREES / 360) * RING_CIRCUMFERENCE;
+const ARC_LENGTH = (RING_CIRCUMFERENCE - ARC_COUNT * GAP_LENGTH) / ARC_COUNT;
+
+/**
+ * ProgressRing Component
+ * Renders an SVG ring with 3 arc segments indicating goal completion.
+ */
+const ProgressRing = memo(function ProgressRing({
+    completedCount,
+    isSelected,
+}: ProgressRingProps) {
+    const filledColor = isSelected ? 'white' : '#22c55e';
+    const emptyColor = isSelected ? 'rgba(255,255,255,0.3)' : '#e5e7eb';
+
+    return (
+        <svg
+            width={RING_SIZE}
+            height={RING_SIZE}
+            viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+            aria-hidden="true"
+        >
+            {Array.from({ length: ARC_COUNT }, (_, i) => (
+                <circle
+                    key={i}
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RING_RADIUS}
+                    fill="none"
+                    stroke={i < completedCount ? filledColor : emptyColor}
+                    strokeWidth={RING_STROKE}
+                    strokeDasharray={`${ARC_LENGTH} ${RING_CIRCUMFERENCE - ARC_LENGTH}`}
+                    strokeDashoffset={-(i * (ARC_LENGTH + GAP_LENGTH))}
+                    strokeLinecap="round"
+                    transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+                />
+            ))}
+        </svg>
+    );
+});
 
 /**
  * DayButton Component
@@ -124,14 +173,22 @@ const DayButton = memo(function DayButton({
     date,
     isToday,
     isSelected,
-    allGoalsCompleted,
-    completionStatus,
+    completedCount,
     dayOfWeek,
     onClick,
 }: DayButtonProps) {
     const handleClick = useCallback(() => {
         onClick(date);
     }, [date, onClick]);
+
+    let completionSummary: string;
+    if (completedCount === 0) {
+        completionSummary = 'нет выполненных целей';
+    } else if (completedCount === 3) {
+        completionSummary = 'все цели выполнены';
+    } else {
+        completionSummary = `выполнено ${completedCount} из 3 целей`;
+    }
 
     return (
         <button
@@ -140,7 +197,7 @@ const DayButton = memo(function DayButton({
             role="radio"
             aria-checked={isSelected}
             className={`
-                relative flex flex-col items-center justify-center p-3 rounded-lg
+                relative flex flex-col items-center justify-center p-2 rounded-lg
                 transition-all duration-200
                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                 ${isSelected
@@ -149,119 +206,19 @@ const DayButton = memo(function DayButton({
                 }
                 ${isToday && !isSelected ? 'ring-2 ring-blue-300' : ''}
             `}
-            aria-label={`${DAY_NAMES_FULL[dayOfWeek]}, ${formatDayNumber(date)}`}
+            aria-label={`${DAY_NAMES_FULL[dayOfWeek]}, ${formatDayNumber(date)}, ${completionSummary}`}
             aria-current={isToday ? 'date' : undefined}
         >
-            {/* Day name */}
             <span className="text-xs font-medium mb-1">
                 {DAY_NAMES[dayOfWeek]}
             </span>
 
-            {/* Day number */}
-            <span className="text-lg font-semibold">
-                {formatDayNumber(date)}
-            </span>
-
-            {/* Goal completion indicators */}
-            <div className="flex gap-1 mt-2" role="group" aria-label="Статус целей">
-                {/* Nutrition indicator */}
-                <div
-                    className={`flex items-center justify-center w-4 h-4 rounded-full ${completionStatus.nutritionFilled
-                        ? isSelected
-                            ? 'bg-white'
-                            : 'bg-green-500'
-                        : 'bg-gray-300'
-                        }`}
-                    aria-label={
-                        completionStatus.nutritionFilled
-                            ? 'Питание заполнено'
-                            : 'Питание не заполнено'
-                    }
-                    title={
-                        completionStatus.nutritionFilled
-                            ? 'Питание заполнено'
-                            : 'Питание не заполнено'
-                    }
-                >
-                    {completionStatus.nutritionFilled && (
-                        <Check
-                            className={`w-2.5 h-2.5 ${isSelected ? 'text-green-500' : 'text-white'
-                                }`}
-                            aria-hidden="true"
-                        />
-                    )}
-                </div>
-
-                {/* Weight indicator */}
-                <div
-                    className={`flex items-center justify-center w-4 h-4 rounded-full ${completionStatus.weightLogged
-                        ? isSelected
-                            ? 'bg-white'
-                            : 'bg-green-500'
-                        : 'bg-gray-300'
-                        }`}
-                    aria-label={
-                        completionStatus.weightLogged
-                            ? 'Вес записан'
-                            : 'Вес не записан'
-                    }
-                    title={
-                        completionStatus.weightLogged
-                            ? 'Вес записан'
-                            : 'Вес не записан'
-                    }
-                >
-                    {completionStatus.weightLogged && (
-                        <Check
-                            className={`w-2.5 h-2.5 ${isSelected ? 'text-green-500' : 'text-white'
-                                }`}
-                            aria-hidden="true"
-                        />
-                    )}
-                </div>
-
-                {/* Activity indicator */}
-                <div
-                    className={`flex items-center justify-center w-4 h-4 rounded-full ${completionStatus.activityCompleted
-                        ? isSelected
-                            ? 'bg-white'
-                            : 'bg-green-500'
-                        : 'bg-gray-300'
-                        }`}
-                    aria-label={
-                        completionStatus.activityCompleted
-                            ? 'Активность выполнена'
-                            : 'Активность не выполнена'
-                    }
-                    title={
-                        completionStatus.activityCompleted
-                            ? 'Активность выполнена'
-                            : 'Активность не выполнена'
-                    }
-                >
-                    {completionStatus.activityCompleted && (
-                        <Check
-                            className={`w-2.5 h-2.5 ${isSelected ? 'text-green-500' : 'text-white'
-                                }`}
-                            aria-hidden="true"
-                        />
-                    )}
-                </div>
+            <div className="relative flex items-center justify-center">
+                <ProgressRing completedCount={completedCount} isSelected={isSelected} />
+                <span className="absolute text-sm font-semibold">
+                    {formatDayNumber(date)}
+                </span>
             </div>
-
-            {/* All goals completed checkmark */}
-            {allGoalsCompleted && (
-                <div
-                    className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center ${isSelected ? 'bg-white' : 'bg-green-500'
-                        }`}
-                    aria-label="Все цели выполнены"
-                >
-                    <Check
-                        className={`w-3 h-3 ${isSelected ? 'text-green-500' : 'text-white'
-                            }`}
-                    />
-                </div>
-            )}
         </button>
     );
 });
@@ -331,38 +288,16 @@ export const CalendarNavigator = memo(function CalendarNavigator({
     }, [onSubmitReport]);
 
     /**
-     * Check if all goals are completed for a day
+     * Get number of completed goals for a day (0-3)
      */
-    const isAllGoalsCompleted = useCallback((date: Date): boolean => {
+    const getCompletedCount = useCallback((date: Date): number => {
         const dateStr = formatDateISO(date);
         const metrics = dailyData[dateStr];
 
-        if (!metrics || !metrics.completionStatus) return false;
+        if (!metrics || !metrics.completionStatus) return 0;
 
-        const { completionStatus } = metrics;
-        return (
-            completionStatus.nutritionFilled &&
-            completionStatus.weightLogged &&
-            completionStatus.activityCompleted
-        );
-    }, [dailyData]);
-
-    /**
-     * Get completion status for a day
-     */
-    const getCompletionStatus = useCallback((date: Date) => {
-        const dateStr = formatDateISO(date);
-        const metrics = dailyData[dateStr];
-
-        if (!metrics || !metrics.completionStatus) {
-            return {
-                nutritionFilled: false,
-                weightLogged: false,
-                activityCompleted: false,
-            };
-        }
-
-        return metrics.completionStatus;
+        const { nutritionFilled, weightLogged, activityCompleted } = metrics.completionStatus;
+        return Number(nutritionFilled) + Number(weightLogged) + Number(activityCompleted);
     }, [dailyData]);
 
     // Memoize week range display
@@ -406,8 +341,7 @@ export const CalendarNavigator = memo(function CalendarNavigator({
                 {weekDays.map((date) => {
                     const isTodayDate = isSameDay(date, today);
                     const isSelected = isSameDay(date, selectedDate);
-                    const allGoalsCompleted = isAllGoalsCompleted(date);
-                    const completionStatus = getCompletionStatus(date);
+                    const completedCount = getCompletedCount(date);
                     const dayOfWeek = getDayOfWeek(date);
 
                     return (
@@ -416,8 +350,7 @@ export const CalendarNavigator = memo(function CalendarNavigator({
                             date={date}
                             isToday={isTodayDate}
                             isSelected={isSelected}
-                            allGoalsCompleted={allGoalsCompleted}
-                            completionStatus={completionStatus}
+                            completedCount={completedCount}
                             dayOfWeek={dayOfWeek}
                             onClick={handleDayClick}
                         />
