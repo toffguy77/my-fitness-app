@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { LanguageSelector, UnitSelector, PhotoUploader } from '@/shared/components/settings'
+import { LanguageSelector, UnitSelector, TimezoneSelector, PhotoUploader } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import toast from 'react-hot-toast'
 
@@ -28,7 +28,7 @@ function ProfileSettingsForm({
     onAvatarUpload,
     onAvatarDelete,
 }: {
-    profile: { name: string; email: string; avatar_url: string; settings: { language: string; units: string; telegram_username: string; instagram_username: string; apple_health_enabled: boolean } } | null
+    profile: { name: string; email: string; avatar_url: string; settings: { language: string; units: string; timezone: string; telegram_username: string; instagram_username: string; apple_health_enabled: boolean } } | null
     onSaveName: (name: string) => void
     onSaveSettings: (settings: Record<string, unknown>) => void
     onAvatarUpload: (file: File) => Promise<string>
@@ -53,6 +53,7 @@ function ProfileSettingsForm({
         onSaveSettings({
             language,
             units: profile.settings.units,
+            timezone: profile.settings.timezone,
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
             apple_health_enabled: profile.settings.apple_health_enabled,
@@ -64,6 +65,19 @@ function ProfileSettingsForm({
         onSaveSettings({
             language: profile.settings.language,
             units,
+            timezone: profile.settings.timezone,
+            telegram_username: profile.settings.telegram_username,
+            instagram_username: profile.settings.instagram_username,
+            apple_health_enabled: profile.settings.apple_health_enabled,
+        })
+    }
+
+    function handleTimezoneChange(timezone: string) {
+        if (!profile) return
+        onSaveSettings({
+            language: profile.settings.language,
+            units: profile.settings.units,
+            timezone,
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
             apple_health_enabled: profile.settings.apple_health_enabled,
@@ -110,7 +124,7 @@ function ProfileSettingsForm({
                 </div>
             </div>
 
-            {/* Language & Units */}
+            {/* Language & Units & Timezone */}
             <div className="flex flex-col gap-8">
                 <LanguageSelector
                     value={(profile?.settings.language as 'ru' | 'en') || 'ru'}
@@ -119,6 +133,10 @@ function ProfileSettingsForm({
                 <UnitSelector
                     value={(profile?.settings.units as 'metric' | 'imperial') || 'metric'}
                     onChange={handleUnitsChange}
+                />
+                <TimezoneSelector
+                    value={profile?.settings.timezone || 'Europe/Moscow'}
+                    onChange={handleTimezoneChange}
                 />
             </div>
 
