@@ -61,8 +61,9 @@ func (h *Handler) GetClients(c *gin.Context) {
 	response.Success(c, http.StatusOK, clients)
 }
 
-// GetClientDetail handles GET /api/v1/curator/clients/:id?date=YYYY-MM-DD
-// Returns detailed view of a specific client including food entries, plan, and alerts
+// GetClientDetail handles GET /api/v1/curator/clients/:id?date=YYYY-MM-DD&days=7
+// Returns detailed view of a specific client including multi-day food entries, plan, and alerts.
+// If `date` is provided, returns a single day. Otherwise returns the last `days` days (default 7, max 30).
 func (h *Handler) GetClientDetail(c *gin.Context) {
 	userID, ok := h.getUserID(c)
 	if !ok {
@@ -78,7 +79,17 @@ func (h *Handler) GetClientDetail(c *gin.Context) {
 
 	date := c.Query("date")
 
-	detail, err := h.service.GetClientDetail(c.Request.Context(), userID, clientID, date)
+	days := 7
+	if daysStr := c.Query("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+	if days > 30 {
+		days = 30
+	}
+
+	detail, err := h.service.GetClientDetail(c.Request.Context(), userID, clientID, date, days)
 	if err != nil {
 		h.log.Error("Failed to get client detail", "error", err, "curator_id", userID, "client_id", clientID)
 		// Check if it's an authorization error

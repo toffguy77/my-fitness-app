@@ -26,7 +26,7 @@ func buildPlaceholders(ids []int64, offset int) (string, []any) {
 // ServiceInterface defines the interface for curator service operations
 type ServiceInterface interface {
 	GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error)
-	GetClientDetail(ctx context.Context, curatorID int64, clientID int64, date string) (*ClientDetail, error)
+	GetClientDetail(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error)
 	SetTargetWeight(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
 }
 
@@ -186,21 +186,29 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 	return cards, nil
 }
 
-// GetClientDetail returns detailed information about a specific client
-func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID int64, date string) (*ClientDetail, error) {
+// GetClientDetail returns detailed information about a specific client for a date range.
+// If date is provided, single-day mode. Otherwise, returns last N days (newest first).
+func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error) {
 	startTime := time.Now()
 
-	// Parse date, default to today
-	var targetDate time.Time
-	if date == "" {
-		targetDate = time.Now().UTC().Truncate(24 * time.Hour)
-	} else {
-		var err error
-		targetDate, err = time.Parse("2006-01-02", date)
+	// Compute date range
+	var startDate, endDate time.Time
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+
+	if date != "" {
+		parsed, err := time.Parse("2006-01-02", date)
 		if err != nil {
 			return nil, fmt.Errorf("invalid date format: %w", err)
 		}
+		startDate = parsed
+		endDate = parsed
+	} else {
+		endDate = today
+		startDate = today.AddDate(0, 0, -(days - 1))
 	}
+
+	startDateStr := startDate.Format("2006-01-02")
+	endDateStr := endDate.Format("2006-01-02")
 
 	// Verify curator-client relationship
 	relationshipQuery := `
@@ -235,32 +243,35 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		return nil, fmt.Errorf("failed to get client info: %w", err)
 	}
 
-	// Get food entries for the date
+	// Get food entries for the date range
 	entriesQuery := `
-		SELECT id, food_name, meal_type, calories, protein, fat, carbs, portion_amount, created_by, created_at
+		SELECT id, food_name, meal_type, calories, protein, fat, carbs, portion_amount, created_by, created_at, date
 		FROM food_entries
-		WHERE user_id = $1 AND date = $2
-		ORDER BY created_at ASC
+		WHERE user_id = $1 AND date >= $2 AND date <= $3
+		ORDER BY date DESC, created_at ASC
 	`
 
-	entryRows, err := s.db.QueryContext(ctx, entriesQuery, clientID, targetDate)
+	entryRows, err := s.db.QueryContext(ctx, entriesQuery, clientID, startDateStr, endDateStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query food entries: %w", err)
 	}
 	defer entryRows.Close()
 
-	foodEntries := make([]FoodEntryView, 0)
-	var totalCal, totalProtein, totalFat, totalCarbs float64
+	// Map: date string -> []FoodEntryView
+	foodByDate := make(map[string][]FoodEntryView)
+	// Map: date string -> DailyKBZHU totals
+	kbzhuByDate := make(map[string]*DailyKBZHU)
 
 	for entryRows.Next() {
 		var entry FoodEntryView
 		var createdBy sql.NullInt64
 		var createdAt time.Time
+		var entryDate time.Time
 
 		if err := entryRows.Scan(
 			&entry.ID, &entry.FoodName, &entry.MealType,
 			&entry.Calories, &entry.Protein, &entry.Fat, &entry.Carbs,
-			&entry.Weight, &createdBy, &createdAt,
+			&entry.Weight, &createdBy, &createdAt, &entryDate,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan food entry: %w", err)
 		}
@@ -271,16 +282,115 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		}
 		entry.Time = createdAt.Format("15:04")
 
-		totalCal += entry.Calories
-		totalProtein += entry.Protein
-		totalFat += entry.Fat
-		totalCarbs += entry.Carbs
+		dateKey := entryDate.Format("2006-01-02")
+		foodByDate[dateKey] = append(foodByDate[dateKey], entry)
 
-		foodEntries = append(foodEntries, entry)
+		if kbzhuByDate[dateKey] == nil {
+			kbzhuByDate[dateKey] = &DailyKBZHU{}
+		}
+		kbzhuByDate[dateKey].Calories += entry.Calories
+		kbzhuByDate[dateKey].Protein += entry.Protein
+		kbzhuByDate[dateKey].Fat += entry.Fat
+		kbzhuByDate[dateKey].Carbs += entry.Carbs
 	}
 
 	if err := entryRows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating food entries: %w", err)
+	}
+
+	// Get water logs for the date range
+	waterQuery := `
+		SELECT date, glasses, goal, glass_size
+		FROM water_logs
+		WHERE user_id = $1 AND date >= $2 AND date <= $3
+	`
+	waterRows, err := s.db.QueryContext(ctx, waterQuery, clientID, startDateStr, endDateStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query water logs: %w", err)
+	}
+	defer waterRows.Close()
+
+	waterByDate := make(map[string]*WaterView)
+	for waterRows.Next() {
+		var d time.Time
+		var w WaterView
+		if err := waterRows.Scan(&d, &w.Glasses, &w.Goal, &w.GlassSize); err != nil {
+			return nil, fmt.Errorf("failed to scan water log: %w", err)
+		}
+		waterByDate[d.Format("2006-01-02")] = &w
+	}
+	if err := waterRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating water logs: %w", err)
+	}
+
+	// Get daily metrics (steps, workout) for the date range
+	metricsQuery := `
+		SELECT date, steps, workout_completed, COALESCE(workout_type, ''), COALESCE(workout_duration, 0)
+		FROM daily_metrics
+		WHERE user_id = $1 AND date >= $2 AND date <= $3
+	`
+	metricsRows, err := s.db.QueryContext(ctx, metricsQuery, clientID, startDateStr, endDateStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query daily metrics: %w", err)
+	}
+	defer metricsRows.Close()
+
+	type metricsData struct {
+		steps            int
+		workoutCompleted bool
+		workoutType      string
+		workoutDuration  int
+	}
+	metricsByDate := make(map[string]*metricsData)
+
+	for metricsRows.Next() {
+		var d time.Time
+		var m metricsData
+		var steps sql.NullInt64
+		var workoutCompleted sql.NullBool
+		if err := metricsRows.Scan(&d, &steps, &workoutCompleted, &m.workoutType, &m.workoutDuration); err != nil {
+			return nil, fmt.Errorf("failed to scan daily metrics: %w", err)
+		}
+		if steps.Valid {
+			m.steps = int(steps.Int64)
+		}
+		if workoutCompleted.Valid {
+			m.workoutCompleted = workoutCompleted.Bool
+		}
+		metricsByDate[d.Format("2006-01-02")] = &m
+	}
+	if err := metricsRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating daily metrics: %w", err)
+	}
+
+	// Get weekly photos
+	photosQuery := `
+		SELECT id, photo_url, week_start, week_end, uploaded_at
+		FROM weekly_photos
+		WHERE user_id = $1
+		ORDER BY week_start DESC
+		LIMIT 20
+	`
+	photoRows, err := s.db.QueryContext(ctx, photosQuery, clientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query weekly photos: %w", err)
+	}
+	defer photoRows.Close()
+
+	photos := make([]PhotoView, 0)
+	for photoRows.Next() {
+		var p PhotoView
+		var weekStart, weekEnd, uploadedAt time.Time
+		if err := photoRows.Scan(&p.ID, &p.PhotoURL, &weekStart, &weekEnd, &uploadedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan weekly photo: %w", err)
+		}
+		p.WeekStart = weekStart.Format("2006-01-02")
+		p.WeekEnd = weekEnd.Format("2006-01-02")
+		p.UploadedAt = uploadedAt.Format(time.RFC3339)
+		photos = append(photos, p)
+	}
+	if err := photoRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating weekly photos: %w", err)
 	}
 
 	// Get current weekly plan
@@ -296,7 +406,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	var planFat, planCarbs sql.NullFloat64
 	var weeklyPlan *PlanKBZHU
 
-	err = s.db.QueryRowContext(ctx, planQuery, clientID, targetDate).Scan(
+	err = s.db.QueryRowContext(ctx, planQuery, clientID, today).Scan(
 		&planCal, &planProtein, &planFat, &planCarbs,
 	)
 	if err != nil && err != sql.ErrNoRows {
@@ -326,13 +436,13 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	weightHistory := make([]WeightHistoryPoint, 0)
 	var lastWeight sql.NullFloat64
 	for historyRows.Next() {
-		var date time.Time
+		var d time.Time
 		var weight float64
-		if err := historyRows.Scan(&date, &weight); err != nil {
+		if err := historyRows.Scan(&d, &weight); err != nil {
 			return nil, fmt.Errorf("failed to scan weight history: %w", err)
 		}
 		weightHistory = append(weightHistory, WeightHistoryPoint{
-			Date:   date.Format("2006-01-02"),
+			Date:   d.Format("2006-01-02"),
 			Weight: weight,
 		})
 		lastWeight = sql.NullFloat64{Float64: weight, Valid: true}
@@ -354,14 +464,52 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		unreadMap = make(map[int64]int)
 	}
 
-	todayKBZHU := &DailyKBZHU{
-		Calories: totalCal,
-		Protein:  totalProtein,
-		Fat:      totalFat,
-		Carbs:    totalCarbs,
+	// Build DayDetail for each date in range (newest first)
+	dayDetails := make([]DayDetail, 0)
+	for d := endDate; !d.Before(startDate); d = d.AddDate(0, 0, -1) {
+		dateKey := d.Format("2006-01-02")
+
+		entries := foodByDate[dateKey]
+		if entries == nil {
+			entries = make([]FoodEntryView, 0)
+		}
+
+		kbzhu := kbzhuByDate[dateKey]
+		if kbzhu == nil {
+			kbzhu = &DailyKBZHU{}
+		}
+
+		dayDetail := DayDetail{
+			Date:        dateKey,
+			KBZHU:       kbzhu,
+			Plan:        weeklyPlan,
+			Alerts:      computeAlerts(kbzhu, weeklyPlan),
+			FoodEntries: entries,
+			Water:       waterByDate[dateKey],
+			Steps:       0,
+		}
+
+		if m := metricsByDate[dateKey]; m != nil {
+			dayDetail.Steps = m.steps
+			if m.workoutCompleted || m.workoutType != "" || m.workoutDuration > 0 {
+				dayDetail.Workout = &WorkoutView{
+					Completed: m.workoutCompleted,
+					Type:      m.workoutType,
+					Duration:  m.workoutDuration,
+				}
+			}
+		}
+
+		dayDetails = append(dayDetails, dayDetail)
 	}
 
-	alerts := computeAlerts(todayKBZHU, weeklyPlan)
+	// Set today's KBZHU and alerts for the ClientCard from today's data
+	todayStr := today.Format("2006-01-02")
+	todayKBZHU := kbzhuByDate[todayStr]
+	if todayKBZHU == nil {
+		todayKBZHU = &DailyKBZHU{}
+	}
+	todayAlerts := computeAlerts(todayKBZHU, weeklyPlan)
 
 	detail := &ClientDetail{
 		ClientCard: ClientCard{
@@ -369,12 +517,13 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 			Name:        clientName,
 			TodayKBZHU:  todayKBZHU,
 			Plan:        weeklyPlan,
-			Alerts:      alerts,
+			Alerts:      todayAlerts,
 			UnreadCount: unreadMap[clientID],
 		},
-		FoodEntries:   foodEntries,
+		Days:          dayDetails,
 		WeeklyPlan:    weeklyPlan,
 		WeightHistory: weightHistory,
+		Photos:        photos,
 	}
 
 	if avatarURL.Valid {
@@ -392,13 +541,15 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	}
 
 	s.log.LogDatabaseQuery("GetClientDetail", time.Since(startTime), nil, map[string]interface{}{
-		"curator_id":   curatorID,
-		"client_id":    clientID,
-		"date":         targetDate.Format("2006-01-02"),
-		"food_entries": len(foodEntries),
-		"has_plan":     weeklyPlan != nil,
-		"has_weight":   lastWeight.Valid,
-		"alert_count":  len(alerts),
+		"curator_id":  curatorID,
+		"client_id":   clientID,
+		"start_date":  startDateStr,
+		"end_date":    endDateStr,
+		"days_count":  len(dayDetails),
+		"has_plan":    weeklyPlan != nil,
+		"has_weight":  lastWeight.Valid,
+		"alert_count": len(todayAlerts),
+		"photo_count": len(photos),
 	})
 
 	return detail, nil

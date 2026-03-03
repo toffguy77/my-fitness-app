@@ -164,14 +164,14 @@ func TestGetClients(t *testing.T) {
 func TestGetClientDetail(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("returns detail for valid curator-client relationship", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
-		defer cleanup()
-
-		curatorID := int64(100)
-		clientID := int64(1)
-		date := "2026-02-28"
-
+	// Helper: set up common mock expectations for a valid client detail call.
+	// Returns the mock so callers can add additional expectations or verify.
+	setupDetailMocks := func(
+		mock sqlmock.Sqlmock,
+		curatorID, clientID int64,
+		clientName string,
+		avatarURL interface{},
+	) {
 		// Relationship exists
 		mock.ExpectQuery(`SELECT EXISTS`).
 			WithArgs(curatorID, clientID).
@@ -181,19 +181,54 @@ func TestGetClientDetail(t *testing.T) {
 		mock.ExpectQuery(`SELECT id, COALESCE`).
 			WithArgs(clientID).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
-				AddRow(clientID, "Test Client", "https://avatar.example.com/test.jpg"))
+				AddRow(clientID, clientName, avatarURL))
+	}
 
-		// Food entries
+	t.Run("returns multi-day detail for valid curator-client relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+		clientID := int64(1)
+		date := "2026-02-28"
+
+		setupDetailMocks(mock, curatorID, clientID, "Test Client", "https://avatar.example.com/test.jpg")
+
+		// Food entries (single day mode since date is provided)
 		now := time.Now()
 		entryColumns := []string{
 			"id", "food_name", "meal_type", "calories", "protein", "fat", "carbs",
-			"weight", "created_by", "created_at",
+			"weight", "created_by", "created_at", "date",
 		}
 		mock.ExpectQuery(`SELECT id, food_name, meal_type`).
-			WithArgs(clientID, sqlmock.AnyArg()).
+			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 			WillReturnRows(sqlmock.NewRows(entryColumns).
-				AddRow("entry-1", "Chicken breast", "lunch", 300.0, 50.0, 8.0, 0.0, 200.0, nil, now).
-				AddRow("entry-2", "Rice", "lunch", 200.0, 4.0, 1.0, 45.0, 150.0, int64(100), now))
+				AddRow("entry-1", "Chicken breast", "lunch", 300.0, 50.0, 8.0, 0.0, 200.0, nil, now, time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)).
+				AddRow("entry-2", "Rice", "lunch", 200.0, 4.0, 1.0, 45.0, 150.0, int64(100), now, time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)))
+
+		// Water logs
+		waterColumns := []string{"date", "glasses", "goal", "glass_size"}
+		mock.ExpectQuery(`SELECT date, glasses, goal, glass_size`).
+			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows(waterColumns).
+				AddRow(time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), 6, 8, 250))
+
+		// Daily metrics (steps, workout)
+		metricsColumns := []string{"date", "steps", "workout_completed", "workout_type", "workout_duration"}
+		mock.ExpectQuery(`SELECT date, steps, workout_completed`).
+			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows(metricsColumns).
+				AddRow(time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC), int64(8500), true, "cardio", 45))
+
+		// Weekly photos
+		photoColumns := []string{"id", "photo_url", "week_start", "week_end", "uploaded_at"}
+		mock.ExpectQuery(`SELECT id, photo_url, week_start, week_end, uploaded_at`).
+			WithArgs(clientID).
+			WillReturnRows(sqlmock.NewRows(photoColumns).
+				AddRow("photo-1", "https://s3.example.com/photo1.jpg",
+					time.Date(2026, 2, 24, 0, 0, 0, 0, time.UTC),
+					time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC),
+					time.Date(2026, 2, 28, 12, 0, 0, 0, time.UTC)))
 
 		// Weekly plan
 		planColumns := []string{"calories_goal", "protein_goal", "fat_goal", "carbs_goal"}
@@ -219,7 +254,7 @@ func TestGetClientDetail(t *testing.T) {
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows(unreadColumns).AddRow(clientID, 2))
 
-		detail, err := service.GetClientDetail(ctx, curatorID, clientID, date)
+		detail, err := service.GetClientDetail(ctx, curatorID, clientID, date, 7)
 
 		require.NoError(t, err)
 		require.NotNil(t, detail)
@@ -228,19 +263,44 @@ func TestGetClientDetail(t *testing.T) {
 		assert.Equal(t, "Test Client", detail.Name)
 		assert.Equal(t, "https://avatar.example.com/test.jpg", detail.AvatarURL)
 
-		// Check KBZHU totals (300+200=500 cal, 50+4=54 protein, etc.)
-		assert.Equal(t, 500.0, detail.TodayKBZHU.Calories)
-		assert.Equal(t, 54.0, detail.TodayKBZHU.Protein)
-		assert.Equal(t, 9.0, detail.TodayKBZHU.Fat)
-		assert.Equal(t, 45.0, detail.TodayKBZHU.Carbs)
+		// Check Days (single day mode)
+		require.Len(t, detail.Days, 1)
+		day := detail.Days[0]
+		assert.Equal(t, "2026-02-28", day.Date)
 
-		// Check food entries
-		require.Len(t, detail.FoodEntries, 2)
-		assert.Equal(t, "Chicken breast", detail.FoodEntries[0].FoodName)
-		assert.Equal(t, "lunch", detail.FoodEntries[0].MealType)
-		assert.Nil(t, detail.FoodEntries[0].CreatedBy)
-		assert.NotNil(t, detail.FoodEntries[1].CreatedBy)
-		assert.Equal(t, int64(100), *detail.FoodEntries[1].CreatedBy)
+		// Check KBZHU totals on the day (300+200=500 cal, 50+4=54 protein, etc.)
+		require.NotNil(t, day.KBZHU)
+		assert.Equal(t, 500.0, day.KBZHU.Calories)
+		assert.Equal(t, 54.0, day.KBZHU.Protein)
+		assert.Equal(t, 9.0, day.KBZHU.Fat)
+		assert.Equal(t, 45.0, day.KBZHU.Carbs)
+
+		// Check food entries in the day
+		require.Len(t, day.FoodEntries, 2)
+		assert.Equal(t, "Chicken breast", day.FoodEntries[0].FoodName)
+		assert.Equal(t, "lunch", day.FoodEntries[0].MealType)
+		assert.Nil(t, day.FoodEntries[0].CreatedBy)
+		assert.NotNil(t, day.FoodEntries[1].CreatedBy)
+		assert.Equal(t, int64(100), *day.FoodEntries[1].CreatedBy)
+
+		// Check water
+		require.NotNil(t, day.Water)
+		assert.Equal(t, 6, day.Water.Glasses)
+		assert.Equal(t, 8, day.Water.Goal)
+		assert.Equal(t, 250, day.Water.GlassSize)
+
+		// Check steps and workout
+		assert.Equal(t, 8500, day.Steps)
+		require.NotNil(t, day.Workout)
+		assert.True(t, day.Workout.Completed)
+		assert.Equal(t, "cardio", day.Workout.Type)
+		assert.Equal(t, 45, day.Workout.Duration)
+
+		// Check photos
+		require.Len(t, detail.Photos, 1)
+		assert.Equal(t, "photo-1", detail.Photos[0].ID)
+		assert.Equal(t, "https://s3.example.com/photo1.jpg", detail.Photos[0].PhotoURL)
+		assert.Equal(t, "2026-02-24", detail.Photos[0].WeekStart)
 
 		// Check plan
 		require.NotNil(t, detail.WeeklyPlan)
@@ -277,7 +337,7 @@ func TestGetClientDetail(t *testing.T) {
 			WithArgs(curatorID, clientID).
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
 
-		detail, err := service.GetClientDetail(ctx, curatorID, clientID, "")
+		detail, err := service.GetClientDetail(ctx, curatorID, clientID, "", 7)
 
 		require.Error(t, err)
 		assert.Nil(t, detail)
@@ -285,32 +345,38 @@ func TestGetClientDetail(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("defaults to today when date is empty", func(t *testing.T) {
+	t.Run("defaults to 7 days when date is empty", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
 		curatorID := int64(100)
 		clientID := int64(1)
 
-		// Relationship exists
-		mock.ExpectQuery(`SELECT EXISTS`).
-			WithArgs(curatorID, clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
-
-		// Client info
-		mock.ExpectQuery(`SELECT id, COALESCE`).
-			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
-				AddRow(clientID, "Default Date Client", nil))
+		setupDetailMocks(mock, curatorID, clientID, "Default Date Client", nil)
 
 		// Empty food entries
 		entryColumns := []string{
 			"id", "food_name", "meal_type", "calories", "protein", "fat", "carbs",
-			"weight", "created_by", "created_at",
+			"weight", "created_by", "created_at", "date",
 		}
 		mock.ExpectQuery(`SELECT id, food_name, meal_type`).
-			WithArgs(clientID, sqlmock.AnyArg()).
+			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
 			WillReturnRows(sqlmock.NewRows(entryColumns))
+
+		// Empty water
+		mock.ExpectQuery(`SELECT date, glasses, goal, glass_size`).
+			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows([]string{"date", "glasses", "goal", "glass_size"}))
+
+		// Empty metrics
+		mock.ExpectQuery(`SELECT date, steps, workout_completed`).
+			WithArgs(clientID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows([]string{"date", "steps", "workout_completed", "workout_type", "workout_duration"}))
+
+		// Empty photos
+		mock.ExpectQuery(`SELECT id, photo_url, week_start, week_end, uploaded_at`).
+			WithArgs(clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "photo_url", "week_start", "week_end", "uploaded_at"}))
 
 		// No weekly plan
 		planColumns := []string{"calories_goal", "protein_goal", "fat_goal", "carbs_goal"}
@@ -333,15 +399,25 @@ func TestGetClientDetail(t *testing.T) {
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows(unreadColumns))
 
-		detail, err := service.GetClientDetail(ctx, curatorID, clientID, "")
+		detail, err := service.GetClientDetail(ctx, curatorID, clientID, "", 7)
 
 		require.NoError(t, err)
 		require.NotNil(t, detail)
 		assert.Equal(t, "Default Date Client", detail.Name)
-		assert.Empty(t, detail.FoodEntries)
+
+		// Should have 7 days (today + 6 previous)
+		assert.Len(t, detail.Days, 7)
+
+		// Days should be sorted newest first
+		if len(detail.Days) >= 2 {
+			assert.True(t, detail.Days[0].Date > detail.Days[1].Date,
+				"Days should be sorted newest first: %s > %s", detail.Days[0].Date, detail.Days[1].Date)
+		}
+
 		assert.Nil(t, detail.WeeklyPlan)
 		assert.Empty(t, detail.WeightHistory)
 		assert.Nil(t, detail.LastWeight)
+		assert.Empty(t, detail.Photos)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
