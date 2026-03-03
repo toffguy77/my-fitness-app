@@ -170,6 +170,13 @@ func (h *Handler) SendMessage(c *gin.Context) {
 			Type: ws.EventNewMessage,
 			Data: msg,
 		})
+		// Send updated unread count to the recipient
+		if unread, err := h.service.GetUnreadCount(c.Request.Context(), otherID); err == nil {
+			h.hub.SendToUser(otherID, ws.OutgoingEvent{
+				Type: ws.EventUnreadCountUpdate,
+				Data: gin.H{"count": unread},
+			})
+		}
 	}
 
 	response.Success(c, http.StatusCreated, msg)
@@ -254,6 +261,14 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 		return
 	}
 
+	// Send updated unread count to the current user
+	if unread, err := h.service.GetUnreadCount(c.Request.Context(), userID); err == nil {
+		h.hub.SendToUser(userID, ws.OutgoingEvent{
+			Type: ws.EventUnreadCountUpdate,
+			Data: gin.H{"count": unread},
+		})
+	}
+
 	response.Success(c, http.StatusOK, gin.H{"status": "ok"})
 }
 
@@ -315,6 +330,13 @@ func (h *Handler) CreateFoodEntry(c *gin.Context) {
 			Type: ws.EventNewMessage,
 			Data: msg,
 		})
+		// Send updated unread count to the recipient
+		if unread, err := h.service.GetUnreadCount(c.Request.Context(), otherID); err == nil {
+			h.hub.SendToUser(otherID, ws.OutgoingEvent{
+				Type: ws.EventUnreadCountUpdate,
+				Data: gin.H{"count": unread},
+			})
+		}
 	}
 
 	response.Success(c, http.StatusCreated, msg)

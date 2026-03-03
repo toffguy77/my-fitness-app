@@ -1,28 +1,25 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useWebSocketContext } from '../components/WebSocketProvider'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import type { WebSocketEvent } from '../types'
 
-/**
- * Hook for WebSocket communication.
- * When inside a WebSocketProvider, delegates to the shared connection.
- * Falls back to creating its own connection when used outside the provider.
- */
-export function useWebSocket() {
-    const ctx = useWebSocketContext()
+interface WebSocketContextValue {
+    sendEvent: (event: WebSocketEvent) => void
+    lastEvent: WebSocketEvent | null
+    isConnected: boolean
+}
 
-    // Fallback state for when used outside the provider
+const WebSocketContext = createContext<WebSocketContextValue | null>(null)
+
+export function WebSocketProvider({ children }: { children: ReactNode }) {
     const wsRef = useRef<WebSocket | null>(null)
-    const [fallbackConnected, setFallbackConnected] = useState(false)
-    const [fallbackLastEvent, setFallbackLastEvent] = useState<WebSocketEvent | null>(null)
+    const [isConnected, setIsConnected] = useState(false)
+    const [lastEvent, setLastEvent] = useState<WebSocketEvent | null>(null)
     const reconnectDelay = useRef(1000)
     const isMounted = useRef(true)
 
     useEffect(() => {
-        // If context is available, don't create a standalone connection
-        if (ctx) return
-
         isMounted.current = true
 
         const connect = () => {
@@ -36,13 +33,13 @@ export function useWebSocket() {
 
             ws.onopen = () => {
                 if (!isMounted.current) return
-                setFallbackConnected(true)
+                setIsConnected(true)
                 reconnectDelay.current = 1000
             }
 
             ws.onclose = () => {
                 if (!isMounted.current) return
-                setFallbackConnected(false)
+                setIsConnected(false)
                 const currentToken = localStorage.getItem('auth_token')
                 if (currentToken) {
                     setTimeout(connect, reconnectDelay.current)
@@ -54,7 +51,7 @@ export function useWebSocket() {
                 if (!isMounted.current) return
                 try {
                     const event = JSON.parse(e.data) as WebSocketEvent
-                    setFallbackLastEvent(event)
+                    setLastEvent(event)
                 } catch {
                     // Ignore malformed messages
                 }
@@ -69,17 +66,21 @@ export function useWebSocket() {
             isMounted.current = false
             wsRef.current?.close()
         }
-    }, [ctx])
+    }, [])
 
-    const fallbackSendEvent = useCallback((event: WebSocketEvent) => {
+    const sendEvent = useCallback((event: WebSocketEvent) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify(event))
         }
     }, [])
 
-    if (ctx) {
-        return { sendEvent: ctx.sendEvent, lastEvent: ctx.lastEvent, isConnected: ctx.isConnected }
-    }
+    return (
+        <WebSocketContext value={{ sendEvent, lastEvent, isConnected }}>
+            {children}
+        </WebSocketContext>
+    )
+}
 
-    return { sendEvent: fallbackSendEvent, lastEvent: fallbackLastEvent, isConnected: fallbackConnected }
+export function useWebSocketContext(): WebSocketContextValue | null {
+    return useContext(WebSocketContext)
 }
