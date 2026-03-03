@@ -4,8 +4,9 @@ import "encoding/json"
 
 // Event types sent over WebSocket
 const (
-	EventNewMessage = "new_message"
-	EventTyping     = "typing"
+	EventNewMessage        = "new_message"
+	EventTyping            = "typing"
+	EventUnreadCountUpdate = "unread_count_update"
 )
 
 // OutgoingEvent is sent from server to client

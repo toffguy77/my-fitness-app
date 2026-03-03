@@ -6,6 +6,7 @@ import { DashboardHeader } from './DashboardHeader'
 import { FooterNavigation } from './FooterNavigation'
 import { OfflineIndicator } from './OfflineIndicator'
 import { cn } from '@/shared/utils/cn'
+import { WebSocketProvider } from '@/features/chat'
 import { useNotificationsStore } from '@/features/notifications'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { NavigationItemId } from '../types'
@@ -98,50 +99,52 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         }
 
         return (
-            <div
-                ref={ref}
-                className={cn(
-                    // Minimum full viewport height (Requirement 3.1, 4.1)
-                    'min-h-screen',
-                    // Ensure full width and prevent horizontal scrolling (Requirement 12.5)
-                    'w-full max-w-full overflow-x-hidden',
-                    // Background color
-                    'bg-gray-50',
-                    // Smooth transitions for orientation changes (Requirement 12.6)
-                    'transition-all duration-300 ease-in-out',
-                    className
-                )}
-                data-testid="dashboard-layout"
-            >
-                {/* Fixed Header at top (Requirement 3.1) */}
-                <DashboardHeader
-                    userName={userName}
-                    avatarUrl={avatarUrl}
-                    notificationCount={totalUnreadCount}
-                    onLogoClick={handleLogoClick}
-                    onAvatarClick={handleAvatarClick}
-                    onNotificationClick={handleNotificationClick}
-                />
-
-                {/* Main Content Area (Requirement 3.1, 4.3) */}
-                {/* Padding top/bottom to account for fixed header (64px) and footer (64px + safe area) */}
-                <main
-                    className="min-h-screen pt-16"
-                    style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
-                    data-testid="main-content"
+            <WebSocketProvider>
+                <div
+                    ref={ref}
+                    className={cn(
+                        // Minimum full viewport height (Requirement 3.1, 4.1)
+                        'min-h-screen',
+                        // Ensure full width and prevent horizontal scrolling (Requirement 12.5)
+                        'w-full max-w-full overflow-x-hidden',
+                        // Background color
+                        'bg-gray-50',
+                        // Smooth transitions for orientation changes (Requirement 12.6)
+                        'transition-all duration-300 ease-in-out',
+                        className
+                    )}
+                    data-testid="dashboard-layout"
                 >
-                    {children}
-                </main>
+                    {/* Fixed Header at top (Requirement 3.1) */}
+                    <DashboardHeader
+                        userName={userName}
+                        avatarUrl={avatarUrl}
+                        notificationCount={totalUnreadCount}
+                        onLogoClick={handleLogoClick}
+                        onAvatarClick={handleAvatarClick}
+                        onNotificationClick={handleNotificationClick}
+                    />
 
-                {/* Fixed Footer Navigation at bottom (Requirement 3.1) */}
-                <FooterNavigation
-                    activeItem={activeNavItem}
-                    onNavigate={onNavigate}
-                />
+                    {/* Main Content Area (Requirement 3.1, 4.3) */}
+                    {/* Padding top/bottom to account for fixed header (64px) and footer (64px + safe area) */}
+                    <main
+                        className="min-h-screen pt-16"
+                        style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
+                        data-testid="main-content"
+                    >
+                        {children}
+                    </main>
 
-                {/* Offline Indicator (Requirement 13.4, 13.5) */}
-                <OfflineIndicator />
-            </div>
+                    {/* Fixed Footer Navigation at bottom (Requirement 3.1) */}
+                    <FooterNavigation
+                        activeItem={activeNavItem}
+                        onNavigate={onNavigate}
+                    />
+
+                    {/* Offline Indicator (Requirement 13.4, 13.5) */}
+                    <OfflineIndicator />
+                </div>
+            </WebSocketProvider>
         )
     }
 )

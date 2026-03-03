@@ -26,6 +26,9 @@ export { useWebSocket } from './hooks/useWebSocket'
 export { useChat } from './hooks/useChat'
 export { useUnreadCount } from './hooks/useUnreadCount'
 
+// Providers
+export { WebSocketProvider } from './components/WebSocketProvider'
+
 // Components
 export { MessageBubble } from './components/MessageBubble'
 export { MessageList } from './components/MessageList'

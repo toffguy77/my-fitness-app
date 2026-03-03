@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { chatApi } from '@/features/chat/api/chatApi'
+import { useChatStore } from '@/features/chat/store/chatStore'
 import { useChat } from '@/features/chat/hooks/useChat'
 import { MessageList } from '@/features/chat/components/MessageList'
 import { ChatInput } from '@/features/chat/components/ChatInput'
@@ -37,6 +38,7 @@ export default function ChatPage() {
                 if (convs.length > 0) {
                     setConversation(convs[0])
                     chatApi.markAsRead(convs[0].id)
+                    useChatStore.getState().resetUnread(convs[0].id)
                 } else {
                     setNoConversation(true)
                 }

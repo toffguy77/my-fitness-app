@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { chatApi } from '@/features/chat/api/chatApi'
+import { useChatStore } from '@/features/chat/store/chatStore'
 import { useChat } from '@/features/chat/hooks/useChat'
 import { MessageList } from '@/features/chat/components/MessageList'
 import { ChatInput } from '@/features/chat/components/ChatInput'
@@ -32,6 +33,7 @@ export default function CuratorChatPage() {
             if (conv) {
                 setConversation(conv)
                 chatApi.markAsRead(conv.id)
+                useChatStore.getState().resetUnread(conv.id)
             }
         })
     }, [clientId])
