@@ -12,6 +12,7 @@ type ClientCard struct {
 	LastWeight   *float64    `json:"last_weight"`
 	WeightTrend  string      `json:"weight_trend"`
 	TargetWeight *float64    `json:"target_weight"`
+	TodayWater   *WaterView  `json:"today_water"`
 }
 
 // DailyKBZHU represents daily nutrition totals (calories, protein, fat, carbs)

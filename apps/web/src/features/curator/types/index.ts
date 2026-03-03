@@ -39,6 +39,7 @@ export interface ClientCard {
     last_weight: number | null
     weight_trend: 'up' | 'down' | 'stable' | ''
     target_weight: number | null
+    today_water: WaterView | null
 }
 
 export interface FoodEntryView {
