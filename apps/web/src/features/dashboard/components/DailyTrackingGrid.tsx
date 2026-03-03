@@ -16,7 +16,6 @@ import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
 import { NutritionBlock } from './NutritionBlock'
-import { WeightBlock } from './WeightBlock'
 import { StepsBlock } from './StepsBlock'
 import { WorkoutBlock } from './WorkoutBlock'
 
@@ -74,8 +73,8 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
         return (
             <div className={cn('space-y-4', className)}>
                 {/* Loading skeleton */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                    {Array.from({ length: 4 }).map((_, index) => (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {Array.from({ length: 3 }).map((_, index) => (
                         <div
                             key={index}
                             className="h-80 bg-gray-100 rounded-lg animate-pulse"
@@ -129,22 +128,13 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
 
     return (
         <div className={cn('space-y-3 sm:space-y-4', className)}>
-            {/* Responsive grid layout (Requirements 12.1, 12.2, 12.3) */}
+            {/* Responsive grid layout - 3 columns */}
             {/* Mobile: single column, stacked blocks */}
-            {/* Tablet: two-column grid */}
-            {/* Desktop: four-column grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+            {/* Tablet+: three-column grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
                 {/* Nutrition Block */}
                 <div className="col-span-1">
                     <NutritionBlock
-                        date={date}
-                        className="h-full"
-                    />
-                </div>
-
-                {/* Weight Block */}
-                <div className="col-span-1">
-                    <WeightBlock
                         date={date}
                         className="h-full"
                     />

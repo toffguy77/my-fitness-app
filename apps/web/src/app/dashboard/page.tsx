@@ -5,18 +5,17 @@
  * Displays the complete dashboard with all sections:
  * - Calendar Navigator (eager-loaded, above the fold)
  * - Daily Tracking Grid (eager-loaded, above the fold)
+ * - Weight Section (eager-loaded, above the fold)
  * - Progress Section (lazy-loaded, below the fold)
  * - Photo Upload Section (lazy-loaded, below the fold)
  * - Weekly Plan Section (lazy-loaded, below the fold)
  * - Tasks Section (lazy-loaded, below the fold)
  *
  * Code Splitting Strategy:
- * - Above-the-fold components (CalendarNavigator, DailyTrackingGrid) are eager-loaded
+ * - Above-the-fold components (CalendarNavigator, DailyTrackingGrid, WeightSection) are eager-loaded
  *   for immediate rendering and optimal LCP (Largest Contentful Paint)
  * - Below-the-fold components are lazy-loaded with React.lazy() and Suspense
  *   to reduce initial bundle size and improve TTI (Time to Interactive)
- *
- * Requirements: 1.1, 1.4, 13.2, 19.1 (Code Splitting)
  */
 
 'use client'
@@ -27,6 +26,7 @@ import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout
 import { getProfile } from '@/features/settings/api/settings'
 import { CalendarNavigator } from '@/features/dashboard/components/CalendarNavigator'
 import { DailyTrackingGrid } from '@/features/dashboard/components/DailyTrackingGrid'
+import { WeightSection } from '@/features/dashboard/components/WeightSection'
 import {
     LazyProgressSection,
     LazyPhotoUploadSection,
@@ -74,13 +74,13 @@ export default function DashboardPage() {
                 ? localStorage.getItem('auth_token')
                 : null
 
-            // Redirect to login if not authenticated (Requirement 1.1)
+            // Redirect to login if not authenticated
             if (!token) {
                 router.push('/auth')
                 return
             }
 
-            // Get user data from localStorage (Requirement 1.1, 1.4)
+            // Get user data from localStorage
             const userDataStr = typeof window !== 'undefined'
                 ? localStorage.getItem('user')
                 : null
@@ -91,12 +91,10 @@ export default function DashboardPage() {
                     setUserData(user)
                 } catch (error) {
                     console.error('Failed to parse user data:', error)
-                    // If user data is corrupted, redirect to login
                     router.push('/auth')
                     return
                 }
             } else {
-                // If no user data, redirect to login
                 router.push('/auth')
                 return
             }
@@ -118,7 +116,7 @@ export default function DashboardPage() {
             .catch(() => {})
     }, [userData?.id])
 
-    // Fetch dashboard data on mount (Requirement 13.2)
+    // Fetch dashboard data on mount
     useEffect(() => {
         if (!userData) return
 
@@ -174,12 +172,10 @@ export default function DashboardPage() {
 
     const handleNavigate = (itemId: NavigationItemId) => {
         // Navigation is handled by the FooterNavigation component
-        // This callback can be used for analytics or other side effects
     }
 
     const handleSubmitReport = async () => {
         // TODO: Implement weekly report submission
-        // This will be handled in task 12.3
         console.log('Submit weekly report')
     }
 
@@ -207,34 +203,35 @@ export default function DashboardPage() {
             activeNavItem="dashboard"
             onNavigate={handleNavigate}
         >
-            {/* Main dashboard content - responsive layout (Requirements 12.1, 12.2, 12.3, 12.5, 12.6) */}
             <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 p-3 sm:p-4 md:p-6">
-                {/* Calendar Navigator - full width on all devices */}
+                {/* Calendar Navigator */}
                 <CalendarNavigator
                     onSubmitReport={handleSubmitReport}
                     className="w-full"
                 />
 
-                {/* Daily Tracking Grid - responsive grid layout */}
+                {/* Daily Tracking Grid: Питание | Шаги | Тренировки */}
                 <DailyTrackingGrid
                     date={selectedDate}
                     className="w-full"
                 />
 
-                {/* Long-term sections - responsive layout with code splitting */}
-                {/* Mobile: single column, stacked */}
-                {/* Tablet: two-column grid */}
-                {/* Desktop: three-column grid for better space utilization */}
-                {/* These components are lazy-loaded to reduce initial bundle size (Requirement 19.1) */}
+                {/* Weight Section: ввод веса + тренд + цель — единый блок */}
+                <WeightSection
+                    date={selectedDate}
+                    className="w-full"
+                />
+
+                {/* Below-the-fold sections */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-                    {/* Progress Section - lazy loaded */}
+                    {/* Progress Section — adherence only */}
                     <div className="md:col-span-2 lg:col-span-3">
                         <Suspense fallback={<ProgressSectionSkeleton className="w-full h-full" />}>
                             <LazyProgressSection className="w-full h-full" />
                         </Suspense>
                     </div>
 
-                    {/* Photo Upload Section - lazy loaded */}
+                    {/* Photo Upload Section */}
                     <div className="md:col-span-1 lg:col-span-1">
                         <Suspense fallback={<PhotoUploadSectionSkeleton className="w-full h-full" />}>
                             <LazyPhotoUploadSection
@@ -245,14 +242,14 @@ export default function DashboardPage() {
                         </Suspense>
                     </div>
 
-                    {/* Weekly Plan Section - lazy loaded */}
+                    {/* Weekly Plan Section */}
                     <div className="md:col-span-1 lg:col-span-1">
                         <Suspense fallback={<WeeklyPlanSectionSkeleton className="w-full h-full" />}>
                             <LazyWeeklyPlanSection className="w-full h-full" />
                         </Suspense>
                     </div>
 
-                    {/* Tasks Section - lazy loaded */}
+                    {/* Tasks Section */}
                     <div className="md:col-span-2 lg:col-span-1">
                         <Suspense fallback={<TasksSectionSkeleton className="w-full h-full" />}>
                             <LazyTasksSection className="w-full h-full" />
