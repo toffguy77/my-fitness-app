@@ -45,9 +45,45 @@ type WeightHistoryPoint struct {
 // ClientDetail represents a detailed view of a single client for the curator
 type ClientDetail struct {
 	ClientCard
-	FoodEntries   []FoodEntryView      `json:"food_entries"`
+	Days          []DayDetail          `json:"days"`
 	WeeklyPlan    *PlanKBZHU           `json:"weekly_plan"`
 	WeightHistory []WeightHistoryPoint `json:"weight_history"`
+	Photos        []PhotoView          `json:"photos"`
+}
+
+// DayDetail represents a single day's data for the curator client view
+type DayDetail struct {
+	Date        string          `json:"date"`
+	KBZHU       *DailyKBZHU     `json:"kbzhu"`
+	Plan        *PlanKBZHU      `json:"plan"`
+	Alerts      []Alert         `json:"alerts"`
+	FoodEntries []FoodEntryView `json:"food_entries"`
+	Water       *WaterView      `json:"water"`
+	Steps       int             `json:"steps"`
+	Workout     *WorkoutView    `json:"workout"`
+}
+
+// WaterView represents water intake data for a day
+type WaterView struct {
+	Glasses   int `json:"glasses"`
+	Goal      int `json:"goal"`
+	GlassSize int `json:"glass_size"`
+}
+
+// WorkoutView represents workout data for a day
+type WorkoutView struct {
+	Completed bool   `json:"completed"`
+	Type      string `json:"type"`
+	Duration  int    `json:"duration"`
+}
+
+// PhotoView represents a weekly photo for the curator
+type PhotoView struct {
+	ID         string `json:"id"`
+	PhotoURL   string `json:"photo_url"`
+	WeekStart  string `json:"week_start"`
+	WeekEnd    string `json:"week_end"`
+	UploadedAt string `json:"uploaded_at"`
 }
 
 // FoodEntryView represents a single food entry as seen by the curator
