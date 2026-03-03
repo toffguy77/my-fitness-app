@@ -5,28 +5,10 @@ import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeft, MessageCircle, Loader2, Check, X } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curatorApi'
-import { KBZHUProgress } from '@/features/curator/components/KBZHUProgress'
 import { AlertBadge } from '@/features/curator/components/AlertBadge'
-import type { ClientDetail, FoodEntryView, WeightHistoryPoint } from '@/features/curator/types'
-
-const MEAL_LABELS: Record<string, string> = {
-    breakfast: 'Завтрак',
-    lunch: 'Обед',
-    dinner: 'Ужин',
-    snack: 'Перекус',
-}
-
-const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack']
-
-function groupByMeal(entries: FoodEntryView[]): Record<string, FoodEntryView[]> {
-    const grouped: Record<string, FoodEntryView[]> = {}
-    for (const entry of entries) {
-        const key = entry.meal_type
-        if (!grouped[key]) grouped[key] = []
-        grouped[key].push(entry)
-    }
-    return grouped
-}
+import { DaySection } from '@/features/curator/components/DaySection'
+import { PhotosSection } from '@/features/curator/components/PhotosSection'
+import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
 
 type FetchState = {
     detail: ClientDetail | null
@@ -177,14 +159,13 @@ export default function ClientDetailPage() {
     const router = useRouter()
     const params = useParams()
     const clientId = Number(params.id)
-    const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
     const [state, dispatch] = useReducer(fetchReducer, { detail: null, loading: true, error: null })
     const fetchIdRef = useRef(0)
 
     useEffect(() => {
         const fetchId = ++fetchIdRef.current
         dispatch({ type: 'FETCH_START' })
-        curatorApi.getClientDetail(clientId, date)
+        curatorApi.getClientDetail(clientId)
             .then((data) => {
                 if (fetchIdRef.current === fetchId) {
                     dispatch({ type: 'FETCH_SUCCESS', data })
@@ -195,7 +176,7 @@ export default function ClientDetailPage() {
                     dispatch({ type: 'FETCH_ERROR', error: 'Не удалось загрузить данные клиента' })
                 }
             })
-    }, [clientId, date])
+    }, [clientId])
 
     const { detail, loading, error } = state
 
@@ -207,10 +188,6 @@ export default function ClientDetailPage() {
             .slice(0, 2)
             .toUpperCase()
         : ''
-
-    const hasPlan = detail?.plan !== null && detail?.plan !== undefined
-    const kbzhu = detail?.today_kbzhu
-    const mealGroups = detail ? groupByMeal(detail.food_entries) : {}
 
     return (
         <div className="px-4 py-6">
@@ -268,22 +245,8 @@ export default function ClientDetailPage() {
             )}
 
             {!loading && !error && detail && (
-                <div className="space-y-6">
-                    {/* Date picker */}
-                    <div>
-                        <label htmlFor="date-picker" className="block text-sm font-medium text-gray-700 mb-1">
-                            Дата
-                        </label>
-                        <input
-                            id="date-picker"
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                        />
-                    </div>
-
-                    {/* Alerts */}
+                <div className="space-y-4">
+                    {/* Today's alerts summary */}
                     {detail.alerts.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                             {detail.alerts.map((alert, idx) => (
@@ -292,28 +255,7 @@ export default function ClientDetailPage() {
                         </div>
                     )}
 
-                    {/* KBZHU Progress */}
-                    {hasPlan && kbzhu ? (
-                        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-                            <h2 className="text-sm font-semibold text-gray-900 mb-3">КБЖУ за день</h2>
-                            <div className="space-y-2">
-                                <KBZHUProgress label="Калории" value={kbzhu.calories} target={detail.plan!.calories} />
-                                <KBZHUProgress label="Белки" value={kbzhu.protein} target={detail.plan!.protein} />
-                                <KBZHUProgress label="Жиры" value={kbzhu.fat} target={detail.plan!.fat} />
-                                <KBZHUProgress label="Углеводы" value={kbzhu.carbs} target={detail.plan!.carbs} />
-                            </div>
-                        </section>
-                    ) : kbzhu ? (
-                        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-                            <h2 className="text-sm font-semibold text-gray-900 mb-2">КБЖУ за день</h2>
-                            <p className="text-sm text-gray-600">
-                                Ккал: {Math.round(kbzhu.calories)} | Б: {Math.round(kbzhu.protein)} | Ж: {Math.round(kbzhu.fat)} | У: {Math.round(kbzhu.carbs)}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">План не задан</p>
-                        </section>
-                    ) : null}
-
-                    {/* Weekly plan */}
+                    {/* Weekly plan summary */}
                     {detail.weekly_plan && (
                         <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
                             <h2 className="text-sm font-semibold text-gray-900 mb-2">Недельный план</h2>
@@ -338,48 +280,19 @@ export default function ClientDetailPage() {
                         </section>
                     )}
 
+                    {/* Day sections — collapsible, newest first */}
+                    <div className="space-y-3">
+                        <h2 className="text-sm font-semibold text-gray-900">Последние 7 дней</h2>
+                        {detail.days.map((day) => (
+                            <DaySection key={day.date} day={day} />
+                        ))}
+                    </div>
+
                     {/* Weight section */}
                     <WeightSection detail={detail} clientId={clientId} />
 
-                    {/* Food entries by meal */}
-                    <section>
-                        <h2 className="text-sm font-semibold text-gray-900 mb-3">Приёмы пищи</h2>
-                        {detail.food_entries.length === 0 ? (
-                            <p className="text-sm text-gray-400">Нет записей за этот день</p>
-                        ) : (
-                            <div className="space-y-4">
-                                {MEAL_ORDER.map((mealType) => {
-                                    const entries = mealGroups[mealType]
-                                    if (!entries || entries.length === 0) return null
-                                    return (
-                                        <div key={mealType} className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-                                            <h3 className="text-sm font-semibold text-gray-800 mb-2">
-                                                {MEAL_LABELS[mealType] || mealType}
-                                            </h3>
-                                            <div className="space-y-2">
-                                                {entries.map((entry) => (
-                                                    <div key={entry.id} className="border-b border-gray-50 pb-2 last:border-0 last:pb-0">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-sm text-gray-900">{entry.food_name}</span>
-                                                            <span className="text-xs text-gray-500">{entry.weight} г</span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-500 mt-0.5">
-                                                            {Math.round(entry.calories)} ккал | Б {Math.round(entry.protein)} | Ж {Math.round(entry.fat)} | У {Math.round(entry.carbs)}
-                                                        </p>
-                                                        {entry.created_by != null && (
-                                                            <span className="inline-block mt-0.5 text-xs text-blue-600 font-medium">
-                                                                Добавлено куратором
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </section>
+                    {/* Photos section */}
+                    <PhotosSection photos={detail.photos} />
                 </div>
             )}
         </div>
