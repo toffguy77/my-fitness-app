@@ -18,6 +18,7 @@ import { formatLocalDate } from '@/shared/utils/format'
 import { NutritionBlock } from './NutritionBlock'
 import { StepsBlock } from './StepsBlock'
 import { WorkoutBlock } from './WorkoutBlock'
+import { WaterBlock } from './WaterBlock'
 
 /**
  * Props for DailyTrackingGrid component
@@ -131,7 +132,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
             {/* Responsive grid layout - 3 columns */}
             {/* Mobile: single column, stacked blocks */}
             {/* Tablet+: three-column grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                 {/* Nutrition Block */}
                 <div className="col-span-1">
                     <NutritionBlock
@@ -151,6 +152,14 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                 {/* Workout Block */}
                 <div className="col-span-1">
                     <WorkoutBlock
+                        date={date}
+                        className="h-full"
+                    />
+                </div>
+
+                {/* Water Block */}
+                <div className="col-span-1">
+                    <WaterBlock
                         date={date}
                         className="h-full"
                     />

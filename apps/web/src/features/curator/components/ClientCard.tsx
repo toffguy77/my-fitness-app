@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, Droplets } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { KBZHUProgress } from './KBZHUProgress'
 import { AlertBadge } from './AlertBadge'
@@ -98,6 +98,15 @@ export function ClientCard({ client }: ClientCardProps) {
                             Цель: {client.target_weight} кг
                         </span>
                     )}
+                </div>
+            )}
+
+            {client.today_water && client.today_water.glasses > 0 && (
+                <div className="mt-2 flex items-center gap-2 text-xs">
+                    <Droplets className="h-3.5 w-3.5 text-blue-500" />
+                    <span className={client.today_water.glasses >= client.today_water.goal ? 'font-semibold text-green-600' : 'text-gray-600'}>
+                        {client.today_water.glasses}/{client.today_water.goal} стаканов
+                    </span>
                 </div>
             )}
 

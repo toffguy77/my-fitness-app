@@ -131,6 +131,9 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 	weightMap, trendMap := s.getWeightData(ctx, clientIDs)
 	targetMap := s.getTargetWeights(ctx, clientIDs)
 
+	// Get today's water intake for all clients
+	waterMap := s.getTodayWater(ctx, clientIDs)
+
 	// Build client cards
 	cards := make([]ClientCard, 0, len(clientRows))
 	for _, cr := range clientRows {
@@ -148,6 +151,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 			LastWeight:   weightMap[cr.id],
 			WeightTrend:  trendMap[cr.id],
 			TargetWeight: targetMap[cr.id],
+			TodayWater:   waterMap[cr.id],
 		}
 
 		if cr.avatarURL.Valid {
@@ -763,6 +767,36 @@ func (s *Service) getTargetWeights(ctx context.Context, clientIDs []int64) map[i
 			continue
 		}
 		w := weight
+		result[userID] = &w
+	}
+
+	return result
+}
+
+
+// getTodayWater returns today's water intake for a list of clients
+func (s *Service) getTodayWater(ctx context.Context, clientIDs []int64) map[int64]*WaterView {
+	result := make(map[int64]*WaterView)
+
+	if len(clientIDs) == 0 {
+		return result
+	}
+
+	inClause, args := buildPlaceholders(clientIDs, 0)
+	query := fmt.Sprintf(`SELECT user_id, glasses, goal, glass_size FROM water_logs WHERE user_id IN %s AND date = CURRENT_DATE`, inClause)
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		s.log.Error("Failed to query today water", "error", err)
+		return result
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID int64
+		var w WaterView
+		if err := rows.Scan(&userID, &w.Glasses, &w.Goal, &w.GlassSize); err != nil {
+			continue
+		}
 		result[userID] = &w
 	}
 

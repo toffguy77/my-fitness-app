@@ -8,6 +8,7 @@ import { curatorApi } from '@/features/curator/api/curatorApi'
 import { AlertBadge } from '@/features/curator/components/AlertBadge'
 import { DaySection } from '@/features/curator/components/DaySection'
 import { StepsChart } from '@/features/curator/components/StepsChart'
+import { WaterChart } from '@/features/curator/components/WaterChart'
 import { WorkoutsSection } from '@/features/curator/components/WorkoutsSection'
 import { PhotosSection } from '@/features/curator/components/PhotosSection'
 import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
@@ -318,6 +319,7 @@ export default function ClientDetailPage() {
                     {/* Dynamics sections: weight, steps, workouts */}
                     <WeightSection detail={detail} clientId={clientId} />
                     <StepsChart days={detail.days} />
+                    <WaterChart days={detail.days} />
                     <WorkoutsSection days={detail.days} />
 
                     {/* Photos section */}
