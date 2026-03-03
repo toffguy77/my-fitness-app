@@ -6,6 +6,7 @@ interface OnboardingState {
     avatarUrl: string
     language: 'ru' | 'en'
     units: 'metric' | 'imperial'
+    timezone: string
     telegram: string
     instagram: string
     appleHealthEnabled: boolean
@@ -16,6 +17,7 @@ interface OnboardingState {
     setAvatarUrl: (url: string) => void
     setLanguage: (lang: 'ru' | 'en') => void
     setUnits: (units: 'metric' | 'imperial') => void
+    setTimezone: (timezone: string) => void
     setTelegram: (val: string) => void
     setInstagram: (val: string) => void
     setAppleHealth: (val: boolean) => void
@@ -28,6 +30,9 @@ const initialState = {
     avatarUrl: '',
     language: 'ru' as const,
     units: 'metric' as const,
+    timezone: typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : 'Europe/Moscow',
     telegram: '',
     instagram: '',
     appleHealthEnabled: false,
@@ -41,6 +46,7 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
     setAvatarUrl: (url) => set({ avatarUrl: url }),
     setLanguage: (language) => set({ language }),
     setUnits: (units) => set({ units }),
+    setTimezone: (timezone) => set({ timezone }),
     setTelegram: (telegram) => set({ telegram }),
     setInstagram: (instagram) => set({ instagram }),
     setAppleHealth: (appleHealthEnabled) => set({ appleHealthEnabled }),

@@ -8,6 +8,7 @@ import {
     PhotoUploader,
     LanguageSelector,
     UnitSelector,
+    TimezoneSelector,
     SocialAccountsForm,
     AppleHealthToggle,
 } from '@/shared/components/settings'
@@ -34,6 +35,7 @@ export function OnboardingWizard() {
         avatarUrl,
         language,
         units,
+        timezone,
         telegram,
         instagram,
         appleHealthEnabled,
@@ -41,6 +43,7 @@ export function OnboardingWizard() {
         setAvatarUrl,
         setLanguage,
         setUnits,
+        setTimezone,
         setTelegram,
         setInstagram,
         setAppleHealth,
@@ -68,6 +71,7 @@ export function OnboardingWizard() {
                     if (s.units === 'metric' || s.units === 'imperial') {
                         setUnits(s.units)
                     }
+                    if (s.timezone) setTimezone(s.timezone)
                     if (s.telegram_username) setTelegram(s.telegram_username)
                     if (s.instagram_username) setInstagram(s.instagram_username)
                     if (s.apple_health_enabled) setAppleHealth(s.apple_health_enabled)
@@ -90,6 +94,7 @@ export function OnboardingWizard() {
         return {
             language,
             units,
+            timezone,
             telegram_username: telegram,
             instagram_username: instagram,
             apple_health_enabled: appleHealthEnabled,
@@ -106,7 +111,7 @@ export function OnboardingWizard() {
                     break
 
                 case 1:
-                    // Settings step — save language & units
+                    // Settings step — save language, units & timezone
                     await updateSettings(buildSettingsPayload())
                     nextStep()
                     break
@@ -182,6 +187,10 @@ export function OnboardingWizard() {
                             <UnitSelector
                                 value={units}
                                 onChange={setUnits}
+                            />
+                            <TimezoneSelector
+                                value={timezone}
+                                onChange={setTimezone}
                             />
                         </div>
                     )}
