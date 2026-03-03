@@ -18,6 +18,7 @@ export interface UserSettings {
     telegram_username: string
     instagram_username: string
     apple_health_enabled: boolean
+    target_weight?: number | null
 }
 
 export async function getProfile(): Promise<FullProfile> {
