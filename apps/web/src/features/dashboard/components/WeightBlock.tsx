@@ -11,8 +11,8 @@
  * - Debounced input validation (300ms)
  */
 
-import { useState, useCallback, memo, useMemo } from 'react'
-import { Plus, Check, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { useState, useCallback, memo, useMemo, useEffect } from 'react'
+import { Plus, Check, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
@@ -22,6 +22,7 @@ import { formatLocalDate } from '@/shared/utils/format'
 import { validateWeight } from '../utils/validation'
 import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
 import { AttentionBadge } from './AttentionBadge'
+import { getProfile } from '@/features/settings/api/settings'
 import toast from 'react-hot-toast'
 
 /**
@@ -41,11 +42,23 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [validationError, setValidationError] = useState<string | null>(null)
+    const [targetWeight, setTargetWeight] = useState<number | null>(null)
 
     // Get data from store
     const { dailyData, updateMetric } = useDashboardStore()
     const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
+
+    // Fetch target weight from profile settings
+    useEffect(() => {
+        getProfile()
+            .then((profile) => {
+                if (profile.settings?.target_weight != null) {
+                    setTargetWeight(profile.settings.target_weight)
+                }
+            })
+            .catch(() => {})
+    }, [])
 
     // Get current and previous weight
     const currentWeight = dayData?.weight
@@ -62,6 +75,11 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     // Calculate weight change
     const weightChange = currentWeight && previousWeight
         ? currentWeight - previousWeight
+        : null
+
+    // Calculate distance to target
+    const distanceToTarget = currentWeight != null && targetWeight != null
+        ? currentWeight - targetWeight
         : null
 
     // Format weight display
@@ -307,6 +325,21 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                         Вчера: {formatWeight(previousWeight)} кг
                                     </div>
                                 )}
+
+                                {/* Target weight with distance */}
+                                {targetWeight != null && distanceToTarget != null && (
+                                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pt-1">
+                                        <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+                                        <span>Цель: {formatWeight(targetWeight)} кг</span>
+                                        {Math.abs(distanceToTarget) >= 0.1 ? (
+                                            <span className={distanceToTarget > 0 ? 'text-amber-600' : 'text-green-600'}>
+                                                ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} кг)
+                                            </span>
+                                        ) : (
+                                            <span className="text-green-600 font-medium">Достигнута!</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             /* Empty state */
@@ -334,6 +367,13 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                     <p className="text-xs text-gray-400 mb-3" aria-label={`Вчера вес был ${formatWeight(previousWeight)} килограмм`}>
                                         Вчера: {formatWeight(previousWeight)} кг
                                     </p>
+                                )}
+                                {/* Target weight in empty state */}
+                                {targetWeight != null && (
+                                    <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+                                        <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+                                        <span>Цель: {formatWeight(targetWeight)} кг</span>
+                                    </div>
                                 )}
                                 <Button
                                     variant="outline"
