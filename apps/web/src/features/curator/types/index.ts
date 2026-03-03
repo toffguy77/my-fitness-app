@@ -59,8 +59,40 @@ export interface WeightHistoryPoint {
     weight: number
 }
 
-export interface ClientDetail extends ClientCard {
+export interface WaterView {
+    glasses: number
+    goal: number
+    glass_size: number
+}
+
+export interface WorkoutView {
+    completed: boolean
+    type: string
+    duration: number
+}
+
+export interface PhotoView {
+    id: string
+    photo_url: string
+    week_start: string
+    week_end: string
+    uploaded_at: string
+}
+
+export interface DayDetail {
+    date: string
+    kbzhu: DailyKBZHU | null
+    plan: PlanKBZHU | null
+    alerts: Alert[]
     food_entries: FoodEntryView[]
+    water: WaterView | null
+    steps: number
+    workout: WorkoutView | null
+}
+
+export interface ClientDetail extends ClientCard {
+    days: DayDetail[]
     weekly_plan: PlanKBZHU | null
     weight_history: WeightHistoryPoint[]
+    photos: PhotoView[]
 }
