@@ -16,7 +16,8 @@ export type NotificationType =
     | 'reminder'
     | 'system_update'
     | 'new_feature'
-    | 'general';
+    | 'general'
+    | 'new_content';
 
 /**
  * Core notification data structure
@@ -31,6 +32,8 @@ export interface Notification {
     iconUrl?: string;
     createdAt: string; // ISO 8601 format
     readAt?: string; // ISO 8601 format
+    actionUrl?: string;
+    contentCategory?: string;
 }
 
 /**
@@ -89,4 +92,17 @@ export interface NotificationError {
     code: 'UNAUTHORIZED' | 'NOT_FOUND' | 'VALIDATION_ERROR' | 'NETWORK_ERROR' | 'SERVER_ERROR';
     message: string;
     details?: Record<string, string>;
+}
+
+/**
+ * Content notification preferences
+ */
+export interface ContentNotificationPreferences {
+    muted_categories: string[];
+    muted: boolean;
+}
+
+export interface UpdatePreferencesRequest {
+    muted_categories: string[];
+    muted: boolean;
 }
