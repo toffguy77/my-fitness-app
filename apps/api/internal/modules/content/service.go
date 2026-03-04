@@ -928,10 +928,11 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 	case "my_clients":
 		// Clients assigned to the article's author (curator)
 		audienceQuery = fmt.Sprintf(`
-			SELECT DISTINCT u.id FROM users u
-			JOIN conversations c ON c.client_id = u.id
+			SELECT u.id FROM users u
+			JOIN curator_client_relationships ccr ON ccr.client_id = u.id
 			WHERE u.role = 'client'
-			AND c.curator_id = $1
+			AND ccr.curator_id = $1
+			AND ccr.status = 'active'
 			%s
 		`, fmt.Sprintf(baseExclusions, 2))
 		args = []any{authorID, category}
@@ -989,7 +990,12 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 		VALUES ($1, $2, 'content', 'new_content', $3, $4, $5, $6, NOW())
 	`
 
-	insertedCount := 0
+	type insertedNotif struct {
+		userID  int64
+		notifID string
+	}
+
+	var inserted []insertedNotif
 	for _, userID := range userIDs {
 		notifID := uuid.New().String()
 		_, err := s.db.ExecContext(ctx, insertQuery, notifID, userID, notifTitle, excerpt, actionURL, category)
@@ -997,23 +1003,24 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 			s.log.Error("Failed to insert content notification", "error", err, "user_id", userID, "article_id", articleID)
 			continue
 		}
-		insertedCount++
+		inserted = append(inserted, insertedNotif{userID: userID, notifID: notifID})
 	}
 
 	s.log.Info("Content notifications created",
 		"article_id", articleID,
 		"audience_scope", audienceScope,
 		"eligible_users", len(userIDs),
-		"inserted", insertedCount,
+		"inserted", len(inserted),
 	)
 
 	// Send real-time WebSocket notifications to online users
 	if s.wsHub != nil {
-		for _, userID := range userIDs {
-			s.wsHub.SendToUser(userID, ws.OutgoingEvent{
+		for _, n := range inserted {
+			s.wsHub.SendToUser(n.userID, ws.OutgoingEvent{
 				Type: ws.EventContentNotification,
 				Data: map[string]interface{}{
 					"notification": map[string]interface{}{
+						"id":         n.notifID,
 						"title":      notifTitle,
 						"action_url": actionURL,
 						"category":   category,
