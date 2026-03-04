@@ -519,6 +519,11 @@ func (s *Service) PublishArticle(ctx context.Context, authorID int64, articleID 
 		"author_id":  authorID,
 	})
 
+	// Create notifications for eligible users (non-fatal)
+	if err := s.createContentNotifications(ctx, articleID); err != nil {
+		s.log.Error("Failed to create content notifications", "error", err, "article_id", articleID)
+	}
+
 	return nil
 }
 
@@ -842,24 +847,162 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 func (s *Service) PublishScheduledArticles(ctx context.Context) error {
 	startTime := time.Now()
 
-	result, err := s.db.ExecContext(ctx,
+	rows, err := s.db.QueryContext(ctx,
 		`UPDATE articles
 		 SET status = 'published', published_at = NOW(), updated_at = NOW()
-		 WHERE status = 'scheduled' AND scheduled_at <= NOW()`,
+		 WHERE status = 'scheduled' AND scheduled_at <= NOW()
+		 RETURNING id`,
 	)
 	if err != nil {
 		s.log.Error("Failed to publish scheduled articles", "error", err)
 		return fmt.Errorf("failed to publish scheduled articles: %w", err)
 	}
+	defer rows.Close()
 
-	count, _ := result.RowsAffected()
-	if count > 0 {
-		s.log.Info("Published scheduled articles", "count", count)
+	var publishedIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			s.log.Error("Failed to scan published article ID", "error", err)
+			continue
+		}
+		publishedIDs = append(publishedIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Error iterating published article IDs", "error", err)
+	}
+
+	if len(publishedIDs) > 0 {
+		s.log.Info("Published scheduled articles", "count", len(publishedIDs))
+		for _, articleID := range publishedIDs {
+			if err := s.createContentNotifications(ctx, articleID); err != nil {
+				s.log.Error("Failed to create content notifications for scheduled article", "error", err, "article_id", articleID)
+			}
+		}
 	}
 
 	s.log.LogDatabaseQuery("PublishScheduledArticles", time.Since(startTime), nil, map[string]interface{}{
-		"published_count": count,
+		"published_count": len(publishedIDs),
 	})
+
+	return nil
+}
+
+// createContentNotifications creates notifications for all eligible users when an article is published.
+// Eligible users are determined by the article's audience_scope, excluding users who have muted
+// content notifications or unsubscribed from the article's category.
+func (s *Service) createContentNotifications(ctx context.Context, articleID string) error {
+	// Fetch article details
+	var title, excerpt, category, audienceScope string
+	var authorID int64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT title, excerpt, category, audience_scope, author_id FROM articles WHERE id = $1`,
+		articleID,
+	).Scan(&title, &excerpt, &category, &audienceScope, &authorID)
+	if err != nil {
+		return fmt.Errorf("failed to get article details for notifications: %w", err)
+	}
+
+	// Build audience query based on scope, excluding muted and unsubscribed users
+	var audienceQuery string
+	var args []any
+
+	baseExclusions := `
+		AND u.id NOT IN (SELECT user_id FROM content_notification_mute)
+		AND u.id NOT IN (SELECT user_id FROM content_notification_preferences WHERE category = $%d)
+	`
+
+	switch audienceScope {
+	case "all":
+		// All clients
+		audienceQuery = fmt.Sprintf(`
+			SELECT u.id FROM users u
+			WHERE u.role = 'client'
+			%s
+		`, fmt.Sprintf(baseExclusions, 1))
+		args = []any{category}
+
+	case "my_clients":
+		// Clients assigned to the article's author (curator)
+		audienceQuery = fmt.Sprintf(`
+			SELECT DISTINCT u.id FROM users u
+			JOIN conversations c ON c.client_id = u.id
+			WHERE u.role = 'client'
+			AND c.curator_id = $1
+			%s
+		`, fmt.Sprintf(baseExclusions, 2))
+		args = []any{authorID, category}
+
+	case "selected":
+		// Specifically selected clients
+		audienceQuery = fmt.Sprintf(`
+			SELECT u.id FROM users u
+			JOIN article_audience aa ON aa.client_id = u.id
+			WHERE u.role = 'client'
+			AND aa.article_id = $1
+			%s
+		`, fmt.Sprintf(baseExclusions, 2))
+		args = []any{articleID, category}
+
+	default:
+		return fmt.Errorf("unknown audience scope: %s", audienceScope)
+	}
+
+	rows, err := s.db.QueryContext(ctx, audienceQuery, args...)
+	if err != nil {
+		return fmt.Errorf("failed to query audience for notifications: %w", err)
+	}
+	defer rows.Close()
+
+	var userIDs []int64
+	for rows.Next() {
+		var userID int64
+		if err := rows.Scan(&userID); err != nil {
+			s.log.Error("Failed to scan user ID for notification", "error", err)
+			continue
+		}
+		userIDs = append(userIDs, userID)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("error iterating audience rows: %w", err)
+	}
+
+	if len(userIDs) == 0 {
+		s.log.Info("No eligible users for content notification", "article_id", articleID)
+		return nil
+	}
+
+	// Truncate title for notification
+	notifTitle := title
+	if len(notifTitle) > 100 {
+		notifTitle = notifTitle[:97] + "..."
+	}
+
+	actionURL := fmt.Sprintf("/content/%s", articleID)
+
+	// Insert notifications one by one
+	insertQuery := `
+		INSERT INTO notifications (id, user_id, category, type, title, content, action_url, content_category, created_at)
+		VALUES ($1, $2, 'content', 'new_content', $3, $4, $5, $6, NOW())
+	`
+
+	insertedCount := 0
+	for _, userID := range userIDs {
+		notifID := uuid.New().String()
+		_, err := s.db.ExecContext(ctx, insertQuery, notifID, userID, notifTitle, excerpt, actionURL, category)
+		if err != nil {
+			s.log.Error("Failed to insert content notification", "error", err, "user_id", userID, "article_id", articleID)
+			continue
+		}
+		insertedCount++
+	}
+
+	s.log.Info("Content notifications created",
+		"article_id", articleID,
+		"audience_scope", audienceScope,
+		"eligible_users", len(userIDs),
+		"inserted", insertedCount,
+	)
 
 	return nil
 }
