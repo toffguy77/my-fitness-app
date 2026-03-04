@@ -23,12 +23,19 @@ type ServiceInterface interface {
 	DeleteEntry(ctx context.Context, userID int64, entryID string) error
 
 	// Food search
-	SearchFoods(ctx context.Context, query string, limit int, offset int) (*SearchFoodsResponse, error)
+	SearchFoods(ctx context.Context, userID int64, query string, limit int, offset int) (*SearchFoodsResponse, error)
 	LookupBarcode(ctx context.Context, barcode string) (*BarcodeResponse, error)
 	GetRecentFoods(ctx context.Context, userID int64, limit int) (*GetRecentFoodsResponse, error)
 	GetFavoriteFoods(ctx context.Context, userID int64, limit int) (*GetFavoriteFoodsResponse, error)
 	AddToFavorites(ctx context.Context, userID int64, foodID string) error
 	RemoveFromFavorites(ctx context.Context, userID int64, foodID string) error
+
+	// User foods
+	CreateUserFood(ctx context.Context, userID int64, req *CreateUserFoodRequest) (*UserFood, error)
+	CloneUserFood(ctx context.Context, userID int64, req *CloneUserFoodRequest) (*UserFood, error)
+	GetUserFoods(ctx context.Context, userID int64) ([]UserFood, error)
+	UpdateUserFood(ctx context.Context, userID int64, foodID string, req *UpdateUserFoodRequest) (*UserFood, error)
+	DeleteUserFood(ctx context.Context, userID int64, foodID string) error
 
 	// Water tracking
 	GetWaterIntake(ctx context.Context, userID int64, date time.Time) (*WaterLog, error)

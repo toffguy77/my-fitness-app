@@ -22,7 +22,11 @@ import (
 //   - q: required, search query (minimum 2 characters)
 //   - limit: optional, maximum number of results (default 20, max 50)
 func (h *Handler) SearchFoods(c *gin.Context) {
-	// Bind and validate query parameters
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
 	var req SearchFoodsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.log.Errorw("Неверные параметры запроса", "error", err)
@@ -30,24 +34,20 @@ func (h *Handler) SearchFoods(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Set default limit if not provided
 	limit := req.Limit
 	if limit <= 0 {
 		limit = 20
 	}
 
-	// Call service to search foods
-	result, err := h.service.SearchFoods(c.Request.Context(), req.Query, limit, req.Offset)
+	result, err := h.service.SearchFoods(c.Request.Context(), userID, req.Query, limit, req.Offset)
 	if err != nil {
 		h.log.Errorw("Не удалось выполнить поиск", "error", err, "query", req.Query)
 
-		// Check for specific error types
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "минимум 3 символа") {
 			response.Error(c, http.StatusBadRequest, errMsg)
