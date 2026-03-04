@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { verifyEmail, resendVerificationCode } from '@/features/auth/api/verification'
@@ -26,9 +26,13 @@ export function VerifyEmailScreen() {
         return () => clearTimeout(timer)
     }, [resendCooldown])
 
+    const submittingRef = useRef(false)
+
     const handleSubmit = useCallback(async () => {
         const codeStr = code.join('')
         if (codeStr.length !== 6) return
+        if (submittingRef.current) return
+        submittingRef.current = true
 
         setIsLoading(true)
         setError(null)
@@ -54,6 +58,7 @@ export function VerifyEmailScreen() {
             setAttempts((a) => a + 1)
             setCode(Array(6).fill(''))
         } finally {
+            submittingRef.current = false
             setIsLoading(false)
         }
     }, [code, router])
