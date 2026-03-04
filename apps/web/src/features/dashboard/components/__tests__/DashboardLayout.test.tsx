@@ -260,7 +260,7 @@ describe('DashboardLayout', () => {
             expect(header).toBeInTheDocument()
         })
 
-        it('should navigate to notifications page when notification icon is clicked', () => {
+        it('should toggle notification dropdown when notification icon is clicked', () => {
             const { container } = render(
                 <DashboardLayout userName="Test User">
                     <div>Content</div>
@@ -270,9 +270,11 @@ describe('DashboardLayout', () => {
             const notificationIcon = container.querySelector('[data-testid="notification-icon"]')
             expect(notificationIcon).toBeInTheDocument()
 
+            // Click opens dropdown instead of navigating
             notificationIcon?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
-            expect(mockPush).toHaveBeenCalledWith('/notifications')
+            // Should not navigate — dropdown opens instead
+            expect(mockPush).not.toHaveBeenCalledWith('/notifications')
         })
 
         it('should navigate to profile page when avatar is clicked', () => {

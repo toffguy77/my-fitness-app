@@ -15,6 +15,7 @@ import {
     Settings,
     Star,
     Info,
+    Newspaper,
 } from 'lucide-react';
 
 describe('iconMapping', () => {
@@ -49,6 +50,7 @@ describe('iconMapping', () => {
                 system_update: Settings,
                 new_feature: Star,
                 general: Info,
+                new_content: Newspaper,
             };
 
             fc.assert(
