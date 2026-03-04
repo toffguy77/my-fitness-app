@@ -13,6 +13,7 @@ import (
 	"github.com/burcev/api/internal/modules/admin"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
+	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/dashboard"
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
@@ -134,6 +135,23 @@ func main() {
 			log.Error("Failed to initialize chat S3 client", "error", err)
 		} else {
 			log.Info("Chat S3 client initialized", "bucket", cfg.ChatS3Bucket)
+		}
+	}
+
+	// Initialize content S3 client
+	var contentS3 *storage.S3Client
+	if cfg.ContentS3AccessKeyID != "" && cfg.ContentS3SecretAccessKey != "" {
+		contentS3, err = storage.NewS3Client(&storage.S3Config{
+			AccessKeyID:     cfg.ContentS3AccessKeyID,
+			SecretAccessKey: cfg.ContentS3SecretAccessKey,
+			Bucket:          cfg.ContentS3Bucket,
+			Region:          cfg.ContentS3Region,
+			Endpoint:        cfg.ContentS3Endpoint,
+		}, log)
+		if err != nil {
+			log.Error("Failed to initialize content S3 client", "error", err)
+		} else {
+			log.Info("Content S3 client initialized", "bucket", cfg.ContentS3Bucket)
 		}
 	}
 
@@ -372,8 +390,41 @@ func main() {
 		}
 	}
 
+	// Content management routes (coordinator + super_admin)
+	contentHandler := content.NewHandler(cfg, log, db, contentS3)
+
+	contentManageGroup := v1.Group("/content/articles")
+	contentManageGroup.Use(middleware.RequireAuth(cfg))
+	contentManageGroup.Use(middleware.RequireRole("coordinator", "super_admin"))
+	{
+		contentManageGroup.POST("", contentHandler.CreateArticle)
+		contentManageGroup.GET("", contentHandler.ListArticles)
+		contentManageGroup.GET("/:id", contentHandler.GetArticle)
+		contentManageGroup.PUT("/:id", contentHandler.UpdateArticle)
+		contentManageGroup.DELETE("/:id", contentHandler.DeleteArticle)
+		contentManageGroup.POST("/:id/publish", contentHandler.PublishArticle)
+		contentManageGroup.POST("/:id/schedule", contentHandler.ScheduleArticle)
+		contentManageGroup.POST("/:id/unpublish", contentHandler.UnpublishArticle)
+		contentManageGroup.POST("/:id/media", contentHandler.UploadMedia)
+		contentManageGroup.POST("/upload", contentHandler.UploadMarkdownFile)
+	}
+
+	// Client content feed
+	contentFeedGroup := v1.Group("/content/feed")
+	contentFeedGroup.Use(middleware.RequireAuth(cfg))
+	{
+		contentFeedGroup.GET("", contentHandler.GetFeed)
+		contentFeedGroup.GET("/:id", contentHandler.GetFeedArticle)
+	}
+
 	// WebSocket endpoint (JWT checked in handler via query param)
 	router.GET("/ws", chatHandler.HandleWebSocket)
+
+	// Start content scheduler
+	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
+	defer schedulerCancel()
+	contentService := content.NewService(db, log, contentS3)
+	go contentService.RunScheduler(schedulerCtx)
 
 	// Create HTTP server
 	srv := &http.Server{
