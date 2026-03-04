@@ -13,6 +13,7 @@ import (
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/ws"
 	"github.com/google/uuid"
 )
 
@@ -40,17 +41,19 @@ type ServiceInterface interface {
 
 // Service handles content business logic
 type Service struct {
-	db  *database.DB
-	log *logger.Logger
-	s3  *storage.S3Client
+	db    *database.DB
+	log   *logger.Logger
+	s3    *storage.S3Client
+	wsHub *ws.Hub
 }
 
 // NewService creates a new content service
-func NewService(db *database.DB, log *logger.Logger, s3 *storage.S3Client) *Service {
+func NewService(db *database.DB, log *logger.Logger, s3 *storage.S3Client, wsHub *ws.Hub) *Service {
 	return &Service{
-		db:  db,
-		log: log,
-		s3:  s3,
+		db:    db,
+		log:   log,
+		s3:    s3,
+		wsHub: wsHub,
 	}
 }
 
@@ -1003,6 +1006,22 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 		"eligible_users", len(userIDs),
 		"inserted", insertedCount,
 	)
+
+	// Send real-time WebSocket notifications to online users
+	if s.wsHub != nil {
+		for _, userID := range userIDs {
+			s.wsHub.SendToUser(userID, ws.OutgoingEvent{
+				Type: ws.EventContentNotification,
+				Data: map[string]interface{}{
+					"notification": map[string]interface{}{
+						"title":      notifTitle,
+						"action_url": actionURL,
+						"category":   category,
+					},
+				},
+			})
+		}
+	}
 
 	return nil
 }

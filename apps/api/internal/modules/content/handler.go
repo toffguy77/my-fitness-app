@@ -10,6 +10,7 @@ import (
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/ws"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,11 +22,11 @@ type Handler struct {
 }
 
 // NewHandler creates a new content handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client) *Handler {
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client, wsHub *ws.Hub) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(db, log, s3),
+		service: NewService(db, log, s3, wsHub),
 	}
 }
 

@@ -7,6 +7,7 @@ const (
 	EventNewMessage        = "new_message"
 	EventTyping            = "typing"
 	EventUnreadCountUpdate = "unread_count_update"
+	EventContentNotification = "content_notification"
 )
 
 // OutgoingEvent is sent from server to client
