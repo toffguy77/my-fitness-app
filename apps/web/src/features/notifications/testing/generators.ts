@@ -28,7 +28,8 @@ export const typeGenerator = (): fc.Arbitrary<NotificationType> => {
         'reminder',
         'system_update',
         'new_feature',
-        'general'
+        'general',
+        'new_content'
     );
 };
 

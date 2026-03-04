@@ -127,10 +127,10 @@ describe('Property 23: Responsive Interaction Consistency', () => {
                         const notificationIcon = renderContainer.querySelector('[data-testid="notification-icon"]')
                         expect(notificationIcon).toBeInTheDocument()
 
-                        // Test click interaction
+                        // Test click interaction — opens dropdown instead of navigating
                         mockPush.mockClear()
                         fireEvent.click(notificationIcon!)
-                        expect(mockPush).toHaveBeenCalledWith('/notifications')
+                        expect(mockPush).not.toHaveBeenCalledWith('/notifications')
 
                         // Verify avatar is clickable
                         const avatar = renderContainer.querySelector('[data-testid="user-avatar"]')
@@ -207,13 +207,13 @@ describe('Property 23: Responsive Interaction Consistency', () => {
                         const notificationIcon = renderContainer.querySelector('[data-testid="notification-icon"]')
                         expect(notificationIcon).toBeInTheDocument()
 
-                        // Simulate touch event
+                        // Simulate touch event — opens dropdown instead of navigating
                         mockPush.mockClear()
                         fireEvent.touchStart(notificationIcon!)
                         fireEvent.touchEnd(notificationIcon!)
                         fireEvent.click(notificationIcon!)
 
-                        expect(mockPush).toHaveBeenCalledWith('/notifications')
+                        expect(mockPush).not.toHaveBeenCalledWith('/notifications')
 
                         unmount()
                         return true
