@@ -295,6 +295,13 @@ func main() {
 			ftGroup.POST("/favorites/:foodId", foodTrackerHandler.AddToFavorites)
 			ftGroup.DELETE("/favorites/:foodId", foodTrackerHandler.RemoveFromFavorites)
 
+			// User foods
+			ftGroup.POST("/user-foods", foodTrackerHandler.CreateUserFood)
+			ftGroup.POST("/user-foods/clone", foodTrackerHandler.CloneUserFood)
+			ftGroup.GET("/user-foods", foodTrackerHandler.GetUserFoods)
+			ftGroup.PUT("/user-foods/:id", foodTrackerHandler.UpdateUserFood)
+			ftGroup.DELETE("/user-foods/:id", foodTrackerHandler.DeleteUserFood)
+
 			// Water tracking
 			ftGroup.GET("/water", foodTrackerHandler.GetWaterIntake)
 			ftGroup.POST("/water", foodTrackerHandler.AddWater)
