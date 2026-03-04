@@ -610,18 +610,183 @@ func (s *Service) UploadMarkdownFile(ctx context.Context, authorID int64, file *
 
 // GetFeed returns published articles visible to a client.
 func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error) {
-	// Placeholder — implemented in Task 6
-	return &FeedResponse{Articles: []ArticleCard{}, Total: 0}, nil
+	startTime := time.Now()
+
+	visibilityClause := `
+		a.status = 'published'
+		AND (
+			a.audience_scope = 'all'
+			OR (a.audience_scope = 'my_clients'
+				AND a.author_id IN (
+					SELECT curator_id FROM curator_client_relationships
+					WHERE client_id = $1 AND status = 'active'))
+			OR (a.audience_scope = 'selected'
+				AND EXISTS (
+					SELECT 1 FROM article_audience aa
+					WHERE aa.article_id = a.id AND aa.client_id = $1))
+		)
+	`
+
+	args := []any{clientID}
+	argIdx := 2
+
+	categoryClause := ""
+	if category != "" {
+		categoryClause = fmt.Sprintf(" AND a.category = $%d", argIdx)
+		args = append(args, category)
+		argIdx++
+	}
+
+	// Count total matching articles
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM articles a WHERE %s%s`, visibilityClause, categoryClause)
+	var total int
+	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		s.log.Error("Failed to count feed articles", "error", err, "client_id", clientID)
+		return nil, fmt.Errorf("failed to count feed articles: %w", err)
+	}
+
+	// Fetch paginated articles
+	selectQuery := fmt.Sprintf(`
+		SELECT a.id, COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
+		       COALESCE(a.cover_image_url, ''), a.category, a.published_at
+		FROM articles a
+		JOIN users u ON u.id = a.author_id
+		WHERE %s%s
+		ORDER BY a.published_at DESC
+		LIMIT $%d OFFSET $%d
+	`, visibilityClause, categoryClause, argIdx, argIdx+1)
+
+	selectArgs := append(args, limit, offset)
+
+	rows, err := s.db.QueryContext(ctx, selectQuery, selectArgs...)
+	if err != nil {
+		s.log.Error("Failed to query feed articles", "error", err, "client_id", clientID)
+		return nil, fmt.Errorf("failed to query feed articles: %w", err)
+	}
+	defer rows.Close()
+
+	articles := make([]ArticleCard, 0)
+	for rows.Next() {
+		var card ArticleCard
+		var publishedAt sql.NullTime
+
+		if err := rows.Scan(
+			&card.ID, &card.AuthorName, &card.Title, &card.Excerpt,
+			&card.CoverImageURL, &card.Category, &publishedAt,
+		); err != nil {
+			s.log.Error("Failed to scan feed article row", "error", err)
+			return nil, fmt.Errorf("failed to scan feed article row: %w", err)
+		}
+
+		if publishedAt.Valid {
+			card.PublishedAt = &publishedAt.Time
+		}
+
+		articles = append(articles, card)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating feed article rows: %w", err)
+	}
+
+	s.log.LogDatabaseQuery("GetFeed", time.Since(startTime), nil, map[string]interface{}{
+		"client_id": clientID,
+		"category":  category,
+		"count":     len(articles),
+		"total":     total,
+	})
+
+	return &FeedResponse{Articles: articles, Total: total}, nil
 }
 
 // GetFeedArticle returns a single published article for a client.
 func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID string) (*Article, error) {
-	// Placeholder — implemented in Task 6
-	return nil, fmt.Errorf("not implemented")
+	startTime := time.Now()
+
+	query := `
+		SELECT a.id, u.name AS author_name, a.title, a.excerpt,
+		       COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
+		       a.content_s3_key, a.published_at, a.created_at, a.updated_at,
+		       a.author_id
+		FROM articles a
+		JOIN users u ON u.id = a.author_id
+		WHERE a.id = $1 AND a.status = 'published'
+		  AND (
+			a.audience_scope = 'all'
+			OR (a.audience_scope = 'my_clients'
+				AND a.author_id IN (
+					SELECT curator_id FROM curator_client_relationships
+					WHERE client_id = $2 AND status = 'active'))
+			OR (a.audience_scope = 'selected'
+				AND EXISTS (
+					SELECT 1 FROM article_audience aa
+					WHERE aa.article_id = a.id AND aa.client_id = $2))
+		  )
+	`
+
+	var article Article
+	var contentS3Key sql.NullString
+	var publishedAt sql.NullTime
+
+	err := s.db.QueryRowContext(ctx, query, articleID, clientID).Scan(
+		&article.ID, &article.AuthorName, &article.Title, &article.Excerpt,
+		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
+		&contentS3Key, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
+		&article.AuthorID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("article not found")
+		}
+		s.log.Error("Failed to get feed article", "error", err, "article_id", articleID, "client_id", clientID)
+		return nil, fmt.Errorf("failed to get feed article: %w", err)
+	}
+
+	if publishedAt.Valid {
+		article.PublishedAt = &publishedAt.Time
+	}
+
+	// Fetch body from S3 via signed URL
+	if contentS3Key.Valid && contentS3Key.String != "" {
+		signedURL, err := s.s3.GetSignedURL(ctx, contentS3Key.String, 15*time.Minute)
+		if err != nil {
+			s.log.Error("Failed to get signed URL for feed article body", "error", err, "key", contentS3Key.String)
+			// Non-fatal: return article without body
+		} else {
+			article.Body = signedURL
+		}
+	}
+
+	s.log.LogDatabaseQuery("GetFeedArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": articleID,
+		"client_id":  clientID,
+	})
+
+	return &article, nil
 }
 
 // PublishScheduledArticles publishes articles whose scheduled_at has passed.
 func (s *Service) PublishScheduledArticles(ctx context.Context) error {
-	// Placeholder — implemented in Task 6
+	startTime := time.Now()
+
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE articles
+		 SET status = 'published', published_at = NOW(), updated_at = NOW()
+		 WHERE status = 'scheduled' AND scheduled_at <= NOW()`,
+	)
+	if err != nil {
+		s.log.Error("Failed to publish scheduled articles", "error", err)
+		return fmt.Errorf("failed to publish scheduled articles: %w", err)
+	}
+
+	count, _ := result.RowsAffected()
+	if count > 0 {
+		s.log.Info("Published scheduled articles", "count", count)
+	}
+
+	s.log.LogDatabaseQuery("PublishScheduledArticles", time.Since(startTime), nil, map[string]interface{}{
+		"published_count": count,
+	})
+
 	return nil
 }
