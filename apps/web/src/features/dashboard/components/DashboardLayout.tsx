@@ -8,6 +8,7 @@ import { OfflineIndicator } from './OfflineIndicator'
 import { cn } from '@/shared/utils/cn'
 import { WebSocketProvider } from '@/features/chat'
 import { useNotificationsStore } from '@/features/notifications'
+import { useContentNotificationWS } from '@/features/notifications/hooks/useContentNotificationWS'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { NavigationItemId } from '../types'
 
@@ -58,6 +59,9 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
                 stopPolling()
             }
         }, [fetchUnreadCounts, startPolling, stopPolling])
+
+        // Listen for content notification WebSocket events
+        useContentNotificationWS()
 
         // Handle orientation changes (Requirement 12.6)
         useEffect(() => {
