@@ -9,7 +9,7 @@ export function SettingsAppleHealth() {
             {({ profile, saveSettings }) => (
                 <AppleHealthToggle
                     enabled={profile?.settings.apple_health_enabled || false}
-                    onChange={(enabled) => saveSettings({ apple_health_enabled: enabled })}
+                    onChange={(enabled) => { saveSettings({ apple_health_enabled: enabled }).catch(() => {}) }}
                 />
             )}
         </SettingsPageLayout>
