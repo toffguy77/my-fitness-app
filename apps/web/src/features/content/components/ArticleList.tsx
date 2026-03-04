@@ -89,32 +89,31 @@ export function ArticleList() {
 
     return (
         <div className="space-y-4">
-            {/* Top area: filter tabs + create button */}
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                    {STATUS_TABS.map((tab) => (
-                        <button
-                            key={tab.key}
-                            type="button"
-                            onClick={() => setStatusFilter(tab.key)}
-                            className={cn(
-                                'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                                statusFilter === tab.key
-                                    ? 'bg-gray-900 text-white'
-                                    : 'border border-gray-300 text-gray-600 hover:bg-gray-50',
-                            )}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+            {/* Create button */}
+            <Link
+                href="/curator/content/new"
+                className="block w-full rounded-lg bg-gray-900 px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-gray-800"
+            >
+                Создать статью
+            </Link>
 
-                <Link
-                    href="/curator/content/new"
-                    className="shrink-0 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition-colors"
-                >
-                    Создать статью
-                </Link>
+            {/* Filter tabs */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {STATUS_TABS.map((tab) => (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setStatusFilter(tab.key)}
+                        className={cn(
+                            'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                            statusFilter === tab.key
+                                ? 'bg-gray-900 text-white'
+                                : 'border border-gray-300 text-gray-600 hover:bg-gray-50',
+                        )}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
             {/* Content */}
