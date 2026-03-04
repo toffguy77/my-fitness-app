@@ -95,6 +95,7 @@ describe('useAuth', () => {
                     email: 'test@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    email_verified: true,
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
@@ -144,6 +145,7 @@ describe('useAuth', () => {
                     email: 'test@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    email_verified: true,
                     onboarding_completed: false,
                 },
                 token: 'mock-jwt-token',
@@ -218,6 +220,7 @@ describe('useAuth', () => {
                     email: 'newuser@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    email_verified: false,
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
@@ -259,8 +262,8 @@ describe('useAuth', () => {
             // Verify success toast was shown
             expect(toast.success).toHaveBeenCalledWith('Регистрация успешна');
 
-            // Verify redirect to onboarding
-            expect(mockPush).toHaveBeenCalledWith('/onboarding');
+            // Verify redirect to verify-email (email not yet verified after registration)
+            expect(mockPush).toHaveBeenCalledWith('/auth/verify-email');
 
             // Verify loading state
             expect(result.current.isLoading).toBe(false);
@@ -318,6 +321,7 @@ describe('useAuth', () => {
                     email: 'test@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    email_verified: true,
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
@@ -373,6 +377,7 @@ describe('useAuth', () => {
                     email: 'test@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    email_verified: true,
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
@@ -415,6 +420,7 @@ describe('useAuth', () => {
                     email: 'newuser@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    email_verified: false,
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
@@ -476,6 +482,7 @@ describe('useAuth', () => {
                     email: 'newuser@example.com',
                     role: 'client',
                     created_at: new Date().toISOString(),
+                    email_verified: false,
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',

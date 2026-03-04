@@ -50,6 +50,8 @@ export function useAuth() {
                 router.push('/admin');
             } else if (response.user.role === 'coordinator') {
                 router.push('/curator');
+            } else if (!response.user.email_verified) {
+                router.push('/auth/verify-email');
             } else if (!response.user.onboarding_completed) {
                 router.push('/onboarding');
             } else {
@@ -88,7 +90,7 @@ export function useAuth() {
             }
 
             toast.success('Регистрация успешна');
-            router.push('/onboarding');
+            router.push('/auth/verify-email');
         } catch (err) {
             const authError = err as AuthError;
             setError(authError);
