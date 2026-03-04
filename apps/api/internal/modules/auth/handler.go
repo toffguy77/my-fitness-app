@@ -12,25 +12,36 @@ import (
 
 // Handler handles auth requests
 type Handler struct {
-	cfg     *config.Config
-	log     *logger.Logger
-	service *Service
+	cfg                 *config.Config
+	log                 *logger.Logger
+	service             *Service
+	verificationService *VerificationService
 }
 
 // NewHandler creates a new auth handler
-func NewHandler(db *sql.DB, cfg *config.Config, log *logger.Logger) *Handler {
+func NewHandler(db *sql.DB, cfg *config.Config, log *logger.Logger, vs *VerificationService) *Handler {
 	return &Handler{
-		cfg:     cfg,
-		log:     log,
-		service: NewService(db, cfg, log),
+		cfg:                 cfg,
+		log:                 log,
+		service:             NewService(db, cfg, log),
+		verificationService: vs,
 	}
 }
 
 // RegisterRequest represents registration request
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
-	Name     string `json:"name"`
+	Email    string         `json:"email" binding:"required,email"`
+	Password string         `json:"password" binding:"required,min=8"`
+	Name     string         `json:"name"`
+	Consents *ConsentsInput `json:"consents"`
+}
+
+// ConsentsInput represents user consent flags submitted during registration
+type ConsentsInput struct {
+	TermsOfService bool `json:"terms_of_service"`
+	PrivacyPolicy  bool `json:"privacy_policy"`
+	DataProcessing bool `json:"data_processing"`
+	Marketing      bool `json:"marketing"`
 }
 
 // LoginRequest represents login request
@@ -57,11 +68,16 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.Register(c.Request.Context(), req.Email, req.Password, req.Name, c.ClientIP(), c.Request.UserAgent())
+	result, err := h.service.Register(c.Request.Context(), req.Email, req.Password, req.Name, c.ClientIP(), c.Request.UserAgent(), req.Consents)
 	if err != nil {
 		h.log.Errorw("Registration failed", "error", err, "email", req.Email)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	// Send verification code (best-effort — registration still succeeds)
+	if err := h.verificationService.SendCode(c.Request.Context(), result.User.ID, result.User.Email, c.ClientIP(), c.Request.UserAgent()); err != nil {
+		h.log.Errorw("Failed to send verification code after registration", "error", err, "user_id", result.User.ID)
 	}
 
 	response.Success(c, http.StatusCreated, result)
@@ -131,4 +147,60 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 			"role":  role,
 		},
 	})
+}
+
+// VerifyEmailRequest represents email verification request
+type VerifyEmailRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
+// VerifyEmail handles email verification code submission
+func (h *Handler) VerifyEmail(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+
+	var req VerifyEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	err := h.verificationService.VerifyCode(c.Request.Context(), userID.(int64), req.Code)
+	if err != nil {
+		switch err.Error() {
+		case "too many attempts":
+			response.Error(c, http.StatusTooManyRequests, "Слишком много попыток. Запросите новый код.")
+		case "code expired":
+			response.Error(c, http.StatusBadRequest, "Код истёк. Запросите новый.")
+		default:
+			response.Error(c, http.StatusBadRequest, "Неверный код")
+		}
+		return
+	}
+
+	response.SuccessWithMessage(c, http.StatusOK, "Email verified", nil)
+}
+
+// ResendVerification handles resending the verification code
+func (h *Handler) ResendVerification(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	userEmail, _ := c.Get("user_email")
+
+	err := h.verificationService.SendCode(
+		c.Request.Context(),
+		userID.(int64),
+		userEmail.(string),
+		c.ClientIP(),
+		c.Request.UserAgent(),
+	)
+	if err != nil {
+		if err.Error() == "too many requests" {
+			response.Error(c, http.StatusTooManyRequests, "Слишком много запросов. Попробуйте позже.")
+			return
+		}
+		h.log.Errorw("Failed to resend verification code", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось отправить код")
+		return
+	}
+
+	response.SuccessWithMessage(c, http.StatusOK, "Code sent", nil)
 }

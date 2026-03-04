@@ -65,6 +65,7 @@ type User struct {
 	Email               string    `json:"email"`
 	Name                string    `json:"name,omitempty"`
 	Role                string    `json:"role"`
+	EmailVerified       bool      `json:"email_verified"`
 	OnboardingCompleted bool      `json:"onboarding_completed"`
 	CreatedAt           time.Time `json:"created_at"`
 }
@@ -77,7 +78,7 @@ type LoginResult struct {
 }
 
 // Register registers a new user and returns login result with tokens
-func (s *Service) Register(ctx context.Context, email, password, name, ip, ua string) (*LoginResult, error) {
+func (s *Service) Register(ctx context.Context, email, password, name, ip, ua string, consents *ConsentsInput) (*LoginResult, error) {
 	s.log.Infow("User registration", "email", email)
 
 	// Hash password
@@ -90,12 +91,12 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	query := `
 		INSERT INTO users (email, password, name, role, created_at, updated_at)
 		VALUES ($1, $2, $3, 'client', NOW(), NOW())
-		RETURNING id, email, COALESCE(name, ''), role, COALESCE(onboarding_completed, false), created_at
+		RETURNING id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at
 	`
 
 	var user User
 	err = s.db.QueryRowContext(ctx, query, email, string(hashedPassword), name).Scan(
-		&user.ID, &user.Email, &user.Name, &user.Role, &user.OnboardingCompleted, &user.CreatedAt,
+		&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при регистрации: %w", err)
@@ -117,6 +118,29 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 
 	// Create default user settings
 	_, _ = s.db.ExecContext(ctx, "INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", user.ID)
+
+	// Store consents
+	if consents != nil {
+		consentTypes := []struct {
+			ctype   string
+			granted bool
+		}{
+			{"terms_of_service", consents.TermsOfService},
+			{"privacy_policy", consents.PrivacyPolicy},
+			{"data_processing", consents.DataProcessing},
+			{"marketing", consents.Marketing},
+		}
+		for _, c := range consentTypes {
+			_, err := s.db.ExecContext(ctx,
+				`INSERT INTO user_consents (user_id, consent_type, granted, granted_at, ip_address, user_agent)
+				 VALUES ($1, $2, $3, NOW(), $4::inet, $5)`,
+				user.ID, c.ctype, c.granted, ip, ua,
+			)
+			if err != nil {
+				s.log.Warnw("Failed to store consent", "user_id", user.ID, "type", c.ctype, "error", err)
+			}
+		}
+	}
 
 	// Auto-assign curator (coordinator with fewest active clients)
 	s.assignCurator(ctx, user.ID)
@@ -146,7 +170,7 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string) (*L
 
 	// Look up user by email
 	query := `
-		SELECT id, email, COALESCE(name, ''), password, role, COALESCE(onboarding_completed, false), created_at
+		SELECT id, email, COALESCE(name, ''), password, role, email_verified, COALESCE(onboarding_completed, false), created_at
 		FROM users
 		WHERE email = $1
 	`
@@ -154,7 +178,7 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string) (*L
 	var user User
 	var hashedPassword string
 	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.OnboardingCompleted, &user.CreatedAt,
+		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -272,9 +296,9 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	// Look up user for JWT claims
 	var user User
 	err = s.db.QueryRowContext(ctx,
-		`SELECT id, email, COALESCE(name, ''), role, COALESCE(onboarding_completed, false), created_at
+		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at
 		 FROM users WHERE id = $1`, userID,
-	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.OnboardingCompleted, &user.CreatedAt)
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to look up user: %w", err)
 	}
