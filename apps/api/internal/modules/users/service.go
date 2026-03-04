@@ -32,7 +32,7 @@ type Settings struct {
 	InstagramUsername  string   `json:"instagram_username,omitempty"`
 	AppleHealthEnabled bool     `json:"apple_health_enabled"`
 	TargetWeight       *float64 `json:"target_weight,omitempty"`
-	Height           *float64 `json:"height,omitempty"`
+	Height             *float64 `json:"height,omitempty"`
 }
 
 // Service handles users business logic
