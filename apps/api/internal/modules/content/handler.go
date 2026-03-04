@@ -44,6 +44,15 @@ func (h *Handler) getUserID(c *gin.Context) (int64, bool) {
 	return userID, true
 }
 
+// isAdmin checks whether the authenticated user has the super_admin role.
+func (h *Handler) isAdmin(c *gin.Context) bool {
+	role, exists := c.Get("user_role")
+	if !exists {
+		return false
+	}
+	return role.(string) == "super_admin"
+}
+
 // --- Curator/Admin handlers ---
 
 // CreateArticle handles POST /api/v1/content/articles
@@ -82,7 +91,7 @@ func (h *Handler) GetArticle(c *gin.Context) {
 		return
 	}
 
-	article, err := h.service.GetArticle(c.Request.Context(), userID, articleID)
+	article, err := h.service.GetArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			response.NotFound(c, "Статья не найдена")
@@ -110,7 +119,7 @@ func (h *Handler) ListArticles(c *gin.Context) {
 	status := c.Query("status")
 	category := c.Query("category")
 
-	result, err := h.service.ListArticles(c.Request.Context(), userID, status, category)
+	result, err := h.service.ListArticles(c.Request.Context(), userID, status, category, h.isAdmin(c))
 	if err != nil {
 		h.log.Error("Failed to list articles", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось загрузить список статей")
@@ -139,7 +148,7 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 		return
 	}
 
-	article, err := h.service.UpdateArticle(c.Request.Context(), userID, articleID, req)
+	article, err := h.service.UpdateArticle(c.Request.Context(), userID, articleID, req, h.isAdmin(c))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			response.NotFound(c, "Статья не найдена")
@@ -170,7 +179,7 @@ func (h *Handler) DeleteArticle(c *gin.Context) {
 		return
 	}
 
-	err := h.service.DeleteArticle(c.Request.Context(), userID, articleID)
+	err := h.service.DeleteArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			response.NotFound(c, "Статья не найдена")
@@ -201,7 +210,7 @@ func (h *Handler) PublishArticle(c *gin.Context) {
 		return
 	}
 
-	err := h.service.PublishArticle(c.Request.Context(), userID, articleID)
+	err := h.service.PublishArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			response.NotFound(c, "Статья не найдена")
@@ -238,7 +247,7 @@ func (h *Handler) ScheduleArticle(c *gin.Context) {
 		return
 	}
 
-	err := h.service.ScheduleArticle(c.Request.Context(), userID, articleID, req)
+	err := h.service.ScheduleArticle(c.Request.Context(), userID, articleID, req, h.isAdmin(c))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			response.NotFound(c, "Статья не найдена")
@@ -269,7 +278,7 @@ func (h *Handler) UnpublishArticle(c *gin.Context) {
 		return
 	}
 
-	err := h.service.UnpublishArticle(c.Request.Context(), userID, articleID)
+	err := h.service.UnpublishArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			response.NotFound(c, "Статья не найдена")
@@ -306,7 +315,7 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	url, err := h.service.UploadMedia(c.Request.Context(), userID, articleID, file)
+	url, err := h.service.UploadMedia(c.Request.Context(), userID, articleID, file, h.isAdmin(c))
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			response.NotFound(c, "Статья не найдена")

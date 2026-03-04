@@ -20,14 +20,14 @@ import (
 type ServiceInterface interface {
 	// Curator/Admin operations
 	CreateArticle(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error)
-	GetArticle(ctx context.Context, authorID int64, articleID string) (*Article, error)
-	ListArticles(ctx context.Context, authorID int64, status string, category string) (*ArticlesListResponse, error)
-	UpdateArticle(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest) (*Article, error)
-	DeleteArticle(ctx context.Context, authorID int64, articleID string) error
-	PublishArticle(ctx context.Context, authorID int64, articleID string) error
-	ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest) error
-	UnpublishArticle(ctx context.Context, authorID int64, articleID string) error
-	UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader) (string, error)
+	GetArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error)
+	ListArticles(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error)
+	UpdateArticle(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error)
+	DeleteArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
+	PublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
+	ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest, isAdmin bool) error
+	UnpublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
+	UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error)
 	UploadMarkdownFile(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error)
 
 	// Client operations
@@ -154,7 +154,7 @@ func (s *Service) insertAudienceRows(ctx context.Context, articleID string, clie
 }
 
 // GetArticle retrieves a single article with its body content.
-func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID string) (*Article, error) {
+func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error) {
 	startTime := time.Now()
 
 	query := `
@@ -185,8 +185,8 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 		return nil, fmt.Errorf("failed to get article: %w", err)
 	}
 
-	// Ownership check
-	if article.AuthorID != authorID {
+	// Ownership check (skip for admins)
+	if !isAdmin && article.AuthorID != authorID {
 		return nil, fmt.Errorf("unauthorized: article does not belong to author")
 	}
 
@@ -217,7 +217,8 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 }
 
 // ListArticles returns all articles for a given author, with optional status and category filters.
-func (s *Service) ListArticles(ctx context.Context, authorID int64, status string, category string) (*ArticlesListResponse, error) {
+// If isAdmin is true, all articles are returned regardless of author.
+func (s *Service) ListArticles(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error) {
 	startTime := time.Now()
 
 	query := `
@@ -226,10 +227,17 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 		       a.scheduled_at, a.published_at, a.created_at, a.updated_at
 		FROM articles a
 		JOIN users u ON u.id = a.author_id
-		WHERE a.author_id = $1
 	`
-	args := []any{authorID}
-	argIdx := 2
+	args := []any{}
+	argIdx := 1
+
+	if isAdmin {
+		query += " WHERE 1=1"
+	} else {
+		query += fmt.Sprintf(" WHERE a.author_id = $%d", argIdx)
+		args = append(args, authorID)
+		argIdx++
+	}
 
 	if status != "" {
 		query += fmt.Sprintf(" AND a.status = $%d", argIdx)
@@ -294,12 +302,14 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 }
 
 // UpdateArticle updates an article with only the provided (non-nil) fields.
-func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest) (*Article, error) {
+func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error) {
 	startTime := time.Now()
 
-	// Verify ownership
-	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
-		return nil, err
+	// Verify ownership (skip for admins)
+	if !isAdmin {
+		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+			return nil, err
+		}
 	}
 
 	// Build dynamic SET clause
@@ -415,16 +425,24 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 }
 
 // DeleteArticle deletes an article and its S3 content.
-func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID string) error {
+func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
 	startTime := time.Now()
 
-	// Verify ownership
-	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
-		return err
+	// Verify ownership (skip for admins)
+	if !isAdmin {
+		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+			return err
+		}
 	}
 
 	// Delete article row (cascades to article_audience)
-	result, err := s.db.ExecContext(ctx, `DELETE FROM articles WHERE id = $1 AND author_id = $2`, articleID, authorID)
+	var result sql.Result
+	var err error
+	if isAdmin {
+		result, err = s.db.ExecContext(ctx, `DELETE FROM articles WHERE id = $1`, articleID)
+	} else {
+		result, err = s.db.ExecContext(ctx, `DELETE FROM articles WHERE id = $1 AND author_id = $2`, articleID, authorID)
+	}
 	if err != nil {
 		s.log.Error("Failed to delete article", "error", err, "article_id", articleID)
 		return fmt.Errorf("failed to delete article: %w", err)
@@ -450,17 +468,28 @@ func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID s
 }
 
 // PublishArticle sets an article's status to published.
-func (s *Service) PublishArticle(ctx context.Context, authorID int64, articleID string) error {
+func (s *Service) PublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
 	startTime := time.Now()
 
-	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
-		return err
+	if !isAdmin {
+		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+			return err
+		}
 	}
 
-	result, err := s.db.ExecContext(ctx,
-		`UPDATE articles SET status = 'published', published_at = NOW(), updated_at = NOW() WHERE id = $1 AND author_id = $2`,
-		articleID, authorID,
-	)
+	var result sql.Result
+	var err error
+	if isAdmin {
+		result, err = s.db.ExecContext(ctx,
+			`UPDATE articles SET status = 'published', published_at = NOW(), updated_at = NOW() WHERE id = $1`,
+			articleID,
+		)
+	} else {
+		result, err = s.db.ExecContext(ctx,
+			`UPDATE articles SET status = 'published', published_at = NOW(), updated_at = NOW() WHERE id = $1 AND author_id = $2`,
+			articleID, authorID,
+		)
+	}
 	if err != nil {
 		s.log.Error("Failed to publish article", "error", err, "article_id", articleID)
 		return fmt.Errorf("failed to publish article: %w", err)
@@ -480,17 +509,28 @@ func (s *Service) PublishArticle(ctx context.Context, authorID int64, articleID 
 }
 
 // ScheduleArticle sets an article to be published at a future time.
-func (s *Service) ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest) error {
+func (s *Service) ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest, isAdmin bool) error {
 	startTime := time.Now()
 
-	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
-		return err
+	if !isAdmin {
+		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+			return err
+		}
 	}
 
-	result, err := s.db.ExecContext(ctx,
-		`UPDATE articles SET status = 'scheduled', scheduled_at = $1, updated_at = NOW() WHERE id = $2 AND author_id = $3`,
-		req.ScheduledAt, articleID, authorID,
-	)
+	var result sql.Result
+	var err error
+	if isAdmin {
+		result, err = s.db.ExecContext(ctx,
+			`UPDATE articles SET status = 'scheduled', scheduled_at = $1, updated_at = NOW() WHERE id = $2`,
+			req.ScheduledAt, articleID,
+		)
+	} else {
+		result, err = s.db.ExecContext(ctx,
+			`UPDATE articles SET status = 'scheduled', scheduled_at = $1, updated_at = NOW() WHERE id = $2 AND author_id = $3`,
+			req.ScheduledAt, articleID, authorID,
+		)
+	}
 	if err != nil {
 		s.log.Error("Failed to schedule article", "error", err, "article_id", articleID)
 		return fmt.Errorf("failed to schedule article: %w", err)
@@ -511,17 +551,28 @@ func (s *Service) ScheduleArticle(ctx context.Context, authorID int64, articleID
 }
 
 // UnpublishArticle reverts an article back to draft status.
-func (s *Service) UnpublishArticle(ctx context.Context, authorID int64, articleID string) error {
+func (s *Service) UnpublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
 	startTime := time.Now()
 
-	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
-		return err
+	if !isAdmin {
+		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+			return err
+		}
 	}
 
-	result, err := s.db.ExecContext(ctx,
-		`UPDATE articles SET status = 'draft', scheduled_at = NULL, published_at = NULL, updated_at = NOW() WHERE id = $1 AND author_id = $2`,
-		articleID, authorID,
-	)
+	var result sql.Result
+	var err error
+	if isAdmin {
+		result, err = s.db.ExecContext(ctx,
+			`UPDATE articles SET status = 'draft', scheduled_at = NULL, published_at = NULL, updated_at = NOW() WHERE id = $1`,
+			articleID,
+		)
+	} else {
+		result, err = s.db.ExecContext(ctx,
+			`UPDATE articles SET status = 'draft', scheduled_at = NULL, published_at = NULL, updated_at = NOW() WHERE id = $1 AND author_id = $2`,
+			articleID, authorID,
+		)
+	}
 	if err != nil {
 		s.log.Error("Failed to unpublish article", "error", err, "article_id", articleID)
 		return fmt.Errorf("failed to unpublish article: %w", err)
@@ -541,9 +592,11 @@ func (s *Service) UnpublishArticle(ctx context.Context, authorID int64, articleI
 }
 
 // UploadMedia uploads a media file for an article and returns the S3 URL.
-func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader) (string, error) {
-	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
-		return "", err
+func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error) {
+	if !isAdmin {
+		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+			return "", err
+		}
 	}
 
 	src, err := file.Open()
