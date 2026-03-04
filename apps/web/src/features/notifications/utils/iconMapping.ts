@@ -12,6 +12,7 @@ import {
     Settings,
     Star,
     Info,
+    Newspaper,
 } from 'lucide-react';
 
 /**
@@ -24,6 +25,7 @@ const iconMap: Record<NotificationType, LucideIcon> = {
     system_update: Settings,
     new_feature: Star,
     general: Info,
+    new_content: Newspaper,
 };
 
 /**
