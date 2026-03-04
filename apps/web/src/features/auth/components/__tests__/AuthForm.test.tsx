@@ -58,7 +58,7 @@ describe('AuthForm', () => {
 
             const forgotPasswordLink = screen.getByRole('link', { name: /забыл пароль/i });
             expect(forgotPasswordLink).toBeInTheDocument();
-            expect(forgotPasswordLink).toHaveAttribute('href', '/auth/reset');
+            expect(forgotPasswordLink).toHaveAttribute('href', '/forgot-password');
         });
 
         it('should display email value from formData', () => {

@@ -54,7 +54,7 @@ export function AuthForm({
 
             <div className="text-right">
                 <Link
-                    href="/auth/reset"
+                    href="/forgot-password"
                     className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
                 >
                     Забыл пароль?
