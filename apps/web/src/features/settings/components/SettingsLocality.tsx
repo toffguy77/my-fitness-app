@@ -30,7 +30,7 @@ function ProfileSettingsForm({
 }: {
     profile: { name: string; email: string; avatar_url: string; settings: { language: string; units: string; timezone: string; telegram_username: string; instagram_username: string; apple_health_enabled: boolean; height?: number | null } } | null
     onSaveName: (name: string) => void
-    onSaveSettings: (settings: Record<string, unknown>) => void
+    onSaveSettings: (settings: Record<string, unknown>) => Promise<void>
     onAvatarUpload: (file: File) => Promise<string>
     onAvatarDelete: () => Promise<void>
 }) {
@@ -71,7 +71,7 @@ function ProfileSettingsForm({
             instagram_username: profile.settings.instagram_username,
             apple_health_enabled: profile.settings.apple_health_enabled,
             height: parsed,
-        })
+        }).catch(() => {})
         setHeightChanged(false)
     }
 
@@ -84,7 +84,7 @@ function ProfileSettingsForm({
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
             apple_health_enabled: profile.settings.apple_health_enabled,
-        })
+        }).catch(() => {})
     }
 
     function handleUnitsChange(units: 'metric' | 'imperial') {
@@ -96,7 +96,7 @@ function ProfileSettingsForm({
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
             apple_health_enabled: profile.settings.apple_health_enabled,
-        })
+        }).catch(() => {})
     }
 
     function handleTimezoneChange(timezone: string) {
@@ -108,7 +108,7 @@ function ProfileSettingsForm({
             telegram_username: profile.settings.telegram_username,
             instagram_username: profile.settings.instagram_username,
             apple_health_enabled: profile.settings.apple_health_enabled,
-        })
+        }).catch(() => {})
     }
 
     function handleDeleteAccount() {

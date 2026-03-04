@@ -28,8 +28,10 @@ export function useSettings() {
             const result = await updateSettings(settings)
             setProfile(prev => prev ? { ...prev, settings: { ...prev.settings, ...result.settings } } : null)
             toast.success('Настройки сохранены')
-        } catch {
-            toast.error('Не удалось сохранить настройки')
+        } catch (err: any) {
+            const message = err?.response?.data?.message || 'Не удалось сохранить настройки'
+            toast.error(message)
+            throw err
         }
     }, [])
 

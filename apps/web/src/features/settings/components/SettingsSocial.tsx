@@ -16,16 +16,24 @@ export function SettingsSocial() {
 
 function SocialForm({ profile, onSave }: {
     profile: { settings: { telegram_username: string; instagram_username: string } } | null;
-    onSave: (settings: { telegram_username: string; instagram_username: string }) => void;
+    onSave: (settings: { telegram_username: string; instagram_username: string }) => Promise<void>;
 }) {
     const [telegram, setTelegram] = useState(profile?.settings.telegram_username || '')
     const [instagram, setInstagram] = useState(profile?.settings.instagram_username || '')
+    const [saving, setSaving] = useState(false)
 
-    function handleSave() {
-        onSave({
-            telegram_username: telegram,
-            instagram_username: instagram,
-        })
+    async function handleSave() {
+        setSaving(true)
+        try {
+            await onSave({
+                telegram_username: telegram,
+                instagram_username: instagram,
+            })
+        } catch {
+            // Error already shown via toast in useSettings
+        } finally {
+            setSaving(false)
+        }
     }
 
     return (
@@ -39,9 +47,10 @@ function SocialForm({ profile, onSave }: {
 
             <button
                 onClick={handleSave}
-                className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-white font-medium transition-colors hover:bg-blue-700"
+                disabled={saving}
+                className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-white font-medium transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
-                Сохранить
+                {saving ? 'Проверяем...' : 'Сохранить'}
             </button>
         </>
     )
