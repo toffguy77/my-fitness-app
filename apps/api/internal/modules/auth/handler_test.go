@@ -26,7 +26,7 @@ func setupTestHandler(t *testing.T) (*Handler, sqlmock.Sqlmock, func()) {
 		JWTSecret: "test-secret",
 	}
 	log := logger.New()
-	handler := NewHandler(db, cfg, log)
+	handler := NewHandler(db, cfg, log, nil)
 
 	cleanup := func() {
 		db.Close()
@@ -42,12 +42,16 @@ func TestRegister(t *testing.T) {
 
 		mock.ExpectQuery("INSERT INTO users").
 			WithArgs("test@example.com", sqlmock.AnyArg(), "Test User").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", "client", false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", "client", false, false, time.Now()))
 
 		mock.ExpectExec("INSERT INTO user_settings").
 			WithArgs(int64(1)).
 			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		// Auto-assign curator query (no coordinators available)
+		mock.ExpectQuery("SELECT u.id").
+			WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
@@ -125,8 +129,8 @@ func TestLogin(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
@@ -182,8 +186,8 @@ func TestLogin(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

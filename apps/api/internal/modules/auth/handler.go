@@ -76,8 +76,10 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	// Send verification code (best-effort — registration still succeeds)
-	if err := h.verificationService.SendCode(c.Request.Context(), result.User.ID, result.User.Email, c.ClientIP(), c.Request.UserAgent()); err != nil {
-		h.log.Errorw("Failed to send verification code after registration", "error", err, "user_id", result.User.ID)
+	if h.verificationService != nil {
+		if err := h.verificationService.SendCode(c.Request.Context(), result.User.ID, result.User.Email, c.ClientIP(), c.Request.UserAgent()); err != nil {
+			h.log.Errorw("Failed to send verification code after registration", "error", err, "user_id", result.User.ID)
+		}
 	}
 
 	response.Success(c, http.StatusCreated, result)

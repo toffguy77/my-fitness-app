@@ -41,8 +41,8 @@ func TestRegisterService(t *testing.T) {
 
 		mock.ExpectQuery("INSERT INTO users").
 			WithArgs("test@example.com", sqlmock.AnyArg(), "Test User").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", "client", false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", "client", false, false, time.Now()))
 
 		mock.ExpectExec("INSERT INTO user_settings").
 			WithArgs(int64(1)).
@@ -53,7 +53,7 @@ func TestRegisterService(t *testing.T) {
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent").
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		result, err := service.Register(ctx, "test@example.com", "password123", "Test User", "127.0.0.1", "TestAgent")
+		result, err := service.Register(ctx, "test@example.com", "password123", "Test User", "127.0.0.1", "TestAgent", nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.NotNil(t, result.User)
@@ -71,8 +71,8 @@ func TestRegisterService(t *testing.T) {
 
 		mock.ExpectQuery("INSERT INTO users").
 			WithArgs("test2@example.com", sqlmock.AnyArg(), "").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
-				AddRow(2, "test2@example.com", "", "client", false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(2, "test2@example.com", "", "client", false, false, time.Now()))
 
 		// Expect default identity update
 		mock.ExpectExec("UPDATE users SET name").
@@ -87,7 +87,7 @@ func TestRegisterService(t *testing.T) {
 			WithArgs(int64(2), sqlmock.AnyArg(), sqlmock.AnyArg(), "", "").
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		result, err := service.Register(ctx, "test2@example.com", "password123", "", "", "")
+		result, err := service.Register(ctx, "test2@example.com", "password123", "", "", "", nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "test2@example.com", result.User.Email)
@@ -106,8 +106,8 @@ func TestLoginService(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent").
@@ -131,8 +131,8 @@ func TestLoginService(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
 
 		result, err := service.Login(ctx, "test@example.com", "wrongpassword", "", "")
 		assert.Error(t, err)
@@ -175,8 +175,8 @@ func TestRefreshTokens(t *testing.T) {
 		// Look up user
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs(int64(42)).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "onboarding_completed", "created_at"}).
-				AddRow(42, "user@example.com", "User", "client", true, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(42, "user@example.com", "User", "client", true, true, time.Now()))
 
 		result, err := service.RefreshTokens(ctx, plainToken, "127.0.0.1", "TestAgent")
 		assert.NoError(t, err)
