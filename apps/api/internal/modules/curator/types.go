@@ -11,8 +11,13 @@ type ClientCard struct {
 	UnreadCount  int         `json:"unread_count"`
 	LastWeight   *float64    `json:"last_weight"`
 	WeightTrend  string      `json:"weight_trend"`
-	TargetWeight *float64    `json:"target_weight"`
-	TodayWater   *WaterView  `json:"today_water"`
+	TargetWeight      *float64    `json:"target_weight"`
+	TodayWater        *WaterView  `json:"today_water"`
+	Email             string      `json:"email,omitempty"`
+	Height            *float64    `json:"height,omitempty"`
+	Timezone          string      `json:"timezone,omitempty"`
+	TelegramUsername  string      `json:"telegram_username,omitempty"`
+	InstagramUsername string      `json:"instagram_username,omitempty"`
 }
 
 // DailyKBZHU represents daily nutrition totals (calories, protein, fat, carbs)

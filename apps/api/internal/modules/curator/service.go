@@ -237,11 +237,31 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	}
 
 	// Get client info
-	clientQuery := `SELECT id, COALESCE(name, ''), avatar_url FROM users WHERE id = $1`
+	clientQuery := `
+		SELECT u.id, COALESCE(u.name, ''), u.avatar_url, u.email,
+		       us.height, COALESCE(us.timezone, 'Europe/Moscow'),
+		       COALESCE(us.telegram_username, ''), COALESCE(us.instagram_username, ''),
+		       us.target_weight, us.water_goal
+		FROM users u
+		LEFT JOIN user_settings us ON us.user_id = u.id
+		WHERE u.id = $1
+	`
 	var clientID64 int64
 	var clientName string
 	var avatarURL sql.NullString
-	if err := s.db.QueryRowContext(ctx, clientQuery, clientID).Scan(&clientID64, &clientName, &avatarURL); err != nil {
+	var clientEmail string
+	var clientHeight sql.NullFloat64
+	var clientTimezone string
+	var telegramUsername string
+	var instagramUsername string
+	var targetWeight sql.NullFloat64
+	var waterGoal sql.NullInt64
+	if err := s.db.QueryRowContext(ctx, clientQuery, clientID).Scan(
+		&clientID64, &clientName, &avatarURL, &clientEmail,
+		&clientHeight, &clientTimezone,
+		&telegramUsername, &instagramUsername,
+		&targetWeight, &waterGoal,
+	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("client not found")
 		}
@@ -456,13 +476,6 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		return nil, fmt.Errorf("error iterating weight history: %w", err)
 	}
 
-	// Get target weight and water goal
-	var targetWeight sql.NullFloat64
-	var waterGoal sql.NullInt64
-	_ = s.db.QueryRowContext(ctx,
-		`SELECT target_weight, water_goal FROM user_settings WHERE user_id = $1`, clientID,
-	).Scan(&targetWeight, &waterGoal)
-
 	// Get unread count for this client
 	unreadMap, err := s.getUnreadCounts(ctx, curatorID, []int64{clientID})
 	if err != nil {
@@ -519,12 +532,16 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 	detail := &ClientDetail{
 		ClientCard: ClientCard{
-			ID:          clientID,
-			Name:        clientName,
-			TodayKBZHU:  todayKBZHU,
-			Plan:        weeklyPlan,
-			Alerts:      todayAlerts,
-			UnreadCount: unreadMap[clientID],
+			ID:                clientID,
+			Name:              clientName,
+			Email:             clientEmail,
+			Timezone:          clientTimezone,
+			TelegramUsername:  telegramUsername,
+			InstagramUsername: instagramUsername,
+			TodayKBZHU:       todayKBZHU,
+			Plan:              weeklyPlan,
+			Alerts:            todayAlerts,
+			UnreadCount:       unreadMap[clientID],
 		},
 		Days:          dayDetails,
 		WeeklyPlan:    weeklyPlan,
@@ -534,6 +551,11 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 	if avatarURL.Valid {
 		detail.AvatarURL = avatarURL.String
+	}
+
+	if clientHeight.Valid {
+		h := clientHeight.Float64
+		detail.Height = &h
 	}
 
 	if lastWeight.Valid {
