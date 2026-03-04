@@ -212,7 +212,8 @@ func main() {
 	v1 := router.Group("/api/v1")
 	{
 		// Auth routes
-		authHandler := auth.NewHandler(db.DB, cfg, log)
+		verificationService := auth.NewVerificationService(db.DB, log, emailService)
+		authHandler := auth.NewHandler(db.DB, cfg, log, verificationService)
 		resetHandler := auth.NewResetHandler(cfg, log, resetService)
 		authGroup := v1.Group("/auth")
 		{
@@ -221,6 +222,8 @@ func main() {
 			authGroup.POST("/refresh", authHandler.Refresh)
 			authGroup.POST("/logout", authHandler.Logout)
 			authGroup.GET("/me", middleware.RequireAuth(cfg), authHandler.GetCurrentUser)
+			authGroup.POST("/verify-email", middleware.RequireAuth(cfg), authHandler.VerifyEmail)
+			authGroup.POST("/resend-verification", middleware.RequireAuth(cfg), authHandler.ResendVerification)
 
 			// Password reset routes
 			authGroup.POST("/forgot-password", resetHandler.ForgotPassword)
