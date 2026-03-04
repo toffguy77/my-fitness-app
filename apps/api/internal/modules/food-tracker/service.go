@@ -821,7 +821,7 @@ func roundToOneDecimal(value float64) float64 {
 // ============================================================================
 
 // SearchFoods searches for food items with fuzzy matching (Russian language support)
-func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offset int) (*SearchFoodsResponse, error) {
+func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, limit int, offset int) (*SearchFoodsResponse, error) {
 	startTime := time.Now()
 
 	// Validate query (3+ chars needed for meaningful FTS results with Russian morphology)
@@ -845,6 +845,30 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 	// We fetch limit+1 to detect hasMore without expensive COUNT(*) OVER()
 	sqlQuery := `
 		WITH matched AS (
+			-- User's own foods (highest priority)
+			(SELECT id::text AS id, name, brand,
+			       'user' AS category,
+			       serving_size, serving_unit,
+			       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			       NULL::numeric AS fiber_per_100,
+			       NULL::numeric AS sugar_per_100,
+			       NULL::numeric AS sodium_per_100,
+			       NULL::text AS barcode,
+			       'user' AS source,
+			       false AS verified,
+			       created_at,
+			       updated_at,
+			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
+			              plainto_tsquery('russian', $1)) AS rank,
+			       -1 AS source_priority
+			FROM user_foods
+			WHERE user_id = $4
+			  AND to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
+			ORDER BY rank DESC
+			LIMIT 50)
+
+			UNION ALL
+
 			-- Products table (small, ILIKE is acceptable)
 			(SELECT id::text AS id, name, brand,
 			       COALESCE(category_id::text, '') AS category,
@@ -912,12 +936,13 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := s.db.QueryContext(ctx, sqlQuery, query, limit+1, offset)
+	rows, err := s.db.QueryContext(ctx, sqlQuery, query, limit+1, offset, userID)
 	if err != nil {
 		s.log.LogDatabaseQuery(sqlQuery, time.Since(startTime), err, map[string]interface{}{
-			"query":  query,
-			"limit":  limit,
-			"offset": offset,
+			"query":   query,
+			"limit":   limit,
+			"offset":  offset,
+			"user_id": userID,
 		})
 		return nil, fmt.Errorf("ошибка при поиске продуктов: %w", err)
 	}
@@ -972,10 +997,66 @@ func (s *Service) SearchFoods(ctx context.Context, query string, limit int, offs
 		totalCount = offset + limit + 1
 	}
 
+	// Fallback: search other users' foods if main search returned nothing
+	if len(foods) == 0 {
+		fallbackQuery := `
+			SELECT id::text, name, brand,
+			       'user' AS category,
+			       serving_size, serving_unit,
+			       calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			       NULL::numeric AS fiber_per_100,
+			       NULL::numeric AS sugar_per_100,
+			       NULL::numeric AS sodium_per_100,
+			       NULL::text AS barcode,
+			       'user' AS source,
+			       false AS verified,
+			       created_at, updated_at,
+			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
+			              plainto_tsquery('russian', $1)) AS rank,
+			       0 AS source_priority
+			FROM user_foods
+			WHERE user_id != $4
+			  AND to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
+			ORDER BY rank DESC
+			LIMIT $2 OFFSET $3
+		`
+		fallbackRows, fbErr := s.db.QueryContext(ctx, fallbackQuery, query, limit+1, offset, userID)
+		if fbErr == nil {
+			defer fallbackRows.Close()
+			for fallbackRows.Next() {
+				var item FoodItem
+				var rank float64
+				var sourcePriority int
+				if err := fallbackRows.Scan(
+					&item.ID, &item.Name, &item.Brand, &item.Category,
+					&item.ServingSize, &item.ServingUnit,
+					&item.CaloriesPer100, &item.ProteinPer100, &item.FatPer100, &item.CarbsPer100,
+					&item.FiberPer100, &item.SugarPer100, &item.SodiumPer100,
+					&item.Barcode, &item.Source, &item.Verified,
+					&item.CreatedAt, &item.UpdatedAt, &rank, &sourcePriority,
+				); err != nil {
+					s.log.Error("Failed to scan fallback user food", "error", err)
+					continue
+				}
+				item.PopulateNutrition()
+				foods = append(foods, item)
+			}
+			hasMore = len(foods) > limit
+			if hasMore {
+				foods = foods[:limit]
+			}
+			totalCount = offset + len(foods)
+			if hasMore {
+				totalCount = offset + limit + 1
+			}
+		}
+	}
+
 	s.log.LogDatabaseQuery(sqlQuery, time.Since(startTime), nil, map[string]interface{}{
 		"query":   query,
 		"limit":   limit,
 		"offset":  offset,
+		"user_id": userID,
 		"results": len(foods),
 		"total":   totalCount,
 	})
@@ -1983,4 +2064,165 @@ func (s *Service) CreateCustomRecommendation(ctx context.Context, userID int64, 
 	})
 
 	return &rec, nil
+}
+
+// ============================================================================
+// User Foods CRUD
+// ============================================================================
+
+func (s *Service) CreateUserFood(ctx context.Context, userID int64, req *CreateUserFoodRequest) (*UserFood, error) {
+	servingSize := req.ServingSize
+	if servingSize <= 0 {
+		servingSize = 100
+	}
+	servingUnit := req.ServingUnit
+	if servingUnit == "" {
+		servingUnit = "г"
+	}
+
+	var brand *string
+	if req.Brand != "" {
+		brand = &req.Brand
+	}
+
+	var food UserFood
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO user_foods (user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id, created_at, updated_at
+	`, userID, req.Name, brand, req.CaloriesPer100, req.ProteinPer100, req.FatPer100, req.CarbsPer100, servingSize, servingUnit).Scan(
+		&food.ID, &food.UserID, &food.Name, &food.Brand,
+		&food.CaloriesPer100, &food.ProteinPer100, &food.FatPer100, &food.CarbsPer100,
+		&food.ServingSize, &food.ServingUnit, &food.SourceFoodID,
+		&food.CreatedAt, &food.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при создании пользовательского продукта: %w", err)
+	}
+	return &food, nil
+}
+
+func (s *Service) CloneUserFood(ctx context.Context, userID int64, req *CloneUserFoodRequest) (*UserFood, error) {
+	var sourceName string
+	var sourceBrand *string
+	var sourceCal, sourceProt, sourceFat, sourceCarbs float64
+
+	err := s.db.QueryRowContext(ctx, `
+		SELECT name, brand, COALESCE(calories_per_100, 0), COALESCE(protein_per_100, 0),
+		       COALESCE(fat_per_100, 0), COALESCE(carbs_per_100, 0)
+		FROM food_items WHERE id = $1
+	`, req.SourceFoodID).Scan(&sourceName, &sourceBrand, &sourceCal, &sourceProt, &sourceFat, &sourceCarbs)
+	if err != nil {
+		return nil, fmt.Errorf("исходный продукт не найден: %w", err)
+	}
+
+	name := req.Name
+	if name == "" {
+		name = sourceName
+	}
+	cal := req.CaloriesPer100
+	if cal == 0 {
+		cal = sourceCal
+	}
+	prot := req.ProteinPer100
+	if prot == 0 {
+		prot = sourceProt
+	}
+	fat := req.FatPer100
+	if fat == 0 {
+		fat = sourceFat
+	}
+	carbs := req.CarbsPer100
+	if carbs == 0 {
+		carbs = sourceCarbs
+	}
+
+	var food UserFood
+	err = s.db.QueryRowContext(ctx, `
+		INSERT INTO user_foods (user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, source_food_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id, created_at, updated_at
+	`, userID, name, sourceBrand, cal, prot, fat, carbs, req.SourceFoodID).Scan(
+		&food.ID, &food.UserID, &food.Name, &food.Brand,
+		&food.CaloriesPer100, &food.ProteinPer100, &food.FatPer100, &food.CarbsPer100,
+		&food.ServingSize, &food.ServingUnit, &food.SourceFoodID,
+		&food.CreatedAt, &food.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при клонировании продукта: %w", err)
+	}
+	return &food, nil
+}
+
+func (s *Service) GetUserFoods(ctx context.Context, userID int64) ([]UserFood, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+		       serving_size, serving_unit, source_food_id, created_at, updated_at
+		FROM user_foods
+		WHERE user_id = $1
+		ORDER BY updated_at DESC
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при получении пользовательских продуктов: %w", err)
+	}
+	defer rows.Close()
+
+	var foods []UserFood
+	for rows.Next() {
+		var f UserFood
+		if err := rows.Scan(
+			&f.ID, &f.UserID, &f.Name, &f.Brand,
+			&f.CaloriesPer100, &f.ProteinPer100, &f.FatPer100, &f.CarbsPer100,
+			&f.ServingSize, &f.ServingUnit, &f.SourceFoodID,
+			&f.CreatedAt, &f.UpdatedAt,
+		); err != nil {
+			s.log.Error("Failed to scan user food", "error", err)
+			continue
+		}
+		foods = append(foods, f)
+	}
+	return foods, rows.Err()
+}
+
+func (s *Service) UpdateUserFood(ctx context.Context, userID int64, foodID string, req *UpdateUserFoodRequest) (*UserFood, error) {
+	var food UserFood
+	err := s.db.QueryRowContext(ctx, `
+		UPDATE user_foods
+		SET name = COALESCE($3, name),
+		    brand = COALESCE($4, brand),
+		    calories_per_100 = COALESCE($5, calories_per_100),
+		    protein_per_100 = COALESCE($6, protein_per_100),
+		    fat_per_100 = COALESCE($7, fat_per_100),
+		    carbs_per_100 = COALESCE($8, carbs_per_100),
+		    serving_size = COALESCE($9, serving_size),
+		    serving_unit = COALESCE($10, serving_unit),
+		    updated_at = NOW()
+		WHERE id = $1 AND user_id = $2
+		RETURNING id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+		          serving_size, serving_unit, source_food_id, created_at, updated_at
+	`, foodID, userID, req.Name, req.Brand, req.CaloriesPer100, req.ProteinPer100,
+		req.FatPer100, req.CarbsPer100, req.ServingSize, req.ServingUnit).Scan(
+		&food.ID, &food.UserID, &food.Name, &food.Brand,
+		&food.CaloriesPer100, &food.ProteinPer100, &food.FatPer100, &food.CarbsPer100,
+		&food.ServingSize, &food.ServingUnit, &food.SourceFoodID,
+		&food.CreatedAt, &food.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при обновлении пользовательского продукта: %w", err)
+	}
+	return &food, nil
+}
+
+func (s *Service) DeleteUserFood(ctx context.Context, userID int64, foodID string) error {
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM user_foods WHERE id = $1 AND user_id = $2
+	`, foodID, userID)
+	if err != nil {
+		return fmt.Errorf("ошибка при удалении пользовательского продукта: %w", err)
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("продукт не найден")
+	}
+	return nil
 }
