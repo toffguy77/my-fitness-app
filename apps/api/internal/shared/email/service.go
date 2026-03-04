@@ -50,6 +50,13 @@ type PasswordChangedEmailData struct {
 	SupportEmail string
 }
 
+// VerificationEmailData contains data for the email verification template
+type VerificationEmailData struct {
+	UserEmail string
+	Code      string
+	ExpiresAt time.Time
+}
+
 // NewService creates a new email service instance
 func NewService(cfg Config, log *logger.Logger) (*Service, error) {
 	if cfg.SMTPHost == "" {
@@ -155,6 +162,45 @@ func (s *Service) SendPasswordChangedEmail(ctx context.Context, data PasswordCha
 	)
 
 	return nil
+}
+
+// SendVerificationEmail sends a verification code email with retry logic
+func (s *Service) SendVerificationEmail(ctx context.Context, data VerificationEmailData) error {
+	subject := "Код подтверждения — BURCEV"
+
+	body, err := s.renderTemplate("email_verification", data)
+	if err != nil {
+		s.log.WithError(err).Error("Failed to render verification email template")
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	maxRetries := 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := s.sendEmail(ctx, data.UserEmail, subject, body)
+		if err == nil {
+			s.log.Info("Verification email sent successfully",
+				"email", data.UserEmail,
+				"attempt", attempt,
+			)
+			return nil
+		}
+
+		lastErr = err
+		s.log.WithError(err).Warn("Failed to send verification email",
+			"email", data.UserEmail,
+			"attempt", attempt,
+			"max_retries", maxRetries,
+		)
+
+		if attempt < maxRetries {
+			backoff := time.Duration(attempt) * time.Second
+			time.Sleep(backoff)
+		}
+	}
+
+	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
 }
 
 // sendEmail sends an email via SMTP
@@ -273,6 +319,11 @@ func parseTemplates() (*template.Template, error) {
 		return nil, err
 	}
 
+	_, err = tmpl.New("email_verification").Parse(emailVerificationTemplate)
+	if err != nil {
+		return nil, err
+	}
+
 	return tmpl, nil
 }
 
@@ -346,6 +397,42 @@ const passwordChangedTemplate = `
         <p style="color: #dc3545; font-size: 14px;">
             <strong>⚠ Это были не вы?</strong><br>
             Если вы не меняли пароль, ваш аккаунт может быть скомпрометирован. Пожалуйста, немедленно свяжитесь с нами по адресу {{.SupportEmail}} и измените пароль как можно скорее.
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">
+            Это автоматическое сообщение от BURCEV. Пожалуйста, не отвечайте на это письмо.
+        </p>
+    </div>
+</body>
+</html>
+`
+
+const emailVerificationTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Код подтверждения</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+        <h2 style="color: #2c3e50; margin-top: 0;">Код подтверждения</h2>
+
+        <p>Здравствуйте,</p>
+
+        <p>Ваш код подтверждения для аккаунта BURCEV:</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2c3e50; background-color: #e9ecef; padding: 15px 30px; border-radius: 8px; display: inline-block;">{{.Code}}</span>
+        </div>
+
+        <p>Код действителен в течение 10 минут.</p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #666; font-size: 14px;">
+            Если вы не запрашивали этот код, проигнорируйте это письмо.
         </p>
 
         <p style="color: #999; font-size: 12px; margin-top: 30px;">
