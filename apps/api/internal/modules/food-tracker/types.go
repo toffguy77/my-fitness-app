@@ -304,13 +304,16 @@ type UserFood struct {
 	ID             string    `json:"id" db:"id"`
 	UserID         int64     `json:"user_id" db:"user_id"`
 	Name           string    `json:"name" db:"name"`
+	Brand          *string   `json:"brand,omitempty" db:"brand"`
 	CaloriesPer100 float64   `json:"calories_per_100" db:"calories_per_100"`
 	ProteinPer100  float64   `json:"protein_per_100" db:"protein_per_100"`
 	FatPer100      float64   `json:"fat_per_100" db:"fat_per_100"`
 	CarbsPer100    float64   `json:"carbs_per_100" db:"carbs_per_100"`
 	ServingSize    float64   `json:"serving_size" db:"serving_size"`
 	ServingUnit    string    `json:"serving_unit" db:"serving_unit"`
+	SourceFoodID   *string   `json:"source_food_id,omitempty" db:"source_food_id"`
 	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // Validate validates the user food fields
@@ -634,6 +637,7 @@ func (r *CreateCustomRecommendationRequest) Validate() error {
 // CreateUserFoodRequest represents the request to create a custom food item
 type CreateUserFoodRequest struct {
 	Name           string  `json:"name" binding:"required,max=255"`
+	Brand          string  `json:"brand" binding:"omitempty,max=255"`
 	CaloriesPer100 float64 `json:"calories_per_100" binding:"required,min=0"`
 	ProteinPer100  float64 `json:"protein_per_100" binding:"omitempty,min=0"`
 	FatPer100      float64 `json:"fat_per_100" binding:"omitempty,min=0"`
@@ -666,6 +670,36 @@ func (r *CreateUserFoodRequest) Validate() error {
 		return fmt.Errorf("размер порции не может быть отрицательным")
 	}
 	return nil
+}
+
+// CloneUserFoodRequest represents the request to clone a food from global DB
+type CloneUserFoodRequest struct {
+	SourceFoodID   string  `json:"source_food_id" binding:"required"`
+	Name           string  `json:"name" binding:"omitempty,max=255"`
+	CaloriesPer100 float64 `json:"calories_per_100" binding:"omitempty,min=0"`
+	ProteinPer100  float64 `json:"protein_per_100" binding:"omitempty,min=0"`
+	FatPer100      float64 `json:"fat_per_100" binding:"omitempty,min=0"`
+	CarbsPer100    float64 `json:"carbs_per_100" binding:"omitempty,min=0"`
+}
+
+// Validate validates the clone user food request
+func (r *CloneUserFoodRequest) Validate() error {
+	if r.SourceFoodID == "" {
+		return fmt.Errorf("идентификатор исходного продукта обязателен")
+	}
+	return nil
+}
+
+// UpdateUserFoodRequest represents the request to update a user food
+type UpdateUserFoodRequest struct {
+	Name           *string  `json:"name" binding:"omitempty,max=255"`
+	Brand          *string  `json:"brand" binding:"omitempty,max=255"`
+	CaloriesPer100 *float64 `json:"calories_per_100" binding:"omitempty,min=0"`
+	ProteinPer100  *float64 `json:"protein_per_100" binding:"omitempty,min=0"`
+	FatPer100      *float64 `json:"fat_per_100" binding:"omitempty,min=0"`
+	CarbsPer100    *float64 `json:"carbs_per_100" binding:"omitempty,min=0"`
+	ServingSize    *float64 `json:"serving_size" binding:"omitempty,gt=0"`
+	ServingUnit    *string  `json:"serving_unit" binding:"omitempty"`
 }
 
 // SaveMealTemplateRequest represents the request to save a meal as template
