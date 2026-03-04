@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 
-export type CuratorNavigationItemId = 'clients' | 'chats' | 'profile'
+export type CuratorNavigationItemId = 'clients' | 'chats' | 'content' | 'profile'
 
 export interface CuratorNavigationItemConfig {
     id: CuratorNavigationItemId
