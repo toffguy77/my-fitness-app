@@ -283,6 +283,8 @@ func main() {
 			notificationsGroup.POST("/:id/read", notificationsHandler.MarkAsRead)
 			notificationsGroup.GET("/unread-counts", notificationsHandler.GetUnreadCounts)
 			notificationsGroup.POST("/mark-all-read", notificationsHandler.MarkAllAsRead)
+			notificationsGroup.GET("/preferences", notificationsHandler.GetPreferences)
+			notificationsGroup.PUT("/preferences", notificationsHandler.UpdatePreferences)
 		}
 
 		// Logs routes (public for frontend logging)
