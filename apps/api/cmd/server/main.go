@@ -393,7 +393,7 @@ func main() {
 	}
 
 	// Content management routes (coordinator + super_admin)
-	contentHandler := content.NewHandler(cfg, log, db, contentS3)
+	contentHandler := content.NewHandler(cfg, log, db, contentS3, wsHub)
 
 	contentManageGroup := v1.Group("/content/articles")
 	contentManageGroup.Use(middleware.RequireAuth(cfg))
@@ -425,7 +425,7 @@ func main() {
 	// Start content scheduler
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
 	defer schedulerCancel()
-	contentService := content.NewService(db, log, contentS3)
+	contentService := content.NewService(db, log, contentS3, wsHub)
 	go contentService.RunScheduler(schedulerCtx)
 
 	// Create HTTP server
