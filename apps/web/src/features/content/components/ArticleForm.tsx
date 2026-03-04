@@ -218,7 +218,7 @@ export function ArticleForm({
                     disabled={loading || !title.trim()}
                     className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
                 >
-                    {loading ? 'Сохранение...' : 'Сохранить черновик'}
+                    {loading ? 'Сохранение...' : isDraft ? 'Сохранить черновик' : 'Сохранить'}
                 </button>
 
                 {article && isDraft && onPublish && (
