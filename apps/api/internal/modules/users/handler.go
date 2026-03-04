@@ -121,6 +121,30 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		return
 	}
 
+	// Sanitize social usernames
+	req.TelegramUsername = sanitizeUsername(req.TelegramUsername)
+	req.InstagramUsername = sanitizeUsername(req.InstagramUsername)
+
+	// Validate format
+	if err := validateUsernameFormat(req.TelegramUsername); err != nil {
+		response.Error(c, http.StatusBadRequest, "Telegram: "+err.Error())
+		return
+	}
+	if err := validateUsernameFormat(req.InstagramUsername); err != nil {
+		response.Error(c, http.StatusBadRequest, "Instagram: "+err.Error())
+		return
+	}
+
+	// Verify accounts exist
+	if err := verifyUsernameExists(c.Request.Context(), "telegram", req.TelegramUsername); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := verifyUsernameExists(c.Request.Context(), "instagram", req.InstagramUsername); err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	settings, err := h.service.UpdateSettings(c.Request.Context(), userID, Settings{
 		Language:           req.Language,
 		Units:              req.Units,
