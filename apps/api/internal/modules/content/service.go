@@ -206,14 +206,14 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 		article.PublishedAt = &publishedAt.Time
 	}
 
-	// Fetch body from S3 via signed URL
+	// Fetch body from S3
 	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
-		signedURL, err := s.s3.GetSignedURL(ctx, contentS3Key.String, 15*time.Minute)
+		data, err := s.s3.GetFile(ctx, contentS3Key.String)
 		if err != nil {
-			s.log.Error("Failed to get signed URL for article body", "error", err, "key", contentS3Key.String)
+			s.log.Error("Failed to get article body from S3", "error", err, "key", contentS3Key.String)
 			// Non-fatal: return article without body
 		} else {
-			article.Body = signedURL
+			article.Body = string(data)
 		}
 	}
 
@@ -819,14 +819,14 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 		article.PublishedAt = &publishedAt.Time
 	}
 
-	// Fetch body from S3 via signed URL
+	// Fetch body from S3
 	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
-		signedURL, err := s.s3.GetSignedURL(ctx, contentS3Key.String, 15*time.Minute)
+		data, err := s.s3.GetFile(ctx, contentS3Key.String)
 		if err != nil {
-			s.log.Error("Failed to get signed URL for feed article body", "error", err, "key", contentS3Key.String)
+			s.log.Error("Failed to get feed article body from S3", "error", err, "key", contentS3Key.String)
 			// Non-fatal: return article without body
 		} else {
-			article.Body = signedURL
+			article.Body = string(data)
 		}
 	}
 

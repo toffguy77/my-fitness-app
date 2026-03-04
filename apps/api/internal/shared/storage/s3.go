@@ -15,6 +15,7 @@ import (
 // S3API defines the interface for S3 operations
 type S3API interface {
 	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
 	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 }
@@ -120,6 +121,27 @@ func (s *S3Client) UploadFile(ctx context.Context, key string, data io.Reader, c
 	)
 
 	return url, nil
+}
+
+// GetFile downloads a file from S3 and returns its content as bytes.
+func (s *S3Client) GetFile(ctx context.Context, key string) ([]byte, error) {
+	input := &s3.GetObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(key),
+	}
+
+	result, err := s.client.GetObject(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file from S3: %w", err)
+	}
+	defer result.Body.Close()
+
+	data, err := io.ReadAll(result.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read S3 object body: %w", err)
+	}
+
+	return data, nil
 }
 
 // DeleteFile deletes a file from S3
