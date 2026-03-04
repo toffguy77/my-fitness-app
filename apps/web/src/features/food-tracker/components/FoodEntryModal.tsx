@@ -13,8 +13,9 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { X, Search, Barcode, Camera, MessageCircle, ArrowLeft, Check, Pencil, Edit3 } from 'lucide-react';
-import type { EntryMethodTab, FoodEntry, FoodItem, MealType, PortionType, KBZHU } from '../types';
+import { X, Search, Barcode, Camera, MessageCircle, ArrowLeft, Check, Pencil, Edit3, Bookmark } from 'lucide-react';
+import toast from 'react-hot-toast';
+import type { EntryMethodTab, FoodEntry, FoodItem, MealType, PortionType, KBZHU, CloneUserFoodRequest, UserFood } from '../types';
 import { SearchTab } from './SearchTab';
 import { BarcodeTab } from './BarcodeTab';
 import { AIPhotoTab } from './AIPhotoTab';
@@ -23,6 +24,8 @@ import { PortionSelector } from './PortionSelector';
 import { ManualEntryForm } from './ManualEntryForm';
 import { useFoodSearch } from '../hooks/useFoodSearch';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
+import { apiClient } from '@/shared/utils/api-client';
+import { getApiUrl } from '@/config/api';
 
 // ============================================================================
 // Types
@@ -267,6 +270,21 @@ export function FoodEntryModal({
     // Handle manual entry cancel
     const handleManualEntryCancel = useCallback(() => {
         setStep('select-food');
+    }, []);
+
+    // Handle clone food to user foods
+    const handleCloneFood = useCallback(async (food: FoodItem) => {
+        try {
+            const payload: CloneUserFoodRequest = {
+                source_food_id: food.id,
+            };
+            const url = getApiUrl('/food-tracker/user-foods/clone');
+            await apiClient.post<UserFood>(url, payload);
+            toast.success('Продукт сохранён');
+        } catch (error) {
+            console.error('Failed to clone food:', error);
+            toast.error('Не удалось сохранить продукт');
+        }
     }, []);
 
     // Handle skipping a batch item
@@ -590,14 +608,27 @@ export function FoodEntryModal({
                                                     · У {Math.round(editedNutritionPer100.carbs)}
                                                 </p>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsEditingDetails(true)}
-                                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                aria-label="Редактировать"
-                                            >
-                                                <Pencil className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                {selectedFood.source !== 'user' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCloneFood(selectedFood)}
+                                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        aria-label="Сохранить как свой"
+                                                        title="Сохранить как свой"
+                                                    >
+                                                        <Bookmark className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsEditingDetails(true)}
+                                                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    aria-label="Редактировать"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
