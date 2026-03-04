@@ -40,6 +40,11 @@ export interface ClientCard {
     weight_trend: 'up' | 'down' | 'stable' | ''
     target_weight: number | null
     today_water: WaterView | null
+    email?: string
+    height?: number | null
+    timezone?: string
+    telegram_username?: string
+    instagram_username?: string
 }
 
 export interface FoodEntryView {
