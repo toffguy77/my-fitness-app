@@ -59,7 +59,8 @@ function ProfileSettingsForm({
     function handleSaveHeight() {
         if (!heightChanged || !profile) return
         const parsed = height === '' ? null : parseFloat(height)
-        if (parsed !== null && (isNaN(parsed) || parsed <= 0 || parsed > 300)) {
+        if (parsed !== null && (isNaN(parsed) || parsed < 50 || parsed > 300)) {
+            toast.error('Рост должен быть от 50 до 300 см')
             return
         }
         onSaveSettings({
