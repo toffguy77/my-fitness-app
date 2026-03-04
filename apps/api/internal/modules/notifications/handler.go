@@ -19,6 +19,8 @@ type ServiceInterface interface {
 	MarkAllAsRead(ctx context.Context, userID int64, category NotificationCategory) (int, error)
 	GetUnreadCounts(ctx context.Context, userID int64) (*UnreadCountsResponse, error)
 	CreateNotification(ctx context.Context, notification *Notification) error
+	GetPreferences(ctx context.Context, userID int64) (*ContentNotificationPreferences, error)
+	UpdatePreferences(ctx context.Context, userID int64, req UpdatePreferencesRequest) error
 }
 
 // Handler handles notification requests
@@ -195,4 +197,60 @@ func (h *Handler) MarkAllAsRead(c *gin.Context) {
 		Success:     true,
 		MarkedCount: markedCount,
 	})
+}
+
+// GetPreferences handles GET /api/v1/notifications/preferences
+func (h *Handler) GetPreferences(c *gin.Context) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	prefs, err := h.service.GetPreferences(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Errorw("Failed to get preferences", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось получить настройки уведомлений")
+		return
+	}
+
+	response.Success(c, http.StatusOK, prefs)
+}
+
+// UpdatePreferences handles PUT /api/v1/notifications/preferences
+func (h *Handler) UpdatePreferences(c *gin.Context) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	var req UpdatePreferencesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.log.Errorw("Неверные данные запроса", "error", err)
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	if err := h.service.UpdatePreferences(c.Request.Context(), userID, req); err != nil {
+		h.log.Errorw("Failed to update preferences", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось сохранить настройки уведомлений")
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
 }
