@@ -219,8 +219,8 @@ export function OnboardingWizard() {
                         disabled={saving}
                         onClick={handleNext}
                         className={cn(
-                            'w-full rounded-xl bg-violet-500 py-3 font-medium text-white transition-colors',
-                            'hover:bg-violet-600',
+                            'w-full rounded-xl bg-blue-600 py-3 font-medium text-white transition-colors',
+                            'hover:bg-blue-700',
                             'disabled:pointer-events-none disabled:opacity-50'
                         )}
                     >

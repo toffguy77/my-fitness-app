@@ -21,7 +21,7 @@ export function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
                             className={cn(
                                 'h-3 w-3 rounded-full transition-colors',
                                 isCompleted || isActive
-                                    ? 'bg-violet-500'
+                                    ? 'bg-blue-600'
                                     : 'bg-gray-300'
                             )}
                         />
@@ -32,7 +32,7 @@ export function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
                                 className={cn(
                                     'h-0.5 w-8 transition-colors',
                                     i < currentStep
-                                        ? 'bg-violet-500'
+                                        ? 'bg-blue-600'
                                         : 'bg-gray-300'
                                 )}
                             />
