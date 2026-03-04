@@ -14,7 +14,7 @@ CREATE TABLE content_notification_mute (
 
 -- Add action_url and content_category to notifications
 ALTER TABLE notifications ADD COLUMN action_url VARCHAR(500);
-ALTER TABLE notifications ADD COLUMN content_category VARCHAR(20);
+ALTER TABLE notifications ADD COLUMN content_category content_category;
 
 -- Expand the type CHECK constraint to include 'new_content'
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
