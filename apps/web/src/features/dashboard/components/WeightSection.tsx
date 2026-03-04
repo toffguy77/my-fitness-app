@@ -25,7 +25,7 @@ export interface WeightSectionProps {
     className?: string
 }
 
-const CHART_PADDING = { top: 10, right: 10, bottom: 20, left: 40 }
+const CHART_PADDING = { top: 18, right: 10, bottom: 20, left: 40 }
 
 const WeightTrendChart = memo(function WeightTrendChart({
     data,
