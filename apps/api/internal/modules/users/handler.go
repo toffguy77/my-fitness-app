@@ -94,6 +94,7 @@ type UpdateSettingsRequest struct {
 	InstagramUsername  string   `json:"instagram_username"`
 	AppleHealthEnabled bool     `json:"apple_health_enabled"`
 	TargetWeight       *float64 `json:"target_weight"`
+	Height           *float64 `json:"height"`
 }
 
 // UpdateSettings updates user settings
@@ -122,6 +123,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		InstagramUsername:  req.InstagramUsername,
 		AppleHealthEnabled: req.AppleHealthEnabled,
 		TargetWeight:       req.TargetWeight,
+		Height:           req.Height,
 	})
 	if err != nil {
 		h.log.Errorw("Не удалось обновить настройки", "error", err, "user_id", userID)

@@ -19,6 +19,7 @@ export interface UserSettings {
     instagram_username: string
     apple_health_enabled: boolean
     target_weight?: number | null
+    height?: number | null
 }
 
 export async function getProfile(): Promise<FullProfile> {
