@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,8 +56,8 @@ func (m *MockService) DeleteEntry(ctx context.Context, userID int64, entryID str
 	return args.Error(0)
 }
 
-func (m *MockService) SearchFoods(ctx context.Context, query string, limit int, offset int) (*SearchFoodsResponse, error) {
-	args := m.Called(ctx, query, limit, offset)
+func (m *MockService) SearchFoods(ctx context.Context, userID int64, query string, limit int, offset int) (*SearchFoodsResponse, error) {
+	args := m.Called(ctx, userID, query, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -140,6 +141,43 @@ func (m *MockService) CreateCustomRecommendation(ctx context.Context, userID int
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*UserCustomRecommendation), args.Error(1)
+}
+
+func (m *MockService) CreateUserFood(ctx context.Context, userID int64, req *CreateUserFoodRequest) (*UserFood, error) {
+	args := m.Called(ctx, userID, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserFood), args.Error(1)
+}
+
+func (m *MockService) CloneUserFood(ctx context.Context, userID int64, req *CloneUserFoodRequest) (*UserFood, error) {
+	args := m.Called(ctx, userID, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserFood), args.Error(1)
+}
+
+func (m *MockService) GetUserFoods(ctx context.Context, userID int64) ([]UserFood, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]UserFood), args.Error(1)
+}
+
+func (m *MockService) UpdateUserFood(ctx context.Context, userID int64, foodID string, req *UpdateUserFoodRequest) (*UserFood, error) {
+	args := m.Called(ctx, userID, foodID, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*UserFood), args.Error(1)
+}
+
+func (m *MockService) DeleteUserFood(ctx context.Context, userID int64, foodID string) error {
+	args := m.Called(ctx, userID, foodID)
+	return args.Error(0)
 }
 
 // ============================================================================
@@ -252,4 +290,123 @@ func TestGetEntries_MissingDate(t *testing.T) {
 	assert.Equal(t, "error", resp["status"])
 	// Error message must be in Russian
 	assert.Equal(t, "Неверные параметры запроса", resp["message"])
+}
+
+// ============================================================================
+// User Foods Handler Tests
+// ============================================================================
+
+func TestCreateUserFood(t *testing.T) {
+	t.Run("successful creation", func(t *testing.T) {
+		gin.SetMode(gin.TestMode)
+		mockService := new(MockService)
+		handler := &Handler{
+			cfg:     &config.Config{},
+			log:     logger.New(),
+			service: mockService,
+		}
+
+		expected := &UserFood{
+			ID:             uuid.New().String(),
+			UserID:         1,
+			Name:           "Бабушкины блины",
+			CaloriesPer100: 230,
+			ProteinPer100:  8.5,
+			FatPer100:      10.2,
+			CarbsPer100:    27.0,
+			ServingSize:    100,
+			ServingUnit:    "г",
+			CreatedAt:      time.Now(),
+			UpdatedAt:      time.Now(),
+		}
+
+		mockService.On("CreateUserFood", mock.Anything, int64(1), mock.AnythingOfType("*foodtracker.CreateUserFoodRequest")).
+			Return(expected, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set("user_id", int64(1))
+		body := `{"name":"Бабушкины блины","calories_per_100":230,"protein_per_100":8.5,"fat_per_100":10.2,"carbs_per_100":27.0}`
+		c.Request = httptest.NewRequest(http.MethodPost, "/food-tracker/user-foods", strings.NewReader(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.CreateUserFood(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		mockService.AssertExpectations(t)
+	})
+
+	t.Run("missing name returns 400", func(t *testing.T) {
+		gin.SetMode(gin.TestMode)
+		handler := &Handler{
+			cfg:     &config.Config{},
+			log:     logger.New(),
+			service: new(MockService),
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set("user_id", int64(1))
+		body := `{"calories_per_100":230}`
+		c.Request = httptest.NewRequest(http.MethodPost, "/food-tracker/user-foods", strings.NewReader(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.CreateUserFood(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestGetUserFoods(t *testing.T) {
+	t.Run("returns user foods list", func(t *testing.T) {
+		gin.SetMode(gin.TestMode)
+		mockService := new(MockService)
+		handler := &Handler{
+			cfg:     &config.Config{},
+			log:     logger.New(),
+			service: mockService,
+		}
+
+		foods := []UserFood{
+			{ID: uuid.New().String(), UserID: 1, Name: "Food 1", CaloriesPer100: 100, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+			{ID: uuid.New().String(), UserID: 1, Name: "Food 2", CaloriesPer100: 200, CreatedAt: time.Now(), UpdatedAt: time.Now()},
+		}
+		mockService.On("GetUserFoods", mock.Anything, int64(1)).Return(foods, nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set("user_id", int64(1))
+		c.Request = httptest.NewRequest(http.MethodGet, "/food-tracker/user-foods", nil)
+
+		handler.GetUserFoods(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockService.AssertExpectations(t)
+	})
+}
+
+func TestDeleteUserFood(t *testing.T) {
+	t.Run("successful deletion", func(t *testing.T) {
+		gin.SetMode(gin.TestMode)
+		mockService := new(MockService)
+		handler := &Handler{
+			cfg:     &config.Config{},
+			log:     logger.New(),
+			service: mockService,
+		}
+
+		foodID := uuid.New().String()
+		mockService.On("DeleteUserFood", mock.Anything, int64(1), foodID).Return(nil)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: foodID}}
+		c.Request = httptest.NewRequest(http.MethodDelete, "/food-tracker/user-foods/"+foodID, nil)
+
+		handler.DeleteUserFood(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		mockService.AssertExpectations(t)
+	})
 }
