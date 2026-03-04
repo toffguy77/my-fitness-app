@@ -205,6 +205,7 @@ describe('FoodEntryModal Property Tests', () => {
                             const tabLabels: Record<EntryMethodTab, string> = {
                                 search: 'Поиск',
                                 barcode: 'Штрих-код',
+                                manual: 'Ручной ввод',
                                 photo: 'Фото еды',
                                 chat: 'Чат',
                             };

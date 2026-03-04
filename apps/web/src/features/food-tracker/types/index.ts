@@ -56,6 +56,72 @@ export interface FoodItem {
 }
 
 /**
+ * User-created custom food item
+ */
+export interface UserFood {
+    id: string;
+    name: string;
+    brand?: string;
+    calories_per_100: number;
+    protein_per_100: number;
+    fat_per_100: number;
+    carbs_per_100: number;
+    serving_size: number;
+    serving_unit: string;
+    source_food_id?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Request to create a user food
+ */
+export interface CreateUserFoodRequest {
+    name: string;
+    brand?: string;
+    calories_per_100: number;
+    protein_per_100?: number;
+    fat_per_100?: number;
+    carbs_per_100?: number;
+    serving_size?: number;
+    serving_unit?: string;
+}
+
+/**
+ * Request to clone a food from global DB
+ */
+export interface CloneUserFoodRequest {
+    source_food_id: string;
+    name?: string;
+    calories_per_100?: number;
+    protein_per_100?: number;
+    fat_per_100?: number;
+    carbs_per_100?: number;
+}
+
+/**
+ * Convert a UserFood to a FoodItem for use in search results and portion selector
+ */
+export function userFoodToFoodItem(uf: UserFood): FoodItem {
+    return {
+        id: uf.id,
+        name: uf.name,
+        brand: uf.brand,
+        category: 'user',
+        servingSize: uf.serving_size,
+        servingUnit: uf.serving_unit,
+        nutritionPer100: {
+            calories: uf.calories_per_100,
+            protein: uf.protein_per_100,
+            fat: uf.fat_per_100,
+            carbs: uf.carbs_per_100,
+        },
+        source: 'user',
+        verified: false,
+    };
+}
+
+/**
  * Food entry in user's daily log
  */
 export interface FoodEntry {
@@ -321,7 +387,7 @@ export type FoodTrackerTab = 'diet' | 'recommendations';
 /**
  * Entry method tab in food entry modal
  */
-export type EntryMethodTab = 'search' | 'barcode' | 'photo' | 'chat';
+export type EntryMethodTab = 'search' | 'barcode' | 'manual' | 'photo' | 'chat';
 
 /**
  * Progress bar color based on percentage

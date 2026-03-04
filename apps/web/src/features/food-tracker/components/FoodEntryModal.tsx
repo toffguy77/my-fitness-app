@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { X, Search, Barcode, Camera, MessageCircle, ArrowLeft, Check, Pencil } from 'lucide-react';
+import { X, Search, Barcode, Camera, MessageCircle, ArrowLeft, Check, Pencil, Edit3 } from 'lucide-react';
 import type { EntryMethodTab, FoodEntry, FoodItem, MealType, PortionType, KBZHU } from '../types';
 import { SearchTab } from './SearchTab';
 import { BarcodeTab } from './BarcodeTab';
@@ -56,6 +56,7 @@ type ModalStep = 'select-food' | 'select-portion' | 'manual-entry';
 const TABS: TabConfig[] = [
     { id: 'search', label: 'Поиск', icon: Search },
     { id: 'barcode', label: 'Штрих-код', icon: Barcode },
+    { id: 'manual', label: 'Ручной ввод', icon: Edit3 },
     { id: 'photo', label: 'Фото еды', icon: Camera },
     { id: 'chat', label: 'Чат', icon: MessageCircle },
 ];
@@ -464,6 +465,12 @@ export function FoodEntryModal({
                             {activeTab === 'chat' && (
                                 <ChatTab
                                     onSelectFood={handleSelectFood}
+                                />
+                            )}
+                            {activeTab === 'manual' && step === 'select-food' && (
+                                <ManualEntryForm
+                                    onSubmit={handleManualEntrySubmit}
+                                    onCancel={onClose}
                                 />
                             )}
                         </div>

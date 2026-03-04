@@ -11,7 +11,11 @@
 
 import { useState, useCallback } from 'react';
 import { Save, X } from 'lucide-react';
-import type { FoodItem, KBZHU } from '../types';
+import { apiClient } from '@/shared/utils/api-client';
+import { getApiUrl } from '@/config/api';
+import type { FoodItem } from '../types';
+import type { CreateUserFoodRequest, UserFood } from '../types';
+import { userFoodToFoodItem } from '../types';
 
 // ============================================================================
 // Types
@@ -138,26 +142,24 @@ export function ManualEntryForm({
         setIsSubmitting(true);
 
         try {
-            const nutrition: KBZHU = {
-                calories: parseFloat(formData.calories) || 0,
-                protein: parseFloat(formData.protein) || 0,
-                fat: parseFloat(formData.fat) || 0,
-                carbs: parseFloat(formData.carbs) || 0,
-            };
-
-            const food: FoodItem = {
-                id: `manual_${Date.now()}`,
+            const payload: CreateUserFoodRequest = {
                 name: formData.name.trim(),
                 brand: formData.brand.trim() || undefined,
-                category: 'user',
-                servingSize: parseFloat(formData.servingSize) || 100,
-                servingUnit: 'г',
-                nutritionPer100: nutrition,
-                source: 'user',
-                verified: false,
+                calories_per_100: parseFloat(formData.calories) || 0,
+                protein_per_100: parseFloat(formData.protein) || 0,
+                fat_per_100: parseFloat(formData.fat) || 0,
+                carbs_per_100: parseFloat(formData.carbs) || 0,
+                serving_size: parseFloat(formData.servingSize) || 100,
+                serving_unit: 'г',
             };
 
+            const url = getApiUrl('/food-tracker/user-foods');
+            const response = await apiClient.post<UserFood>(url, payload);
+            const food = userFoodToFoodItem(response);
+
             onSubmit(food);
+        } catch (error) {
+            console.error('Failed to create user food:', error);
         } finally {
             setIsSubmitting(false);
         }
