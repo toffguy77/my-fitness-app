@@ -44,7 +44,7 @@ func (s *Service) GetNotifications(ctx context.Context, userID int64, category N
 
 	// Query to get notifications with pagination
 	query := `
-		SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at
+		SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category
 		FROM notifications
 		WHERE user_id = $1 AND category = $2
 		ORDER BY created_at DESC
@@ -76,6 +76,8 @@ func (s *Service) GetNotifications(ctx context.Context, userID int64, category N
 			&n.IconURL,
 			&n.CreatedAt,
 			&n.ReadAt,
+			&n.ActionURL,
+			&n.ContentCategory,
 		)
 		if err != nil {
 			s.log.Error("Failed to scan notification", "error", err)
@@ -280,8 +282,8 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 	}
 
 	query := `
-		INSERT INTO notifications (id, user_id, category, type, title, content, icon_url, created_at, read_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO notifications (id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, created_at
 	`
 
@@ -297,6 +299,8 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 		notification.IconURL,
 		notification.CreatedAt,
 		notification.ReadAt,
+		notification.ActionURL,
+		notification.ContentCategory,
 	).Scan(&notification.ID, &notification.CreatedAt)
 
 	if err != nil {
