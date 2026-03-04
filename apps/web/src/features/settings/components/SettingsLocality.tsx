@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { LanguageSelector, UnitSelector, TimezoneSelector, PhotoUploader } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
+import { clearAuth } from '@/shared/utils/token-storage'
 import toast from 'react-hot-toast'
 
 export function SettingsLocality() {
@@ -111,6 +113,13 @@ function ProfileSettingsForm({
         })
     }
 
+    const router = useRouter()
+
+    function handleLogout() {
+        clearAuth()
+        router.push('/auth')
+    }
+
     function handleDeleteAccount() {
         if (window.confirm('Вы уверены?')) {
             toast('Функция в разработке')
@@ -192,10 +201,17 @@ function ProfileSettingsForm({
                 />
             </div>
 
-            <div className="mt-12">
+            {/* Account actions */}
+            <div className="mt-12 space-y-3">
+                <button
+                    onClick={handleLogout}
+                    className="w-full rounded-lg border border-gray-300 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                    Выйти из аккаунта
+                </button>
                 <button
                     onClick={handleDeleteAccount}
-                    className="text-sm text-red-500 transition-colors hover:text-red-600"
+                    className="w-full rounded-lg border border-red-200 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
                 >
                     Удалить аккаунт
                 </button>
