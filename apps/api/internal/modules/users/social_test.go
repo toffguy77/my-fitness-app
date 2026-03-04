@@ -58,3 +58,30 @@ func TestValidateUsernameFormat(t *testing.T) {
 		})
 	}
 }
+
+func TestSanitizeAndValidate_Integration(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{"normal with @", "@ya_thatguy", "ya_thatguy", false},
+		{"full URL", "https://t.me/ya_thatguy", "ya_thatguy", false},
+		{"invalid after sanitize", "@user name!", "", true},
+		{"empty", "", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleaned := sanitizeUsername(tt.input)
+			err := validateUsernameFormat(cleaned)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, cleaned)
+			}
+		})
+	}
+}
