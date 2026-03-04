@@ -11,6 +11,7 @@ import { StepsChart } from '@/features/curator/components/StepsChart'
 import { WaterChart } from '@/features/curator/components/WaterChart'
 import { WorkoutsSection } from '@/features/curator/components/WorkoutsSection'
 import { PhotosSection } from '@/features/curator/components/PhotosSection'
+import { ClientInfoPanel } from '@/features/curator/components/ClientInfoPanel'
 import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
 
 const RECENT_DAYS_COUNT = 3
@@ -291,7 +292,7 @@ export default function ClientDetailPage() {
     return (
         <div className="px-4 py-6">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-2">
                 <button
                     type="button"
                     onClick={() => router.push('/curator')}
@@ -332,6 +333,12 @@ export default function ClientDetailPage() {
                     Написать
                 </button>
             </div>
+
+            {detail && (
+                <div className="mb-4 ml-12">
+                    <ClientInfoPanel detail={detail} />
+                </div>
+            )}
 
             {loading && (
                 <div className="flex items-center justify-center py-12">
