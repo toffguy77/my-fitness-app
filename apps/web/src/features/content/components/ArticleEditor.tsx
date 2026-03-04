@@ -131,10 +131,11 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
         try {
             if (article) {
                 // Editing existing article
-                await contentApi.updateArticle(article.id, {
+                const updated = await contentApi.updateArticle(article.id, {
                     ...data,
                     body,
                 } as UpdateArticleRequest)
+                setArticle(updated)
             } else {
                 // Creating new article
                 const created = await contentApi.createArticle(
@@ -144,8 +145,8 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
                 if (body.trim()) {
                     await contentApi.updateArticle(created.id, { body })
                 }
+                setArticle(created)
             }
-            router.push('/curator/content')
         } catch (err) {
             setError(
                 err instanceof Error ? err.message : 'Ошибка сохранения'

@@ -54,6 +54,15 @@ func NewService(db *database.DB, log *logger.Logger, s3 *storage.S3Client) *Serv
 	}
 }
 
+var errS3NotConfigured = fmt.Errorf("S3 storage is not configured for content")
+
+func (s *Service) requireS3() error {
+	if s.s3 == nil {
+		return errS3NotConfigured
+	}
+	return nil
+}
+
 // verifyOwnership checks that the article belongs to the given author.
 // Returns an error if the article does not exist or does not belong to the author.
 func (s *Service) verifyOwnership(ctx context.Context, authorID int64, articleID string) error {
@@ -198,7 +207,7 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 	}
 
 	// Fetch body from S3 via signed URL
-	if contentS3Key.Valid && contentS3Key.String != "" {
+	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
 		signedURL, err := s.s3.GetSignedURL(ctx, contentS3Key.String, 15*time.Minute)
 		if err != nil {
 			s.log.Error("Failed to get signed URL for article body", "error", err, "key", contentS3Key.String)
@@ -348,6 +357,9 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 
 	// Upload body to S3 if provided
 	if req.Body != nil {
+		if err := s.requireS3(); err != nil {
+			return nil, err
+		}
 		s3Key := fmt.Sprintf("content/%s/body.md", articleID)
 		bodyBytes := []byte(*req.Body)
 		_, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(bodyBytes), "text/markdown", int64(len(bodyBytes)))
@@ -454,9 +466,11 @@ func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID s
 	}
 
 	// Best-effort S3 cleanup: delete body.md
-	bodyKey := fmt.Sprintf("content/%s/body.md", articleID)
-	if err := s.s3.DeleteFile(ctx, bodyKey); err != nil {
-		s.log.Error("Failed to delete article body from S3 (best-effort)", "error", err, "key", bodyKey)
+	if s.s3 != nil {
+		bodyKey := fmt.Sprintf("content/%s/body.md", articleID)
+		if err := s.s3.DeleteFile(ctx, bodyKey); err != nil {
+			s.log.Error("Failed to delete article body from S3 (best-effort)", "error", err, "key", bodyKey)
+		}
 	}
 
 	s.log.LogDatabaseQuery("DeleteArticle", time.Since(startTime), nil, map[string]interface{}{
@@ -593,6 +607,9 @@ func (s *Service) UnpublishArticle(ctx context.Context, authorID int64, articleI
 
 // UploadMedia uploads a media file for an article and returns the S3 URL.
 func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error) {
+	if err := s.requireS3(); err != nil {
+		return "", err
+	}
 	if !isAdmin {
 		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
 			return "", err
@@ -629,6 +646,9 @@ func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID str
 
 // UploadMarkdownFile reads a .md file, creates an article, and uploads the body to S3.
 func (s *Service) UploadMarkdownFile(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error) {
+	if err := s.requireS3(); err != nil {
+		return nil, err
+	}
 	src, err := file.Open()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open markdown file: %w", err)
@@ -800,7 +820,7 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 	}
 
 	// Fetch body from S3 via signed URL
-	if contentS3Key.Valid && contentS3Key.String != "" {
+	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
 		signedURL, err := s.s3.GetSignedURL(ctx, contentS3Key.String, 15*time.Minute)
 		if err != nil {
 			s.log.Error("Failed to get signed URL for feed article body", "error", err, "key", contentS3Key.String)

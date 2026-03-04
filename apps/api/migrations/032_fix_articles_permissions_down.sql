@@ -1,0 +1,6 @@
+DO $$
+BEGIN
+    EXECUTE 'REVOKE ALL ON TABLE articles FROM PUBLIC';
+    EXECUTE 'REVOKE ALL ON TABLE article_audience FROM PUBLIC';
+END
+$$;
