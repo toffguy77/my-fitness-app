@@ -71,22 +71,6 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
 
     const dateStr = formatLocalDate(date)
 
-    useEffect(() => {
-        apiClient.get<{ glasses: number; goal: number; glass_size: number; enabled: boolean }>(
-            `/backend-api/v1/food-tracker/water?date=${dateStr}`
-        )
-            .then(data => {
-                setGlasses(data.glasses)
-                setGoal(data.goal)
-                setGlassSize(data.glass_size)
-                setEnabled(data.enabled)
-            })
-            .catch(() => {})
-    }, [dateStr])
-
-    if (enabled === false) return null
-    if (enabled === null) return null
-
     const percentage = useMemo(() => goal > 0 ? Math.round((glasses / goal) * 100) : 0, [glasses, goal])
     const isGoalReached = glasses >= goal
 
@@ -109,6 +93,22 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
             setIsAdding(false)
         }
     }, [dateStr, glasses])
+
+    useEffect(() => {
+        apiClient.get<{ glasses: number; goal: number; glass_size: number; enabled: boolean }>(
+            `/backend-api/v1/food-tracker/water?date=${dateStr}`
+        )
+            .then(data => {
+                setGlasses(data.glasses)
+                setGoal(data.goal)
+                setGlassSize(data.glass_size)
+                setEnabled(data.enabled)
+            })
+            .catch(() => {})
+    }, [dateStr])
+
+    if (enabled === false) return null
+    if (enabled === null) return null
 
     const isToday = dateStr === formatLocalDate(new Date())
     const showAttention = isToday && glasses === 0
