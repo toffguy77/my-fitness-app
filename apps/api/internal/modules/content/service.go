@@ -1,12 +1,19 @@
 package content
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
+	"fmt"
+	"io"
 	"mime/multipart"
+	"strings"
+	"time"
 
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/google/uuid"
 )
 
 // ServiceInterface defines the interface for content service operations
@@ -45,4 +52,576 @@ func NewService(db *database.DB, log *logger.Logger, s3 *storage.S3Client) *Serv
 		log: log,
 		s3:  s3,
 	}
+}
+
+// verifyOwnership checks that the article belongs to the given author.
+// Returns an error if the article does not exist or does not belong to the author.
+func (s *Service) verifyOwnership(ctx context.Context, authorID int64, articleID string) error {
+	var ownerID int64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT author_id FROM articles WHERE id = $1`, articleID,
+	).Scan(&ownerID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("article not found")
+		}
+		return fmt.Errorf("failed to verify article ownership: %w", err)
+	}
+	if ownerID != authorID {
+		return fmt.Errorf("unauthorized: article does not belong to author")
+	}
+	return nil
+}
+
+// CreateArticle creates a new article in the database.
+func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error) {
+	startTime := time.Now()
+
+	id := uuid.New().String()
+	contentS3Key := fmt.Sprintf("content/%s/body.md", id)
+
+	query := `
+		INSERT INTO articles (id, author_id, title, excerpt, category, audience_scope, content_s3_key, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', NOW(), NOW())
+		RETURNING id, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
+		          scheduled_at, published_at, created_at, updated_at
+	`
+
+	var article Article
+	var scheduledAt, publishedAt sql.NullTime
+	err := s.db.QueryRowContext(ctx, query,
+		id, authorID, req.Title, req.Excerpt, req.Category, req.AudienceScope, contentS3Key,
+	).Scan(
+		&article.ID, &article.AuthorID, &article.Title, &article.Excerpt,
+		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
+		&scheduledAt, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
+	)
+	if err != nil {
+		s.log.Error("Failed to create article", "error", err)
+		return nil, fmt.Errorf("failed to create article: %w", err)
+	}
+
+	if scheduledAt.Valid {
+		article.ScheduledAt = &scheduledAt.Time
+	}
+	if publishedAt.Valid {
+		article.PublishedAt = &publishedAt.Time
+	}
+
+	// Get author name
+	var authorName sql.NullString
+	_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(name, '') FROM users WHERE id = $1`, authorID).Scan(&authorName)
+	if authorName.Valid {
+		article.AuthorName = authorName.String
+	}
+
+	// Insert audience rows if scope is "selected"
+	if req.AudienceScope == "selected" && len(req.ClientIDs) > 0 {
+		if err := s.insertAudienceRows(ctx, id, req.ClientIDs); err != nil {
+			s.log.Error("Failed to insert article audience rows", "error", err, "article_id", id)
+			return nil, fmt.Errorf("failed to insert audience rows: %w", err)
+		}
+	}
+
+	s.log.LogDatabaseQuery("CreateArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": id,
+		"author_id":  authorID,
+	})
+
+	return &article, nil
+}
+
+// insertAudienceRows inserts rows into article_audience for the given client IDs.
+func (s *Service) insertAudienceRows(ctx context.Context, articleID string, clientIDs []int64) error {
+	if len(clientIDs) == 0 {
+		return nil
+	}
+
+	valueStrings := make([]string, 0, len(clientIDs))
+	args := make([]any, 0, len(clientIDs)*2)
+	for i, clientID := range clientIDs {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2))
+		args = append(args, articleID, clientID)
+	}
+
+	query := fmt.Sprintf(
+		`INSERT INTO article_audience (article_id, client_id) VALUES %s ON CONFLICT DO NOTHING`,
+		strings.Join(valueStrings, ", "),
+	)
+
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
+
+// GetArticle retrieves a single article with its body content.
+func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID string) (*Article, error) {
+	startTime := time.Now()
+
+	query := `
+		SELECT a.id, a.author_id, COALESCE(u.name, '') AS author_name,
+		       a.title, a.excerpt, COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
+		       a.content_s3_key, a.scheduled_at, a.published_at, a.created_at, a.updated_at
+		FROM articles a
+		JOIN users u ON u.id = a.author_id
+		WHERE a.id = $1
+	`
+
+	var article Article
+	var contentS3Key sql.NullString
+	var scheduledAt, publishedAt sql.NullTime
+
+	err := s.db.QueryRowContext(ctx, query, articleID).Scan(
+		&article.ID, &article.AuthorID, &article.AuthorName,
+		&article.Title, &article.Excerpt, &article.CoverImageURL,
+		&article.Category, &article.Status, &article.AudienceScope,
+		&contentS3Key, &scheduledAt, &publishedAt,
+		&article.CreatedAt, &article.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("article not found")
+		}
+		s.log.Error("Failed to get article", "error", err, "article_id", articleID)
+		return nil, fmt.Errorf("failed to get article: %w", err)
+	}
+
+	// Ownership check
+	if article.AuthorID != authorID {
+		return nil, fmt.Errorf("unauthorized: article does not belong to author")
+	}
+
+	if scheduledAt.Valid {
+		article.ScheduledAt = &scheduledAt.Time
+	}
+	if publishedAt.Valid {
+		article.PublishedAt = &publishedAt.Time
+	}
+
+	// Fetch body from S3 via signed URL
+	if contentS3Key.Valid && contentS3Key.String != "" {
+		signedURL, err := s.s3.GetSignedURL(ctx, contentS3Key.String, 15*time.Minute)
+		if err != nil {
+			s.log.Error("Failed to get signed URL for article body", "error", err, "key", contentS3Key.String)
+			// Non-fatal: return article without body
+		} else {
+			article.Body = signedURL
+		}
+	}
+
+	s.log.LogDatabaseQuery("GetArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": articleID,
+		"author_id":  authorID,
+	})
+
+	return &article, nil
+}
+
+// ListArticles returns all articles for a given author, with optional status and category filters.
+func (s *Service) ListArticles(ctx context.Context, authorID int64, status string, category string) (*ArticlesListResponse, error) {
+	startTime := time.Now()
+
+	query := `
+		SELECT a.id, a.author_id, COALESCE(u.name, '') AS author_name,
+		       a.title, a.excerpt, COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
+		       a.scheduled_at, a.published_at, a.created_at, a.updated_at
+		FROM articles a
+		JOIN users u ON u.id = a.author_id
+		WHERE a.author_id = $1
+	`
+	args := []any{authorID}
+	argIdx := 2
+
+	if status != "" {
+		query += fmt.Sprintf(" AND a.status = $%d", argIdx)
+		args = append(args, status)
+		argIdx++
+	}
+	if category != "" {
+		query += fmt.Sprintf(" AND a.category = $%d", argIdx)
+		args = append(args, category)
+		argIdx++
+	}
+
+	query += " ORDER BY a.created_at DESC"
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		s.log.Error("Failed to list articles", "error", err, "author_id", authorID)
+		return nil, fmt.Errorf("failed to list articles: %w", err)
+	}
+	defer rows.Close()
+
+	articles := make([]Article, 0)
+	for rows.Next() {
+		var a Article
+		var scheduledAt, publishedAt sql.NullTime
+
+		if err := rows.Scan(
+			&a.ID, &a.AuthorID, &a.AuthorName,
+			&a.Title, &a.Excerpt, &a.CoverImageURL,
+			&a.Category, &a.Status, &a.AudienceScope,
+			&scheduledAt, &publishedAt, &a.CreatedAt, &a.UpdatedAt,
+		); err != nil {
+			s.log.Error("Failed to scan article row", "error", err)
+			return nil, fmt.Errorf("failed to scan article row: %w", err)
+		}
+
+		if scheduledAt.Valid {
+			a.ScheduledAt = &scheduledAt.Time
+		}
+		if publishedAt.Valid {
+			a.PublishedAt = &publishedAt.Time
+		}
+
+		articles = append(articles, a)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating article rows: %w", err)
+	}
+
+	s.log.LogDatabaseQuery("ListArticles", time.Since(startTime), nil, map[string]interface{}{
+		"author_id": authorID,
+		"count":     len(articles),
+		"status":    status,
+		"category":  category,
+	})
+
+	return &ArticlesListResponse{
+		Articles: articles,
+		Total:    len(articles),
+	}, nil
+}
+
+// UpdateArticle updates an article with only the provided (non-nil) fields.
+func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest) (*Article, error) {
+	startTime := time.Now()
+
+	// Verify ownership
+	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+		return nil, err
+	}
+
+	// Build dynamic SET clause
+	setClauses := []string{}
+	args := []any{}
+	argIdx := 1
+
+	if req.Title != nil {
+		setClauses = append(setClauses, fmt.Sprintf("title = $%d", argIdx))
+		args = append(args, *req.Title)
+		argIdx++
+	}
+	if req.Excerpt != nil {
+		setClauses = append(setClauses, fmt.Sprintf("excerpt = $%d", argIdx))
+		args = append(args, *req.Excerpt)
+		argIdx++
+	}
+	if req.Category != nil {
+		setClauses = append(setClauses, fmt.Sprintf("category = $%d", argIdx))
+		args = append(args, *req.Category)
+		argIdx++
+	}
+	if req.AudienceScope != nil {
+		setClauses = append(setClauses, fmt.Sprintf("audience_scope = $%d", argIdx))
+		args = append(args, *req.AudienceScope)
+		argIdx++
+	}
+	if req.CoverImageURL != nil {
+		setClauses = append(setClauses, fmt.Sprintf("cover_image_url = $%d", argIdx))
+		args = append(args, *req.CoverImageURL)
+		argIdx++
+	}
+
+	// Always update updated_at
+	setClauses = append(setClauses, "updated_at = NOW()")
+
+	// Upload body to S3 if provided
+	if req.Body != nil {
+		s3Key := fmt.Sprintf("content/%s/body.md", articleID)
+		bodyBytes := []byte(*req.Body)
+		_, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(bodyBytes), "text/markdown", int64(len(bodyBytes)))
+		if err != nil {
+			s.log.Error("Failed to upload article body to S3", "error", err, "article_id", articleID)
+			return nil, fmt.Errorf("failed to upload article body: %w", err)
+		}
+	}
+
+	if len(setClauses) == 0 {
+		// Nothing to update besides updated_at which is always included
+		setClauses = append(setClauses, "updated_at = NOW()")
+	}
+
+	// Add articleID as last arg
+	args = append(args, articleID)
+
+	query := fmt.Sprintf(
+		`UPDATE articles SET %s WHERE id = $%d
+		 RETURNING id, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
+		           scheduled_at, published_at, created_at, updated_at`,
+		strings.Join(setClauses, ", "), argIdx,
+	)
+
+	var article Article
+	var scheduledAt, publishedAt sql.NullTime
+
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(
+		&article.ID, &article.AuthorID, &article.Title, &article.Excerpt,
+		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
+		&scheduledAt, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
+	)
+	if err != nil {
+		s.log.Error("Failed to update article", "error", err, "article_id", articleID)
+		return nil, fmt.Errorf("failed to update article: %w", err)
+	}
+
+	if scheduledAt.Valid {
+		article.ScheduledAt = &scheduledAt.Time
+	}
+	if publishedAt.Valid {
+		article.PublishedAt = &publishedAt.Time
+	}
+
+	// Get author name
+	var authorName sql.NullString
+	_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(name, '') FROM users WHERE id = $1`, authorID).Scan(&authorName)
+	if authorName.Valid {
+		article.AuthorName = authorName.String
+	}
+
+	// Handle audience scope changes
+	if req.AudienceScope != nil {
+		if *req.AudienceScope == "selected" {
+			// Delete old rows and insert new ones
+			_, _ = s.db.ExecContext(ctx, `DELETE FROM article_audience WHERE article_id = $1`, articleID)
+			if len(req.ClientIDs) > 0 {
+				if err := s.insertAudienceRows(ctx, articleID, req.ClientIDs); err != nil {
+					s.log.Error("Failed to update article audience", "error", err, "article_id", articleID)
+					return nil, fmt.Errorf("failed to update audience rows: %w", err)
+				}
+			}
+		} else {
+			// Non-selected scope: remove all audience rows
+			_, _ = s.db.ExecContext(ctx, `DELETE FROM article_audience WHERE article_id = $1`, articleID)
+		}
+	}
+
+	s.log.LogDatabaseQuery("UpdateArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": articleID,
+		"author_id":  authorID,
+	})
+
+	return &article, nil
+}
+
+// DeleteArticle deletes an article and its S3 content.
+func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID string) error {
+	startTime := time.Now()
+
+	// Verify ownership
+	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+		return err
+	}
+
+	// Delete article row (cascades to article_audience)
+	result, err := s.db.ExecContext(ctx, `DELETE FROM articles WHERE id = $1 AND author_id = $2`, articleID, authorID)
+	if err != nil {
+		s.log.Error("Failed to delete article", "error", err, "article_id", articleID)
+		return fmt.Errorf("failed to delete article: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("article not found")
+	}
+
+	// Best-effort S3 cleanup: delete body.md
+	bodyKey := fmt.Sprintf("content/%s/body.md", articleID)
+	if err := s.s3.DeleteFile(ctx, bodyKey); err != nil {
+		s.log.Error("Failed to delete article body from S3 (best-effort)", "error", err, "key", bodyKey)
+	}
+
+	s.log.LogDatabaseQuery("DeleteArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": articleID,
+		"author_id":  authorID,
+	})
+
+	return nil
+}
+
+// PublishArticle sets an article's status to published.
+func (s *Service) PublishArticle(ctx context.Context, authorID int64, articleID string) error {
+	startTime := time.Now()
+
+	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+		return err
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE articles SET status = 'published', published_at = NOW(), updated_at = NOW() WHERE id = $1 AND author_id = $2`,
+		articleID, authorID,
+	)
+	if err != nil {
+		s.log.Error("Failed to publish article", "error", err, "article_id", articleID)
+		return fmt.Errorf("failed to publish article: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("article not found")
+	}
+
+	s.log.LogDatabaseQuery("PublishArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": articleID,
+		"author_id":  authorID,
+	})
+
+	return nil
+}
+
+// ScheduleArticle sets an article to be published at a future time.
+func (s *Service) ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest) error {
+	startTime := time.Now()
+
+	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+		return err
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE articles SET status = 'scheduled', scheduled_at = $1, updated_at = NOW() WHERE id = $2 AND author_id = $3`,
+		req.ScheduledAt, articleID, authorID,
+	)
+	if err != nil {
+		s.log.Error("Failed to schedule article", "error", err, "article_id", articleID)
+		return fmt.Errorf("failed to schedule article: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("article not found")
+	}
+
+	s.log.LogDatabaseQuery("ScheduleArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id":   articleID,
+		"author_id":    authorID,
+		"scheduled_at": req.ScheduledAt,
+	})
+
+	return nil
+}
+
+// UnpublishArticle reverts an article back to draft status.
+func (s *Service) UnpublishArticle(ctx context.Context, authorID int64, articleID string) error {
+	startTime := time.Now()
+
+	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+		return err
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE articles SET status = 'draft', scheduled_at = NULL, published_at = NULL, updated_at = NOW() WHERE id = $1 AND author_id = $2`,
+		articleID, authorID,
+	)
+	if err != nil {
+		s.log.Error("Failed to unpublish article", "error", err, "article_id", articleID)
+		return fmt.Errorf("failed to unpublish article: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("article not found")
+	}
+
+	s.log.LogDatabaseQuery("UnpublishArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": articleID,
+		"author_id":  authorID,
+	})
+
+	return nil
+}
+
+// UploadMedia uploads a media file for an article and returns the S3 URL.
+func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader) (string, error) {
+	if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
+		return "", err
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	data, err := io.ReadAll(src)
+	if err != nil {
+		return "", fmt.Errorf("failed to read uploaded file: %w", err)
+	}
+
+	s3Key := fmt.Sprintf("content/%s/media/%s", articleID, file.Filename)
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	url, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(data), contentType, int64(len(data)))
+	if err != nil {
+		s.log.Error("Failed to upload media file", "error", err, "article_id", articleID, "filename", file.Filename)
+		return "", fmt.Errorf("failed to upload media file: %w", err)
+	}
+
+	s.log.Info("Media file uploaded", "article_id", articleID, "filename", file.Filename, "url", url)
+
+	return url, nil
+}
+
+// UploadMarkdownFile reads a .md file, creates an article, and uploads the body to S3.
+func (s *Service) UploadMarkdownFile(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error) {
+	src, err := file.Open()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open markdown file: %w", err)
+	}
+	defer src.Close()
+
+	mdContent, err := io.ReadAll(src)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read markdown file: %w", err)
+	}
+
+	// Create article record
+	article, err := s.CreateArticle(ctx, authorID, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create article from markdown: %w", err)
+	}
+
+	// Upload body to S3
+	s3Key := fmt.Sprintf("content/%s/body.md", article.ID)
+	_, err = s.s3.UploadFile(ctx, s3Key, bytes.NewReader(mdContent), "text/markdown", int64(len(mdContent)))
+	if err != nil {
+		s.log.Error("Failed to upload markdown body to S3", "error", err, "article_id", article.ID)
+		// Clean up: delete the article row since we couldn't upload the body
+		_, _ = s.db.ExecContext(ctx, `DELETE FROM articles WHERE id = $1`, article.ID)
+		return nil, fmt.Errorf("failed to upload markdown body: %w", err)
+	}
+
+	s.log.Info("Markdown file uploaded and article created", "article_id", article.ID, "filename", file.Filename)
+
+	return article, nil
+}
+
+// GetFeed returns published articles visible to a client.
+func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error) {
+	// Placeholder — implemented in Task 6
+	return &FeedResponse{Articles: []ArticleCard{}, Total: 0}, nil
+}
+
+// GetFeedArticle returns a single published article for a client.
+func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID string) (*Article, error) {
+	// Placeholder — implemented in Task 6
+	return nil, fmt.Errorf("not implemented")
+}
+
+// PublishScheduledArticles publishes articles whose scheduled_at has passed.
+func (s *Service) PublishScheduledArticles(ctx context.Context) error {
+	// Placeholder — implemented in Task 6
+	return nil
 }
