@@ -61,10 +61,10 @@ func TestSearchFoods(t *testing.T) {
 			AddRow(foodID, "Apple", nil, "fruits", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, limit+1, 0).
+			WithArgs(query, limit+1, 0, int64(1)).
 			WillReturnRows(rows)
 
-		result, err := service.SearchFoods(ctx, query, limit, 0)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
@@ -89,10 +89,10 @@ func TestSearchFoods(t *testing.T) {
 			AddRow(foodID, "Яблоко", nil, "фрукты", 100.0, "г", 52.0, 0.3, 0.2, 14.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, limit+1, 0).
+			WithArgs(query, limit+1, 0, int64(1)).
 			WillReturnRows(rows)
 
-		result, err := service.SearchFoods(ctx, query, limit, 0)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
@@ -111,10 +111,10 @@ func TestSearchFoods(t *testing.T) {
 		rows := sqlmock.NewRows(searchColumns)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, limit+1, 0).
+			WithArgs(query, limit+1, 0, int64(1)).
 			WillReturnRows(rows)
 
-		result, err := service.SearchFoods(ctx, query, limit, 0)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
@@ -130,7 +130,7 @@ func TestSearchFoods(t *testing.T) {
 		query := "ab" // Only 2 characters, need 3
 		limit := 20
 
-		result, err := service.SearchFoods(ctx, query, limit, 0)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		assert.Error(t, err)
 		assert.Nil(t, result)
@@ -147,10 +147,10 @@ func TestSearchFoods(t *testing.T) {
 		rows := sqlmock.NewRows(searchColumns)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, 21, 0). // Default 20 + 1 for hasMore detection
+			WithArgs(query, 21, 0, int64(1)). // Default 20 + 1 for hasMore detection
 			WillReturnRows(rows)
 
-		_, err := service.SearchFoods(ctx, query, limit, 0)
+		_, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -166,10 +166,10 @@ func TestSearchFoods(t *testing.T) {
 		rows := sqlmock.NewRows(searchColumns)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, 51, 0). // Capped at 50 + 1 for hasMore detection
+			WithArgs(query, 51, 0, int64(1)). // Capped at 50 + 1 for hasMore detection
 			WillReturnRows(rows)
 
-		_, err := service.SearchFoods(ctx, query, limit, 0)
+		_, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -191,10 +191,10 @@ func TestSearchFoods(t *testing.T) {
 			AddRow(foodID2, "Курица бедро", nil, "мясо", 100.0, "г", 209.0, 26.0, 10.9, 0.0, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, limit+1, 0).
+			WithArgs(query, limit+1, 0, int64(1)).
 			WillReturnRows(rows)
 
-		result, err := service.SearchFoods(ctx, query, limit, 0)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
@@ -211,10 +211,10 @@ func TestSearchFoods(t *testing.T) {
 		limit := 20
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, limit+1, 0).
+			WithArgs(query, limit+1, 0, int64(1)).
 			WillReturnError(sql.ErrConnDone)
 
-		result, err := service.SearchFoods(ctx, query, limit, 0)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		assert.Error(t, err)
 		assert.Nil(t, result)
@@ -236,10 +236,10 @@ func TestSearchFoods(t *testing.T) {
 			AddRow(foodID, "Рис белый", nil, "крупы", 100.0, "г", 130.0, 2.7, 0.3, 28.2, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, limit+1, 0).
+			WithArgs(query, limit+1, 0, int64(1)).
 			WillReturnRows(rows)
 
-		result, err := service.SearchFoods(ctx, query, limit, 0)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, 0)
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
@@ -268,10 +268,10 @@ func TestSearchFoods(t *testing.T) {
 			AddRow(foodID, "Молоко 3.2%", nil, "молочные", 100.0, "мл", 60.0, 2.9, 3.2, 4.7, nil, nil, nil, nil, "database", true, now, now, 0.1, 1)
 
 		mock.ExpectQuery(`WITH matched`).
-			WithArgs(query, limit+1, offset).
+			WithArgs(query, limit+1, offset, int64(1)).
 			WillReturnRows(rows)
 
-		result, err := service.SearchFoods(ctx, query, limit, offset)
+		result, err := service.SearchFoods(ctx, int64(1), query, limit, offset)
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
