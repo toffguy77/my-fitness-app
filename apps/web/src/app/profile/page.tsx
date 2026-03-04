@@ -14,6 +14,7 @@ const menuItems = [
     { label: 'Настройки профиля', href: '/settings/profile' },
     { label: 'Аккаунты социальных сетей', href: '/settings/social' },
     { label: 'Apple Health', href: '/settings/apple-health' },
+    { label: 'Уведомления', href: '/settings/notifications' },
 ]
 
 export default function ProfilePage() {
