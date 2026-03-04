@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"mime"
 	"net/smtp"
 	"time"
 
@@ -211,7 +212,7 @@ func (s *Service) sendEmail(ctx context.Context, to, subject, body string) error
 	headers := make(map[string]string)
 	headers["From"] = from
 	headers["To"] = to
-	headers["Subject"] = subject
+	headers["Subject"] = mime.QEncoding.Encode("utf-8", subject)
 	headers["MIME-Version"] = "1.0"
 	headers["Content-Type"] = "text/html; charset=UTF-8"
 	headers["Date"] = time.Now().Format(time.RFC1123Z)
