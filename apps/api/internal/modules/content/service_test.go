@@ -64,7 +64,7 @@ func TestPublishArticle(t *testing.T) {
 			WithArgs(articleID, authorID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		err := service.PublishArticle(ctx, authorID, articleID)
+		err := service.PublishArticle(ctx, authorID, articleID, false)
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -82,7 +82,7 @@ func TestPublishArticle(t *testing.T) {
 			WithArgs(articleID).
 			WillReturnError(sql.ErrNoRows)
 
-		err := service.PublishArticle(ctx, authorID, articleID)
+		err := service.PublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "article not found")
@@ -102,7 +102,7 @@ func TestPublishArticle(t *testing.T) {
 			WithArgs(articleID).
 			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(otherAuthorID))
 
-		err := service.PublishArticle(ctx, authorID, articleID)
+		err := service.PublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unauthorized")
@@ -124,7 +124,7 @@ func TestPublishArticle(t *testing.T) {
 			WithArgs(articleID, authorID).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := service.PublishArticle(ctx, authorID, articleID)
+		err := service.PublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "article not found")
@@ -159,7 +159,7 @@ func TestScheduleArticle(t *testing.T) {
 
 		err := service.ScheduleArticle(ctx, authorID, articleID, ScheduleArticleRequest{
 			ScheduledAt: scheduledAt,
-		})
+		}, false)
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -178,7 +178,7 @@ func TestScheduleArticle(t *testing.T) {
 
 		err := service.ScheduleArticle(ctx, authorID, articleID, ScheduleArticleRequest{
 			ScheduledAt: time.Now().Add(24 * time.Hour),
-		})
+		}, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "article not found")
@@ -203,7 +203,7 @@ func TestScheduleArticle(t *testing.T) {
 
 		err := service.ScheduleArticle(ctx, authorID, articleID, ScheduleArticleRequest{
 			ScheduledAt: scheduledAt,
-		})
+		}, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "article not found")
@@ -233,7 +233,7 @@ func TestUnpublishArticle(t *testing.T) {
 			WithArgs(articleID, authorID).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		err := service.UnpublishArticle(ctx, authorID, articleID)
+		err := service.UnpublishArticle(ctx, authorID, articleID, false)
 
 		require.NoError(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -250,7 +250,7 @@ func TestUnpublishArticle(t *testing.T) {
 			WithArgs(articleID).
 			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(int64(999)))
 
-		err := service.UnpublishArticle(ctx, authorID, articleID)
+		err := service.UnpublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unauthorized")
@@ -272,7 +272,7 @@ func TestUnpublishArticle(t *testing.T) {
 			WithArgs(articleID, authorID).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := service.UnpublishArticle(ctx, authorID, articleID)
+		err := service.UnpublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "article not found")
@@ -354,7 +354,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs(authorID).
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "")
+		result, err := service.ListArticles(ctx, authorID, "", "", false)
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -390,7 +390,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs(authorID, "published").
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "published", "")
+		result, err := service.ListArticles(ctx, authorID, "published", "", false)
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -414,7 +414,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs(authorID, "training").
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "training")
+		result, err := service.ListArticles(ctx, authorID, "", "training", false)
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -435,7 +435,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs(authorID, "published", "nutrition").
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "published", "nutrition")
+		result, err := service.ListArticles(ctx, authorID, "published", "nutrition", false)
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -456,7 +456,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs(authorID).
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "")
+		result, err := service.ListArticles(ctx, authorID, "", "", false)
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -481,7 +481,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs(authorID).
 			WillReturnRows(rows)
 
-		result, err := service.ListArticles(ctx, authorID, "", "")
+		result, err := service.ListArticles(ctx, authorID, "", "", false)
 
 		require.NoError(t, err)
 		require.Len(t, result.Articles, 1)
@@ -502,7 +502,7 @@ func TestListArticles(t *testing.T) {
 			WithArgs(authorID).
 			WillReturnError(fmt.Errorf("connection refused"))
 
-		result, err := service.ListArticles(ctx, authorID, "", "")
+		result, err := service.ListArticles(ctx, authorID, "", "", false)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -530,7 +530,7 @@ func TestDeleteArticle(t *testing.T) {
 			WithArgs(articleID).
 			WillReturnError(sql.ErrNoRows)
 
-		err := service.DeleteArticle(ctx, authorID, articleID)
+		err := service.DeleteArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "article not found")
@@ -548,7 +548,7 @@ func TestDeleteArticle(t *testing.T) {
 			WithArgs(articleID).
 			WillReturnRows(sqlmock.NewRows([]string{"author_id"}).AddRow(int64(999)))
 
-		err := service.DeleteArticle(ctx, authorID, articleID)
+		err := service.DeleteArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unauthorized")
@@ -570,7 +570,7 @@ func TestDeleteArticle(t *testing.T) {
 			WithArgs(articleID, authorID).
 			WillReturnError(fmt.Errorf("foreign key violation"))
 
-		err := service.DeleteArticle(ctx, authorID, articleID)
+		err := service.DeleteArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to delete article")
@@ -592,7 +592,7 @@ func TestDeleteArticle(t *testing.T) {
 			WithArgs(articleID, authorID).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := service.DeleteArticle(ctx, authorID, articleID)
+		err := service.DeleteArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "article not found")
