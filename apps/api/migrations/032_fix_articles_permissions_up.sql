@@ -1,0 +1,6 @@
+DO $$
+BEGIN
+    EXECUTE 'GRANT ALL ON TABLE articles TO PUBLIC';
+    EXECUTE 'GRANT ALL ON TABLE article_audience TO PUBLIC';
+END
+$$;
