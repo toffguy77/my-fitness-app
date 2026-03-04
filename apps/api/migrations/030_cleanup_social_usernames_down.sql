@@ -1,0 +1,2 @@
+-- No rollback needed — data cleanup is idempotent
+-- Original values with @ prefix were invalid and not recoverable
