@@ -32,12 +32,13 @@ const (
 	TypeSystemUpdate    NotificationType = "system_update"
 	TypeNewFeature      NotificationType = "new_feature"
 	TypeGeneral         NotificationType = "general"
+	TypeNewContent      NotificationType = "new_content"
 )
 
 // IsValid checks if the notification type is valid
 func (t NotificationType) IsValid() bool {
 	switch t {
-	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral:
+	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral, TypeNewContent:
 		return true
 	}
 	return false
@@ -52,8 +53,10 @@ type Notification struct {
 	Title     string               `json:"title" db:"title"`
 	Content   string               `json:"content" db:"content"`
 	IconURL   *string              `json:"icon_url,omitempty" db:"icon_url"`
-	CreatedAt time.Time            `json:"created_at" db:"created_at"`
-	ReadAt    *time.Time           `json:"read_at,omitempty" db:"read_at"`
+	CreatedAt       time.Time            `json:"created_at" db:"created_at"`
+	ReadAt          *time.Time           `json:"read_at,omitempty" db:"read_at"`
+	ActionURL       *string              `json:"action_url,omitempty" db:"action_url"`
+	ContentCategory *string              `json:"content_category,omitempty" db:"content_category"`
 }
 
 // Validate validates the notification fields
@@ -117,4 +120,16 @@ type MarkAllAsReadResponse struct {
 type UnreadCountsResponse struct {
 	Main    int `json:"main"`
 	Content int `json:"content"`
+}
+
+// ContentNotificationPreferences represents a user's content notification settings
+type ContentNotificationPreferences struct {
+	MutedCategories []string `json:"muted_categories"`
+	Muted           bool     `json:"muted"`
+}
+
+// UpdatePreferencesRequest is the request body for updating notification preferences
+type UpdatePreferencesRequest struct {
+	MutedCategories []string `json:"muted_categories"`
+	Muted           bool     `json:"muted"`
 }
