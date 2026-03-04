@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useEffect } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardHeader } from './DashboardHeader'
 import { FooterNavigation } from './FooterNavigation'
@@ -9,6 +9,7 @@ import { cn } from '@/shared/utils/cn'
 import { WebSocketProvider } from '@/features/chat'
 import { useNotificationsStore } from '@/features/notifications'
 import { useContentNotificationWS } from '@/features/notifications/hooks/useContentNotificationWS'
+import { NotificationDropdown } from '@/features/notifications/components/NotificationDropdown'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { NavigationItemId } from '../types'
 
@@ -98,8 +99,10 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
             router.push('/profile')
         }
 
+        const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
+
         const handleNotificationClick = () => {
-            router.push('/notifications')
+            setShowNotificationDropdown((prev) => !prev)
         }
 
         return (
@@ -120,14 +123,19 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
                     data-testid="dashboard-layout"
                 >
                     {/* Fixed Header at top (Requirement 3.1) */}
-                    <DashboardHeader
-                        userName={userName}
-                        avatarUrl={avatarUrl}
-                        notificationCount={totalUnreadCount}
-                        onLogoClick={handleLogoClick}
-                        onAvatarClick={handleAvatarClick}
-                        onNotificationClick={handleNotificationClick}
-                    />
+                    <div className="relative">
+                        <DashboardHeader
+                            userName={userName}
+                            avatarUrl={avatarUrl}
+                            notificationCount={totalUnreadCount}
+                            onLogoClick={handleLogoClick}
+                            onAvatarClick={handleAvatarClick}
+                            onNotificationClick={handleNotificationClick}
+                        />
+                        {showNotificationDropdown && (
+                            <NotificationDropdown onClose={() => setShowNotificationDropdown(false)} />
+                        )}
+                    </div>
 
                     {/* Main Content Area (Requirement 3.1, 4.3) */}
                     {/* Padding top/bottom to account for fixed header (64px) and footer (64px + safe area) */}
