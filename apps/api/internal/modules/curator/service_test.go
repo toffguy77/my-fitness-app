@@ -164,6 +164,14 @@ func TestGetClients(t *testing.T) {
 func TestGetClientDetail(t *testing.T) {
 	ctx := context.Background()
 
+	// clientDetailColumns defines the columns returned by the client info JOIN query
+	clientDetailColumns := []string{
+		"id", "name", "avatar_url", "email",
+		"height", "timezone",
+		"telegram_username", "instagram_username",
+		"target_weight", "water_goal",
+	}
+
 	// Helper: set up common mock expectations for a valid client detail call.
 	// Returns the mock so callers can add additional expectations or verify.
 	setupDetailMocks := func(
@@ -177,11 +185,14 @@ func TestGetClientDetail(t *testing.T) {
 			WithArgs(curatorID, clientID).
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
-		// Client info
-		mock.ExpectQuery(`SELECT id, COALESCE`).
+		// Client info (JOIN with user_settings)
+		mock.ExpectQuery(`SELECT u\.id, COALESCE`).
 			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
-				AddRow(clientID, clientName, avatarURL))
+			WillReturnRows(sqlmock.NewRows(clientDetailColumns).
+				AddRow(clientID, clientName, avatarURL, "test@example.com",
+					175.0, "Europe/Moscow",
+					"tg_user", "ig_user",
+					70.0, int64(8)))
 	}
 
 	t.Run("returns multi-day detail for valid curator-client relationship", func(t *testing.T) {
@@ -244,11 +255,6 @@ func TestGetClientDetail(t *testing.T) {
 				AddRow(time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC), 76.0).
 				AddRow(time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC), 75.5))
 
-		// Target weight
-		mock.ExpectQuery(`SELECT target_weight FROM user_settings`).
-			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"target_weight"}).AddRow(70.0))
-
 		// Unread count
 		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
 			WithArgs(curatorID).
@@ -262,6 +268,12 @@ func TestGetClientDetail(t *testing.T) {
 		assert.Equal(t, clientID, detail.ID)
 		assert.Equal(t, "Test Client", detail.Name)
 		assert.Equal(t, "https://avatar.example.com/test.jpg", detail.AvatarURL)
+		assert.Equal(t, "test@example.com", detail.Email)
+		assert.Equal(t, "Europe/Moscow", detail.Timezone)
+		assert.Equal(t, "tg_user", detail.TelegramUsername)
+		assert.Equal(t, "ig_user", detail.InstagramUsername)
+		require.NotNil(t, detail.Height)
+		assert.Equal(t, 175.0, *detail.Height)
 
 		// Check Days (single day mode)
 		require.Len(t, detail.Days, 1)
@@ -388,11 +400,6 @@ func TestGetClientDetail(t *testing.T) {
 		mock.ExpectQuery(`SELECT date, weight FROM daily_metrics`).
 			WithArgs(clientID).
 			WillReturnRows(sqlmock.NewRows([]string{"date", "weight"}))
-
-		// No target weight
-		mock.ExpectQuery(`SELECT target_weight FROM user_settings`).
-			WithArgs(clientID).
-			WillReturnRows(sqlmock.NewRows([]string{"target_weight"}))
 
 		// No unread
 		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
