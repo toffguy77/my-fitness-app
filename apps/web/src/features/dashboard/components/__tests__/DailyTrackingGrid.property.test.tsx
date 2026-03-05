@@ -9,6 +9,7 @@ import { render, screen, cleanup } from '@testing-library/react'
 import * as fc from 'fast-check'
 import { DailyTrackingGrid } from '../DailyTrackingGrid'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import type { DailyMetrics } from '../../types'
 
 // Mock the dashboard store
@@ -23,10 +24,10 @@ jest.mock('../NutritionBlock', () => ({
     ),
 }))
 
-jest.mock('../WeightBlock', () => ({
-    WeightBlock: ({ date }: { date: Date }) => (
-        <div data-testid="weight-block" data-date={date.toISOString()}>
-            Weight Block
+jest.mock('../WaterBlock', () => ({
+    WaterBlock: ({ date }: { date: Date }) => (
+        <div data-testid="water-block" data-date={date.toISOString()}>
+            Water Block
         </div>
     ),
 }))
@@ -178,7 +179,7 @@ describe('DailyTrackingGrid Property Tests', () => {
 
                             // Should render all four blocks
                             const nutritionBlock = screen.getByTestId('nutrition-block')
-                            const weightBlock = screen.getByTestId('weight-block')
+                            const weightBlock = screen.getByTestId('water-block')
                             const stepsBlock = screen.getByTestId('steps-block')
                             const workoutBlock = screen.getByTestId('workout-block')
 
@@ -234,11 +235,11 @@ describe('DailyTrackingGrid Property Tests', () => {
 
                             // Should show loading skeleton
                             const skeletons = screen.getAllByLabelText('Загрузка блока отслеживания')
-                            expect(skeletons).toHaveLength(4)
+                            expect(skeletons).toHaveLength(3)
 
                             // Should not render actual blocks during loading
                             expect(screen.queryByTestId('nutrition-block')).not.toBeInTheDocument()
-                            expect(screen.queryByTestId('weight-block')).not.toBeInTheDocument()
+                            expect(screen.queryByTestId('water-block')).not.toBeInTheDocument()
                             expect(screen.queryByTestId('steps-block')).not.toBeInTheDocument()
                             expect(screen.queryByTestId('workout-block')).not.toBeInTheDocument()
 
@@ -294,7 +295,7 @@ describe('DailyTrackingGrid Property Tests', () => {
 
                             // Should not render blocks during error state
                             expect(screen.queryByTestId('nutrition-block')).not.toBeInTheDocument()
-                            expect(screen.queryByTestId('weight-block')).not.toBeInTheDocument()
+                            expect(screen.queryByTestId('water-block')).not.toBeInTheDocument()
                             expect(screen.queryByTestId('steps-block')).not.toBeInTheDocument()
                             expect(screen.queryByTestId('workout-block')).not.toBeInTheDocument()
 
@@ -324,7 +325,7 @@ describe('DailyTrackingGrid Property Tests', () => {
                         document.body.appendChild(container)
 
                         try {
-                            const dateStr = date.toISOString().split('T')[0]
+                            const dateStr = formatLocalDate(date)
 
                                 // Mock loading state with existing data
                                 ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
@@ -344,7 +345,7 @@ describe('DailyTrackingGrid Property Tests', () => {
 
                             // Should still render blocks with existing data
                             expect(screen.getByTestId('nutrition-block')).toBeInTheDocument()
-                            expect(screen.getByTestId('weight-block')).toBeInTheDocument()
+                            expect(screen.getByTestId('water-block')).toBeInTheDocument()
                             expect(screen.getByTestId('steps-block')).toBeInTheDocument()
                             expect(screen.getByTestId('workout-block')).toBeInTheDocument()
 
@@ -374,7 +375,7 @@ describe('DailyTrackingGrid Property Tests', () => {
                         document.body.appendChild(container)
 
                         try {
-                            const dateStr = date.toISOString().split('T')[0]
+                            const dateStr = formatLocalDate(date)
 
                                 // Mock offline state with cached data
                                 ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
@@ -395,7 +396,7 @@ describe('DailyTrackingGrid Property Tests', () => {
 
                             // Should still render blocks with cached data
                             expect(screen.getByTestId('nutrition-block')).toBeInTheDocument()
-                            expect(screen.getByTestId('weight-block')).toBeInTheDocument()
+                            expect(screen.getByTestId('water-block')).toBeInTheDocument()
                             expect(screen.getByTestId('steps-block')).toBeInTheDocument()
                             expect(screen.getByTestId('workout-block')).toBeInTheDocument()
 

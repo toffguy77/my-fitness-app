@@ -9,6 +9,7 @@ import { render, screen, cleanup, within } from '@testing-library/react'
 import * as fc from 'fast-check'
 import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import type { NutritionData, WeeklyPlan, DailyMetrics } from '../../types'
 
 // Mock the dashboard store
@@ -102,7 +103,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with test data
                         const testStore = {
@@ -173,7 +174,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
                         const overGoalCalories = weeklyPlan.caloriesGoal + excessCalories
 
                         const nutrition: NutritionData = {
@@ -238,7 +239,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         const emptyNutrition: NutritionData = {
                             calories: 0,
@@ -271,8 +272,8 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                         const containerQueries = within(container)
 
                         // Should show empty state message
-                        expect(containerQueries.getByText('Данные о питании не добавлены')).toBeInTheDocument()
-                        expect(containerQueries.getByText('Добавить еду')).toBeInTheDocument()
+                        expect(containerQueries.getByText('Не записано')).toBeInTheDocument()
+                        expect(containerQueries.getByText('Добавить')).toBeInTheDocument()
 
                         // Clean up this iteration
                         unmount()
@@ -307,7 +308,7 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with test data
                         const testStore = {

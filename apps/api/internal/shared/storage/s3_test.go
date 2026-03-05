@@ -45,6 +45,14 @@ func (m *MockS3Client) HeadObject(ctx context.Context, params *s3.HeadObjectInpu
 	return args.Get(0).(*s3.HeadObjectOutput), args.Error(1)
 }
 
+func (m *MockS3Client) GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	args := m.Called(ctx, params)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*s3.GetObjectOutput), args.Error(1)
+}
+
 func createTestLogger() *logger.Logger {
 	return logger.New()
 }

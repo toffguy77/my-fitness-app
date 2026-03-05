@@ -6,8 +6,7 @@ import { FoodTrackerPage } from '@/features/food-tracker/components/FoodTrackerP
 
 export function FoodTrackerPageClient() {
     const router = useRouter();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
     useEffect(() => {
         const token = typeof window !== 'undefined'
@@ -16,23 +15,17 @@ export function FoodTrackerPageClient() {
 
         if (!token) {
             router.push('/auth');
-            return;
         }
-
-        setIsAuthenticated(true);
-        setIsLoading(false);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAuthState(token ? 'authenticated' : 'unauthenticated');
     }, [router]);
 
-    if (isLoading) {
+    if (authState !== 'authenticated') {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto" />
             </div>
         );
-    }
-
-    if (!isAuthenticated) {
-        return null;
     }
 
     return <FoodTrackerPage />;

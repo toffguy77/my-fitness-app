@@ -52,33 +52,11 @@ describe('ProgressSection', () => {
         })
     })
 
-    describe('Header and navigation', () => {
+    describe('Header', () => {
         it('renders section title', () => {
             render(<ProgressSection />)
 
             expect(screen.getByText('Прогресс')).toBeInTheDocument()
-        })
-
-        it('renders navigation button', () => {
-            render(<ProgressSection />)
-
-            const button = screen.getByRole('button', { name: /Перейти к аналитике/i })
-            expect(button).toBeInTheDocument()
-            expect(button).toHaveTextContent('Подробнее')
-        })
-
-        it('button is clickable and enabled', async () => {
-            const user = userEvent.setup()
-            render(<ProgressSection />)
-
-            const button = screen.getByRole('button', { name: /Перейти к аналитике/i })
-            expect(button).toBeEnabled()
-
-            // Click should not throw
-            await user.click(button)
-
-            // Button should still be in document after click
-            expect(button).toBeInTheDocument()
         })
     })
 

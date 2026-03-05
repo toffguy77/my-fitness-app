@@ -55,6 +55,8 @@ jest.mock('lucide-react', () => ({
     User: () => <span data-testid="user-icon">👤</span>,
     Bot: () => <span data-testid="bot-icon">🤖</span>,
     Pencil: () => <span data-testid="pencil-icon">✏</span>,
+    Edit3: () => <span data-testid="edit3-icon">✎</span>,
+    Bookmark: () => <span data-testid="bookmark-icon">🔖</span>,
 }));
 
 // ============================================================================
@@ -85,6 +87,7 @@ const createMockStore = (overrides = {}) => ({
     waterIntake: 0,
     waterGoal: 8,
     glassSize: 250,
+    waterEnabled: true,
     selectedDate: '2024-01-15',
     addWater: jest.fn(),
     ...overrides,
