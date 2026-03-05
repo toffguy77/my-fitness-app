@@ -59,18 +59,28 @@ export function ArticleForm({
     )
 
     // Sync with article prop changes (e.g. after initial load)
+    const articleId = article?.id
+    const articleTitle = article?.title
+    const articleExcerpt = article?.excerpt
+    const articleCategory = article?.category
+    const articleAudienceScope = article?.audience_scope
+    const articleCoverImageUrl = article?.cover_image_url
+    const articleScheduledAt = article?.scheduled_at
+
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
-        if (article) {
-            setTitle(article.title)
-            setExcerpt(article.excerpt ?? '')
-            setCategory(article.category)
-            setAudienceScope(article.audience_scope)
-            setCoverImageUrl(article.cover_image_url ?? '')
-            if (article.scheduled_at) {
-                setScheduledAt(article.scheduled_at.slice(0, 16))
+        if (articleId != null) {
+            setTitle(articleTitle ?? '')
+            setExcerpt(articleExcerpt ?? '')
+            setCategory(articleCategory ?? 'general')
+            setAudienceScope(articleAudienceScope ?? 'all')
+            setCoverImageUrl(articleCoverImageUrl ?? '')
+            if (articleScheduledAt) {
+                setScheduledAt(articleScheduledAt.slice(0, 16))
             }
         }
-    }, [article])
+    }, [articleId, articleTitle, articleExcerpt, articleCategory, articleAudienceScope, articleCoverImageUrl, articleScheduledAt])
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     function handleSave() {
         if (!title.trim()) return

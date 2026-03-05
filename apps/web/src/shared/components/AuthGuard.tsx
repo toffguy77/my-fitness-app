@@ -9,11 +9,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const [checked, setChecked] = useState(false)
 
     useEffect(() => {
-        if (!isAuthenticated()) {
+        const authed = isAuthenticated()
+        if (!authed) {
             router.replace('/auth')
-        } else {
-            setChecked(true)
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setChecked(authed)
     }, [router])
 
     if (!checked) {
