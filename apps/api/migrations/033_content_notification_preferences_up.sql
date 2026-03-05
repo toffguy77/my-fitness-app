@@ -16,6 +16,12 @@ CREATE TABLE content_notification_mute (
 ALTER TABLE notifications ADD COLUMN action_url VARCHAR(500);
 ALTER TABLE notifications ADD COLUMN content_category content_category;
 
+-- Grant permissions
+DO $$ BEGIN
+    EXECUTE 'GRANT ALL ON TABLE content_notification_preferences TO PUBLIC';
+    EXECUTE 'GRANT ALL ON TABLE content_notification_mute TO PUBLIC';
+END $$;
+
 -- Expand the type CHECK constraint to include 'new_content'
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
 ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
