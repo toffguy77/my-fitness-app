@@ -150,7 +150,7 @@ func (s *Service) GetHistory(ctx context.Context, userID int64, days int) ([]Tar
 			COALESCE(SUM(fe.carbs), 0) AS a_carbs
 		FROM generate_series($1::date, $2::date, '1 day') AS d(date)
 		LEFT JOIN daily_calculated_targets t ON t.user_id = $3 AND t.date = d.date
-		LEFT JOIN food_entries fe ON fe.user_id = $3 AND fe.date = d.date::text
+		LEFT JOIN food_entries fe ON fe.user_id = $3 AND fe.date = d.date
 		GROUP BY d.date, t.calories, t.protein, t.fat, t.carbs,
 		         t.bmr, t.tdee, t.workout_bonus, t.weight_used, t.source
 		ORDER BY d.date
