@@ -241,7 +241,8 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		SELECT u.id, COALESCE(u.name, ''), u.avatar_url, u.email,
 		       us.height, COALESCE(us.timezone, 'Europe/Moscow'),
 		       COALESCE(us.telegram_username, ''), COALESCE(us.instagram_username, ''),
-		       us.target_weight, us.water_goal
+		       us.target_weight, us.water_goal,
+		       us.birth_date, us.biological_sex, us.activity_level, us.fitness_goal
 		FROM users u
 		LEFT JOIN user_settings us ON us.user_id = u.id
 		WHERE u.id = $1
@@ -256,11 +257,13 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	var instagramUsername string
 	var targetWeight sql.NullFloat64
 	var waterGoal sql.NullInt64
+	var birthDate, biologicalSex, activityLevel, fitnessGoal sql.NullString
 	if err := s.db.QueryRowContext(ctx, clientQuery, clientID).Scan(
 		&clientID64, &clientName, &avatarURL, &clientEmail,
 		&clientHeight, &clientTimezone,
 		&telegramUsername, &instagramUsername,
 		&targetWeight, &waterGoal,
+		&birthDate, &biologicalSex, &activityLevel, &fitnessGoal,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("client not found")
@@ -538,7 +541,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 			Timezone:          clientTimezone,
 			TelegramUsername:  telegramUsername,
 			InstagramUsername: instagramUsername,
-			TodayKBZHU:       todayKBZHU,
+			TodayKBZHU:        todayKBZHU,
 			Plan:              weeklyPlan,
 			Alerts:            todayAlerts,
 			UnreadCount:       unreadMap[clientID],
@@ -571,6 +574,23 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	if waterGoal.Valid {
 		g := int(waterGoal.Int64)
 		detail.WaterGoal = &g
+	}
+
+	if birthDate.Valid {
+		s := birthDate.String
+		detail.BirthDate = &s
+	}
+	if biologicalSex.Valid {
+		s := biologicalSex.String
+		detail.BiologicalSex = &s
+	}
+	if activityLevel.Valid {
+		s := activityLevel.String
+		detail.ActivityLevel = &s
+	}
+	if fitnessGoal.Valid {
+		s := fitnessGoal.String
+		detail.FitnessGoal = &s
 	}
 
 	s.log.LogDatabaseQuery("GetClientDetail", time.Since(startTime), nil, map[string]interface{}{
@@ -801,7 +821,6 @@ func (s *Service) getTargetWeights(ctx context.Context, clientIDs []int64) map[i
 
 	return result
 }
-
 
 // getTodayWater returns today's water intake for a list of clients
 func (s *Service) getTodayWater(ctx context.Context, clientIDs []int64) map[int64]*WaterView {
