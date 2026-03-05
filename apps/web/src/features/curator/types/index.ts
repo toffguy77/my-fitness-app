@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 
-export type CuratorNavigationItemId = 'clients' | 'chats' | 'content' | 'profile'
+export type CuratorNavigationItemId = 'clients' | 'chats' | 'content'
 
 export interface CuratorNavigationItemConfig {
     id: CuratorNavigationItemId
@@ -45,6 +45,10 @@ export interface ClientCard {
     timezone?: string
     telegram_username?: string
     instagram_username?: string
+    birth_date?: string | null
+    biological_sex?: string | null
+    activity_level?: string | null
+    fitness_goal?: string | null
 }
 
 export interface FoodEntryView {
