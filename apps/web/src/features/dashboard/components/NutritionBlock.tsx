@@ -11,7 +11,7 @@
  * - Memoized sub-components (SegmentedRing, MacroProgressBar)
  */
 
-import { useState, memo, useMemo } from 'react'
+import { useState, useEffect, memo, useMemo } from 'react'
 import { Plus, AlertTriangle, UtensilsCrossed } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
@@ -20,6 +20,8 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { calculatePercentage } from '../utils/calculations'
 import { formatLocalDate } from '@/shared/utils/format'
 import { AttentionBadge } from './AttentionBadge'
+import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc'
+import type { CalculatedTargets } from '@/features/nutrition-calc/types'
 
 /**
  * Props for NutritionBlock component
@@ -197,11 +199,17 @@ const MacroProgressBar = memo(function MacroProgressBar({
  */
 export const NutritionBlock = memo(function NutritionBlock({ date, className }: NutritionBlockProps) {
     const [isNavigating, setIsNavigating] = useState(false)
+    const [calcTargets, setCalcTargets] = useState<CalculatedTargets | null>(null)
 
     // Get data from store
     const { dailyData, weeklyPlan } = useDashboardStore()
     const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
+
+    // Fetch calculated targets for the selected date
+    useEffect(() => {
+        getTargets(dateStr).then(setCalcTargets).catch(() => {})
+    }, [dateStr])
 
     // Get nutrition data and goals - memoized to prevent recalculation
     const nutrition = useMemo(() =>
@@ -210,11 +218,11 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
     )
 
     const goals = useMemo(() => ({
-        caloriesGoal: weeklyPlan?.caloriesGoal || 2000,
-        proteinGoal: weeklyPlan?.proteinGoal || 150,
-        fatGoal: weeklyPlan?.fatGoal || 67,
-        carbsGoal: weeklyPlan?.carbsGoal || 250,
-    }), [weeklyPlan?.caloriesGoal, weeklyPlan?.proteinGoal, weeklyPlan?.fatGoal, weeklyPlan?.carbsGoal])
+        caloriesGoal: weeklyPlan?.caloriesGoal || calcTargets?.calories || 2000,
+        proteinGoal: weeklyPlan?.proteinGoal || calcTargets?.protein || 150,
+        fatGoal: weeklyPlan?.fatGoal || calcTargets?.fat || 67,
+        carbsGoal: weeklyPlan?.carbsGoal || calcTargets?.carbs || 250,
+    }), [weeklyPlan?.caloriesGoal, weeklyPlan?.proteinGoal, weeklyPlan?.fatGoal, weeklyPlan?.carbsGoal, calcTargets])
 
     // Calculate percentages
     const caloriesPercentage = calculatePercentage(nutrition.calories, goals.caloriesGoal)

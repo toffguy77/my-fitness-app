@@ -17,8 +17,12 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
         data.map(d => {
             const targetCal = d.target?.calories ?? null
             const actualCal = d.actual?.calories ?? null
-            const dateObj = new Date(d.date + 'T00:00:00')
-            const label = dateObj.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' })
+            const dateStr = String(d.date).split('T')[0]
+            const [year, month, day] = dateStr.split('-').map(Number)
+            const dateObj = new Date(year, month - 1, day)
+            const label = isNaN(dateObj.getTime())
+                ? dateStr
+                : dateObj.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' })
             const hasWorkout = (d.workout_bonus ?? 0) > 0
 
             let status: 'green' | 'yellow' | 'red' = 'green'
