@@ -468,6 +468,12 @@ func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID s
 		return fmt.Errorf("article not found")
 	}
 
+	// Best-effort: delete related notifications
+	actionURL := fmt.Sprintf("/content/feed/%s", articleID)
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM notifications WHERE action_url = $1`, actionURL); err != nil {
+		s.log.Error("Failed to delete content notifications (best-effort)", "error", err, "article_id", articleID)
+	}
+
 	// Best-effort S3 cleanup: delete body.md
 	if s.s3 != nil {
 		bodyKey := fmt.Sprintf("content/%s/body.md", articleID)
