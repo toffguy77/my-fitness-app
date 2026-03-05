@@ -529,6 +529,9 @@ interface DashboardState {
     isOffline: boolean;
     pollingIntervalId: NodeJS.Timeout | null;
 
+    // Version counter bumped after metric save to signal targets re-fetch
+    targetsVersion: number;
+
     // Prefetch tracking
     prefetchedWeeks: Set<string>;
 
@@ -574,6 +577,7 @@ const initialState = {
     isOffline: false,
     pollingIntervalId: null,
     prefetchedWeeks: new Set<string>(),
+    targetsVersion: 0,
 };
 
 /**
@@ -1137,6 +1141,9 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             // Fetch updated data to ensure consistency and update cache
             await get().fetchDailyData(new Date(date));
+
+            // Bump version to trigger targets re-fetch in NutritionBlock
+            set((state) => ({ targetsVersion: state.targetsVersion + 1 }));
         } catch (error: any) {
             const mappedError = mapError(error);
 
