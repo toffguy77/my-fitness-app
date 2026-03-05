@@ -64,8 +64,8 @@ interface SegmentedRingProps {
  * Memoized to prevent unnecessary re-renders
  */
 const SegmentedRing = memo(function SegmentedRing({
-    size = 88,
-    strokeWidth = 7,
+    size = 72,
+    strokeWidth = 6,
     segments,
     className,
     children,
@@ -262,10 +262,10 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
 
     return (
         <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-base font-semibold text-gray-900">
+                        <CardTitle className="text-lg font-semibold text-gray-900">
                             Питание
                         </CardTitle>
                         {showAttentionIndicator && (
@@ -292,22 +292,22 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                 {/* Segmented ring for macro progress */}
                 <div className="flex justify-center">
                     <SegmentedRing
-                        size={88}
-                        strokeWidth={7}
+                        size={72}
+                        strokeWidth={6}
                         segments={segments}
                     >
                         <div className="text-center">
                             <div className={cn(
-                                'text-lg font-bold',
+                                'text-base font-bold',
                                 getCalorieColor(caloriesPercentage)
                             )} data-testid="calorie-value">
                                 {nutrition.calories}
                             </div>
-                            <div className="text-[10px] text-gray-500 leading-tight">
+                            <div className="text-xs text-gray-500 leading-tight">
                                 из {goals.caloriesGoal} ккал
                             </div>
                             <div className={cn(
-                                'text-[10px] font-medium',
+                                'text-xs font-medium',
                                 isOverCalorieGoal ? 'text-orange-600' : 'text-gray-600'
                             )}>
                                 {caloriesPercentage.toFixed(1)}%

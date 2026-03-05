@@ -90,7 +90,7 @@ const WeightTrendChart = memo(function WeightTrendChart({
                     <text
                         x={width - padding.right}
                         y={padding.top + chartHeight - ((targetWeight - minWeight) / weightRange) * chartHeight - 4}
-                        textAnchor="end" className="text-[9px] fill-green-500"
+                        textAnchor="end" className="text-[10px] fill-green-500"
                     >
                         Цель {targetWeight}
                     </text>

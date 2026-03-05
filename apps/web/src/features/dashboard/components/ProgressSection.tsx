@@ -59,7 +59,7 @@ const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, classN
                     {getLabel(percentage)}
                 </span>
             </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <div
                     className={cn(
                         'h-full transition-all duration-300 rounded-full',
@@ -170,7 +170,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
 
     return (
         <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-semibold text-gray-900">
                     Прогресс
                 </CardTitle>
