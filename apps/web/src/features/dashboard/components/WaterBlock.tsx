@@ -115,10 +115,10 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
 
     return (
         <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-base font-semibold text-gray-900">Вода</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-gray-900">Вода</CardTitle>
                         {showAttention && (
                             <AttentionBadge urgency="normal" ariaLabel="Вода не записана сегодня" />
                         )}
