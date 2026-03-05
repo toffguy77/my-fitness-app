@@ -159,14 +159,11 @@ func (h *Handler) SaveMetric(c *gin.Context) {
 		return
 	}
 
-	// Trigger async KBJU recalculation when weight or workout changes
+	// Trigger KBJU recalculation after metric save
 	if h.nutritionCalcSvc != nil {
-		go func() {
-			_, recalcErr := h.nutritionCalcSvc.RecalculateForDate(context.Background(), userID, date)
-			if recalcErr != nil {
-				h.log.Errorw("Failed to recalculate KBJU", "error", recalcErr, "user_id", userID)
-			}
-		}()
+		if _, recalcErr := h.nutritionCalcSvc.RecalculateForDate(c.Request.Context(), userID, date); recalcErr != nil {
+			h.log.Errorw("Failed to recalculate KBJU", "error", recalcErr, "user_id", userID)
+		}
 	}
 
 	response.Success(c, http.StatusOK, metrics)
