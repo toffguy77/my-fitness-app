@@ -183,7 +183,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
 
     return (
         <Card className={cn('h-full', className)} variant="bordered">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
