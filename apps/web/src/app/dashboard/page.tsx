@@ -69,6 +69,7 @@ export default function DashboardPage() {
         stopPolling,
         setOfflineStatus,
         loadFromCache,
+        targetsVersion,
     } = useDashboardStore()
 
     useEffect(() => {
@@ -121,13 +122,13 @@ export default function DashboardPage() {
             .catch(() => {})
     }, [userData?.id])
 
-    // Fetch KBJU weekly history
+    // Fetch KBJU weekly history (re-fetch after metric saves via targetsVersion)
     useEffect(() => {
         if (!userData) return
         getHistory(7)
             .then(res => setKbjuHistory(res.days))
             .catch(() => {})
-    }, [userData?.id])
+    }, [userData?.id, targetsVersion])
 
     // Fetch dashboard data on mount
     useEffect(() => {
