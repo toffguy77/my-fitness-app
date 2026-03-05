@@ -40,6 +40,7 @@ import {
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import type { NavigationItemId } from '@/features/dashboard/types'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
+import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
 
@@ -216,6 +217,9 @@ export default function DashboardPage() {
             onNavigate={handleNavigate}
         >
             <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 p-3 sm:p-4 md:p-6">
+                {/* Profile Completion Banner */}
+                <ProfileCompletionBanner />
+
                 {/* Calendar Navigator */}
                 <CalendarNavigator
                     onSubmitReport={handleSubmitReport}
