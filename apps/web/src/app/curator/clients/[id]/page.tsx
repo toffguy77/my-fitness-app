@@ -4,6 +4,11 @@ import { useEffect, useReducer, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown, Droplets } from 'lucide-react'
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, ReferenceLine,
+} from 'recharts'
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
 import { curatorApi } from '@/features/curator/api/curatorApi'
 import { getClientHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
@@ -104,53 +109,103 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
     }
 }
 
-const CHART_PADDING = { top: 10, right: 10, bottom: 20, left: 40 }
+const CHART_HEIGHT = 160
+const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
+const GRID_STROKE = '#f0f0f0'
+
+function CuratorWeightTooltip({ active, payload, label }: {
+    active?: boolean
+    payload?: Payload<number, string>[]
+    label?: string
+}) {
+    if (!active || !payload?.length) return null
+    return (
+        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+            {payload.map((entry: Payload<number, string>) => (
+                <p key={entry.name} className="text-xs text-gray-600">
+                    <span
+                        className="inline-block w-2 h-2 rounded-full mr-1.5"
+                        style={{ backgroundColor: entry.color }}
+                    />
+                    Вес: <span className="font-medium">{Number(entry.value).toFixed(1)} кг</span>
+                </p>
+            ))}
+        </div>
+    )
+}
 
 function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targetWeight?: number | null }) {
-    const width = 300
-    const height = 120
-    const padding = CHART_PADDING
-    const chartWidth = width - padding.left - padding.right
-    const chartHeight = height - padding.top - padding.bottom
-
-    const { minW, maxW, range } = useMemo(() => {
-        const weights = data.map(d => d.weight)
-        if (targetWeight != null) weights.push(targetWeight)
-        const min = Math.min(...weights)
-        const max = Math.max(...weights)
-        return { minW: min, maxW: max, range: max - min || 1 }
-    }, [data, targetWeight])
-
-    const points = useMemo(() =>
-        data.map((p, i) => ({
-            x: padding.left + (i / Math.max(data.length - 1, 1)) * chartWidth,
-            y: padding.top + chartHeight - ((p.weight - minW) / range) * chartHeight,
-            weight: p.weight,
-            date: p.date,
-        })),
-        [data, minW, range, chartWidth, chartHeight, padding.left, padding.top]
+    const chartData = useMemo(() =>
+        data.map(p => {
+            const dateObj = new Date(p.date + 'T00:00:00')
+            const label = isNaN(dateObj.getTime())
+                ? p.date
+                : dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+            return { label, weight: p.weight }
+        }),
+        [data],
     )
 
-    const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    if (data.length < 2) return null
 
     return (
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
-            <line x1={padding.left} y1={padding.top + chartHeight / 2} x2={width - padding.right} y2={padding.top + chartHeight / 2} stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" className="text-gray-200" />
-            {targetWeight != null && (
-                <>
-                    <line x1={padding.left} y1={padding.top + chartHeight - ((targetWeight - minW) / range) * chartHeight} x2={width - padding.right} y2={padding.top + chartHeight - ((targetWeight - minW) / range) * chartHeight} stroke="currentColor" strokeWidth="1" strokeDasharray="6 3" className="text-green-500" />
-                    <text x={width - padding.right} y={padding.top + chartHeight - ((targetWeight - minW) / range) * chartHeight - 4} textAnchor="end" className="text-[9px] fill-green-500">Цель {targetWeight}</text>
-                </>
-            )}
-            {points.length > 1 && <path d={pathD} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500" />}
-            {points.map((p, i) => (
-                <circle key={i} cx={p.x} cy={p.y} r="3" fill="currentColor" className="text-blue-500">
-                    <title>{`${p.date}: ${p.weight} кг`}</title>
-                </circle>
-            ))}
-            <text x={padding.left - 5} y={padding.top + 4} textAnchor="end" className="text-[10px] fill-gray-400">{maxW.toFixed(1)}</text>
-            <text x={padding.left - 5} y={padding.top + chartHeight} textAnchor="end" className="text-[10px] fill-gray-400">{minW.toFixed(1)}</text>
-        </svg>
+        <div>
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                    <XAxis
+                        dataKey="label"
+                        tick={AXIS_STYLE}
+                        stroke="#e5e7eb"
+                        tickLine={false}
+                    />
+                    <YAxis
+                        tick={AXIS_STYLE}
+                        stroke="#e5e7eb"
+                        tickLine={false}
+                        width={40}
+                        domain={['dataMin - 0.5', 'dataMax + 0.5']}
+                    />
+                    <Tooltip content={<CuratorWeightTooltip />} />
+                    {targetWeight != null && (
+                        <ReferenceLine
+                            y={targetWeight}
+                            stroke="#22c55e"
+                            strokeDasharray="6 3"
+                            strokeWidth={1}
+                            label={{
+                                value: `Цель ${targetWeight}`,
+                                position: 'right',
+                                fill: '#22c55e',
+                                fontSize: 11,
+                            }}
+                        />
+                    )}
+                    <Line
+                        type="monotone"
+                        dataKey="weight"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: '#3b82f6', strokeWidth: 0 }}
+                        connectNulls
+                        name="weight"
+                    />
+                </LineChart>
+            </ResponsiveContainer>
+            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-4 border-t-2 border-blue-500" />
+                    Вес
+                </span>
+                {targetWeight != null && (
+                    <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-4 border-t-2 border-dashed border-green-500" />
+                        Цель
+                    </span>
+                )}
+            </div>
+        </div>
     )
 }
 
