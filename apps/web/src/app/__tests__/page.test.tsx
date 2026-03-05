@@ -2,22 +2,18 @@ import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import Home from '../page'
 
-jest.mock('next/navigation', () => ({
-    useRouter: () => ({
-        push: jest.fn(),
-        replace: jest.fn(),
-        prefetch: jest.fn(),
-    }),
+jest.mock('@/shared/components/JsonLd', () => ({
+    JsonLd: () => null,
 }))
 
-jest.mock('@/shared/utils/token-storage', () => ({
-    isAuthenticated: () => false,
+jest.mock('../_components/AuthRedirect', () => ({
+    AuthRedirect: () => null,
 }))
 
 describe('Home Page', () => {
     it('renders the heading', () => {
         render(<Home />)
-        const heading = screen.getByText(/Питание под контролем/i)
+        const heading = screen.getByText(/Трекер питания и фитнеса/i)
         expect(heading).toBeTruthy()
     })
 
