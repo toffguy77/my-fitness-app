@@ -21,9 +21,17 @@ import { cn } from '@/shared/utils/cn'
 const stepTitles = [
     'Фото профиля',
     'Настройки',
+    'Тело и цели',
     'Социальные сети',
     'Apple Health',
 ]
+
+const activityLevelOptions = [
+    { value: 'sedentary', label: 'Сидячий образ жизни' },
+    { value: 'light', label: 'Лёгкая активность' },
+    { value: 'moderate', label: 'Умеренная активность' },
+    { value: 'active', label: 'Высокая активность' },
+] as const
 
 export function OnboardingWizard() {
     const router = useRouter()
@@ -36,6 +44,12 @@ export function OnboardingWizard() {
         language,
         units,
         timezone,
+        birthDate,
+        biologicalSex,
+        currentWeight,
+        height,
+        activityLevel,
+        fitnessGoal,
         telegram,
         instagram,
         appleHealthEnabled,
@@ -44,6 +58,12 @@ export function OnboardingWizard() {
         setLanguage,
         setUnits,
         setTimezone,
+        setBirthDate,
+        setBiologicalSex,
+        setCurrentWeight,
+        setHeight,
+        setActivityLevel,
+        setFitnessGoal,
         setTelegram,
         setInstagram,
         setAppleHealth,
@@ -72,6 +92,17 @@ export function OnboardingWizard() {
                         setUnits(s.units)
                     }
                     if (s.timezone) setTimezone(s.timezone)
+                    if (s.birth_date) setBirthDate(s.birth_date)
+                    if (s.biological_sex === 'male' || s.biological_sex === 'female') {
+                        setBiologicalSex(s.biological_sex)
+                    }
+                    if (s.height) setHeight(String(s.height))
+                    if (s.activity_level === 'sedentary' || s.activity_level === 'light' || s.activity_level === 'moderate' || s.activity_level === 'active') {
+                        setActivityLevel(s.activity_level)
+                    }
+                    if (s.fitness_goal === 'loss' || s.fitness_goal === 'maintain' || s.fitness_goal === 'gain') {
+                        setFitnessGoal(s.fitness_goal)
+                    }
                     if (s.telegram_username) setTelegram(s.telegram_username)
                     if (s.instagram_username) setInstagram(s.instagram_username)
                     if (s.apple_health_enabled) setAppleHealth(s.apple_health_enabled)
@@ -101,6 +132,17 @@ export function OnboardingWizard() {
         }
     }
 
+    function buildBodyPayload(): Record<string, unknown> {
+        const payload: Record<string, unknown> = {}
+        if (birthDate) payload.birth_date = birthDate
+        if (biologicalSex) payload.biological_sex = biologicalSex
+        if (activityLevel) payload.activity_level = activityLevel
+        if (fitnessGoal) payload.fitness_goal = fitnessGoal
+        if (height) payload.height = parseFloat(height)
+        if (currentWeight) payload.target_weight = parseFloat(currentWeight)
+        return payload
+    }
+
     async function handleNext() {
         setSaving(true)
         try {
@@ -117,12 +159,18 @@ export function OnboardingWizard() {
                     break
 
                 case 2:
+                    // Body & Goals step — save body profile fields
+                    await updateSettings({ ...buildSettingsPayload(), ...buildBodyPayload() })
+                    nextStep()
+                    break
+
+                case 3:
                     // Social accounts step — save all current values
                     await updateSettings(buildSettingsPayload())
                     nextStep()
                     break
 
-                case 3:
+                case 4:
                     // Final step — save, complete onboarding, redirect
                     await updateSettings(buildSettingsPayload())
                     await completeOnboarding()
@@ -196,6 +244,162 @@ export function OnboardingWizard() {
                     )}
 
                     {currentStep === 2 && (
+                        <div className="flex flex-col gap-6">
+                            {/* Дата рождения */}
+                            <div>
+                                <label htmlFor="birth-date" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Дата рождения
+                                </label>
+                                <input
+                                    id="birth-date"
+                                    type="date"
+                                    value={birthDate}
+                                    onChange={(e) => setBirthDate(e.target.value)}
+                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            {/* Пол */}
+                            <fieldset>
+                                <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Пол
+                                </legend>
+                                <div className="flex gap-3">
+                                    <label
+                                        className={cn(
+                                            'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
+                                            biologicalSex === 'male'
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                        )}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="biological-sex"
+                                            value="male"
+                                            checked={biologicalSex === 'male'}
+                                            onChange={() => setBiologicalSex('male')}
+                                            className="sr-only"
+                                        />
+                                        Мужской
+                                    </label>
+                                    <label
+                                        className={cn(
+                                            'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
+                                            biologicalSex === 'female'
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                        )}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="biological-sex"
+                                            value="female"
+                                            checked={biologicalSex === 'female'}
+                                            onChange={() => setBiologicalSex('female')}
+                                            className="sr-only"
+                                        />
+                                        Женский
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            {/* Текущий вес */}
+                            <div>
+                                <label htmlFor="current-weight" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Текущий вес ({units === 'metric' ? 'кг' : 'lbs'})
+                                </label>
+                                <input
+                                    id="current-weight"
+                                    type="number"
+                                    step="0.1"
+                                    min="20"
+                                    max="500"
+                                    value={currentWeight}
+                                    onChange={(e) => setCurrentWeight(e.target.value)}
+                                    placeholder={units === 'metric' ? '70' : '154'}
+                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            {/* Рост */}
+                            <div>
+                                <label htmlFor="height-input" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Рост ({units === 'metric' ? 'см' : 'in'})
+                                </label>
+                                <input
+                                    id="height-input"
+                                    type="number"
+                                    step="1"
+                                    min="50"
+                                    max="300"
+                                    value={height}
+                                    onChange={(e) => setHeight(e.target.value)}
+                                    placeholder={units === 'metric' ? '175' : '69'}
+                                    className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            {/* Уровень активности */}
+                            <div>
+                                <label htmlFor="activity-level" className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Уровень активности
+                                </label>
+                                <select
+                                    id="activity-level"
+                                    value={activityLevel}
+                                    onChange={(e) => setActivityLevel(e.target.value as typeof activityLevel)}
+                                    className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                >
+                                    {activityLevelOptions.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Цель */}
+                            <fieldset>
+                                <legend className="mb-1.5 block text-sm font-medium text-gray-700">
+                                    Цель
+                                </legend>
+                                <div className="flex gap-3">
+                                    {([
+                                        { value: 'loss', label: 'Снижение' },
+                                        { value: 'maintain', label: 'Поддержание' },
+                                        { value: 'gain', label: 'Набор' },
+                                    ] as const).map((opt) => (
+                                        <label
+                                            key={opt.value}
+                                            className={cn(
+                                                'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium transition-colors',
+                                                fitnessGoal === opt.value
+                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                    : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                            )}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="fitness-goal"
+                                                value={opt.value}
+                                                checked={fitnessGoal === opt.value}
+                                                onChange={() => setFitnessGoal(opt.value)}
+                                                className="sr-only"
+                                            />
+                                            {opt.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
+
+                            <p className="text-center text-xs text-gray-400">
+                                Все поля необязательны — вы сможете заполнить их позже в настройках
+                            </p>
+                        </div>
+                    )}
+
+                    {currentStep === 3 && (
                         <SocialAccountsForm
                             telegram={telegram}
                             instagram={instagram}
@@ -204,7 +408,7 @@ export function OnboardingWizard() {
                         />
                     )}
 
-                    {currentStep === 3 && (
+                    {currentStep === 4 && (
                         <AppleHealthToggle
                             enabled={appleHealthEnabled}
                             onChange={setAppleHealth}
