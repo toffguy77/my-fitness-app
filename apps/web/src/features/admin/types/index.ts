@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 
-export type AdminNavigationItemId = 'dashboard' | 'users' | 'chats' | 'profile'
+export type AdminNavigationItemId = 'dashboard' | 'users' | 'content' | 'chats'
 
 export interface AdminNavigationItemConfig {
     id: AdminNavigationItemId

@@ -15,7 +15,12 @@ const STATUS_TABS = [
     { key: 'published', label: 'Опубликованные' },
 ] as const
 
-export function ArticleList() {
+interface ArticleListProps {
+    basePath?: string
+    showAuthor?: boolean
+}
+
+export function ArticleList({ basePath = '/curator/content', showAuthor = false }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>([])
     const [loading, setLoading] = useState(true)
     const [statusFilter, setStatusFilter] = useState('')
@@ -91,7 +96,7 @@ export function ArticleList() {
         <div className="space-y-4">
             {/* Create button */}
             <Link
-                href="/curator/content/new"
+                href={`${basePath}/new`}
                 className="block w-full rounded-lg bg-gray-900 px-4 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-gray-800"
             >
                 Создать статью
@@ -123,7 +128,7 @@ export function ArticleList() {
                 </div>
             ) : articles.length === 0 ? (
                 <div className="text-center py-12">
-                    <p className="text-sm text-gray-500">У вас пока нет статей</p>
+                    <p className="text-sm text-gray-500">{showAuthor ? 'Статей пока нет' : 'У вас пока нет статей'}</p>
                 </div>
             ) : (
                 <div className="grid gap-3">
@@ -140,6 +145,12 @@ export function ArticleList() {
                             </div>
 
                             <div className="flex items-center gap-2 text-xs text-gray-500">
+                                {showAuthor && article.author_name && (
+                                    <>
+                                        <span>{article.author_name}</span>
+                                        <span>&middot;</span>
+                                    </>
+                                )}
                                 <span>{CATEGORY_LABELS[article.category]}</span>
                                 <span>&middot;</span>
                                 <span>
@@ -149,7 +160,7 @@ export function ArticleList() {
 
                             <div className="flex items-center gap-2 pt-1">
                                 <Link
-                                    href={`/curator/content/${article.id}/edit`}
+                                    href={`${basePath}/${article.id}/edit`}
                                     className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors"
                                 >
                                     Редактировать

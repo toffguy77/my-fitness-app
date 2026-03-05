@@ -20,6 +20,7 @@ import { MediaUploader } from './MediaUploader'
 
 interface ArticleEditorProps {
     articleId?: string
+    returnPath?: string
 }
 
 type ToolbarAction = 'bold' | 'italic' | 'heading' | 'link' | 'image'
@@ -73,7 +74,7 @@ const PROSE_CLASSES =
 // Component
 // ============================================================================
 
-export function ArticleEditor({ articleId }: ArticleEditorProps) {
+export function ArticleEditor({ articleId, returnPath = '/curator/content' }: ArticleEditorProps) {
     const router = useRouter()
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -166,7 +167,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
             // Save body first
             await contentApi.updateArticle(article.id, { body })
             await contentApi.publishArticle(article.id)
-            router.push('/curator/content')
+            router.push(returnPath)
         } catch (err) {
             setError(
                 err instanceof Error ? err.message : 'Ошибка публикации'
@@ -186,7 +187,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
             // Save body first
             await contentApi.updateArticle(article.id, { body })
             await contentApi.scheduleArticle(article.id, { scheduled_at: scheduledAt })
-            router.push('/curator/content')
+            router.push(returnPath)
         } catch (err) {
             setError(
                 err instanceof Error ? err.message : 'Ошибка планирования'

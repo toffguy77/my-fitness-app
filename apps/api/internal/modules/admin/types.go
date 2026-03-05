@@ -27,13 +27,13 @@ type CuratorLoad struct {
 
 // AdminConversation represents a conversation as seen by admin
 type AdminConversation struct {
-	ID          string    `json:"id"`
-	ClientID    int64     `json:"client_id"`
-	ClientName  string    `json:"client_name"`
-	CuratorID   int64     `json:"curator_id"`
-	CuratorName string    `json:"curator_name"`
-	MessageCount int      `json:"message_count"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	ClientID     int64     `json:"client_id"`
+	ClientName   string    `json:"client_name"`
+	CuratorID    int64     `json:"curator_id"`
+	CuratorName  string    `json:"curator_name"`
+	MessageCount int       `json:"message_count"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // AdminMessage represents a message as seen by admin (read-only)
