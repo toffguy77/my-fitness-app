@@ -42,9 +42,6 @@ export const metadata: Metadata = {
     alternates: {
         canonical: 'https://burcev.team',
     },
-    verification: {
-        yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION,
-    },
     robots: {
         index: true,
         follow: true,
