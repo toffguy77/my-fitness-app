@@ -71,6 +71,9 @@ type Config struct {
 	ContentS3Region          string
 	ContentS3Endpoint        string
 
+	// S3 Path Prefix (dev/ or prod/ — applied to all S3 clients)
+	S3PathPrefix string
+
 	// Logging
 	LogLevel string
 }
@@ -142,6 +145,8 @@ func Load() (*Config, error) {
 		ContentS3Bucket:          getEnvWithFallback("CONTENT_S3_BUCKET", "S3_BUCKET", "curator-content"),
 		ContentS3Region:          getEnvWithFallback("CONTENT_S3_REGION", "S3_REGION", "ru-central1"),
 		ContentS3Endpoint:        getEnvWithFallback("CONTENT_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
+
+		S3PathPrefix: getEnv("S3_PATH_PREFIX", ""),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
