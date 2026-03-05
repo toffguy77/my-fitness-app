@@ -5,6 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown, Droplets } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curatorApi'
+import { getClientHistory } from '@/features/nutrition-calc/api/nutritionCalc'
+import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
+import type { TargetVsActual } from '@/features/nutrition-calc/types'
 import { AlertBadge } from '@/features/curator/components/AlertBadge'
 import { DaySection } from '@/features/curator/components/DaySection'
 import { StepsChart } from '@/features/curator/components/StepsChart'
@@ -15,6 +18,69 @@ import { ClientInfoPanel } from '@/features/curator/components/ClientInfoPanel'
 import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
 
 const RECENT_DAYS_COUNT = 3
+
+function calcAge(birthDate: string): number | null {
+    const birth = new Date(birthDate)
+    if (isNaN(birth.getTime())) return null
+    const today = new Date()
+    let age = today.getFullYear() - birth.getFullYear()
+    const monthDiff = today.getMonth() - birth.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--
+    }
+    return age
+}
+
+function formatAge(age: number): string {
+    const lastTwo = age % 100
+    const lastOne = age % 10
+    if (lastTwo >= 11 && lastTwo <= 19) return `${age} лет`
+    if (lastOne === 1) return `${age} год`
+    if (lastOne >= 2 && lastOne <= 4) return `${age} года`
+    return `${age} лет`
+}
+
+const SEX_LABELS: Record<string, string> = { male: 'М', female: 'Ж' }
+
+const ACTIVITY_LABELS: Record<string, string> = {
+    sedentary: 'Сидячий',
+    lightly_active: 'Лёгкая активность',
+    moderately_active: 'Умеренная активность',
+    very_active: 'Высокая активность',
+    extra_active: 'Экстра активность',
+}
+
+const GOAL_LABELS: Record<string, string> = {
+    lose: 'Снижение веса',
+    maintain: 'Поддержание',
+    gain: 'Набор массы',
+}
+
+function ProfileInfoRow({ detail }: { detail: ClientDetail }) {
+    const parts: string[] = []
+
+    if (detail.birth_date) {
+        const age = calcAge(detail.birth_date)
+        if (age != null && age > 0) parts.push(formatAge(age))
+    }
+    if (detail.biological_sex) {
+        parts.push(SEX_LABELS[detail.biological_sex] ?? detail.biological_sex)
+    }
+    if (detail.activity_level) {
+        parts.push(ACTIVITY_LABELS[detail.activity_level] ?? detail.activity_level)
+    }
+    if (detail.fitness_goal) {
+        parts.push(GOAL_LABELS[detail.fitness_goal] ?? detail.fitness_goal)
+    }
+
+    if (parts.length === 0) return null
+
+    return (
+        <p className="text-xs text-gray-500 mb-4 ml-12">
+            {parts.join(' · ')}
+        </p>
+    )
+}
 
 type FetchState = {
     detail: ClientDetail | null
@@ -257,6 +323,7 @@ export default function ClientDetailPage() {
     const clientId = Number(params.id)
     const [state, dispatch] = useReducer(fetchReducer, { detail: null, loading: true, error: null })
     const [showOlderDays, setShowOlderDays] = useState(false)
+    const [kbjuHistory, setKbjuHistory] = useState<TargetVsActual[]>([])
     const fetchIdRef = useRef(0)
 
     useEffect(() => {
@@ -272,6 +339,15 @@ export default function ClientDetailPage() {
                 if (fetchIdRef.current === fetchId) {
                     dispatch({ type: 'FETCH_ERROR', error: 'Не удалось загрузить данные клиента' })
                 }
+            })
+        getClientHistory(clientId)
+            .then((res) => {
+                if (fetchIdRef.current === fetchId) {
+                    setKbjuHistory(res.days)
+                }
+            })
+            .catch(() => {
+                // non-critical, ignore
             })
     }, [clientId])
 
@@ -340,6 +416,8 @@ export default function ClientDetailPage() {
                 </div>
             )}
 
+            {detail && <ProfileInfoRow detail={detail} />}
+
             {loading && (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -384,6 +462,11 @@ export default function ClientDetailPage() {
                                 </div>
                             </div>
                         </section>
+                    )}
+
+                    {/* KBJU weekly chart */}
+                    {kbjuHistory.length > 0 && (
+                        <KBJUWeeklyChart data={kbjuHistory} />
                     )}
 
                     {/* Питание: last 3 days + "Ранее" */}
