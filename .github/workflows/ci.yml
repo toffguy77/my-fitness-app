@@ -87,38 +87,6 @@ jobs:
           path: apps/api/coverage.out
           retention-days: 30
 
-  security-audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run npm audit
-        run: npm audit --audit-level high --production
-        continue-on-error: true
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-
-      - name: Run gosec security scanner
-        working-directory: apps/api
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec ./...
-        continue-on-error: true
-
   build-check:
     name: Build Check
     runs-on: ubuntu-latest
@@ -157,3 +125,167 @@ jobs:
             apps/web/.next/
             apps/api/bin/
           retention-days: 7
+
+  ci-pipeline:
+    name: CI Pipeline
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, backend-tests, build-check]
+    steps:
+      - name: CI Pipeline passed
+        run: echo "All core CI checks passed"
+
+  comprehensive-security-scan:
+    name: Comprehensive Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high --production
+        continue-on-error: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Run govulncheck
+        working-directory: apps/api
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Run detect-secrets
+        run: |
+          pip install detect-secrets
+          detect-secrets scan --baseline .secrets.baseline
+          detect-secrets audit --report .secrets.baseline
+
+      - name: Run ESLint security rules
+        run: npx eslint --config eslint.security.config.mjs "apps/web/src/**/*.{js,ts,jsx,tsx}" --no-error-on-unmatched-pattern
+        continue-on-error: true
+
+  container-security-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Build web Docker image
+        run: docker build -t burcev-web:ci -f apps/web/Dockerfile .
+
+      - name: Build API Docker image
+        run: docker build -t burcev-api:ci -f apps/api/Dockerfile apps/api
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Trivy scan web image
+        run: trivy image --exit-code 1 --severity CRITICAL --ignorefile .trivyignore burcev-web:ci
+
+      - name: Trivy scan API image
+        run: trivy image --exit-code 1 --severity CRITICAL --ignorefile .trivyignore burcev-api:ci
+
+      - name: Lint web Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: apps/web/Dockerfile
+          failure-threshold: warning
+        continue-on-error: true
+
+      - name: Lint API Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: apps/api/Dockerfile
+          failure-threshold: warning
+        continue-on-error: true
+
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build:web
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Report Next.js bundle size
+        run: |
+          echo "## Next.js Bundle Size" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          du -sh apps/web/.next/ >> "$GITHUB_STEP_SUMMARY"
+          du -sh apps/web/.next/static/ >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build Go binary
+        working-directory: apps/api
+        run: make build
+
+      - name: Report Go binary size
+        run: |
+          echo "## Go Binary Size" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -lh apps/api/bin/server >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build Docker images
+        run: |
+          docker build -t burcev-web:perf -f apps/web/Dockerfile .
+          docker build -t burcev-api:perf -f apps/api/Dockerfile apps/api
+
+      - name: Report Docker image sizes
+        run: |
+          echo "## Docker Image Sizes" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          docker images burcev-web:perf --format "Web: {{.Size}}" >> "$GITHUB_STEP_SUMMARY"
+          docker images burcev-api:perf --format "API: {{.Size}}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
