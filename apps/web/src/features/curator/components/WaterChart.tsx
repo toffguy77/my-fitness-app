@@ -2,9 +2,11 @@
 
 import { useMemo } from 'react'
 import { Droplets } from 'lucide-react'
+import {
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    ReferenceLine, Cell
+} from 'recharts'
 import type { DayDetail } from '../types'
-
-const CHART_PADDING = { top: 10, right: 10, bottom: 24, left: 30 }
 
 interface WaterChartProps {
     days: DayDetail[]
@@ -24,17 +26,7 @@ export function WaterChart({ days }: WaterChartProps) {
     const hasAnyWater = waterData.some(d => d.glasses > 0)
     if (!hasAnyWater) return null
 
-    const width = 300
-    const height = 120
-    const padding = CHART_PADDING
-    const chartWidth = width - padding.left - padding.right
-    const chartHeight = height - padding.top - padding.bottom
-
     const waterGoal = waterData[0]?.goal ?? 8
-    const maxGlasses = Math.max(...waterData.map(d => d.glasses), waterGoal)
-    const barWidth = Math.min(chartWidth / waterData.length * 0.7, 30)
-    const gap = (chartWidth - barWidth * waterData.length) / Math.max(waterData.length - 1, 1)
-
     const latestGlasses = waterData[waterData.length - 1]?.glasses ?? 0
 
     return (
@@ -49,50 +41,34 @@ export function WaterChart({ days }: WaterChartProps) {
                 </span>
             </div>
 
-            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
-                {waterGoal > 0 && (
-                    <>
-                        <line
-                            x1={padding.left}
-                            y1={padding.top + chartHeight - (waterGoal / maxGlasses) * chartHeight}
-                            x2={width - padding.right}
-                            y2={padding.top + chartHeight - (waterGoal / maxGlasses) * chartHeight}
-                            stroke="currentColor" strokeWidth="1" strokeDasharray="6 3" className="text-blue-400"
+            <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={waterData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#9ca3af" />
+                    <YAxis tick={{ fontSize: 10 }} stroke="#9ca3af" allowDecimals={false} />
+                    <Tooltip
+                        formatter={(value?: number) => [
+                            `${value ?? 0} стаканов`, 'Вода'
+                        ]}
+                        labelFormatter={(label: unknown) => String(label)}
+                    />
+                    {waterGoal > 0 && (
+                        <ReferenceLine
+                            y={waterGoal}
+                            stroke="#60a5fa"
+                            strokeDasharray="6 3"
+                            label={{ value: `Цель ${waterGoal}`, position: 'right', fontSize: 10, fill: '#60a5fa' }}
                         />
-                        <text
-                            x={width - padding.right}
-                            y={padding.top + chartHeight - (waterGoal / maxGlasses) * chartHeight - 3}
-                            textAnchor="end" className="text-[8px] fill-blue-400"
-                        >
-                            Цель {waterGoal}
-                        </text>
-                    </>
-                )}
-
-                {waterData.map((d, i) => {
-                    const barHeight = (d.glasses / maxGlasses) * chartHeight
-                    const x = padding.left + i * (barWidth + gap)
-                    const y = padding.top + chartHeight - barHeight
-                    const isGoalMet = d.glasses >= d.goal
-                    return (
-                        <g key={d.date}>
-                            <rect
-                                x={x} y={y} width={barWidth} height={Math.max(barHeight, 1)}
-                                rx={2} fill="currentColor"
-                                className={isGoalMet ? 'text-blue-500' : 'text-blue-300'}
-                            >
-                                <title>{`${d.label}: ${d.glasses}/${d.goal} стаканов`}</title>
-                            </rect>
-                            <text x={x + barWidth / 2} y={height - 2} textAnchor="middle" className="text-[8px] fill-gray-400">
-                                {d.label}
-                            </text>
-                        </g>
-                    )
-                })}
-
-                <text x={padding.left - 5} y={padding.top + 4} textAnchor="end" className="text-[9px] fill-gray-400">{maxGlasses}</text>
-                <text x={padding.left - 5} y={padding.top + chartHeight} textAnchor="end" className="text-[9px] fill-gray-400">0</text>
-            </svg>
+                    )}
+                    <Bar dataKey="glasses" radius={[2, 2, 0, 0]}>
+                        {waterData.map((d) => (
+                            <Cell
+                                key={d.date}
+                                fill={d.glasses >= d.goal ? '#3b82f6' : '#93c5fd'}
+                            />
+                        ))}
+                    </Bar>
+                </BarChart>
+            </ResponsiveContainer>
         </section>
     )
 }
