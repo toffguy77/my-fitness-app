@@ -68,7 +68,7 @@ export function WaterChart({ days }: WaterChartProps) {
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                    <BarChart data={waterData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <BarChart data={waterData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
                         <XAxis
                             dataKey="label"
@@ -80,7 +80,7 @@ export function WaterChart({ days }: WaterChartProps) {
                             tick={AXIS_STYLE}
                             stroke="#e5e7eb"
                             tickLine={false}
-                            width={40}
+                            width={50}
                             allowDecimals={false}
                         />
                         <Tooltip content={<WaterTooltip />} />
