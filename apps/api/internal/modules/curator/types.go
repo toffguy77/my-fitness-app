@@ -2,15 +2,15 @@ package curator
 
 // ClientCard represents a summary view of a client for the curator dashboard
 type ClientCard struct {
-	ID           int64       `json:"id"`
-	Name         string      `json:"name"`
-	AvatarURL    string      `json:"avatar_url,omitempty"`
-	TodayKBZHU   *DailyKBZHU `json:"today_kbzhu"`
-	Plan         *PlanKBZHU  `json:"plan"`
-	Alerts       []Alert     `json:"alerts"`
-	UnreadCount  int         `json:"unread_count"`
-	LastWeight   *float64    `json:"last_weight"`
-	WeightTrend  string      `json:"weight_trend"`
+	ID                int64       `json:"id"`
+	Name              string      `json:"name"`
+	AvatarURL         string      `json:"avatar_url,omitempty"`
+	TodayKBZHU        *DailyKBZHU `json:"today_kbzhu"`
+	Plan              *PlanKBZHU  `json:"plan"`
+	Alerts            []Alert     `json:"alerts"`
+	UnreadCount       int         `json:"unread_count"`
+	LastWeight        *float64    `json:"last_weight"`
+	WeightTrend       string      `json:"weight_trend"`
 	TargetWeight      *float64    `json:"target_weight"`
 	TodayWater        *WaterView  `json:"today_water"`
 	Email             string      `json:"email,omitempty"`
@@ -18,6 +18,10 @@ type ClientCard struct {
 	Timezone          string      `json:"timezone,omitempty"`
 	TelegramUsername  string      `json:"telegram_username,omitempty"`
 	InstagramUsername string      `json:"instagram_username,omitempty"`
+	BirthDate         *string     `json:"birth_date,omitempty"`
+	BiologicalSex     *string     `json:"biological_sex,omitempty"`
+	ActivityLevel     *string     `json:"activity_level,omitempty"`
+	FitnessGoal       *string     `json:"fitness_goal,omitempty"`
 }
 
 // DailyKBZHU represents daily nutrition totals (calories, protein, fat, carbs)
