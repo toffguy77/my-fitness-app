@@ -39,6 +39,9 @@ import {
 } from '@/features/dashboard'
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import type { NavigationItemId } from '@/features/dashboard/types'
+import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
+import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
+import type { TargetVsActual } from '@/features/nutrition-calc/types'
 
 interface UserData {
     id: string
@@ -52,6 +55,7 @@ export default function DashboardPage() {
     const [userData, setUserData] = useState<UserData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
+    const [kbjuHistory, setKbjuHistory] = useState<TargetVsActual[]>([])
 
     const {
         selectedDate,
@@ -113,6 +117,14 @@ export default function DashboardPage() {
                 if (profile.avatar_url) setAvatarUrl(profile.avatar_url)
                 if (profile.name) setUserData(prev => prev ? { ...prev, name: profile.name } : prev)
             })
+            .catch(() => {})
+    }, [userData?.id])
+
+    // Fetch KBJU weekly history
+    useEffect(() => {
+        if (!userData) return
+        getHistory(7)
+            .then(res => setKbjuHistory(res.days))
             .catch(() => {})
     }, [userData?.id])
 
@@ -226,6 +238,9 @@ export default function DashboardPage() {
                     date={selectedDate}
                     className="w-full"
                 />
+
+                {/* KBJU Weekly Chart */}
+                <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
 
                 {/* Below-the-fold sections */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
