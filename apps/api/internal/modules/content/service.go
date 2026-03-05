@@ -469,7 +469,7 @@ func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID s
 	}
 
 	// Best-effort: delete related notifications
-	actionURL := fmt.Sprintf("/content/feed/%s", articleID)
+	actionURL := fmt.Sprintf("/content/%s", articleID)
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM notifications WHERE action_url = $1`, actionURL); err != nil {
 		s.log.Error("Failed to delete content notifications (best-effort)", "error", err, "article_id", articleID)
 	}
