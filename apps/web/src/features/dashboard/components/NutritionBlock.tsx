@@ -207,9 +207,16 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
     const dayData = dailyData[dateStr]
 
     // Fetch calculated targets for the selected date
+    // Re-fetch when dayData changes (e.g. after saving workout/weight)
+    // Small delay to allow async backend recalculation to complete
+    const workoutType = dayData?.workout?.type
+    const weight = dayData?.weight
     useEffect(() => {
-        getTargets(dateStr).then(setCalcTargets).catch(() => {})
-    }, [dateStr])
+        const timer = setTimeout(() => {
+            getTargets(dateStr).then(setCalcTargets).catch(() => {})
+        }, workoutType || weight ? 500 : 0)
+        return () => clearTimeout(timer)
+    }, [dateStr, workoutType, weight])
 
     // Get nutrition data and goals - memoized to prevent recalculation
     const nutrition = useMemo(() =>
