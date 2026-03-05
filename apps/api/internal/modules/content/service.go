@@ -35,6 +35,10 @@ type ServiceInterface interface {
 	GetFeed(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error)
 	GetFeedArticle(ctx context.Context, clientID int64, articleID string) (*Article, error)
 
+	// Public operations (no auth required)
+	GetPublicFeed(ctx context.Context, category string, limit int, offset int) (*FeedResponse, error)
+	GetPublicArticle(ctx context.Context, articleID string) (*Article, error)
+
 	// Scheduler
 	PublishScheduledArticles(ctx context.Context) error
 }
@@ -847,6 +851,137 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 	s.log.LogDatabaseQuery("GetFeedArticle", time.Since(startTime), nil, map[string]interface{}{
 		"article_id": articleID,
 		"client_id":  clientID,
+	})
+
+	return &article, nil
+}
+
+// GetPublicFeed returns published articles with audience_scope = 'all', no auth required.
+func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int, offset int) (*FeedResponse, error) {
+	startTime := time.Now()
+
+	args := []any{}
+	argIdx := 1
+
+	categoryClause := ""
+	if category != "" {
+		categoryClause = fmt.Sprintf(" AND a.category = $%d", argIdx)
+		args = append(args, category)
+		argIdx++
+	}
+
+	whereClause := "a.status = 'published' AND a.audience_scope = 'all'"
+
+	// Count total matching articles
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM articles a WHERE %s%s`, whereClause, categoryClause)
+	var total int
+	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		s.log.Error("Failed to count public feed articles", "error", err)
+		return nil, fmt.Errorf("failed to count public feed articles: %w", err)
+	}
+
+	// Fetch paginated articles
+	selectQuery := fmt.Sprintf(`
+		SELECT a.id, COALESCE(u.name, '') AS author_name, a.title, a.excerpt,
+		       COALESCE(a.cover_image_url, ''), a.category, a.published_at
+		FROM articles a
+		JOIN users u ON u.id = a.author_id
+		WHERE %s%s
+		ORDER BY a.published_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereClause, categoryClause, argIdx, argIdx+1)
+
+	selectArgs := append(args, limit, offset)
+
+	rows, err := s.db.QueryContext(ctx, selectQuery, selectArgs...)
+	if err != nil {
+		s.log.Error("Failed to query public feed articles", "error", err)
+		return nil, fmt.Errorf("failed to query public feed articles: %w", err)
+	}
+	defer rows.Close()
+
+	articles := make([]ArticleCard, 0)
+	for rows.Next() {
+		var card ArticleCard
+		var publishedAt sql.NullTime
+
+		if err := rows.Scan(
+			&card.ID, &card.AuthorName, &card.Title, &card.Excerpt,
+			&card.CoverImageURL, &card.Category, &publishedAt,
+		); err != nil {
+			s.log.Error("Failed to scan public feed article row", "error", err)
+			return nil, fmt.Errorf("failed to scan public feed article row: %w", err)
+		}
+
+		if publishedAt.Valid {
+			card.PublishedAt = &publishedAt.Time
+		}
+
+		articles = append(articles, card)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating public feed article rows: %w", err)
+	}
+
+	s.log.LogDatabaseQuery("GetPublicFeed", time.Since(startTime), nil, map[string]interface{}{
+		"category": category,
+		"count":    len(articles),
+		"total":    total,
+	})
+
+	return &FeedResponse{Articles: articles, Total: total}, nil
+}
+
+// GetPublicArticle returns a single published article with audience_scope = 'all', no auth required.
+func (s *Service) GetPublicArticle(ctx context.Context, articleID string) (*Article, error) {
+	startTime := time.Now()
+
+	query := `
+		SELECT a.id, u.name AS author_name, a.title, a.excerpt,
+		       COALESCE(a.cover_image_url, ''), a.category, a.status, a.audience_scope,
+		       a.content_s3_key, a.published_at, a.created_at, a.updated_at,
+		       a.author_id
+		FROM articles a
+		JOIN users u ON u.id = a.author_id
+		WHERE a.id = $1 AND a.status = 'published' AND a.audience_scope = 'all'
+	`
+
+	var article Article
+	var contentS3Key sql.NullString
+	var publishedAt sql.NullTime
+
+	err := s.db.QueryRowContext(ctx, query, articleID).Scan(
+		&article.ID, &article.AuthorName, &article.Title, &article.Excerpt,
+		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
+		&contentS3Key, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
+		&article.AuthorID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("article not found")
+		}
+		s.log.Error("Failed to get public article", "error", err, "article_id", articleID)
+		return nil, fmt.Errorf("failed to get public article: %w", err)
+	}
+
+	if publishedAt.Valid {
+		article.PublishedAt = &publishedAt.Time
+	}
+
+	// Fetch body from S3
+	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
+		data, err := s.s3.GetFile(ctx, contentS3Key.String)
+		if err != nil {
+			s.log.Error("Failed to get public article body from S3", "error", err, "key", contentS3Key.String)
+			// Non-fatal: return article without body
+		} else {
+			article.Body = string(data)
+		}
+	}
+
+	s.log.LogDatabaseQuery("GetPublicArticle", time.Since(startTime), nil, map[string]interface{}{
+		"article_id": articleID,
 	})
 
 	return &article, nil
