@@ -2,10 +2,10 @@
 
 import Script from 'next/script'
 
-const METRIKA_ID =
-    process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID || '107159088'
+const METRIKA_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
 
 export function YandexMetrika() {
+    if (!METRIKA_ID) return null
 
     return (
         <>
