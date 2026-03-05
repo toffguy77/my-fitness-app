@@ -281,7 +281,7 @@ func (s *Service) getWorkoutForDate(ctx context.Context, userID int64, date time
 		SELECT workout_type, workout_duration
 		FROM daily_metrics
 		WHERE user_id = $1 AND date = $2
-		  AND workout_completed = true AND workout_type IS NOT NULL AND workout_duration IS NOT NULL
+		  AND workout_type IS NOT NULL AND workout_duration IS NOT NULL
 	`
 	var wType string
 	var wDuration int
