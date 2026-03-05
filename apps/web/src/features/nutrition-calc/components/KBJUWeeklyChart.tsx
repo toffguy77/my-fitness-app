@@ -17,7 +17,7 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
         data.map(d => {
             const targetCal = d.target?.calories ?? null
             const actualCal = d.actual?.calories ?? null
-            const dateStr = String(d.date).split('T')[0]
+            const dateStr = String(d.date).split(/[T ]/)[0]
             const [year, month, day] = dateStr.split('-').map(Number)
             const dateObj = new Date(year, month - 1, day)
             const label = isNaN(dateObj.getTime())
