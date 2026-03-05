@@ -67,7 +67,7 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                    <BarChart data={stepsData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <BarChart data={stepsData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
                         <XAxis
                             dataKey="label"
@@ -79,7 +79,7 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
                             tick={AXIS_STYLE}
                             stroke="#e5e7eb"
                             tickLine={false}
-                            width={40}
+                            width={50}
                             tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
                         />
                         <Tooltip content={<StepsTooltip />} />

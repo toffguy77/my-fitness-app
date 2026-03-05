@@ -82,7 +82,7 @@ const WeightTrendChart = memo(function WeightTrendChart({
     return (
         <div>
             <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
                     <XAxis
                         dataKey="label"
@@ -94,8 +94,17 @@ const WeightTrendChart = memo(function WeightTrendChart({
                         tick={AXIS_STYLE}
                         stroke="#e5e7eb"
                         tickLine={false}
-                        width={40}
-                        domain={['dataMin - 0.5', 'dataMax + 0.5']}
+                        width={50}
+                        domain={[
+                            (dataMin: number) => {
+                                const min = targetWeight != null ? Math.min(dataMin, targetWeight) : dataMin
+                                return Math.floor((min - 0.5) * 10) / 10
+                            },
+                            (dataMax: number) => {
+                                const max = targetWeight != null ? Math.max(dataMax, targetWeight) : dataMax
+                                return Math.ceil((max + 0.5) * 10) / 10
+                            },
+                        ]}
                     />
                     <Tooltip content={<WeightTooltip />} />
                     {targetWeight != null && (
