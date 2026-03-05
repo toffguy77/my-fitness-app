@@ -48,8 +48,7 @@ export function NotificationsLayout({
     };
 
     const handleSettingsClick = () => {
-        // TODO: Implement notification settings functionality
-        // This will open a modal or navigate to settings page
+        router.push('/settings/notifications');
     };
 
     return (
