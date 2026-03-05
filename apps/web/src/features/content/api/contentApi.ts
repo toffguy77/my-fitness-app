@@ -52,3 +52,16 @@ export const contentApi = {
     getFeedArticle: (id: string) =>
         apiClient.get<Article>(`${FEED_BASE}/${id}`),
 }
+
+const PUBLIC_CONTENT_BASE = '/backend-api/v1/public/content'
+
+export const publicContentApi = {
+    getFeed: (category?: string, limit = 20, offset = 0) => {
+        const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+        if (category) params.set('category', category)
+        return apiClient.get<FeedResponse>(`${PUBLIC_CONTENT_BASE}?${params}`)
+    },
+
+    getArticle: (id: string) =>
+        apiClient.get<Article>(`${PUBLIC_CONTENT_BASE}/${id}`),
+}
