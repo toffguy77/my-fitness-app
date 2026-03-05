@@ -3,13 +3,43 @@
 import { useMemo } from 'react'
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, Dot
+    ResponsiveContainer, Dot,
 } from 'recharts'
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
+import { cn } from '@/shared/utils/cn'
 import type { TargetVsActual } from '../types'
 
 interface KBJUWeeklyChartProps {
     data: TargetVsActual[]
     className?: string
+}
+
+const CHART_HEIGHT = 160
+const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
+const GRID_STROKE = '#f0f0f0'
+
+function ChartTooltip({ active, payload, label }: {
+    active?: boolean
+    payload?: Payload<number, string>[]
+    label?: string
+}) {
+    if (!active || !payload?.length) return null
+    return (
+        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+            {payload.map((entry: Payload<number, string>) => (
+                <p key={entry.name} className="text-xs text-gray-600">
+                    <span
+                        className="inline-block w-2 h-2 rounded-full mr-1.5"
+                        style={{ backgroundColor: entry.color }}
+                    />
+                    {entry.name === 'target' ? 'Цель' : 'Факт'}:{' '}
+                    <span className="font-medium">{Math.round(entry.value ?? 0)} ккал</span>
+                </p>
+            ))}
+        </div>
+    )
 }
 
 export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
@@ -23,7 +53,6 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
             const label = isNaN(dateObj.getTime())
                 ? dateStr
                 : dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-            const hasWorkout = (d.workout_bonus ?? 0) > 0
 
             let status: 'green' | 'yellow' | 'red' = 'green'
             if (targetCal && actualCal) {
@@ -37,10 +66,7 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
                 label,
                 target: targetCal,
                 actual: actualCal,
-                workoutBonus: d.workout_bonus,
-                hasWorkout,
                 status,
-                source: d.source,
             }
         }),
         [data]
@@ -49,58 +75,66 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
     if (chartData.length === 0) return null
 
     return (
-        <section className={`rounded-xl bg-white p-4 shadow-sm border border-gray-100 ${className ?? ''}`}>
-            <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-900">КБЖУ за неделю</h2>
-            </div>
-            <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <Tooltip
-                        formatter={(value?: number, name?: string) => [
-                            `${Math.round(value ?? 0)} ккал`,
-                            name === 'target' ? 'Цель' : 'Факт'
-                        ]}
-                        labelFormatter={(label: unknown) => String(label)}
-                    />
-                    <Line
-                        type="monotone"
-                        dataKey="target"
-                        stroke="#6366f1"
-                        strokeDasharray="6 3"
-                        strokeWidth={2}
-                        dot={{ r: 3, fill: '#6366f1' }}
-                        connectNulls
-                        name="target"
-                    />
-                    <Line
-                        type="monotone"
-                        dataKey="actual"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        dot={(props: Record<string, unknown>) => {
-                            const { cx, cy, payload } = props as { cx: number; cy: number; payload: { status: string } }
-                            const colors: Record<string, string> = { green: '#10b981', yellow: '#f59e0b', red: '#ef4444' }
-                            const color = colors[payload.status] ?? colors.green
-                            return <Dot cx={cx} cy={cy} r={4} fill={color} stroke="white" strokeWidth={1} />
-                        }}
-                        connectNulls
-                        name="actual"
-                    />
-                </LineChart>
-            </ResponsiveContainer>
-            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                <span className="flex items-center gap-1">
-                    <span className="inline-block w-4 border-t-2 border-dashed border-indigo-500" />
-                    Цель
-                </span>
-                <span className="flex items-center gap-1">
-                    <span className="inline-block w-4 border-t-2 border-emerald-500" />
-                    Факт
-                </span>
-            </div>
-        </section>
+        <Card className={cn('', className)} variant="bordered">
+            <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold text-gray-900">
+                    Калории за неделю
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                        <XAxis
+                            dataKey="label"
+                            tick={AXIS_STYLE}
+                            stroke="#e5e7eb"
+                            tickLine={false}
+                        />
+                        <YAxis
+                            tick={AXIS_STYLE}
+                            stroke="#e5e7eb"
+                            tickLine={false}
+                            width={40}
+                        />
+                        <Tooltip content={<ChartTooltip />} />
+                        <Line
+                            type="monotone"
+                            dataKey="target"
+                            stroke="#6366f1"
+                            strokeDasharray="6 3"
+                            strokeWidth={2}
+                            dot={{ r: 3, fill: '#6366f1', strokeWidth: 0 }}
+                            connectNulls
+                            name="target"
+                        />
+                        <Line
+                            type="monotone"
+                            dataKey="actual"
+                            stroke="#10b981"
+                            strokeWidth={2}
+                            dot={(props: Record<string, unknown>) => {
+                                const { cx, cy, payload } = props as { cx: number; cy: number; payload: { status: string } }
+                                const colors: Record<string, string> = { green: '#10b981', yellow: '#f59e0b', red: '#ef4444' }
+                                const color = colors[payload.status] ?? colors.green
+                                return <Dot cx={cx} cy={cy} r={3} fill={color} stroke="white" strokeWidth={1.5} />
+                            }}
+                            connectNulls
+                            name="actual"
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-4 border-t-2 border-dashed border-indigo-500" />
+                        Цель
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-4 border-t-2 border-emerald-500" />
+                        Факт
+                    </span>
+                </div>
+            </CardContent>
+        </Card>
     )
 }
