@@ -1,6 +1,6 @@
 environment      = "prod"
-folder_id        = ""  # TODO: fill in
+folder_id        = "b1g7q85lgictgf4j1dq8"
 pg_cluster_id    = "c9q1384cb8tqrg09o8n4"
 pg_database_name = "web-app-db"
-pg_user_name     = ""  # TODO: fill in existing user name
+pg_user_name     = "burcev-web"
 sa_name          = "burcev-prod"
