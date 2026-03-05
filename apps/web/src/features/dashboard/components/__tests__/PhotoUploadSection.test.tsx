@@ -208,7 +208,7 @@ describe('PhotoUploadSection', () => {
     })
 
     describe('Weekend Behavior', () => {
-        it('shows prominent button on Saturday', () => {
+        it('shows upload button on Saturday', () => {
             jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const weekStart = new Date('2024-01-01')
@@ -222,10 +222,10 @@ describe('PhotoUploadSection', () => {
             )
 
             const button = screen.getByRole('button', { name: /загрузить фото прогресса/i })
-            expect(button).toHaveClass('bg-blue-600')
+            expect(button).toBeInTheDocument()
         })
 
-        it('shows prominent button on Sunday', () => {
+        it('shows upload button on Sunday', () => {
             jest.setSystemTime(new Date('2024-01-07T12:00:00Z')) // Sunday
 
             const weekStart = new Date('2024-01-01')
@@ -239,10 +239,10 @@ describe('PhotoUploadSection', () => {
             )
 
             const button = screen.getByRole('button', { name: /загрузить фото прогресса/i })
-            expect(button).toHaveClass('bg-blue-600')
+            expect(button).toBeInTheDocument()
         })
 
-        it('shows weekend reminder on Saturday', () => {
+        it('shows weekend attention icon on Saturday', () => {
             jest.setSystemTime(new Date('2024-01-06T12:00:00Z')) // Saturday
 
             const weekStart = new Date('2024-01-01')
@@ -255,10 +255,10 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            expect(screen.getByText(/не забудьте загрузить фото прогресса/i)).toBeInTheDocument()
+            expect(screen.getByRole('img', { name: /не забудьте загрузить фото прогресса/i })).toBeInTheDocument()
         })
 
-        it('shows weekend reminder on Sunday', () => {
+        it('shows weekend attention icon on Sunday', () => {
             jest.setSystemTime(new Date('2024-01-07T12:00:00Z')) // Sunday
 
             const weekStart = new Date('2024-01-01')
@@ -271,10 +271,10 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            expect(screen.getByText(/не забудьте загрузить фото прогресса/i)).toBeInTheDocument()
+            expect(screen.getByRole('img', { name: /не забудьте загрузить фото прогресса/i })).toBeInTheDocument()
         })
 
-        it('shows regular button on weekday', () => {
+        it('shows upload button on weekday', () => {
             // Already on Monday from beforeEach
 
             const weekStart = new Date('2024-01-01')
@@ -287,12 +287,11 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            const button = screen.getByRole('button', { name: /загрузить фото/i })
-            expect(button).toHaveClass('bg-gray-100')
-            expect(button).not.toHaveClass('bg-blue-600')
+            const button = screen.getByRole('button', { name: /загрузить фото прогресса/i })
+            expect(button).toBeInTheDocument()
         })
 
-        it('does not show weekend reminder on weekday', () => {
+        it('does not show weekend attention icon on weekday', () => {
             // Already on Monday from beforeEach
 
             const weekStart = new Date('2024-01-01')
@@ -305,7 +304,7 @@ describe('PhotoUploadSection', () => {
                 />
             )
 
-            expect(screen.queryByText(/не забудьте загрузить фото прогресса/i)).not.toBeInTheDocument()
+            expect(screen.queryByRole('img', { name: /не забудьте загрузить фото прогресса/i })).not.toBeInTheDocument()
         })
     })
 

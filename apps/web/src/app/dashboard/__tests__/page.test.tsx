@@ -32,20 +32,39 @@ jest.mock('@/features/dashboard/components/DailyTrackingGrid', () => ({
     DailyTrackingGrid: () => <div data-testid="daily-tracking-grid">Daily Tracking Grid</div>,
 }))
 
-jest.mock('@/features/dashboard/components/ProgressSection', () => ({
-    ProgressSection: () => <div data-testid="progress-section">Progress Section</div>,
+// Note: ProgressSection, PhotoUploadSection, WeeklyPlanSection, TasksSection
+// are now lazy-loaded via @/features/dashboard barrel export, mocked below
+
+jest.mock('@/features/dashboard/components/WeightSection', () => ({
+    WeightSection: () => <div data-testid="weight-section">Weight Section</div>,
 }))
 
-jest.mock('@/features/dashboard/components/PhotoUploadSection', () => ({
-    PhotoUploadSection: () => <div data-testid="photo-upload-section">Photo Upload Section</div>,
+jest.mock('@/features/nutrition-calc/components/KBJUWeeklyChart', () => ({
+    KBJUWeeklyChart: () => <div data-testid="kbju-weekly-chart">KBJU Weekly Chart</div>,
 }))
 
-jest.mock('@/features/dashboard/components/WeeklyPlanSection', () => ({
-    WeeklyPlanSection: () => <div data-testid="weekly-plan-section">Weekly Plan Section</div>,
+jest.mock('@/features/nutrition-calc/components/ProfileCompletionBanner', () => ({
+    ProfileCompletionBanner: () => <div data-testid="profile-completion-banner">Profile Completion Banner</div>,
 }))
 
-jest.mock('@/features/dashboard/components/TasksSection', () => ({
-    TasksSection: () => <div data-testid="tasks-section">Tasks Section</div>,
+jest.mock('@/features/settings/api/settings', () => ({
+    getProfile: jest.fn().mockResolvedValue({ settings: {} }),
+}))
+
+jest.mock('@/features/nutrition-calc/api/nutritionCalc', () => ({
+    getHistory: jest.fn().mockResolvedValue({ days: [] }),
+}))
+
+// Mock lazy-loaded components from features/dashboard barrel export
+jest.mock('@/features/dashboard', () => ({
+    LazyProgressSection: () => <div data-testid="progress-section">Progress Section</div>,
+    LazyPhotoUploadSection: () => <div data-testid="photo-upload-section">Photo Upload Section</div>,
+    LazyWeeklyPlanSection: () => <div data-testid="weekly-plan-section">Weekly Plan Section</div>,
+    LazyTasksSection: () => <div data-testid="tasks-section">Tasks Section</div>,
+    ProgressSectionSkeleton: () => <div>Loading Progress...</div>,
+    PhotoUploadSectionSkeleton: () => <div>Loading Photo...</div>,
+    WeeklyPlanSectionSkeleton: () => <div>Loading Plan...</div>,
+    TasksSectionSkeleton: () => <div>Loading Tasks...</div>,
 }))
 
 // Mock dashboard store
@@ -65,6 +84,8 @@ jest.mock('@/features/dashboard/store/dashboardStore', () => ({
             start: new Date('2024-01-15'),
             end: new Date('2024-01-21'),
         },
+        dailyData: {},
+        targetsVersion: 0,
         fetchDailyData: mockFetchDailyData,
         fetchWeekData: mockFetchWeekData,
         fetchWeeklyPlan: mockFetchWeeklyPlan,

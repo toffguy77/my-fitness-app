@@ -26,14 +26,14 @@ jest.mock('../NutritionBlock', () => ({
     ),
 }))
 
-jest.mock('../WeightBlock', () => ({
-    WeightBlock: ({ date, className }: { date: Date; className?: string }) => (
+jest.mock('../WaterBlock', () => ({
+    WaterBlock: ({ date, className }: { date: Date; className?: string }) => (
         <div
-            data-testid="weight-block"
+            data-testid="water-block"
             data-date={date.toISOString()}
             className={className}
         >
-            Weight Block
+            Water Block
         </div>
     ),
 }))
@@ -195,12 +195,12 @@ describe('DailyTrackingGrid', () => {
             render(<DailyTrackingGrid date={testDate} />)
 
             const skeletons = screen.getAllByLabelText('Загрузка блока отслеживания')
-            expect(skeletons).toHaveLength(4)
+            expect(skeletons).toHaveLength(3)
             expect(skeletons[0]).toHaveClass('animate-pulse')
 
             // Should not render actual blocks
             expect(screen.queryByTestId('nutrition-block')).not.toBeInTheDocument()
-            expect(screen.queryByTestId('weight-block')).not.toBeInTheDocument()
+            expect(screen.queryByTestId('water-block')).not.toBeInTheDocument()
             expect(screen.queryByTestId('steps-block')).not.toBeInTheDocument()
             expect(screen.queryByTestId('workout-block')).not.toBeInTheDocument()
         })
@@ -226,7 +226,7 @@ describe('DailyTrackingGrid', () => {
 
             // Should still render blocks with existing data
             expect(screen.getByTestId('nutrition-block')).toBeInTheDocument()
-            expect(screen.getByTestId('weight-block')).toBeInTheDocument()
+            expect(screen.getByTestId('water-block')).toBeInTheDocument()
             expect(screen.getByTestId('steps-block')).toBeInTheDocument()
             expect(screen.getByTestId('workout-block')).toBeInTheDocument()
         })
@@ -255,7 +255,7 @@ describe('DailyTrackingGrid', () => {
 
             // Should not render blocks
             expect(screen.queryByTestId('nutrition-block')).not.toBeInTheDocument()
-            expect(screen.queryByTestId('weight-block')).not.toBeInTheDocument()
+            expect(screen.queryByTestId('water-block')).not.toBeInTheDocument()
             expect(screen.queryByTestId('steps-block')).not.toBeInTheDocument()
             expect(screen.queryByTestId('workout-block')).not.toBeInTheDocument()
         })
@@ -300,7 +300,7 @@ describe('DailyTrackingGrid', () => {
 
             // Should still render blocks with cached data
             expect(screen.getByTestId('nutrition-block')).toBeInTheDocument()
-            expect(screen.getByTestId('weight-block')).toBeInTheDocument()
+            expect(screen.getByTestId('water-block')).toBeInTheDocument()
             expect(screen.getByTestId('steps-block')).toBeInTheDocument()
             expect(screen.getByTestId('workout-block')).toBeInTheDocument()
         })
@@ -340,7 +340,7 @@ describe('DailyTrackingGrid', () => {
 
             // Should render all four blocks
             const nutritionBlock = screen.getByTestId('nutrition-block')
-            const weightBlock = screen.getByTestId('weight-block')
+            const weightBlock = screen.getByTestId('water-block')
             const stepsBlock = screen.getByTestId('steps-block')
             const workoutBlock = screen.getByTestId('workout-block')
 
@@ -423,7 +423,7 @@ describe('DailyTrackingGrid', () => {
             render(<DailyTrackingGrid date={testDate} />)
 
             const skeletons = screen.getAllByLabelText('Загрузка блока отслеживания')
-            expect(skeletons).toHaveLength(4)
+            expect(skeletons).toHaveLength(3)
         })
 
         it('hides decorative icons from screen readers', () => {
@@ -481,7 +481,7 @@ describe('DailyTrackingGrid', () => {
 
             // Should render blocks even without specific date data
             expect(screen.getByTestId('nutrition-block')).toBeInTheDocument()
-            expect(screen.getByTestId('weight-block')).toBeInTheDocument()
+            expect(screen.getByTestId('water-block')).toBeInTheDocument()
             expect(screen.getByTestId('steps-block')).toBeInTheDocument()
             expect(screen.getByTestId('workout-block')).toBeInTheDocument()
         })

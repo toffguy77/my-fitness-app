@@ -125,8 +125,7 @@ describe('Property 11: Workout Data Display', () => {
                     const { unmount } = render(<WorkoutBlock date={date} />)
 
                     // Should show empty state
-                    expect(screen.getByText('Тренировка не записана')).toBeInTheDocument()
-                    expect(screen.getByText(/Добавьте тренировку/)).toBeInTheDocument()
+                    expect(screen.getByText('Не записано')).toBeInTheDocument()
 
                     unmount()
                     return true

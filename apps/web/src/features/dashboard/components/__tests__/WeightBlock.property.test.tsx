@@ -9,6 +9,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import * as fc from 'fast-check'
 import { WeightBlock } from '../WeightBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import type { DailyMetrics } from '../../types'
 
 // Mock the dashboard store
@@ -21,6 +22,11 @@ jest.mock('react-hot-toast', () => ({
         success: jest.fn(),
         error: jest.fn(),
     },
+}))
+
+// Mock settings API (getProfile is called on mount)
+jest.mock('@/features/settings/api/settings', () => ({
+    getProfile: jest.fn().mockResolvedValue({ settings: {} }),
 }))
 
 /**
@@ -89,7 +95,7 @@ describe('Property 8: Weight Input Validation', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with no existing weight
                         const testStore = {
@@ -157,7 +163,7 @@ describe('Property 8: Weight Input Validation', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with no existing weight
                         const testStore = {
@@ -224,10 +230,10 @@ describe('Property 8: Weight Input Validation', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
                         const previousDate = new Date(date)
                         previousDate.setDate(date.getDate() - 1)
-                        const previousDateStr = previousDate.toISOString().split('T')[0]
+                        const previousDateStr = formatLocalDate(previousDate)
 
                         // Mock store with current and previous weight
                         const testStore = {
@@ -301,7 +307,7 @@ describe('Property 8: Weight Input Validation', () => {
                         // Create valid date from day of year
                         const date = new Date('2024-01-01')
                         date.setDate(dayOfYear)
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with no weight data
                         const testStore = {
