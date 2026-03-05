@@ -48,14 +48,14 @@ const FatCaloriePercent = 0.25
 
 // WorkoutCaloriesPerHour maps workout types (Russian UI labels) to kcal/hour burn estimates
 var WorkoutCaloriesPerHour = map[string]float64{
-	"Силовая":    300,
-	"Кардио":     400,
-	"HIIT":       500,
-	"Йога":       200,
-	"Растяжка":   200,
-	"Плавание":   350,
-	"Бег":        450,
-	"Велосипед":  400,
+	"Силовая":   300,
+	"Кардио":    400,
+	"HIIT":      500,
+	"Йога":      200,
+	"Растяжка":  200,
+	"Плавание":  350,
+	"Бег":       450,
+	"Велосипед": 400,
 }
 
 // BiologicalSex for BMR calculation

@@ -70,6 +70,7 @@ const createMockStore = (overrides = {}) => ({
     waterIntake: 0,
     waterGoal: 8,
     glassSize: 250,
+    waterEnabled: true,
     selectedDate: '2024-01-15',
     addWater: jest.fn(),
     ...overrides,

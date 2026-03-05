@@ -44,8 +44,7 @@ describe('WorkoutBlock', () => {
         it('displays empty state when no workout logged', () => {
             render(<WorkoutBlock date={mockDate} />)
 
-            expect(screen.getByText('Тренировка не записана')).toBeInTheDocument()
-            expect(screen.getByText(/Добавьте тренировку/)).toBeInTheDocument()
+            expect(screen.getByText('Не записано')).toBeInTheDocument()
         })
 
         it('shows dumbbell icon in empty state', () => {

@@ -31,12 +31,10 @@ describe('Property 13: Progress Chart Data Rendering', () => {
         expect(screen.getByText(/Продолжайте отслеживать/)).toBeInTheDocument()
     })
 
-    it('Feature: dashboard, Property 13: navigation button always present', async () => {
+    it('Feature: dashboard, Property 13: section title always present', async () => {
         render(<ProgressSection />)
 
-        // Navigation button should always be present regardless of data state
-        const button = screen.getByRole('button', { name: /Перейти к аналитике/i })
-        expect(button).toBeInTheDocument()
-        expect(button).toBeEnabled()
+        // Section title should always be present regardless of data state
+        expect(screen.getByText('Прогресс')).toBeInTheDocument()
     })
 })

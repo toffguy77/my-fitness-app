@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Toaster } from 'react-hot-toast'
+import { YandexMetrika } from '@/shared/components/YandexMetrika'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function RootLayout({
     return (
         <html lang="ru">
             <body>
+                <YandexMetrika />
                 {children}
                 <Toaster
                     position="top-center"

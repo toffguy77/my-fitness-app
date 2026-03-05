@@ -79,6 +79,24 @@ func TestGetClients(t *testing.T) {
 			WithArgs(curatorID).
 			WillReturnRows(unreadRows)
 
+		// Weight data query (getWeightData)
+		weightDataColumns := []string{"user_id", "weight", "date"}
+		mock.ExpectQuery(`SELECT user_id, weight, date FROM`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows(weightDataColumns))
+
+		// Target weights query (getTargetWeights)
+		targetWeightColumns := []string{"user_id", "target_weight"}
+		mock.ExpectQuery(`SELECT user_id, target_weight FROM user_settings`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows(targetWeightColumns))
+
+		// Today water query (getTodayWater)
+		todayWaterColumns := []string{"user_id", "glasses", "goal", "glass_size"}
+		mock.ExpectQuery(`SELECT user_id, glasses, goal, glass_size FROM water_logs`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows(todayWaterColumns))
+
 		clients, err := service.GetClients(ctx, curatorID)
 
 		require.NoError(t, err)
@@ -147,6 +165,21 @@ func TestGetClients(t *testing.T) {
 			WithArgs(curatorID).
 			WillReturnRows(unreadRows)
 
+		// Weight data query (getWeightData)
+		mock.ExpectQuery(`SELECT user_id, weight, date FROM`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "weight", "date"}))
+
+		// Target weights query (getTargetWeights)
+		mock.ExpectQuery(`SELECT user_id, target_weight FROM user_settings`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "target_weight"}))
+
+		// Today water query (getTodayWater)
+		mock.ExpectQuery(`SELECT user_id, glasses, goal, glass_size FROM water_logs`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "glasses", "goal", "glass_size"}))
+
 		clients, err := service.GetClients(ctx, curatorID)
 
 		require.NoError(t, err)
@@ -170,6 +203,7 @@ func TestGetClientDetail(t *testing.T) {
 		"height", "timezone",
 		"telegram_username", "instagram_username",
 		"target_weight", "water_goal",
+		"birth_date", "biological_sex", "activity_level", "fitness_goal",
 	}
 
 	// Helper: set up common mock expectations for a valid client detail call.
@@ -192,7 +226,8 @@ func TestGetClientDetail(t *testing.T) {
 				AddRow(clientID, clientName, avatarURL, "test@example.com",
 					175.0, "Europe/Moscow",
 					"tg_user", "ig_user",
-					70.0, int64(8)))
+					70.0, int64(8),
+					"1990-01-15", "male", "moderate", "weight_loss"))
 	}
 
 	t.Run("returns multi-day detail for valid curator-client relationship", func(t *testing.T) {

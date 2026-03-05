@@ -155,8 +155,8 @@ describe('StepsBlock', () => {
 
             render(<StepsBlock date={testDate} />)
 
-            expect(screen.getByText('Начните двигаться к цели')).toBeInTheDocument()
-            expect(screen.getByText('Добавить шаги')).toBeInTheDocument()
+            expect(screen.getByText('Не записано')).toBeInTheDocument()
+            expect(screen.getByText('Добавить')).toBeInTheDocument()
         })
 
         it('shows helper text', () => {
@@ -558,7 +558,7 @@ describe('StepsBlock', () => {
             render(<StepsBlock date={testDate} />)
 
             expect(screen.getByText('0')).toBeInTheDocument()
-            expect(screen.getByText('Начните двигаться к цели')).toBeInTheDocument()
+            expect(screen.getByText('Не записано')).toBeInTheDocument()
         })
 
         it('applies custom className', () => {

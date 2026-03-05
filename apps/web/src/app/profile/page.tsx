@@ -31,13 +31,17 @@ export default function ProfilePage() {
             return
         }
 
+        let role = 'client'
         try {
-            const role = JSON.parse(localStorage.getItem('user') || '{}').role
-            if (role) setUserRole(role)
+            const parsed = JSON.parse(localStorage.getItem('user') || '{}').role
+            if (parsed) role = parsed
         } catch { /* use default */ }
 
         getProfile()
-            .then(setProfile)
+            .then((p) => {
+                setUserRole(role)
+                setProfile(p)
+            })
             .catch(() => {
                 router.push('/auth')
             })
