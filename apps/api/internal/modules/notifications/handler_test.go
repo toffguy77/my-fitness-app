@@ -58,6 +58,19 @@ func (m *MockService) CreateNotification(ctx context.Context, notification *Noti
 	return args.Error(0)
 }
 
+func (m *MockService) GetPreferences(ctx context.Context, userID int64) (*ContentNotificationPreferences, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*ContentNotificationPreferences), args.Error(1)
+}
+
+func (m *MockService) UpdatePreferences(ctx context.Context, userID int64, req UpdatePreferencesRequest) error {
+	args := m.Called(ctx, userID, req)
+	return args.Error(0)
+}
+
 func setupTestHandlerWithMock() (*Handler, *MockService) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{
@@ -132,7 +145,7 @@ func TestGetNotifications_Success(t *testing.T) {
 	data := resp["data"].(map[string]interface{})
 	assert.NotNil(t, data["notifications"])
 	assert.NotNil(t, data["total"])
-	assert.NotNil(t, data["has_more"])
+	assert.NotNil(t, data["hasMore"])
 
 	mockService.AssertExpectations(t)
 }
@@ -234,7 +247,7 @@ func TestMarkAsRead_Success(t *testing.T) {
 	assert.Equal(t, "success", response["status"])
 	data := response["data"].(map[string]interface{})
 	assert.Equal(t, true, data["success"])
-	assert.NotNil(t, data["read_at"])
+	assert.NotNil(t, data["readAt"])
 
 	mockService.AssertExpectations(t)
 }
@@ -380,7 +393,7 @@ func TestMarkAllAsRead_Success(t *testing.T) {
 	assert.Equal(t, "success", response["status"])
 	data := response["data"].(map[string]interface{})
 	assert.Equal(t, true, data["success"])
-	assert.Equal(t, float64(5), data["marked_count"])
+	assert.Equal(t, float64(5), data["markedCount"])
 
 	mockService.AssertExpectations(t)
 }
