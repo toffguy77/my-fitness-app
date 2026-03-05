@@ -169,6 +169,11 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 		}
 		if completed, ok := data["completed"].(bool); ok {
 			existing.WorkoutCompleted = completed
+			// When workout is marked as not completed, clear type and duration
+			if !completed {
+				existing.WorkoutType = nil
+				existing.WorkoutDuration = nil
+			}
 		}
 		if workoutType, ok := data["type"].(string); ok {
 			existing.WorkoutType = &workoutType
