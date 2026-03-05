@@ -1,15 +1,42 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Droplets } from 'lucide-react'
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-    ReferenceLine, Cell
+    ReferenceLine, Cell, CartesianGrid,
 } from 'recharts'
+import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import type { DayDetail } from '../types'
+
+const CHART_HEIGHT = 160
+const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
+const GRID_STROKE = '#f0f0f0'
 
 interface WaterChartProps {
     days: DayDetail[]
+}
+
+function WaterTooltip({ active, payload, label }: {
+    active?: boolean
+    payload?: Payload<number, string>[]
+    label?: string
+}) {
+    if (!active || !payload?.length) return null
+    return (
+        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+            <p className="text-xs font-medium text-gray-900 mb-1">{String(label)}</p>
+            {payload.map((entry: Payload<number, string>) => (
+                <p key={entry.name} className="text-xs text-gray-600">
+                    <span
+                        className="inline-block w-2 h-2 rounded-full mr-1.5"
+                        style={{ backgroundColor: entry.color }}
+                    />
+                    Вода: <span className="font-medium">{entry.value ?? 0} стаканов</span>
+                </p>
+            ))}
+        </div>
+    )
 }
 
 export function WaterChart({ days }: WaterChartProps) {
@@ -30,45 +57,58 @@ export function WaterChart({ days }: WaterChartProps) {
     const latestGlasses = waterData[waterData.length - 1]?.glasses ?? 0
 
     return (
-        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <Droplets className="h-4 w-4 text-blue-500" />
-                    <h2 className="text-sm font-semibold text-gray-900">Вода</h2>
+        <Card variant="bordered">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold text-gray-900">Вода</CardTitle>
+                    <span className="text-sm font-semibold text-gray-900">
+                        {latestGlasses}/{waterGoal}
+                    </span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">
-                    {latestGlasses}/{waterGoal}
-                </span>
-            </div>
-
-            <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={waterData} margin={{ top: 5, right: 5, left: -10, bottom: 5 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#9ca3af" />
-                    <YAxis tick={{ fontSize: 10 }} stroke="#9ca3af" allowDecimals={false} />
-                    <Tooltip
-                        formatter={(value?: number) => [
-                            `${value ?? 0} стаканов`, 'Вода'
-                        ]}
-                        labelFormatter={(label: unknown) => String(label)}
-                    />
-                    {waterGoal > 0 && (
-                        <ReferenceLine
-                            y={waterGoal}
-                            stroke="#60a5fa"
-                            strokeDasharray="6 3"
-                            label={{ value: `Цель ${waterGoal}`, position: 'right', fontSize: 10, fill: '#60a5fa' }}
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+                    <BarChart data={waterData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                        <XAxis
+                            dataKey="label"
+                            tick={AXIS_STYLE}
+                            stroke="#e5e7eb"
+                            tickLine={false}
                         />
-                    )}
-                    <Bar dataKey="glasses" radius={[2, 2, 0, 0]}>
-                        {waterData.map((d) => (
-                            <Cell
-                                key={d.date}
-                                fill={d.glasses >= d.goal ? '#3b82f6' : '#93c5fd'}
+                        <YAxis
+                            tick={AXIS_STYLE}
+                            stroke="#e5e7eb"
+                            tickLine={false}
+                            width={40}
+                            allowDecimals={false}
+                        />
+                        <Tooltip content={<WaterTooltip />} />
+                        {waterGoal > 0 && (
+                            <ReferenceLine
+                                y={waterGoal}
+                                stroke="#60a5fa"
+                                strokeDasharray="6 3"
+                                strokeWidth={1}
+                                label={{
+                                    value: `Цель ${waterGoal}`,
+                                    position: 'right',
+                                    fill: '#60a5fa',
+                                    fontSize: 11,
+                                }}
                             />
-                        ))}
-                    </Bar>
-                </BarChart>
-            </ResponsiveContainer>
-        </section>
+                        )}
+                        <Bar dataKey="glasses" radius={[2, 2, 0, 0]}>
+                            {waterData.map((d) => (
+                                <Cell
+                                    key={d.date}
+                                    fill={d.glasses >= d.goal ? '#3b82f6' : '#93c5fd'}
+                                />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
     )
 }
