@@ -9,6 +9,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import * as fc from 'fast-check'
 import { StepsBlock } from '../StepsBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import type { DailyMetrics, WeeklyPlan } from '../../types'
 
 // Mock the dashboard store
@@ -84,7 +85,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with test data
                         const testStore = {
@@ -166,7 +167,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with test data
                         const testStore = {
@@ -237,7 +238,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with test data
                         const testStore = {
@@ -312,7 +313,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                     document.body.appendChild(container)
 
                     try {
-                        const dateStr = date.toISOString().split('T')[0]
+                        const dateStr = formatLocalDate(date)
 
                         // Mock store with zero steps
                         const testStore = {
@@ -346,8 +347,8 @@ describe('Property 9: Steps Data Display and Calculation', () => {
                         }
 
                         // Should show empty state message
-                        getByTextInContainer('Начните двигаться к цели')
-                        getByTextInContainer('Добавить шаги')
+                        getByTextInContainer('Не записано')
+                        getByTextInContainer('Добавить')
 
                         // Should show helper text
                         getByTextInContainer('Рекомендуется делать минимум 10,000 шагов в день')
@@ -378,7 +379,7 @@ describe('Property 9: Steps Data Display and Calculation', () => {
         const stepsGoal = 10000
         const invalidSteps = 150000 // Over 100,000 limit
 
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = formatLocalDate(date)
 
         // Mock store with test data
         const testStore = {

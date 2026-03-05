@@ -275,9 +275,9 @@ describe('NutritionBlock', () => {
 
             render(<NutritionBlock date={mockDate} />)
 
-            expect(screen.getByText('Данные о питании не добавлены')).toBeInTheDocument()
+            expect(screen.getByText('Не записано')).toBeInTheDocument()
             // Use more specific selector for the empty state button
-            expect(screen.getByText('Добавить еду')).toBeInTheDocument()
+            expect(screen.getByText('Добавить')).toBeInTheDocument()
         })
 
         it('does not show empty state when calories are logged', () => {
@@ -289,7 +289,7 @@ describe('NutritionBlock', () => {
 
             render(<NutritionBlock date={mockDate} />)
 
-            expect(screen.queryByText('Данные о питании не добавлены')).not.toBeInTheDocument()
+            expect(screen.queryByText('Не записано')).not.toBeInTheDocument()
         })
     })
 
@@ -399,7 +399,7 @@ describe('NutritionBlock', () => {
             render(<NutritionBlock date={mockDate} />)
 
             // Should show empty state
-            expect(screen.getByText('Данные о питании не добавлены')).toBeInTheDocument()
+            expect(screen.getByText('Не записано')).toBeInTheDocument()
             expect(screen.getByText('0')).toBeInTheDocument() // Calories
             expect(screen.getByText('из 2000 ккал')).toBeInTheDocument()
         })
