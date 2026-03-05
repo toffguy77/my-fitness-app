@@ -17,6 +17,7 @@ import (
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/dashboard"
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
+	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/modules/nutrition"
@@ -333,6 +334,16 @@ func main() {
 			ftGroup.POST("/recommendations/custom", foodTrackerHandler.CreateCustomRecommendation)
 		}
 
+		// Nutrition calculator routes (protected)
+		nutritionCalcHandler := nutritioncalc.NewHandler(cfg, log, db)
+		ncGroup := v1.Group("/nutrition-calc")
+		ncGroup.Use(middleware.RequireAuth(cfg))
+		{
+			ncGroup.GET("/targets", nutritionCalcHandler.GetTargets)
+			ncGroup.GET("/history", nutritionCalcHandler.GetHistory)
+			ncGroup.POST("/recalculate", nutritionCalcHandler.Recalculate)
+		}
+
 		// Dashboard routes (protected)
 		notificationsSvc := notifications.NewService(db, log)
 		dashboardHandler := dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc)
@@ -375,6 +386,7 @@ func main() {
 			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)
 			curatorGroup.PUT("/clients/:id/target-weight", curatorHandler.SetTargetWeight)
 			curatorGroup.PUT("/clients/:id/water-goal", curatorHandler.SetWaterGoal)
+			curatorGroup.GET("/clients/:id/targets/history", nutritionCalcHandler.GetClientHistory)
 		}
 
 		// Admin routes (super_admin role only)
