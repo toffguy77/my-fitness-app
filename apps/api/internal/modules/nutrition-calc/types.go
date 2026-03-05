@@ -46,14 +46,16 @@ var ProteinPerKg = map[FitnessGoal]float64{
 // FatCaloriePercent is the percentage of calories from fat
 const FatCaloriePercent = 0.25
 
-// WorkoutCaloriesPerHour maps workout types to kcal/hour burn estimates
+// WorkoutCaloriesPerHour maps workout types (Russian UI labels) to kcal/hour burn estimates
 var WorkoutCaloriesPerHour = map[string]float64{
-	"strength": 300,
-	"cardio":   400,
-	"hiit":     500,
-	"yoga":     200,
-	"swimming": 350,
-	"walking":  250,
+	"Силовая":    300,
+	"Кардио":     400,
+	"HIIT":       500,
+	"Йога":       200,
+	"Растяжка":   200,
+	"Плавание":   350,
+	"Бег":        450,
+	"Велосипед":  400,
 }
 
 // BiologicalSex for BMR calculation

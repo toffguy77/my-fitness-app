@@ -43,12 +43,12 @@ func TestCalculateTDEE(t *testing.T) {
 }
 
 func TestCalculateWorkoutBonus(t *testing.T) {
-	bonus := CalculateWorkoutBonus(&WorkoutInfo{Type: "strength", DurationMin: 60})
+	bonus := CalculateWorkoutBonus(&WorkoutInfo{Type: "Силовая", DurationMin: 60})
 	if bonus != 300 {
 		t.Errorf("expected 300, got %f", bonus)
 	}
 
-	bonus = CalculateWorkoutBonus(&WorkoutInfo{Type: "cardio", DurationMin: 90})
+	bonus = CalculateWorkoutBonus(&WorkoutInfo{Type: "Кардио", DurationMin: 90})
 	if bonus != 600 {
 		t.Errorf("expected 600, got %f", bonus)
 	}
@@ -73,7 +73,7 @@ func TestCalculateTargets(t *testing.T) {
 		ActivityLevel: ActivityModerate,
 		Goal:          GoalLoss,
 	}
-	workout := &WorkoutInfo{Type: "strength", DurationMin: 60}
+	workout := &WorkoutInfo{Type: "Силовая", DurationMin: 60}
 
 	targets := CalculateTargets(profile, workout)
 
