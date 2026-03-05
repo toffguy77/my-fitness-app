@@ -46,17 +46,17 @@ func (t NotificationType) IsValid() bool {
 
 // Notification represents a user notification
 type Notification struct {
-	ID        string               `json:"id" db:"id"`
-	UserID    int64                `json:"user_id" db:"user_id"`
-	Category  NotificationCategory `json:"category" db:"category"`
-	Type      NotificationType     `json:"type" db:"type"`
-	Title     string               `json:"title" db:"title"`
-	Content   string               `json:"content" db:"content"`
-	IconURL   *string              `json:"icon_url,omitempty" db:"icon_url"`
-	CreatedAt       time.Time            `json:"created_at" db:"created_at"`
-	ReadAt          *time.Time           `json:"read_at,omitempty" db:"read_at"`
-	ActionURL       *string              `json:"action_url,omitempty" db:"action_url"`
-	ContentCategory *string              `json:"content_category,omitempty" db:"content_category"`
+	ID              string               `json:"id" db:"id"`
+	UserID          int64                `json:"userId" db:"user_id"`
+	Category        NotificationCategory `json:"category" db:"category"`
+	Type            NotificationType     `json:"type" db:"type"`
+	Title           string               `json:"title" db:"title"`
+	Content         string               `json:"content" db:"content"`
+	IconURL         *string              `json:"iconUrl,omitempty" db:"icon_url"`
+	CreatedAt       time.Time            `json:"createdAt" db:"created_at"`
+	ReadAt          *time.Time           `json:"readAt,omitempty" db:"read_at"`
+	ActionURL       *string              `json:"actionUrl,omitempty" db:"action_url"`
+	ContentCategory *string              `json:"contentCategory,omitempty" db:"content_category"`
 }
 
 // Validate validates the notification fields
@@ -96,13 +96,13 @@ type GetNotificationsRequest struct {
 type GetNotificationsResponse struct {
 	Notifications []Notification `json:"notifications"`
 	Total         int            `json:"total"`
-	HasMore       bool           `json:"has_more"`
+	HasMore       bool           `json:"hasMore"`
 }
 
 // MarkAsReadResponse represents the response for marking a notification as read
 type MarkAsReadResponse struct {
 	Success bool       `json:"success"`
-	ReadAt  *time.Time `json:"read_at,omitempty"`
+	ReadAt  *time.Time `json:"readAt,omitempty"`
 }
 
 // MarkAllAsReadRequest represents the request to mark all notifications as read
@@ -113,7 +113,7 @@ type MarkAllAsReadRequest struct {
 // MarkAllAsReadResponse represents the response for marking all notifications as read
 type MarkAllAsReadResponse struct {
 	Success     bool `json:"success"`
-	MarkedCount int  `json:"marked_count"`
+	MarkedCount int  `json:"markedCount"`
 }
 
 // UnreadCountsResponse represents the response for getting unread counts
@@ -124,12 +124,12 @@ type UnreadCountsResponse struct {
 
 // ContentNotificationPreferences represents a user's content notification settings
 type ContentNotificationPreferences struct {
-	MutedCategories []string `json:"muted_categories"`
+	MutedCategories []string `json:"mutedCategories"`
 	Muted           bool     `json:"muted"`
 }
 
 // UpdatePreferencesRequest is the request body for updating notification preferences
 type UpdatePreferencesRequest struct {
-	MutedCategories []string `json:"muted_categories"`
+	MutedCategories []string `json:"mutedCategories"`
 	Muted           bool     `json:"muted"`
 }

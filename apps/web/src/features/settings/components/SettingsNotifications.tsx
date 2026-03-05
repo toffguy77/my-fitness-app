@@ -46,7 +46,7 @@ export function SettingsNotifications() {
         getNotificationPreferences()
             .then((prefs) => {
                 setMuted(prefs.muted)
-                setMutedCategories(new Set(prefs.muted_categories))
+                setMutedCategories(new Set(prefs.mutedCategories))
             })
             .catch(() => {
                 toast.error('Не удалось загрузить настройки')
@@ -59,7 +59,7 @@ export function SettingsNotifications() {
             try {
                 await updateNotificationPreferences({
                     muted: newMuted,
-                    muted_categories: Array.from(newMutedCategories),
+                    mutedCategories: Array.from(newMutedCategories),
                 })
             } catch {
                 toast.error('Не удалось сохранить настройки')

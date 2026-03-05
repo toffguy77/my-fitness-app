@@ -98,11 +98,11 @@ export interface NotificationError {
  * Content notification preferences
  */
 export interface ContentNotificationPreferences {
-    muted_categories: string[];
+    mutedCategories: string[];
     muted: boolean;
 }
 
 export interface UpdatePreferencesRequest {
-    muted_categories: string[];
+    mutedCategories: string[];
     muted: boolean;
 }
