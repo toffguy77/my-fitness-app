@@ -83,7 +83,7 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
                         <XAxis
                             dataKey="label"
@@ -95,7 +95,7 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
                             tick={AXIS_STYLE}
                             stroke="#e5e7eb"
                             tickLine={false}
-                            width={40}
+                            width={50}
                         />
                         <Tooltip content={<ChartTooltip />} />
                         <Line
