@@ -431,3 +431,55 @@ func (h *Handler) GetFeedArticle(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, article)
 }
+
+// --- Public handlers (no auth required) ---
+
+// GetPublicFeed handles GET /api/v1/public/content
+func (h *Handler) GetPublicFeed(c *gin.Context) {
+	category := c.Query("category")
+
+	limit := 20
+	if limitStr := c.DefaultQuery("limit", "20"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	offset := 0
+	if offsetStr := c.DefaultQuery("offset", "0"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	result, err := h.service.GetPublicFeed(c.Request.Context(), category, limit, offset)
+	if err != nil {
+		h.log.Error("Failed to get public feed", "error", err)
+		response.InternalError(c, "Не удалось загрузить ленту")
+		return
+	}
+
+	response.Success(c, http.StatusOK, result)
+}
+
+// GetPublicArticle handles GET /api/v1/public/content/:id
+func (h *Handler) GetPublicArticle(c *gin.Context) {
+	articleID := c.Param("id")
+	if articleID == "" {
+		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+		return
+	}
+
+	article, err := h.service.GetPublicArticle(c.Request.Context(), articleID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "Статья не найдена")
+			return
+		}
+		h.log.Error("Failed to get public article", "error", err, "article_id", articleID)
+		response.InternalError(c, "Не удалось загрузить статью")
+		return
+	}
+
+	response.Success(c, http.StatusOK, article)
+}

@@ -410,6 +410,13 @@ func main() {
 	// Content management routes (coordinator + super_admin)
 	contentHandler := content.NewHandler(cfg, log, db, contentS3, wsHub)
 
+	// Public content routes (no auth required)
+	publicContentGroup := v1.Group("/public/content")
+	{
+		publicContentGroup.GET("", contentHandler.GetPublicFeed)
+		publicContentGroup.GET("/:id", contentHandler.GetPublicArticle)
+	}
+
 	contentManageGroup := v1.Group("/content/articles")
 	contentManageGroup.Use(middleware.RequireAuth(cfg))
 	contentManageGroup.Use(middleware.RequireRole("coordinator", "super_admin"))
