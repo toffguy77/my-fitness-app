@@ -22,7 +22,7 @@ export function KBJUWeeklyChart({ data, className }: KBJUWeeklyChartProps) {
             const dateObj = new Date(year, month - 1, day)
             const label = isNaN(dateObj.getTime())
                 ? dateStr
-                : dateObj.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric' })
+                : dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
             const hasWorkout = (d.workout_bonus ?? 0) > 0
 
             let status: 'green' | 'yellow' | 'red' = 'green'
