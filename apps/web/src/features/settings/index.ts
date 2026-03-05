@@ -1,3 +1,4 @@
+export { SettingsBody } from './components/SettingsBody'
 export { SettingsLocality } from './components/SettingsLocality'
 export { SettingsSocial } from './components/SettingsSocial'
 export { SettingsAppleHealth } from './components/SettingsAppleHealth'
