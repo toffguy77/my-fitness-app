@@ -8,6 +8,7 @@ import { formatLocalDate } from '@/shared/utils/format';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
+import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc';
 import type {
     FoodEntry,
     MealType,
@@ -424,9 +425,10 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
             const entriesUrl = getApiUrl(`/food-tracker/entries?date=${date}`);
             const waterUrl = getApiUrl(`/food-tracker/water?date=${date}`);
 
-            const [entriesResponse, waterResponse] = await Promise.all([
+            const [entriesResponse, waterResponse, calcTargets] = await Promise.all([
                 retryWithBackoff(() => apiClient.get<GetFoodEntriesResponse>(entriesUrl), 3, 1000),
                 retryWithBackoff(() => apiClient.get<WaterLogResponse>(waterUrl), 3, 1000).catch(() => null),
+                getTargets(date).catch(() => null),
             ]);
 
             // Group entries by meal type.
@@ -456,7 +458,7 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
                 });
             }
 
-            set({
+            const updatedState: Partial<FoodTrackerState> = {
                 entries: groupedEntries,
                 dailyTotals,
                 waterIntake: waterGlasses,
@@ -466,7 +468,19 @@ export const useFoodTrackerStore = create<FoodTrackerState>((set, get) => ({
                 isLoading: false,
                 isOffline: false,
                 error: null,
-            });
+            };
+
+            if (calcTargets) {
+                updatedState.targetGoals = {
+                    calories: Math.round(calcTargets.calories),
+                    protein: Math.round(calcTargets.protein),
+                    fat: Math.round(calcTargets.fat),
+                    carbs: Math.round(calcTargets.carbs),
+                    isCustom: calcTargets.source === 'curator_override',
+                };
+            }
+
+            set(updatedState);
         } catch (error: any) {
             const mappedError = mapError(error);
             set({
