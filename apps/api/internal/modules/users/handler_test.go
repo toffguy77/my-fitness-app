@@ -21,7 +21,7 @@ func setupTestHandler() *Handler {
 		JWTSecret: "test-secret",
 	}
 	log := logger.New()
-	return NewHandler(nil, nil, cfg, log)
+	return NewHandler(nil, nil, cfg, log, nil)
 }
 
 func TestNewHandler(t *testing.T) {
