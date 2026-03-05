@@ -1,13 +1,53 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Toaster } from 'react-hot-toast'
 import { YandexMetrika } from '@/shared/components/YandexMetrika'
 import './globals.css'
 
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#000000',
+}
+
 export const metadata: Metadata = {
-    title: 'BURCEV - Fitness & Nutrition Tracker',
-    description: 'Track your nutrition, fitness, and progress with BURCEV',
-    icons: {
-        icon: '/logo.svg',
+    metadataBase: new URL('https://burcev.team'),
+    title: {
+        default: 'BURCEV — Фитнес и питание',
+        template: '%s | BURCEV',
+    },
+    description:
+        'Персональный трекер питания, тренировок и прогресса. Контролируй калории, КБЖУ и водный баланс.',
+    keywords: [
+        'фитнес трекер',
+        'дневник питания',
+        'калории',
+        'КБЖУ',
+        'тренировки',
+        'нутриенты',
+        'водный баланс',
+    ],
+    authors: [{ name: 'BURCEV' }],
+    creator: 'BURCEV',
+    icons: { icon: '/logo.svg' },
+    openGraph: {
+        type: 'website',
+        locale: 'ru_RU',
+        siteName: 'BURCEV',
+        title: 'BURCEV — Фитнес и питание',
+        description:
+            'Персональный трекер питания, тренировок и прогресса',
+        url: 'https://burcev.team',
+        images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'BURCEV' }],
+    },
+    alternates: {
+        canonical: 'https://burcev.team',
+    },
+    verification: {
+        yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION,
+    },
+    robots: {
+        index: true,
+        follow: true,
     },
 }
 
