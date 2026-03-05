@@ -24,7 +24,7 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 	db := &database.DB{DB: mockDB}
 	log := logger.New()
 
-	service := NewService(db, log, nil)
+	service := NewService(db, log, nil, nil)
 
 	cleanup := func() {
 		mockDB.Close()
@@ -291,8 +291,12 @@ func TestPublishScheduledArticles(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		mock.ExpectExec(`UPDATE articles`).
-			WillReturnResult(sqlmock.NewResult(0, 3))
+		rows := sqlmock.NewRows([]string{"id"}).
+			AddRow("article-1").
+			AddRow("article-2").
+			AddRow("article-3")
+		mock.ExpectQuery(`UPDATE articles`).
+			WillReturnRows(rows)
 
 		err := service.PublishScheduledArticles(ctx)
 
@@ -304,8 +308,9 @@ func TestPublishScheduledArticles(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		mock.ExpectExec(`UPDATE articles`).
-			WillReturnResult(sqlmock.NewResult(0, 0))
+		rows := sqlmock.NewRows([]string{"id"})
+		mock.ExpectQuery(`UPDATE articles`).
+			WillReturnRows(rows)
 
 		err := service.PublishScheduledArticles(ctx)
 
@@ -317,7 +322,7 @@ func TestPublishScheduledArticles(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		mock.ExpectExec(`UPDATE articles`).
+		mock.ExpectQuery(`UPDATE articles`).
 			WillReturnError(fmt.Errorf("connection refused"))
 
 		err := service.PublishScheduledArticles(ctx)

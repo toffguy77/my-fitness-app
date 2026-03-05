@@ -48,12 +48,12 @@ func TestGetNotifications(t *testing.T) {
 
 		// Mock the notifications query
 		rows := sqlmock.NewRows([]string{
-			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at",
+			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at", "action_url", "content_category",
 		}).
-			AddRow(uuid.New().String(), userID, CategoryMain, TypeTrainerFeedback, "Test Title 1", "Test Content 1", nil, time.Now(), nil).
-			AddRow(uuid.New().String(), userID, CategoryMain, TypeAchievement, "Test Title 2", "Test Content 2", nil, time.Now(), nil)
+			AddRow(uuid.New().String(), userID, CategoryMain, TypeTrainerFeedback, "Test Title 1", "Test Content 1", nil, time.Now(), nil, nil, nil).
+			AddRow(uuid.New().String(), userID, CategoryMain, TypeAchievement, "Test Title 2", "Test Content 2", nil, time.Now(), nil, nil, nil)
 
-		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at`).
+		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category`).
 			WithArgs(userID, category, limit, offset).
 			WillReturnRows(rows)
 
@@ -86,10 +86,10 @@ func TestGetNotifications(t *testing.T) {
 
 		// Mock empty notifications query
 		rows := sqlmock.NewRows([]string{
-			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at",
+			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at", "action_url", "content_category",
 		})
 
-		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at`).
+		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category`).
 			WithArgs(userID, category, limit, offset).
 			WillReturnRows(rows)
 
@@ -122,10 +122,10 @@ func TestGetNotifications(t *testing.T) {
 
 		// Mock should receive limit of 100
 		rows := sqlmock.NewRows([]string{
-			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at",
+			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at", "action_url", "content_category",
 		})
 
-		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at`).
+		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category`).
 			WithArgs(userID, category, 100, offset). // Should be capped at 100
 			WillReturnRows(rows)
 
@@ -373,6 +373,8 @@ func TestCreateNotification(t *testing.T) {
 				notification.IconURL,
 				sqlmock.AnyArg(), // created_at
 				notification.ReadAt,
+				notification.ActionURL,
+				notification.ContentCategory,
 			).
 			WillReturnRows(rows)
 
@@ -437,9 +439,9 @@ func TestParameterizedQueries(t *testing.T) {
 
 		// Mock with specific parameters
 		rows := sqlmock.NewRows([]string{
-			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at",
+			"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at", "action_url", "content_category",
 		})
-		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at`).
+		mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category`).
 			WithArgs(userID, category, 50, 0).
 			WillReturnRows(rows)
 
@@ -520,7 +522,7 @@ func TestGetNotificationsPaginationProperty(t *testing.T) {
 
 			// Create mock rows with timestamps in descending order
 			rows := sqlmock.NewRows([]string{
-				"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at",
+				"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at", "action_url", "content_category",
 			})
 
 			// Add rows with descending timestamps to verify ordering
@@ -538,11 +540,13 @@ func TestGetNotificationsPaginationProperty(t *testing.T) {
 					nil,
 					createdAt,
 					nil,
+					nil,
+					nil,
 				)
 			}
 
 			// Mock the query with the effective limit
-			mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at`).
+			mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category`).
 				WithArgs(userID, category, effectiveLimit, offset).
 				WillReturnRows(rows)
 
@@ -643,7 +647,7 @@ func TestGetNotificationsPaginationDefaultLimit(t *testing.T) {
 
 			// Create mock rows
 			rows := sqlmock.NewRows([]string{
-				"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at",
+				"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at", "action_url", "content_category",
 			})
 
 			for i := 0; i < expectedCount; i++ {
@@ -657,11 +661,13 @@ func TestGetNotificationsPaginationDefaultLimit(t *testing.T) {
 					nil,
 					time.Now().Add(-time.Duration(i)*time.Hour),
 					nil,
+					nil,
+					nil,
 				)
 			}
 
 			// Mock expects limit of 50
-			mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at`).
+			mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category`).
 				WithArgs(userID, category, 50, offset).
 				WillReturnRows(rows)
 
@@ -724,7 +730,7 @@ func TestGetNotificationsPaginationMaxLimit(t *testing.T) {
 
 			// Create mock rows
 			rows := sqlmock.NewRows([]string{
-				"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at",
+				"id", "user_id", "category", "type", "title", "content", "icon_url", "created_at", "read_at", "action_url", "content_category",
 			})
 
 			for i := 0; i < expectedCount; i++ {
@@ -738,11 +744,13 @@ func TestGetNotificationsPaginationMaxLimit(t *testing.T) {
 					nil,
 					time.Now().Add(-time.Duration(i)*time.Hour),
 					nil,
+					nil,
+					nil,
 				)
 			}
 
 			// Mock expects limit of 100 (capped)
-			mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at`).
+			mock.ExpectQuery(`SELECT id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category`).
 				WithArgs(userID, category, 100, offset).
 				WillReturnRows(rows)
 
