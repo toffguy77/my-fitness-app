@@ -22,11 +22,12 @@ type S3API interface {
 
 // S3Client handles interactions with Yandex Object Storage (S3-compatible)
 type S3Client struct {
-	client   S3API
-	bucket   string
-	region   string
-	endpoint string
-	log      *logger.Logger
+	client     S3API
+	bucket     string
+	region     string
+	endpoint   string
+	pathPrefix string
+	log        *logger.Logger
 }
 
 // S3Config holds S3 configuration
@@ -36,6 +37,7 @@ type S3Config struct {
 	Bucket          string
 	Region          string
 	Endpoint        string // Yandex Cloud endpoint: https://storage.yandexcloud.net
+	PathPrefix      string // e.g. "dev/" or "prod/" — prepended to all S3 keys
 }
 
 // NewS3Client creates a new S3 client for Yandex Object Storage
@@ -76,12 +78,18 @@ func NewS3Client(cfg *S3Config, log *logger.Logger) (*S3Client, error) {
 	)
 
 	return &S3Client{
-		client:   client,
-		bucket:   cfg.Bucket,
-		region:   cfg.Region,
-		endpoint: cfg.Endpoint,
-		log:      log,
+		client:     client,
+		bucket:     cfg.Bucket,
+		region:     cfg.Region,
+		endpoint:   cfg.Endpoint,
+		pathPrefix: cfg.PathPrefix,
+		log:        log,
 	}, nil
+}
+
+// prefixKey prepends the configured path prefix to an S3 object key.
+func (s *S3Client) prefixKey(key string) string {
+	return s.pathPrefix + key
 }
 
 // UploadFile uploads a file to S3
@@ -91,7 +99,7 @@ func (s *S3Client) UploadFile(ctx context.Context, key string, data io.Reader, c
 	// Upload to S3
 	input := &s3.PutObjectInput{
 		Bucket:        aws.String(s.bucket),
-		Key:           aws.String(key),
+		Key:           aws.String(s.prefixKey(key)),
 		Body:          data,
 		ContentType:   aws.String(contentType),
 		ContentLength: aws.Int64(fileSize),
@@ -110,7 +118,7 @@ func (s *S3Client) UploadFile(ctx context.Context, key string, data io.Reader, c
 	}
 
 	// Generate URL
-	url := fmt.Sprintf("%s/%s/%s", s.endpoint, s.bucket, key)
+	url := fmt.Sprintf("%s/%s/%s", s.endpoint, s.bucket, s.prefixKey(key))
 
 	s.log.Info("File uploaded to S3",
 		"key", key,
@@ -127,7 +135,7 @@ func (s *S3Client) UploadFile(ctx context.Context, key string, data io.Reader, c
 func (s *S3Client) GetFile(ctx context.Context, key string) ([]byte, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefixKey(key)),
 	}
 
 	result, err := s.client.GetObject(ctx, input)
@@ -150,7 +158,7 @@ func (s *S3Client) DeleteFile(ctx context.Context, key string) error {
 
 	input := &s3.DeleteObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefixKey(key)),
 	}
 
 	_, err := s.client.DeleteObject(ctx, input)
@@ -186,7 +194,7 @@ func (s *S3Client) GetSignedURL(ctx context.Context, key string, expiration time
 
 	request, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefixKey(key)),
 	}, func(opts *s3.PresignOptions) {
 		opts.Expires = expiration
 	})
@@ -213,7 +221,7 @@ func (s *S3Client) GetSignedURL(ctx context.Context, key string, expiration time
 func (s *S3Client) FileExists(ctx context.Context, key string) (bool, error) {
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefixKey(key)),
 	}
 
 	_, err := s.client.HeadObject(ctx, input)
@@ -229,7 +237,7 @@ func (s *S3Client) FileExists(ctx context.Context, key string) (bool, error) {
 func (s *S3Client) GetFileSize(ctx context.Context, key string) (int64, error) {
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Key:    aws.String(s.prefixKey(key)),
 	}
 
 	result, err := s.client.HeadObject(ctx, input)

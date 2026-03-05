@@ -542,6 +542,108 @@ func TestGetSignedURL(t *testing.T) {
 	assert.Contains(t, url, "X-Amz-Signature")
 }
 
+func createTestS3ClientWithMockAndPrefix(mockClient S3API, prefix string) *S3Client {
+	log := createTestLogger()
+	return &S3Client{
+		client:     mockClient,
+		bucket:     "test-bucket",
+		region:     "ru-central1",
+		endpoint:   "https://storage.yandexcloud.net",
+		pathPrefix: prefix,
+		log:        log,
+	}
+}
+
+func TestS3Client_PathPrefix(t *testing.T) {
+	t.Run("UploadFile with prefix prepends prefix to key and URL", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		mockClient.On("PutObject", mock.Anything, mock.MatchedBy(func(input *s3.PutObjectInput) bool {
+			return *input.Key == "dev/avatars/1/avatar.jpg"
+		})).Return(&s3.PutObjectOutput{}, nil)
+
+		client := createTestS3ClientWithMockAndPrefix(mockClient, "dev/")
+
+		url, err := client.UploadFile(context.Background(), "avatars/1/avatar.jpg", bytes.NewReader([]byte("img")), "image/jpeg", 3)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://storage.yandexcloud.net/test-bucket/dev/avatars/1/avatar.jpg", url)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("UploadFile with empty prefix sends key unchanged", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		mockClient.On("PutObject", mock.Anything, mock.MatchedBy(func(input *s3.PutObjectInput) bool {
+			return *input.Key == "avatars/1/avatar.jpg"
+		})).Return(&s3.PutObjectOutput{}, nil)
+
+		client := createTestS3ClientWithMockAndPrefix(mockClient, "")
+
+		url, err := client.UploadFile(context.Background(), "avatars/1/avatar.jpg", bytes.NewReader([]byte("img")), "image/jpeg", 3)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://storage.yandexcloud.net/test-bucket/avatars/1/avatar.jpg", url)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("GetFile with prefix prepends prefix to key", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		mockClient.On("GetObject", mock.Anything, mock.MatchedBy(func(input *s3.GetObjectInput) bool {
+			return *input.Key == "dev/photos/pic.jpg"
+		})).Return(&s3.GetObjectOutput{
+			Body: io.NopCloser(bytes.NewReader([]byte("data"))),
+		}, nil)
+
+		client := createTestS3ClientWithMockAndPrefix(mockClient, "dev/")
+
+		data, err := client.GetFile(context.Background(), "photos/pic.jpg")
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("data"), data)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("DeleteFile with prefix prepends prefix to key", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		mockClient.On("DeleteObject", mock.Anything, mock.MatchedBy(func(input *s3.DeleteObjectInput) bool {
+			return *input.Key == "dev/photos/pic.jpg"
+		})).Return(&s3.DeleteObjectOutput{}, nil)
+
+		client := createTestS3ClientWithMockAndPrefix(mockClient, "dev/")
+
+		err := client.DeleteFile(context.Background(), "photos/pic.jpg")
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("FileExists with prefix prepends prefix to key", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		mockClient.On("HeadObject", mock.Anything, mock.MatchedBy(func(input *s3.HeadObjectInput) bool {
+			return *input.Key == "dev/photos/pic.jpg"
+		})).Return(&s3.HeadObjectOutput{}, nil)
+
+		client := createTestS3ClientWithMockAndPrefix(mockClient, "dev/")
+
+		exists, err := client.FileExists(context.Background(), "photos/pic.jpg")
+		assert.NoError(t, err)
+		assert.True(t, exists)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("GetFileSize with prefix prepends prefix to key", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		size := int64(2048)
+		mockClient.On("HeadObject", mock.Anything, mock.MatchedBy(func(input *s3.HeadObjectInput) bool {
+			return *input.Key == "dev/photos/pic.jpg"
+		})).Return(&s3.HeadObjectOutput{
+			ContentLength: &size,
+		}, nil)
+
+		client := createTestS3ClientWithMockAndPrefix(mockClient, "dev/")
+
+		got, err := client.GetFileSize(context.Background(), "photos/pic.jpg")
+		assert.NoError(t, err)
+		assert.Equal(t, int64(2048), got)
+		mockClient.AssertExpectations(t)
+	})
+}
+
 func TestGetSignedURLWithMock(t *testing.T) {
 	// Test that GetSignedURL returns error when client doesn't support presigning
 	mockClient := new(MockS3Client)
