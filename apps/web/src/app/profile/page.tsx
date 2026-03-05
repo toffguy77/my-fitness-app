@@ -12,6 +12,7 @@ import type { FullProfile } from '@/features/settings/api/settings'
 
 const menuItems = [
     { label: 'Настройки профиля', href: '/settings/profile' },
+    { label: 'Тело и цели', href: '/settings/body' },
     { label: 'Аккаунты социальных сетей', href: '/settings/social' },
     { label: 'Apple Health', href: '/settings/apple-health' },
     { label: 'Уведомления', href: '/settings/notifications' },
