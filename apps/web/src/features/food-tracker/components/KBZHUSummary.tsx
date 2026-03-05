@@ -24,6 +24,10 @@ export interface KBZHUSummaryProps {
     target: Partial<KBZHU> | null;
     /** Additional CSS classes */
     className?: string;
+    /** Source of the target values */
+    source?: 'calculated' | 'curator_override' | null;
+    /** Extra calories from workout */
+    workoutBonus?: number | null;
 }
 
 interface MacroItemProps {
@@ -141,6 +145,8 @@ export function KBZHUSummary({
     current,
     target,
     className = '',
+    source,
+    workoutBonus,
 }: KBZHUSummaryProps) {
     // Memoize macro items to avoid recalculation
     const macroItems = useMemo(() => {
@@ -177,6 +183,14 @@ export function KBZHUSummary({
                     />
                 ))}
             </div>
+
+            {/* Source label */}
+            {source && (
+                <p className="mt-2 text-xs text-gray-400">
+                    {source === 'calculated' ? 'Рассчитано автоматически' : 'План куратора'}
+                    {workoutBonus ? ` · +${Math.round(workoutBonus)} ккал за тренировку` : ''}
+                </p>
+            )}
         </section>
     );
 }
