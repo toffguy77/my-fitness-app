@@ -31,22 +31,22 @@ services:
     labels:
       - "traefik.enable=true"
       # WebSocket: /ws -> API (Traefik handles upgrade natively)
-      - "traefik.http.routers.burcev-api-ws.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/ws`)"
-      - "traefik.http.routers.burcev-api-ws.entrypoints=websecure"
-      - "traefik.http.routers.burcev-api-ws.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.burcev-api-ws.service=burcev-api"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ws.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/ws`)"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ws.entrypoints=websecure"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ws.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ws.service=burcev-${APP_ENV:-dev}-api"
       # REST API: /api/v1/* -> API (direct, bypasses Next.js rewrite)
-      - "traefik.http.routers.burcev-api-rest.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && PathPrefix(`/api/v1`)"
-      - "traefik.http.routers.burcev-api-rest.entrypoints=websecure"
-      - "traefik.http.routers.burcev-api-rest.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.burcev-api-rest.service=burcev-api"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-rest.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-rest.entrypoints=websecure"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-rest.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-rest.service=burcev-${APP_ENV:-dev}-api"
       # Health check: /health -> API
-      - "traefik.http.routers.burcev-api-health.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/health`)"
-      - "traefik.http.routers.burcev-api-health.entrypoints=websecure"
-      - "traefik.http.routers.burcev-api-health.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.burcev-api-health.service=burcev-api"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/health`)"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.entrypoints=websecure"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.service=burcev-${APP_ENV:-dev}-api"
       # Service definition
-      - "traefik.http.services.burcev-api.loadbalancer.server.port=4000"
+      - "traefik.http.services.burcev-${APP_ENV:-dev}-api.loadbalancer.server.port=4000"
     environment:
       - NODE_ENV=production
       - PORT=4000
