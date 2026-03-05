@@ -1,12 +1,14 @@
 package users
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
@@ -15,17 +17,19 @@ import (
 
 // Handler handles user requests
 type Handler struct {
-	cfg     *config.Config
-	log     *logger.Logger
-	service *Service
+	cfg              *config.Config
+	log              *logger.Logger
+	service          *Service
+	nutritionCalcSvc *nutritioncalc.Service
 }
 
 // NewHandler creates a new users handler
-func NewHandler(db *sql.DB, s3 *storage.S3Client, cfg *config.Config, log *logger.Logger) *Handler {
+func NewHandler(db *sql.DB, s3 *storage.S3Client, cfg *config.Config, log *logger.Logger, nutritionCalcSvc *nutritioncalc.Service) *Handler {
 	return &Handler{
-		cfg:     cfg,
-		log:     log,
-		service: NewService(db, s3, cfg, log),
+		cfg:              cfg,
+		log:              log,
+		service:          NewService(db, s3, cfg, log),
+		nutritionCalcSvc: nutritionCalcSvc,
 	}
 }
 
@@ -95,6 +99,10 @@ type UpdateSettingsRequest struct {
 	AppleHealthEnabled bool     `json:"apple_health_enabled"`
 	TargetWeight       *float64 `json:"target_weight"`
 	Height             *float64 `json:"height"`
+	BirthDate          *string  `json:"birth_date"`
+	BiologicalSex      *string  `json:"biological_sex"`
+	ActivityLevel      *string  `json:"activity_level"`
+	FitnessGoal        *string  `json:"fitness_goal"`
 }
 
 // UpdateSettings updates user settings
@@ -119,6 +127,40 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	if req.Height != nil && (*req.Height <= 0 || *req.Height > 300) {
 		response.Error(c, http.StatusBadRequest, "Рост должен быть от 1 до 300 см")
 		return
+	}
+
+	// Validate birth_date if provided
+	if req.BirthDate != nil && *req.BirthDate != "" {
+		if _, err := time.Parse("2006-01-02", *req.BirthDate); err != nil {
+			response.Error(c, http.StatusBadRequest, "Неверный формат даты рождения. Используйте YYYY-MM-DD")
+			return
+		}
+	}
+
+	// Validate biological_sex if provided
+	if req.BiologicalSex != nil && *req.BiologicalSex != "" {
+		if *req.BiologicalSex != "male" && *req.BiologicalSex != "female" {
+			response.Error(c, http.StatusBadRequest, "Пол должен быть male или female")
+			return
+		}
+	}
+
+	// Validate activity_level if provided
+	if req.ActivityLevel != nil && *req.ActivityLevel != "" {
+		validLevels := map[string]bool{"sedentary": true, "light": true, "moderate": true, "active": true}
+		if !validLevels[*req.ActivityLevel] {
+			response.Error(c, http.StatusBadRequest, "Уровень активности должен быть: sedentary, light, moderate, active")
+			return
+		}
+	}
+
+	// Validate fitness_goal if provided
+	if req.FitnessGoal != nil && *req.FitnessGoal != "" {
+		validGoals := map[string]bool{"loss": true, "maintain": true, "gain": true}
+		if !validGoals[*req.FitnessGoal] {
+			response.Error(c, http.StatusBadRequest, "Цель должна быть: loss, maintain, gain")
+			return
+		}
 	}
 
 	// Sanitize social usernames
@@ -154,11 +196,25 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		AppleHealthEnabled: req.AppleHealthEnabled,
 		TargetWeight:       req.TargetWeight,
 		Height:             req.Height,
+		BirthDate:          req.BirthDate,
+		BiologicalSex:      req.BiologicalSex,
+		ActivityLevel:      req.ActivityLevel,
+		FitnessGoal:        req.FitnessGoal,
 	})
 	if err != nil {
 		h.log.Errorw("Не удалось обновить настройки", "error", err, "user_id", userID)
 		response.Error(c, http.StatusInternalServerError, "Не удалось обновить настройки")
 		return
+	}
+
+	// Trigger async KBJU recalculation when body profile settings change
+	if h.nutritionCalcSvc != nil {
+		go func() {
+			_, recalcErr := h.nutritionCalcSvc.RecalculateForDate(context.Background(), userID, time.Now())
+			if recalcErr != nil {
+				h.log.Errorw("Failed to recalculate KBJU after settings update", "error", recalcErr, "user_id", userID)
+			}
+		}()
 	}
 
 	response.Success(c, http.StatusOK, gin.H{"settings": settings})
