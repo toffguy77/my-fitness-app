@@ -14,6 +14,7 @@ build/
 *.tsbuildinfo
 apps/api/server
 apps/api/import-openfoodfacts
+apps/api/cleanup-food-data
 
 # Environment
 .env
