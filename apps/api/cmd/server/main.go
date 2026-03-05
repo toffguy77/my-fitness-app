@@ -250,8 +250,11 @@ func main() {
 			authGroup.GET("/validate-reset-token", resetHandler.ValidateResetToken)
 		}
 
+		// Shared nutrition-calc service (used by multiple handlers for KBJU recalculation)
+		nutritionCalcSvc := nutritioncalc.NewService(db, log)
+
 		// Users routes (protected)
-		usersHandler := users.NewHandler(db.DB, profilePhotosS3, cfg, log)
+		usersHandler := users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc)
 		usersGroup := v1.Group("/users")
 		usersGroup.Use(middleware.RequireAuth(cfg))
 		{
@@ -346,7 +349,7 @@ func main() {
 
 		// Dashboard routes (protected)
 		notificationsSvc := notifications.NewService(db, log)
-		dashboardHandler := dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc)
+		dashboardHandler := dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc)
 		dashGroup := v1.Group("/dashboard")
 		dashGroup.Use(middleware.RequireAuth(cfg))
 		{

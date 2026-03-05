@@ -9,6 +9,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/notifications"
+	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -37,19 +38,21 @@ type ServiceInterface interface {
 
 // Handler handles dashboard requests
 type Handler struct {
-	cfg     *config.Config
-	log     *logger.Logger
-	db      *database.DB
-	service ServiceInterface
+	cfg              *config.Config
+	log              *logger.Logger
+	db               *database.DB
+	service          ServiceInterface
+	nutritionCalcSvc *nutritioncalc.Service
 }
 
 // NewHandler creates a new dashboard handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3Client *storage.S3Client, notificationsSvc *notifications.Service) *Handler {
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3Client *storage.S3Client, notificationsSvc *notifications.Service, nutritionCalcSvc *nutritioncalc.Service) *Handler {
 	return &Handler{
-		cfg:     cfg,
-		log:     log,
-		db:      db,
-		service: NewService(db, log, s3Client, notificationsSvc),
+		cfg:              cfg,
+		log:              log,
+		db:               db,
+		service:          NewService(db, log, s3Client, notificationsSvc),
+		nutritionCalcSvc: nutritionCalcSvc,
 	}
 }
 
@@ -154,6 +157,16 @@ func (h *Handler) SaveMetric(c *gin.Context) {
 		h.log.Errorw("Failed to save metric", "error", err, "user_id", userID, "date", date)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	// Trigger async KBJU recalculation when weight or workout changes
+	if h.nutritionCalcSvc != nil {
+		go func() {
+			_, recalcErr := h.nutritionCalcSvc.RecalculateForDate(context.Background(), userID, date)
+			if recalcErr != nil {
+				h.log.Errorw("Failed to recalculate KBJU", "error", recalcErr, "user_id", userID)
+			}
+		}()
 	}
 
 	response.Success(c, http.StatusOK, metrics)
