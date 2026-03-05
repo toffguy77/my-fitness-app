@@ -256,8 +256,15 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 		return nil, fmt.Errorf("refresh token expired")
 	}
 
+	// Use a detached context with timeout for token rotation.
+	// The HTTP request context can be canceled if the client disconnects
+	// (e.g. mobile browser resuming from background), but token rotation
+	// must complete to avoid leaving the old token revoked without a replacement.
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer dbCancel()
+
 	// Token rotation in a transaction: revoke old, create new
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.db.BeginTx(dbCtx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
@@ -270,7 +277,7 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	}
 
 	// Revoke old token and link to new one
-	_, err = tx.ExecContext(ctx,
+	_, err = tx.ExecContext(dbCtx,
 		`UPDATE refresh_tokens SET revoked_at = NOW(), replaced_by_hash = $1 WHERE id = $2`,
 		newHash, id,
 	)
@@ -280,7 +287,7 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 
 	// Insert new refresh token
 	expiresAtNew := time.Now().Add(30 * 24 * time.Hour)
-	_, err = tx.ExecContext(ctx,
+	_, err = tx.ExecContext(dbCtx,
 		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, created_at)
 		 VALUES ($1, $2, $3, $4, $5, NOW())`,
 		userID, newHash, expiresAtNew, ip, ua,
@@ -295,7 +302,7 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 
 	// Look up user for JWT claims
 	var user User
-	err = s.db.QueryRowContext(ctx,
+	err = s.db.QueryRowContext(dbCtx,
 		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at
 		 FROM users WHERE id = $1`, userID,
 	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt)
