@@ -97,6 +97,7 @@ func main() {
 			Bucket:          cfg.WeeklyPhotosS3Bucket,
 			Region:          cfg.WeeklyPhotosS3Region,
 			Endpoint:        cfg.WeeklyPhotosS3Endpoint,
+			PathPrefix:      cfg.S3PathPrefix,
 		}, log)
 		if err != nil {
 			log.Error("Failed to initialize weekly photos S3 client", "error", err)
@@ -114,6 +115,7 @@ func main() {
 			Bucket:          cfg.ProfilePhotosS3Bucket,
 			Region:          cfg.ProfilePhotosS3Region,
 			Endpoint:        cfg.ProfilePhotosS3Endpoint,
+			PathPrefix:      cfg.S3PathPrefix,
 		}, log)
 		if err != nil {
 			log.Error("Failed to initialize profile photos S3 client", "error", err)
@@ -131,6 +133,7 @@ func main() {
 			Bucket:          cfg.ChatS3Bucket,
 			Region:          cfg.ChatS3Region,
 			Endpoint:        cfg.ChatS3Endpoint,
+			PathPrefix:      cfg.S3PathPrefix,
 		}, log)
 		if err != nil {
 			log.Error("Failed to initialize chat S3 client", "error", err)
@@ -148,6 +151,7 @@ func main() {
 			Bucket:          cfg.ContentS3Bucket,
 			Region:          cfg.ContentS3Region,
 			Endpoint:        cfg.ContentS3Endpoint,
+			PathPrefix:      cfg.S3PathPrefix,
 		}, log)
 		if err != nil {
 			log.Error("Failed to initialize content S3 client", "error", err)
