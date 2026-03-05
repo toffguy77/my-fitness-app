@@ -20,6 +20,10 @@ export interface UserSettings {
     apple_health_enabled: boolean
     target_weight?: number | null
     height?: number | null
+    birth_date?: string | null
+    biological_sex?: string | null
+    activity_level?: string | null
+    fitness_goal?: string | null
 }
 
 export async function getProfile(): Promise<FullProfile> {
