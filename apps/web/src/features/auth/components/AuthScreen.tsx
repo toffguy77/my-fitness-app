@@ -8,7 +8,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { Button, Logo } from '@/shared/components/ui';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useFormValidation } from '@/features/auth/hooks/useFormValidation';
@@ -35,8 +34,12 @@ export function AuthScreen() {
         useFormValidation();
 
     const handleEmailBlur = () => {
-        if (formData.email) {
-            validateEmail(formData.email);
+        const trimmed = formData.email.trim();
+        if (trimmed !== formData.email) {
+            setFormData({ ...formData, email: trimmed });
+        }
+        if (trimmed) {
+            validateEmail(trimmed);
         }
     };
 
@@ -47,17 +50,19 @@ export function AuthScreen() {
     };
 
     const handleLogin = async () => {
-        if (!validateLogin(formData)) {
+        const cleaned = { ...formData, email: formData.email.trim() };
+        if (!validateLogin(cleaned)) {
             return;
         }
-        await login(formData);
+        await login(cleaned);
     };
 
     const handleRegister = async () => {
-        if (!validateRegister(formData, consents)) {
+        const cleaned = { ...formData, email: formData.email.trim() };
+        if (!validateRegister(cleaned, consents)) {
             return;
         }
-        await register(formData, consents);
+        await register(cleaned, consents);
     };
 
     const isFormValid = formData.email && formData.password;
@@ -133,17 +138,6 @@ export function AuthScreen() {
                             >
                                 {isLoading && mode === 'login' ? 'Вход...' : 'Войти'}
                             </Button>
-
-                            {mode === 'login' && (
-                                <div className="text-center">
-                                    <Link
-                                        href="/forgot-password"
-                                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                                    >
-                                        Забыли пароль?
-                                    </Link>
-                                </div>
-                            )}
 
                             <Button
                                 onClick={() => {

@@ -12,7 +12,7 @@ import (
 func clearConfigEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
-		"NODE_ENV", "PORT", "CORS_ORIGIN",
+		"NODE_ENV", "PORT",
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_SSL_MODE",
 		"DB_MAX_OPEN_CONNS", "DB_MAX_IDLE_CONNS",
 		"SUPABASE_URL", "SUPABASE_SERVICE_KEY",
@@ -50,7 +50,6 @@ func TestLoad(t *testing.T) {
 		t.Setenv("PORT", "8080")
 		t.Setenv("NODE_ENV", "test")
 		t.Setenv("JWT_SECRET", "test-jwt-secret")
-		t.Setenv("CORS_ORIGIN", "http://localhost:3000")
 
 		cfg, err := Load()
 
@@ -59,7 +58,6 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, 8080, cfg.Port)
 		assert.Equal(t, "test", cfg.Env)
 		assert.Equal(t, "test-jwt-secret", cfg.JWTSecret)
-		assert.Equal(t, "http://localhost:3000", cfg.CORSOrigin)
 		assert.Equal(t, "postgresql://user:pass@localhost:5432/testdb", cfg.DatabaseURL)
 	})
 
@@ -74,7 +72,6 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, 4000, cfg.Port)
 		assert.Equal(t, "development", cfg.Env)
 		assert.Equal(t, "dev-secret-key", cfg.JWTSecret)
-		assert.Equal(t, "http://localhost:3000", cfg.CORSOrigin)
 		assert.Equal(t, "test-password", cfg.DatabasePassword)
 	})
 
