@@ -24,13 +24,16 @@ export default function ForgotPasswordPage() {
         e.preventDefault()
         setError('')
 
+        const trimmedEmail = email.trim()
+        setEmail(trimmedEmail)
+
         // Validate email
-        if (!email) {
+        if (!trimmedEmail) {
             setError('Введите email')
             return
         }
 
-        if (!validateEmail(email)) {
+        if (!validateEmail(trimmedEmail)) {
             setError('Введите корректный email адрес')
             return
         }
@@ -44,7 +47,7 @@ export default function ForgotPasswordPage() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email: trimmedEmail }),
             })
 
             const data = await response.json()
