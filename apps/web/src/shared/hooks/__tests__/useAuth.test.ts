@@ -42,7 +42,7 @@ describe('useAuth', () => {
 
     describe('loadUser on mount', () => {
         it('should set isLoading to false and not fetch when no token exists', async () => {
-            mockLocalStorage.getItem.mockReturnValue(null)
+            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
 
             const { result } = renderHook(() => useAuth())
 
@@ -117,7 +117,7 @@ describe('useAuth', () => {
     describe('login', () => {
         beforeEach(() => {
             // Prevent loadUser from running fetch on mount
-            mockLocalStorage.getItem.mockReturnValue(null)
+            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
         })
 
         it('should log in successfully and store token', async () => {
@@ -244,7 +244,7 @@ describe('useAuth', () => {
         })
 
         it('should work even when no user is logged in', async () => {
-            mockLocalStorage.getItem.mockReturnValue(null)
+            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
 
             const { result } = renderHook(() => useAuth())
 
@@ -263,7 +263,7 @@ describe('useAuth', () => {
 
     describe('return value shape', () => {
         it('should return the expected AuthState interface', async () => {
-            mockLocalStorage.getItem.mockReturnValue(null)
+            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
 
             const { result } = renderHook(() => useAuth())
 
