@@ -116,7 +116,7 @@ func Load() (*Config, error) {
 		SMTPFromName:    getEnv("SMTP_FROM_NAME", "BURCEV"),
 
 		// Password Reset
-		ResetPasswordURL: getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
+		ResetPasswordURL: getResetPasswordURL(),
 
 		// Weekly Photos S3 (Object Storage) — falls back to generic S3_* vars
 		WeeklyPhotosS3AccessKeyID:     getEnvWithFallback("WEEKLY_PHOTOS_S3_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID", ""),
@@ -174,6 +174,13 @@ func getEnvWithFallback(key, fallbackKey, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func getResetPasswordURL() string {
+	if domain := os.Getenv("APP_DOMAIN"); domain != "" {
+		return "https://" + domain + "/reset-password"
+	}
+	return "http://localhost:3069/reset-password"
 }
 
 func getEnvAsInt(key string, defaultValue int) int {
