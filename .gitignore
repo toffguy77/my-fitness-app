@@ -29,6 +29,10 @@ apps/api/cleanup-food-data
 *.swo
 *~
 
+# Claude Code
+CLAUDE.md
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
