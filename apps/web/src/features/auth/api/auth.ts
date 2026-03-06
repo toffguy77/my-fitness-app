@@ -19,6 +19,7 @@ export async function loginUser(data: AuthFormData): Promise<AuthResponse> {
         const response = await apiClient.post<AuthResponse>(`${API_BASE}/backend-api/v1/auth/login`, {
             email: data.email,
             password: data.password,
+            remember_me: data.rememberMe ?? false,
         });
 
         return response;
