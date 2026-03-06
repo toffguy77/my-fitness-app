@@ -7,9 +7,10 @@
 
 'use client'
 
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 import type { Message } from '../types'
 import { MessageBubble } from './MessageBubble'
+import { DateSeparator } from './DateSeparator'
 
 // ============================================================================
 // Types
@@ -70,6 +71,30 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageA
 
     const currentUserId = getCurrentUserId()
 
+    type ListItem =
+        | { type: 'date'; date: string; key: string }
+        | { type: 'message'; msg: Message }
+
+    const messagesWithDates = useMemo(() => {
+        const items: ListItem[] = []
+        let lastDateStr = ''
+
+        for (const msg of messages) {
+            const dateStr = new Date(msg.created_at).toLocaleDateString('ru-RU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+            })
+            if (dateStr !== lastDateStr) {
+                items.push({ type: 'date', date: dateStr, key: `date-${msg.created_at}` })
+                lastDateStr = dateStr
+            }
+            items.push({ type: 'message', msg })
+        }
+
+        return items
+    }, [messages])
+
     return (
         <div ref={scrollRef} className="flex-1 overflow-y-auto py-4">
             {/* Load more button */}
@@ -100,15 +125,19 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageA
                 </div>
             )}
 
-            {/* Messages */}
-            {messages.map((msg) => (
-                <MessageBubble
-                    key={msg.id}
-                    message={msg}
-                    isOwn={currentUserId !== null && msg.sender_id === currentUserId}
-                    onImageAction={onImageAction}
-                />
-            ))}
+            {/* Messages with date separators */}
+            {messagesWithDates.map((item) =>
+                item.type === 'date' ? (
+                    <DateSeparator key={item.key} date={item.date} />
+                ) : (
+                    <MessageBubble
+                        key={item.msg.id}
+                        message={item.msg}
+                        isOwn={currentUserId !== null && item.msg.sender_id === currentUserId}
+                        onImageAction={onImageAction}
+                    />
+                )
+            )}
         </div>
     )
 }
