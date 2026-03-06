@@ -95,4 +95,12 @@ Follows a **handler/service pattern** organized by domain module.
 - Docker multi-stage builds for both apps
 - CI/CD via GitHub Actions (`.github/workflows/ci.yml` and `cd.yml`)
 - Dev deploys from `dev` branch, production from `main`
+- Deployment platform: **Dokploy** (env secrets managed there)
 - External services: PostgreSQL and S3 on Yandex Cloud, SMTP via Yandex Mail
+
+### Infrastructure (Terraform + Yandex Cloud)
+- Terraform config in `infra/`, uses **workspaces** (`dev`, `prod`) with separate `.tfvars`
+- Yandex Cloud CLI: `/Users/thatguy/yc`
+- State backend: S3 bucket `burcev-terraform-state`
+- Manages: service accounts, S3 access keys, IAM bindings, PostgreSQL users/databases
+- Secrets (credentials, passwords) are in `.claude/CLAUDE.local.md` (local only, not in git)
