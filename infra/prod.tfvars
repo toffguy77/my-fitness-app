@@ -9,8 +9,8 @@ sa_name          = "burcev-prod"
 pg_db_lc_collate = "ru_RU.UTF-8"
 pg_db_lc_type    = "ru_RU.UTF-8"
 
-# DB owner differs from the managed user
-pg_db_owner = "web-app-user"
+# DB owner = app user (aligned with dev)
+pg_db_owner = "burcev-web"
 
 # Existing user grants and permissions
 pg_user_grants      = ["mdb_admin"]
