@@ -46,8 +46,9 @@ type ConsentsInput struct {
 
 // LoginRequest represents login request
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email      string `json:"email" binding:"required,email"`
+	Password   string `json:"password" binding:"required"`
+	RememberMe bool   `json:"remember_me"`
 }
 
 // RefreshRequest represents token refresh request
@@ -93,7 +94,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.Login(c.Request.Context(), req.Email, req.Password, c.ClientIP(), c.Request.UserAgent())
+	result, err := h.service.Login(c.Request.Context(), req.Email, req.Password, c.ClientIP(), c.Request.UserAgent(), req.RememberMe)
 	if err != nil {
 		h.log.Errorw("Login failed", "error", err, "email", req.Email)
 		response.Error(c, http.StatusUnauthorized, "Неверные учетные данные")
