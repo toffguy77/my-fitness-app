@@ -93,6 +93,25 @@ export function AuthScreen() {
                             onPasswordBlur={handlePasswordBlur}
                         />
 
+                        {/* Remember Me (Login only) */}
+                        {mode === 'login' && (
+                            <div className="mt-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.rememberMe ?? false}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, rememberMe: e.target.checked })
+                                        }
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm text-gray-600">
+                                        Запомнить меня на 30 дней
+                                    </span>
+                                </label>
+                            </div>
+                        )}
+
                         {/* Consent Section (Registration only) */}
                         {mode === 'register' && (
                             <ConsentSection

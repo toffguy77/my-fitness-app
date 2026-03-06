@@ -13,6 +13,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	RefreshTokenTTLDefault    = 24 * time.Hour
+	RefreshTokenTTLRememberMe = 30 * 24 * time.Hour
+)
+
 // Default display names for users who register without a name.
 // Format: "Цвет Животное" — deterministic by user ID.
 var defaultColors = []string{
@@ -152,7 +157,7 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	}
 
 	// Generate refresh token
-	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua)
+	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
@@ -165,7 +170,7 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 }
 
 // Login authenticates a user
-func (s *Service) Login(ctx context.Context, email, password, ip, ua string) (*LoginResult, error) {
+func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rememberMe bool) (*LoginResult, error) {
 	s.log.Infow("User login", "email", email)
 
 	// Look up user by email
@@ -212,7 +217,7 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string) (*L
 	}
 
 	// Generate refresh token
-	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua)
+	refreshToken, err := s.createRefreshToken(ctx, user.ID, ip, ua, rememberMe)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
@@ -232,11 +237,12 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	var id, userID int64
 	var expiresAt time.Time
 	var revokedAt sql.NullTime
+	var rememberMe bool
 
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, user_id, expires_at, revoked_at FROM refresh_tokens WHERE token_hash = $1`,
+		`SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens WHERE token_hash = $1`,
 		tokenHash,
-	).Scan(&id, &userID, &expiresAt, &revokedAt)
+	).Scan(&id, &userID, &expiresAt, &revokedAt, &rememberMe)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("invalid refresh token")
@@ -286,11 +292,15 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	}
 
 	// Insert new refresh token
-	expiresAtNew := time.Now().Add(30 * 24 * time.Hour)
+	ttl := RefreshTokenTTLDefault
+	if rememberMe {
+		ttl = RefreshTokenTTLRememberMe
+	}
+	expiresAtNew := time.Now().Add(ttl)
 	_, err = tx.ExecContext(dbCtx,
-		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, created_at)
-		 VALUES ($1, $2, $3, $4, $5, NOW())`,
-		userID, newHash, expiresAtNew, ip, ua,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, remember_me, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+		userID, newHash, expiresAtNew, ip, ua, rememberMe,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert new refresh token: %w", err)
@@ -334,17 +344,22 @@ func (s *Service) RevokeRefreshToken(ctx context.Context, plainToken string) err
 }
 
 // createRefreshToken generates and stores a new refresh token
-func (s *Service) createRefreshToken(ctx context.Context, userID int64, ip, ua string) (string, error) {
+func (s *Service) createRefreshToken(ctx context.Context, userID int64, ip, ua string, rememberMe bool) (string, error) {
 	plainToken, hashedToken, err := s.tokens.GenerateToken()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
-	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+	ttl := RefreshTokenTTLDefault
+	if rememberMe {
+		ttl = RefreshTokenTTLRememberMe
+	}
+	expiresAt := time.Now().Add(ttl)
+
 	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, created_at)
-		 VALUES ($1, $2, $3, $4, $5, NOW())`,
-		userID, hashedToken, expiresAt, ip, ua,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, remember_me, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+		userID, hashedToken, expiresAt, ip, ua, rememberMe,
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to store refresh token: %w", err)

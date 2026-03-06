@@ -9,7 +9,7 @@ sa_name          = "burcev-prod"
 pg_db_lc_collate = "ru_RU.UTF-8"
 pg_db_lc_type    = "ru_RU.UTF-8"
 
-# DB owner differs from the managed user
+# DB owner differs from the managed user (changing owner forces DB replacement in YC MDB!)
 pg_db_owner = "web-app-user"
 
 # Existing user grants and permissions

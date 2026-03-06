@@ -54,7 +54,7 @@ func TestRegister(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
@@ -133,7 +133,7 @@ func TestLogin(t *testing.T) {
 				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
-			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		w := httptest.NewRecorder()
@@ -201,6 +201,75 @@ func TestLogin(t *testing.T) {
 		handler.Login(c)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+func TestLoginWithRememberMe(t *testing.T) {
+	t.Run("remember_me=true is passed to service", func(t *testing.T) {
+		handler, mock, cleanup := setupTestHandler(t)
+		defer cleanup()
+
+		hashedPw, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+
+		mock.ExpectQuery("SELECT id, email").
+			WithArgs("test@example.com").
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
+
+		mock.ExpectExec("INSERT INTO refresh_tokens").
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), true).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{
+			"email":       "test@example.com",
+			"password":    "password123",
+			"remember_me": true,
+		})
+		c.Request = httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.Login(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var response map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Equal(t, "success", response["status"])
+		data := response["data"].(map[string]interface{})
+		assert.NotEmpty(t, data["token"])
+		assert.NotEmpty(t, data["refresh_token"])
+	})
+
+	t.Run("remember_me defaults to false when omitted", func(t *testing.T) {
+		handler, mock, cleanup := setupTestHandler(t)
+		defer cleanup()
+
+		hashedPw, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+
+		mock.ExpectQuery("SELECT id, email").
+			WithArgs("test@example.com").
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
+
+		mock.ExpectExec("INSERT INTO refresh_tokens").
+			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{
+			"email":    "test@example.com",
+			"password": "password123",
+		})
+		c.Request = httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		handler.Login(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
 
