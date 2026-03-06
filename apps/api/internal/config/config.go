@@ -10,9 +10,8 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Env        string
-	Port       int
-	CORSOrigin string
+	Env  string
+	Port int
 
 	// PostgreSQL
 	DatabaseURL      string
@@ -86,9 +85,8 @@ func Load() (*Config, error) {
 	_ = godotenv.Load("../../.env") // project root when running from apps/api
 
 	cfg := &Config{
-		Env:        getEnv("NODE_ENV", "development"),
-		Port:       getEnvAsInt("PORT", 4000),
-		CORSOrigin: getEnv("CORS_ORIGIN", "http://localhost:3000"),
+		Env:  getEnv("NODE_ENV", "development"),
+		Port: getEnvAsInt("PORT", 4000),
 
 		// PostgreSQL configuration
 		DatabaseURL:      getEnv("DATABASE_URL", ""),

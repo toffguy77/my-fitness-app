@@ -180,27 +180,16 @@ func main() {
 	router.Use(middleware.ErrorHandler(log))
 
 	// CORS configuration
-	if cfg.Env == "development" {
-		// In development, allow all origins for easier testing
-		router.Use(cors.New(cors.Config{
-			AllowAllOrigins:  true,
-			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
-			ExposeHeaders:    []string{"Content-Length"},
-			AllowCredentials: false, // Must be false when AllowAllOrigins is true
-			MaxAge:           12 * time.Hour,
-		}))
-	} else {
-		// In production, use specific origins
-		router.Use(cors.New(cors.Config{
-			AllowOrigins:     []string{cfg.CORSOrigin},
-			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
-			ExposeHeaders:    []string{"Content-Length"},
-			AllowCredentials: true,
-			MaxAge:           12 * time.Hour,
-		}))
-	}
+	// API is behind Next.js proxy — not exposed directly to the internet.
+	// Allow all origins so forwarded Origin headers from the proxy don't get blocked.
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: false,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
