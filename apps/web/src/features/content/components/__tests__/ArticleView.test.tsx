@@ -12,6 +12,9 @@ jest.mock('@/features/content/api/contentApi', () => ({
     contentApi: {
         getFeedArticle: jest.fn(),
     },
+    publicContentApi: {
+        getArticle: jest.fn(),
+    },
 }))
 
 // Mock next/link
@@ -39,9 +42,10 @@ jest.mock('lucide-react', () => ({
     ArrowLeft: () => <span data-testid="arrow-left" />,
 }))
 
-import { contentApi } from '@/features/content/api/contentApi'
+import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
 
 const mockGetFeedArticle = contentApi.getFeedArticle as jest.Mock
+const mockGetPublicArticle = publicContentApi.getArticle as jest.Mock
 
 describe('ArticleView', () => {
     beforeEach(() => {
@@ -79,8 +83,9 @@ describe('ArticleView', () => {
         expect(screen.getByText('# Hello World')).toBeInTheDocument()
     })
 
-    it('renders error state when fetch fails', async () => {
+    it('renders error state when both fetches fail', async () => {
         mockGetFeedArticle.mockRejectedValue(new Error('Network error'))
+        mockGetPublicArticle.mockRejectedValue(new Error('Network error'))
 
         render(<ArticleView articleId="1" />)
 
@@ -92,8 +97,31 @@ describe('ArticleView', () => {
         expect(screen.getByText('Назад')).toBeInTheDocument()
     })
 
+    it('falls back to public API when authenticated fetch fails', async () => {
+        const article = {
+            id: '1',
+            title: 'Public Article',
+            body: 'Public body',
+            category: 'general' as const,
+            author_name: 'Author',
+            published_at: '2026-01-01T00:00:00Z',
+            status: 'published',
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-01-01T00:00:00Z',
+        }
+        mockGetFeedArticle.mockRejectedValue(new Error('Unauthorized'))
+        mockGetPublicArticle.mockResolvedValue(article)
+
+        render(<ArticleView articleId="1" />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Public Article')).toBeInTheDocument()
+        })
+    })
+
     it('renders not found when article is null', async () => {
         mockGetFeedArticle.mockRejectedValue(new Error('Не удалось загрузить статью'))
+        mockGetPublicArticle.mockRejectedValue(new Error('Не удалось загрузить статью'))
 
         render(<ArticleView articleId="nonexistent" />)
 
@@ -148,6 +176,7 @@ describe('ArticleView', () => {
 
     it('handles non-Error exceptions gracefully', async () => {
         mockGetFeedArticle.mockRejectedValue('string error')
+        mockGetPublicArticle.mockRejectedValue('string error')
 
         render(<ArticleView articleId="1" />)
 

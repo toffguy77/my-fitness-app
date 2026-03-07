@@ -5,7 +5,7 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ArrowLeft } from 'lucide-react'
-import { contentApi } from '@/features/content/api/contentApi'
+import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
 import { CATEGORY_LABELS } from '@/features/content/types'
 import type { Article } from '@/features/content/types'
 
@@ -33,7 +33,13 @@ export function ArticleView({ articleId }: ArticleViewProps) {
             try {
                 setLoading(true)
                 setError(null)
-                const data = await contentApi.getFeedArticle(articleId)
+                let data: Article
+                try {
+                    data = await contentApi.getFeedArticle(articleId)
+                } catch {
+                    // Fallback to public API if authenticated request fails
+                    data = await publicContentApi.getArticle(articleId)
+                }
                 if (!cancelled) {
                     setArticle(data)
                 }
