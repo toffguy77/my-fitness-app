@@ -1,7 +1,7 @@
 import { apiClient } from '@/shared/utils/api-client'
 import type { AdminUser, CuratorLoad, AdminConversation, AdminMessage } from '../types'
 
-const BASE = '/backend-api/v1/admin'
+const BASE = '/api/v1/admin'
 
 export const adminApi = {
     getUsers: () => apiClient.get<AdminUser[]>(`${BASE}/users`),

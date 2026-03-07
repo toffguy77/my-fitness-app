@@ -32,9 +32,12 @@ class ApiClient {
      */
     private async request<T>(url: string, options: RequestOptions = {}): Promise<T> {
         const token = this.getToken();
+        const requestId = crypto.randomUUID();
 
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
+            'X-Request-Id': requestId,
+            'X-Client-Request-Id': requestId,
             ...options.headers,
         };
 
@@ -45,6 +48,7 @@ class ApiClient {
         const response = await fetch(url, {
             ...options,
             headers,
+            cache: 'no-store',
         });
 
         if (response.status === 401 && !this.isAuthEndpoint(url)) {
@@ -69,30 +73,35 @@ class ApiClient {
      * Handle 401 by refreshing the token and retrying the request
      */
     private handleUnauthorized<T>(url: string, options: RequestOptions): Promise<T> {
+        const retryFetch = (token: string): Promise<T> => {
+            const retryId = crypto.randomUUID();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                ...options.headers,
+                'Authorization': `Bearer ${token}`,
+                'X-Request-Id': retryId,
+                'X-Client-Request-Id': retryId,
+            };
+            return fetch(url, { ...options, headers, cache: 'no-store' })
+                .then(async (res) => {
+                    if (!res.ok) {
+                        const error: any = new Error('API request failed');
+                        error.response = {
+                            status: res.status,
+                            data: await res.json().catch(() => ({})),
+                        };
+                        throw error;
+                    }
+                    const data = await res.json();
+                    return data.data !== undefined ? data.data : data;
+                });
+        };
+
         if (isRefreshing) {
             // Another refresh is in progress — queue this request
             return new Promise<T>((resolve, reject) => {
                 addRefreshSubscriber((newToken: string) => {
-                    const headers: Record<string, string> = {
-                        'Content-Type': 'application/json',
-                        ...options.headers,
-                        'Authorization': `Bearer ${newToken}`,
-                    };
-                    fetch(url, { ...options, headers })
-                        .then(async (res) => {
-                            if (!res.ok) {
-                                const error: any = new Error('API request failed');
-                                error.response = {
-                                    status: res.status,
-                                    data: await res.json().catch(() => ({})),
-                                };
-                                throw error;
-                            }
-                            const data = await res.json();
-                            return data.data !== undefined ? data.data : data;
-                        })
-                        .then(resolve)
-                        .catch(reject);
+                    retryFetch(newToken).then(resolve).catch(reject);
                 });
             });
         }
@@ -109,10 +118,11 @@ class ApiClient {
             return Promise.reject(new Error('No refresh token'));
         }
 
-        return fetch(`${API_BASE}/backend-api/v1/auth/refresh`, {
+        return fetch(`${API_BASE}/api/v1/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refresh_token: refreshToken }),
+            cache: 'no-store',
         })
             .then(async (res) => {
                 if (!res.ok) {
@@ -127,26 +137,7 @@ class ApiClient {
                 setRefreshToken(data.refresh_token);
                 isRefreshing = false;
                 onTokenRefreshed(data.token);
-
-                // Retry original request with new token
-                const headers: Record<string, string> = {
-                    'Content-Type': 'application/json',
-                    ...options.headers,
-                    'Authorization': `Bearer ${data.token}`,
-                };
-                return fetch(url, { ...options, headers });
-            })
-            .then(async (res) => {
-                if (!res.ok) {
-                    const error: any = new Error('API request failed');
-                    error.response = {
-                        status: res.status,
-                        data: await res.json().catch(() => ({})),
-                    };
-                    throw error;
-                }
-                const data = await res.json();
-                return data.data !== undefined ? data.data : data;
+                return retryFetch(data.token);
             })
             .catch((err) => {
                 isRefreshing = false;

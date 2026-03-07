@@ -29,7 +29,7 @@ export function useAuth(): AuthState {
                     return
                 }
 
-                const response = await fetch(`${API_URL}/backend-api/v1/auth/me`, {
+                const response = await fetch(`${API_URL}/api/v1/auth/me`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -51,7 +51,7 @@ export function useAuth(): AuthState {
 
     const login = async (email: string, password: string) => {
         try {
-            const response = await fetch(`${API_URL}/backend-api/v1/auth/login`, {
+            const response = await fetch(`${API_URL}/api/v1/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

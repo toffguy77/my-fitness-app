@@ -19,7 +19,7 @@ describe('passwordReset API', () => {
             const result = await requestPasswordReset('user@example.com')
 
             expect(global.fetch).toHaveBeenCalledWith(
-                '/backend-api/v1/auth/forgot-password',
+                '/api/v1/auth/forgot-password',
                 expect.objectContaining({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -61,7 +61,7 @@ describe('passwordReset API', () => {
             const result = await resetPassword('reset-token-123', 'newPassword123')
 
             expect(global.fetch).toHaveBeenCalledWith(
-                '/backend-api/v1/auth/reset-password',
+                '/api/v1/auth/reset-password',
                 expect.objectContaining({
                     method: 'POST',
                     body: JSON.stringify({
@@ -110,7 +110,7 @@ describe('passwordReset API', () => {
             const result = await validateResetToken('my-token')
 
             expect(global.fetch).toHaveBeenCalledWith(
-                '/backend-api/v1/auth/validate-reset-token?token=my-token'
+                '/api/v1/auth/validate-reset-token?token=my-token'
             )
             expect(result).toEqual({
                 valid: true,

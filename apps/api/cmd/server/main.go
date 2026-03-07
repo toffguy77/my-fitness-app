@@ -176,6 +176,7 @@ func main() {
 
 	// Global middleware
 	router.Use(gin.Recovery())
+	router.Use(middleware.NoCacheAPI())
 	router.Use(middleware.Logger(log))
 	router.Use(middleware.ErrorHandler(log))
 
@@ -401,7 +402,8 @@ func main() {
 	}
 
 	// Content management routes (coordinator + super_admin)
-	contentHandler := content.NewHandler(cfg, log, db, contentS3, wsHub)
+	contentService := content.NewService(db, log, contentS3, wsHub)
+	contentHandler := content.NewHandler(cfg, log, contentService)
 
 	// Public content routes (no auth required)
 	publicContentGroup := v1.Group("/public/content")
@@ -437,10 +439,9 @@ func main() {
 	// WebSocket endpoint (JWT checked in handler via query param)
 	router.GET("/ws", chatHandler.HandleWebSocket)
 
-	// Start content scheduler
+	// Start content scheduler (uses same contentService instance)
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
 	defer schedulerCancel()
-	contentService := content.NewService(db, log, contentS3, wsHub)
 	go contentService.RunScheduler(schedulerCtx)
 
 	// Create HTTP server

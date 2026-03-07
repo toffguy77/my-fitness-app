@@ -22,7 +22,7 @@ describe('verification API', () => {
             await verifyEmail('123456')
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                '/backend-api/v1/auth/verify-email',
+                '/api/v1/auth/verify-email',
                 { code: '123456' }
             )
         })
@@ -41,7 +41,7 @@ describe('verification API', () => {
             await resendVerificationCode()
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                '/backend-api/v1/auth/resend-verification',
+                '/api/v1/auth/resend-verification',
                 {}
             )
         })

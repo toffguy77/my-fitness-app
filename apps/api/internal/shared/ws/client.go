@@ -44,7 +44,7 @@ func (c *Client) CloseSend() {
 // Must be run in its own goroutine.
 func (c *Client) ReadPump(onMessage func(userID int64, event IncomingEvent)) {
 	defer func() {
-		c.hub.Unregister(c.userID)
+		c.hub.UnregisterClient(c)
 		c.conn.Close()
 	}()
 	c.conn.SetReadLimit(maxMessageSize)

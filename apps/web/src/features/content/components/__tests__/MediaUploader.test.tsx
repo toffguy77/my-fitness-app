@@ -61,7 +61,7 @@ describe('MediaUploader', () => {
         })
 
         expect(global.fetch).toHaveBeenCalledWith(
-            '/backend-api/v1/content/articles/article-1/media',
+            '/api/v1/content/articles/article-1/media',
             expect.objectContaining({
                 method: 'POST',
                 headers: { Authorization: 'Bearer test-token' },

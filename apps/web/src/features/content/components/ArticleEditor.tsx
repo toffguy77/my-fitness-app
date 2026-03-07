@@ -132,22 +132,18 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
         try {
             if (article) {
                 // Editing existing article
-                const updated = await contentApi.updateArticle(article.id, {
+                await contentApi.updateArticle(article.id, {
                     ...data,
                     body,
                 } as UpdateArticleRequest)
-                setArticle(updated)
             } else {
-                // Creating new article
-                const created = await contentApi.createArticle(
-                    data as CreateArticleRequest
-                )
-                // Then update body
-                if (body.trim()) {
-                    await contentApi.updateArticle(created.id, { body })
-                }
-                setArticle(created)
+                // Creating new article — send body in single request
+                await contentApi.createArticle({
+                    ...data,
+                    body: body.trim() ? body : undefined,
+                } as CreateArticleRequest)
             }
+            router.push(returnPath)
         } catch (err) {
             setError(
                 err instanceof Error ? err.message : 'Ошибка сохранения'

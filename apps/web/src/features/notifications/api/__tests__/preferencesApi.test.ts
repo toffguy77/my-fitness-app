@@ -21,13 +21,13 @@ describe('preferencesApi', () => {
     })
 
     describe('getNotificationPreferences', () => {
-        it('should GET from /backend-api/v1/notifications/preferences', async () => {
+        it('should GET from /api/v1/notifications/preferences', async () => {
             const mockPrefs = { mutedCategories: ['nutrition'], muted: false }
             mockGet.mockResolvedValue(mockPrefs)
 
             const result = await getNotificationPreferences()
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/notifications/preferences')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/notifications/preferences')
             expect(result).toEqual(mockPrefs)
         })
 
@@ -39,13 +39,13 @@ describe('preferencesApi', () => {
     })
 
     describe('updateNotificationPreferences', () => {
-        it('should PUT to /backend-api/v1/notifications/preferences', async () => {
+        it('should PUT to /api/v1/notifications/preferences', async () => {
             const req = { mutedCategories: ['training'], muted: true }
             mockPut.mockResolvedValue(undefined)
 
             await updateNotificationPreferences(req)
 
-            expect(mockPut).toHaveBeenCalledWith('/backend-api/v1/notifications/preferences', req)
+            expect(mockPut).toHaveBeenCalledWith('/api/v1/notifications/preferences', req)
         })
 
         it('should handle empty categories', async () => {
@@ -54,7 +54,7 @@ describe('preferencesApi', () => {
 
             await updateNotificationPreferences(req)
 
-            expect(mockPut).toHaveBeenCalledWith('/backend-api/v1/notifications/preferences', req)
+            expect(mockPut).toHaveBeenCalledWith('/api/v1/notifications/preferences', req)
         })
 
         it('should propagate errors', async () => {

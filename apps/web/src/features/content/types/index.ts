@@ -34,6 +34,7 @@ export interface ArticleCard {
 export interface CreateArticleRequest {
   title: string
   excerpt?: string
+  body?: string
   category: ContentCategory
   audience_scope: AudienceScope
   client_ids?: number[]

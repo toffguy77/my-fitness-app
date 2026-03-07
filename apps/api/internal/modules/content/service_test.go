@@ -625,6 +625,8 @@ func TestCreateArticle(t *testing.T) {
 			AudienceScope: "all",
 		}
 
+		mock.ExpectBegin()
+
 		// INSERT RETURNING
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
@@ -645,6 +647,8 @@ func TestCreateArticle(t *testing.T) {
 				req.Category, "draft", req.AudienceScope,
 				nil, nil, now, now,
 			))
+
+		mock.ExpectCommit()
 
 		// Author name lookup
 		mock.ExpectQuery(`SELECT COALESCE\(name, ''\) FROM users WHERE id = \$1`).
@@ -681,6 +685,8 @@ func TestCreateArticle(t *testing.T) {
 			ClientIDs:     []int64{10, 20, 30},
 		}
 
+		mock.ExpectBegin()
+
 		// INSERT RETURNING
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
@@ -697,15 +703,17 @@ func TestCreateArticle(t *testing.T) {
 				nil, nil, time.Now(), time.Now(),
 			))
 
-		// Author name lookup
-		mock.ExpectQuery(`SELECT COALESCE\(name, ''\) FROM users WHERE id = \$1`).
-			WithArgs(authorID).
-			WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("Author"))
-
 		// insertAudienceRows — article ID is a generated UUID, so use AnyArg
 		mock.ExpectExec(`INSERT INTO article_audience`).
 			WithArgs(sqlmock.AnyArg(), int64(10), sqlmock.AnyArg(), int64(20), sqlmock.AnyArg(), int64(30)).
 			WillReturnResult(sqlmock.NewResult(0, 3))
+
+		mock.ExpectCommit()
+
+		// Author name lookup
+		mock.ExpectQuery(`SELECT COALESCE\(name, ''\) FROM users WHERE id = \$1`).
+			WithArgs(authorID).
+			WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("Author"))
 
 		article, err := service.CreateArticle(ctx, authorID, req)
 
@@ -727,12 +735,16 @@ func TestCreateArticle(t *testing.T) {
 			AudienceScope: "all",
 		}
 
+		mock.ExpectBegin()
+
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
 				sqlmock.AnyArg(), authorID, req.Title, req.Excerpt,
 				req.Category, req.AudienceScope, sqlmock.AnyArg(),
 			).
 			WillReturnError(fmt.Errorf("unique constraint violation"))
+
+		mock.ExpectRollback()
 
 		article, err := service.CreateArticle(ctx, authorID, req)
 

@@ -26,7 +26,7 @@ const baseConfig: NextConfig = {
     const apiBackend = process.env.INTERNAL_API_URL || 'http://api:4000';
     return [
       {
-        source: '/backend-api/:path*',
+        source: '/api/:path*',
         destination: `${apiBackend}/api/:path*`,
       },
     ];
@@ -41,6 +41,13 @@ if (!isTest) {
     register: true,
     skipWaiting: true,
     disable: process.env.NODE_ENV === 'development',
+    buildExcludes: [/\/api\/v1\//],
+    runtimeCaching: [
+      {
+        urlPattern: /\/api\/v1\/.*/i,
+        handler: 'NetworkOnly',
+      },
+    ],
   });
 
   // Enable bundle analyzer when ANALYZE=true

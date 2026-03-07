@@ -28,14 +28,14 @@ describe('contentApi', () => {
     })
 
     describe('createArticle', () => {
-        it('should POST to /backend-api/v1/content/articles', async () => {
+        it('should POST to /api/v1/content/articles', async () => {
             const req = { title: 'Test', category: 'nutrition' as const, audience_scope: 'all' as const }
             const mockArticle = { id: '1', ...req }
             mockPost.mockResolvedValue(mockArticle)
 
             const result = await contentApi.createArticle(req)
 
-            expect(mockPost).toHaveBeenCalledWith('/backend-api/v1/content/articles', req)
+            expect(mockPost).toHaveBeenCalledWith('/api/v1/content/articles', req)
             expect(result).toEqual(mockArticle)
         })
     })
@@ -47,7 +47,7 @@ describe('contentApi', () => {
 
             const result = await contentApi.getArticle('abc')
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/content/articles/abc')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/content/articles/abc')
             expect(result).toEqual(mockArticle)
         })
     })
@@ -59,7 +59,7 @@ describe('contentApi', () => {
 
             const result = await contentApi.listArticles()
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/content/articles')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/content/articles')
             expect(result).toEqual(mockResponse)
         })
 
@@ -68,7 +68,7 @@ describe('contentApi', () => {
 
             await contentApi.listArticles('draft')
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/content/articles?status=draft')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/content/articles?status=draft')
         })
 
         it('should GET articles with category filter', async () => {
@@ -76,7 +76,7 @@ describe('contentApi', () => {
 
             await contentApi.listArticles(undefined, 'nutrition')
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/content/articles?category=nutrition')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/content/articles?category=nutrition')
         })
 
         it('should GET articles with both filters', async () => {
@@ -85,7 +85,7 @@ describe('contentApi', () => {
             await contentApi.listArticles('published', 'training')
 
             expect(mockGet).toHaveBeenCalledWith(
-                '/backend-api/v1/content/articles?status=published&category=training'
+                '/api/v1/content/articles?status=published&category=training'
             )
         })
     })
@@ -98,7 +98,7 @@ describe('contentApi', () => {
 
             const result = await contentApi.updateArticle('1', updates)
 
-            expect(mockPut).toHaveBeenCalledWith('/backend-api/v1/content/articles/1', updates)
+            expect(mockPut).toHaveBeenCalledWith('/api/v1/content/articles/1', updates)
             expect(result).toEqual(mockArticle)
         })
     })
@@ -109,7 +109,7 @@ describe('contentApi', () => {
 
             await contentApi.deleteArticle('1')
 
-            expect(mockDelete).toHaveBeenCalledWith('/backend-api/v1/content/articles/1')
+            expect(mockDelete).toHaveBeenCalledWith('/api/v1/content/articles/1')
         })
     })
 
@@ -119,7 +119,7 @@ describe('contentApi', () => {
 
             await contentApi.publishArticle('1')
 
-            expect(mockPost).toHaveBeenCalledWith('/backend-api/v1/content/articles/1/publish', {})
+            expect(mockPost).toHaveBeenCalledWith('/api/v1/content/articles/1/publish', {})
         })
     })
 
@@ -130,7 +130,7 @@ describe('contentApi', () => {
 
             await contentApi.scheduleArticle('1', req)
 
-            expect(mockPost).toHaveBeenCalledWith('/backend-api/v1/content/articles/1/schedule', req)
+            expect(mockPost).toHaveBeenCalledWith('/api/v1/content/articles/1/schedule', req)
         })
     })
 
@@ -140,7 +140,7 @@ describe('contentApi', () => {
 
             await contentApi.unpublishArticle('1')
 
-            expect(mockPost).toHaveBeenCalledWith('/backend-api/v1/content/articles/1/unpublish', {})
+            expect(mockPost).toHaveBeenCalledWith('/api/v1/content/articles/1/unpublish', {})
         })
     })
 
@@ -152,7 +152,7 @@ describe('contentApi', () => {
             const result = await contentApi.getFeed()
 
             expect(mockGet).toHaveBeenCalledWith(
-                expect.stringContaining('/backend-api/v1/content/feed?')
+                expect.stringContaining('/api/v1/content/feed?')
             )
             const url = mockGet.mock.calls[0][0]
             expect(url).toContain('limit=20')
@@ -187,7 +187,7 @@ describe('contentApi', () => {
 
             const result = await contentApi.getFeedArticle('1')
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/content/feed/1')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/content/feed/1')
             expect(result).toEqual(mockArticle)
         })
     })
@@ -206,7 +206,7 @@ describe('publicContentApi', () => {
             const result = await publicContentApi.getFeed()
 
             const url = mockGet.mock.calls[0][0]
-            expect(url).toContain('/backend-api/v1/public/content?')
+            expect(url).toContain('/api/v1/public/content?')
             expect(url).toContain('limit=20')
             expect(url).toContain('offset=0')
             expect(result).toEqual(mockResponse)
@@ -239,7 +239,7 @@ describe('publicContentApi', () => {
 
             const result = await publicContentApi.getArticle('1')
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/public/content/1')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/public/content/1')
             expect(result).toEqual(mockArticle)
         })
     })

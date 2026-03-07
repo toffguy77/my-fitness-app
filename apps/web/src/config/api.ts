@@ -12,7 +12,7 @@ export const API_CONFIG = {
     /**
      * API version prefix
      */
-    version: '/backend-api/v1',
+    version: '/api/v1',
 
     /**
      * Request timeout in milliseconds
