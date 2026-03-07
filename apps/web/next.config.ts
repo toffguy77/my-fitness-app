@@ -41,6 +41,7 @@ if (!isTest) {
     register: true,
     skipWaiting: true,
     disable: process.env.NODE_ENV === 'development',
+    buildExcludes: [/\/backend-api\//],
     runtimeCaching: [
       {
         urlPattern: /\/backend-api\/.*/i,

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Toaster } from 'react-hot-toast'
 import { YandexMetrika } from '@/shared/components/YandexMetrika'
+import { ServiceWorkerCleanup } from '@/shared/components/ServiceWorkerCleanup'
 import './globals.css'
 
 export const viewport: Viewport = {
@@ -56,6 +57,7 @@ export default function RootLayout({
         <html lang="ru">
             <body>
                 <YandexMetrika />
+                <ServiceWorkerCleanup />
                 {children}
                 <Toaster
                     position="top-center"
