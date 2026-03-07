@@ -104,6 +104,11 @@ func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error)
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
+	// Log resolved connection host for diagnostics (no credentials)
+	fmt.Printf("[DB] NewPostgresFromURL: host=%s, port=%d, database=%s, fallbacks=%d\n",
+		connConfig.Host, connConfig.Port, connConfig.Database,
+		len(connConfig.Fallbacks))
+
 	// Configure TLS for Yandex Cloud if SSL is required
 	if connConfig.TLSConfig != nil || containsSSL(url) {
 		tlsConfig, err := createTLSConfig(connConfig.Host)
