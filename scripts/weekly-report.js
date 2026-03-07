@@ -12,6 +12,9 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
+/** Sanitize strings for safe logging (strip control characters) */
+const sanitize = (s) => String(s).replace(/[\r\n\x00-\x1f\x7f]/g, '');
+
 class WeeklyReportGenerator {
     constructor(githubToken, repository, telegramToken = null, telegramChatId = null) {
         this.githubToken = githubToken;
@@ -80,7 +83,7 @@ class WeeklyReportGenerator {
             const response = await this.makeGitHubRequest(endpoint);
             return response.workflow_runs || [];
         } catch (error) {
-            console.warn('Could not fetch workflow runs:', error.message);
+            console.warn('Could not fetch workflow runs:', sanitize(error.message));
             return [];
         }
     }
@@ -103,7 +106,7 @@ class WeeklyReportGenerator {
                 return updatedAt >= oneWeekAgo;
             });
         } catch (error) {
-            console.warn('Could not fetch pull requests:', error.message);
+            console.warn('Could not fetch pull requests:', sanitize(error.message));
             return [];
         }
     }
@@ -537,7 +540,7 @@ async function main() {
         const reportFile = path.join(reportDir, `weekly-report-${timestamp}.md`);
 
         fs.writeFileSync(reportFile, report);
-        console.log(` Report saved to: ${reportFile}`);
+        console.log(` Report saved to: ${sanitize(reportFile)}`);
 
         // Save JSON data for further analysis
         const dataFile = path.join(reportDir, `weekly-data-${timestamp}.json`);
@@ -547,7 +550,7 @@ async function main() {
             generatedAt: new Date().toISOString()
         }, null, 2));
 
-        console.log(` Data saved to: ${dataFile}`);
+        console.log(` Data saved to: ${sanitize(dataFile)}`);
 
         // Send via Telegram if configured
         if (telegramToken && telegramChatId) {

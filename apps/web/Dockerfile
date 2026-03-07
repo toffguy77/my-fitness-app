@@ -82,8 +82,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Security: Remove unnecessary packages and clean up
+# Remove npm (not needed in production runtime) to eliminate bundled dependency vulnerabilities
 RUN apk del libc6-compat && \
-    rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+    rm -rf /var/cache/apk/* /tmp/* /var/tmp/* \
+    /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Copy built application from monorepo paths
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./

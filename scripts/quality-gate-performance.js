@@ -8,9 +8,11 @@
  * Requirements: 6.3, 6.5 - Performance optimization and monitoring
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+const validBranchPattern = /^[a-zA-Z0-9._\/-]+$/;
 
 class QualityGatePerformanceMonitor {
     constructor() {
@@ -87,8 +89,6 @@ class QualityGatePerformanceMonitor {
             this.runTypeScriptCheck()
         ];
 
-        const parallelStartTime = Date.now();
-
         try {
             const results = await Promise.allSettled(checkPromises);
             const parallelEndTime = Date.now();
@@ -164,13 +164,16 @@ class QualityGatePerformanceMonitor {
             });
 
             // Quick vulnerability count check
-            if (fs.existsSync('audit-results.json')) {
+            try {
                 const audit = JSON.parse(fs.readFileSync('audit-results.json', 'utf8'));
                 const criticalVulns = audit.metadata?.vulnerabilities?.critical || 0;
 
                 if (criticalVulns > 0) {
                     throw new Error(`Found ${criticalVulns} critical vulnerabilities`);
                 }
+            } catch (readError) {
+                if (readError.message.includes('critical vulnerabilities')) throw readError;
+                // audit-results.json not available, skip check
             }
 
             this.endCheck('security');
@@ -220,13 +223,16 @@ class QualityGatePerformanceMonitor {
             this.endCheck('eslint');
 
             // Check if it's just ESLint errors (not execution failure)
-            if (fs.existsSync('eslint-results.json')) {
+            try {
                 const results = JSON.parse(fs.readFileSync('eslint-results.json', 'utf8'));
                 const errorCount = results.reduce((sum, file) => sum + file.errorCount, 0);
 
                 if (errorCount > 0) {
                     throw new Error(`ESLint found ${errorCount} errors`);
                 }
+            } catch (readError) {
+                if (readError.message.includes('ESLint found')) throw readError;
+                // eslint-results.json not available
             }
 
             throw new Error(`ESLint check failed: ${error.message}`);
@@ -264,9 +270,12 @@ class QualityGatePerformanceMonitor {
 
             let changedFiles;
             if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
-                changedFiles = execSync(`git diff --name-only origin/${baseBranch}...${headBranch}`, { encoding: 'utf8' });
+                if (!validBranchPattern.test(baseBranch) || !validBranchPattern.test(headBranch)) {
+                    throw new Error('Invalid branch name');
+                }
+                changedFiles = execFileSync('git', ['diff', '--name-only', `origin/${baseBranch}...${headBranch}`], { encoding: 'utf8' });
             } else {
-                changedFiles = execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' });
+                changedFiles = execFileSync('git', ['diff', '--name-only', 'HEAD~1', 'HEAD'], { encoding: 'utf8' });
             }
 
             return changedFiles.trim().split('\n').filter(file => file.length > 0);
@@ -349,12 +358,10 @@ class QualityGatePerformanceMonitor {
         const metricsFile = path.resolve('.github/quality-gate-metrics.json');
 
         let historicalMetrics = [];
-        if (fs.existsSync(metricsFile)) {
-            try {
-                historicalMetrics = JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
-            } catch (error) {
-                console.warn('⚠️  Could not read historical metrics');
-            }
+        try {
+            historicalMetrics = JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
+        } catch {
+            // File doesn't exist or is invalid, start fresh
         }
 
         const currentMetrics = {

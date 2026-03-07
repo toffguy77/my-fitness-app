@@ -8,8 +8,10 @@
  * Requirements: 6.3, 6.5 - Performance optimization
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
+
+const validBranchPattern = /^[a-zA-Z0-9._\/-]+$/;
 
 class IncrementalQualityGate {
     constructor() {
@@ -34,10 +36,13 @@ class IncrementalQualityGate {
             let changedFiles;
             if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
                 // For PR, compare against base branch
-                changedFiles = execSync(`git diff --name-only origin/${baseBranch}...${headBranch}`, { encoding: 'utf8' });
+                if (!validBranchPattern.test(baseBranch) || !validBranchPattern.test(headBranch)) {
+                    throw new Error('Invalid branch name');
+                }
+                changedFiles = execFileSync('git', ['diff', '--name-only', `origin/${baseBranch}...${headBranch}`], { encoding: 'utf8' });
             } else {
                 // For push, compare against previous commit
-                changedFiles = execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' });
+                changedFiles = execFileSync('git', ['diff', '--name-only', 'HEAD~1', 'HEAD'], { encoding: 'utf8' });
             }
 
             return changedFiles.trim().split('\n').filter(file => file.length > 0);
@@ -129,7 +134,7 @@ class IncrementalQualityGate {
             console.log('✅ ESLint: All changed files passed');
         } catch (error) {
             // Parse incremental results
-            if (fs.existsSync('eslint-incremental.json')) {
+            try {
                 const results = JSON.parse(fs.readFileSync('eslint-incremental.json', 'utf8'));
                 const errorCount = results.reduce((sum, file) => sum + file.errorCount, 0);
                 const warningCount = results.reduce((sum, file) => sum + file.warningCount, 0);
@@ -145,7 +150,7 @@ class IncrementalQualityGate {
                 } else {
                     console.log(`✅ ESLint: No errors (${warningCount} warnings) in changed files`);
                 }
-            } else {
+            } catch {
                 this.results.eslint = { passed: false, errors: 1, warnings: 0 };
             }
         }

@@ -8,9 +8,11 @@
  * Requirements: 6.3, 6.5 - Performance optimization and incremental checks
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+const validBranchPattern = /^[a-zA-Z0-9._\/-]+$/;
 
 class QualityGateOptimizer {
     constructor() {
@@ -140,7 +142,7 @@ class QualityGateOptimizer {
             const analysis = this.analyzeRepository();
 
             // Determine optimal worker count based on file count and system resources
-            let maxWorkers = 2; // Conservative default
+            let maxWorkers;
 
             if (analysis.testFiles < 50) {
                 maxWorkers = 1; // Single worker for small test suites
@@ -177,9 +179,12 @@ class QualityGateOptimizer {
 
             let changedFiles;
             if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
-                changedFiles = execSync(`git diff --name-only origin/${baseBranch}...${headBranch}`, { encoding: 'utf8' });
+                if (!validBranchPattern.test(baseBranch) || !validBranchPattern.test(headBranch)) {
+                    throw new Error('Invalid branch name');
+                }
+                changedFiles = execFileSync('git', ['diff', '--name-only', `origin/${baseBranch}...${headBranch}`], { encoding: 'utf8' });
             } else {
-                changedFiles = execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' });
+                changedFiles = execFileSync('git', ['diff', '--name-only', 'HEAD~1', 'HEAD'], { encoding: 'utf8' });
             }
 
             return changedFiles.trim().split('\n').filter(file => file.length > 0);
@@ -377,8 +382,10 @@ class QualityGateOptimizer {
             const metricsFile = path.join(metricsDir, 'optimization-metrics.json');
             let historicalMetrics = [];
 
-            if (fs.existsSync(metricsFile)) {
+            try {
                 historicalMetrics = JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
+            } catch {
+                // File doesn't exist or is invalid, start fresh
             }
 
             historicalMetrics.push(metricsData);
