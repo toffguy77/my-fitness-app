@@ -19,21 +19,21 @@ import (
 
 // mockContentService implements ServiceInterface for testing
 type mockContentService struct {
-	createArticleFunc          func(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error)
-	getArticleFunc             func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error)
-	listArticlesFunc           func(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error)
-	updateArticleFunc          func(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error)
-	deleteArticleFunc          func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
-	publishArticleFunc         func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
-	scheduleArticleFunc        func(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest, isAdmin bool) error
-	unpublishArticleFunc       func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
-	uploadMediaFunc            func(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error)
-	uploadMarkdownFileFunc     func(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error)
-	getFeedFunc                func(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error)
-	getFeedArticleFunc         func(ctx context.Context, clientID int64, articleID string) (*Article, error)
-	getPublicFeedFunc          func(ctx context.Context, category string, limit int, offset int) (*FeedResponse, error)
-	getPublicArticleFunc       func(ctx context.Context, articleID string) (*Article, error)
-	publishScheduledFunc       func(ctx context.Context) error
+	createArticleFunc      func(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error)
+	getArticleFunc         func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error)
+	listArticlesFunc       func(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error)
+	updateArticleFunc      func(ctx context.Context, authorID int64, articleID string, req UpdateArticleRequest, isAdmin bool) (*Article, error)
+	deleteArticleFunc      func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
+	publishArticleFunc     func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
+	scheduleArticleFunc    func(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest, isAdmin bool) error
+	unpublishArticleFunc   func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
+	uploadMediaFunc        func(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error)
+	uploadMarkdownFileFunc func(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error)
+	getFeedFunc            func(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error)
+	getFeedArticleFunc     func(ctx context.Context, clientID int64, articleID string) (*Article, error)
+	getPublicFeedFunc      func(ctx context.Context, category string, limit int, offset int) (*FeedResponse, error)
+	getPublicArticleFunc   func(ctx context.Context, articleID string) (*Article, error)
+	publishScheduledFunc   func(ctx context.Context) error
 }
 
 func (m *mockContentService) CreateArticle(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error) {

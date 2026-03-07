@@ -18,10 +18,10 @@ import (
 
 // mockCuratorService implements ServiceInterface for testing
 type mockCuratorService struct {
-	getClientsFunc       func(ctx context.Context, curatorID int64) ([]ClientCard, error)
-	getClientDetailFunc  func(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error)
-	setTargetWeightFunc  func(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
-	setWaterGoalFunc     func(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error
+	getClientsFunc      func(ctx context.Context, curatorID int64) ([]ClientCard, error)
+	getClientDetailFunc func(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error)
+	setTargetWeightFunc func(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
+	setWaterGoalFunc    func(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error
 }
 
 func (m *mockCuratorService) GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error) {
