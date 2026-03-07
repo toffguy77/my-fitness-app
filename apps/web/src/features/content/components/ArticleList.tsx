@@ -29,13 +29,16 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
 
     const fetchArticles = useCallback(async () => {
         setLoading(true)
+        setError(null)
         try {
             const res = await contentApi.listArticles(
                 statusFilter || undefined,
                 categoryFilter || undefined,
             )
             setArticles(res.articles ?? [])
-        } catch {
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || err?.message || 'Не удалось загрузить статьи'
+            setError(`Ошибка: ${msg} (status: ${err?.response?.status ?? 'unknown'})`)
             setArticles([])
         } finally {
             setLoading(false)
@@ -46,19 +49,22 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
         let cancelled = false
 
         setLoading(true)
+        setError(null)
         contentApi
             .listArticles(
                 statusFilter || undefined,
                 categoryFilter || undefined,
             )
             .then((res) => {
-                console.log('[ArticleList] API response:', JSON.stringify(res).slice(0, 500))
-                console.log('[ArticleList] res.articles:', Array.isArray(res?.articles), 'length:', res?.articles?.length)
                 if (!cancelled) setArticles(res.articles ?? [])
             })
             .catch((err) => {
                 console.error('[ArticleList] fetch error:', err)
-                if (!cancelled) setArticles([])
+                if (!cancelled) {
+                    const msg = err?.response?.data?.message || err?.message || 'Не удалось загрузить статьи'
+                    setError(`Ошибка: ${msg} (status: ${err?.response?.status ?? 'unknown'})`)
+                    setArticles([])
+                }
             })
             .finally(() => {
                 if (!cancelled) setLoading(false)
