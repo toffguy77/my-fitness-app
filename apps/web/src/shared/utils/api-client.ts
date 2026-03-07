@@ -32,9 +32,11 @@ class ApiClient {
      */
     private async request<T>(url: string, options: RequestOptions = {}): Promise<T> {
         const token = this.getToken();
+        const requestId = crypto.randomUUID();
 
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
+            'X-Request-Id': requestId,
             ...options.headers,
         };
 
@@ -74,7 +76,7 @@ class ApiClient {
                     tokenInfo = `user_id=${payload.user_id}, role=${payload.role}, exp=${new Date(payload.exp * 1000).toISOString()}`;
                 } catch { tokenInfo = 'invalid-token'; }
             }
-            console.log('[api-client] GET', url, '| token:', tokenInfo, '| status:', response.status, '| raw:', JSON.stringify(data).slice(0, 500));
+            console.log('[api-client] GET', url, '| reqId:', requestId, '| token:', tokenInfo, '| status:', response.status, '| raw:', JSON.stringify(data).slice(0, 500));
         }
 
         return result;
