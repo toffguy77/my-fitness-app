@@ -66,7 +66,15 @@ class ApiClient {
         const result = data.data !== undefined ? data.data : data;
 
         if (url.includes('/content/articles')) {
-            console.log('[api-client] GET', url, '→ raw:', JSON.stringify(data).slice(0, 300), '→ unwrapped:', JSON.stringify(result).slice(0, 300));
+            // Decode JWT payload to see user_id
+            let tokenInfo = 'no-token';
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    tokenInfo = `user_id=${payload.user_id}, role=${payload.role}, exp=${new Date(payload.exp * 1000).toISOString()}`;
+                } catch { tokenInfo = 'invalid-token'; }
+            }
+            console.log('[api-client] GET', url, '| token:', tokenInfo, '| status:', response.status, '| raw:', JSON.stringify(data).slice(0, 500));
         }
 
         return result;
