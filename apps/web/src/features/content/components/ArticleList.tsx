@@ -23,6 +23,7 @@ interface ArticleListProps {
 export function ArticleList({ basePath = '/curator/content', showAuthor = false }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const [statusFilter, setStatusFilter] = useState('')
     const [categoryFilter] = useState('')
 
@@ -67,20 +68,22 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Удалить статью?')) return
+        setError(null)
         try {
             await contentApi.deleteArticle(id)
             await fetchArticles()
-        } catch {
-            // ignore
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Не удалось удалить статью')
         }
     }
 
     const handlePublish = async (id: string) => {
+        setError(null)
         try {
             await contentApi.publishArticle(id)
             await fetchArticles()
-        } catch {
-            // ignore
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Не удалось опубликовать статью')
         }
     }
 
@@ -120,6 +123,13 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
                     </button>
                 ))}
             </div>
+
+            {/* Error banner */}
+            {error && (
+                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {error}
+                </div>
+            )}
 
             {/* Content */}
             {loading ? (
