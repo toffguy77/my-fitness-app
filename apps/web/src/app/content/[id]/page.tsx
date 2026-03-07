@@ -7,7 +7,7 @@ const API_URL = process.env.INTERNAL_API_URL || 'http://api:4000'
 async function getPublicArticle(id: string) {
     try {
         const res = await fetch(`${API_URL}/api/v1/public/content/${id}`, {
-            next: { revalidate: 3600 },
+            next: { revalidate: 60 },
         })
         if (!res.ok) return null
         const data = await res.json()

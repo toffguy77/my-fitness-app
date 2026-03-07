@@ -67,6 +67,7 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 	db.SetMaxOpenConns(cfg.MaxOpenConns)
 	db.SetMaxIdleConns(cfg.MaxIdleConns)
 	db.SetConnMaxLifetime(time.Hour)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	// Verify connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -104,6 +105,7 @@ func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error)
 	db.SetMaxOpenConns(maxOpenConns)
 	db.SetMaxIdleConns(maxIdleConns)
 	db.SetConnMaxLifetime(time.Hour)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	// Verify connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
