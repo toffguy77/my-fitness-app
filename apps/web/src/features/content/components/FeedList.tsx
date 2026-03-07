@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { publicContentApi } from '@/features/content/api/contentApi'
+import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
+import { isAuthenticated } from '@/shared/utils/token-storage'
 import { CategoryFilter } from './CategoryFilter'
 import { FeedCard } from './FeedCard'
 import type { ArticleCard } from '@/features/content/types'
@@ -17,7 +18,8 @@ export function FeedList() {
     const [category, setCategory] = useState<string | null>(null)
 
     const fetchArticles = useCallback(async (cat: string | null, offset = 0) => {
-        const res = await publicContentApi.getFeed(cat ?? undefined, PAGE_SIZE, offset)
+        const api = isAuthenticated() ? contentApi : publicContentApi
+        const res = await api.getFeed(cat ?? undefined, PAGE_SIZE, offset)
         return res
     }, [])
 
