@@ -6,7 +6,7 @@
 import React from 'react';
 
 // Mock List component
-export function List({ rowComponent: RowComponent, rowCount, rowHeight, children, listRef, defaultHeight, ...rest }) {
+export function List({ rowComponent: RowComponent, rowCount, rowHeight, rowProps, children, listRef, defaultHeight, ...rest }) {
     // Render all rows for testing (no virtualization in tests)
     const rows = [];
     for (let index = 0; index < rowCount; index++) {
@@ -21,6 +21,7 @@ export function List({ rowComponent: RowComponent, rowCount, rowHeight, children
                 key: index,
                 index,
                 style,
+                ...(rowProps || {}),
             })
         );
     }
