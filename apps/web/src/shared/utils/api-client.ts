@@ -118,20 +118,7 @@ class ApiClient {
             return Promise.reject(new Error('No refresh token'));
         }
 
-        return fetch(`${API_BASE}/api/v1/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-            cache: 'no-store',
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    throw new Error('Refresh failed');
-                }
-                const json = await res.json();
-                const data = json.data !== undefined ? json.data : json;
-                return data;
-            })
+        return this.refreshWithRetry(refreshToken, 3, 1000)
             .then((data: { token: string; refresh_token: string }) => {
                 setToken(data.token);
                 setRefreshToken(data.refresh_token);
@@ -148,6 +135,44 @@ class ApiClient {
                 }
                 throw err;
             });
+    }
+
+    /**
+     * Attempt to refresh the token with retries for transient failures (network, redeploy)
+     */
+    private async refreshWithRetry(
+        refreshToken: string,
+        retries: number,
+        delayMs: number,
+    ): Promise<{ token: string; refresh_token: string }> {
+        for (let attempt = 0; attempt < retries; attempt++) {
+            try {
+                const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                    cache: 'no-store',
+                });
+
+                if (res.status >= 400 && res.status < 500) {
+                    throw new Error('Refresh rejected');
+                }
+
+                if (!res.ok) {
+                    throw new Error(`Refresh failed with status ${res.status}`);
+                }
+
+                const json = await res.json();
+                return json.data !== undefined ? json.data : json;
+            } catch (err) {
+                const isRejected = err instanceof Error && err.message === 'Refresh rejected';
+                if (isRejected || attempt >= retries - 1) {
+                    throw err;
+                }
+                await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
+            }
+        }
+        throw new Error('Refresh failed after retries');
     }
 
     /**
