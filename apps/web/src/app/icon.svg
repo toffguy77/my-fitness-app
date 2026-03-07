@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Subtle shine overlay -->
+  <rect width="512" height="512" rx="96" fill="url(#accent)"/>
+
+  <!-- Bold "B" letter -->
+  <path d="
+    M 160 96
+    L 280 96
+    Q 352 96 352 168
+    Q 352 216 312 236
+    Q 368 252 368 324
+    Q 368 416 280 416
+    L 160 416
+    Z
+
+    M 224 160
+    L 224 228
+    L 272 228
+    Q 292 228 292 194
+    Q 292 160 272 160
+    Z
+
+    M 224 288
+    L 224 352
+    L 280 352
+    Q 304 352 304 320
+    Q 304 288 280 288
+    Z
+  " fill="white"/>
+</svg>

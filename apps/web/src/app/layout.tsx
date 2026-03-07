@@ -28,7 +28,6 @@ export const metadata: Metadata = {
     ],
     authors: [{ name: 'BURCEV' }],
     creator: 'BURCEV',
-    icons: { icon: '/logo.svg' },
     openGraph: {
         type: 'website',
         locale: 'ru_RU',
