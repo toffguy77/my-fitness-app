@@ -80,17 +80,24 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 	return &DB{DB: db}, nil
 }
 
+// ensureReadWrite appends target_session_attrs=read-write to a connection URL
+// if it's not already present, ensuring connections go to the primary node.
+func ensureReadWrite(url string) string {
+	if contains(url, "target_session_attrs") {
+		return url
+	}
+	separator := "?"
+	if contains(url, "?") {
+		separator = "&"
+	}
+	return url + separator + "target_session_attrs=read-write"
+}
+
 // NewPostgresFromURL creates a new PostgreSQL connection from URL
 func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error) {
 	// Ensure we always connect to the primary (read-write) node
 	// to avoid read replica lag after INSERT/UPDATE operations
-	if !contains(url, "target_session_attrs") {
-		separator := "?"
-		if contains(url, "?") {
-			separator = "&"
-		}
-		url = url + separator + "target_session_attrs=read-write"
-	}
+	url = ensureReadWrite(url)
 
 	connConfig, err := pgx.ParseConfig(url)
 	if err != nil {
