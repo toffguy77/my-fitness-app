@@ -31,6 +31,8 @@ const OPTIONS: { value: AudienceScope; label: string }[] = [
 export function AudienceSelector({
     value,
     onChange,
+    clientIds,
+    onClientIdsChange,
 }: AudienceSelectorProps) {
     return (
         <fieldset>
@@ -61,9 +63,21 @@ export function AudienceSelector({
                 ))}
             </div>
             {value === 'selected' && (
-                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    Выбор конкретных клиентов будет добавлен позже
-                </p>
+                <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    <p>Выбор конкретных клиентов будет добавлен позже</p>
+                    {clientIds.length > 0 && (
+                        <p className="mt-1">
+                            Выбрано клиентов: {clientIds.length}{' '}
+                            <button
+                                type="button"
+                                onClick={() => onClientIdsChange([])}
+                                className="ml-1 underline hover:no-underline"
+                            >
+                                Очистить
+                            </button>
+                        </p>
+                    )}
+                </div>
             )}
         </fieldset>
     )

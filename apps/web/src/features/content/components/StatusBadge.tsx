@@ -23,7 +23,10 @@ export interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-    const config = STATUS_CONFIG[status]
+    const config = STATUS_CONFIG[status] ?? {
+        label: status,
+        className: 'bg-gray-100 text-gray-700',
+    }
 
     return (
         <span
