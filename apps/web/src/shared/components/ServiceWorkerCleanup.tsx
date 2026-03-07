@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 
-const SW_CLEANUP_KEY = 'sw-cleanup-v1'
+const SW_CLEANUP_KEY = 'sw-cleanup-v2'
 
 /**
  * One-time nuclear cleanup: unregisters ALL service workers and purges

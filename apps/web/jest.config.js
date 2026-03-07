@@ -8,6 +8,7 @@ const customJestConfig = {
     setupFiles: ['<rootDir>/jest.polyfills.js'],
     setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     testEnvironment: 'jest-environment-jsdom',
+    workerIdleMemoryLimit: '512MB',
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
     },

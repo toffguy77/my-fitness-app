@@ -323,13 +323,6 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 
 	query += " ORDER BY a.created_at DESC"
 
-	// Debug: also run a simple count to compare
-	var dbCount int
-	countErr := s.db.QueryRowContext(ctx, "SELECT count(*) FROM articles").Scan(&dbCount)
-	if countErr != nil {
-		s.log.Error("ListArticles debug count failed", "error", countErr)
-	}
-
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		s.log.Error("Failed to list articles", "error", err, "author_id", authorID)
@@ -367,13 +360,11 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 	}
 
 	s.log.LogDatabaseQuery("ListArticles", time.Since(startTime), nil, map[string]interface{}{
-		"author_id":       authorID,
-		"count":           len(articles),
-		"db_total_count":  dbCount,
-		"is_admin":        isAdmin,
-		"status":          status,
-		"category":        category,
-		"query":           query,
+		"author_id": authorID,
+		"count":     len(articles),
+		"is_admin":  isAdmin,
+		"status":    status,
+		"category":  category,
 	})
 
 	return &ArticlesListResponse{
