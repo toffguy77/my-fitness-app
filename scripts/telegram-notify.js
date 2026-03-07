@@ -9,8 +9,9 @@
  */
 
 const https = require('https');
-const fs = require('fs');
-const path = require('path');
+
+/** Sanitize strings for safe logging (strip control characters) */
+const sanitize = (s) => String(s).replace(/[\r\n\x00-\x1f\x7f]/g, '');
 
 class TelegramNotifier {
     constructor(botToken, chatId) {
@@ -460,7 +461,7 @@ async function main() {
                 break;
 
             default:
-                console.error(`Unknown notification type: ${notificationType}`);
+                console.error(`Unknown notification type: ${sanitize(notificationType)}`);
                 console.error('Usage: node telegram-notify.js <type> [args...]');
                 console.error('Types: build-failure, build-success, deployment, coverage, performance-report, performance-alert, security-alert, secrets-audit');
                 process.exit(1);
