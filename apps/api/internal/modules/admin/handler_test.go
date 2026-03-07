@@ -18,12 +18,12 @@ import (
 
 // mockService implements ServiceInterface for handler tests
 type mockService struct {
-	getUsersFunc               func(ctx context.Context) ([]AdminUser, error)
-	getCuratorsFunc            func(ctx context.Context) ([]CuratorLoad, error)
-	changeRoleFunc             func(ctx context.Context, userID int64, newRole string) error
-	assignCuratorFunc          func(ctx context.Context, clientID, curatorID int64) error
-	getConversationsFunc       func(ctx context.Context) ([]AdminConversation, error)
-	getConversationMsgsFunc    func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error)
+	getUsersFunc            func(ctx context.Context) ([]AdminUser, error)
+	getCuratorsFunc         func(ctx context.Context) ([]CuratorLoad, error)
+	changeRoleFunc          func(ctx context.Context, userID int64, newRole string) error
+	assignCuratorFunc       func(ctx context.Context, clientID, curatorID int64) error
+	getConversationsFunc    func(ctx context.Context) ([]AdminConversation, error)
+	getConversationMsgsFunc func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error)
 }
 
 func (m *mockService) GetUsers(ctx context.Context) ([]AdminUser, error) {
