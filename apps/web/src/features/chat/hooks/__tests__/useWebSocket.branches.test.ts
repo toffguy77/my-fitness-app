@@ -80,6 +80,13 @@ describe('useWebSocket branches (standalone mode)', () => {
     // Reconnect logic on close (lines 44-49)
     // -------------------------------------------------------------------------
     describe('Reconnect on close', () => {
+        beforeEach(() => {
+            Object.defineProperty(document, 'visibilityState', {
+                writable: true,
+                value: 'visible',
+            });
+        });
+
         it('reconnects after close when auth token is present', () => {
             renderHook(() => useWebSocket());
 
@@ -171,6 +178,135 @@ describe('useWebSocket branches (standalone mode)', () => {
                 jest.advanceTimersByTime(1000);
             });
             expect(MockWebSocket.instances).toHaveLength(3);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Auth failure and reconnect guard logic
+    // -------------------------------------------------------------------------
+    describe('Reconnect guards', () => {
+        beforeEach(() => {
+            Object.defineProperty(document, 'visibilityState', {
+                writable: true,
+                value: 'visible',
+            });
+        });
+
+        it.each([1008, 4401, 4403])('does not reconnect on auth failure close code %i', (code) => {
+            renderHook(() => useWebSocket());
+            expect(MockWebSocket.instances).toHaveLength(1);
+
+            act(() => {
+                MockWebSocket.instances[0].onclose?.(new CloseEvent('close', { code }));
+            });
+
+            act(() => {
+                jest.advanceTimersByTime(5000);
+            });
+
+            expect(MockWebSocket.instances).toHaveLength(1);
+        });
+
+        it('does not reconnect when tab is hidden', () => {
+            renderHook(() => useWebSocket());
+            expect(MockWebSocket.instances).toHaveLength(1);
+
+            Object.defineProperty(document, 'visibilityState', { value: 'hidden' });
+
+            act(() => {
+                MockWebSocket.instances[0].onclose?.(new CloseEvent('close', { code: 1000 }));
+            });
+
+            act(() => {
+                jest.advanceTimersByTime(5000);
+            });
+
+            expect(MockWebSocket.instances).toHaveLength(1);
+        });
+
+        it('reconnects when hidden tab becomes visible', () => {
+            renderHook(() => useWebSocket());
+            expect(MockWebSocket.instances).toHaveLength(1);
+
+            Object.defineProperty(document, 'visibilityState', { value: 'hidden' });
+            act(() => {
+                MockWebSocket.instances[0].onclose?.(new CloseEvent('close', { code: 1000 }));
+            });
+
+            Object.defineProperty(document, 'visibilityState', { value: 'visible' });
+            act(() => {
+                document.dispatchEvent(new Event('visibilitychange'));
+            });
+
+            expect(MockWebSocket.instances).toHaveLength(2);
+        });
+
+        it('closes old WebSocket before creating a new one', () => {
+            renderHook(() => useWebSocket());
+            const firstWs = MockWebSocket.instances[0];
+
+            Object.defineProperty(document, 'visibilityState', { value: 'visible' });
+            act(() => {
+                document.dispatchEvent(new Event('visibilitychange'));
+            });
+
+            expect(firstWs.close).toHaveBeenCalled();
+        });
+
+        it('clears reconnect timer on unmount', () => {
+            const { unmount } = renderHook(() => useWebSocket());
+
+            act(() => {
+                MockWebSocket.instances[0].onclose?.(new CloseEvent('close', { code: 1000 }));
+            });
+
+            unmount();
+
+            act(() => {
+                jest.advanceTimersByTime(5000);
+            });
+
+            expect(MockWebSocket.instances).toHaveLength(1);
+        });
+
+        it('removes visibilitychange listener on unmount', () => {
+            const removeSpy = jest.spyOn(document, 'removeEventListener');
+            const { unmount } = renderHook(() => useWebSocket());
+
+            unmount();
+
+            expect(removeSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+        });
+
+        it('stops reconnecting after repeated 1006 failures', () => {
+            renderHook(() => useWebSocket());
+
+            // Simulate multiple 1006 failures: 1s → 2s → 4s → 8s
+            for (let i = 0; i < 4; i++) {
+                const wsIndex = MockWebSocket.instances.length - 1;
+                act(() => {
+                    MockWebSocket.instances[wsIndex].onclose?.(
+                        new CloseEvent('close', { code: 1006 })
+                    );
+                });
+                act(() => {
+                    jest.advanceTimersByTime(30000);
+                });
+            }
+
+            const countAfterStorm = MockWebSocket.instances.length;
+
+            // Next 1006 close should NOT trigger reconnect (delay > 8000)
+            act(() => {
+                MockWebSocket.instances[countAfterStorm - 1].onclose?.(
+                    new CloseEvent('close', { code: 1006 })
+                );
+            });
+            act(() => {
+                jest.advanceTimersByTime(60000);
+            });
+
+            expect(MockWebSocket.instances).toHaveLength(countAfterStorm);
         });
     });
 
