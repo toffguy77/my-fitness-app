@@ -250,8 +250,17 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 		return nil, fmt.Errorf("failed to look up refresh token: %w", err)
 	}
 
-	// Reuse detection: if the token was already revoked, someone may have stolen it
+	// Reuse detection: if the token was already revoked, check if it was a recent
+	// rotation (grace period for concurrent requests from multiple tabs).
 	if revokedAt.Valid {
+		gracePeriod := 30 * time.Second
+		if time.Since(revokedAt.Time) < gracePeriod {
+			// Recent revocation — likely a race condition from multiple tabs.
+			// Look up the replacement token's result instead of revoking everything.
+			s.log.Infow("Refresh token reuse within grace period, looking up replacement",
+				"user_id", userID, "revoked_ago_ms", time.Since(revokedAt.Time).Milliseconds())
+			return s.handleGracefulReuse(ctx, id, userID, ip, ua, rememberMe)
+		}
 		s.log.Warnw("Refresh token reuse detected, revoking all tokens for user", "user_id", userID)
 		s.revokeAllUserRefreshTokens(ctx, userID)
 		return nil, fmt.Errorf("refresh token reuse detected")
@@ -321,6 +330,38 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	}
 
 	// Generate new JWT
+	accessToken, err := s.generateToken(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	return &LoginResult{
+		User:         &user,
+		Token:        accessToken,
+		RefreshToken: newPlain,
+	}, nil
+}
+
+// handleGracefulReuse handles the case where a refresh token was recently rotated
+// (e.g., by another browser tab). Instead of revoking all tokens, it issues new
+// tokens for the user, treating it as a benign race condition.
+func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID int64, ip, ua string, rememberMe bool) (*LoginResult, error) {
+	// Issue a brand new refresh token for this client
+	newPlain, err := s.createRefreshToken(ctx, userID, ip, ua, rememberMe)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create replacement refresh token: %w", err)
+	}
+
+	// Look up user for JWT claims
+	var user User
+	err = s.db.QueryRowContext(ctx,
+		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at
+		 FROM users WHERE id = $1`, userID,
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to look up user: %w", err)
+	}
+
 	accessToken, err := s.generateToken(&user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)

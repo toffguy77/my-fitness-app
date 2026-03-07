@@ -400,6 +400,9 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 		&scheduledAt, &publishedAt, &article.CreatedAt, &article.UpdatedAt,
 	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("article not found")
+		}
 		s.log.Error("Failed to update article", "error", err, "article_id", articleID)
 		return nil, fmt.Errorf("failed to update article: %w", err)
 	}

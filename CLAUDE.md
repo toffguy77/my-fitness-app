@@ -51,7 +51,7 @@ make build-api    # Go binary → apps/api/bin/server
 
 ### Monorepo Layout
 - `apps/web/` — Next.js 16 with App Router, React 19, Tailwind CSS v4, Zustand
-- `apps/api/` — Go 1.24, Gin framework, PostgreSQL (pgx/v5), JWT auth
+- `apps/api/` — Go 1.26, Gin framework, PostgreSQL (pgx/v5), JWT auth
 - `packages/types/` — Shared TypeScript type definitions (@burcev/types)
 - `packages/ui/` — Shared React UI components (@burcev/ui)
 - `packages/utils/` — Shared utilities (@burcev/utils)
@@ -61,7 +61,7 @@ make build-api    # Go binary → apps/api/bin/server
 Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
 
 - `app/` — Next.js App Router pages and API routes
-- `features/` — Self-contained feature modules: **auth**, **dashboard**, **food-tracker**, **notifications**
+- `features/` — Self-contained feature modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **notifications**, **nutrition-calc**, **onboarding**, **settings**
   - Each feature has: `api/`, `components/`, `hooks/`, `store/` (Zustand), `types/`, `index.ts`
 - `shared/` — Cross-feature reusable code: `components/ui/`, `hooks/`, `utils/`, `types/`, `constants/`
 - `styles/tokens/` — Design tokens (colors, typography, spacing)
@@ -71,7 +71,7 @@ Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
 Follows a **handler/service pattern** organized by domain module.
 
 - `cmd/server/main.go` — Application entry point
-- `internal/modules/` — Domain modules: **auth**, **dashboard**, **food-tracker**, **notifications**, **users**, **nutrition**, **logs**
+- `internal/modules/` — Domain modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **logs**, **notifications**, **nutrition**, **nutrition-calc**, **users**
   - Each module has: `handler.go` (HTTP handlers), `service.go` (business logic), `*_test.go`
 - `internal/shared/` — Cross-cutting concerns:
   - `database/` — PostgreSQL connection, migrations
@@ -87,13 +87,13 @@ Follows a **handler/service pattern** organized by domain module.
 - Next.js standalone output mode for containerized deployment
 - API proxied through Next.js rewrites in production
 - Jest uses `jest-environment-jsdom` with MSW for API mocking
-- Coverage thresholds: branches 50%, functions/lines/statements 60%
+- Coverage thresholds: branches 79%, functions 85%, lines 87%, statements 84%
 - Husky pre-commit hooks run linting and type checks
 - Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 
 ### Deployment
 - Docker multi-stage builds for both apps
-- CI/CD via GitHub Actions (`.github/workflows/ci.yml` and `cd.yml`)
+- CI/CD via GitHub Actions (`.github/workflows/ci.yml`)
 - Dev deploys from `dev` branch, production from `main`
 - Deployment platform: **Dokploy** (env secrets managed there)
 - External services: PostgreSQL and S3 on Yandex Cloud, SMTP via Yandex Mail
