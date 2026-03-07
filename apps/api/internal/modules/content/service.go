@@ -401,6 +401,27 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			// Diagnostic: check if article exists at all
+			var existsID, existsStatus string
+			diagErr := s.db.QueryRowContext(ctx,
+				`SELECT id, status FROM articles WHERE id = $1`, articleID,
+			).Scan(&existsID, &existsStatus)
+			if diagErr != nil {
+				s.log.Warn("UpdateArticle: article not found in DB at all",
+					"article_id", articleID,
+					"author_id", authorID,
+					"is_admin", isAdmin,
+					"diag_err", diagErr,
+				)
+			} else {
+				s.log.Warn("UpdateArticle: article exists but UPDATE missed it",
+					"article_id", articleID,
+					"author_id", authorID,
+					"is_admin", isAdmin,
+					"diag_id", existsID,
+					"diag_status", existsStatus,
+				)
+			}
 			return nil, fmt.Errorf("article not found")
 		}
 		s.log.Error("Failed to update article", "error", err, "article_id", articleID)
@@ -527,6 +548,27 @@ func (s *Service) PublishArticle(ctx context.Context, authorID int64, articleID 
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
+		// Diagnostic: check if article exists at all
+		var existsID, existsStatus string
+		diagErr := s.db.QueryRowContext(ctx,
+			`SELECT id, status FROM articles WHERE id = $1`, articleID,
+		).Scan(&existsID, &existsStatus)
+		if diagErr != nil {
+			s.log.Warn("PublishArticle: article not found in DB at all",
+				"article_id", articleID,
+				"author_id", authorID,
+				"is_admin", isAdmin,
+				"diag_err", diagErr,
+			)
+		} else {
+			s.log.Warn("PublishArticle: article exists but UPDATE missed it",
+				"article_id", articleID,
+				"author_id", authorID,
+				"is_admin", isAdmin,
+				"diag_id", existsID,
+				"diag_status", existsStatus,
+			)
+		}
 		return fmt.Errorf("article not found")
 	}
 
