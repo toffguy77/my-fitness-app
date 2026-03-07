@@ -10,7 +10,7 @@ import type { ArticleCard } from '@/features/content/types'
 
 // Mock the content API
 jest.mock('@/features/content/api/contentApi', () => ({
-    contentApi: {
+    publicContentApi: {
         getFeed: jest.fn(),
     },
 }))
@@ -31,9 +31,9 @@ jest.mock('../FeedCard', () => ({
     ),
 }))
 
-import { contentApi } from '@/features/content/api/contentApi'
+import { publicContentApi } from '@/features/content/api/contentApi'
 
-const mockGetFeed = contentApi.getFeed as jest.Mock
+const mockGetFeed = publicContentApi.getFeed as jest.Mock
 
 const createArticles = (count: number): ArticleCard[] =>
     Array.from({ length: count }, (_, i) => ({
@@ -154,7 +154,7 @@ describe('FeedList', () => {
         render(<FeedList />)
 
         await waitFor(() => {
-            expect(screen.getByText('Пока нет контента')).toBeInTheDocument()
+            expect(screen.getByText('Network error')).toBeInTheDocument()
         })
     })
 
