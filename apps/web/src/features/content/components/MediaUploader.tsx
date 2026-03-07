@@ -37,7 +37,7 @@ export function MediaUploader({ articleId, onUpload }: MediaUploaderProps) {
 
             const token = getToken()
             const res = await fetch(
-                `/backend-api/v1/content/articles/${articleId}/media`,
+                `/api/v1/content/articles/${articleId}/media`,
                 {
                     method: 'POST',
                     headers: token ? { Authorization: `Bearer ${token}` } : {},

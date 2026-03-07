@@ -38,7 +38,7 @@ function ResetPasswordContent() {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
             const response = await fetch(
-                `${apiUrl}/backend-api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
+                `${apiUrl}/api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
             )
 
             const data = await response.json()
@@ -81,7 +81,7 @@ function ResetPasswordContent() {
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
-            const response = await fetch(`${apiUrl}/backend-api/v1/auth/reset-password`, {
+            const response = await fetch(`${apiUrl}/api/v1/auth/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

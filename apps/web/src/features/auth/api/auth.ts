@@ -16,7 +16,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
  */
 export async function loginUser(data: AuthFormData): Promise<AuthResponse> {
     try {
-        const response = await apiClient.post<AuthResponse>(`${API_BASE}/backend-api/v1/auth/login`, {
+        const response = await apiClient.post<AuthResponse>(`${API_BASE}/api/v1/auth/login`, {
             email: data.email,
             password: data.password,
             remember_me: data.rememberMe ?? false,
@@ -40,7 +40,7 @@ export async function registerUser(
     consents: ConsentState
 ): Promise<AuthResponse> {
     try {
-        const response = await apiClient.post<AuthResponse>(`${API_BASE}/backend-api/v1/auth/register`, {
+        const response = await apiClient.post<AuthResponse>(`${API_BASE}/api/v1/auth/register`, {
             email: data.email,
             password: data.password,
             consents: consents,

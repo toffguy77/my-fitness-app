@@ -22,7 +22,7 @@ describe('chatApi', () => {
 
             const result = await chatApi.getConversations()
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/conversations')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/conversations')
             expect(result).toEqual(convs)
         })
     })
@@ -35,7 +35,7 @@ describe('chatApi', () => {
             const result = await chatApi.getMessages('conv-1')
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/messages?limit=50'
+                '/api/v1/conversations/conv-1/messages?limit=50'
             )
             expect(result).toEqual(msgs)
         })
@@ -46,7 +46,7 @@ describe('chatApi', () => {
             await chatApi.getMessages('conv-1', 'cursor-abc', 25)
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/messages?limit=25&cursor=cursor-abc'
+                '/api/v1/conversations/conv-1/messages?limit=25&cursor=cursor-abc'
             )
         })
 
@@ -56,7 +56,7 @@ describe('chatApi', () => {
             await chatApi.getMessages('conv-1', 'cursor-abc')
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/messages?limit=50&cursor=cursor-abc'
+                '/api/v1/conversations/conv-1/messages?limit=50&cursor=cursor-abc'
             )
         })
     })
@@ -72,7 +72,7 @@ describe('chatApi', () => {
             })
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/messages',
+                '/api/v1/conversations/conv-1/messages',
                 { type: 'text', content: 'hello' }
             )
             expect(result).toEqual(msg)
@@ -99,7 +99,7 @@ describe('chatApi', () => {
             const result = await chatApi.uploadFile('conv-1', file)
 
             expect(global.fetch).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/upload',
+                '/api/v1/conversations/conv-1/upload',
                 expect.objectContaining({
                     method: 'POST',
                     headers: { Authorization: 'Bearer test-token' },
@@ -119,7 +119,7 @@ describe('chatApi', () => {
             const result = await chatApi.uploadFile('conv-1', file)
 
             expect(global.fetch).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/upload',
+                '/api/v1/conversations/conv-1/upload',
                 expect.objectContaining({
                     method: 'POST',
                     headers: {},
@@ -144,7 +144,7 @@ describe('chatApi', () => {
             await chatApi.markAsRead('conv-1')
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/read',
+                '/api/v1/conversations/conv-1/read',
                 {}
             )
         })
@@ -156,7 +156,7 @@ describe('chatApi', () => {
 
             const result = await chatApi.getUnreadCount()
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/conversations/unread')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/conversations/unread')
             expect(result).toEqual({ count: 5 })
         })
     })
@@ -179,7 +179,7 @@ describe('chatApi', () => {
             const result = await chatApi.createFoodEntry('conv-1', 'msg-1', data)
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                '/backend-api/v1/conversations/conv-1/messages/msg-1/food-entry',
+                '/api/v1/conversations/conv-1/messages/msg-1/food-entry',
                 data
             )
             expect(result).toEqual(entry)

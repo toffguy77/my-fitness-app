@@ -81,7 +81,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
 
         try {
             const result = await apiClient.post<{ glasses: number; goal: number; glass_size: number }>(
-                '/backend-api/v1/food-tracker/water',
+                '/api/v1/food-tracker/water',
                 { date: dateStr, glasses: 1 }
             )
             setGlasses(result.glasses)
@@ -96,7 +96,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
 
     useEffect(() => {
         apiClient.get<{ glasses: number; goal: number; glass_size: number; enabled: boolean }>(
-            `/backend-api/v1/food-tracker/water?date=${dateStr}`
+            `/api/v1/food-tracker/water?date=${dateStr}`
         )
             .then(data => {
                 setGlasses(data.glasses)

@@ -139,7 +139,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                     weight_trend: Array<{ date: string; weight: number }>
                     nutrition_adherence: number
                     target_weight: number | null
-                }>('/backend-api/v1/dashboard/progress?weeks=4')
+                }>('/api/v1/dashboard/progress?weeks=4')
 
                 setProgressData({
                     weightTrend: (raw.weight_trend || []).map(p => ({

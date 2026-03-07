@@ -1,7 +1,7 @@
 import { apiClient } from '@/shared/utils/api-client'
 import type { ClientCard, ClientDetail } from '../types'
 
-const BASE = '/backend-api/v1/curator'
+const BASE = '/api/v1/curator'
 
 export const curatorApi = {
     getClients: () => apiClient.get<ClientCard[]>(`${BASE}/clients`),
