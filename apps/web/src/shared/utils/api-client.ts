@@ -145,7 +145,7 @@ class ApiClient {
         retries: number,
         delayMs: number,
     ): Promise<{ token: string; refresh_token: string }> {
-        for (let attempt = 0; attempt <= retries; attempt++) {
+        for (let attempt = 0; attempt < retries; attempt++) {
             try {
                 const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
                     method: 'POST',
@@ -166,7 +166,7 @@ class ApiClient {
                 return json.data !== undefined ? json.data : json;
             } catch (err) {
                 const isRejected = err instanceof Error && err.message === 'Refresh rejected';
-                if (isRejected || attempt === retries) {
+                if (isRejected || attempt >= retries - 1) {
                     throw err;
                 }
                 await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
