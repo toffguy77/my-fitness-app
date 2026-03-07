@@ -63,7 +63,13 @@ class ApiClient {
 
         const data = await response.json();
         // Handle both {data: ...} and direct response formats
-        return data.data !== undefined ? data.data : data;
+        const result = data.data !== undefined ? data.data : data;
+
+        if (url.includes('/content/articles')) {
+            console.log('[api-client] GET', url, '→ raw:', JSON.stringify(data).slice(0, 300), '→ unwrapped:', JSON.stringify(result).slice(0, 300));
+        }
+
+        return result;
     }
 
     /**

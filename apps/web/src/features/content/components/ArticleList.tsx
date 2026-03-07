@@ -52,9 +52,12 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
                 categoryFilter || undefined,
             )
             .then((res) => {
+                console.log('[ArticleList] API response:', JSON.stringify(res).slice(0, 500))
+                console.log('[ArticleList] res.articles:', Array.isArray(res?.articles), 'length:', res?.articles?.length)
                 if (!cancelled) setArticles(res.articles ?? [])
             })
-            .catch(() => {
+            .catch((err) => {
+                console.error('[ArticleList] fetch error:', err)
                 if (!cancelled) setArticles([])
             })
             .finally(() => {
