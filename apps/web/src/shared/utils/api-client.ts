@@ -45,6 +45,7 @@ class ApiClient {
         const response = await fetch(url, {
             ...options,
             headers,
+            cache: 'no-store',
         });
 
         if (response.status === 401 && !this.isAuthEndpoint(url)) {
