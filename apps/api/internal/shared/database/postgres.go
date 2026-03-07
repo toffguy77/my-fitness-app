@@ -82,6 +82,16 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 
 // NewPostgresFromURL creates a new PostgreSQL connection from URL
 func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error) {
+	// Ensure we always connect to the primary (read-write) node
+	// to avoid read replica lag after INSERT/UPDATE operations
+	if !contains(url, "target_session_attrs") {
+		separator := "?"
+		if contains(url, "?") {
+			separator = "&"
+		}
+		url = url + separator + "target_session_attrs=read-write"
+	}
+
 	connConfig, err := pgx.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
