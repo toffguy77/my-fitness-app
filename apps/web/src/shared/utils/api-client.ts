@@ -132,7 +132,7 @@ class ApiClient {
             return Promise.reject(new Error('No refresh token'));
         }
 
-        return fetch(`${API_BASE}/backend-api/v1/auth/refresh`, {
+        return fetch(`${API_BASE}/api/v1/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refresh_token: refreshToken }),

@@ -171,7 +171,7 @@ describe('WaterBlock', () => {
 
         await waitFor(() => {
             expect(mockApiPost).toHaveBeenCalledWith(
-                '/backend-api/v1/food-tracker/water',
+                '/api/v1/food-tracker/water',
                 { date: '2026-03-07', glasses: 1 },
             )
         })

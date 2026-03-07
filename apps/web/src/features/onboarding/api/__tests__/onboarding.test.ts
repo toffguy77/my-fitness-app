@@ -15,11 +15,11 @@ describe('completeOnboarding', () => {
         mockPut.mockResolvedValue(undefined as never)
     })
 
-    it('calls PUT /backend-api/v1/users/onboarding/complete with empty body', async () => {
+    it('calls PUT /api/v1/users/onboarding/complete with empty body', async () => {
         await completeOnboarding()
 
         expect(mockPut).toHaveBeenCalledWith(
-            '/backend-api/v1/users/onboarding/complete',
+            '/api/v1/users/onboarding/complete',
             {}
         )
         expect(mockPut).toHaveBeenCalledTimes(1)

@@ -69,7 +69,7 @@ describe('useAuth', () => {
 
             expect(result.current.user).toEqual(mockUser)
             expect(mockFetch).toHaveBeenCalledWith(
-                expect.stringContaining('/backend-api/v1/auth/me'),
+                expect.stringContaining('/api/v1/auth/me'),
                 expect.objectContaining({
                     headers: { Authorization: 'Bearer valid-token' },
                 })
@@ -145,7 +145,7 @@ describe('useAuth', () => {
             expect(result.current.user).toEqual(mockUser)
             expect(mockLocalStorage.setItem).toHaveBeenCalledWith('token', 'new-token')
             expect(mockFetch).toHaveBeenCalledWith(
-                expect.stringContaining('/backend-api/v1/auth/login'),
+                expect.stringContaining('/api/v1/auth/login'),
                 expect.objectContaining({
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

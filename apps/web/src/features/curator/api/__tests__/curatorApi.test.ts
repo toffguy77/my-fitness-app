@@ -16,13 +16,13 @@ describe('curatorApi', () => {
     })
 
     describe('getClients', () => {
-        it('calls GET /backend-api/v1/curator/clients', async () => {
+        it('calls GET /api/v1/curator/clients', async () => {
             const clients = [{ id: 1, name: 'Client 1' }]
             mockApiClient.get.mockResolvedValue(clients)
 
             const result = await curatorApi.getClients()
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/curator/clients')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/curator/clients')
             expect(result).toEqual(clients)
         })
     })
@@ -34,7 +34,7 @@ describe('curatorApi', () => {
 
             const result = await curatorApi.getClientDetail(1)
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/curator/clients/1?days=7')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/curator/clients/1?days=7')
             expect(result).toEqual(detail)
         })
 
@@ -43,7 +43,7 @@ describe('curatorApi', () => {
 
             await curatorApi.getClientDetail(5, 14)
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/curator/clients/5?days=14')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/curator/clients/5?days=14')
         })
     })
 
@@ -54,7 +54,7 @@ describe('curatorApi', () => {
             await curatorApi.setTargetWeight(10, 75.5)
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
-                '/backend-api/v1/curator/clients/10/target-weight',
+                '/api/v1/curator/clients/10/target-weight',
                 { target_weight: 75.5 }
             )
         })
@@ -65,7 +65,7 @@ describe('curatorApi', () => {
             await curatorApi.setTargetWeight(10, null)
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
-                '/backend-api/v1/curator/clients/10/target-weight',
+                '/api/v1/curator/clients/10/target-weight',
                 { target_weight: null }
             )
         })
@@ -78,7 +78,7 @@ describe('curatorApi', () => {
             await curatorApi.setWaterGoal(10, 10)
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
-                '/backend-api/v1/curator/clients/10/water-goal',
+                '/api/v1/curator/clients/10/water-goal',
                 { water_goal: 10 }
             )
         })
@@ -89,7 +89,7 @@ describe('curatorApi', () => {
             await curatorApi.setWaterGoal(10, null)
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
-                '/backend-api/v1/curator/clients/10/water-goal',
+                '/api/v1/curator/clients/10/water-goal',
                 { water_goal: null }
             )
         })

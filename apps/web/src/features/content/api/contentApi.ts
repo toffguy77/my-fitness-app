@@ -8,8 +8,8 @@ import type {
     ScheduleArticleRequest,
 } from '../types'
 
-const ARTICLES_BASE = '/backend-api/v1/content/articles'
-const FEED_BASE = '/backend-api/v1/content/feed'
+const ARTICLES_BASE = '/api/v1/content/articles'
+const FEED_BASE = '/api/v1/content/feed'
 
 export const contentApi = {
     // Curator/Admin
@@ -53,7 +53,7 @@ export const contentApi = {
         apiClient.get<Article>(`${FEED_BASE}/${id}`),
 }
 
-const PUBLIC_CONTENT_BASE = '/backend-api/v1/public/content'
+const PUBLIC_CONTENT_BASE = '/api/v1/public/content'
 
 export const publicContentApi = {
     getFeed: (category?: string, limit = 20, offset = 0) => {

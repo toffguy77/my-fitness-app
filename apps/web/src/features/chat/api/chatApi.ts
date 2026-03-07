@@ -12,7 +12,7 @@ import type {
     CreateFoodEntryRequest,
 } from '../types'
 
-const BASE = '/backend-api/v1/conversations'
+const BASE = '/api/v1/conversations'
 
 export const chatApi = {
     /**
@@ -42,7 +42,7 @@ export const chatApi = {
         const formData = new FormData()
         formData.append('file', file)
         const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-        const res = await fetch(`/backend-api/v1/conversations/${convId}/upload`, {
+        const res = await fetch(`/api/v1/conversations/${convId}/upload`, {
             method: 'POST',
             headers: token ? { Authorization: `Bearer ${token}` } : {},
             body: formData,

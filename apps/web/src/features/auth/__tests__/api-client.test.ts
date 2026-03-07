@@ -236,7 +236,7 @@ describe('API Client', () => {
             });
 
             await expect(
-                apiClient.post('http://localhost:4000/backend-api/v1/auth/login', {
+                apiClient.post('http://localhost:4000/api/v1/auth/login', {
                     email: 'test@example.com',
                     password: 'wrong',
                 })
