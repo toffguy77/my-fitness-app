@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { Article } from '@/features/content/types'
 import { ArticleEditor } from '../ArticleEditor'
 
 const mockPush = jest.fn()
@@ -96,15 +97,15 @@ describe('ArticleEditor', () => {
             id: 'article-1',
             title: 'Test Article',
             body: '# Hello',
-            category: 'general',
-            status: 'draft',
-            audience_scope: 'all',
+            category: 'general' as const,
+            status: 'draft' as const,
+            audience_scope: 'all' as const,
             author_id: 1,
             author_name: 'Author',
             excerpt: '',
             created_at: '2026-01-01',
             updated_at: '2026-01-01',
-        }
+        } as Article
         mockContentApi.getArticle.mockResolvedValue(article)
 
         render(<ArticleEditor articleId="article-1" />)
@@ -150,7 +151,7 @@ describe('ArticleEditor', () => {
     })
 
     it('creates new article on save', async () => {
-        mockContentApi.createArticle.mockResolvedValue({ id: 'new-1', title: 'Test Title' })
+        mockContentApi.createArticle.mockResolvedValue({ id: 'new-1', title: 'Test Title' } as Article)
 
         render(<ArticleEditor />)
         fireEvent.click(screen.getByText('Save'))
@@ -165,15 +166,15 @@ describe('ArticleEditor', () => {
             id: 'article-1',
             title: 'Existing',
             body: 'content',
-            category: 'general',
-            status: 'draft',
-            audience_scope: 'all',
+            category: 'general' as const,
+            status: 'draft' as const,
+            audience_scope: 'all' as const,
             author_id: 1,
             author_name: 'Author',
             excerpt: '',
             created_at: '2026-01-01',
             updated_at: '2026-01-01',
-        }
+        } as Article
         mockContentApi.getArticle.mockResolvedValue(article)
         mockContentApi.updateArticle.mockResolvedValue(article)
 
@@ -195,15 +196,15 @@ describe('ArticleEditor', () => {
             id: 'article-1',
             title: 'Draft',
             body: 'text',
-            category: 'general',
-            status: 'draft',
-            audience_scope: 'all',
+            category: 'general' as const,
+            status: 'draft' as const,
+            audience_scope: 'all' as const,
             author_id: 1,
             author_name: 'Author',
             excerpt: '',
             created_at: '2026-01-01',
             updated_at: '2026-01-01',
-        }
+        } as Article
         mockContentApi.getArticle.mockResolvedValue(article)
         mockContentApi.updateArticle.mockResolvedValue(article)
         mockContentApi.publishArticle.mockResolvedValue(undefined)
@@ -235,15 +236,15 @@ describe('ArticleEditor', () => {
             id: 'article-1',
             title: 'Test',
             body: 'existing content',
-            category: 'general',
-            status: 'draft',
-            audience_scope: 'all',
+            category: 'general' as const,
+            status: 'draft' as const,
+            audience_scope: 'all' as const,
             author_id: 1,
             author_name: 'Author',
             excerpt: '',
             created_at: '2026-01-01',
             updated_at: '2026-01-01',
-        }
+        } as Article
         mockContentApi.getArticle.mockResolvedValue(article)
 
         render(<ArticleEditor articleId="article-1" />)

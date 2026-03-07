@@ -38,6 +38,7 @@ jest.mock('../../utils/validation', () => ({
 }))
 
 jest.mock('@/shared/hooks/useDebounce', () => ({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     useDebouncedCallback: (fn: Function) => fn,
 }))
 

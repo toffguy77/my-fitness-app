@@ -108,7 +108,7 @@ describe('useChat Branch Coverage', () => {
             // Simulate new message for a different conversation
             mockLastEvent = {
                 type: 'new_message',
-                data: makeMessage('msg-other', 'conv-other'),
+                data: makeMessage('msg-other', 'conv-other') as unknown as Record<string, unknown>,
             };
             rerender();
 
@@ -126,7 +126,7 @@ describe('useChat Branch Coverage', () => {
             });
 
             // Simulate the same message arriving via WebSocket
-            mockLastEvent = { type: 'new_message', data: msg };
+            mockLastEvent = { type: 'new_message', data: msg as unknown as Record<string, unknown> };
             rerender();
 
             // Should still only have 1 message, not 2
@@ -143,7 +143,7 @@ describe('useChat Branch Coverage', () => {
             });
 
             const newMsg = makeMessage('ws-msg-1', 'conv-1', 'hello from ws');
-            mockLastEvent = { type: 'new_message', data: newMsg };
+            mockLastEvent = { type: 'new_message', data: newMsg as unknown as Record<string, unknown> };
             rerender();
 
             expect(result.current.messages).toHaveLength(1);
