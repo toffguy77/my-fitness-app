@@ -7,6 +7,7 @@ import "time"
 type CreateArticleRequest struct {
 	Title         string  `json:"title" binding:"required,max=500"`
 	Excerpt       string  `json:"excerpt" binding:"max=1000"`
+	Body          string  `json:"body,omitempty"`
 	Category      string  `json:"category" binding:"required"`
 	AudienceScope string  `json:"audience_scope" binding:"required"`
 	ClientIDs     []int64 `json:"client_ids,omitempty"`

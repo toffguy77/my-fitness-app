@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { contentApi } from '@/features/content/api/contentApi'
+import { publicContentApi } from '@/features/content/api/contentApi'
 import { CategoryFilter } from './CategoryFilter'
 import { FeedCard } from './FeedCard'
 import type { ArticleCard } from '@/features/content/types'
@@ -13,16 +13,18 @@ export function FeedList() {
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [loadingMore, setLoadingMore] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const [category, setCategory] = useState<string | null>(null)
 
     const fetchArticles = useCallback(async (cat: string | null, offset = 0) => {
-        const res = await contentApi.getFeed(cat ?? undefined, PAGE_SIZE, offset)
+        const res = await publicContentApi.getFeed(cat ?? undefined, PAGE_SIZE, offset)
         return res
     }, [])
 
     useEffect(() => {
         let cancelled = false
         setLoading(true)
+        setError(null)
 
         fetchArticles(category)
             .then((res) => {
@@ -31,10 +33,11 @@ export function FeedList() {
                     setTotal(res.total)
                 }
             })
-            .catch(() => {
+            .catch((err) => {
                 if (!cancelled) {
                     setArticles([])
                     setTotal(0)
+                    setError(err instanceof Error ? err.message : 'Не удалось загрузить ленту')
                 }
             })
             .finally(() => {
@@ -50,8 +53,8 @@ export function FeedList() {
             const res = await fetchArticles(category, articles.length)
             setArticles((prev) => [...prev, ...res.articles])
             setTotal(res.total)
-        } catch {
-            // ignore
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Не удалось загрузить ещё')
         } finally {
             setLoadingMore(false)
         }
@@ -64,6 +67,12 @@ export function FeedList() {
     return (
         <div className="space-y-4">
             <CategoryFilter selected={category} onSelect={handleCategoryChange} />
+
+            {error && (
+                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {error}
+                </div>
+            )}
 
             {loading ? (
                 <div className="flex justify-center py-12">

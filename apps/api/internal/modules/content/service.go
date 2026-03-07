@@ -96,6 +96,26 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 	id := uuid.New().String()
 	contentS3Key := fmt.Sprintf("content/%s/body.md", id)
 
+	// Upload body to S3 first (outside transaction — can't rollback S3)
+	if req.Body != "" {
+		if err := s.requireS3(); err != nil {
+			return nil, err
+		}
+		bodyBytes := []byte(req.Body)
+		_, err := s.s3.UploadFile(ctx, contentS3Key, bytes.NewReader(bodyBytes), "text/markdown", int64(len(bodyBytes)))
+		if err != nil {
+			s.log.Error("Failed to upload article body to S3 during create", "error", err, "article_id", id)
+			return nil, fmt.Errorf("failed to upload article body: %w", err)
+		}
+	}
+
+	// Wrap DB inserts in a transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	query := `
 		INSERT INTO articles (id, author_id, title, excerpt, category, audience_scope, content_s3_key, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', NOW(), NOW())
@@ -105,7 +125,7 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 
 	var article Article
 	var scheduledAt, publishedAt sql.NullTime
-	err := s.db.QueryRowContext(ctx, query,
+	err = tx.QueryRowContext(ctx, query,
 		id, authorID, req.Title, req.Excerpt, req.Category, req.AudienceScope, contentS3Key,
 	).Scan(
 		&article.ID, &article.AuthorID, &article.Title, &article.Excerpt,
@@ -124,19 +144,27 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 		article.PublishedAt = &publishedAt.Time
 	}
 
-	// Get author name
+	// Insert audience rows if scope is "selected"
+	if req.AudienceScope == "selected" && len(req.ClientIDs) > 0 {
+		if err := s.insertAudienceRowsTx(ctx, tx, id, req.ClientIDs); err != nil {
+			s.log.Error("Failed to insert article audience rows", "error", err, "article_id", id)
+			return nil, fmt.Errorf("failed to insert audience rows: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Get author name (outside transaction)
 	var authorName sql.NullString
 	_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(name, '') FROM users WHERE id = $1`, authorID).Scan(&authorName)
 	if authorName.Valid {
 		article.AuthorName = authorName.String
 	}
 
-	// Insert audience rows if scope is "selected"
-	if req.AudienceScope == "selected" && len(req.ClientIDs) > 0 {
-		if err := s.insertAudienceRows(ctx, id, req.ClientIDs); err != nil {
-			s.log.Error("Failed to insert article audience rows", "error", err, "article_id", id)
-			return nil, fmt.Errorf("failed to insert audience rows: %w", err)
-		}
+	if req.Body != "" {
+		article.Body = req.Body
 	}
 
 	s.log.LogDatabaseQuery("CreateArticle", time.Since(startTime), nil, map[string]interface{}{
@@ -147,8 +175,22 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 	return &article, nil
 }
 
+// execContexter is satisfied by both *sql.DB and *sql.Tx.
+type execContexter interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 // insertAudienceRows inserts rows into article_audience for the given client IDs.
 func (s *Service) insertAudienceRows(ctx context.Context, articleID string, clientIDs []int64) error {
+	return s.insertAudienceRowsExec(ctx, s.db, articleID, clientIDs)
+}
+
+// insertAudienceRowsTx inserts rows into article_audience within a transaction.
+func (s *Service) insertAudienceRowsTx(ctx context.Context, tx *sql.Tx, articleID string, clientIDs []int64) error {
+	return s.insertAudienceRowsExec(ctx, tx, articleID, clientIDs)
+}
+
+func (s *Service) insertAudienceRowsExec(ctx context.Context, exec execContexter, articleID string, clientIDs []int64) error {
 	if len(clientIDs) == 0 {
 		return nil
 	}
@@ -165,7 +207,7 @@ func (s *Service) insertAudienceRows(ctx context.Context, articleID string, clie
 		strings.Join(valueStrings, ", "),
 	)
 
-	_, err := s.db.ExecContext(ctx, query, args...)
+	_, err := exec.ExecContext(ctx, query, args...)
 	return err
 }
 
@@ -376,11 +418,6 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 		}
 	}
 
-	if len(setClauses) == 0 {
-		// Nothing to update besides updated_at which is always included
-		setClauses = append(setClauses, "updated_at = NOW()")
-	}
-
 	// Add articleID as last arg
 	args = append(args, articleID)
 
@@ -442,20 +479,30 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 		article.AuthorName = authorName.String
 	}
 
-	// Handle audience scope changes
+	// Handle audience scope changes in a transaction
 	if req.AudienceScope != nil {
-		if *req.AudienceScope == "selected" {
-			// Delete old rows and insert new ones
-			_, _ = s.db.ExecContext(ctx, `DELETE FROM article_audience WHERE article_id = $1`, articleID)
-			if len(req.ClientIDs) > 0 {
-				if err := s.insertAudienceRows(ctx, articleID, req.ClientIDs); err != nil {
-					s.log.Error("Failed to update article audience", "error", err, "article_id", articleID)
-					return nil, fmt.Errorf("failed to update audience rows: %w", err)
-				}
+		tx, txErr := s.db.BeginTx(ctx, nil)
+		if txErr != nil {
+			return nil, fmt.Errorf("failed to begin audience transaction: %w", txErr)
+		}
+		defer tx.Rollback()
+
+		// Always delete old audience rows when scope changes
+		if _, txErr = tx.ExecContext(ctx, `DELETE FROM article_audience WHERE article_id = $1`, articleID); txErr != nil {
+			s.log.Error("Failed to delete old audience rows", "error", txErr, "article_id", articleID)
+			return nil, fmt.Errorf("failed to delete audience rows: %w", txErr)
+		}
+
+		// Insert new audience rows if scope is "selected"
+		if *req.AudienceScope == "selected" && len(req.ClientIDs) > 0 {
+			if txErr = s.insertAudienceRowsTx(ctx, tx, articleID, req.ClientIDs); txErr != nil {
+				s.log.Error("Failed to update article audience", "error", txErr, "article_id", articleID)
+				return nil, fmt.Errorf("failed to update audience rows: %w", txErr)
 			}
-		} else {
-			// Non-selected scope: remove all audience rows
-			_, _ = s.db.ExecContext(ctx, `DELETE FROM article_audience WHERE article_id = $1`, articleID)
+		}
+
+		if txErr = tx.Commit(); txErr != nil {
+			return nil, fmt.Errorf("failed to commit audience transaction: %w", txErr)
 		}
 	}
 
@@ -1170,26 +1217,47 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 
 	actionURL := fmt.Sprintf("/content/%s", articleID)
 
-	// Insert notifications one by one
-	insertQuery := `
-		INSERT INTO notifications (id, user_id, category, type, title, content, action_url, content_category, created_at)
-		VALUES ($1, $2, 'content', 'new_content', $3, $4, $5, $6, NOW())
-	`
-
+	// Batch insert notifications (500 per batch to avoid query size limits)
 	type insertedNotif struct {
 		userID  int64
 		notifID string
 	}
 
 	var inserted []insertedNotif
-	for _, userID := range userIDs {
-		notifID := uuid.New().String()
-		_, err := s.db.ExecContext(ctx, insertQuery, notifID, userID, notifTitle, excerpt, actionURL, category)
-		if err != nil {
-			s.log.Error("Failed to insert content notification", "error", err, "user_id", userID, "article_id", articleID)
+	const batchSize = 500
+
+	for i := 0; i < len(userIDs); i += batchSize {
+		end := i + batchSize
+		if end > len(userIDs) {
+			end = len(userIDs)
+		}
+		batch := userIDs[i:end]
+
+		valueStrings := make([]string, 0, len(batch))
+		args := make([]any, 0, len(batch)*6)
+		var batchNotifs []insertedNotif
+
+		for j, userID := range batch {
+			notifID := uuid.New().String()
+			base := j * 6
+			valueStrings = append(valueStrings, fmt.Sprintf(
+				"($%d, $%d, 'content', 'new_content', $%d, $%d, $%d, $%d, NOW())",
+				base+1, base+2, base+3, base+4, base+5, base+6,
+			))
+			args = append(args, notifID, userID, notifTitle, excerpt, actionURL, category)
+			batchNotifs = append(batchNotifs, insertedNotif{userID: userID, notifID: notifID})
+		}
+
+		batchQuery := fmt.Sprintf(
+			`INSERT INTO notifications (id, user_id, category, type, title, content, action_url, content_category, created_at) VALUES %s`,
+			strings.Join(valueStrings, ", "),
+		)
+
+		if _, err := s.db.ExecContext(ctx, batchQuery, args...); err != nil {
+			s.log.Error("Failed to batch insert content notifications", "error", err, "article_id", articleID, "batch_size", len(batch))
 			continue
 		}
-		inserted = append(inserted, insertedNotif{userID: userID, notifID: notifID})
+		inserted = append(inserted, batchNotifs...)
 	}
 
 	s.log.Info("Content notifications created",
