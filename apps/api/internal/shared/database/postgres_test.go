@@ -74,6 +74,46 @@ func TestNewPostgresFromURL_InvalidURL(t *testing.T) {
 	})
 }
 
+func TestEnsureReadWrite(t *testing.T) {
+	t.Run("appends to URL without query params", func(t *testing.T) {
+		result := ensureReadWrite("postgres://host:5432/db")
+		assert.Equal(t, "postgres://host:5432/db?target_session_attrs=read-write", result)
+	})
+
+	t.Run("appends to URL with existing query params", func(t *testing.T) {
+		result := ensureReadWrite("postgres://host:5432/db?sslmode=require")
+		assert.Equal(t, "postgres://host:5432/db?sslmode=require&target_session_attrs=read-write", result)
+	})
+
+	t.Run("does not modify URL that already has target_session_attrs", func(t *testing.T) {
+		url := "postgres://host:5432/db?target_session_attrs=any"
+		result := ensureReadWrite(url)
+		assert.Equal(t, url, result)
+	})
+
+	t.Run("does not modify URL with target_session_attrs=read-write", func(t *testing.T) {
+		url := "postgres://host:5432/db?target_session_attrs=read-write"
+		result := ensureReadWrite(url)
+		assert.Equal(t, url, result)
+	})
+}
+
+func TestContainsSSL(t *testing.T) {
+	assert.True(t, containsSSL("postgres://host/db?sslmode=require"))
+	assert.True(t, containsSSL("postgres://host/db?sslmode=verify-full"))
+	assert.True(t, containsSSL("postgres://host/db?sslmode=verify-ca"))
+	assert.False(t, containsSSL("postgres://host/db?sslmode=disable"))
+	assert.False(t, containsSSL(""))
+}
+
+func TestContains(t *testing.T) {
+	assert.True(t, contains("hello world", "world"))
+	assert.True(t, contains("hello", "hello"))
+	assert.False(t, contains("hello", "world"))
+	assert.False(t, contains("", "x"))
+	assert.True(t, contains("x", "x"))
+}
+
 func TestDB_Health(t *testing.T) {
 	t.Run("successful health check", func(t *testing.T) {
 		// Create mock database
