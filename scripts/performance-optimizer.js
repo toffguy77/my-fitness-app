@@ -13,7 +13,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
+
+const validShaPattern = /^[a-fA-F0-9]+$|^HEAD(~\d+)?$/;
 
 class PerformanceOptimizer {
     constructor() {
@@ -35,8 +37,13 @@ class PerformanceOptimizer {
         try {
             console.log('Analyzing changed files...');
 
+            // Validate baseSha to prevent command injection
+            if (!validShaPattern.test(baseSha)) {
+                throw new Error('Invalid SHA format');
+            }
+
             // Get list of changed files
-            const changedFiles = execSync(`git diff --name-only ${baseSha} HEAD`, { encoding: 'utf8' })
+            const changedFiles = execFileSync('git', ['diff', '--name-only', baseSha, 'HEAD'], { encoding: 'utf8' })
                 .split('\n')
                 .filter(file => file.trim() !== '');
 

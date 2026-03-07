@@ -72,7 +72,9 @@ class PipelineMonitor {
             }
         };
 
-        if (!fs.existsSync(this.thresholdsFile)) {
+        try {
+            fs.readFileSync(this.thresholdsFile);
+        } catch {
             fs.writeFileSync(this.thresholdsFile, JSON.stringify(defaultThresholds, null, 2));
         }
     }
@@ -552,10 +554,11 @@ class PipelineMonitor {
      */
     loadJobMetrics(jobId) {
         const metricsFile = path.join(this.metricsDir, `job-${jobId}.json`);
-        if (fs.existsSync(metricsFile)) {
+        try {
             return JSON.parse(fs.readFileSync(metricsFile, 'utf8'));
+        } catch {
+            return null;
         }
-        return null;
     }
 
     /**
@@ -563,8 +566,10 @@ class PipelineMonitor {
      */
     saveAlerts(alerts) {
         let existingAlerts = [];
-        if (fs.existsSync(this.alertsFile)) {
+        try {
             existingAlerts = JSON.parse(fs.readFileSync(this.alertsFile, 'utf8'));
+        } catch {
+            // File doesn't exist or is invalid, start fresh
         }
 
         const timestampedAlerts = alerts.map(alert => ({
@@ -604,10 +609,11 @@ class PipelineMonitor {
      * Load historical metrics
      */
     loadHistoricalMetrics() {
-        if (fs.existsSync(this.performanceFile)) {
+        try {
             return JSON.parse(fs.readFileSync(this.performanceFile, 'utf8'));
+        } catch {
+            return {};
         }
-        return {};
     }
 
     /**

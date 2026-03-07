@@ -10,6 +10,9 @@ const https = require('https');
 const fs = require('fs');
 // const path = require('path'); // Commented out unused import
 
+/** Sanitize strings for safe logging (strip control characters) */
+const sanitize = (s) => String(s).replace(/[\r\n\x00-\x1f\x7f]/g, '');
+
 class GitHubStatusManager {
     constructor(token, repository) {
         this.token = token;
@@ -297,7 +300,7 @@ async function main() {
             case 'update-status':
                 const [sha, context, state, description, targetUrl] = args.slice(1);
                 await statusManager.updateCommitStatus(sha, context, state, description, targetUrl);
-                console.log(`Updated commit status: ${context} -> ${state}`);
+                console.log(`Updated commit status: ${sanitize(context)} -> ${sanitize(state)}`);
                 break;
 
             case 'comment-pr':
@@ -339,7 +342,7 @@ async function main() {
                 break;
 
             default:
-                console.error(`Unknown action: ${action}`);
+                console.error(`Unknown action: ${sanitize(action)}`);
                 console.error('Usage: node github-status.js <action> [args...]');
                 console.error('Actions: update-status, comment-pr');
                 process.exit(1);
