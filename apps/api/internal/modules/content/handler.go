@@ -116,26 +116,13 @@ func (h *Handler) ListArticles(c *gin.Context) {
 
 	status := c.Query("status")
 	category := c.Query("category")
-	admin := h.isAdmin(c)
 
-	result, err := h.service.ListArticles(c.Request.Context(), userID, status, category, admin)
+	result, err := h.service.ListArticles(c.Request.Context(), userID, status, category, h.isAdmin(c))
 	if err != nil {
 		h.log.Error("Failed to list articles", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось загрузить список статей")
 		return
 	}
-
-	role, _ := c.Get("user_role")
-	h.log.Info("ListArticles result",
-		"user_id", userID,
-		"user_role", role,
-		"is_admin", admin,
-		"count", result.Total,
-		"status_filter", status,
-		"category_filter", category,
-		"request_id", c.GetHeader("X-Request-Id"),
-		"client_request_id", c.GetHeader("X-Client-Request-Id"),
-	)
 
 	response.Success(c, http.StatusOK, result)
 }

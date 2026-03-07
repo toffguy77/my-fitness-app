@@ -10,10 +10,10 @@
         "lint": "eslint src",
         "lint:fix": "eslint src --fix",
         "type-check": "tsc --noEmit",
-        "test": "jest --passWithNoTests",
-        "test:watch": "jest --watch",
-        "test:coverage": "jest --coverage",
-        "test:coverage:ci": "jest --coverage --ci --maxWorkers=2"
+        "test": "NODE_OPTIONS='--max-old-space-size=4096' jest --passWithNoTests",
+        "test:watch": "NODE_OPTIONS='--max-old-space-size=4096' jest --watch",
+        "test:coverage": "NODE_OPTIONS='--max-old-space-size=4096' jest --coverage",
+        "test:coverage:ci": "NODE_OPTIONS='--max-old-space-size=4096' jest --coverage --ci --maxWorkers=2"
     },
     "dependencies": {
         "@burcev/types": "*",
