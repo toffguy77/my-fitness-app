@@ -176,6 +176,7 @@ func main() {
 
 	// Global middleware
 	router.Use(gin.Recovery())
+	router.Use(middleware.NoCacheAPI())
 	router.Use(middleware.Logger(log))
 	router.Use(middleware.ErrorHandler(log))
 
