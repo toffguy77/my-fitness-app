@@ -97,6 +97,8 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 	contentS3Key := fmt.Sprintf("content/%s/body.md", id)
 
 	// Upload body to S3 first (outside transaction — can't rollback S3)
+	// If transaction fails, we'll attempt cleanup to prevent orphaned content
+	var uploadedS3Key string
 	if req.Body != "" {
 		if err := s.requireS3(); err != nil {
 			return nil, err
@@ -107,6 +109,7 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 			s.log.Error("Failed to upload article body to S3 during create", "error", err, "article_id", id)
 			return nil, fmt.Errorf("failed to upload article body: %w", err)
 		}
+		uploadedS3Key = contentS3Key
 	}
 
 	// Wrap DB inserts in a transaction
@@ -114,7 +117,16 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	var committed bool
+	defer func() {
+		tx.Rollback()
+		// Clean up orphaned S3 content if transaction was not committed
+		if !committed && uploadedS3Key != "" && s.s3 != nil {
+			if delErr := s.s3.DeleteFile(ctx, uploadedS3Key); delErr != nil {
+				s.log.Error("Failed to cleanup S3 content after transaction failure", "error", delErr, "key", uploadedS3Key)
+			}
+		}
+	}()
 
 	query := `
 		INSERT INTO articles (id, author_id, title, excerpt, category, audience_scope, content_s3_key, status, created_at, updated_at)
@@ -155,6 +167,7 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
+	committed = true
 
 	// Get author name (outside transaction)
 	var authorName sql.NullString
