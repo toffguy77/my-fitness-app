@@ -50,6 +50,11 @@ func Logger(log *logger.Logger) gin.HandlerFunc {
 			"body_size":  bodySize,
 		}
 
+		// Preserve client-generated request ID for cross-proxy tracing
+		if clientReqID := c.GetHeader("X-Client-Request-Id"); clientReqID != "" {
+			fields["client_request_id"] = clientReqID
+		}
+
 		if query != "" {
 			fields["query"] = query
 		}

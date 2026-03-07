@@ -134,6 +134,7 @@ func (h *Handler) ListArticles(c *gin.Context) {
 		"status_filter", status,
 		"category_filter", category,
 		"request_id", c.GetHeader("X-Request-Id"),
+		"client_request_id", c.GetHeader("X-Client-Request-Id"),
 	)
 
 	response.Success(c, http.StatusOK, result)
