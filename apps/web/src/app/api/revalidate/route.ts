@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
     const secret = req.headers.get('x-revalidate-secret')
-    if (secret !== process.env.REVALIDATE_SECRET) {
+    if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
