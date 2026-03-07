@@ -74,6 +74,22 @@ func TestNewPostgresFromURL_InvalidURL(t *testing.T) {
 	})
 }
 
+func TestContainsSSL(t *testing.T) {
+	assert.True(t, containsSSL("postgres://host/db?sslmode=require"))
+	assert.True(t, containsSSL("postgres://host/db?sslmode=verify-full"))
+	assert.True(t, containsSSL("postgres://host/db?sslmode=verify-ca"))
+	assert.False(t, containsSSL("postgres://host/db?sslmode=disable"))
+	assert.False(t, containsSSL(""))
+}
+
+func TestContains(t *testing.T) {
+	assert.True(t, contains("hello world", "world"))
+	assert.True(t, contains("hello", "hello"))
+	assert.False(t, contains("hello", "world"))
+	assert.False(t, contains("", "x"))
+	assert.True(t, contains("x", "x"))
+}
+
 func TestDB_Health(t *testing.T) {
 	t.Run("successful health check", func(t *testing.T) {
 		// Create mock database
