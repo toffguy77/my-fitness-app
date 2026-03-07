@@ -11,9 +11,13 @@ import (
 // Logger middleware logs HTTP requests with detailed information
 func Logger(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Generate request ID
-		requestID := uuid.New().String()
+		// Use client-provided request ID for cross-layer tracing, or generate one
+		requestID := c.GetHeader("X-Request-Id")
+		if requestID == "" {
+			requestID = uuid.New().String()
+		}
 		c.Set("request_id", requestID)
+		c.Header("X-Request-Id", requestID)
 
 		// Start timer
 		start := time.Now()
@@ -44,6 +48,11 @@ func Logger(log *logger.Logger) gin.HandlerFunc {
 			"ip":         ip,
 			"user_agent": userAgent,
 			"body_size":  bodySize,
+		}
+
+		// Preserve client-generated request ID for cross-proxy tracing
+		if clientReqID := c.GetHeader("X-Client-Request-Id"); clientReqID != "" {
+			fields["client_request_id"] = clientReqID
 		}
 
 		if query != "" {

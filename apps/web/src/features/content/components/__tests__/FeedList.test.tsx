@@ -8,11 +8,20 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { FeedList } from '../FeedList'
 import type { ArticleCard } from '@/features/content/types'
 
-// Mock the content API
+// Mock the content API — both authenticated and public
+const mockGetFeed = jest.fn()
 jest.mock('@/features/content/api/contentApi', () => ({
     contentApi: {
-        getFeed: jest.fn(),
+        getFeed: (...args: any[]) => mockGetFeed(...args),
     },
+    publicContentApi: {
+        getFeed: (...args: any[]) => mockGetFeed(...args),
+    },
+}))
+
+// Mock token-storage — default to unauthenticated
+jest.mock('@/shared/utils/token-storage', () => ({
+    isAuthenticated: jest.fn(() => false),
 }))
 
 // Mock sub-components to simplify testing
@@ -30,10 +39,6 @@ jest.mock('../FeedCard', () => ({
         <div data-testid={`feed-card-${article.id}`}>{article.title}</div>
     ),
 }))
-
-import { contentApi } from '@/features/content/api/contentApi'
-
-const mockGetFeed = contentApi.getFeed as jest.Mock
 
 const createArticles = (count: number): ArticleCard[] =>
     Array.from({ length: count }, (_, i) => ({
@@ -154,7 +159,7 @@ describe('FeedList', () => {
         render(<FeedList />)
 
         await waitFor(() => {
-            expect(screen.getByText('Пока нет контента')).toBeInTheDocument()
+            expect(screen.getByText('Network error')).toBeInTheDocument()
         })
     })
 

@@ -1,31 +1,35 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CuratorLayout } from '@/features/curator'
 
-function getStoredUser(): { full_name?: string; avatar_url?: string; role?: string } | null {
-    if (typeof window === 'undefined') return null
-    const stored = localStorage.getItem('user')
-    if (!stored) return null
-    try {
-        return JSON.parse(stored)
-    } catch {
-        return null
-    }
-}
+type StoredUser = { full_name?: string; avatar_url?: string; role?: string }
 
 export default function CuratorAppLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter()
-    const user = useMemo(() => getStoredUser(), [])
+    // undefined = not checked yet, null = checked but no user
+    const [user, setUser] = useState<StoredUser | null | undefined>(undefined)
 
     useEffect(() => {
-        if (!user) {
+        let parsed: StoredUser | null = null
+        const stored = localStorage.getItem('user')
+        if (stored) {
+            try {
+                parsed = JSON.parse(stored)
+            } catch {
+                // invalid JSON
+            }
+        }
+        if (!parsed) {
             router.push('/auth')
-        } else if (user.role !== 'coordinator') {
+        } else if (parsed.role !== 'coordinator') {
             router.push('/dashboard')
         }
-    }, [user, router])
+        startTransition(() => setUser(parsed))
+    }, [router])
+
+    if (user === undefined) return null
 
     if (!user || user.role !== 'coordinator') return null
 

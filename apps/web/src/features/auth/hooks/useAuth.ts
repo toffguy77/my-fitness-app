@@ -110,7 +110,7 @@ export function useAuth() {
         // Best-effort backend revocation
         if (refreshToken) {
             try {
-                await fetch(`${API_BASE}/backend-api/v1/auth/logout`, {
+                await fetch(`${API_BASE}/api/v1/auth/logout`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ refresh_token: refreshToken }),

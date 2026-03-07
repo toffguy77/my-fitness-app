@@ -56,7 +56,7 @@ class Logger {
             minLevel: process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG,
             enableConsole: true,
             enableRemote: true,
-            remoteEndpoint: '/backend-api/v1/logs',
+            remoteEndpoint: '/api/v1/logs',
             includeStackTrace: true,
             includeUserAgent: true,
             maxBatchSize: 50,

@@ -16,25 +16,25 @@ describe('adminApi', () => {
     })
 
     describe('getUsers', () => {
-        it('calls GET /backend-api/v1/admin/users', async () => {
+        it('calls GET /api/v1/admin/users', async () => {
             const users = [{ id: 1, name: 'Test User' }]
             mockApiClient.get.mockResolvedValue(users)
 
             const result = await adminApi.getUsers()
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/admin/users')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/admin/users')
             expect(result).toEqual(users)
         })
     })
 
     describe('getCurators', () => {
-        it('calls GET /backend-api/v1/admin/curators', async () => {
+        it('calls GET /api/v1/admin/curators', async () => {
             const curators = [{ id: 1, name: 'Curator', client_count: 5 }]
             mockApiClient.get.mockResolvedValue(curators)
 
             const result = await adminApi.getCurators()
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/admin/curators')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/admin/curators')
             expect(result).toEqual(curators)
         })
     })
@@ -46,7 +46,7 @@ describe('adminApi', () => {
             await adminApi.changeRole(42, 'coordinator')
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                '/backend-api/v1/admin/users/42/role',
+                '/api/v1/admin/users/42/role',
                 { role: 'coordinator' }
             )
         })
@@ -59,20 +59,20 @@ describe('adminApi', () => {
             await adminApi.assignCurator(10, 20)
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
-                '/backend-api/v1/admin/assignments',
+                '/api/v1/admin/assignments',
                 { client_id: 10, curator_id: 20 }
             )
         })
     })
 
     describe('getConversations', () => {
-        it('calls GET /backend-api/v1/admin/conversations', async () => {
+        it('calls GET /api/v1/admin/conversations', async () => {
             const convs = [{ id: 'conv-1' }]
             mockApiClient.get.mockResolvedValue(convs)
 
             const result = await adminApi.getConversations()
 
-            expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/admin/conversations')
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/admin/conversations')
             expect(result).toEqual(convs)
         })
     })
@@ -85,7 +85,7 @@ describe('adminApi', () => {
             const result = await adminApi.getConversationMessages('conv-1')
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/backend-api/v1/admin/conversations/conv-1/messages'
+                '/api/v1/admin/conversations/conv-1/messages'
             )
             expect(result).toEqual(msgs)
         })
@@ -96,7 +96,7 @@ describe('adminApi', () => {
             await adminApi.getConversationMessages('conv-1', 'cursor-abc')
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/backend-api/v1/admin/conversations/conv-1/messages?cursor=cursor-abc'
+                '/api/v1/admin/conversations/conv-1/messages?cursor=cursor-abc'
             )
         })
 
@@ -106,7 +106,7 @@ describe('adminApi', () => {
             await adminApi.getConversationMessages('conv-1', 'cursor-abc', 25)
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/backend-api/v1/admin/conversations/conv-1/messages?cursor=cursor-abc&limit=25'
+                '/api/v1/admin/conversations/conv-1/messages?cursor=cursor-abc&limit=25'
             )
         })
 
@@ -116,7 +116,7 @@ describe('adminApi', () => {
             await adminApi.getConversationMessages('conv-1', undefined, 10)
 
             expect(mockApiClient.get).toHaveBeenCalledWith(
-                '/backend-api/v1/admin/conversations/conv-1/messages?limit=10'
+                '/api/v1/admin/conversations/conv-1/messages?limit=10'
             )
         })
     })

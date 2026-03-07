@@ -33,7 +33,7 @@ describe('nutritionCalc API', () => {
 
             const result = await getTargets()
 
-            expect(mockGet).toHaveBeenCalledWith('/backend-api/v1/nutrition-calc/targets')
+            expect(mockGet).toHaveBeenCalledWith('/api/v1/nutrition-calc/targets')
             expect(result).toEqual(targets)
         })
 
@@ -51,7 +51,7 @@ describe('nutritionCalc API', () => {
             await getTargets('2026-03-01')
 
             expect(mockGet).toHaveBeenCalledWith(
-                '/backend-api/v1/nutrition-calc/targets?date=2026-03-01'
+                '/api/v1/nutrition-calc/targets?date=2026-03-01'
             )
         })
 
@@ -83,7 +83,7 @@ describe('nutritionCalc API', () => {
             const result = await getHistory()
 
             expect(mockGet).toHaveBeenCalledWith(
-                '/backend-api/v1/nutrition-calc/history?days=7'
+                '/api/v1/nutrition-calc/history?days=7'
             )
             expect(result).toEqual(response)
         })
@@ -94,7 +94,7 @@ describe('nutritionCalc API', () => {
             await getHistory(14)
 
             expect(mockGet).toHaveBeenCalledWith(
-                '/backend-api/v1/nutrition-calc/history?days=14'
+                '/api/v1/nutrition-calc/history?days=14'
             )
         })
     })
@@ -117,7 +117,7 @@ describe('nutritionCalc API', () => {
             const result = await recalculate()
 
             expect(mockPost).toHaveBeenCalledWith(
-                '/backend-api/v1/nutrition-calc/recalculate',
+                '/api/v1/nutrition-calc/recalculate',
                 {}
             )
             expect(result).toEqual(targets)
@@ -151,7 +151,7 @@ describe('nutritionCalc API', () => {
             const result = await getClientHistory(42)
 
             expect(mockGet).toHaveBeenCalledWith(
-                '/backend-api/v1/curator/clients/42/targets/history?days=7'
+                '/api/v1/curator/clients/42/targets/history?days=7'
             )
             expect(result).toEqual(response)
         })
@@ -162,7 +162,7 @@ describe('nutritionCalc API', () => {
             await getClientHistory(42, 30)
 
             expect(mockGet).toHaveBeenCalledWith(
-                '/backend-api/v1/curator/clients/42/targets/history?days=30'
+                '/api/v1/curator/clients/42/targets/history?days=30'
             )
         })
     })

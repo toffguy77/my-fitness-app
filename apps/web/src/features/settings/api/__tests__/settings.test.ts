@@ -18,37 +18,37 @@ describe('Settings API', () => {
   })
 
   describe('getProfile', () => {
-    it('fetches profile from /backend-api/v1/users/profile', async () => {
+    it('fetches profile from /api/v1/users/profile', async () => {
       const profile = { id: 1, email: 'test@example.com', name: 'Test' }
       mockApiClient.get.mockResolvedValueOnce({ profile })
 
       const result = await getProfile()
 
-      expect(mockApiClient.get).toHaveBeenCalledWith('/backend-api/v1/users/profile')
+      expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/users/profile')
       expect(result).toEqual(profile)
     })
   })
 
   describe('updateProfile', () => {
-    it('puts name update to /backend-api/v1/users/profile', async () => {
+    it('puts name update to /api/v1/users/profile', async () => {
       const profile = { id: 1, email: 'test@example.com', name: 'Updated' }
       mockApiClient.put.mockResolvedValueOnce({ profile })
 
       const result = await updateProfile({ name: 'Updated' })
 
-      expect(mockApiClient.put).toHaveBeenCalledWith('/backend-api/v1/users/profile', { name: 'Updated' })
+      expect(mockApiClient.put).toHaveBeenCalledWith('/api/v1/users/profile', { name: 'Updated' })
       expect(result).toEqual(profile)
     })
   })
 
   describe('updateSettings', () => {
-    it('puts settings to /backend-api/v1/users/settings', async () => {
+    it('puts settings to /api/v1/users/settings', async () => {
       const response = { settings: { language: 'en' } }
       mockApiClient.put.mockResolvedValueOnce(response)
 
       const result = await updateSettings({ language: 'en' })
 
-      expect(mockApiClient.put).toHaveBeenCalledWith('/backend-api/v1/users/settings', { language: 'en' })
+      expect(mockApiClient.put).toHaveBeenCalledWith('/api/v1/users/settings', { language: 'en' })
       expect(result).toEqual(response)
     })
   })
@@ -81,7 +81,7 @@ describe('Settings API', () => {
       const file = new File(['img'], 'avatar.png', { type: 'image/png' })
       const result = await uploadAvatar(file)
 
-      expect(global.fetch).toHaveBeenCalledWith('/backend-api/v1/users/avatar', {
+      expect(global.fetch).toHaveBeenCalledWith('/api/v1/users/avatar', {
         method: 'POST',
         headers: { Authorization: 'Bearer test-token' },
         body: expect.any(FormData),
@@ -122,7 +122,7 @@ describe('Settings API', () => {
       const file = new File(['img'], 'avatar.png', { type: 'image/png' })
       await uploadAvatar(file)
 
-      expect(global.fetch).toHaveBeenCalledWith('/backend-api/v1/users/avatar', {
+      expect(global.fetch).toHaveBeenCalledWith('/api/v1/users/avatar', {
         method: 'POST',
         headers: {},
         body: expect.any(FormData),
@@ -131,12 +131,12 @@ describe('Settings API', () => {
   })
 
   describe('deleteAvatar', () => {
-    it('sends DELETE to /backend-api/v1/users/avatar', async () => {
+    it('sends DELETE to /api/v1/users/avatar', async () => {
       mockApiClient.delete.mockResolvedValueOnce(undefined)
 
       await deleteAvatar()
 
-      expect(mockApiClient.delete).toHaveBeenCalledWith('/backend-api/v1/users/avatar')
+      expect(mockApiClient.delete).toHaveBeenCalledWith('/api/v1/users/avatar')
     })
   })
 })

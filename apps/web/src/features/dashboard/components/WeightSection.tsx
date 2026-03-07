@@ -172,7 +172,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
 
         apiClient
             .get<{ weight_trend: Array<{ date: string; weight: number }>; target_weight: number | null }>(
-                '/backend-api/v1/dashboard/progress?weeks=4',
+                '/api/v1/dashboard/progress?weeks=4',
             )
             .then((raw) => {
                 setWeightTrend(

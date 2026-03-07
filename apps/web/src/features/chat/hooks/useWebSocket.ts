@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useWebSocketContext } from '../components/WebSocketProvider'
 import type { WebSocketEvent } from '../types'
 
+// Close codes that indicate auth failure — no point reconnecting
+const AUTH_FAILURE_CODES = [1008, 4401, 4403]
+
 /**
  * Hook for WebSocket communication.
  * When inside a WebSocketProvider, delegates to the shared connection.
@@ -17,6 +20,7 @@ export function useWebSocket() {
     const [fallbackConnected, setFallbackConnected] = useState(false)
     const [fallbackLastEvent, setFallbackLastEvent] = useState<WebSocketEvent | null>(null)
     const reconnectDelay = useRef(1000)
+    const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const isMounted = useRef(true)
 
     useEffect(() => {
@@ -25,11 +29,25 @@ export function useWebSocket() {
 
         isMounted.current = true
 
+        const clearReconnectTimer = () => {
+            if (reconnectTimer.current !== null) {
+                clearTimeout(reconnectTimer.current)
+                reconnectTimer.current = null
+            }
+        }
+
         const connect = () => {
             if (!isMounted.current) return
 
             const token = localStorage.getItem('auth_token')
             if (!token) return
+
+            // Close any existing connection before creating a new one
+            if (wsRef.current) {
+                wsRef.current.onclose = null
+                wsRef.current.close()
+                wsRef.current = null
+            }
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
             const ws = new WebSocket(`${protocol}//${window.location.host}/ws?token=${token}`)
@@ -40,12 +58,17 @@ export function useWebSocket() {
                 reconnectDelay.current = 1000
             }
 
-            ws.onclose = () => {
+            ws.onclose = (e) => {
                 if (!isMounted.current) return
                 setFallbackConnected(false)
+
+                if (AUTH_FAILURE_CODES.includes(e.code)) return
+                if (e.code === 1006 && reconnectDelay.current > 8000) return
+
                 const currentToken = localStorage.getItem('auth_token')
-                if (currentToken) {
-                    setTimeout(connect, reconnectDelay.current)
+                if (currentToken && document.visibilityState === 'visible') {
+                    clearReconnectTimer()
+                    reconnectTimer.current = setTimeout(connect, reconnectDelay.current)
                     reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000)
                 }
             }
@@ -63,10 +86,20 @@ export function useWebSocket() {
             wsRef.current = ws
         }
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && !wsRef.current?.OPEN) {
+                reconnectDelay.current = 1000
+                connect()
+            }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
         connect()
 
         return () => {
             isMounted.current = false
+            clearReconnectTimer()
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
             wsRef.current?.close()
         }
     }, [ctx])
