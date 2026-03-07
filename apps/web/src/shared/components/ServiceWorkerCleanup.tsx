@@ -2,31 +2,50 @@
 
 import { useEffect } from 'react'
 
+const SW_CLEANUP_KEY = 'sw-cleanup-v1'
+
 /**
- * Purges any Service Worker caches that contain API responses.
- * This runs once on app load to ensure stale cached API data
- * from older SW versions doesn't override fresh network responses.
+ * One-time nuclear cleanup: unregisters ALL service workers and purges
+ * ALL caches, then reloads so next-pwa can install a fresh SW with
+ * correct NetworkOnly rules for API routes.
+ *
+ * Uses a localStorage flag so it only runs once per browser profile.
  */
 export function ServiceWorkerCleanup() {
     useEffect(() => {
-        if (typeof window === 'undefined' || !('caches' in window)) return
+        if (typeof window === 'undefined') return
+        if (localStorage.getItem(SW_CLEANUP_KEY)) return
 
-        caches.keys().then((names) => {
-            for (const name of names) {
-                // Workbox runtime caches that may hold API responses
-                if (name.includes('runtime') || name.includes('api')) {
-                    caches.open(name).then((cache) => {
-                        cache.keys().then((requests) => {
-                            for (const req of requests) {
-                                if (req.url.includes('/backend-api/')) {
-                                    cache.delete(req)
-                                }
-                            }
-                        })
-                    })
+        const cleanup = async () => {
+            let didWork = false
+
+            // Unregister all service workers
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations()
+                for (const reg of registrations) {
+                    await reg.unregister()
+                    didWork = true
                 }
             }
-        })
+
+            // Delete all caches
+            if ('caches' in window) {
+                const names = await caches.keys()
+                for (const name of names) {
+                    await caches.delete(name)
+                    didWork = true
+                }
+            }
+
+            localStorage.setItem(SW_CLEANUP_KEY, Date.now().toString())
+
+            if (didWork) {
+                console.log('[SW-Cleanup] Unregistered old SWs and purged caches, reloading...')
+                window.location.reload()
+            }
+        }
+
+        cleanup()
     }, [])
 
     return null
