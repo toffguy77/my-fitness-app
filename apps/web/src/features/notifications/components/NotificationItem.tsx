@@ -5,6 +5,7 @@
  * Supports read/unread styling and click-to-mark-as-read interaction.
  */
 
+import { useRouter } from 'next/navigation';
 import type { Notification } from '../types';
 import { NotificationIcon } from './NotificationIcon';
 import { formatRelativeTime } from '../utils/formatTimestamp';
@@ -37,11 +38,15 @@ export function NotificationItem({
     notification,
     onMarkAsRead,
 }: NotificationItemProps) {
+    const router = useRouter();
     const isUnread = !notification.readAt;
 
     const handleClick = () => {
         if (isUnread) {
             onMarkAsRead(notification.id);
+        }
+        if (notification.actionUrl) {
+            router.push(notification.actionUrl);
         }
     };
 
@@ -62,7 +67,7 @@ export function NotificationItem({
             aria-label={`${notification.title}. ${isUnread ? 'Unread notification' : 'Read notification'}. ${formatRelativeTime(notification.createdAt)}`}
             aria-describedby={`notification-content-${notification.id}`}
             className={cn(
-                'flex gap-3 rounded-lg transition-colors',
+                'group flex gap-3 rounded-lg transition-colors',
                 // Responsive padding and spacing (Requirement 6.1, 6.2, 6.3)
                 'p-3',              // Mobile: compact padding
                 'sm:p-4',           // Tablet: more padding
@@ -103,7 +108,8 @@ export function NotificationItem({
                         'sm:text-base',     // Tablet
                         'md:text-base',     // Desktop
                         // High contrast text (Requirement 6.6)
-                        isUnread ? 'font-semibold text-gray-900' : 'font-normal text-gray-700'
+                        isUnread ? 'font-semibold text-gray-900' : 'font-normal text-gray-700',
+                        notification.actionUrl && 'group-hover:text-blue-600'
                     )}
                 >
                     {notification.title}
