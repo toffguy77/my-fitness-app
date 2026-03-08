@@ -356,7 +356,6 @@ func TestListArticles(t *testing.T) {
 				nil, nil, now, now)
 
 		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
-			WithArgs(authorID).
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -371,11 +370,13 @@ func TestListArticles(t *testing.T) {
 		assert.Equal(t, "published", result.Articles[0].Status)
 		assert.Equal(t, "nutrition", result.Articles[0].Category)
 		assert.NotNil(t, result.Articles[0].PublishedAt)
+		assert.True(t, result.Articles[0].IsOwn)
 
 		assert.Equal(t, "art-2", result.Articles[1].ID)
 		assert.Equal(t, "draft", result.Articles[1].Status)
 		assert.Equal(t, "https://img.example.com/cover.jpg", result.Articles[1].CoverImageURL)
 		assert.Nil(t, result.Articles[1].PublishedAt)
+		assert.True(t, result.Articles[1].IsOwn)
 
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -392,7 +393,7 @@ func TestListArticles(t *testing.T) {
 				nil, now, now, now)
 
 		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
-			WithArgs(authorID, "published").
+			WithArgs("published").
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "published", "", false)
@@ -416,7 +417,7 @@ func TestListArticles(t *testing.T) {
 				nil, nil, now, now)
 
 		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
-			WithArgs(authorID, "training").
+			WithArgs("training").
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "training", false)
@@ -437,7 +438,7 @@ func TestListArticles(t *testing.T) {
 		rows := sqlmock.NewRows(articleListColumns)
 
 		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
-			WithArgs(authorID, "published", "nutrition").
+			WithArgs("published", "nutrition").
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "published", "nutrition", false)
@@ -458,7 +459,6 @@ func TestListArticles(t *testing.T) {
 		rows := sqlmock.NewRows(articleListColumns)
 
 		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
-			WithArgs(authorID).
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -483,7 +483,6 @@ func TestListArticles(t *testing.T) {
 				scheduledTime, nil, now, now)
 
 		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
-			WithArgs(authorID).
 			WillReturnRows(rows)
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)
@@ -491,6 +490,7 @@ func TestListArticles(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result.Articles, 1)
 		assert.Equal(t, "scheduled", result.Articles[0].Status)
+		assert.True(t, result.Articles[0].IsOwn)
 		require.NotNil(t, result.Articles[0].ScheduledAt)
 		assert.WithinDuration(t, scheduledTime, *result.Articles[0].ScheduledAt, time.Second)
 		assert.Nil(t, result.Articles[0].PublishedAt)
@@ -504,7 +504,6 @@ func TestListArticles(t *testing.T) {
 		authorID := int64(1)
 
 		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
-			WithArgs(authorID).
 			WillReturnError(fmt.Errorf("connection refused"))
 
 		result, err := service.ListArticles(ctx, authorID, "", "", false)

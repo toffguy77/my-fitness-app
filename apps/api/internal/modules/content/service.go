@@ -302,13 +302,7 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 	args := []any{}
 	argIdx := 1
 
-	if isAdmin {
-		query += " WHERE 1=1"
-	} else {
-		query += fmt.Sprintf(" WHERE a.author_id = $%d", argIdx)
-		args = append(args, authorID)
-		argIdx++
-	}
+	query += " WHERE 1=1"
 
 	if status != "" {
 		query += fmt.Sprintf(" AND a.status = $%d", argIdx)
@@ -351,6 +345,8 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 		if publishedAt.Valid {
 			a.PublishedAt = &publishedAt.Time
 		}
+
+		a.IsOwn = a.AuthorID == authorID
 
 		articles = append(articles, a)
 	}
