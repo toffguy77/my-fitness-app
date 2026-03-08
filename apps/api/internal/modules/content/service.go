@@ -287,8 +287,8 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 	return &article, nil
 }
 
-// ListArticles returns all articles for a given author, with optional status and category filters.
-// If isAdmin is true, all articles are returned regardless of author.
+// ListArticles returns all articles with optional status and category filters.
+// All curators and admins see all articles; IsOwn is set based on authorID match.
 func (s *Service) ListArticles(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error) {
 	startTime := time.Now()
 

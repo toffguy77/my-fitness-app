@@ -341,7 +341,34 @@ func TestListArticles(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	t.Run("returns all articles for author", func(t *testing.T) {
+	t.Run("sets IsOwn false for other authors articles", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		authorID := int64(1)
+		otherAuthorID := int64(99)
+
+		rows := sqlmock.NewRows(articleListColumns).
+			AddRow("art-1", authorID, "My Name",
+				"My Article", "Excerpt", "", "nutrition", "published", "all",
+				nil, now, now, now).
+			AddRow("art-2", otherAuthorID, "Other Author",
+				"Their Article", "Excerpt", "", "training", "draft", "all",
+				nil, nil, now, now)
+
+		mock.ExpectQuery(`SELECT a\.id, a\.author_id, COALESCE`).
+			WillReturnRows(rows)
+
+		result, err := service.ListArticles(ctx, authorID, "", "", false)
+
+		require.NoError(t, err)
+		require.Len(t, result.Articles, 2)
+		assert.True(t, result.Articles[0].IsOwn)
+		assert.False(t, result.Articles[1].IsOwn)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns all articles with IsOwn flag", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
@@ -450,7 +477,7 @@ func TestListArticles(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("returns empty list when author has no articles", func(t *testing.T) {
+	t.Run("returns empty list when no articles exist", func(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
