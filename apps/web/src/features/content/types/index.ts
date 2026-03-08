@@ -15,6 +15,7 @@ export interface Article {
   status: ContentStatus
   audience_scope: AudienceScope
   body?: string
+  is_own: boolean
   scheduled_at?: string
   published_at?: string
   created_at: string

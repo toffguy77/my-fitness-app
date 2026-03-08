@@ -54,7 +54,7 @@ jest.mock('@/features/admin/components/ReadOnlyMessageList', () => ({
 }))
 
 jest.mock('@/features/content/components/ArticleList', () => ({
-    ArticleList: (props: { basePath?: string; showAuthor?: boolean }) => (
+    ArticleList: (props: { basePath?: string }) => (
         <div data-testid="article-list" data-base-path={props.basePath}>ArticleList</div>
     ),
 }))

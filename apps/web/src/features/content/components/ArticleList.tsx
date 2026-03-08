@@ -17,10 +17,9 @@ const STATUS_TABS = [
 
 interface ArticleListProps {
     basePath?: string
-    showAuthor?: boolean
 }
 
-export function ArticleList({ basePath = '/curator/content', showAuthor = false }: ArticleListProps) {
+export function ArticleList({ basePath = '/curator/content' }: ArticleListProps) {
     const [articles, setArticles] = useState<Article[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -147,7 +146,7 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
                 </div>
             ) : articles.length === 0 ? (
                 <div className="text-center py-12">
-                    <p className="text-sm text-gray-500">{showAuthor ? 'Статей пока нет' : 'У вас пока нет статей'}</p>
+                    <p className="text-sm text-gray-500">Статей пока нет</p>
                 </div>
             ) : (
                 <div className="grid gap-3">
@@ -164,7 +163,7 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
                             </div>
 
                             <div className="flex items-center gap-2 text-xs text-gray-500">
-                                {showAuthor && article.author_name && (
+                                {article.author_name && (
                                     <>
                                         <span>{article.author_name}</span>
                                         <span>&middot;</span>
@@ -177,32 +176,34 @@ export function ArticleList({ basePath = '/curator/content', showAuthor = false 
                                 </span>
                             </div>
 
-                            <div className="flex items-center gap-2 pt-1">
-                                <Link
-                                    href={`${basePath}/${article.id}/edit`}
-                                    className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors"
-                                >
-                                    Редактировать
-                                </Link>
+                            {article.is_own && (
+                                <div className="flex items-center gap-2 pt-1">
+                                    <Link
+                                        href={`${basePath}/${article.id}/edit`}
+                                        className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                                    >
+                                        Редактировать
+                                    </Link>
 
-                                {article.status === 'draft' && (
+                                    {article.status === 'draft' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePublish(article.id)}
+                                            className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-200 transition-colors"
+                                        >
+                                            Опубликовать
+                                        </button>
+                                    )}
+
                                     <button
                                         type="button"
-                                        onClick={() => handlePublish(article.id)}
-                                        className="rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-200 transition-colors"
+                                        onClick={() => handleDelete(article.id)}
+                                        className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
                                     >
-                                        Опубликовать
+                                        Удалить
                                     </button>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={() => handleDelete(article.id)}
-                                    className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
-                                >
-                                    Удалить
-                                </button>
-                            </div>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
