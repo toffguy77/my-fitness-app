@@ -181,6 +181,44 @@ describe('ArticleForm', () => {
         expect(select).toHaveValue('training')
     })
 
+    it('fills form fields from importedData', async () => {
+        const { rerender } = render(<ArticleForm onSave={onSave} />)
+
+        // Initially empty
+        expect(screen.getByLabelText(/Заголовок/)).toHaveValue('')
+
+        // Rerender with importedData to trigger the useEffect
+        rerender(
+            <ArticleForm
+                onSave={onSave}
+                importedData={{
+                    title: 'Imported Title',
+                    excerpt: 'Imported excerpt',
+                    category: 'training',
+                    audience: 'my_clients',
+                    coverUrl: 'https://example.com/cover.jpg',
+                    body: 'body text',
+                }}
+            />
+        )
+
+        expect(screen.getByLabelText(/Заголовок/)).toHaveValue('Imported Title')
+        expect(screen.getByLabelText('Краткое описание')).toHaveValue('Imported excerpt')
+        expect(screen.getByLabelText('Категория')).toHaveValue('training')
+        expect(screen.getByLabelText('Обложка')).toHaveValue('https://example.com/cover.jpg')
+    })
+
+    it('shows cover image preview when URL is set', async () => {
+        const user = userEvent.setup()
+        render(<ArticleForm onSave={onSave} />)
+
+        await user.type(screen.getByLabelText('Обложка'), 'https://example.com/img.jpg')
+
+        const img = screen.getByAltText('Превью обложки')
+        expect(img).toBeInTheDocument()
+        expect(img).toHaveAttribute('src', 'https://example.com/img.jpg')
+    })
+
     it('hides schedule section for published articles', () => {
         const publishedArticle = { ...baseArticle, status: 'published' as const }
         render(<ArticleForm article={publishedArticle} onSave={onSave} onSchedule={onSchedule} />)
