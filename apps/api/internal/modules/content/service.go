@@ -57,10 +57,11 @@ type ServiceInterface interface {
 
 // Service handles content business logic
 type Service struct {
-	db    *database.DB
-	log   *logger.Logger
-	s3    S3Uploader
-	wsHub *ws.Hub
+	db                 *database.DB
+	log                *logger.Logger
+	s3                 S3Uploader
+	wsHub              *ws.Hub
+	skipSSRFProtection bool // only for testing with httptest
 }
 
 // NewService creates a new content service
@@ -1353,8 +1354,35 @@ func (s *Service) proxyExternalImages(ctx context.Context, articleID, coverURL, 
 		return !strings.Contains(parsed.Host, s3Domain)
 	}
 
+	isBlockedHost := func(hostname string) bool {
+		if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" || hostname == "0.0.0.0" {
+			return true
+		}
+		if strings.HasPrefix(hostname, "10.") ||
+			strings.HasPrefix(hostname, "192.168.") ||
+			strings.HasPrefix(hostname, "172.16.") || strings.HasPrefix(hostname, "172.17.") ||
+			strings.HasPrefix(hostname, "172.18.") || strings.HasPrefix(hostname, "172.19.") ||
+			strings.HasPrefix(hostname, "172.2") || strings.HasPrefix(hostname, "172.30.") ||
+			strings.HasPrefix(hostname, "172.31.") ||
+			strings.HasPrefix(hostname, "169.254.") ||
+			strings.HasPrefix(hostname, "fd") || strings.HasPrefix(hostname, "fe80:") {
+			return true
+		}
+		return false
+	}
+
 	proxyOne := func(imgURL string) string {
 		if !isExternal(imgURL) {
+			return imgURL
+		}
+
+		parsed, err := url.Parse(imgURL)
+		if err != nil {
+			s.log.Warn("Invalid image URL", "url", imgURL, "error", err)
+			return imgURL
+		}
+		if !s.skipSSRFProtection && isBlockedHost(parsed.Hostname()) {
+			s.log.Warn("Blocked internal/private IP in image URL", "url", imgURL)
 			return imgURL
 		}
 
