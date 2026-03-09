@@ -28,6 +28,9 @@ export function FileUploader({ onFileLoaded }: FileUploaderProps) {
             const parsed = parseArticleMarkdown(content)
             onFileLoaded(parsed, file.name)
         }
+        reader.onerror = () => {
+            console.error('Failed to read file:', reader.error)
+        }
         reader.readAsText(file)
 
         // Reset so the same file can be selected again

@@ -66,6 +66,7 @@ func setupTestServiceWithS3(t *testing.T, s3mock S3Uploader) (*Service, sqlmock.
 	db := &database.DB{DB: mockDB}
 	log := logger.New()
 	service := NewService(db, log, s3mock, nil)
+	service.skipSSRFProtection = true // allow httptest (127.0.0.1) in tests
 	return service, mock, func() { mockDB.Close() }
 }
 
@@ -950,12 +951,34 @@ func TestProxyExternalImages(t *testing.T) {
 		assert.Equal(t, 0, s3mock.uploadCount)
 	})
 
+	t.Run("blocks SSRF to internal IPs", func(t *testing.T) {
+		s3mock := &mockS3{}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+		service.skipSSRFProtection = false // explicitly test SSRF protection
+
+		internalURLs := []string{
+			"http://127.0.0.1/secret",
+			"http://localhost/admin",
+			"http://169.254.169.254/latest/meta-data/",
+			"http://10.0.0.1/internal",
+			"http://192.168.1.1/router",
+			"http://172.16.0.1/private",
+		}
+
+		for _, u := range internalURLs {
+			cover, _ := service.proxyExternalImages(context.Background(), "art-1", u, "")
+			assert.Equal(t, u, cover, "should block %s", u)
+		}
+		assert.Equal(t, 0, s3mock.uploadCount)
+	})
+
 	t.Run("keeps original URL on download failure", func(t *testing.T) {
 		s3mock := &mockS3{}
 		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
 		defer cleanup()
 
-		badURL := "http://127.0.0.1:1/nonexistent.jpg"
+		badURL := "http://203.0.113.1:1/nonexistent.jpg"
 		cover, _ := service.proxyExternalImages(context.Background(), "art-1", badURL, "")
 
 		assert.Equal(t, badURL, cover)
