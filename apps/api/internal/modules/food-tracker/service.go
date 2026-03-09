@@ -139,7 +139,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 	var foodName string
 	var nutrition KBZHU
 
-	// Handle AI-generated food IDs: create user_food automatically
+	// Handle AI-generated food IDs: create food_item + user_food automatically
 	if strings.HasPrefix(req.FoodID, "ai-") && req.FoodName != nil && req.Calories != nil && req.Protein != nil && req.Fat != nil && req.Carbs != nil {
 		// Frontend sends total nutrition for the portion; convert back to per-100g for storage
 		calPer100 := *req.Calories * 100 / req.PortionAmount
@@ -147,24 +147,27 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		fatPer100 := *req.Fat * 100 / req.PortionAmount
 		carbsPer100 := *req.Carbs * 100 / req.PortionAmount
 
-		// Create a user_food entry for the AI-recognized dish
-		var userFood UserFood
-		err := s.db.QueryRowContext(ctx, `
-			INSERT INTO user_foods (user_id, name, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, 'г')
-			RETURNING id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id, created_at, updated_at
-		`, userID, *req.FoodName, calPer100, protPer100, fatPer100, carbsPer100, req.PortionAmount).Scan(
-			&userFood.ID, &userFood.UserID, &userFood.Name, &userFood.Brand,
-			&userFood.CaloriesPer100, &userFood.ProteinPer100, &userFood.FatPer100, &userFood.CarbsPer100,
-			&userFood.ServingSize, &userFood.ServingUnit, &userFood.SourceFoodID,
-			&userFood.CreatedAt, &userFood.UpdatedAt,
-		)
+		// Insert into food_items first (food_entries.food_id FK references this table)
+		newFoodItemID := uuid.New().String()
+		_, err := s.db.ExecContext(ctx, `
+			INSERT INTO food_items (id, name, category, serving_size, serving_unit, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, source, verified, created_at, updated_at)
+			VALUES ($1, $2, 'ai', $3, 'г', $4, $5, $6, $7, 'user', false, NOW(), NOW())
+		`, newFoodItemID, *req.FoodName, req.PortionAmount, calPer100, protPer100, fatPer100, carbsPer100)
 		if err != nil {
-			return nil, fmt.Errorf("ошибка при создании AI продукта: %w", err)
+			return nil, fmt.Errorf("ошибка при создании AI продукта в food_items: %w", err)
 		}
 
-		foodItemID = userFood.ID
-		foodName = userFood.Name
+		// Also create user_food linked to the food_item
+		_, err = s.db.ExecContext(ctx, `
+			INSERT INTO user_foods (id, user_id, name, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'г', $1)
+		`, newFoodItemID, userID, *req.FoodName, calPer100, protPer100, fatPer100, carbsPer100, req.PortionAmount)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка при создании AI продукта в user_foods: %w", err)
+		}
+
+		foodItemID = newFoodItemID
+		foodName = *req.FoodName
 		// Use overrides directly — they are already total nutrition for the portion
 		nutrition = KBZHU{
 			Calories: *req.Calories,
@@ -173,7 +176,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 			Carbs:    *req.Carbs,
 		}
 
-		s.log.Info("Created user_food for AI recognition", "user_food_id", foodItemID, "name", foodName, "user_id", userID)
+		s.log.Info("Created food_item + user_food for AI recognition", "food_item_id", foodItemID, "name", foodName, "user_id", userID)
 	} else {
 		// Look up food item to get nutrition data
 		foodItem, err := s.getFoodItemByID(ctx, req.FoodID)
