@@ -46,6 +46,7 @@ const createArticle = (overrides: Partial<Article> = {}): Article => ({
     category: 'nutrition',
     status: 'draft',
     audience_scope: 'all',
+    is_own: true,
     created_at: '2026-03-01T00:00:00Z',
     updated_at: '2026-03-01T00:00:00Z',
     ...overrides,
@@ -81,7 +82,7 @@ describe('ArticleList', () => {
         render(<ArticleList />)
 
         await waitFor(() => {
-            expect(screen.getByText('У вас пока нет статей')).toBeInTheDocument()
+            expect(screen.getByText('Статей пока нет')).toBeInTheDocument()
         })
     })
 
@@ -113,7 +114,7 @@ describe('ArticleList', () => {
         render(<ArticleList />)
 
         await waitFor(() => {
-            expect(screen.getByText('У вас пока нет статей')).toBeInTheDocument()
+            expect(screen.getByText('Статей пока нет')).toBeInTheDocument()
         })
 
         mockListArticles.mockClear()
@@ -150,25 +151,29 @@ describe('ArticleList', () => {
         expect(screen.queryByText('Опубликовать')).not.toBeInTheDocument()
     })
 
-    it('shows author name when showAuthor is true', async () => {
+    it('always shows author name', async () => {
         const articles = [createArticle({ author_name: 'John Doe' })]
         mockListArticles.mockResolvedValue({ articles, total: 1 })
 
-        render(<ArticleList showAuthor />)
+        render(<ArticleList />)
 
         await waitFor(() => {
             expect(screen.getByText('John Doe')).toBeInTheDocument()
         })
     })
 
-    it('shows different empty text for admin view', async () => {
-        mockListArticles.mockResolvedValue({ articles: [], total: 0 })
+    it('hides action buttons for non-own articles', async () => {
+        const articles = [createArticle({ is_own: false })]
+        mockListArticles.mockResolvedValue({ articles, total: 1 })
 
-        render(<ArticleList showAuthor />)
+        render(<ArticleList />)
 
         await waitFor(() => {
-            expect(screen.getByText('Статей пока нет')).toBeInTheDocument()
+            expect(screen.getByText('Test Article')).toBeInTheDocument()
         })
+
+        expect(screen.queryByText('Редактировать')).not.toBeInTheDocument()
+        expect(screen.queryByText('Удалить')).not.toBeInTheDocument()
     })
 
     it('handles delete with confirmation', async () => {
@@ -206,7 +211,7 @@ describe('ArticleList', () => {
         render(<ArticleList />)
 
         await waitFor(() => {
-            expect(screen.getByText('У вас пока нет статей')).toBeInTheDocument()
+            expect(screen.getByText('Статей пока нет')).toBeInTheDocument()
         })
     })
 })

@@ -40,6 +40,7 @@ type Article struct {
 	Status        string     `json:"status"`
 	AudienceScope string     `json:"audience_scope"`
 	Body          string     `json:"body,omitempty"`
+	IsOwn         bool       `json:"is_own"`
 	ScheduledAt   *time.Time `json:"scheduled_at,omitempty"`
 	PublishedAt   *time.Time `json:"published_at,omitempty"`
 	CreatedAt     time.Time  `json:"created_at"`

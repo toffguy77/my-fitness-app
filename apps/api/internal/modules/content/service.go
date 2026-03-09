@@ -287,8 +287,8 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 	return &article, nil
 }
 
-// ListArticles returns all articles for a given author, with optional status and category filters.
-// If isAdmin is true, all articles are returned regardless of author.
+// ListArticles returns all articles with optional status and category filters.
+// All curators and admins see all articles; IsOwn is set based on authorID match.
 func (s *Service) ListArticles(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error) {
 	startTime := time.Now()
 
@@ -302,13 +302,7 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 	args := []any{}
 	argIdx := 1
 
-	if isAdmin {
-		query += " WHERE 1=1"
-	} else {
-		query += fmt.Sprintf(" WHERE a.author_id = $%d", argIdx)
-		args = append(args, authorID)
-		argIdx++
-	}
+	query += " WHERE 1=1"
 
 	if status != "" {
 		query += fmt.Sprintf(" AND a.status = $%d", argIdx)
@@ -351,6 +345,8 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 		if publishedAt.Valid {
 			a.PublishedAt = &publishedAt.Time
 		}
+
+		a.IsOwn = a.AuthorID == authorID
 
 		articles = append(articles, a)
 	}

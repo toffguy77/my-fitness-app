@@ -27,6 +27,7 @@ const baseArticle: Article = {
     status: 'draft',
     audience_scope: 'all',
     cover_image_url: 'https://example.com/cover.jpg',
+    is_own: true,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
 }

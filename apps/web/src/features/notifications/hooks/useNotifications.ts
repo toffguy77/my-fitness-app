@@ -36,11 +36,13 @@ export function useNotifications(category: NotificationCategory): UseNotificatio
     // Select actions from store
     const fetchNotifications = useNotificationsStore((state) => state.fetchNotifications);
     const markAsReadAction = useNotificationsStore((state) => state.markAsRead);
+    const fetchUnreadCounts = useNotificationsStore((state) => state.fetchUnreadCounts);
 
-    // Fetch initial data on mount
+    // Fetch initial data and unread counts on mount
     useEffect(() => {
         fetchNotifications(category, 0);
-    }, [category, fetchNotifications]);
+        fetchUnreadCounts();
+    }, [category, fetchNotifications, fetchUnreadCounts]);
 
     // Fetch more notifications (pagination)
     const fetchMore = useCallback(() => {

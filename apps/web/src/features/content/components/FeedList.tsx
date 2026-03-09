@@ -25,6 +25,7 @@ export function FeedList() {
 
     useEffect(() => {
         let cancelled = false
+        setArticles([])  // Clear stale data immediately
         setLoading(true)
         setError(null)
 

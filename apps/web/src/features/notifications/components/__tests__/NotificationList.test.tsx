@@ -6,6 +6,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { NotificationList } from '../NotificationList';
 import type { Notification } from '../../types';
 
+// Mock next/navigation for useRouter in NotificationItem
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: jest.fn() }),
+}));
+
 // Mock IntersectionObserver
 const mockIntersectionObserver = jest.fn();
 mockIntersectionObserver.mockReturnValue({

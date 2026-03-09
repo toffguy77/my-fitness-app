@@ -62,6 +62,7 @@ describe('useNotifications', () => {
                 },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
+                fetchUnreadCounts: jest.fn(),
             };
             return selector(state);
         });
@@ -107,6 +108,7 @@ describe('useNotifications', () => {
                 hasMore: { main: true, content: false },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
+                fetchUnreadCounts: jest.fn(),
             };
             return selector(state);
         });
@@ -132,6 +134,7 @@ describe('useNotifications', () => {
                 hasMore: { main: false, content: false },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
+                fetchUnreadCounts: jest.fn(),
             };
             return selector(state);
         });
@@ -188,6 +191,7 @@ describe('useNotifications', () => {
                 hasMore: { main: false, content: true },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
+                fetchUnreadCounts: jest.fn(),
             };
             return selector(state);
         });
@@ -214,6 +218,7 @@ describe('useNotifications', () => {
                 hasMore: { main: false, content: false },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
+                fetchUnreadCounts: jest.fn(),
             };
             return selector(state);
         });
@@ -233,6 +238,7 @@ describe('useNotifications', () => {
                 hasMore: { main: false, content: false },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
+                fetchUnreadCounts: jest.fn(),
             };
             return selector(state);
         });
@@ -279,6 +285,7 @@ describe('useNotifications', () => {
                 hasMore: { main: true, content: false },
                 fetchNotifications: mockFetchNotifications,
                 markAsRead: mockMarkAsRead,
+                fetchUnreadCounts: jest.fn(),
             };
             return selector(state);
         });

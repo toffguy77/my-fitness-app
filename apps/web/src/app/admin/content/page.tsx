@@ -8,7 +8,7 @@ export default function AdminContentPage() {
             <div className="flex items-center justify-between mb-4">
                 <h1 className="text-xl font-semibold text-gray-900">Контент</h1>
             </div>
-            <ArticleList basePath="/admin/content" showAuthor />
+            <ArticleList basePath="/admin/content" />
         </div>
     )
 }
