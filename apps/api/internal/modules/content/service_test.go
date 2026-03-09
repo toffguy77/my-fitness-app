@@ -660,6 +660,7 @@ func TestCreateArticle(t *testing.T) {
 				authorID,
 				req.Title,
 				req.Excerpt,
+				req.CoverImageURL,
 				req.Category,
 				req.AudienceScope,
 				sqlmock.AnyArg(), // content_s3_key
@@ -717,7 +718,7 @@ func TestCreateArticle(t *testing.T) {
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
 				sqlmock.AnyArg(), authorID, req.Title, req.Excerpt,
-				req.Category, req.AudienceScope, sqlmock.AnyArg(),
+				req.CoverImageURL, req.Category, req.AudienceScope, sqlmock.AnyArg(),
 			).
 			WillReturnRows(sqlmock.NewRows([]string{
 				"id", "author_id", "title", "excerpt", "cover_image_url",
@@ -766,7 +767,7 @@ func TestCreateArticle(t *testing.T) {
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
 				sqlmock.AnyArg(), authorID, req.Title, req.Excerpt,
-				req.Category, req.AudienceScope, sqlmock.AnyArg(),
+				req.CoverImageURL, req.Category, req.AudienceScope, sqlmock.AnyArg(),
 			).
 			WillReturnError(fmt.Errorf("unique constraint violation"))
 
