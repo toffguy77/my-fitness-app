@@ -11,6 +11,7 @@ import type {
     UpdateArticleRequest,
 } from '@/features/content/types'
 import type { ParsedArticle } from '@/features/content/utils/parseFrontmatter'
+import { parseArticleMarkdown } from '@/features/content/utils/parseFrontmatter'
 import { ArticleForm } from './ArticleForm'
 import { FileUploader } from './FileUploader'
 import { MediaUploader } from './MediaUploader'
@@ -86,6 +87,7 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor')
     const [importedData, setImportedData] = useState<ParsedArticle | undefined>(undefined)
+    const [isDragging, setIsDragging] = useState(false)
 
     // Fetch article for editing
     useEffect(() => {
@@ -195,6 +197,33 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
         }
     }
 
+    // Drag & drop handlers
+    function handleDragOver(e: React.DragEvent) {
+        e.preventDefault()
+        setIsDragging(true)
+    }
+
+    function handleDragLeave(e: React.DragEvent) {
+        e.preventDefault()
+        setIsDragging(false)
+    }
+
+    function handleDrop(e: React.DragEvent) {
+        e.preventDefault()
+        setIsDragging(false)
+
+        const file = e.dataTransfer.files[0]
+        if (!file || !file.name.match(/\.(md|markdown)$/i)) return
+
+        const reader = new FileReader()
+        reader.onload = () => {
+            const content = reader.result as string
+            const parsed = parseArticleMarkdown(content)
+            handleFileImport(parsed)
+        }
+        reader.readAsText(file)
+    }
+
     // File import handler
     function handleFileImport(parsed: ParsedArticle) {
         setBody(parsed.body)
@@ -235,7 +264,19 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
     }
 
     return (
-        <div className="space-y-6">
+        <div
+            className={`space-y-6 ${isDragging ? 'rounded-xl ring-2 ring-blue-400 ring-offset-2' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
+            {/* Drag & drop overlay */}
+            {isDragging && (
+                <div className="rounded-lg border-2 border-dashed border-blue-400 bg-blue-50 p-8 text-center text-sm text-blue-600">
+                    Перетащите .md файл сюда
+                </div>
+            )}
+
             {/* Error banner */}
             {error && (
                 <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
