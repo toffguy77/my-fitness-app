@@ -1,13 +1,14 @@
 'use client'
 
 import { useRef } from 'react'
+import { parseArticleMarkdown, type ParsedArticle } from '@/features/content/utils/parseFrontmatter'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 interface FileUploaderProps {
-    onFileLoaded: (content: string, filename: string) => void
+    onFileLoaded: (parsed: ParsedArticle, filename: string) => void
 }
 
 // ============================================================================
@@ -24,7 +25,8 @@ export function FileUploader({ onFileLoaded }: FileUploaderProps) {
         const reader = new FileReader()
         reader.onload = () => {
             const content = reader.result as string
-            onFileLoaded(content, file.name)
+            const parsed = parseArticleMarkdown(content)
+            onFileLoaded(parsed, file.name)
         }
         reader.readAsText(file)
 
