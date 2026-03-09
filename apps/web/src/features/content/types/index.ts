@@ -39,6 +39,7 @@ export interface CreateArticleRequest {
   category: ContentCategory
   audience_scope: AudienceScope
   client_ids?: number[]
+  cover_image_url?: string
 }
 
 export interface UpdateArticleRequest {
