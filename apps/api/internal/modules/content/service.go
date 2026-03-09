@@ -1358,7 +1358,7 @@ func (s *Service) proxyExternalImages(ctx context.Context, articleID, coverURL, 
 			s.log.Warn("Failed to download external image", "url", imgURL, "error", err)
 			return imgURL
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode != http.StatusOK {
 			s.log.Warn("External image returned non-200", "url", imgURL, "status", resp.StatusCode)
