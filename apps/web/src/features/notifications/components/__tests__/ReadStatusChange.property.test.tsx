@@ -11,6 +11,11 @@ import fc from 'fast-check';
 import { NotificationItem } from '../NotificationItem';
 import { unreadNotificationGenerator } from '../../testing/generators';
 
+// Mock next/navigation for useRouter
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: jest.fn() }),
+}));
+
 // Mock next/image to avoid hostname configuration issues in tests
 jest.mock('next/image', () => ({
     __esModule: true,
