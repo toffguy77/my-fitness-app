@@ -2237,7 +2237,7 @@ func (s *Service) CheckRecognitionLimit(ctx context.Context, userID int64, daily
 	var count int
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM food_recognition_usage
-		WHERE user_id = $1 AND created_at >= CURRENT_DATE AND created_at < CURRENT_DATE + INTERVAL '1 day'
+		WHERE user_id = $1 AND used_at >= CURRENT_DATE AND used_at < CURRENT_DATE + INTERVAL '1 day'
 	`, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("ошибка при проверке лимита распознаваний: %w", err)
@@ -2253,9 +2253,9 @@ func (s *Service) CheckRecognitionLimit(ctx context.Context, userID int64, daily
 // RecordRecognitionUsage records a food recognition usage
 func (s *Service) RecordRecognitionUsage(ctx context.Context, userID int64, photoURL string, foodsCount int) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO food_recognition_usage (id, user_id, photo_url, recognized_foods_count, created_at)
-		VALUES ($1, $2, $3, $4, NOW())
-	`, uuid.New().String(), userID, photoURL, foodsCount)
+		INSERT INTO food_recognition_usage (user_id, photo_url, foods_count)
+		VALUES ($1, $2, $3)
+	`, userID, photoURL, foodsCount)
 	if err != nil {
 		return fmt.Errorf("ошибка при записи использования распознавания: %w", err)
 	}

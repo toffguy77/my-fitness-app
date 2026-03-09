@@ -630,7 +630,7 @@ func TestRecordRecognitionUsage(t *testing.T) {
 		defer cleanup()
 
 		mock.ExpectExec(`INSERT INTO food_recognition_usage`).
-			WithArgs(sqlmock.AnyArg(), int64(1), "https://s3.example.com/photo.jpg", 3).
+			WithArgs(int64(1), "https://s3.example.com/photo.jpg", 3).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		err := service.RecordRecognitionUsage(ctx, int64(1), "https://s3.example.com/photo.jpg", 3)
@@ -644,7 +644,7 @@ func TestRecordRecognitionUsage(t *testing.T) {
 		defer cleanup()
 
 		mock.ExpectExec(`INSERT INTO food_recognition_usage`).
-			WithArgs(sqlmock.AnyArg(), int64(1), "", 0).
+			WithArgs(int64(1), "", 0).
 			WillReturnError(sql.ErrConnDone)
 
 		err := service.RecordRecognitionUsage(ctx, int64(1), "", 0)
