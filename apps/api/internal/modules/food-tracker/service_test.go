@@ -551,6 +551,111 @@ func TestLookupBarcode(t *testing.T) {
 }
 
 // ============================================================================
+// AI Food Recognition Tests
+// ============================================================================
+
+func TestCheckRecognitionLimit(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns remaining when some used", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		rows := sqlmock.NewRows([]string{"count"}).AddRow(5)
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(int64(1)).
+			WillReturnRows(rows)
+
+		remaining, err := service.CheckRecognitionLimit(ctx, int64(1), 20)
+
+		require.NoError(t, err)
+		assert.Equal(t, 15, remaining)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns zero when limit reached", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		rows := sqlmock.NewRows([]string{"count"}).AddRow(20)
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(int64(1)).
+			WillReturnRows(rows)
+
+		remaining, err := service.CheckRecognitionLimit(ctx, int64(1), 20)
+
+		require.NoError(t, err)
+		assert.Equal(t, 0, remaining)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns error on database failure", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(int64(1)).
+			WillReturnError(sql.ErrConnDone)
+
+		_, err := service.CheckRecognitionLimit(ctx, int64(1), 20)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ошибка при проверке лимита")
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func TestCheckRecognitionLimit_NoUsageToday(t *testing.T) {
+	ctx := context.Background()
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	rows := sqlmock.NewRows([]string{"count"}).AddRow(0)
+	mock.ExpectQuery(`SELECT COUNT`).
+		WithArgs(int64(1)).
+		WillReturnRows(rows)
+
+	remaining, err := service.CheckRecognitionLimit(ctx, int64(1), 20)
+
+	require.NoError(t, err)
+	assert.Equal(t, 20, remaining)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRecordRecognitionUsage(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("successfully records usage", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectExec(`INSERT INTO food_recognition_usage`).
+			WithArgs(sqlmock.AnyArg(), int64(1), "https://s3.example.com/photo.jpg", 3).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		err := service.RecordRecognitionUsage(ctx, int64(1), "https://s3.example.com/photo.jpg", 3)
+
+		require.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns error on database failure", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectExec(`INSERT INTO food_recognition_usage`).
+			WithArgs(sqlmock.AnyArg(), int64(1), "", 0).
+			WillReturnError(sql.ErrConnDone)
+
+		err := service.RecordRecognitionUsage(ctx, int64(1), "", 0)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ошибка при записи использования")
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 

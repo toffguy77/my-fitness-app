@@ -73,6 +73,18 @@ type Config struct {
 	// S3 Path Prefix (dev/ or prod/ — applied to all S3 clients)
 	S3PathPrefix string
 
+	// Food Photos S3 — falls back to generic S3_* vars
+	FoodPhotosS3AccessKeyID     string
+	FoodPhotosS3SecretAccessKey string
+	FoodPhotosS3Bucket          string
+	FoodPhotosS3Region          string
+	FoodPhotosS3Endpoint        string
+
+	// OpenRouter (AI food recognition)
+	OpenRouterAPIKey            string
+	OpenRouterModel             string
+	FoodRecognitionDailyLimit   int
+
 	// Logging
 	LogLevel string
 }
@@ -145,6 +157,18 @@ func Load() (*Config, error) {
 		ContentS3Endpoint:        getEnvWithFallback("CONTENT_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
 		S3PathPrefix: getEnv("S3_PATH_PREFIX", ""),
+
+		// Food Photos S3 — falls back to generic S3_* vars
+		FoodPhotosS3AccessKeyID:     getEnvWithFallback("FOOD_PHOTOS_S3_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID", ""),
+		FoodPhotosS3SecretAccessKey: getEnvWithFallback("FOOD_PHOTOS_S3_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY", ""),
+		FoodPhotosS3Bucket:          getEnvWithFallback("FOOD_PHOTOS_S3_BUCKET", "S3_BUCKET", "food-photos"),
+		FoodPhotosS3Region:          getEnvWithFallback("FOOD_PHOTOS_S3_REGION", "S3_REGION", "ru-central1"),
+		FoodPhotosS3Endpoint:        getEnvWithFallback("FOOD_PHOTOS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
+
+		// OpenRouter (AI food recognition)
+		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),
+		OpenRouterModel:           getEnv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4"),
+		FoodRecognitionDailyLimit: getEnvAsInt("FOOD_RECOGNITION_DAILY_LIMIT", 3),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}

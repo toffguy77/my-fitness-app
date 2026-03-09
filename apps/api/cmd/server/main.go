@@ -26,6 +26,7 @@ import (
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
+	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/gin-contrib/cors"
@@ -158,6 +159,31 @@ func main() {
 		} else {
 			log.Info("Content S3 client initialized", "bucket", cfg.ContentS3Bucket)
 		}
+	}
+
+	// Initialize food photos S3 client
+	var foodPhotosS3 *storage.S3Client
+	if cfg.FoodPhotosS3AccessKeyID != "" && cfg.FoodPhotosS3SecretAccessKey != "" {
+		foodPhotosS3, err = storage.NewS3Client(&storage.S3Config{
+			AccessKeyID:     cfg.FoodPhotosS3AccessKeyID,
+			SecretAccessKey: cfg.FoodPhotosS3SecretAccessKey,
+			Bucket:          cfg.FoodPhotosS3Bucket,
+			Region:          cfg.FoodPhotosS3Region,
+			Endpoint:        cfg.FoodPhotosS3Endpoint,
+			PathPrefix:      cfg.S3PathPrefix,
+		}, log)
+		if err != nil {
+			log.Error("Failed to initialize food photos S3 client", "error", err)
+		} else {
+			log.Info("Food photos S3 client initialized", "bucket", cfg.FoodPhotosS3Bucket)
+		}
+	}
+
+	// Initialize OpenRouter client (for AI food recognition)
+	var orClient *openrouter.Client
+	if cfg.OpenRouterAPIKey != "" {
+		orClient = openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log)
+		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
 	}
 
 	// Initialize rate limiter
@@ -295,7 +321,7 @@ func main() {
 		}
 
 		// Food tracker routes (protected)
-		foodTrackerHandler := foodtracker.NewHandler(cfg, log, db)
+		foodTrackerHandler := foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient)
 		ftGroup := v1.Group("/food-tracker")
 		ftGroup.Use(middleware.RequireAuth(cfg))
 		{
@@ -304,6 +330,9 @@ func main() {
 			ftGroup.POST("/entries", foodTrackerHandler.CreateEntry)
 			ftGroup.PUT("/entries/:id", foodTrackerHandler.UpdateEntry)
 			ftGroup.DELETE("/entries/:id", foodTrackerHandler.DeleteEntry)
+
+			// AI food recognition
+			ftGroup.POST("/recognize", foodTrackerHandler.RecognizeFood)
 
 			// Food search
 			ftGroup.GET("/search", foodTrackerHandler.SearchFoods)
