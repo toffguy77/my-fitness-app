@@ -80,12 +80,13 @@ const (
 	SourceUSDA          FoodSource = "usda"
 	SourceOpenFoodFacts FoodSource = "openfoodfacts"
 	SourceUser          FoodSource = "user"
+	SourceAI            FoodSource = "ai"
 )
 
 // IsValid checks if the food source is valid
 func (s FoodSource) IsValid() bool {
 	switch s {
-	case SourceDatabase, SourceUSDA, SourceOpenFoodFacts, SourceUser:
+	case SourceDatabase, SourceUSDA, SourceOpenFoodFacts, SourceUser, SourceAI:
 		return true
 	}
 	return false
@@ -836,9 +837,11 @@ type RecognizedFood struct {
 
 // AIRecognitionResponse represents the response from AI food recognition
 type AIRecognitionResponse struct {
-	Foods   []RecognizedFood `json:"foods"`
-	Success bool             `json:"success"`
-	Error   *string          `json:"error,omitempty"`
+	Foods                 []RecognizedFood `json:"foods"`
+	Success               bool             `json:"success"`
+	PhotoURL              string           `json:"photo_url,omitempty"`
+	RemainingRecognitions int              `json:"remaining_recognitions"`
+	Error                 *string          `json:"error,omitempty"`
 }
 
 // BarcodeResponse represents the response for barcode lookup

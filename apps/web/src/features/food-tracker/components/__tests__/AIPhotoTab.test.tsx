@@ -568,6 +568,57 @@ describe('AIPhotoTab', () => {
         });
     });
 
+    describe('onRecognize Callback', () => {
+        it('calls onRecognize when a photo is uploaded', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            const mockFile = createMockFile();
+
+            fireEvent.change(fileInput, { target: { files: [mockFile] } });
+
+            await waitFor(() => {
+                expect(onRecognize).toHaveBeenCalledTimes(1);
+                expect(onRecognize).toHaveBeenCalledWith(mockFile);
+            });
+        });
+
+        it('displays recognition results returned by onRecognize', async () => {
+            const customResults: RecognitionResult[] = [
+                createMockRecognitionResult(
+                    createMockFood({ id: 'custom-1', name: 'Творог', nutritionPer100: { calories: 120, protein: 18, fat: 3, carbs: 3 } }),
+                    0.91
+                ),
+            ];
+            const onRecognize = jest.fn().mockResolvedValue(customResults);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            const mockFile = createMockFile();
+
+            fireEvent.change(fileInput, { target: { files: [mockFile] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Творог')).toBeInTheDocument();
+                expect(screen.getByText('91%')).toBeInTheDocument();
+                expect(screen.getByText(/120 ккал на 100г/)).toBeInTheDocument();
+            });
+        });
+    });
+
     describe('Accessibility', () => {
         it('has accessible listbox for results', async () => {
             const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);

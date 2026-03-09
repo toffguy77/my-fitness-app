@@ -32,7 +32,7 @@ export type PortionType = 'grams' | 'milliliters' | 'portion';
 /**
  * Data source for food items
  */
-export type FoodSource = 'database' | 'usda' | 'openfoodfacts' | 'user';
+export type FoodSource = 'database' | 'usda' | 'openfoodfacts' | 'user' | 'ai';
 
 // ============================================================================
 // Food Item Types

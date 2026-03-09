@@ -20,6 +20,7 @@ import { SearchTab } from './SearchTab';
 import { BarcodeTab } from './BarcodeTab';
 import { AIPhotoTab } from './AIPhotoTab';
 import { ChatTab } from './ChatTab';
+import { recognizeFood } from '../api/recognizeFood';
 import { PortionSelector } from './PortionSelector';
 import { ManualEntryForm } from './ManualEntryForm';
 import { useFoodSearch } from '../hooks/useFoodSearch';
@@ -478,6 +479,7 @@ export function FoodEntryModal({
                                 <AIPhotoTab
                                     onSelectFoods={handleSelectFoods}
                                     onManualSearch={() => setActiveTab('search')}
+                                    onRecognize={recognizeFood}
                                 />
                             )}
                             {activeTab === 'chat' && (

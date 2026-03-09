@@ -10,6 +10,7 @@ import (
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/openfoodfacts"
+	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/google/uuid"
 )
 
@@ -2225,4 +2226,87 @@ func (s *Service) DeleteUserFood(ctx context.Context, userID int64, foodID strin
 		return fmt.Errorf("продукт не найден")
 	}
 	return nil
+}
+
+// ============================================================================
+// AI Food Recognition
+// ============================================================================
+
+// CheckRecognitionLimit checks how many recognitions remain for the user today
+func (s *Service) CheckRecognitionLimit(ctx context.Context, userID int64, dailyLimit int) (remaining int, err error) {
+	var count int
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM food_recognition_usage
+		WHERE user_id = $1 AND created_at >= CURRENT_DATE AND created_at < CURRENT_DATE + INTERVAL '1 day'
+	`, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("ошибка при проверке лимита распознаваний: %w", err)
+	}
+
+	remaining = dailyLimit - count
+	if remaining < 0 {
+		remaining = 0
+	}
+	return remaining, nil
+}
+
+// RecordRecognitionUsage records a food recognition usage
+func (s *Service) RecordRecognitionUsage(ctx context.Context, userID int64, photoURL string, foodsCount int) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO food_recognition_usage (id, user_id, photo_url, recognized_foods_count, created_at)
+		VALUES ($1, $2, $3, $4, NOW())
+	`, uuid.New().String(), userID, photoURL, foodsCount)
+	if err != nil {
+		return fmt.Errorf("ошибка при записи использования распознавания: %w", err)
+	}
+	return nil
+}
+
+// RecognizeFood orchestrates AI food recognition: check limit, call OpenRouter, map results, record usage
+func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *openrouter.Client) (*AIRecognitionResponse, error) {
+	// Check daily limit
+	remaining, err := s.CheckRecognitionLimit(ctx, userID, dailyLimit)
+	if err != nil {
+		return nil, err
+	}
+	if remaining <= 0 {
+		return nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня")
+	}
+
+	// Call OpenRouter for food recognition
+	orResp, err := orClient.RecognizeFood(ctx, imageData, contentType)
+	if err != nil {
+		s.log.Error("OpenRouter recognition failed", "error", err, "user_id", userID)
+		return nil, fmt.Errorf("ошибка при распознавании еды: %w", err)
+	}
+
+	// Map OpenRouter results to internal types
+	foods := make([]RecognizedFood, 0, len(orResp.Items))
+	for _, item := range orResp.Items {
+		food := RecognizedFood{
+			Name:            item.Name,
+			Confidence:      item.Confidence,
+			EstimatedWeight: item.EstimatedWeight,
+			Nutrition: KBZHU{
+				Calories: item.CaloriesPer100,
+				Protein:  item.ProteinPer100,
+				Fat:      item.FatPer100,
+				Carbs:    item.CarbsPer100,
+			},
+		}
+		foods = append(foods, food)
+	}
+
+	// Record usage (remaining decreases by 1)
+	if err := s.RecordRecognitionUsage(ctx, userID, s3PhotoURL, len(foods)); err != nil {
+		s.log.Error("Failed to record recognition usage", "error", err, "user_id", userID)
+		// Don't fail the request — usage recording is not critical
+	}
+
+	return &AIRecognitionResponse{
+		Foods:                 foods,
+		Success:               true,
+		PhotoURL:              s3PhotoURL,
+		RemainingRecognitions: remaining - 1,
+	}, nil
 }
