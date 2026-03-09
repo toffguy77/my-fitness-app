@@ -10,6 +10,7 @@ import type {
     CreateArticleRequest,
     UpdateArticleRequest,
 } from '@/features/content/types'
+import type { ParsedArticle } from '@/features/content/utils/parseFrontmatter'
 import { ArticleForm } from './ArticleForm'
 import { FileUploader } from './FileUploader'
 import { MediaUploader } from './MediaUploader'
@@ -84,6 +85,7 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
     const [fetching, setFetching] = useState(!!articleId)
     const [error, setError] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor')
+    const [importedData, setImportedData] = useState<ParsedArticle | undefined>(undefined)
 
     // Fetch article for editing
     useEffect(() => {
@@ -194,8 +196,9 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
     }
 
     // File import handler
-    function handleFileImport(content: string) {
-        setBody(content)
+    function handleFileImport(parsed: ParsedArticle) {
+        setBody(parsed.body)
+        setImportedData(parsed)
     }
 
     // Media upload handler
@@ -242,13 +245,28 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
 
             {/* File import + media upload */}
             <div className="flex flex-wrap items-center gap-3">
-                <FileUploader onFileLoaded={handleFileImport} />
+                <FileUploader onFileLoaded={(parsed) => handleFileImport(parsed)} />
                 {article && (
                     <MediaUploader
                         articleId={article.id}
                         onUpload={handleMediaUpload}
                     />
                 )}
+            </div>
+
+            {/* Article form (metadata + actions) */}
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <h2 className="mb-4 text-sm font-semibold text-gray-900">
+                    Настройки статьи
+                </h2>
+                <ArticleForm
+                    article={article}
+                    importedData={importedData}
+                    onSave={handleSave}
+                    onPublish={article ? handlePublish : undefined}
+                    onSchedule={article ? handleSchedule : undefined}
+                    loading={loading}
+                />
             </div>
 
             {/* Mobile tab toggle */}
@@ -331,20 +349,6 @@ export function ArticleEditor({ articleId, returnPath = '/curator/content' }: Ar
                         </p>
                     )}
                 </div>
-            </div>
-
-            {/* Article form (metadata + actions) */}
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
-                <h2 className="mb-4 text-sm font-semibold text-gray-900">
-                    Настройки статьи
-                </h2>
-                <ArticleForm
-                    article={article}
-                    onSave={handleSave}
-                    onPublish={article ? handlePublish : undefined}
-                    onSchedule={article ? handleSchedule : undefined}
-                    loading={loading}
-                />
             </div>
         </div>
     )

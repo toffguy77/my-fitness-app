@@ -51,8 +51,8 @@ jest.mock('../ArticleForm', () => ({
 }))
 
 jest.mock('../FileUploader', () => ({
-    FileUploader: ({ onFileLoaded }: { onFileLoaded: (content: string) => void }) => (
-        <button data-testid="file-uploader" onClick={() => onFileLoaded('# Imported content')}>
+    FileUploader: ({ onFileLoaded }: { onFileLoaded: (parsed: { body: string; title?: string }) => void }) => (
+        <button data-testid="file-uploader" onClick={() => onFileLoaded({ body: '# Imported content', title: 'Imported' })}>
             Import
         </button>
     ),
