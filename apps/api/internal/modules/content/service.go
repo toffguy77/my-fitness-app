@@ -129,8 +129,8 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 	}()
 
 	query := `
-		INSERT INTO articles (id, author_id, title, excerpt, category, audience_scope, content_s3_key, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', NOW(), NOW())
+		INSERT INTO articles (id, author_id, title, excerpt, cover_image_url, category, audience_scope, content_s3_key, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', NOW(), NOW())
 		RETURNING id, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
 		          scheduled_at, published_at, created_at, updated_at
 	`
@@ -138,7 +138,7 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 	var article Article
 	var scheduledAt, publishedAt sql.NullTime
 	err = tx.QueryRowContext(ctx, query,
-		id, authorID, req.Title, req.Excerpt, req.Category, req.AudienceScope, contentS3Key,
+		id, authorID, req.Title, req.Excerpt, req.CoverImageURL, req.Category, req.AudienceScope, contentS3Key,
 	).Scan(
 		&article.ID, &article.AuthorID, &article.Title, &article.Excerpt,
 		&article.CoverImageURL, &article.Category, &article.Status, &article.AudienceScope,
