@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function ContentFeedPage() {
     return (
-        <div className="px-4 py-6 pb-20">
+        <div className="mx-auto max-w-4xl px-4 py-6 pb-20">
             <h1 className="text-xl font-semibold text-gray-900 mb-4">Статьи</h1>
             <FeedList />
         </div>

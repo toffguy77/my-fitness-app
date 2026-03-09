@@ -117,28 +117,29 @@ export function ArticleView({ articleId }: ArticleViewProps) {
         : null
 
     return (
-        <div className="px-4 py-6">
-            {/* Back button */}
-            <Link
-                href="/content"
-                className="mb-4 inline-flex items-center gap-1 text-sm text-blue-600"
-            >
-                <ArrowLeft className="h-4 w-4" />
-                Назад
-            </Link>
+        <div className="mx-auto max-w-3xl px-4 py-6">
+            {/* Back button + Category badge */}
+            <div className="mb-4 flex items-center gap-3">
+                <Link
+                    href="/content"
+                    className="inline-flex items-center gap-1 text-sm text-blue-600"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Назад
+                </Link>
 
-            {/* Category badge */}
-            <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                {CATEGORY_LABELS[article.category] ?? article.category}
-            </span>
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                    {CATEGORY_LABELS[article.category] ?? article.category}
+                </span>
+            </div>
 
             {/* Title */}
-            <h1 className="mb-2 text-2xl font-bold text-gray-900">
+            <h1 className="mb-3 text-2xl font-bold text-gray-900">
                 {article.title}
             </h1>
 
             {/* Author and date */}
-            <p className="mb-4 text-sm text-gray-500">
+            <p className="mb-5 text-sm text-gray-500">
                 {article.author_name}
                 {publishedDate && <> &middot; {publishedDate}</>}
             </p>

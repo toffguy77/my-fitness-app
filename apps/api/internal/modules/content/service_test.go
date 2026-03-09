@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -31,6 +34,40 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 	}
 
 	return service, mock, cleanup
+}
+
+// mockS3 implements S3Uploader for testing.
+type mockS3 struct {
+	uploadURL   string
+	uploadCount int
+	uploadErr   error
+}
+
+func (m *mockS3) UploadFile(_ context.Context, _ string, _ io.Reader, _ string, _ int64) (string, error) {
+	m.uploadCount++
+	if m.uploadErr != nil {
+		return "", m.uploadErr
+	}
+	return m.uploadURL, nil
+}
+
+func (m *mockS3) GetFile(_ context.Context, _ string) ([]byte, error) {
+	return nil, nil
+}
+
+func (m *mockS3) DeleteFile(_ context.Context, _ string) error {
+	return nil
+}
+
+// setupTestServiceWithS3 creates a test service with a mock S3 client.
+func setupTestServiceWithS3(t *testing.T, s3mock S3Uploader) (*Service, sqlmock.Sqlmock, func()) {
+	mockDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	db := &database.DB{DB: mockDB}
+	log := logger.New()
+	service := NewService(db, log, s3mock, nil)
+	service.skipSSRFProtection = true // allow httptest (127.0.0.1) in tests
+	return service, mock, func() { mockDB.Close() }
 }
 
 // articleListColumns defines the columns returned by ListArticles queries
@@ -660,6 +697,7 @@ func TestCreateArticle(t *testing.T) {
 				authorID,
 				req.Title,
 				req.Excerpt,
+				req.CoverImageURL,
 				req.Category,
 				req.AudienceScope,
 				sqlmock.AnyArg(), // content_s3_key
@@ -717,7 +755,7 @@ func TestCreateArticle(t *testing.T) {
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
 				sqlmock.AnyArg(), authorID, req.Title, req.Excerpt,
-				req.Category, req.AudienceScope, sqlmock.AnyArg(),
+				req.CoverImageURL, req.Category, req.AudienceScope, sqlmock.AnyArg(),
 			).
 			WillReturnRows(sqlmock.NewRows([]string{
 				"id", "author_id", "title", "excerpt", "cover_image_url",
@@ -766,7 +804,7 @@ func TestCreateArticle(t *testing.T) {
 		mock.ExpectQuery(`INSERT INTO articles`).
 			WithArgs(
 				sqlmock.AnyArg(), authorID, req.Title, req.Excerpt,
-				req.Category, req.AudienceScope, sqlmock.AnyArg(),
+				req.CoverImageURL, req.Category, req.AudienceScope, sqlmock.AnyArg(),
 			).
 			WillReturnError(fmt.Errorf("unique constraint violation"))
 
@@ -848,6 +886,138 @@ func TestVerifyOwnership(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to verify article ownership")
 		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+// ============================================================================
+// proxyExternalImages Tests
+// ============================================================================
+
+func TestProxyExternalImages(t *testing.T) {
+	// Test HTTP server that serves fake image data.
+	imgData := []byte("fake-image-data-for-testing")
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Write(imgData)
+	}))
+	defer ts.Close()
+
+	t.Run("returns inputs unchanged when S3 is nil", func(t *testing.T) {
+		service, _, cleanup := setupTestService(t)
+		defer cleanup()
+
+		cover := "https://external.com/image.jpg"
+		body := "text ![alt](https://external.com/photo.jpg) more"
+
+		newCover, newBody := service.proxyExternalImages(context.Background(), "art-1", cover, body)
+
+		assert.Equal(t, cover, newCover)
+		assert.Equal(t, body, newBody)
+	})
+
+	t.Run("proxies external cover image to S3", func(t *testing.T) {
+		s3mock := &mockS3{uploadURL: "https://storage.yandexcloud.net/bucket/content/art-1/media/abc.jpg"}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+
+		cover, _ := service.proxyExternalImages(context.Background(), "art-1", ts.URL+"/cover.jpg", "no images")
+
+		assert.Equal(t, "https://storage.yandexcloud.net/bucket/content/art-1/media/abc.jpg", cover)
+		assert.Equal(t, 1, s3mock.uploadCount)
+	})
+
+	t.Run("proxies markdown body images to S3", func(t *testing.T) {
+		s3mock := &mockS3{uploadURL: "https://storage.yandexcloud.net/bucket/proxied.jpg"}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+
+		body := fmt.Sprintf("text ![photo](%s/photo.jpg) end", ts.URL)
+		_, newBody := service.proxyExternalImages(context.Background(), "art-1", "", body)
+
+		assert.Contains(t, newBody, "storage.yandexcloud.net")
+		assert.NotContains(t, newBody, ts.URL)
+		assert.Equal(t, 1, s3mock.uploadCount)
+	})
+
+	t.Run("skips URLs already on S3", func(t *testing.T) {
+		s3mock := &mockS3{}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+
+		s3URL := "https://storage.yandexcloud.net/bucket/existing.jpg"
+		cover, _ := service.proxyExternalImages(context.Background(), "art-1", s3URL, "")
+
+		assert.Equal(t, s3URL, cover)
+		assert.Equal(t, 0, s3mock.uploadCount)
+	})
+
+	t.Run("blocks SSRF to internal IPs", func(t *testing.T) {
+		s3mock := &mockS3{}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+		service.skipSSRFProtection = false // explicitly test SSRF protection
+
+		internalURLs := []string{
+			"http://127.0.0.1/secret",
+			"http://localhost/admin",
+			"http://169.254.169.254/latest/meta-data/",
+			"http://10.0.0.1/internal",
+			"http://192.168.1.1/router",
+			"http://172.16.0.1/private",
+		}
+
+		for _, u := range internalURLs {
+			cover, _ := service.proxyExternalImages(context.Background(), "art-1", u, "")
+			assert.Equal(t, u, cover, "should block %s", u)
+		}
+		assert.Equal(t, 0, s3mock.uploadCount)
+	})
+
+	t.Run("keeps original URL on download failure", func(t *testing.T) {
+		s3mock := &mockS3{}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+
+		badURL := "http://203.0.113.1:1/nonexistent.jpg"
+		cover, _ := service.proxyExternalImages(context.Background(), "art-1", badURL, "")
+
+		assert.Equal(t, badURL, cover)
+		assert.Equal(t, 0, s3mock.uploadCount)
+	})
+
+	t.Run("keeps original URL on S3 upload failure", func(t *testing.T) {
+		s3mock := &mockS3{uploadErr: fmt.Errorf("s3 error")}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+
+		cover, _ := service.proxyExternalImages(context.Background(), "art-1", ts.URL+"/img.jpg", "")
+
+		assert.Equal(t, ts.URL+"/img.jpg", cover)
+	})
+
+	t.Run("proxies both cover and body images", func(t *testing.T) {
+		s3mock := &mockS3{uploadURL: "https://storage.yandexcloud.net/bucket/proxied.jpg"}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+
+		body := fmt.Sprintf("![img1](%s/a.jpg) ![img2](%s/b.jpg)", ts.URL, ts.URL)
+		newCover, newBody := service.proxyExternalImages(context.Background(), "art-1", ts.URL+"/cover.jpg", body)
+
+		assert.Contains(t, newCover, "storage.yandexcloud.net")
+		assert.NotContains(t, newBody, ts.URL)
+		assert.Equal(t, 3, s3mock.uploadCount) // 1 cover + 2 body
+	})
+
+	t.Run("returns empty inputs unchanged", func(t *testing.T) {
+		s3mock := &mockS3{}
+		service, _, cleanup := setupTestServiceWithS3(t, s3mock)
+		defer cleanup()
+
+		newCover, newBody := service.proxyExternalImages(context.Background(), "art-1", "", "")
+
+		assert.Equal(t, "", newCover)
+		assert.Equal(t, "", newBody)
+		assert.Equal(t, 0, s3mock.uploadCount)
 	})
 }
 
