@@ -65,6 +65,7 @@ describe('ArticleForm', () => {
 
         await user.type(screen.getByLabelText(/Заголовок/), 'New Article')
         await user.type(screen.getByLabelText('Краткое описание'), 'Description')
+        await user.type(screen.getByLabelText('URL обложки'), 'https://example.com/img.jpg')
 
         fireEvent.click(screen.getByText('Сохранить черновик'))
 
@@ -74,6 +75,7 @@ describe('ArticleForm', () => {
                 excerpt: 'Description',
                 category: 'general',
                 audience_scope: 'all',
+                cover_image_url: 'https://example.com/img.jpg',
             })
         )
     })

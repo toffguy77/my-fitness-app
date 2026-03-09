@@ -102,6 +102,7 @@ export function ArticleForm({
                 category,
                 audience_scope: audienceScope,
                 client_ids: audienceScope === 'selected' ? clientIds : undefined,
+                cover_image_url: coverImageUrl.trim() || undefined,
             }
             onSave(data)
         }
