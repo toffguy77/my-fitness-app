@@ -414,9 +414,9 @@ func TestDeleteUserFood(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:      &config.Config{},
-			log:      logger.New(),
-			service:  mockService,
+			cfg:     &config.Config{},
+			log:     logger.New(),
+			service: mockService,
 		}
 
 		foodID := uuid.New().String()

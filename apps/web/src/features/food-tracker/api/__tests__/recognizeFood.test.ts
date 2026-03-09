@@ -37,27 +37,34 @@ const mockBackendResponse = {
             {
                 name: 'Яблоко',
                 confidence: 0.95,
-                estimatedWeight: 150,
+                estimated_weight: 150,
                 nutrition: {
-                    calories: 78,
-                    protein: 0.45,
-                    fat: 0.3,
-                    carbs: 21,
+                    calories: 52,
+                    protein: 0.3,
+                    fat: 0.2,
+                    carbs: 14,
                 },
             },
             {
                 name: 'Банан',
                 confidence: 0.82,
-                estimatedWeight: 120,
+                estimated_weight: 120,
                 nutrition: {
-                    calories: 106.8,
-                    protein: 1.32,
-                    fat: 0.36,
-                    carbs: 27.6,
+                    calories: 89,
+                    protein: 1.1,
+                    fat: 0.3,
+                    carbs: 23,
                 },
             },
         ],
-        processingTime: 1200,
+        composition: [
+            {
+                name: 'Яблоко',
+                confidence: 0.95,
+                estimated_weight: 150,
+                nutrition: { calories: 52, protein: 0.3, fat: 0.2, carbs: 14 },
+            },
+        ],
     },
 };
 
@@ -144,18 +151,20 @@ describe('recognizeFood', () => {
         expect(results[0].food.servingUnit).toBe('г');
         expect(results[0].food.category).toBe('ai');
 
-        // Nutrition should be recalculated per 100g
-        // 78 cal for 150g -> 52 cal per 100g
-        expect(results[0].food.nutritionPer100.calories).toBeCloseTo(52, 0);
-        expect(results[0].food.nutritionPer100.protein).toBeCloseTo(0.3, 1);
-        expect(results[0].food.nutritionPer100.fat).toBeCloseTo(0.2, 1);
-        expect(results[0].food.nutritionPer100.carbs).toBeCloseTo(14, 0);
+        // Nutrition values are already per 100g from backend — passed through directly
+        expect(results[0].food.nutritionPer100.calories).toBe(52);
+        expect(results[0].food.nutritionPer100.protein).toBe(0.3);
+        expect(results[0].food.nutritionPer100.fat).toBe(0.2);
+        expect(results[0].food.nutritionPer100.carbs).toBe(14);
 
         // Second item
         expect(results[1].confidence).toBe(0.82);
         expect(results[1].food.name).toBe('Банан');
-        // 106.8 cal for 120g -> 89 cal per 100g
-        expect(results[1].food.nutritionPer100.calories).toBeCloseTo(89, 0);
+        expect(results[1].food.nutritionPer100.calories).toBe(89);
+
+        // Composition is passed through
+        expect(results[0].composition).toBeDefined();
+        expect(results[0].composition).toHaveLength(1);
     });
 
     it('generates unique IDs for each food item', async () => {
@@ -200,7 +209,7 @@ describe('recognizeFood', () => {
     it('handles response without data wrapper', async () => {
         const unwrappedResponse = {
             foods: mockBackendResponse.data.foods,
-            processingTime: 1200,
+            composition: mockBackendResponse.data.composition,
         };
 
         mockFetch.mockResolvedValue({

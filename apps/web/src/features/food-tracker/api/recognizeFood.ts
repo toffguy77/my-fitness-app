@@ -8,8 +8,16 @@
  */
 
 import { compressImage } from './compressImage';
-import type { AIRecognitionResponse } from '../types';
+import type { AIRecognitionResponse, RecognizedFood } from '../types';
 import type { RecognitionResult } from '../components/AIPhotoTab';
+
+/**
+ * Get estimated weight from a recognized food item,
+ * handling both camelCase and snake_case field names from backend.
+ */
+function getEstimatedWeight(food: RecognizedFood): number {
+    return food.estimatedWeight ?? food.estimated_weight ?? 0;
+}
 
 /**
  * Recognize food items from a photo using the AI recognition API.
@@ -44,25 +52,18 @@ export async function recognizeFood(photo: File): Promise<RecognitionResult[]> {
             id: `ai-${Date.now()}-${index}`,
             name: food.name,
             category: 'ai',
-            servingSize: food.estimatedWeight,
+            servingSize: getEstimatedWeight(food),
             servingUnit: 'г',
             nutritionPer100: {
-                calories: food.estimatedWeight > 0
-                    ? (food.nutrition.calories / food.estimatedWeight) * 100
-                    : food.nutrition.calories,
-                protein: food.estimatedWeight > 0
-                    ? (food.nutrition.protein / food.estimatedWeight) * 100
-                    : food.nutrition.protein,
-                fat: food.estimatedWeight > 0
-                    ? (food.nutrition.fat / food.estimatedWeight) * 100
-                    : food.nutrition.fat,
-                carbs: food.estimatedWeight > 0
-                    ? (food.nutrition.carbs / food.estimatedWeight) * 100
-                    : food.nutrition.carbs,
+                calories: food.nutrition.calories,
+                protein: food.nutrition.protein,
+                fat: food.nutrition.fat,
+                carbs: food.nutrition.carbs,
             },
-            source: 'ai',
+            source: 'ai' as const,
             verified: false,
         },
         confidence: food.confidence,
+        composition: result.composition,
     }));
 }

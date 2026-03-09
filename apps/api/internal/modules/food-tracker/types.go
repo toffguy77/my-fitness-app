@@ -838,6 +838,7 @@ type RecognizedFood struct {
 // AIRecognitionResponse represents the response from AI food recognition
 type AIRecognitionResponse struct {
 	Foods                 []RecognizedFood `json:"foods"`
+	Composition           []RecognizedFood `json:"composition,omitempty"`
 	Success               bool             `json:"success"`
 	PhotoURL              string           `json:"photo_url,omitempty"`
 	RemainingRecognitions int              `json:"remaining_recognitions"`

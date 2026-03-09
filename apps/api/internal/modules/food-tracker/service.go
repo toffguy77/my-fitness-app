@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
@@ -134,36 +135,77 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		return nil, err
 	}
 
-	// Look up food item to get nutrition data
-	foodItem, err := s.getFoodItemByID(ctx, req.FoodID)
-	if err != nil {
-		return nil, err
-	}
+	var foodItemID string
+	var foodName string
+	var nutrition KBZHU
 
-	// Ensure food item exists in food_items table (copies from products table if needed)
-	foodItemID, err := s.ensureFoodItemExists(ctx, req.FoodID, foodItem)
-	if err != nil {
-		return nil, err
-	}
+	// Handle AI-generated food IDs: create user_food automatically
+	if strings.HasPrefix(req.FoodID, "ai-") && req.FoodName != nil && req.Calories != nil && req.Protein != nil && req.Fat != nil && req.Carbs != nil {
+		// Frontend sends total nutrition for the portion; convert back to per-100g for storage
+		calPer100 := *req.Calories * 100 / req.PortionAmount
+		protPer100 := *req.Protein * 100 / req.PortionAmount
+		fatPer100 := *req.Fat * 100 / req.PortionAmount
+		carbsPer100 := *req.Carbs * 100 / req.PortionAmount
 
-	// Use overrides if provided, otherwise calculate from DB
-	foodName := foodItem.Name
-	if req.FoodName != nil {
-		foodName = *req.FoodName
-	}
+		// Create a user_food entry for the AI-recognized dish
+		var userFood UserFood
+		err := s.db.QueryRowContext(ctx, `
+			INSERT INTO user_foods (user_id, name, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, 'г')
+			RETURNING id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id, created_at, updated_at
+		`, userID, *req.FoodName, calPer100, protPer100, fatPer100, carbsPer100, req.PortionAmount).Scan(
+			&userFood.ID, &userFood.UserID, &userFood.Name, &userFood.Brand,
+			&userFood.CaloriesPer100, &userFood.ProteinPer100, &userFood.FatPer100, &userFood.CarbsPer100,
+			&userFood.ServingSize, &userFood.ServingUnit, &userFood.SourceFoodID,
+			&userFood.CreatedAt, &userFood.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка при создании AI продукта: %w", err)
+		}
 
-	nutrition := s.CalculateKBZHU(foodItem.NutritionPer100, req.PortionAmount)
-	if req.Calories != nil {
-		nutrition.Calories = *req.Calories
-	}
-	if req.Protein != nil {
-		nutrition.Protein = *req.Protein
-	}
-	if req.Fat != nil {
-		nutrition.Fat = *req.Fat
-	}
-	if req.Carbs != nil {
-		nutrition.Carbs = *req.Carbs
+		foodItemID = userFood.ID
+		foodName = userFood.Name
+		// Use overrides directly — they are already total nutrition for the portion
+		nutrition = KBZHU{
+			Calories: *req.Calories,
+			Protein:  *req.Protein,
+			Fat:      *req.Fat,
+			Carbs:    *req.Carbs,
+		}
+
+		s.log.Info("Created user_food for AI recognition", "user_food_id", foodItemID, "name", foodName, "user_id", userID)
+	} else {
+		// Look up food item to get nutrition data
+		foodItem, err := s.getFoodItemByID(ctx, req.FoodID)
+		if err != nil {
+			return nil, err
+		}
+
+		// Ensure food item exists in food_items table (copies from products table if needed)
+		foodItemID, err = s.ensureFoodItemExists(ctx, req.FoodID, foodItem)
+		if err != nil {
+			return nil, err
+		}
+
+		// Use overrides if provided, otherwise calculate from DB
+		foodName = foodItem.Name
+		if req.FoodName != nil {
+			foodName = *req.FoodName
+		}
+
+		nutrition = s.CalculateKBZHU(foodItem.NutritionPer100, req.PortionAmount)
+		if req.Calories != nil {
+			nutrition.Calories = *req.Calories
+		}
+		if req.Protein != nil {
+			nutrition.Protein = *req.Protein
+		}
+		if req.Fat != nil {
+			nutrition.Fat = *req.Fat
+		}
+		if req.Carbs != nil {
+			nutrition.Carbs = *req.Carbs
+		}
 	}
 
 	// Generate UUID for new entry
@@ -180,7 +222,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 	`
 
 	var entry FoodEntry
-	err = s.db.QueryRowContext(
+	insertErr := s.db.QueryRowContext(
 		ctx,
 		query,
 		entryID,
@@ -214,12 +256,12 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		&entry.UpdatedAt,
 	)
 
-	if err != nil {
-		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+	if insertErr != nil {
+		s.log.LogDatabaseQuery(query, time.Since(startTime), insertErr, map[string]interface{}{
 			"user_id": userID,
 			"food_id": req.FoodID,
 		})
-		return nil, fmt.Errorf("ошибка при создании записи: %w", err)
+		return nil, fmt.Errorf("ошибка при создании записи: %w", insertErr)
 	}
 
 	// Populate Nutrition from individual fields
@@ -2280,10 +2322,14 @@ func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []b
 		return nil, fmt.Errorf("ошибка при распознавании еды: %w", err)
 	}
 
-	// Map OpenRouter results to internal types
-	foods := make([]RecognizedFood, 0, len(orResp.Items))
+	// Map OpenRouter results to individual composition items
+	composition := make([]RecognizedFood, 0, len(orResp.Items))
+	var totalWeight float64
+	var minConfidence float64 = 1.0
+	var weightedCal, weightedProt, weightedFat, weightedCarbs float64
+
 	for _, item := range orResp.Items {
-		food := RecognizedFood{
+		comp := RecognizedFood{
 			Name:            item.Name,
 			Confidence:      item.Confidence,
 			EstimatedWeight: item.EstimatedWeight,
@@ -2294,17 +2340,61 @@ func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []b
 				Carbs:    item.CarbsPer100,
 			},
 		}
-		foods = append(foods, food)
+		composition = append(composition, comp)
+
+		totalWeight += item.EstimatedWeight
+		if item.Confidence < minConfidence {
+			minConfidence = item.Confidence
+		}
+		weightedCal += item.CaloriesPer100 * item.EstimatedWeight
+		weightedProt += item.ProteinPer100 * item.EstimatedWeight
+		weightedFat += item.FatPer100 * item.EstimatedWeight
+		weightedCarbs += item.CarbsPer100 * item.EstimatedWeight
+	}
+
+	// Use total weight from AI response if provided, otherwise sum of items
+	if orResp.TotalWeightGrams > 0 {
+		totalWeight = orResp.TotalWeightGrams
+	}
+
+	// Build dish name: use AI dish_name or join item names
+	dishName := orResp.DishName
+	if dishName == "" {
+		names := make([]string, 0, len(orResp.Items))
+		for _, item := range orResp.Items {
+			names = append(names, item.Name)
+		}
+		dishName = strings.Join(names, ", ")
+	}
+
+	// Calculate weighted KBZHU per 100g
+	var nutritionPer100 KBZHU
+	if totalWeight > 0 {
+		nutritionPer100 = KBZHU{
+			Calories: math.Round(weightedCal/totalWeight*100) / 100,
+			Protein:  math.Round(weightedProt/totalWeight*100) / 100,
+			Fat:      math.Round(weightedFat/totalWeight*100) / 100,
+			Carbs:    math.Round(weightedCarbs/totalWeight*100) / 100,
+		}
+	}
+
+	// Create 1 combined food entry
+	combinedFood := RecognizedFood{
+		Name:            dishName,
+		Confidence:      minConfidence,
+		EstimatedWeight: totalWeight,
+		Nutrition:       nutritionPer100,
 	}
 
 	// Record usage (remaining decreases by 1)
-	if err := s.RecordRecognitionUsage(ctx, userID, s3PhotoURL, len(foods)); err != nil {
+	if err := s.RecordRecognitionUsage(ctx, userID, s3PhotoURL, len(composition)); err != nil {
 		s.log.Error("Failed to record recognition usage", "error", err, "user_id", userID)
 		// Don't fail the request — usage recording is not critical
 	}
 
 	return &AIRecognitionResponse{
-		Foods:                 foods,
+		Foods:                 []RecognizedFood{combinedFood},
+		Composition:           composition,
 		Success:               true,
 		PhotoURL:              s3PhotoURL,
 		RemainingRecognitions: remaining - 1,
