@@ -47,7 +47,7 @@ describe('ArticleForm', () => {
         expect(screen.getByLabelText(/Заголовок/)).toBeInTheDocument()
         expect(screen.getByLabelText('Краткое описание')).toBeInTheDocument()
         expect(screen.getByLabelText('Категория')).toBeInTheDocument()
-        expect(screen.getByLabelText('URL обложки')).toBeInTheDocument()
+        expect(screen.getByLabelText('Обложка')).toBeInTheDocument()
     })
 
     it('populates fields from article prop', () => {
@@ -56,7 +56,7 @@ describe('ArticleForm', () => {
         expect(screen.getByLabelText(/Заголовок/)).toHaveValue('Test Title')
         expect(screen.getByLabelText('Краткое описание')).toHaveValue('Short description')
         expect(screen.getByLabelText('Категория')).toHaveValue('nutrition')
-        expect(screen.getByLabelText('URL обложки')).toHaveValue('https://example.com/cover.jpg')
+        expect(screen.getByLabelText('Обложка')).toHaveValue('https://example.com/cover.jpg')
     })
 
     it('calls onSave with create data for new article', async () => {
@@ -65,7 +65,7 @@ describe('ArticleForm', () => {
 
         await user.type(screen.getByLabelText(/Заголовок/), 'New Article')
         await user.type(screen.getByLabelText('Краткое описание'), 'Description')
-        await user.type(screen.getByLabelText('URL обложки'), 'https://example.com/img.jpg')
+        await user.type(screen.getByLabelText('Обложка'), 'https://example.com/img.jpg')
 
         fireEvent.click(screen.getByText('Сохранить черновик'))
 

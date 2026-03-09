@@ -47,7 +47,13 @@ describe('FileUploader', () => {
         // Trigger the onload callback
         mockReader.onload!()
 
-        expect(onFileLoaded).toHaveBeenCalledWith('# Test Markdown', 'test.md')
+        expect(onFileLoaded).toHaveBeenCalledWith(
+            expect.objectContaining({
+                title: 'Test Markdown',
+                body: '',
+            }),
+            'test.md'
+        )
         expect(mockReadAsText).toHaveBeenCalledWith(file)
 
         jest.restoreAllMocks()

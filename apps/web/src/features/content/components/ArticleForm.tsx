@@ -10,6 +10,7 @@ import {
     type CreateArticleRequest,
     type UpdateArticleRequest,
 } from '@/features/content/types'
+import type { ParsedArticle } from '@/features/content/utils/parseFrontmatter'
 
 // ============================================================================
 // Types
@@ -17,6 +18,7 @@ import {
 
 interface ArticleFormProps {
     article?: Article
+    importedData?: ParsedArticle
     onSave: (data: CreateArticleRequest | UpdateArticleRequest, body?: string) => void
     onPublish?: () => void
     onSchedule?: (scheduledAt: string) => void
@@ -35,6 +37,7 @@ const categories = Object.keys(CATEGORY_LABELS) as ContentCategory[]
 
 export function ArticleForm({
     article,
+    importedData,
     onSave,
     onPublish,
     onSchedule,
@@ -82,6 +85,18 @@ export function ArticleForm({
     }, [articleId, articleTitle, articleExcerpt, articleCategory, articleAudienceScope, articleCoverImageUrl, articleScheduledAt])
     /* eslint-enable react-hooks/set-state-in-effect */
 
+    // Apply imported frontmatter data
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        if (!importedData) return
+        if (importedData.title) setTitle(importedData.title)
+        if (importedData.excerpt) setExcerpt(importedData.excerpt)
+        if (importedData.category) setCategory(importedData.category)
+        if (importedData.audience) setAudienceScope(importedData.audience)
+        if (importedData.coverUrl) setCoverImageUrl(importedData.coverUrl)
+    }, [importedData])
+    /* eslint-enable react-hooks/set-state-in-effect */
+
     function handleSave() {
         if (!title.trim()) return
 
@@ -118,6 +133,28 @@ export function ArticleForm({
 
     return (
         <div className="space-y-4">
+            {/* Category */}
+            <div>
+                <label
+                    htmlFor="article-category"
+                    className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                    Категория
+                </label>
+                <select
+                    id="article-category"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as ContentCategory)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                    {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                            {CATEGORY_LABELS[cat]}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
             {/* Title */}
             <div>
                 <label
@@ -154,43 +191,13 @@ export function ArticleForm({
                 />
             </div>
 
-            {/* Category */}
-            <div>
-                <label
-                    htmlFor="article-category"
-                    className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                    Категория
-                </label>
-                <select
-                    id="article-category"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as ContentCategory)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                    {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                            {CATEGORY_LABELS[cat]}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            {/* Audience */}
-            <AudienceSelector
-                value={audienceScope}
-                onChange={setAudienceScope}
-                clientIds={clientIds}
-                onClientIdsChange={setClientIds}
-            />
-
-            {/* Cover image URL */}
+            {/* Cover image URL + preview */}
             <div>
                 <label
                     htmlFor="article-cover"
                     className="mb-1 block text-sm font-medium text-gray-700"
                 >
-                    URL обложки
+                    Обложка
                 </label>
                 <input
                     id="article-cover"
@@ -200,7 +207,26 @@ export function ArticleForm({
                     placeholder="https://..."
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
+                {coverImageUrl && (
+                    <div className="mt-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={coverImageUrl}
+                            alt="Превью обложки"
+                            className="h-32 w-auto rounded-lg border border-gray-200 object-cover"
+                            onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        />
+                    </div>
+                )}
             </div>
+
+            {/* Audience */}
+            <AudienceSelector
+                value={audienceScope}
+                onChange={setAudienceScope}
+                clientIds={clientIds}
+                onClientIdsChange={setClientIds}
+            />
 
             {/* Schedule datetime (draft only) */}
             {isDraft && (
