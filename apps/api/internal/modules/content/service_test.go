@@ -852,6 +852,36 @@ func TestVerifyOwnership(t *testing.T) {
 	})
 }
 
+// ============================================================================
+// proxyExternalImages Tests
+// ============================================================================
+
+func TestProxyExternalImages(t *testing.T) {
+	t.Run("returns inputs unchanged when S3 is nil", func(t *testing.T) {
+		service, _, cleanup := setupTestService(t)
+		defer cleanup()
+		// setupTestService creates service with nil S3
+
+		cover := "https://external.com/image.jpg"
+		body := "text ![alt](https://external.com/photo.jpg) more"
+
+		newCover, newBody := service.proxyExternalImages(context.Background(), "art-1", cover, body)
+
+		assert.Equal(t, cover, newCover)
+		assert.Equal(t, body, newBody)
+	})
+
+	t.Run("returns empty inputs unchanged", func(t *testing.T) {
+		service, _, cleanup := setupTestService(t)
+		defer cleanup()
+
+		newCover, newBody := service.proxyExternalImages(context.Background(), "art-1", "", "")
+
+		assert.Equal(t, "", newCover)
+		assert.Equal(t, "", newBody)
+	})
+}
+
 // Ensure sql and driver packages are used
 var _ = sql.ErrNoRows
 var _ driver.Value

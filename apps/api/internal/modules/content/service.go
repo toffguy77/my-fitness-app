@@ -3,10 +3,16 @@ package content
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
+	"net/url"
+	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -95,6 +101,11 @@ func (s *Service) CreateArticle(ctx context.Context, authorID int64, req CreateA
 
 	id := uuid.New().String()
 	contentS3Key := fmt.Sprintf("content/%s/body.md", id)
+
+	// Proxy external images to S3
+	proxiedCover, proxiedBody := s.proxyExternalImages(ctx, id, req.CoverImageURL, req.Body)
+	req.CoverImageURL = proxiedCover
+	req.Body = proxiedBody
 
 	// Upload body to S3 first (outside transaction — can't rollback S3)
 	// If transaction fails, we'll attempt cleanup to prevent orphaned content
@@ -377,6 +388,25 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 	if !isAdmin {
 		if err := s.verifyOwnership(ctx, authorID, articleID); err != nil {
 			return nil, err
+		}
+	}
+
+	// Proxy external images to S3
+	currentCover := ""
+	if req.CoverImageURL != nil {
+		currentCover = *req.CoverImageURL
+	}
+	currentBody := ""
+	if req.Body != nil {
+		currentBody = *req.Body
+	}
+	if currentCover != "" || currentBody != "" {
+		newCover, newBody := s.proxyExternalImages(ctx, articleID, currentCover, currentBody)
+		if req.CoverImageURL != nil {
+			req.CoverImageURL = &newCover
+		}
+		if req.Body != nil {
+			req.Body = &newBody
 		}
 	}
 
@@ -1295,4 +1325,101 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 	}
 
 	return nil
+}
+
+// proxyExternalImages downloads external images and uploads them to S3.
+// Returns updated coverURL and body with S3 URLs. Non-fatal: logs warnings and keeps original URLs on failure.
+func (s *Service) proxyExternalImages(ctx context.Context, articleID, coverURL, body string) (string, string) {
+	if s.s3 == nil {
+		return coverURL, body
+	}
+
+	s3Domain := "storage.yandexcloud.net"
+
+	isExternal := func(imgURL string) bool {
+		if imgURL == "" {
+			return false
+		}
+		parsed, err := url.Parse(imgURL)
+		if err != nil || parsed.Scheme == "" || parsed.Scheme == "data" {
+			return false
+		}
+		return !strings.Contains(parsed.Host, s3Domain)
+	}
+
+	proxyOne := func(imgURL string) string {
+		if !isExternal(imgURL) {
+			return imgURL
+		}
+
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Get(imgURL)
+		if err != nil {
+			s.log.Warn("Failed to download external image", "url", imgURL, "error", err)
+			return imgURL
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			s.log.Warn("External image returned non-200", "url", imgURL, "status", resp.StatusCode)
+			return imgURL
+		}
+
+		imgData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			s.log.Warn("Failed to read external image", "url", imgURL, "error", err)
+			return imgURL
+		}
+
+		// Determine extension
+		ext := path.Ext(strings.SplitN(imgURL, "?", 2)[0])
+		if ext == "" || len(ext) > 5 {
+			ct := resp.Header.Get("Content-Type")
+			switch {
+			case strings.Contains(ct, "png"):
+				ext = ".png"
+			case strings.Contains(ct, "webp"):
+				ext = ".webp"
+			case strings.Contains(ct, "gif"):
+				ext = ".gif"
+			default:
+				ext = ".jpg"
+			}
+		}
+
+		// Hash for unique filename
+		hash := sha256.Sum256(imgData)
+		filename := hex.EncodeToString(hash[:8]) + ext
+		s3Key := fmt.Sprintf("content/%s/media/%s", articleID, filename)
+
+		contentType := resp.Header.Get("Content-Type")
+		if contentType == "" {
+			contentType = "image/jpeg"
+		}
+
+		s3URL, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(imgData), contentType, int64(len(imgData)))
+		if err != nil {
+			s.log.Warn("Failed to upload proxied image to S3", "url", imgURL, "error", err)
+			return imgURL
+		}
+
+		s.log.Info("Proxied external image to S3", "original_url", imgURL, "s3_url", s3URL)
+		return s3URL
+	}
+
+	// Proxy cover
+	newCover := proxyOne(coverURL)
+
+	// Proxy images in body: ![alt](url)
+	imgRegex := regexp.MustCompile(`(!\[[^\]]*\]\()([^)]+)(\))`)
+	newBody := imgRegex.ReplaceAllStringFunc(body, func(match string) string {
+		parts := imgRegex.FindStringSubmatch(match)
+		if len(parts) < 4 {
+			return match
+		}
+		newURL := proxyOne(parts[2])
+		return parts[1] + newURL + parts[3]
+	})
+
+	return newCover, newBody
 }
