@@ -402,7 +402,11 @@ func main() {
 	}
 
 	// Content management routes (coordinator + super_admin)
-	contentService := content.NewService(db, log, contentS3, wsHub)
+	var contentS3Uploader content.S3Uploader
+	if contentS3 != nil {
+		contentS3Uploader = contentS3
+	}
+	contentService := content.NewService(db, log, contentS3Uploader, wsHub)
 	contentHandler := content.NewHandler(cfg, log, contentService)
 
 	// Public content routes (no auth required)

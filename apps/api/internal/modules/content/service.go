@@ -18,10 +18,16 @@ import (
 
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/google/uuid"
 )
+
+// S3Uploader defines the S3 operations used by the content service.
+type S3Uploader interface {
+	UploadFile(ctx context.Context, key string, data io.Reader, contentType string, fileSize int64) (string, error)
+	GetFile(ctx context.Context, key string) ([]byte, error)
+	DeleteFile(ctx context.Context, key string) error
+}
 
 // ServiceInterface defines the interface for content service operations
 type ServiceInterface interface {
@@ -53,12 +59,12 @@ type ServiceInterface interface {
 type Service struct {
 	db    *database.DB
 	log   *logger.Logger
-	s3    *storage.S3Client
+	s3    S3Uploader
 	wsHub *ws.Hub
 }
 
 // NewService creates a new content service
-func NewService(db *database.DB, log *logger.Logger, s3 *storage.S3Client, wsHub *ws.Hub) *Service {
+func NewService(db *database.DB, log *logger.Logger, s3 S3Uploader, wsHub *ws.Hub) *Service {
 	return &Service{
 		db:    db,
 		log:   log,
