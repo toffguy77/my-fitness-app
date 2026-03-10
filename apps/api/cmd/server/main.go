@@ -416,6 +416,10 @@ func main() {
 			curatorGroup.PUT("/clients/:id/weekly-plan/:planId", curatorHandler.UpdateWeeklyPlan)
 			curatorGroup.DELETE("/clients/:id/weekly-plan/:planId", curatorHandler.DeleteWeeklyPlan)
 			curatorGroup.GET("/clients/:id/weekly-plans", curatorHandler.GetWeeklyPlans)
+			curatorGroup.POST("/clients/:id/tasks", curatorHandler.CreateTask)
+			curatorGroup.PUT("/clients/:id/tasks/:taskId", curatorHandler.UpdateTask)
+			curatorGroup.DELETE("/clients/:id/tasks/:taskId", curatorHandler.DeleteTask)
+			curatorGroup.GET("/clients/:id/tasks", curatorHandler.GetTasks)
 			curatorGroup.GET("/clients/:id/targets/history", nutritionCalcHandler.GetClientHistory)
 		}
 

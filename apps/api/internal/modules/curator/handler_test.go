@@ -26,6 +26,10 @@ type mockCuratorService struct {
 	updateWeeklyPlanFunc func(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error)
 	deleteWeeklyPlanFunc func(ctx context.Context, curatorID, clientID int64, planID string) error
 	getWeeklyPlansFunc   func(ctx context.Context, curatorID, clientID int64) ([]WeeklyPlanView, error)
+	createTaskFunc       func(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error)
+	updateTaskFunc       func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
+	deleteTaskFunc       func(ctx context.Context, curatorID, clientID int64, taskID string) error
+	getTasksFunc         func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
 }
 
 func (m *mockCuratorService) GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error) {
@@ -82,6 +86,34 @@ func (m *mockCuratorService) GetWeeklyPlans(ctx context.Context, curatorID, clie
 		return m.getWeeklyPlansFunc(ctx, curatorID, clientID)
 	}
 	return []WeeklyPlanView{}, nil
+}
+
+func (m *mockCuratorService) CreateTask(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error) {
+	if m.createTaskFunc != nil {
+		return m.createTaskFunc(ctx, curatorID, clientID, req)
+	}
+	return &TaskView{}, nil
+}
+
+func (m *mockCuratorService) UpdateTask(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error) {
+	if m.updateTaskFunc != nil {
+		return m.updateTaskFunc(ctx, curatorID, clientID, taskID, req)
+	}
+	return &TaskView{}, nil
+}
+
+func (m *mockCuratorService) DeleteTask(ctx context.Context, curatorID, clientID int64, taskID string) error {
+	if m.deleteTaskFunc != nil {
+		return m.deleteTaskFunc(ctx, curatorID, clientID, taskID)
+	}
+	return nil
+}
+
+func (m *mockCuratorService) GetTasks(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error) {
+	if m.getTasksFunc != nil {
+		return m.getTasksFunc(ctx, curatorID, clientID, status)
+	}
+	return []TaskView{}, nil
 }
 
 func setupCuratorTestHandler() (*Handler, *mockCuratorService) {
@@ -756,6 +788,334 @@ func TestHandler_GetWeeklyPlans(t *testing.T) {
 		c.Params = gin.Params{{Key: "id", Value: "10"}}
 
 		handler.GetWeeklyPlans(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+// ============================================================================
+// CreateTask Handler Tests
+// ============================================================================
+
+func TestHandler_CreateTask(t *testing.T) {
+	t.Run("success creates task and returns 201", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.createTaskFunc = func(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error) {
+			return &TaskView{
+				ID:         "task-uuid-1",
+				Title:      req.Title,
+				Type:       req.Type,
+				Deadline:   req.Deadline,
+				Recurrence: req.Recurrence,
+				Status:     "active",
+				CreatedAt:  "2026-03-10T12:00:00Z",
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(CreateTaskRequest{
+			Title:      "Take measurements",
+			Type:       "measurement",
+			Deadline:   "2026-03-15",
+			Recurrence: "once",
+		})
+		c.Request = httptest.NewRequest(http.MethodPost, "/curator/clients/10/tasks", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}}
+
+		handler.CreateTask(c)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+		data := resp["data"].(map[string]interface{})
+		assert.Equal(t, "task-uuid-1", data["id"])
+	})
+
+	t.Run("invalid client id returns 400", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(CreateTaskRequest{Title: "Test", Type: "habit", Deadline: "2026-03-15", Recurrence: "once"})
+		c.Request = httptest.NewRequest(http.MethodPost, "/curator/clients/abc/tasks", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "abc"}}
+
+		handler.CreateTask(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("missing required fields returns 400", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{"title": "Test"})
+		c.Request = httptest.NewRequest(http.MethodPost, "/curator/clients/10/tasks", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}}
+
+		handler.CreateTask(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("unauthorized returns 403", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.createTaskFunc = func(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error) {
+			return nil, errors.New("unauthorized: no active relationship between curator 1 and client 10")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(CreateTaskRequest{Title: "Test", Type: "habit", Deadline: "2026-03-15", Recurrence: "once"})
+		c.Request = httptest.NewRequest(http.MethodPost, "/curator/clients/10/tasks", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}}
+
+		handler.CreateTask(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPost, "/curator/clients/10/tasks", nil)
+
+		handler.CreateTask(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+// ============================================================================
+// UpdateTask Handler Tests
+// ============================================================================
+
+func TestHandler_UpdateTask(t *testing.T) {
+	t.Run("success updates task", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.updateTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error) {
+			return &TaskView{
+				ID:         taskID,
+				Title:      "Updated title",
+				Type:       "habit",
+				Deadline:   "2026-03-15",
+				Recurrence: "once",
+				Status:     "active",
+				CreatedAt:  "2026-03-10T12:00:00Z",
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		title := "Updated title"
+		body, _ := json.Marshal(UpdateTaskRequest{Title: &title})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/10/tasks/task-123", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}, {Key: "taskId", Value: "task-123"}}
+
+		handler.UpdateTask(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("task not found returns 404", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.updateTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error) {
+			return nil, errors.New("task not found")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		title := "Updated"
+		body, _ := json.Marshal(UpdateTaskRequest{Title: &title})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/10/tasks/nonexistent", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}, {Key: "taskId", Value: "nonexistent"}}
+
+		handler.UpdateTask(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("unauthorized returns 403", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.updateTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error) {
+			return nil, errors.New("unauthorized: no active relationship")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		title := "Updated"
+		body, _ := json.Marshal(UpdateTaskRequest{Title: &title})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/10/tasks/task-123", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}, {Key: "taskId", Value: "task-123"}}
+
+		handler.UpdateTask(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+}
+
+// ============================================================================
+// DeleteTask Handler Tests
+// ============================================================================
+
+func TestHandler_DeleteTask(t *testing.T) {
+	t.Run("success deletes task", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.deleteTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string) error {
+			return nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/curator/clients/10/tasks/task-123", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}, {Key: "taskId", Value: "task-123"}}
+
+		handler.DeleteTask(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("task not found returns 404", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.deleteTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string) error {
+			return errors.New("task not found")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/curator/clients/10/tasks/nonexistent", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}, {Key: "taskId", Value: "nonexistent"}}
+
+		handler.DeleteTask(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("unauthorized returns 403", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.deleteTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string) error {
+			return errors.New("unauthorized: no active relationship")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/curator/clients/10/tasks/task-123", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}, {Key: "taskId", Value: "task-123"}}
+
+		handler.DeleteTask(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("invalid client id returns 400", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/curator/clients/abc/tasks/task-123", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "abc"}, {Key: "taskId", Value: "task-123"}}
+
+		handler.DeleteTask(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+// ============================================================================
+// GetTasks Handler Tests
+// ============================================================================
+
+func TestHandler_GetTasks(t *testing.T) {
+	t.Run("success returns tasks", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getTasksFunc = func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error) {
+			return []TaskView{
+				{ID: "task-1", Title: "Drink water", Type: "habit", Status: "active"},
+				{ID: "task-2", Title: "Take measurements", Type: "measurement", Status: "completed"},
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/10/tasks", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}}
+
+		handler.GetTasks(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+		data := resp["data"].([]interface{})
+		assert.Len(t, data, 2)
+	})
+
+	t.Run("unauthorized returns 403", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getTasksFunc = func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error) {
+			return nil, errors.New("unauthorized: no active relationship")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/10/tasks", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "10"}}
+
+		handler.GetTasks(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("invalid client id returns 400", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/abc/tasks", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "abc"}}
+
+		handler.GetTasks(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/10/tasks", nil)
+		c.Params = gin.Params{{Key: "id", Value: "10"}}
+
+		handler.GetTasks(c)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})

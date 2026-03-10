@@ -848,5 +848,366 @@ func TestGetWeeklyPlans(t *testing.T) {
 	})
 }
 
+// ============================================================================
+// Task CRUD Tests
+// ============================================================================
+
+func TestCreateTask(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("creates task successfully", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(1)
+		clientID := int64(2)
+		req := CreateTaskRequest{
+			Title:      "Take measurements",
+			Type:       "measurement",
+			Deadline:   "2026-03-15",
+			Recurrence: "once",
+		}
+
+		// Verify relationship
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(curatorID, clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		// Insert task
+		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+		mock.ExpectQuery("INSERT INTO tasks").
+			WithArgs(clientID, curatorID, req.Title, req.Description, req.Type,
+				req.Deadline, req.Recurrence, sqlmock.AnyArg(), 11). // week 11
+			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).
+				AddRow("task-uuid-1", createdAt))
+
+		task, err := service.CreateTask(ctx, curatorID, clientID, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, task)
+		assert.Equal(t, "task-uuid-1", task.ID)
+		assert.Equal(t, "Take measurements", task.Title)
+		assert.Equal(t, "measurement", task.Type)
+		assert.Equal(t, "2026-03-15", task.Deadline)
+		assert.Equal(t, "once", task.Recurrence)
+		assert.Equal(t, "active", task.Status)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("creates recurring task with recurrence_days", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(1)
+		clientID := int64(2)
+		req := CreateTaskRequest{
+			Title:          "Drink 2L water",
+			Type:           "habit",
+			Deadline:       "2026-03-16",
+			Recurrence:     "weekly",
+			RecurrenceDays: []int{1, 3, 5},
+		}
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(curatorID, clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+		mock.ExpectQuery("INSERT INTO tasks").
+			WithArgs(clientID, curatorID, req.Title, req.Description, req.Type,
+				req.Deadline, req.Recurrence, sqlmock.AnyArg(), 12).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).
+				AddRow("task-uuid-2", createdAt))
+
+		task, err := service.CreateTask(ctx, curatorID, clientID, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, task)
+		assert.Equal(t, "weekly", task.Recurrence)
+		assert.Equal(t, []int{1, 3, 5}, task.RecurrenceDays)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("rejects when no active relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		_, err := service.CreateTask(ctx, 1, 2, CreateTaskRequest{
+			Title: "Test", Type: "habit", Deadline: "2026-03-15", Recurrence: "once",
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+	})
+
+	t.Run("rejects invalid deadline format", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		_, err := service.CreateTask(ctx, 1, 2, CreateTaskRequest{
+			Title: "Test", Type: "habit", Deadline: "bad-date", Recurrence: "once",
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid deadline")
+	})
+}
+
+func TestGetTasks(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns tasks with completions", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(1)
+		clientID := int64(2)
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(curatorID, clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		taskColumns := []string{
+			"id", "title", "type", "description", "due_date",
+			"recurrence", "recurrence_days", "status", "completed_at", "created_at",
+		}
+		dueDate := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+
+		mock.ExpectQuery("SELECT t.id, t.title").
+			WithArgs(clientID, curatorID).
+			WillReturnRows(sqlmock.NewRows(taskColumns).
+				AddRow("task-1", "Daily water", "habit", "Drink 2L", dueDate,
+					"daily", nil, "active", nil, createdAt).
+				AddRow("task-2", "Take measurements", "measurement", "", dueDate,
+					"once", nil, "active", nil, createdAt))
+
+		// Completions query
+		mock.ExpectQuery("SELECT task_id, completed_date").
+			WithArgs("task-1", "task-2").
+			WillReturnRows(sqlmock.NewRows([]string{"task_id", "completed_date"}).
+				AddRow("task-1", time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)).
+				AddRow("task-1", time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)))
+
+		tasks, err := service.GetTasks(ctx, curatorID, clientID, "")
+
+		require.NoError(t, err)
+		require.Len(t, tasks, 2)
+		assert.Equal(t, "task-1", tasks[0].ID)
+		assert.Equal(t, "Daily water", tasks[0].Title)
+		assert.Equal(t, "habit", tasks[0].Type)
+		assert.Equal(t, "daily", tasks[0].Recurrence)
+		assert.Len(t, tasks[0].Completions, 2)
+		assert.Equal(t, "2026-03-10", tasks[0].Completions[0])
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns empty list when no tasks", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		taskColumns := []string{
+			"id", "title", "type", "description", "due_date",
+			"recurrence", "recurrence_days", "status", "completed_at", "created_at",
+		}
+		mock.ExpectQuery("SELECT t.id, t.title").
+			WithArgs(int64(2), int64(1)).
+			WillReturnRows(sqlmock.NewRows(taskColumns))
+
+		tasks, err := service.GetTasks(ctx, 1, 2, "")
+
+		require.NoError(t, err)
+		assert.Empty(t, tasks)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("filters by status", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		taskColumns := []string{
+			"id", "title", "type", "description", "due_date",
+			"recurrence", "recurrence_days", "status", "completed_at", "created_at",
+		}
+		dueDate := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+
+		mock.ExpectQuery("SELECT t.id, t.title").
+			WithArgs(int64(2), int64(1), "active").
+			WillReturnRows(sqlmock.NewRows(taskColumns).
+				AddRow("task-1", "Active task", "habit", "", dueDate,
+					"once", nil, "active", nil, createdAt))
+
+		// Completions query
+		mock.ExpectQuery("SELECT task_id, completed_date").
+			WithArgs("task-1").
+			WillReturnRows(sqlmock.NewRows([]string{"task_id", "completed_date"}))
+
+		tasks, err := service.GetTasks(ctx, 1, 2, "active")
+
+		require.NoError(t, err)
+		require.Len(t, tasks, 1)
+		assert.Equal(t, "active", tasks[0].Status)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("rejects when no active relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		_, err := service.GetTasks(ctx, 1, 2, "")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+	})
+}
+
+func TestUpdateTask(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("updates task successfully", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(1)
+		clientID := int64(2)
+		taskID := "task-uuid-1"
+		newTitle := "Updated title"
+		req := UpdateTaskRequest{Title: &newTitle}
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(curatorID, clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		dueDate := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+
+		mock.ExpectQuery("UPDATE tasks SET").
+			WithArgs(newTitle, taskID, curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{
+				"id", "title", "type", "description", "due_date",
+				"recurrence", "recurrence_days", "status", "created_at",
+			}).AddRow(
+				taskID, "Updated title", "habit", "", dueDate,
+				"once", nil, "active", createdAt,
+			))
+
+		task, err := service.UpdateTask(ctx, curatorID, clientID, taskID, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, task)
+		assert.Equal(t, "Updated title", task.Title)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns not found for nonexistent task", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		newTitle := "Updated"
+		mock.ExpectQuery("UPDATE tasks SET").
+			WithArgs(newTitle, "nonexistent", int64(1)).
+			WillReturnError(sql.ErrNoRows)
+
+		_, err := service.UpdateTask(ctx, 1, 2, "nonexistent", UpdateTaskRequest{Title: &newTitle})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("rejects when no active relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		newTitle := "Updated"
+		_, err := service.UpdateTask(ctx, 1, 2, "task-1", UpdateTaskRequest{Title: &newTitle})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+	})
+}
+
+func TestDeleteTask(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("deletes task successfully", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		mock.ExpectExec("DELETE FROM tasks").
+			WithArgs("task-uuid-1", int64(1)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		err := service.DeleteTask(ctx, 1, 2, "task-uuid-1")
+
+		require.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns not found for nonexistent task", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		mock.ExpectExec("DELETE FROM tasks").
+			WithArgs("nonexistent", int64(1)).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		err := service.DeleteTask(ctx, 1, 2, "nonexistent")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("rejects when no active relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		err := service.DeleteTask(ctx, 1, 2, "task-uuid-1")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+	})
+}
+
 // Ensure sql package is used (for sql.NullFloat64 in service)
 var _ = sql.ErrNoRows

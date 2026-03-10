@@ -5,12 +5,31 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 )
+
+// parseIntArray parses a PostgreSQL integer array string like "{1,3,5}" into []int
+func parseIntArray(s string) []int {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "{}" || s == "NULL" {
+		return nil
+	}
+	s = strings.Trim(s, "{}")
+	parts := strings.Split(s, ",")
+	result := make([]int, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if v, err := strconv.Atoi(p); err == nil {
+			result = append(result, v)
+		}
+	}
+	return result
+}
 
 // buildPlaceholders returns "($1,$2,$3,...)" and []any args from int64 slice
 func buildPlaceholders(ids []int64, offset int) (string, []any) {
@@ -33,6 +52,10 @@ type ServiceInterface interface {
 	UpdateWeeklyPlan(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error)
 	DeleteWeeklyPlan(ctx context.Context, curatorID, clientID int64, planID string) error
 	GetWeeklyPlans(ctx context.Context, curatorID, clientID int64) ([]WeeklyPlanView, error)
+	CreateTask(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error)
+	UpdateTask(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
+	DeleteTask(ctx context.Context, curatorID, clientID int64, taskID string) error
+	GetTasks(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
 }
 
 // Service handles curator business logic
@@ -1134,6 +1157,321 @@ func (s *Service) GetWeeklyPlans(ctx context.Context, curatorID, clientID int64)
 	})
 
 	return plans, nil
+}
+
+// CreateTask creates a new task for a client
+func (s *Service) CreateTask(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error) {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return nil, err
+	}
+
+	// Validate deadline date format
+	deadline, err := time.Parse("2006-01-02", req.Deadline)
+	if err != nil {
+		return nil, fmt.Errorf("invalid deadline format: %w", err)
+	}
+
+	// Compute week_number from deadline (ISO week)
+	_, weekNumber := deadline.ISOWeek()
+
+	// Format recurrence_days as PostgreSQL array literal
+	var recurrenceDaysParam interface{}
+	if len(req.RecurrenceDays) > 0 {
+		parts := make([]string, len(req.RecurrenceDays))
+		for i, d := range req.RecurrenceDays {
+			parts[i] = strconv.Itoa(d)
+		}
+		recurrenceDaysParam = "{" + strings.Join(parts, ",") + "}"
+	}
+
+	var taskID string
+	var createdAt time.Time
+	err = s.db.QueryRowContext(ctx,
+		`INSERT INTO tasks (user_id, curator_id, title, description, type, due_date, recurrence, recurrence_days, week_number, status)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')
+		 RETURNING id, created_at`,
+		clientID, curatorID, req.Title, req.Description, req.Type,
+		req.Deadline, req.Recurrence, recurrenceDaysParam, weekNumber,
+	).Scan(&taskID, &createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+
+	s.log.LogDatabaseQuery("CreateTask", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"task_id":    taskID,
+	})
+
+	return &TaskView{
+		ID:             taskID,
+		Title:          req.Title,
+		Type:           req.Type,
+		Description:    req.Description,
+		Deadline:       deadline.Format("2006-01-02"),
+		Recurrence:     req.Recurrence,
+		RecurrenceDays: req.RecurrenceDays,
+		Status:         "active",
+		CreatedAt:      createdAt.Format(time.RFC3339),
+	}, nil
+}
+
+// GetTasks returns tasks for a client with optional status filter
+func (s *Service) GetTasks(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error) {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return nil, err
+	}
+
+	// Build query with optional status filter
+	query := `
+		SELECT t.id, t.title, t.type, COALESCE(t.description, ''), t.due_date,
+		       t.recurrence, t.recurrence_days, t.status, t.completed_at, t.created_at
+		FROM tasks t
+		WHERE t.user_id = $1 AND t.curator_id = $2
+	`
+	args := []any{clientID, curatorID}
+
+	if status != "" {
+		query += ` AND t.status = $3`
+		args = append(args, status)
+	}
+
+	query += ` ORDER BY t.due_date DESC, t.created_at DESC`
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tasks: %w", err)
+	}
+	defer rows.Close()
+
+	type taskRow struct {
+		id             string
+		title          string
+		taskType       string
+		description    string
+		dueDate        time.Time
+		recurrence     string
+		recurrenceDays sql.NullString
+		status         string
+		completedAt    sql.NullTime
+		createdAt      time.Time
+	}
+
+	var taskRows []taskRow
+	taskIDs := make([]string, 0)
+
+	for rows.Next() {
+		var tr taskRow
+		if err := rows.Scan(
+			&tr.id, &tr.title, &tr.taskType, &tr.description, &tr.dueDate,
+			&tr.recurrence, &tr.recurrenceDays, &tr.status, &tr.completedAt, &tr.createdAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan task: %w", err)
+		}
+		taskRows = append(taskRows, tr)
+		taskIDs = append(taskIDs, tr.id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating tasks: %w", err)
+	}
+
+	// Get completions for all tasks (last 30 days)
+	completionMap := make(map[string][]string)
+	if len(taskIDs) > 0 {
+		placeholders := make([]string, len(taskIDs))
+		completionArgs := make([]any, len(taskIDs))
+		for i, id := range taskIDs {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			completionArgs[i] = id
+		}
+
+		completionQuery := fmt.Sprintf(`
+			SELECT task_id, completed_date
+			FROM task_completions
+			WHERE task_id IN (%s) AND completed_date >= CURRENT_DATE - INTERVAL '30 days'
+			ORDER BY completed_date DESC
+		`, strings.Join(placeholders, ","))
+
+		completionRows, err := s.db.QueryContext(ctx, completionQuery, completionArgs...)
+		if err != nil {
+			s.log.Error("Failed to query task completions", "error", err)
+		} else {
+			defer completionRows.Close()
+			for completionRows.Next() {
+				var taskID string
+				var completedDate time.Time
+				if err := completionRows.Scan(&taskID, &completedDate); err != nil {
+					continue
+				}
+				completionMap[taskID] = append(completionMap[taskID], completedDate.Format("2006-01-02"))
+			}
+		}
+	}
+
+	// Build TaskView list
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	tasks := make([]TaskView, 0, len(taskRows))
+	for _, tr := range taskRows {
+		// Compute effective status for once-recurrence tasks
+		effectiveStatus := tr.status
+		if tr.recurrence == "once" {
+			if tr.completedAt.Valid {
+				effectiveStatus = "completed"
+			} else if tr.dueDate.Before(today) && !tr.completedAt.Valid {
+				effectiveStatus = "overdue"
+			}
+		}
+
+		task := TaskView{
+			ID:          tr.id,
+			Title:       tr.title,
+			Type:        tr.taskType,
+			Description: tr.description,
+			Deadline:    tr.dueDate.Format("2006-01-02"),
+			Recurrence:  tr.recurrence,
+			Status:      effectiveStatus,
+			Completions: completionMap[tr.id],
+			CreatedAt:   tr.createdAt.Format(time.RFC3339),
+		}
+		if tr.recurrenceDays.Valid {
+			task.RecurrenceDays = parseIntArray(tr.recurrenceDays.String)
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	s.log.LogDatabaseQuery("GetTasks", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"count":      len(tasks),
+	})
+
+	return tasks, nil
+}
+
+// UpdateTask updates an existing task for a client
+func (s *Service) UpdateTask(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error) {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return nil, err
+	}
+
+	// Build dynamic SET clause
+	setClauses := []string{"updated_at = NOW()"}
+	args := []any{}
+	argIdx := 1
+
+	if req.Title != nil {
+		setClauses = append(setClauses, fmt.Sprintf("title = $%d", argIdx))
+		args = append(args, *req.Title)
+		argIdx++
+	}
+	if req.Description != nil {
+		setClauses = append(setClauses, fmt.Sprintf("description = $%d", argIdx))
+		args = append(args, *req.Description)
+		argIdx++
+	}
+	if req.Deadline != nil {
+		// Validate deadline format
+		deadline, err := time.Parse("2006-01-02", *req.Deadline)
+		if err != nil {
+			return nil, fmt.Errorf("invalid deadline format: %w", err)
+		}
+		setClauses = append(setClauses, fmt.Sprintf("due_date = $%d", argIdx))
+		args = append(args, *req.Deadline)
+		argIdx++
+		// Update week_number
+		_, weekNumber := deadline.ISOWeek()
+		setClauses = append(setClauses, fmt.Sprintf("week_number = $%d", argIdx))
+		args = append(args, weekNumber)
+		argIdx++
+	}
+	if req.Status != nil {
+		setClauses = append(setClauses, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, *req.Status)
+		argIdx++
+		// If marking as completed, set completed_at
+		if *req.Status == "completed" {
+			setClauses = append(setClauses, "completed_at = NOW()")
+		}
+	}
+
+	// Add WHERE clause args
+	args = append(args, taskID, curatorID)
+
+	query := fmt.Sprintf(
+		`UPDATE tasks SET %s WHERE id = $%d AND curator_id = $%d
+		 RETURNING id, title, type, COALESCE(description, ''), due_date, recurrence, recurrence_days, status, created_at`,
+		strings.Join(setClauses, ", "), argIdx, argIdx+1,
+	)
+
+	var task TaskView
+	var dueDate time.Time
+	var createdAt time.Time
+	var recurrenceDays sql.NullString
+
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(
+		&task.ID, &task.Title, &task.Type, &task.Description, &dueDate,
+		&task.Recurrence, &recurrenceDays, &task.Status, &createdAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("task not found")
+		}
+		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	task.Deadline = dueDate.Format("2006-01-02")
+	task.CreatedAt = createdAt.Format(time.RFC3339)
+	if recurrenceDays.Valid {
+		task.RecurrenceDays = parseIntArray(recurrenceDays.String)
+	}
+
+	s.log.LogDatabaseQuery("UpdateTask", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"task_id":    taskID,
+	})
+
+	return &task, nil
+}
+
+// DeleteTask deletes a task
+func (s *Service) DeleteTask(ctx context.Context, curatorID, clientID int64, taskID string) error {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return err
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM tasks WHERE id = $1 AND curator_id = $2`,
+		taskID, curatorID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete task: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("task not found")
+	}
+
+	s.log.LogDatabaseQuery("DeleteTask", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"task_id":    taskID,
+	})
+
+	return nil
 }
 
 // SetWaterGoal sets the water goal for a client
