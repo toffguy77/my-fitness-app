@@ -1434,5 +1434,274 @@ func TestGetAttentionList(t *testing.T) {
 	})
 }
 
+// ============================================================================
+// GetAnalyticsHistory Tests
+// ============================================================================
+
+func TestGetAnalyticsHistory(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns daily snapshots", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		snapshotColumns := []string{
+			"date", "total_clients", "attention_clients", "avg_kbzhu_percent",
+			"total_unread", "active_tasks", "overdue_tasks", "completed_tasks", "avg_client_streak",
+		}
+		mock.ExpectQuery(`SELECT date, total_clients, attention_clients`).
+			WithArgs(curatorID, 7).
+			WillReturnRows(sqlmock.NewRows(snapshotColumns).
+				AddRow(time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC), 5, 2, 85.0, 10, 8, 1, 4, 3.5).
+				AddRow(time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC), 5, 1, 82.0, 8, 7, 0, 5, 3.2))
+
+		result, err := service.GetAnalyticsHistory(ctx, curatorID, "daily", 7)
+
+		require.NoError(t, err)
+		snapshots := result.([]DailySnapshot)
+		assert.Len(t, snapshots, 2)
+		assert.Equal(t, "2026-03-10", snapshots[0].Date)
+		assert.Equal(t, 5, snapshots[0].TotalClients)
+		assert.Equal(t, 85.0, snapshots[0].AvgKBZHUPercent)
+		assert.Equal(t, 3.5, snapshots[0].AvgClientStreak)
+		assert.Equal(t, "2026-03-09", snapshots[1].Date)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns weekly snapshots", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		weeklyColumns := []string{
+			"week_start", "avg_kbzhu_percent", "avg_response_time_hours", "clients_with_feedback",
+			"clients_total", "task_completion_rate", "clients_on_track", "clients_off_track", "avg_client_streak",
+		}
+		mock.ExpectQuery(`SELECT week_start, avg_kbzhu_percent`).
+			WithArgs(curatorID, 12).
+			WillReturnRows(sqlmock.NewRows(weeklyColumns).
+				AddRow(time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC), 87.5, 2.3, 8, 10, 75.0, 7, 3, 4.0))
+
+		result, err := service.GetAnalyticsHistory(ctx, curatorID, "weekly", 12)
+
+		require.NoError(t, err)
+		snapshots := result.([]WeeklySnapshot)
+		assert.Len(t, snapshots, 1)
+		assert.Equal(t, "2026-03-02", snapshots[0].WeekStart)
+		assert.Equal(t, 87.5, snapshots[0].AvgKBZHUPercent)
+		assert.Equal(t, 2.3, snapshots[0].AvgResponseTimeHours)
+		assert.Equal(t, 10, snapshots[0].ClientsTotal)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns empty daily snapshots", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		snapshotColumns := []string{
+			"date", "total_clients", "attention_clients", "avg_kbzhu_percent",
+			"total_unread", "active_tasks", "overdue_tasks", "completed_tasks", "avg_client_streak",
+		}
+		mock.ExpectQuery(`SELECT date, total_clients`).
+			WithArgs(curatorID, 7).
+			WillReturnRows(sqlmock.NewRows(snapshotColumns))
+
+		result, err := service.GetAnalyticsHistory(ctx, curatorID, "daily", 7)
+
+		require.NoError(t, err)
+		snapshots := result.([]DailySnapshot)
+		assert.Empty(t, snapshots)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+// ============================================================================
+// GetBenchmark Tests
+// ============================================================================
+
+func TestGetBenchmark(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns own snapshots and platform benchmarks", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		weeklyColumns := []string{
+			"week_start", "avg_kbzhu_percent", "avg_response_time_hours", "clients_with_feedback",
+			"clients_total", "task_completion_rate", "clients_on_track", "clients_off_track", "avg_client_streak",
+		}
+		mock.ExpectQuery(`SELECT week_start, avg_kbzhu_percent.*FROM curator_weekly_snapshots`).
+			WithArgs(curatorID, 12).
+			WillReturnRows(sqlmock.NewRows(weeklyColumns).
+				AddRow(time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC), 87.5, 2.3, 8, 10, 75.0, 7, 3, 4.0))
+
+		benchmarkColumns := []string{
+			"week_start", "avg_kbzhu_percent", "avg_response_time_hours", "avg_task_completion_rate",
+			"avg_feedback_rate", "avg_client_streak", "curator_count",
+		}
+		mock.ExpectQuery(`SELECT week_start, avg_kbzhu_percent.*FROM platform_weekly_benchmarks`).
+			WithArgs(12).
+			WillReturnRows(sqlmock.NewRows(benchmarkColumns).
+				AddRow(time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC), 80.0, 3.1, 70.0, 65.0, 3.5, 15))
+
+		result, err := service.GetBenchmark(ctx, curatorID, 12)
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.OwnSnapshots, 1)
+		assert.Equal(t, "2026-03-02", result.OwnSnapshots[0].WeekStart)
+		assert.Equal(t, 87.5, result.OwnSnapshots[0].AvgKBZHUPercent)
+		assert.Len(t, result.PlatformBenchmarks, 1)
+		assert.Equal(t, "2026-03-02", result.PlatformBenchmarks[0].WeekStart)
+		assert.Equal(t, 80.0, result.PlatformBenchmarks[0].AvgKBZHUPercent)
+		assert.Equal(t, 15, result.PlatformBenchmarks[0].CuratorCount)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns empty when no data", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		weeklyColumns := []string{
+			"week_start", "avg_kbzhu_percent", "avg_response_time_hours", "clients_with_feedback",
+			"clients_total", "task_completion_rate", "clients_on_track", "clients_off_track", "avg_client_streak",
+		}
+		mock.ExpectQuery(`SELECT week_start, avg_kbzhu_percent.*FROM curator_weekly_snapshots`).
+			WithArgs(curatorID, 4).
+			WillReturnRows(sqlmock.NewRows(weeklyColumns))
+
+		benchmarkColumns := []string{
+			"week_start", "avg_kbzhu_percent", "avg_response_time_hours", "avg_task_completion_rate",
+			"avg_feedback_rate", "avg_client_streak", "curator_count",
+		}
+		mock.ExpectQuery(`SELECT week_start, avg_kbzhu_percent.*FROM platform_weekly_benchmarks`).
+			WithArgs(4).
+			WillReturnRows(sqlmock.NewRows(benchmarkColumns))
+
+		result, err := service.GetBenchmark(ctx, curatorID, 4)
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Empty(t, result.OwnSnapshots)
+		assert.Empty(t, result.PlatformBenchmarks)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+// ============================================================================
+// CollectDailySnapshot Tests
+// ============================================================================
+
+func TestCollectDailySnapshot(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("collects and upserts daily snapshot", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		// GetAnalytics expectations (reused from GetAnalytics flow)
+		// Total clients count
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
+
+		// Active client IDs (for GetAnalytics)
+		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
+				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
+
+		// Attention clients count
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+		// Avg KBZHU percent
+		mock.ExpectQuery(`SELECT COALESCE\(AVG`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"avg"}).AddRow(85.5))
+
+		// Unread counts
+		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
+				AddRow(int64(1), 5))
+
+		// Active tasks
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
+
+		// Overdue tasks
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+
+		// Completed today
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(4))
+
+		// Active client IDs for streaks
+		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
+				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
+
+		// Streak query
+		mock.ExpectQuery(`SELECT user_id, date FROM food_entries`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "date"}))
+
+		// INSERT ... ON CONFLICT
+		mock.ExpectExec(`INSERT INTO curator_daily_snapshots`).
+			WithArgs(curatorID, 3, 1, 85.5, 5, 10, 2, 4, 0.0).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		err := service.CollectDailySnapshot(ctx, curatorID)
+
+		require.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("handles zero clients", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		// Total clients count = 0
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+		// Active client IDs (for streaks) - empty
+		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
+
+		// INSERT ... ON CONFLICT
+		mock.ExpectExec(`INSERT INTO curator_daily_snapshots`).
+			WithArgs(curatorID, 0, 0, 0.0, 0, 0, 0, 0, 0.0).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		err := service.CollectDailySnapshot(ctx, curatorID)
+
+		require.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
 // Ensure sql package is used (for sql.NullFloat64 in service)
 var _ = sql.ErrNoRows
