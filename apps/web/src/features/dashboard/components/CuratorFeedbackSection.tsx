@@ -70,12 +70,23 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
     useEffect(() => {
         if (!reportId) return
 
-        setLoading(true)
+        let cancelled = false
+
         dashboardApi
             .getReportFeedback(reportId)
-            .then(setFeedback)
-            .catch(() => {})
-            .finally(() => setLoading(false))
+            .then((data) => {
+                if (!cancelled) {
+                    setFeedback(data)
+                    setLoading(false)
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setLoading(false)
+            })
+
+        return () => {
+            cancelled = true
+        }
     }, [reportId])
 
     // Don't render if no reportId or no feedback

@@ -81,9 +81,9 @@ type Config struct {
 	FoodPhotosS3Endpoint        string
 
 	// OpenRouter (AI food recognition)
-	OpenRouterAPIKey            string
-	OpenRouterModel             string
-	FoodRecognitionDailyLimit   int
+	OpenRouterAPIKey          string
+	OpenRouterModel           string
+	FoodRecognitionDailyLimit int
 
 	// Logging
 	LogLevel string
