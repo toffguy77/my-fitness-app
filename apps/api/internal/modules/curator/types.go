@@ -1,5 +1,7 @@
 package curator
 
+import "encoding/json"
+
 // ClientCard represents a summary view of a client for the curator dashboard
 type ClientCard struct {
 	ID                int64       `json:"id"`
@@ -141,6 +143,34 @@ type TaskView struct {
 	Status         string   `json:"status"`
 	Completions    []string `json:"completions,omitempty"`
 	CreatedAt      string   `json:"created_at"`
+}
+
+// CategoryRating represents a rating for a specific category in weekly report feedback
+type CategoryRating struct {
+	Rating  string `json:"rating" binding:"required,oneof=excellent good needs_improvement"`
+	Comment string `json:"comment"`
+}
+
+// SubmitFeedbackRequest represents the request to submit feedback on a weekly report
+type SubmitFeedbackRequest struct {
+	Nutrition       *CategoryRating `json:"nutrition"`
+	Activity        *CategoryRating `json:"activity"`
+	Water           *CategoryRating `json:"water"`
+	PhotoUploaded   *bool           `json:"photo_uploaded"`
+	Summary         string          `json:"summary" binding:"required"`
+	Recommendations string          `json:"recommendations"`
+}
+
+// WeeklyReportView represents a weekly report as seen by the curator
+type WeeklyReportView struct {
+	ID              string           `json:"id"`
+	WeekStart       string           `json:"week_start"`
+	WeekEnd         string           `json:"week_end"`
+	WeekNumber      int              `json:"week_number"`
+	Summary         json.RawMessage  `json:"summary"`
+	SubmittedAt     string           `json:"submitted_at"`
+	CuratorFeedback *json.RawMessage `json:"curator_feedback,omitempty"`
+	HasFeedback     bool             `json:"has_feedback"`
 }
 
 // CreateWeeklyPlanRequest represents the request to create a weekly plan for a client

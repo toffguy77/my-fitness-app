@@ -3,6 +3,7 @@ package curator
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -56,6 +57,8 @@ type ServiceInterface interface {
 	UpdateTask(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
 	DeleteTask(ctx context.Context, curatorID, clientID int64, taskID string) error
 	GetTasks(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
+	SubmitFeedback(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
+	GetWeeklyReports(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
 }
 
 // Service handles curator business logic
@@ -1500,4 +1503,115 @@ func (s *Service) SetWaterGoal(ctx context.Context, curatorID int64, clientID in
 	}
 
 	return nil
+}
+
+// SubmitFeedback submits structured feedback for a weekly report
+func (s *Service) SubmitFeedback(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return err
+	}
+
+	feedbackJSON, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal feedback: %w", err)
+	}
+
+	query := `UPDATE weekly_reports SET curator_feedback = $1, reviewed_at = NOW(), updated_at = NOW() WHERE id = $2 AND curator_id = $3`
+	result, err := s.db.ExecContext(ctx, query, feedbackJSON, reportID, curatorID)
+	if err != nil {
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			"curator_id": curatorID,
+			"report_id":  reportID,
+		})
+		return fmt.Errorf("failed to submit feedback: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("weekly report not found")
+	}
+
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"report_id":  reportID,
+	})
+
+	return nil
+}
+
+// GetWeeklyReports returns weekly reports for a client
+func (s *Service) GetWeeklyReports(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error) {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT id, week_start, week_end, week_number, summary, submitted_at, curator_feedback
+		FROM weekly_reports
+		WHERE user_id = $1
+		ORDER BY week_start DESC
+		LIMIT 20
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, clientID)
+	if err != nil {
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			"curator_id": curatorID,
+			"client_id":  clientID,
+		})
+		return nil, fmt.Errorf("failed to query weekly reports: %w", err)
+	}
+	defer rows.Close()
+
+	var reports []WeeklyReportView
+	for rows.Next() {
+		var r WeeklyReportView
+		var weekStart, weekEnd time.Time
+		var submittedAt sql.NullTime
+		var summary sql.NullString
+		var curatorFeedback sql.NullString
+
+		if err := rows.Scan(&r.ID, &weekStart, &weekEnd, &r.WeekNumber, &summary, &submittedAt, &curatorFeedback); err != nil {
+			return nil, fmt.Errorf("failed to scan weekly report: %w", err)
+		}
+
+		r.WeekStart = weekStart.Format("2006-01-02")
+		r.WeekEnd = weekEnd.Format("2006-01-02")
+		if submittedAt.Valid {
+			r.SubmittedAt = submittedAt.Time.Format(time.RFC3339)
+		}
+		if summary.Valid {
+			r.Summary = json.RawMessage(summary.String)
+		}
+		if curatorFeedback.Valid {
+			raw := json.RawMessage(curatorFeedback.String)
+			r.CuratorFeedback = &raw
+			r.HasFeedback = true
+		}
+
+		reports = append(reports, r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate weekly reports: %w", err)
+	}
+
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"count":      len(reports),
+	})
+
+	if reports == nil {
+		reports = []WeeklyReportView{}
+	}
+
+	return reports, nil
 }
