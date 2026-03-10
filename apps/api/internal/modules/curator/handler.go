@@ -443,6 +443,76 @@ func (h *Handler) GetTasks(c *gin.Context) {
 	response.Success(c, http.StatusOK, tasks)
 }
 
+// SubmitFeedback handles PUT /api/v1/curator/clients/:id/weekly-reports/:reportId/feedback
+func (h *Handler) SubmitFeedback(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	reportID := c.Param("reportId")
+	if reportID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор отчёта")
+		return
+	}
+
+	var req SubmitFeedbackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	err = h.service.SubmitFeedback(c.Request.Context(), userID, clientID, reportID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "Еженедельный отчёт не найден")
+			return
+		}
+		h.log.Error("Failed to submit feedback", "error", err, "curator_id", userID, "client_id", clientID, "report_id", reportID)
+		response.InternalError(c, "Не удалось сохранить отзыв")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Отзыв сохранён"})
+}
+
+// GetWeeklyReports handles GET /api/v1/curator/clients/:id/weekly-reports
+func (h *Handler) GetWeeklyReports(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	reports, err := h.service.GetWeeklyReports(c.Request.Context(), userID, clientID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to get weekly reports", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось загрузить еженедельные отчёты")
+		return
+	}
+
+	response.Success(c, http.StatusOK, reports)
+}
+
 // GetWeeklyPlans handles GET /api/v1/curator/clients/:id/weekly-plans
 func (h *Handler) GetWeeklyPlans(c *gin.Context) {
 	userID, ok := h.getUserID(c)

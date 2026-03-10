@@ -30,6 +30,8 @@ type mockCuratorService struct {
 	updateTaskFunc       func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
 	deleteTaskFunc       func(ctx context.Context, curatorID, clientID int64, taskID string) error
 	getTasksFunc         func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
+	submitFeedbackFunc   func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
+	getWeeklyReportsFunc func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
 }
 
 func (m *mockCuratorService) GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error) {
@@ -114,6 +116,20 @@ func (m *mockCuratorService) GetTasks(ctx context.Context, curatorID, clientID i
 		return m.getTasksFunc(ctx, curatorID, clientID, status)
 	}
 	return []TaskView{}, nil
+}
+
+func (m *mockCuratorService) SubmitFeedback(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
+	if m.submitFeedbackFunc != nil {
+		return m.submitFeedbackFunc(ctx, curatorID, clientID, reportID, req)
+	}
+	return nil
+}
+
+func (m *mockCuratorService) GetWeeklyReports(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error) {
+	if m.getWeeklyReportsFunc != nil {
+		return m.getWeeklyReportsFunc(ctx, curatorID, clientID)
+	}
+	return []WeeklyReportView{}, nil
 }
 
 func setupCuratorTestHandler() (*Handler, *mockCuratorService) {
@@ -1118,5 +1134,267 @@ func TestHandler_GetTasks(t *testing.T) {
 		handler.GetTasks(c)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+// ============================================================================
+// SubmitFeedback Handler Tests
+// ============================================================================
+
+func TestHandler_SubmitFeedback(t *testing.T) {
+	t.Run("success submits feedback", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.submitFeedbackFunc = func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
+			assert.Equal(t, int64(1), curatorID)
+			assert.Equal(t, int64(42), clientID)
+			assert.Equal(t, "report-123", reportID)
+			assert.Equal(t, "Good week overall", req.Summary)
+			assert.NotNil(t, req.Nutrition)
+			assert.Equal(t, "good", req.Nutrition.Rating)
+			return nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{
+			"summary":         "Good week overall",
+			"nutrition":       map[string]interface{}{"rating": "good", "comment": "Nice"},
+			"recommendations": "Keep it up",
+		})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}, {Key: "reportId", Value: "report-123"}}
+
+		handler.SubmitFeedback(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+	})
+
+	t.Run("missing summary returns 400", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{
+			"nutrition": map[string]interface{}{"rating": "good", "comment": "Nice"},
+		})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}, {Key: "reportId", Value: "report-123"}}
+
+		handler.SubmitFeedback(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("unauthorized returns 403", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.submitFeedbackFunc = func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
+			return errors.New("unauthorized: no active relationship between curator 1 and client 42")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}, {Key: "reportId", Value: "report-123"}}
+
+		handler.SubmitFeedback(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("report not found returns 404", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.submitFeedbackFunc = func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
+			return errors.New("weekly report not found")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/nonexistent/feedback", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}, {Key: "reportId", Value: "nonexistent"}}
+
+		handler.SubmitFeedback(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("invalid client id returns 400", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/abc/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "abc"}, {Key: "reportId", Value: "report-123"}}
+
+		handler.SubmitFeedback(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", nil)
+		c.Params = gin.Params{{Key: "id", Value: "42"}, {Key: "reportId", Value: "report-123"}}
+
+		handler.SubmitFeedback(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("internal server error returns 500", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.submitFeedbackFunc = func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
+			return errors.New("database connection failed")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
+		c.Request.Header.Set("Content-Type", "application/json")
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}, {Key: "reportId", Value: "report-123"}}
+
+		handler.SubmitFeedback(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+// ============================================================================
+// GetWeeklyReports Handler Tests
+// ============================================================================
+
+func TestHandler_GetWeeklyReports(t *testing.T) {
+	t.Run("success returns reports", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		feedback := json.RawMessage(`{"summary":"Good"}`)
+		mock.getWeeklyReportsFunc = func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error) {
+			return []WeeklyReportView{
+				{
+					ID:              "r1",
+					WeekStart:       "2026-03-02",
+					WeekEnd:         "2026-03-08",
+					WeekNumber:      10,
+					Summary:         json.RawMessage(`{"calories":2000}`),
+					SubmittedAt:     "2026-03-08T18:00:00Z",
+					CuratorFeedback: &feedback,
+					HasFeedback:     true,
+				},
+				{
+					ID:          "r2",
+					WeekStart:   "2026-02-23",
+					WeekEnd:     "2026-03-01",
+					WeekNumber:  9,
+					Summary:     json.RawMessage(`{"calories":1800}`),
+					SubmittedAt: "2026-03-01T18:00:00Z",
+					HasFeedback: false,
+				},
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/42/weekly-reports", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}}
+
+		handler.GetWeeklyReports(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+		data := resp["data"].([]interface{})
+		assert.Len(t, data, 2)
+
+		first := data[0].(map[string]interface{})
+		assert.Equal(t, "r1", first["id"])
+		assert.Equal(t, true, first["has_feedback"])
+
+		second := data[1].(map[string]interface{})
+		assert.Equal(t, "r2", second["id"])
+		assert.Equal(t, false, second["has_feedback"])
+	})
+
+	t.Run("unauthorized returns 403", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getWeeklyReportsFunc = func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error) {
+			return nil, errors.New("unauthorized: no active relationship")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/42/weekly-reports", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}}
+
+		handler.GetWeeklyReports(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("invalid client id returns 400", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/abc/weekly-reports", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "abc"}}
+
+		handler.GetWeeklyReports(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/42/weekly-reports", nil)
+		c.Params = gin.Params{{Key: "id", Value: "42"}}
+
+		handler.GetWeeklyReports(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("internal server error returns 500", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getWeeklyReportsFunc = func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error) {
+			return nil, errors.New("database connection failed")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/42/weekly-reports", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "42"}}
+
+		handler.GetWeeklyReports(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }

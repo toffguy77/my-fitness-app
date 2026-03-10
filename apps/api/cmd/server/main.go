@@ -420,6 +420,8 @@ func main() {
 			curatorGroup.PUT("/clients/:id/tasks/:taskId", curatorHandler.UpdateTask)
 			curatorGroup.DELETE("/clients/:id/tasks/:taskId", curatorHandler.DeleteTask)
 			curatorGroup.GET("/clients/:id/tasks", curatorHandler.GetTasks)
+			curatorGroup.PUT("/clients/:id/weekly-reports/:reportId/feedback", curatorHandler.SubmitFeedback)
+			curatorGroup.GET("/clients/:id/weekly-reports", curatorHandler.GetWeeklyReports)
 			curatorGroup.GET("/clients/:id/targets/history", nutritionCalcHandler.GetClientHistory)
 		}
 
