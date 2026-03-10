@@ -187,3 +187,143 @@ func (h *Handler) SetWaterGoal(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, gin.H{"message": "Цель по воде обновлена"})
 }
+
+// CreateWeeklyPlan handles POST /api/v1/curator/clients/:id/weekly-plan
+func (h *Handler) CreateWeeklyPlan(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	var req CreateWeeklyPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	plan, err := h.service.CreateWeeklyPlan(c.Request.Context(), userID, clientID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to create weekly plan", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось создать план питания")
+		return
+	}
+
+	response.Success(c, http.StatusCreated, plan)
+}
+
+// UpdateWeeklyPlan handles PUT /api/v1/curator/clients/:id/weekly-plan/:planId
+func (h *Handler) UpdateWeeklyPlan(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	planID := c.Param("planId")
+	if planID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор плана")
+		return
+	}
+
+	var req UpdateWeeklyPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	plan, err := h.service.UpdateWeeklyPlan(c.Request.Context(), userID, clientID, planID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "План питания не найден")
+			return
+		}
+		h.log.Error("Failed to update weekly plan", "error", err, "curator_id", userID, "client_id", clientID, "plan_id", planID)
+		response.InternalError(c, "Не удалось обновить план питания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, plan)
+}
+
+// DeleteWeeklyPlan handles DELETE /api/v1/curator/clients/:id/weekly-plan/:planId
+func (h *Handler) DeleteWeeklyPlan(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	planID := c.Param("planId")
+	if planID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор плана")
+		return
+	}
+
+	err = h.service.DeleteWeeklyPlan(c.Request.Context(), userID, clientID, planID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "План питания не найден")
+			return
+		}
+		h.log.Error("Failed to delete weekly plan", "error", err, "curator_id", userID, "client_id", clientID, "plan_id", planID)
+		response.InternalError(c, "Не удалось удалить план питания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "План питания удалён"})
+}
+
+// GetWeeklyPlans handles GET /api/v1/curator/clients/:id/weekly-plans
+func (h *Handler) GetWeeklyPlans(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	plans, err := h.service.GetWeeklyPlans(c.Request.Context(), userID, clientID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to get weekly plans", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось загрузить планы питания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, plans)
+}

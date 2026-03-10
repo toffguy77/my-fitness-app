@@ -29,6 +29,10 @@ type ServiceInterface interface {
 	GetClientDetail(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error)
 	SetTargetWeight(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
 	SetWaterGoal(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error
+	CreateWeeklyPlan(ctx context.Context, curatorID, clientID int64, req CreateWeeklyPlanRequest) (*WeeklyPlanView, error)
+	UpdateWeeklyPlan(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error)
+	DeleteWeeklyPlan(ctx context.Context, curatorID, clientID int64, planID string) error
+	GetWeeklyPlans(ctx context.Context, curatorID, clientID int64) ([]WeeklyPlanView, error)
 }
 
 // Service handles curator business logic
@@ -877,6 +881,259 @@ func (s *Service) SetTargetWeight(ctx context.Context, curatorID int64, clientID
 	}
 
 	return nil
+}
+
+// verifyRelationship checks that an active curator-client relationship exists
+func (s *Service) verifyRelationship(ctx context.Context, curatorID, clientID int64) error {
+	var exists bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM curator_client_relationships WHERE curator_id = $1 AND client_id = $2 AND status = 'active')`,
+		curatorID, clientID,
+	).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("failed to verify relationship: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("unauthorized: no active relationship between curator %d and client %d", curatorID, clientID)
+	}
+	return nil
+}
+
+// CreateWeeklyPlan creates a new weekly plan for a client, deactivating any existing active plans
+func (s *Service) CreateWeeklyPlan(ctx context.Context, curatorID, clientID int64, req CreateWeeklyPlanRequest) (*WeeklyPlanView, error) {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return nil, err
+	}
+
+	// Validate dates
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid start_date format: %w", err)
+	}
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid end_date format: %w", err)
+	}
+	if endDate.Before(startDate) {
+		return nil, fmt.Errorf("end_date must be after start_date")
+	}
+
+	// Deactivate existing active plans for this client
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE weekly_plans SET is_active = false, updated_at = NOW() WHERE user_id = $1 AND is_active = true`,
+		clientID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deactivate existing plans: %w", err)
+	}
+
+	// Insert new plan
+	var planID string
+	var createdAt time.Time
+	err = s.db.QueryRowContext(ctx,
+		`INSERT INTO weekly_plans (user_id, curator_id, calories_goal, protein_goal, fat_goal, carbs_goal, start_date, end_date, comment, is_active, created_by)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $2)
+		 RETURNING id, created_at`,
+		clientID, curatorID, req.Calories, req.Protein, req.Fat, req.Carbs,
+		req.StartDate, req.EndDate, req.Comment,
+	).Scan(&planID, &createdAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create weekly plan: %w", err)
+	}
+
+	s.log.LogDatabaseQuery("CreateWeeklyPlan", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"plan_id":    planID,
+	})
+
+	return &WeeklyPlanView{
+		ID:        planID,
+		Calories:  req.Calories,
+		Protein:   req.Protein,
+		Fat:       req.Fat,
+		Carbs:     req.Carbs,
+		StartDate: startDate.Format("2006-01-02"),
+		EndDate:   endDate.Format("2006-01-02"),
+		Comment:   req.Comment,
+		IsActive:  true,
+		CreatedAt: createdAt.Format(time.RFC3339),
+	}, nil
+}
+
+// UpdateWeeklyPlan updates an existing weekly plan for a client
+func (s *Service) UpdateWeeklyPlan(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error) {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return nil, err
+	}
+
+	// Build dynamic SET clause
+	setClauses := []string{"updated_at = NOW()"}
+	args := []any{}
+	argIdx := 1
+
+	if req.Calories != nil {
+		setClauses = append(setClauses, fmt.Sprintf("calories_goal = $%d", argIdx))
+		args = append(args, *req.Calories)
+		argIdx++
+	}
+	if req.Protein != nil {
+		setClauses = append(setClauses, fmt.Sprintf("protein_goal = $%d", argIdx))
+		args = append(args, *req.Protein)
+		argIdx++
+	}
+	if req.Fat != nil {
+		setClauses = append(setClauses, fmt.Sprintf("fat_goal = $%d", argIdx))
+		args = append(args, *req.Fat)
+		argIdx++
+	}
+	if req.Carbs != nil {
+		setClauses = append(setClauses, fmt.Sprintf("carbs_goal = $%d", argIdx))
+		args = append(args, *req.Carbs)
+		argIdx++
+	}
+	if req.Comment != nil {
+		setClauses = append(setClauses, fmt.Sprintf("comment = $%d", argIdx))
+		args = append(args, *req.Comment)
+		argIdx++
+	}
+
+	// Add WHERE clause args
+	args = append(args, planID, curatorID)
+
+	query := fmt.Sprintf(
+		`UPDATE weekly_plans SET %s WHERE id = $%d AND curator_id = $%d
+		 RETURNING id, calories_goal, protein_goal, fat_goal, carbs_goal, start_date, end_date, comment, is_active, created_at`,
+		strings.Join(setClauses, ", "), argIdx, argIdx+1,
+	)
+
+	var plan WeeklyPlanView
+	var startDate, endDate time.Time
+	var createdAt time.Time
+	var comment sql.NullString
+
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(
+		&plan.ID, &plan.Calories, &plan.Protein, &plan.Fat, &plan.Carbs,
+		&startDate, &endDate, &comment, &plan.IsActive, &createdAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("weekly plan not found")
+		}
+		return nil, fmt.Errorf("failed to update weekly plan: %w", err)
+	}
+
+	plan.StartDate = startDate.Format("2006-01-02")
+	plan.EndDate = endDate.Format("2006-01-02")
+	plan.CreatedAt = createdAt.Format(time.RFC3339)
+	if comment.Valid {
+		plan.Comment = comment.String
+	}
+
+	s.log.LogDatabaseQuery("UpdateWeeklyPlan", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"plan_id":    planID,
+	})
+
+	return &plan, nil
+}
+
+// DeleteWeeklyPlan deletes a weekly plan
+func (s *Service) DeleteWeeklyPlan(ctx context.Context, curatorID, clientID int64, planID string) error {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return err
+	}
+
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM weekly_plans WHERE id = $1 AND curator_id = $2`,
+		planID, curatorID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to delete weekly plan: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("weekly plan not found")
+	}
+
+	s.log.LogDatabaseQuery("DeleteWeeklyPlan", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"plan_id":    planID,
+	})
+
+	return nil
+}
+
+// GetWeeklyPlans returns all weekly plans for a client
+func (s *Service) GetWeeklyPlans(ctx context.Context, curatorID, clientID int64) ([]WeeklyPlanView, error) {
+	startTime := time.Now()
+
+	if err := s.verifyRelationship(ctx, curatorID, clientID); err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT id, calories_goal, protein_goal, fat_goal, carbs_goal,
+		       start_date, end_date, comment, is_active, created_at
+		FROM weekly_plans
+		WHERE user_id = $1
+		ORDER BY start_date DESC
+		LIMIT 20
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, clientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query weekly plans: %w", err)
+	}
+	defer rows.Close()
+
+	plans := make([]WeeklyPlanView, 0)
+	for rows.Next() {
+		var plan WeeklyPlanView
+		var startDate, endDate time.Time
+		var createdAt time.Time
+		var comment sql.NullString
+
+		if err := rows.Scan(
+			&plan.ID, &plan.Calories, &plan.Protein, &plan.Fat, &plan.Carbs,
+			&startDate, &endDate, &comment, &plan.IsActive, &createdAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan weekly plan: %w", err)
+		}
+
+		plan.StartDate = startDate.Format("2006-01-02")
+		plan.EndDate = endDate.Format("2006-01-02")
+		plan.CreatedAt = createdAt.Format(time.RFC3339)
+		if comment.Valid {
+			plan.Comment = comment.String
+		}
+
+		plans = append(plans, plan)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating weekly plans: %w", err)
+	}
+
+	s.log.LogDatabaseQuery("GetWeeklyPlans", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"client_id":  clientID,
+		"count":      len(plans),
+	})
+
+	return plans, nil
 }
 
 // SetWaterGoal sets the water goal for a client
