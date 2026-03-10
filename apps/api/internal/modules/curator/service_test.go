@@ -543,5 +543,310 @@ func hasRedOrYellowAlert(alerts []Alert) bool {
 	return false
 }
 
+// ============================================================================
+// Weekly Plan CRUD Tests
+// ============================================================================
+
+func TestCreateWeeklyPlan(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("creates plan successfully", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(1)
+		clientID := int64(2)
+		req := CreateWeeklyPlanRequest{
+			Calories:  2000,
+			Protein:   150,
+			Fat:       70,
+			Carbs:     250,
+			StartDate: "2026-03-10",
+			EndDate:   "2026-03-16",
+			Comment:   "Week 1 plan",
+		}
+
+		// Verify relationship
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(curatorID, clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		// Deactivate existing plans
+		mock.ExpectExec("UPDATE weekly_plans SET is_active = false").
+			WithArgs(clientID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		// Insert new plan
+		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+		mock.ExpectQuery("INSERT INTO weekly_plans").
+			WithArgs(clientID, curatorID, req.Calories, req.Protein, req.Fat, req.Carbs,
+				req.StartDate, req.EndDate, req.Comment).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).
+				AddRow("plan-uuid-123", createdAt))
+
+		plan, err := service.CreateWeeklyPlan(ctx, curatorID, clientID, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, plan)
+		assert.Equal(t, "plan-uuid-123", plan.ID)
+		assert.Equal(t, 2000.0, plan.Calories)
+		assert.Equal(t, 150.0, plan.Protein)
+		assert.Equal(t, 70.0, plan.Fat)
+		assert.Equal(t, 250.0, plan.Carbs)
+		assert.Equal(t, "2026-03-10", plan.StartDate)
+		assert.Equal(t, "2026-03-16", plan.EndDate)
+		assert.Equal(t, "Week 1 plan", plan.Comment)
+		assert.True(t, plan.IsActive)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("rejects when no active relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		_, err := service.CreateWeeklyPlan(ctx, 1, 2, CreateWeeklyPlanRequest{
+			Calories: 2000, Protein: 150, Fat: 70, Carbs: 250,
+			StartDate: "2026-03-10", EndDate: "2026-03-16",
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+	})
+
+	t.Run("rejects when end_date before start_date", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		_, err := service.CreateWeeklyPlan(ctx, 1, 2, CreateWeeklyPlanRequest{
+			Calories: 2000, Protein: 150, Fat: 70, Carbs: 250,
+			StartDate: "2026-03-16", EndDate: "2026-03-10",
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "end_date must be after start_date")
+	})
+
+	t.Run("rejects invalid start_date format", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		_, err := service.CreateWeeklyPlan(ctx, 1, 2, CreateWeeklyPlanRequest{
+			Calories: 2000, Protein: 150, Fat: 70, Carbs: 250,
+			StartDate: "bad-date", EndDate: "2026-03-16",
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid start_date")
+	})
+}
+
+func TestUpdateWeeklyPlan(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("updates plan successfully", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(1)
+		clientID := int64(2)
+		planID := "plan-uuid-123"
+		newCal := float64(2200)
+		newComment := "Updated"
+		req := UpdateWeeklyPlanRequest{Calories: &newCal, Comment: &newComment}
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(curatorID, clientID).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		startDate := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2026, 3, 16, 0, 0, 0, 0, time.UTC)
+		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+
+		mock.ExpectQuery("UPDATE weekly_plans SET").
+			WithArgs(newCal, newComment, planID, curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{
+				"id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal",
+				"start_date", "end_date", "comment", "is_active", "created_at",
+			}).AddRow(
+				planID, 2200.0, 150.0, 70.0, 250.0,
+				startDate, endDate, sql.NullString{String: "Updated", Valid: true}, true, createdAt,
+			))
+
+		plan, err := service.UpdateWeeklyPlan(ctx, curatorID, clientID, planID, req)
+
+		require.NoError(t, err)
+		require.NotNil(t, plan)
+		assert.Equal(t, 2200.0, plan.Calories)
+		assert.Equal(t, "Updated", plan.Comment)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns not found for nonexistent plan", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		newCal := float64(2200)
+		mock.ExpectQuery("UPDATE weekly_plans SET").
+			WithArgs(newCal, "nonexistent", int64(1)).
+			WillReturnError(sql.ErrNoRows)
+
+		_, err := service.UpdateWeeklyPlan(ctx, 1, 2, "nonexistent", UpdateWeeklyPlanRequest{Calories: &newCal})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+}
+
+func TestDeleteWeeklyPlan(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("deletes plan successfully", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		mock.ExpectExec("DELETE FROM weekly_plans").
+			WithArgs("plan-uuid-123", int64(1)).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		err := service.DeleteWeeklyPlan(ctx, 1, 2, "plan-uuid-123")
+
+		require.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns not found for nonexistent plan", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		mock.ExpectExec("DELETE FROM weekly_plans").
+			WithArgs("nonexistent", int64(1)).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		err := service.DeleteWeeklyPlan(ctx, 1, 2, "nonexistent")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("rejects when no active relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		err := service.DeleteWeeklyPlan(ctx, 1, 2, "plan-uuid-123")
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+	})
+}
+
+func TestGetWeeklyPlans(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns plans successfully", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		startDate1 := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
+		endDate1 := time.Date(2026, 3, 16, 0, 0, 0, 0, time.UTC)
+		createdAt1 := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+
+		startDate2 := time.Date(2026, 3, 3, 0, 0, 0, 0, time.UTC)
+		endDate2 := time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
+		createdAt2 := time.Date(2026, 3, 3, 12, 0, 0, 0, time.UTC)
+
+		mock.ExpectQuery("SELECT id, calories_goal").
+			WithArgs(int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{
+				"id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal",
+				"start_date", "end_date", "comment", "is_active", "created_at",
+			}).
+				AddRow("plan-1", 2000.0, 150.0, 70.0, 250.0, startDate1, endDate1,
+					sql.NullString{String: "Current", Valid: true}, true, createdAt1).
+				AddRow("plan-2", 1800.0, 140.0, 65.0, 230.0, startDate2, endDate2,
+					sql.NullString{Valid: false}, false, createdAt2))
+
+		plans, err := service.GetWeeklyPlans(ctx, 1, 2)
+
+		require.NoError(t, err)
+		require.Len(t, plans, 2)
+		assert.Equal(t, "plan-1", plans[0].ID)
+		assert.Equal(t, 2000.0, plans[0].Calories)
+		assert.Equal(t, "Current", plans[0].Comment)
+		assert.True(t, plans[0].IsActive)
+		assert.Equal(t, "plan-2", plans[1].ID)
+		assert.Equal(t, "", plans[1].Comment)
+		assert.False(t, plans[1].IsActive)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns empty list when no plans", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		mock.ExpectQuery("SELECT id, calories_goal").
+			WithArgs(int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{
+				"id", "calories_goal", "protein_goal", "fat_goal", "carbs_goal",
+				"start_date", "end_date", "comment", "is_active", "created_at",
+			}))
+
+		plans, err := service.GetWeeklyPlans(ctx, 1, 2)
+
+		require.NoError(t, err)
+		assert.Empty(t, plans)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("rejects when no active relationship", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		_, err := service.GetWeeklyPlans(ctx, 1, 2)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+	})
+}
+
 // Ensure sql package is used (for sql.NullFloat64 in service)
 var _ = sql.ErrNoRows

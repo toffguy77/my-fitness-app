@@ -110,3 +110,37 @@ type FoodEntryView struct {
 	CreatedBy *int64  `json:"created_by,omitempty"`
 	Time      string  `json:"time"`
 }
+
+// CreateWeeklyPlanRequest represents the request to create a weekly plan for a client
+type CreateWeeklyPlanRequest struct {
+	Calories  float64 `json:"calories" binding:"required,gt=0"`
+	Protein   float64 `json:"protein" binding:"required,gte=0"`
+	Fat       float64 `json:"fat" binding:"required,gte=0"`
+	Carbs     float64 `json:"carbs" binding:"required,gte=0"`
+	StartDate string  `json:"start_date" binding:"required"`
+	EndDate   string  `json:"end_date" binding:"required"`
+	Comment   string  `json:"comment"`
+}
+
+// UpdateWeeklyPlanRequest represents the request to update a weekly plan
+type UpdateWeeklyPlanRequest struct {
+	Calories *float64 `json:"calories"`
+	Protein  *float64 `json:"protein"`
+	Fat      *float64 `json:"fat"`
+	Carbs    *float64 `json:"carbs"`
+	Comment  *string  `json:"comment"`
+}
+
+// WeeklyPlanView represents a weekly plan as returned to the client
+type WeeklyPlanView struct {
+	ID        string  `json:"id"`
+	Calories  float64 `json:"calories"`
+	Protein   float64 `json:"protein"`
+	Fat       float64 `json:"fat"`
+	Carbs     float64 `json:"carbs"`
+	StartDate string  `json:"start_date"`
+	EndDate   string  `json:"end_date"`
+	Comment   string  `json:"comment,omitempty"`
+	IsActive  bool    `json:"is_active"`
+	CreatedAt string  `json:"created_at"`
+}
