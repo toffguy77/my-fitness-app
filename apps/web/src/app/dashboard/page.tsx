@@ -37,6 +37,8 @@ import {
     WeeklyPlanSectionSkeleton,
     TasksSectionSkeleton,
 } from '@/features/dashboard'
+import { ClientTasksSection } from '@/features/dashboard/components/ClientTasksSection'
+import { CuratorFeedbackSection } from '@/features/dashboard/components/CuratorFeedbackSection'
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import type { NavigationItemId } from '@/features/dashboard/types'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
@@ -247,6 +249,9 @@ export default function DashboardPage() {
                 {/* KBJU Weekly Chart */}
                 <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
 
+                {/* Curator-assigned tasks (renders nothing when empty) */}
+                <ClientTasksSection className="w-full" />
+
                 {/* Below-the-fold sections */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
                     {/* Photo Upload Section */}
@@ -274,6 +279,9 @@ export default function DashboardPage() {
                         </Suspense>
                     </div>
                 </div>
+
+                {/* Curator feedback on weekly reports */}
+                <CuratorFeedbackSection className="w-full" />
             </div>
         </DashboardLayout>
     )

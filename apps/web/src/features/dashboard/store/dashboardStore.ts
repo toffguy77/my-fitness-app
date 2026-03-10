@@ -326,6 +326,7 @@ function mapBackendWeeklyPlan(raw: any): WeeklyPlan {
         fatGoal: raw.fat_goal ?? undefined,
         carbsGoal: raw.carbs_goal ?? undefined,
         stepsGoal: raw.steps_goal ?? undefined,
+        comment: raw.comment ?? undefined,
         startDate: new Date(raw.start_date ?? raw.startDate),
         endDate: new Date(raw.end_date ?? raw.endDate),
         isActive: raw.is_active ?? raw.isActive ?? false,

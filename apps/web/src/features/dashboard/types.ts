@@ -109,6 +109,9 @@ export interface WeeklyPlan {
     carbsGoal?: number
     stepsGoal?: number
 
+    // Curator comment
+    comment?: string
+
     // Dates
     startDate: Date
     endDate: Date
@@ -419,3 +422,57 @@ export const metricUpdateSchema = z.discriminatedUnion('type', [
         data: workoutDataSchema,
     }),
 ])
+
+// ============================================================================
+// Client-facing Task & Feedback Types (for curator-assigned content)
+// ============================================================================
+
+/**
+ * Task type identifiers for curator-assigned tasks
+ */
+export type ClientTaskType = 'nutrition' | 'workout' | 'habit' | 'measurement'
+
+/**
+ * Task recurrence pattern
+ */
+export type TaskRecurrence = 'once' | 'daily' | 'weekly'
+
+/**
+ * Client-facing view of a curator-assigned task
+ */
+export interface ClientTaskView {
+    id: string
+    title: string
+    type: ClientTaskType
+    description?: string
+    deadline: string
+    recurrence: TaskRecurrence
+    recurrence_days?: number[]
+    status: TaskStatus
+    completions?: string[]
+}
+
+/**
+ * Rating level for feedback categories
+ */
+export type RatingLevel = 'excellent' | 'good' | 'needs_improvement'
+
+/**
+ * Rating for a specific feedback category
+ */
+export interface CategoryRating {
+    rating: RatingLevel
+    comment?: string
+}
+
+/**
+ * Curator feedback on a weekly report
+ */
+export interface CuratorFeedback {
+    nutrition?: CategoryRating
+    activity?: CategoryRating
+    water?: CategoryRating
+    photo_uploaded?: boolean
+    summary: string
+    recommendations?: string
+}

@@ -280,6 +280,18 @@ export const WeeklyPlanSection = memo(function WeeklyPlanSection({ className = '
                         )}
                     </div>
 
+                    {/* Curator comment */}
+                    {weeklyPlan.comment && (
+                        <div
+                            className="p-2.5 sm:p-3 bg-purple-50 border border-purple-200 rounded-lg"
+                            role="note"
+                            aria-label="Комментарий куратора"
+                        >
+                            <p className="text-xs font-medium text-purple-800 mb-1">Комментарий куратора</p>
+                            <p className="text-xs sm:text-sm text-purple-700">{weeklyPlan.comment}</p>
+                        </div>
+                    )}
+
                     {/* Plan dates */}
                     <div
                         className="flex items-start gap-2 p-2.5 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg"
