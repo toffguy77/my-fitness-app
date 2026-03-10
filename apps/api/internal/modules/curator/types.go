@@ -15,15 +15,20 @@ type ClientCard struct {
 	WeightTrend       string      `json:"weight_trend"`
 	TargetWeight      *float64    `json:"target_weight"`
 	TodayWater        *WaterView  `json:"today_water"`
-	Email             string      `json:"email,omitempty"`
-	Height            *float64    `json:"height,omitempty"`
-	Timezone          string      `json:"timezone,omitempty"`
-	TelegramUsername  string      `json:"telegram_username,omitempty"`
-	InstagramUsername string      `json:"instagram_username,omitempty"`
-	BirthDate         *string     `json:"birth_date,omitempty"`
-	BiologicalSex     *string     `json:"biological_sex,omitempty"`
-	ActivityLevel     *string     `json:"activity_level,omitempty"`
-	FitnessGoal       *string     `json:"fitness_goal,omitempty"`
+	Email              string      `json:"email,omitempty"`
+	Height             *float64    `json:"height,omitempty"`
+	Timezone           string      `json:"timezone,omitempty"`
+	TelegramUsername   string      `json:"telegram_username,omitempty"`
+	InstagramUsername  string      `json:"instagram_username,omitempty"`
+	BirthDate          *string     `json:"birth_date,omitempty"`
+	BiologicalSex      *string     `json:"biological_sex,omitempty"`
+	ActivityLevel      *string     `json:"activity_level,omitempty"`
+	FitnessGoal        *string     `json:"fitness_goal,omitempty"`
+	WeeklyKBZHUPercent *float64    `json:"weekly_kbzhu_percent,omitempty"`
+	ActiveTasksCount   int         `json:"active_tasks_count"`
+	OverdueTasksCount  int         `json:"overdue_tasks_count"`
+	LastActivityDate   *string     `json:"last_activity_date,omitempty"`
+	StreakDays         int         `json:"streak_days"`
 }
 
 // DailyKBZHU represents daily nutrition totals (calories, protein, fat, carbs)
@@ -111,6 +116,29 @@ type FoodEntryView struct {
 	Weight    float64 `json:"weight"`
 	CreatedBy *int64  `json:"created_by,omitempty"`
 	Time      string  `json:"time"`
+}
+
+// AnalyticsSummary represents aggregate metrics for the curator's analytics hub
+type AnalyticsSummary struct {
+	TotalClients     int     `json:"total_clients"`
+	AttentionClients int     `json:"attention_clients"`
+	AvgKBZHUPercent  float64 `json:"avg_kbzhu_percent"`
+	TotalUnread      int     `json:"total_unread"`
+	ClientsWaiting   int     `json:"clients_waiting"`
+	ActiveTasks      int     `json:"active_tasks"`
+	OverdueTasks     int     `json:"overdue_tasks"`
+	CompletedToday   int     `json:"completed_today"`
+}
+
+// AttentionItem represents a single item in the curator's attention list
+type AttentionItem struct {
+	ClientID     int64  `json:"client_id"`
+	ClientName   string `json:"client_name"`
+	ClientAvatar string `json:"client_avatar,omitempty"`
+	Reason       string `json:"reason"`
+	Detail       string `json:"detail"`
+	Priority     int    `json:"priority"`
+	ActionURL    string `json:"action_url"`
 }
 
 // CreateTaskRequest represents the request to create a task for a client

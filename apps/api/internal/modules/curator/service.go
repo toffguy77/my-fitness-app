@@ -59,6 +59,8 @@ type ServiceInterface interface {
 	GetTasks(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
 	SubmitFeedback(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
 	GetWeeklyReports(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
+	GetAnalytics(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
+	GetAttentionList(ctx context.Context, curatorID int64) ([]AttentionItem, error)
 }
 
 // Service handles curator business logic
@@ -165,6 +167,12 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 	// Get today's water intake for all clients
 	waterMap := s.getTodayWater(ctx, clientIDs)
 
+	// Get extended fields
+	activeTaskMap, overdueTaskMap := s.getActiveTaskCounts(ctx, curatorID, clientIDs)
+	weeklyKBZHUMap := s.getWeeklyKBZHUPercent(ctx, clientIDs)
+	lastActivityMap := s.getLastActivityDates(ctx, clientIDs)
+	streakMap := s.getStreakDays(ctx, clientIDs)
+
 	// Build client cards
 	cards := make([]ClientCard, 0, len(clientRows))
 	for _, cr := range clientRows {
@@ -177,12 +185,17 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 				Fat:      cr.todayFat,
 				Carbs:    cr.todayCarbs,
 			},
-			Alerts:       make([]Alert, 0),
-			UnreadCount:  unreadMap[cr.id],
-			LastWeight:   weightMap[cr.id],
-			WeightTrend:  trendMap[cr.id],
-			TargetWeight: targetMap[cr.id],
-			TodayWater:   waterMap[cr.id],
+			Alerts:             make([]Alert, 0),
+			UnreadCount:        unreadMap[cr.id],
+			LastWeight:         weightMap[cr.id],
+			WeightTrend:        trendMap[cr.id],
+			TargetWeight:       targetMap[cr.id],
+			TodayWater:         waterMap[cr.id],
+			WeeklyKBZHUPercent: weeklyKBZHUMap[cr.id],
+			ActiveTasksCount:   activeTaskMap[cr.id],
+			OverdueTasksCount:  overdueTaskMap[cr.id],
+			LastActivityDate:   lastActivityMap[cr.id],
+			StreakDays:         streakMap[cr.id],
 		}
 
 		if cr.avatarURL.Valid {
@@ -1614,4 +1627,517 @@ func (s *Service) GetWeeklyReports(ctx context.Context, curatorID, clientID int6
 	}
 
 	return reports, nil
+}
+
+// getActiveClientIDs returns all active client IDs for a curator
+func (s *Service) getActiveClientIDs(ctx context.Context, curatorID int64) ([]int64, error) {
+	query := `SELECT client_id FROM curator_client_relationships WHERE curator_id = $1 AND status = 'active'`
+	rows, err := s.db.QueryContext(ctx, query, curatorID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query active clients: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan client id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// getActiveTaskCounts returns active and overdue task counts per client for the given curator
+func (s *Service) getActiveTaskCounts(ctx context.Context, curatorID int64, clientIDs []int64) (activeMap map[int64]int, overdueMap map[int64]int) {
+	activeMap = make(map[int64]int)
+	overdueMap = make(map[int64]int)
+
+	if len(clientIDs) == 0 {
+		return
+	}
+
+	inClause, args := buildPlaceholders(clientIDs, 1)
+	query := fmt.Sprintf(`
+		SELECT user_id,
+			COUNT(*) FILTER (WHERE status = 'active') AS active_count,
+			COUNT(*) FILTER (WHERE status = 'active' AND due_date < CURRENT_DATE AND completed_at IS NULL) AS overdue_count
+		FROM tasks
+		WHERE curator_id = $1 AND user_id IN %s
+		GROUP BY user_id
+	`, inClause)
+
+	allArgs := append([]any{curatorID}, args...)
+	rows, err := s.db.QueryContext(ctx, query, allArgs...)
+	if err != nil {
+		s.log.Error("Failed to query task counts", "error", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID int64
+		var active, overdue int
+		if err := rows.Scan(&userID, &active, &overdue); err != nil {
+			continue
+		}
+		activeMap[userID] = active
+		overdueMap[userID] = overdue
+	}
+	return
+}
+
+// getWeeklyKBZHUPercent returns the weekly KBZHU percent per client (Mon-today actual/plan * 100)
+func (s *Service) getWeeklyKBZHUPercent(ctx context.Context, clientIDs []int64) map[int64]*float64 {
+	result := make(map[int64]*float64)
+	if len(clientIDs) == 0 {
+		return result
+	}
+
+	inClause, args := buildPlaceholders(clientIDs, 0)
+	query := fmt.Sprintf(`
+		SELECT fe.user_id,
+			SUM(fe.calories) AS actual_cal,
+			wp.calories_goal * (EXTRACT(DOW FROM CURRENT_DATE) - EXTRACT(DOW FROM date_trunc('week', CURRENT_DATE))::int + 1) AS plan_cal_total
+		FROM food_entries fe
+		JOIN weekly_plans wp ON wp.user_id = fe.user_id
+			AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
+			AND wp.is_active = true
+		WHERE fe.user_id IN %s
+			AND fe.date >= date_trunc('week', CURRENT_DATE)::date
+			AND fe.date <= CURRENT_DATE
+		GROUP BY fe.user_id, wp.calories_goal
+	`, inClause)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		s.log.Error("Failed to query weekly kbzhu percent", "error", err)
+		return result
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID int64
+		var actualCal, planCalTotal float64
+		if err := rows.Scan(&userID, &actualCal, &planCalTotal); err != nil {
+			continue
+		}
+		if planCalTotal > 0 {
+			pct := actualCal / planCalTotal * 100
+			result[userID] = &pct
+		}
+	}
+	return result
+}
+
+// getLastActivityDates returns the last food entry date per client
+func (s *Service) getLastActivityDates(ctx context.Context, clientIDs []int64) map[int64]*string {
+	result := make(map[int64]*string)
+	if len(clientIDs) == 0 {
+		return result
+	}
+
+	inClause, args := buildPlaceholders(clientIDs, 0)
+	query := fmt.Sprintf(`SELECT user_id, MAX(date) FROM food_entries WHERE user_id IN %s GROUP BY user_id`, inClause)
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		s.log.Error("Failed to query last activity dates", "error", err)
+		return result
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID int64
+		var d time.Time
+		if err := rows.Scan(&userID, &d); err != nil {
+			continue
+		}
+		ds := d.Format("2006-01-02")
+		result[userID] = &ds
+	}
+	return result
+}
+
+// getStreakDays returns consecutive days of food entries ending today per client
+func (s *Service) getStreakDays(ctx context.Context, clientIDs []int64) map[int64]int {
+	result := make(map[int64]int)
+	if len(clientIDs) == 0 {
+		return result
+	}
+
+	inClause, args := buildPlaceholders(clientIDs, 0)
+	// Get distinct dates per client for the last 60 days
+	query := fmt.Sprintf(`
+		SELECT user_id, date FROM food_entries
+		WHERE user_id IN %s AND date >= CURRENT_DATE - INTERVAL '60 days' AND date <= CURRENT_DATE
+		GROUP BY user_id, date
+		ORDER BY user_id, date DESC
+	`, inClause)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		s.log.Error("Failed to query streak days", "error", err)
+		return result
+	}
+	defer rows.Close()
+
+	// Build per-client date lists
+	clientDates := make(map[int64][]time.Time)
+	for rows.Next() {
+		var userID int64
+		var d time.Time
+		if err := rows.Scan(&userID, &d); err != nil {
+			continue
+		}
+		clientDates[userID] = append(clientDates[userID], d.Truncate(24*time.Hour))
+	}
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	for userID, dates := range clientDates {
+		// dates are sorted desc; count consecutive from today
+		streak := 0
+		expected := today
+		for _, d := range dates {
+			if d.Equal(expected) {
+				streak++
+				expected = expected.AddDate(0, 0, -1)
+			} else if d.Before(expected) {
+				break
+			}
+		}
+		result[userID] = streak
+	}
+	return result
+}
+
+// GetAnalytics returns aggregate analytics summary for a curator
+func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*AnalyticsSummary, error) {
+	startTime := time.Now()
+	summary := &AnalyticsSummary{}
+
+	// Total active clients
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM curator_client_relationships WHERE curator_id = $1 AND status = 'active'`,
+		curatorID,
+	).Scan(&summary.TotalClients)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count clients: %w", err)
+	}
+
+	if summary.TotalClients == 0 {
+		return summary, nil
+	}
+
+	// Get client IDs
+	clientIDs, err := s.getActiveClientIDs(ctx, curatorID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Attention clients: count clients with red/yellow alert conditions
+	// (today's calories <50% or >120% of plan, or no food entries with a plan)
+	inClause, args := buildPlaceholders(clientIDs, 0)
+	attentionQuery := fmt.Sprintf(`
+		SELECT COUNT(DISTINCT sub.client_id) FROM (
+			SELECT u.id AS client_id,
+				COALESCE(SUM(fe.calories), 0) AS today_cal,
+				wp.calories_goal AS plan_cal
+			FROM users u
+			LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.date = CURRENT_DATE
+			LEFT JOIN weekly_plans wp ON wp.user_id = u.id
+				AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
+				AND wp.is_active = true
+			WHERE u.id IN %s
+			GROUP BY u.id, wp.calories_goal
+		) sub
+		WHERE sub.plan_cal IS NOT NULL AND sub.plan_cal > 0
+			AND (sub.today_cal < sub.plan_cal * 0.5 OR sub.today_cal > sub.plan_cal * 1.2
+				OR (sub.today_cal = 0))
+	`, inClause)
+	err = s.db.QueryRowContext(ctx, attentionQuery, args...).Scan(&summary.AttentionClients)
+	if err != nil {
+		s.log.Error("Failed to count attention clients", "error", err)
+	}
+
+	// Avg KBZHU percent across all clients this week
+	avgQuery := fmt.Sprintf(`
+		SELECT COALESCE(AVG(sub.pct), 0) FROM (
+			SELECT fe.user_id, SUM(fe.calories) / NULLIF(wp.calories_goal * COUNT(DISTINCT fe.date), 0) * 100 AS pct
+			FROM food_entries fe
+			JOIN weekly_plans wp ON wp.user_id = fe.user_id
+				AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
+				AND wp.is_active = true
+			WHERE fe.user_id IN %s
+				AND fe.date >= date_trunc('week', CURRENT_DATE)::date
+				AND fe.date <= CURRENT_DATE
+			GROUP BY fe.user_id, wp.calories_goal
+		) sub
+	`, inClause)
+	err = s.db.QueryRowContext(ctx, avgQuery, args...).Scan(&summary.AvgKBZHUPercent)
+	if err != nil {
+		s.log.Error("Failed to compute avg kbzhu percent", "error", err)
+	}
+
+	// Unread messages
+	unreadMap, err := s.getUnreadCounts(ctx, curatorID, clientIDs)
+	if err != nil {
+		s.log.Error("Failed to get unread counts for analytics", "error", err)
+	} else {
+		for _, count := range unreadMap {
+			summary.TotalUnread += count
+			if count > 0 {
+				summary.ClientsWaiting++
+			}
+		}
+	}
+
+	// Task counts
+	err = s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active'`,
+		curatorID,
+	).Scan(&summary.ActiveTasks)
+	if err != nil {
+		s.log.Error("Failed to count active tasks", "error", err)
+	}
+
+	err = s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active' AND due_date < CURRENT_DATE AND completed_at IS NULL`,
+		curatorID,
+	).Scan(&summary.OverdueTasks)
+	if err != nil {
+		s.log.Error("Failed to count overdue tasks", "error", err)
+	}
+
+	err = s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM task_completions tc JOIN tasks t ON tc.task_id = t.id WHERE t.curator_id = $1 AND tc.completed_date = CURRENT_DATE`,
+		curatorID,
+	).Scan(&summary.CompletedToday)
+	if err != nil {
+		s.log.Error("Failed to count completed today", "error", err)
+	}
+
+	s.log.LogDatabaseQuery("GetAnalytics", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id":    curatorID,
+		"total_clients": summary.TotalClients,
+	})
+
+	return summary, nil
+}
+
+// GetAttentionList returns a prioritized list of items requiring curator attention
+func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]AttentionItem, error) {
+	startTime := time.Now()
+
+	clientIDs, err := s.getActiveClientIDs(ctx, curatorID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(clientIDs) == 0 {
+		return []AttentionItem{}, nil
+	}
+
+	// Build a map of client info (name, avatar)
+	type clientInfo struct {
+		name   string
+		avatar string
+	}
+	clientInfoMap := make(map[int64]clientInfo)
+	inClause, args := buildPlaceholders(clientIDs, 0)
+
+	infoQuery := fmt.Sprintf(`SELECT id, COALESCE(name, ''), COALESCE(avatar_url, '') FROM users WHERE id IN %s`, inClause)
+	infoRows, err := s.db.QueryContext(ctx, infoQuery, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query client info: %w", err)
+	}
+	defer infoRows.Close()
+	for infoRows.Next() {
+		var id int64
+		var info clientInfo
+		if err := infoRows.Scan(&id, &info.name, &info.avatar); err != nil {
+			continue
+		}
+		clientInfoMap[id] = info
+	}
+
+	items := make([]AttentionItem, 0)
+
+	// Priority 1: Red alerts — calories <50% or >120% of plan
+	alertQuery := fmt.Sprintf(`
+		SELECT u.id,
+			COALESCE(SUM(fe.calories), 0) AS today_cal,
+			wp.calories_goal AS plan_cal
+		FROM users u
+		LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.date = CURRENT_DATE
+		LEFT JOIN weekly_plans wp ON wp.user_id = u.id
+			AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
+			AND wp.is_active = true
+		WHERE u.id IN %s
+		GROUP BY u.id, wp.calories_goal
+	`, inClause)
+	alertRows, err := s.db.QueryContext(ctx, alertQuery, args...)
+	if err != nil {
+		s.log.Error("Failed to query attention alerts", "error", err)
+	} else {
+		defer alertRows.Close()
+		for alertRows.Next() {
+			var clientID int64
+			var todayCal float64
+			var planCal sql.NullFloat64
+			if err := alertRows.Scan(&clientID, &todayCal, &planCal); err != nil {
+				continue
+			}
+			if !planCal.Valid || planCal.Float64 == 0 {
+				continue
+			}
+			ratio := todayCal / planCal.Float64
+			info := clientInfoMap[clientID]
+			if ratio < 0.5 {
+				items = append(items, AttentionItem{
+					ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
+					Reason:   "low_calories",
+					Detail:   fmt.Sprintf("Калории: %.0f из %.0f (%.0f%%)", todayCal, planCal.Float64, ratio*100),
+					Priority: 1, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
+				})
+			} else if ratio > 1.2 {
+				items = append(items, AttentionItem{
+					ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
+					Reason:   "high_calories",
+					Detail:   fmt.Sprintf("Калории: %.0f из %.0f (%.0f%%)", todayCal, planCal.Float64, ratio*100),
+					Priority: 1, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
+				})
+			}
+		}
+	}
+
+	// Priority 2: Overdue tasks
+	overdueQuery := fmt.Sprintf(`
+		SELECT t.user_id, t.title, t.due_date
+		FROM tasks t
+		WHERE t.curator_id = $1 AND t.status = 'active' AND t.due_date < CURRENT_DATE AND t.completed_at IS NULL
+			AND t.user_id IN %s
+		ORDER BY t.due_date ASC
+		LIMIT 20
+	`, inClause)
+	overdueArgs := append([]any{curatorID}, args...)
+	overdueRows, err := s.db.QueryContext(ctx, overdueQuery, overdueArgs...)
+	if err != nil {
+		s.log.Error("Failed to query overdue tasks", "error", err)
+	} else {
+		defer overdueRows.Close()
+		for overdueRows.Next() {
+			var clientID int64
+			var title string
+			var dueDate time.Time
+			if err := overdueRows.Scan(&clientID, &title, &dueDate); err != nil {
+				continue
+			}
+			info := clientInfoMap[clientID]
+			items = append(items, AttentionItem{
+				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
+				Reason:   "overdue_task",
+				Detail:   fmt.Sprintf("Просрочено: %s (дедлайн %s)", title, dueDate.Format("02.01")),
+				Priority: 2, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
+			})
+		}
+	}
+
+	// Priority 3: Inactive clients (no food entries in last 2 days)
+	inactiveQuery := fmt.Sprintf(`
+		SELECT u.id FROM users u
+		WHERE u.id IN %s
+			AND NOT EXISTS (
+				SELECT 1 FROM food_entries fe
+				WHERE fe.user_id = u.id AND fe.date >= CURRENT_DATE - INTERVAL '1 day'
+			)
+	`, inClause)
+	inactiveRows, err := s.db.QueryContext(ctx, inactiveQuery, args...)
+	if err != nil {
+		s.log.Error("Failed to query inactive clients", "error", err)
+	} else {
+		defer inactiveRows.Close()
+		for inactiveRows.Next() {
+			var clientID int64
+			if err := inactiveRows.Scan(&clientID); err != nil {
+				continue
+			}
+			info := clientInfoMap[clientID]
+			items = append(items, AttentionItem{
+				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
+				Reason:   "inactive",
+				Detail:   "Нет записей о питании более 2 дней",
+				Priority: 3, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
+			})
+		}
+	}
+
+	// Priority 4: Unread messages
+	unreadMap, err := s.getUnreadCounts(ctx, curatorID, clientIDs)
+	if err != nil {
+		s.log.Error("Failed to get unread counts for attention", "error", err)
+	} else {
+		for clientID, count := range unreadMap {
+			if count > 0 {
+				info := clientInfoMap[clientID]
+				items = append(items, AttentionItem{
+					ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
+					Reason:   "unread_messages",
+					Detail:   fmt.Sprintf("Непрочитанных сообщений: %d", count),
+					Priority: 4, ActionURL: fmt.Sprintf("/curator/chat/%d", clientID),
+				})
+			}
+		}
+	}
+
+	// Priority 5: Awaiting feedback on weekly reports
+	feedbackQuery := fmt.Sprintf(`
+		SELECT wr.user_id, wr.week_start
+		FROM weekly_reports wr
+		WHERE wr.curator_id = $1 AND wr.curator_feedback IS NULL AND wr.submitted_at IS NOT NULL
+			AND wr.user_id IN %s
+		ORDER BY wr.submitted_at ASC
+		LIMIT 20
+	`, inClause)
+	feedbackArgs := append([]any{curatorID}, args...)
+	feedbackRows, err := s.db.QueryContext(ctx, feedbackQuery, feedbackArgs...)
+	if err != nil {
+		s.log.Error("Failed to query awaiting feedback", "error", err)
+	} else {
+		defer feedbackRows.Close()
+		for feedbackRows.Next() {
+			var clientID int64
+			var weekStart time.Time
+			if err := feedbackRows.Scan(&clientID, &weekStart); err != nil {
+				continue
+			}
+			info := clientInfoMap[clientID]
+			items = append(items, AttentionItem{
+				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
+				Reason:   "awaiting_feedback",
+				Detail:   fmt.Sprintf("Отчёт за неделю %s ожидает обратной связи", weekStart.Format("02.01")),
+				Priority: 5, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
+			})
+		}
+	}
+
+	// Sort by priority ascending, then by client name
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].Priority != items[j].Priority {
+			return items[i].Priority < items[j].Priority
+		}
+		return items[i].ClientName < items[j].ClientName
+	})
+
+	// Limit to 20
+	if len(items) > 20 {
+		items = items[:20]
+	}
+
+	s.log.LogDatabaseQuery("GetAttentionList", time.Since(startTime), nil, map[string]interface{}{
+		"curator_id": curatorID,
+		"count":      len(items),
+	})
+
+	return items, nil
 }

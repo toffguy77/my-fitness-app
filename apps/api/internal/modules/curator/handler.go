@@ -513,6 +513,40 @@ func (h *Handler) GetWeeklyReports(c *gin.Context) {
 	response.Success(c, http.StatusOK, reports)
 }
 
+// GetAnalytics handles GET /api/v1/curator/analytics
+func (h *Handler) GetAnalytics(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	analytics, err := h.service.GetAnalytics(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("Failed to get analytics", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить аналитику")
+		return
+	}
+
+	response.Success(c, http.StatusOK, analytics)
+}
+
+// GetAttentionList handles GET /api/v1/curator/attention
+func (h *Handler) GetAttentionList(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	items, err := h.service.GetAttentionList(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("Failed to get attention list", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить список внимания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, items)
+}
+
 // GetWeeklyPlans handles GET /api/v1/curator/clients/:id/weekly-plans
 func (h *Handler) GetWeeklyPlans(c *gin.Context) {
 	userID, ok := h.getUserID(c)
