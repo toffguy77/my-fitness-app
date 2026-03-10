@@ -14,6 +14,8 @@ jest.mock('next/navigation', () => ({
         back: jest.fn(),
     }),
     useParams: () => ({ id: '7', clientId: '7' }),
+    useSearchParams: () => new URLSearchParams(),
+    usePathname: () => '/curator/clients/7',
 }))
 
 // Mock next/image
@@ -39,6 +41,13 @@ jest.mock('lucide-react', () => ({
     TrendingUp: () => <div>TrendingUp</div>,
     TrendingDown: () => <div>TrendingDown</div>,
     Minus: () => <div>Minus</div>,
+    Plus: () => <div>Plus</div>,
+    Pencil: () => <div>Pencil</div>,
+    Trash2: () => <div>Trash2</div>,
+    UtensilsCrossed: () => <div>UtensilsCrossed</div>,
+    Dumbbell: () => <div>Dumbbell</div>,
+    Star: () => <div>Star</div>,
+    Ruler: () => <div>Ruler</div>,
 }))
 
 // Mock recharts
