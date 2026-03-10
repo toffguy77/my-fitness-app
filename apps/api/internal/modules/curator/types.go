@@ -111,6 +111,38 @@ type FoodEntryView struct {
 	Time      string  `json:"time"`
 }
 
+// CreateTaskRequest represents the request to create a task for a client
+type CreateTaskRequest struct {
+	Title          string `json:"title" binding:"required,max=200"`
+	Type           string `json:"type" binding:"required,oneof=nutrition workout habit measurement"`
+	Description    string `json:"description"`
+	Deadline       string `json:"deadline" binding:"required"`
+	Recurrence     string `json:"recurrence" binding:"required,oneof=once daily weekly"`
+	RecurrenceDays []int  `json:"recurrence_days,omitempty"`
+}
+
+// UpdateTaskRequest represents the request to update a task
+type UpdateTaskRequest struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Deadline    *string `json:"deadline"`
+	Status      *string `json:"status"`
+}
+
+// TaskView represents a task as returned to the curator
+type TaskView struct {
+	ID             string   `json:"id"`
+	Title          string   `json:"title"`
+	Type           string   `json:"type"`
+	Description    string   `json:"description,omitempty"`
+	Deadline       string   `json:"deadline"`
+	Recurrence     string   `json:"recurrence"`
+	RecurrenceDays []int    `json:"recurrence_days,omitempty"`
+	Status         string   `json:"status"`
+	Completions    []string `json:"completions,omitempty"`
+	CreatedAt      string   `json:"created_at"`
+}
+
 // CreateWeeklyPlanRequest represents the request to create a weekly plan for a client
 type CreateWeeklyPlanRequest struct {
 	Calories  float64 `json:"calories" binding:"required,gt=0"`
