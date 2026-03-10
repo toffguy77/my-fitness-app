@@ -131,18 +131,36 @@ func (t TaskStatus) IsValid() bool {
 
 // Task represents a task assigned by a curator to a client
 type Task struct {
-	ID          string     `json:"id" db:"id"`
-	UserID      int64      `json:"user_id" db:"user_id"`
-	CuratorID   int64      `json:"curator_id" db:"curator_id"`
-	Title       string     `json:"title" db:"title"`
-	Description *string    `json:"description,omitempty" db:"description"`
-	WeekNumber  int        `json:"week_number" db:"week_number"`
-	AssignedAt  time.Time  `json:"assigned_at" db:"assigned_at"`
-	DueDate     time.Time  `json:"due_date" db:"due_date"`
-	CompletedAt *time.Time `json:"completed_at,omitempty" db:"completed_at"`
-	Status      TaskStatus `json:"status" db:"status"`
-	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
+	ID             string           `json:"id" db:"id"`
+	UserID         int64            `json:"user_id" db:"user_id"`
+	CuratorID      int64            `json:"curator_id" db:"curator_id"`
+	Title          string           `json:"title" db:"title"`
+	Description    *string          `json:"description,omitempty" db:"description"`
+	Type           string           `json:"type" db:"type"`
+	WeekNumber     int              `json:"week_number" db:"week_number"`
+	AssignedAt     time.Time        `json:"assigned_at" db:"assigned_at"`
+	DueDate        time.Time        `json:"due_date" db:"due_date"`
+	CompletedAt    *time.Time       `json:"completed_at,omitempty" db:"completed_at"`
+	Status         TaskStatus       `json:"status" db:"status"`
+	Recurrence     string           `json:"recurrence" db:"recurrence"`
+	RecurrenceDays []int            `json:"recurrence_days,omitempty" db:"recurrence_days"`
+	Completions    []TaskCompletion `json:"completions,omitempty"`
+	CreatedAt      time.Time        `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time        `json:"updated_at" db:"updated_at"`
+}
+
+// TaskCompletion represents a single completion record for a recurring task
+type TaskCompletion struct {
+	ID            string    `json:"id" db:"id"`
+	TaskID        string    `json:"task_id" db:"task_id"`
+	CompletedDate string    `json:"completed_date" db:"completed_date"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+}
+
+// ReportFeedback represents curator feedback on a weekly report
+type ReportFeedback struct {
+	ReportID string  `json:"report_id"`
+	Feedback *string `json:"feedback"`
 }
 
 // Validate validates the task fields

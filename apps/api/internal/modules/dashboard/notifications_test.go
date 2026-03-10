@@ -61,7 +61,7 @@ func TestSendPlanUpdateNotification(t *testing.T) {
 
 		// Verify the notification would have the correct content
 		expectedTitle := "Обновлен план питания"
-		expectedContent := "Ваш тренер обновил план питания: 2000 ккал, 150 г белка в день"
+		expectedContent := "Ваш куратор обновил план питания на эту неделю: 2000 ккал, 150 г белка в день"
 
 		assert.Contains(t, expectedTitle, "план")
 		assert.Contains(t, expectedContent, "2000 ккал")
@@ -92,10 +92,10 @@ func TestSendTaskAssignedNotification(t *testing.T) {
 		}
 
 		// Verify the notification would have the correct content
-		expectedTitle := "Новое задание от тренера"
-		expectedContent := "Вам назначено новое задание: Выпить 2 литра воды"
+		expectedTitle := "Новая задача"
+		expectedContent := "Новая задача: Выпить 2 литра воды"
 
-		assert.Contains(t, expectedTitle, "задание")
+		assert.Contains(t, expectedTitle, "задача")
 		assert.Contains(t, expectedContent, taskTitle)
 
 		// Verify task data
@@ -198,14 +198,17 @@ func TestNotificationCategories(t *testing.T) {
 		assert.Equal(t, notifications.CategoryMain, notifications.CategoryMain)
 	})
 
-	t.Run("all curator notifications use trainer feedback type", func(t *testing.T) {
+	t.Run("curator notifications use appropriate types", func(t *testing.T) {
 		// Plan update notification
-		assert.Equal(t, notifications.TypeTrainerFeedback, notifications.TypeTrainerFeedback)
+		assert.Equal(t, notifications.NotificationType("plan_updated"), notifications.TypePlanUpdated)
 
 		// Task assigned notification
-		assert.Equal(t, notifications.TypeTrainerFeedback, notifications.TypeTrainerFeedback)
+		assert.Equal(t, notifications.NotificationType("task_assigned"), notifications.TypeTaskAssigned)
 
-		// Weekly report notification
+		// Feedback received notification
+		assert.Equal(t, notifications.NotificationType("feedback_received"), notifications.TypeFeedbackReceived)
+
+		// Weekly report notification (curator sees this)
 		assert.Equal(t, notifications.TypeTrainerFeedback, notifications.TypeTrainerFeedback)
 	})
 }
@@ -215,19 +218,19 @@ func TestNotificationMessages(t *testing.T) {
 	t.Run("all notification messages are in Russian", func(t *testing.T) {
 		// Plan update notification
 		planTitle := "Обновлен план питания"
-		planContent := "Ваш тренер обновил план питания: 2000 ккал, 150 г белка в день"
+		planContent := "Ваш куратор обновил план питания на эту неделю: 2000 ккал, 150 г белка в день"
 
 		assert.Contains(t, planTitle, "план")
-		assert.Contains(t, planContent, "тренер")
+		assert.Contains(t, planContent, "куратор")
 		assert.Contains(t, planContent, "ккал")
 		assert.Contains(t, planContent, "белка")
 
 		// Task assigned notification
-		taskTitle := "Новое задание от тренера"
-		taskContent := "Вам назначено новое задание: Test"
+		taskTitle := "Новая задача"
+		taskContent := "Новая задача: Test"
 
-		assert.Contains(t, taskTitle, "задание")
-		assert.Contains(t, taskContent, "назначено")
+		assert.Contains(t, taskTitle, "задача")
+		assert.Contains(t, taskContent, "задача")
 
 		// Weekly report notification
 		reportTitle := "Получен недельный отчет"

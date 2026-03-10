@@ -21,7 +21,7 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 	db := &database.DB{DB: mockDB}
 	log := logger.New()
 
-	service := NewService(db, log)
+	service := NewService(db, log, nil)
 
 	cleanup := func() {
 		mockDB.Close()

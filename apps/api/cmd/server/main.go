@@ -385,6 +385,8 @@ func main() {
 			dashGroup.GET("/tasks", dashboardHandler.GetTasks)
 			dashGroup.POST("/tasks", dashboardHandler.CreateTask)
 			dashGroup.PUT("/tasks/:id", dashboardHandler.UpdateTaskStatus)
+			dashGroup.POST("/tasks/:id/complete", dashboardHandler.CompleteTaskForDate)
+			dashGroup.GET("/weekly-reports/:reportId/feedback", dashboardHandler.GetReportFeedback)
 			dashGroup.POST("/weekly-report", dashboardHandler.SubmitWeeklyReport)
 			dashGroup.POST("/photo-upload", dashboardHandler.UploadPhoto)
 		}
@@ -403,7 +405,7 @@ func main() {
 		}
 
 		// Curator routes (coordinator role only)
-		curatorHandler := curator.NewHandler(cfg, log, db)
+		curatorHandler := curator.NewHandler(cfg, log, db, notificationsSvc)
 		curatorGroup := v1.Group("/curator")
 		curatorGroup.Use(middleware.RequireAuth(cfg))
 		curatorGroup.Use(middleware.RequireRole("coordinator"))

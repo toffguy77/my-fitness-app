@@ -26,19 +26,24 @@ func (c NotificationCategory) IsValid() bool {
 type NotificationType string
 
 const (
-	TypeTrainerFeedback NotificationType = "trainer_feedback"
-	TypeAchievement     NotificationType = "achievement"
-	TypeReminder        NotificationType = "reminder"
-	TypeSystemUpdate    NotificationType = "system_update"
-	TypeNewFeature      NotificationType = "new_feature"
-	TypeGeneral         NotificationType = "general"
-	TypeNewContent      NotificationType = "new_content"
+	TypeTrainerFeedback  NotificationType = "trainer_feedback"
+	TypeAchievement      NotificationType = "achievement"
+	TypeReminder         NotificationType = "reminder"
+	TypeSystemUpdate     NotificationType = "system_update"
+	TypeNewFeature       NotificationType = "new_feature"
+	TypeGeneral          NotificationType = "general"
+	TypeNewContent       NotificationType = "new_content"
+	TypePlanUpdated      NotificationType = "plan_updated"
+	TypeTaskAssigned     NotificationType = "task_assigned"
+	TypeTaskOverdue      NotificationType = "task_overdue"
+	TypeFeedbackReceived NotificationType = "feedback_received"
 )
 
 // IsValid checks if the notification type is valid
 func (t NotificationType) IsValid() bool {
 	switch t {
-	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral, TypeNewContent:
+	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral, TypeNewContent,
+		TypePlanUpdated, TypeTaskAssigned, TypeTaskOverdue, TypeFeedbackReceived:
 		return true
 	}
 	return false

@@ -98,6 +98,22 @@ func (m *MockService) UpdateTaskStatus(ctx context.Context, userID int64, taskID
 	return args.Get(0).(*Task), args.Error(1)
 }
 
+func (m *MockService) CompleteTaskForDate(ctx context.Context, userID int64, taskID string, date string) (*Task, error) {
+	args := m.Called(ctx, userID, taskID, date)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Task), args.Error(1)
+}
+
+func (m *MockService) GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error) {
+	args := m.Called(ctx, userID, reportID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*ReportFeedback), args.Error(1)
+}
+
 func (m *MockService) ValidateWeekData(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (bool, []string, error) {
 	args := m.Called(ctx, userID, weekStart, weekEnd)
 	return args.Bool(0), args.Get(1).([]string), args.Error(2)
