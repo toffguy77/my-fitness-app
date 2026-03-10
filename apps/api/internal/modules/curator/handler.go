@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
@@ -20,11 +21,11 @@ type Handler struct {
 }
 
 // NewHandler creates a new curator handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handler {
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, notificationsSvc *notifications.Service) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(db, log),
+		service: NewService(db, log, notificationsSvc),
 	}
 }
 

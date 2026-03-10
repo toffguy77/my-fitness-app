@@ -29,11 +29,13 @@ type ServiceInterface interface {
 	GetTasksByWeek(ctx context.Context, userID int64, weekNumber int) ([]*Task, error)
 	CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error)
 	UpdateTaskStatus(ctx context.Context, userID int64, taskID string, status TaskStatus) (*Task, error)
+	CompleteTaskForDate(ctx context.Context, userID int64, taskID string, date string) (*Task, error)
 	ValidateWeekData(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (bool, []string, error)
 	CreateWeeklyReport(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (*WeeklyReport, error)
 	ValidatePhoto(fileSize int, mimeType string) error
 	UploadPhoto(ctx context.Context, userID int64, weekIdentifier string, fileData io.Reader, fileSize int, mimeType string) (*PhotoData, error)
 	GetProgressData(ctx context.Context, userID int64, weeks int) (*ProgressData, error)
+	GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error)
 }
 
 // Handler handles dashboard requests
@@ -585,6 +587,79 @@ func (h *Handler) UploadPhoto(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusCreated, photo)
+}
+
+// GetReportFeedback handles GET /api/dashboard/weekly-reports/:reportId/feedback
+// Returns curator feedback for a specific weekly report
+func (h *Handler) GetReportFeedback(c *gin.Context) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	reportID := c.Param("reportId")
+	if reportID == "" {
+		response.Error(c, http.StatusBadRequest, "ID отчёта обязателен")
+		return
+	}
+
+	feedback, err := h.service.GetReportFeedback(c.Request.Context(), userID, reportID)
+	if err != nil {
+		h.log.Errorw("Failed to get report feedback", "error", err, "user_id", userID, "report_id", reportID)
+		response.Error(c, http.StatusNotFound, "Отчёт не найден")
+		return
+	}
+
+	response.Success(c, http.StatusOK, feedback)
+}
+
+// CompleteTaskForDate handles POST /api/dashboard/tasks/:id/complete
+// Completes a recurring task for a specific date or marks a one-time task as completed
+func (h *Handler) CompleteTaskForDate(c *gin.Context) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	taskID := c.Param("id")
+	if taskID == "" {
+		response.Error(c, http.StatusBadRequest, "ID задачи обязателен")
+		return
+	}
+
+	// Optional date parameter; defaults to today
+	var req struct {
+		Date string `json:"date"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.Date == "" {
+		req.Date = time.Now().Format("2006-01-02")
+	}
+
+	task, err := h.service.CompleteTaskForDate(c.Request.Context(), userID, taskID, req.Date)
+	if err != nil {
+		h.log.Errorw("Failed to complete task", "error", err, "user_id", userID, "task_id", taskID)
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, task)
 }
 
 // GetProgress handles GET /api/dashboard/progress

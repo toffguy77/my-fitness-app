@@ -79,6 +79,26 @@ func TestNotificationType_IsValid(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "valid plan_updated type",
+			typ:  TypePlanUpdated,
+			want: true,
+		},
+		{
+			name: "valid task_assigned type",
+			typ:  TypeTaskAssigned,
+			want: true,
+		},
+		{
+			name: "valid task_overdue type",
+			typ:  TypeTaskOverdue,
+			want: true,
+		},
+		{
+			name: "valid feedback_received type",
+			typ:  TypeFeedbackReceived,
+			want: true,
+		},
+		{
 			name: "invalid type",
 			typ:  NotificationType("invalid"),
 			want: false,

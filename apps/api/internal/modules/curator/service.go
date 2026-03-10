@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 )
@@ -68,15 +69,17 @@ type ServiceInterface interface {
 
 // Service handles curator business logic
 type Service struct {
-	db  *database.DB
-	log *logger.Logger
+	db               *database.DB
+	log              *logger.Logger
+	notificationsSvc *notifications.Service
 }
 
 // NewService creates a new curator service
-func NewService(db *database.DB, log *logger.Logger) *Service {
+func NewService(db *database.DB, log *logger.Logger, notificationsSvc *notifications.Service) *Service {
 	return &Service{
-		db:  db,
-		log: log,
+		db:               db,
+		log:              log,
+		notificationsSvc: notificationsSvc,
 	}
 }
 
@@ -991,7 +994,7 @@ func (s *Service) CreateWeeklyPlan(ctx context.Context, curatorID, clientID int6
 		"plan_id":    planID,
 	})
 
-	return &WeeklyPlanView{
+	plan := &WeeklyPlanView{
 		ID:        planID,
 		Calories:  req.Calories,
 		Protein:   req.Protein,
@@ -1002,7 +1005,12 @@ func (s *Service) CreateWeeklyPlan(ctx context.Context, curatorID, clientID int6
 		Comment:   req.Comment,
 		IsActive:  true,
 		CreatedAt: createdAt.Format(time.RFC3339),
-	}, nil
+	}
+
+	// Send notification to client
+	s.sendPlanUpdatedNotification(ctx, clientID, plan)
+
+	return plan, nil
 }
 
 // UpdateWeeklyPlan updates an existing weekly plan for a client
@@ -1081,6 +1089,9 @@ func (s *Service) UpdateWeeklyPlan(ctx context.Context, curatorID, clientID int6
 		"client_id":  clientID,
 		"plan_id":    planID,
 	})
+
+	// Send notification to client
+	s.sendPlanUpdatedNotification(ctx, clientID, &plan)
 
 	return &plan, nil
 }
@@ -1224,7 +1235,7 @@ func (s *Service) CreateTask(ctx context.Context, curatorID, clientID int64, req
 		"task_id":    taskID,
 	})
 
-	return &TaskView{
+	task := &TaskView{
 		ID:             taskID,
 		Title:          req.Title,
 		Type:           req.Type,
@@ -1234,7 +1245,12 @@ func (s *Service) CreateTask(ctx context.Context, curatorID, clientID int64, req
 		RecurrenceDays: req.RecurrenceDays,
 		Status:         "active",
 		CreatedAt:      createdAt.Format(time.RFC3339),
-	}, nil
+	}
+
+	// Send notification to client
+	s.sendTaskAssignedNotification(ctx, clientID, task)
+
+	return task, nil
 }
 
 // GetTasks returns tasks for a client with optional status filter
@@ -1556,6 +1572,9 @@ func (s *Service) SubmitFeedback(ctx context.Context, curatorID, clientID int64,
 		"curator_id": curatorID,
 		"report_id":  reportID,
 	})
+
+	// Send notification to client
+	s.sendFeedbackReceivedNotification(ctx, clientID, reportID)
 
 	return nil
 }
@@ -2143,4 +2162,64 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 	})
 
 	return items, nil
+}
+
+// sendPlanUpdatedNotification sends a plan_updated notification to the client
+func (s *Service) sendPlanUpdatedNotification(ctx context.Context, clientID int64, plan *WeeklyPlanView) {
+	if s.notificationsSvc == nil {
+		return
+	}
+
+	notification := &notifications.Notification{
+		UserID:   clientID,
+		Category: notifications.CategoryMain,
+		Type:     notifications.TypePlanUpdated,
+		Title:    "Обновлен план питания",
+		Content:  "Ваш куратор обновил план питания на эту неделю",
+	}
+
+	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
+		s.log.Error("Failed to send plan_updated notification", "error", err, "client_id", clientID)
+	}
+}
+
+// sendTaskAssignedNotification sends a task_assigned notification to the client
+func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int64, task *TaskView) {
+	if s.notificationsSvc == nil {
+		return
+	}
+
+	notification := &notifications.Notification{
+		UserID:   clientID,
+		Category: notifications.CategoryMain,
+		Type:     notifications.TypeTaskAssigned,
+		Title:    "Новая задача",
+		Content:  fmt.Sprintf("Новая задача: %s", task.Title),
+	}
+
+	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
+		s.log.Error("Failed to send task_assigned notification", "error", err, "client_id", clientID, "task_id", task.ID)
+	}
+}
+
+// sendFeedbackReceivedNotification sends a feedback_received notification to the client
+func (s *Service) sendFeedbackReceivedNotification(ctx context.Context, clientID int64, reportID string) {
+	if s.notificationsSvc == nil {
+		return
+	}
+
+	notification := &notifications.Notification{
+		UserID:   clientID,
+		Category: notifications.CategoryMain,
+		Type:     notifications.TypeFeedbackReceived,
+		Title:    "Обратная связь от куратора",
+		Content:  "Куратор оставил обратную связь по вашему отчёту",
+	}
+
+	actionURL := fmt.Sprintf("/dashboard/weekly-reports/%s/feedback", reportID)
+	notification.ActionURL = &actionURL
+
+	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
+		s.log.Error("Failed to send feedback_received notification", "error", err, "client_id", clientID, "report_id", reportID)
+	}
 }
