@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS task_completions;
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS chk_task_recurrence;
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS chk_task_type;
+ALTER TABLE tasks DROP COLUMN IF EXISTS recurrence_days;
+ALTER TABLE tasks DROP COLUMN IF EXISTS recurrence;
+ALTER TABLE tasks DROP COLUMN IF EXISTS type;
