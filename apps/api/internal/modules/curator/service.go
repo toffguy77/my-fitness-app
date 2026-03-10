@@ -61,6 +61,9 @@ type ServiceInterface interface {
 	GetWeeklyReports(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
 	GetAnalytics(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
 	GetAttentionList(ctx context.Context, curatorID int64) ([]AttentionItem, error)
+	GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (interface{}, error)
+	GetBenchmark(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error)
+	CollectDailySnapshot(ctx context.Context, curatorID int64) error
 }
 
 // Service handles curator business logic

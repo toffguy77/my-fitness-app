@@ -409,6 +409,8 @@ func main() {
 		curatorGroup.Use(middleware.RequireRole("coordinator"))
 		{
 			curatorGroup.GET("/analytics", curatorHandler.GetAnalytics)
+			curatorGroup.GET("/analytics/history", curatorHandler.GetAnalyticsHistory)
+			curatorGroup.GET("/analytics/benchmark", curatorHandler.GetBenchmark)
 			curatorGroup.GET("/attention", curatorHandler.GetAttentionList)
 			curatorGroup.GET("/clients", curatorHandler.GetClients)
 			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)

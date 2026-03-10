@@ -4,17 +4,17 @@ import "encoding/json"
 
 // ClientCard represents a summary view of a client for the curator dashboard
 type ClientCard struct {
-	ID                int64       `json:"id"`
-	Name              string      `json:"name"`
-	AvatarURL         string      `json:"avatar_url,omitempty"`
-	TodayKBZHU        *DailyKBZHU `json:"today_kbzhu"`
-	Plan              *PlanKBZHU  `json:"plan"`
-	Alerts            []Alert     `json:"alerts"`
-	UnreadCount       int         `json:"unread_count"`
-	LastWeight        *float64    `json:"last_weight"`
-	WeightTrend       string      `json:"weight_trend"`
-	TargetWeight      *float64    `json:"target_weight"`
-	TodayWater        *WaterView  `json:"today_water"`
+	ID                 int64       `json:"id"`
+	Name               string      `json:"name"`
+	AvatarURL          string      `json:"avatar_url,omitempty"`
+	TodayKBZHU         *DailyKBZHU `json:"today_kbzhu"`
+	Plan               *PlanKBZHU  `json:"plan"`
+	Alerts             []Alert     `json:"alerts"`
+	UnreadCount        int         `json:"unread_count"`
+	LastWeight         *float64    `json:"last_weight"`
+	WeightTrend        string      `json:"weight_trend"`
+	TargetWeight       *float64    `json:"target_weight"`
+	TodayWater         *WaterView  `json:"today_water"`
 	Email              string      `json:"email,omitempty"`
 	Height             *float64    `json:"height,omitempty"`
 	Timezone           string      `json:"timezone,omitempty"`
@@ -199,6 +199,49 @@ type WeeklyReportView struct {
 	SubmittedAt     string           `json:"submitted_at"`
 	CuratorFeedback *json.RawMessage `json:"curator_feedback,omitempty"`
 	HasFeedback     bool             `json:"has_feedback"`
+}
+
+// DailySnapshot represents a daily analytics snapshot for a curator
+type DailySnapshot struct {
+	Date             string  `json:"date"`
+	TotalClients     int     `json:"total_clients"`
+	AttentionClients int     `json:"attention_clients"`
+	AvgKBZHUPercent  float64 `json:"avg_kbzhu_percent"`
+	TotalUnread      int     `json:"total_unread"`
+	ActiveTasks      int     `json:"active_tasks"`
+	OverdueTasks     int     `json:"overdue_tasks"`
+	CompletedTasks   int     `json:"completed_tasks"`
+	AvgClientStreak  float64 `json:"avg_client_streak"`
+}
+
+// WeeklySnapshot represents a weekly analytics snapshot for a curator
+type WeeklySnapshot struct {
+	WeekStart            string  `json:"week_start"`
+	AvgKBZHUPercent      float64 `json:"avg_kbzhu_percent"`
+	AvgResponseTimeHours float64 `json:"avg_response_time_hours"`
+	ClientsWithFeedback  int     `json:"clients_with_feedback"`
+	ClientsTotal         int     `json:"clients_total"`
+	TaskCompletionRate   float64 `json:"task_completion_rate"`
+	ClientsOnTrack       int     `json:"clients_on_track"`
+	ClientsOffTrack      int     `json:"clients_off_track"`
+	AvgClientStreak      float64 `json:"avg_client_streak"`
+}
+
+// PlatformBenchmark represents platform-wide weekly benchmark data
+type PlatformBenchmark struct {
+	WeekStart             string  `json:"week_start"`
+	AvgKBZHUPercent       float64 `json:"avg_kbzhu_percent"`
+	AvgResponseTimeHours  float64 `json:"avg_response_time_hours"`
+	AvgTaskCompletionRate float64 `json:"avg_task_completion_rate"`
+	AvgFeedbackRate       float64 `json:"avg_feedback_rate"`
+	AvgClientStreak       float64 `json:"avg_client_streak"`
+	CuratorCount          int     `json:"curator_count"`
+}
+
+// BenchmarkData contains both the curator's own snapshots and platform benchmarks
+type BenchmarkData struct {
+	OwnSnapshots       []WeeklySnapshot    `json:"own_snapshots"`
+	PlatformBenchmarks []PlatformBenchmark `json:"platform_benchmarks"`
 }
 
 // CreateWeeklyPlanRequest represents the request to create a weekly plan for a client

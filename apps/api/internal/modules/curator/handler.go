@@ -547,6 +547,63 @@ func (h *Handler) GetAttentionList(c *gin.Context) {
 	response.Success(c, http.StatusOK, items)
 }
 
+// GetAnalyticsHistory handles GET /api/v1/curator/analytics/history
+// Returns historical analytics snapshots (daily or weekly).
+// Query params: period=daily|weekly, days=N (for daily), weeks=N (for weekly, default 12)
+func (h *Handler) GetAnalyticsHistory(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	period := c.DefaultQuery("period", "weekly")
+	if period != "daily" && period != "weekly" {
+		period = "weekly"
+	}
+
+	countStr := c.DefaultQuery("days", "")
+	if countStr == "" {
+		countStr = c.DefaultQuery("weeks", "12")
+	}
+	count, _ := strconv.Atoi(countStr)
+	if count <= 0 || count > 90 {
+		count = 12
+	}
+
+	data, err := h.service.GetAnalyticsHistory(c.Request.Context(), userID, period, count)
+	if err != nil {
+		h.log.Error("Failed to get analytics history", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить историю аналитики")
+		return
+	}
+
+	response.Success(c, http.StatusOK, data)
+}
+
+// GetBenchmark handles GET /api/v1/curator/analytics/benchmark
+// Returns the curator's weekly snapshots alongside platform-wide benchmarks.
+// Query params: weeks=N (default 12, max 52)
+func (h *Handler) GetBenchmark(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	weeks, _ := strconv.Atoi(c.DefaultQuery("weeks", "12"))
+	if weeks <= 0 || weeks > 52 {
+		weeks = 12
+	}
+
+	data, err := h.service.GetBenchmark(c.Request.Context(), userID, weeks)
+	if err != nil {
+		h.log.Error("Failed to get benchmark", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить бенчмарки")
+		return
+	}
+
+	response.Success(c, http.StatusOK, data)
+}
+
 // GetWeeklyPlans handles GET /api/v1/curator/clients/:id/weekly-plans
 func (h *Handler) GetWeeklyPlans(c *gin.Context) {
 	userID, ok := h.getUserID(c)

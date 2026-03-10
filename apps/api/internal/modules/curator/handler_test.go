@@ -18,22 +18,25 @@ import (
 
 // mockCuratorService implements ServiceInterface for testing
 type mockCuratorService struct {
-	getClientsFunc       func(ctx context.Context, curatorID int64) ([]ClientCard, error)
-	getClientDetailFunc  func(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error)
-	setTargetWeightFunc  func(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
-	setWaterGoalFunc     func(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error
-	createWeeklyPlanFunc func(ctx context.Context, curatorID, clientID int64, req CreateWeeklyPlanRequest) (*WeeklyPlanView, error)
-	updateWeeklyPlanFunc func(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error)
-	deleteWeeklyPlanFunc func(ctx context.Context, curatorID, clientID int64, planID string) error
-	getWeeklyPlansFunc   func(ctx context.Context, curatorID, clientID int64) ([]WeeklyPlanView, error)
-	createTaskFunc       func(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error)
-	updateTaskFunc       func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
-	deleteTaskFunc       func(ctx context.Context, curatorID, clientID int64, taskID string) error
-	getTasksFunc         func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
-	submitFeedbackFunc   func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
-	getWeeklyReportsFunc func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
-	getAnalyticsFunc     func(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
-	getAttentionListFunc func(ctx context.Context, curatorID int64) ([]AttentionItem, error)
+	getClientsFunc           func(ctx context.Context, curatorID int64) ([]ClientCard, error)
+	getClientDetailFunc      func(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error)
+	setTargetWeightFunc      func(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error
+	setWaterGoalFunc         func(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error
+	createWeeklyPlanFunc     func(ctx context.Context, curatorID, clientID int64, req CreateWeeklyPlanRequest) (*WeeklyPlanView, error)
+	updateWeeklyPlanFunc     func(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error)
+	deleteWeeklyPlanFunc     func(ctx context.Context, curatorID, clientID int64, planID string) error
+	getWeeklyPlansFunc       func(ctx context.Context, curatorID, clientID int64) ([]WeeklyPlanView, error)
+	createTaskFunc           func(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error)
+	updateTaskFunc           func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
+	deleteTaskFunc           func(ctx context.Context, curatorID, clientID int64, taskID string) error
+	getTasksFunc             func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
+	submitFeedbackFunc       func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
+	getWeeklyReportsFunc     func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
+	getAnalyticsFunc         func(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
+	getAttentionListFunc     func(ctx context.Context, curatorID int64) ([]AttentionItem, error)
+	getAnalyticsHistoryFunc  func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error)
+	getBenchmarkFunc         func(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error)
+	collectDailySnapshotFunc func(ctx context.Context, curatorID int64) error
 }
 
 func (m *mockCuratorService) GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error) {
@@ -146,6 +149,27 @@ func (m *mockCuratorService) GetAttentionList(ctx context.Context, curatorID int
 		return m.getAttentionListFunc(ctx, curatorID)
 	}
 	return []AttentionItem{}, nil
+}
+
+func (m *mockCuratorService) GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+	if m.getAnalyticsHistoryFunc != nil {
+		return m.getAnalyticsHistoryFunc(ctx, curatorID, period, count)
+	}
+	return []DailySnapshot{}, nil
+}
+
+func (m *mockCuratorService) GetBenchmark(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error) {
+	if m.getBenchmarkFunc != nil {
+		return m.getBenchmarkFunc(ctx, curatorID, weeks)
+	}
+	return &BenchmarkData{}, nil
+}
+
+func (m *mockCuratorService) CollectDailySnapshot(ctx context.Context, curatorID int64) error {
+	if m.collectDailySnapshotFunc != nil {
+		return m.collectDailySnapshotFunc(ctx, curatorID)
+	}
+	return nil
 }
 
 func setupCuratorTestHandler() (*Handler, *mockCuratorService) {
@@ -1540,6 +1564,209 @@ func TestHandler_GetAttentionList(t *testing.T) {
 		c.Request = httptest.NewRequest(http.MethodGet, "/curator/attention", nil)
 
 		handler.GetAttentionList(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+// ============================================================================
+// GetAnalyticsHistory Handler Tests
+// ============================================================================
+
+func TestHandler_GetAnalyticsHistory(t *testing.T) {
+	t.Run("success returns daily snapshots", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+			assert.Equal(t, "daily", period)
+			assert.Equal(t, 30, count)
+			return []DailySnapshot{
+				{Date: "2026-03-10", TotalClients: 5, AvgKBZHUPercent: 85.0},
+				{Date: "2026-03-09", TotalClients: 5, AvgKBZHUPercent: 82.0},
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/history?period=daily&days=30", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAnalyticsHistory(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+		data := resp["data"].([]interface{})
+		assert.Len(t, data, 2)
+	})
+
+	t.Run("defaults to weekly with 12 count", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+			assert.Equal(t, "weekly", period)
+			assert.Equal(t, 12, count)
+			return []WeeklySnapshot{}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/history", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAnalyticsHistory(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("clamps invalid count to 12", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+			assert.Equal(t, 12, count)
+			return []DailySnapshot{}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/history?period=daily&days=200", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAnalyticsHistory(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("service error returns 500", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+			return nil, errors.New("db error")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/history", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAnalyticsHistory(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/history", nil)
+
+		handler.GetAnalyticsHistory(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+// ============================================================================
+// GetBenchmark Handler Tests
+// ============================================================================
+
+func TestHandler_GetBenchmark(t *testing.T) {
+	t.Run("success returns benchmark data", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getBenchmarkFunc = func(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error) {
+			assert.Equal(t, 12, weeks)
+			return &BenchmarkData{
+				OwnSnapshots: []WeeklySnapshot{
+					{WeekStart: "2026-03-02", AvgKBZHUPercent: 85.0},
+				},
+				PlatformBenchmarks: []PlatformBenchmark{
+					{WeekStart: "2026-03-02", AvgKBZHUPercent: 80.0, CuratorCount: 10},
+				},
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/benchmark", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetBenchmark(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+		data := resp["data"].(map[string]interface{})
+		own := data["own_snapshots"].([]interface{})
+		assert.Len(t, own, 1)
+		platform := data["platform_benchmarks"].([]interface{})
+		assert.Len(t, platform, 1)
+	})
+
+	t.Run("custom weeks parameter", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getBenchmarkFunc = func(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error) {
+			assert.Equal(t, 24, weeks)
+			return &BenchmarkData{
+				OwnSnapshots:       []WeeklySnapshot{},
+				PlatformBenchmarks: []PlatformBenchmark{},
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/benchmark?weeks=24", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetBenchmark(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("clamps invalid weeks to 12", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getBenchmarkFunc = func(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error) {
+			assert.Equal(t, 12, weeks)
+			return &BenchmarkData{
+				OwnSnapshots:       []WeeklySnapshot{},
+				PlatformBenchmarks: []PlatformBenchmark{},
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/benchmark?weeks=100", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetBenchmark(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("service error returns 500", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getBenchmarkFunc = func(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error) {
+			return nil, errors.New("db error")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/benchmark", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetBenchmark(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics/benchmark", nil)
+
+		handler.GetBenchmark(c)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
