@@ -408,6 +408,8 @@ func main() {
 		curatorGroup.Use(middleware.RequireAuth(cfg))
 		curatorGroup.Use(middleware.RequireRole("coordinator"))
 		{
+			curatorGroup.GET("/analytics", curatorHandler.GetAnalytics)
+			curatorGroup.GET("/attention", curatorHandler.GetAttentionList)
 			curatorGroup.GET("/clients", curatorHandler.GetClients)
 			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)
 			curatorGroup.PUT("/clients/:id/target-weight", curatorHandler.SetTargetWeight)

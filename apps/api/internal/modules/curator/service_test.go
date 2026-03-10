@@ -97,6 +97,26 @@ func TestGetClients(t *testing.T) {
 			WithArgs(int64(1), int64(2), int64(3)).
 			WillReturnRows(sqlmock.NewRows(todayWaterColumns))
 
+		// Active/overdue task counts (getActiveTaskCounts)
+		mock.ExpectQuery(`SELECT user_id`).
+			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "active_count", "overdue_count"}))
+
+		// Weekly KBZHU percent (getWeeklyKBZHUPercent)
+		mock.ExpectQuery(`SELECT fe\.user_id`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "actual_cal", "plan_cal_total"}))
+
+		// Last activity dates (getLastActivityDates)
+		mock.ExpectQuery(`SELECT user_id, MAX`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "max"}))
+
+		// Streak days (getStreakDays)
+		mock.ExpectQuery(`SELECT user_id, date FROM food_entries`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "date"}))
+
 		clients, err := service.GetClients(ctx, curatorID)
 
 		require.NoError(t, err)
@@ -179,6 +199,26 @@ func TestGetClients(t *testing.T) {
 		mock.ExpectQuery(`SELECT user_id, glasses, goal, glass_size FROM water_logs`).
 			WithArgs(int64(1)).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "glasses", "goal", "glass_size"}))
+
+		// Active/overdue task counts (getActiveTaskCounts)
+		mock.ExpectQuery(`SELECT user_id`).
+			WithArgs(curatorID, int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "active_count", "overdue_count"}))
+
+		// Weekly KBZHU percent (getWeeklyKBZHUPercent)
+		mock.ExpectQuery(`SELECT fe\.user_id`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "actual_cal", "plan_cal_total"}))
+
+		// Last activity dates (getLastActivityDates)
+		mock.ExpectQuery(`SELECT user_id, MAX`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "max"}))
+
+		// Streak days (getStreakDays)
+		mock.ExpectQuery(`SELECT user_id, date FROM food_entries`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "date"}))
 
 		clients, err := service.GetClients(ctx, curatorID)
 
@@ -1206,6 +1246,191 @@ func TestDeleteTask(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unauthorized")
+	})
+}
+
+// ============================================================================
+// GetAnalytics Tests
+// ============================================================================
+
+func TestGetAnalytics(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns analytics summary with clients", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		// Total clients count
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
+
+		// Active client IDs
+		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
+				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
+
+		// Attention clients count
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+		// Avg KBZHU percent
+		mock.ExpectQuery(`SELECT COALESCE\(AVG`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"avg"}).AddRow(85.5))
+
+		// Unread counts
+		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
+				AddRow(int64(1), 5).AddRow(int64(2), 3))
+
+		// Active tasks
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
+
+		// Overdue tasks
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+
+		// Completed today
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(4))
+
+		analytics, err := service.GetAnalytics(ctx, curatorID)
+
+		require.NoError(t, err)
+		require.NotNil(t, analytics)
+		assert.Equal(t, 3, analytics.TotalClients)
+		assert.Equal(t, 1, analytics.AttentionClients)
+		assert.Equal(t, 85.5, analytics.AvgKBZHUPercent)
+		assert.Equal(t, 8, analytics.TotalUnread)
+		assert.Equal(t, 2, analytics.ClientsWaiting)
+		assert.Equal(t, 10, analytics.ActiveTasks)
+		assert.Equal(t, 2, analytics.OverdueTasks)
+		assert.Equal(t, 4, analytics.CompletedToday)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns empty analytics when no clients", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		mock.ExpectQuery(`SELECT COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+
+		analytics, err := service.GetAnalytics(ctx, curatorID)
+
+		require.NoError(t, err)
+		require.NotNil(t, analytics)
+		assert.Equal(t, 0, analytics.TotalClients)
+		assert.Equal(t, 0, analytics.ActiveTasks)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+// ============================================================================
+// GetAttentionList Tests
+// ============================================================================
+
+func TestGetAttentionList(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("returns attention items sorted by priority", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		// Active client IDs
+		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
+				AddRow(int64(1)).AddRow(int64(2)))
+
+		// Client info
+		mock.ExpectQuery(`SELECT id, COALESCE`).
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
+				AddRow(int64(1), "Alice", "").
+				AddRow(int64(2), "Bob", "https://avatar.example.com/bob.jpg"))
+
+		// Alert query (priority 1)
+		mock.ExpectQuery(`SELECT u\.id`).
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "today_cal", "plan_cal"}).
+				AddRow(int64(1), 500.0, sql.NullFloat64{Float64: 2000.0, Valid: true}).
+				AddRow(int64(2), 1900.0, sql.NullFloat64{Float64: 2000.0, Valid: true}))
+
+		// Overdue tasks (priority 2)
+		mock.ExpectQuery(`SELECT t\.user_id, t\.title, t\.due_date`).
+			WithArgs(curatorID, int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "title", "due_date"}))
+
+		// Inactive clients (priority 3)
+		mock.ExpectQuery(`SELECT u\.id FROM users`).
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+		// Unread messages (priority 4)
+		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
+				AddRow(int64(2), 3))
+
+		// Awaiting feedback (priority 5)
+		mock.ExpectQuery(`SELECT wr\.user_id, wr\.week_start`).
+			WithArgs(curatorID, int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "week_start"}))
+
+		items, err := service.GetAttentionList(ctx, curatorID)
+
+		require.NoError(t, err)
+		require.Len(t, items, 2)
+
+		// Alice should be first (priority 1 - low calories)
+		assert.Equal(t, int64(1), items[0].ClientID)
+		assert.Equal(t, "Alice", items[0].ClientName)
+		assert.Equal(t, "low_calories", items[0].Reason)
+		assert.Equal(t, 1, items[0].Priority)
+		assert.Equal(t, "/curator/clients/1", items[0].ActionURL)
+
+		// Bob should be second (priority 4 - unread messages)
+		assert.Equal(t, int64(2), items[1].ClientID)
+		assert.Equal(t, "Bob", items[1].ClientName)
+		assert.Equal(t, "unread_messages", items[1].Reason)
+		assert.Equal(t, 4, items[1].Priority)
+		assert.Equal(t, "/curator/chat/2", items[1].ActionURL)
+		assert.Equal(t, "https://avatar.example.com/bob.jpg", items[1].ClientAvatar)
+
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns empty list when no clients", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		curatorID := int64(100)
+
+		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
+
+		items, err := service.GetAttentionList(ctx, curatorID)
+
+		require.NoError(t, err)
+		assert.Empty(t, items)
+		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 

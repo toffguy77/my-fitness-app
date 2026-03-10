@@ -32,6 +32,8 @@ type mockCuratorService struct {
 	getTasksFunc         func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
 	submitFeedbackFunc   func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
 	getWeeklyReportsFunc func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
+	getAnalyticsFunc     func(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
+	getAttentionListFunc func(ctx context.Context, curatorID int64) ([]AttentionItem, error)
 }
 
 func (m *mockCuratorService) GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error) {
@@ -130,6 +132,20 @@ func (m *mockCuratorService) GetWeeklyReports(ctx context.Context, curatorID, cl
 		return m.getWeeklyReportsFunc(ctx, curatorID, clientID)
 	}
 	return []WeeklyReportView{}, nil
+}
+
+func (m *mockCuratorService) GetAnalytics(ctx context.Context, curatorID int64) (*AnalyticsSummary, error) {
+	if m.getAnalyticsFunc != nil {
+		return m.getAnalyticsFunc(ctx, curatorID)
+	}
+	return &AnalyticsSummary{}, nil
+}
+
+func (m *mockCuratorService) GetAttentionList(ctx context.Context, curatorID int64) ([]AttentionItem, error) {
+	if m.getAttentionListFunc != nil {
+		return m.getAttentionListFunc(ctx, curatorID)
+	}
+	return []AttentionItem{}, nil
 }
 
 func setupCuratorTestHandler() (*Handler, *mockCuratorService) {
@@ -1396,5 +1412,135 @@ func TestHandler_GetWeeklyReports(t *testing.T) {
 		handler.GetWeeklyReports(c)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+// ============================================================================
+// GetAnalytics Handler Tests
+// ============================================================================
+
+func TestHandler_GetAnalytics(t *testing.T) {
+	t.Run("success returns analytics summary", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAnalyticsFunc = func(ctx context.Context, curatorID int64) (*AnalyticsSummary, error) {
+			return &AnalyticsSummary{
+				TotalClients:     5,
+				AttentionClients: 2,
+				AvgKBZHUPercent:  87.5,
+				TotalUnread:      10,
+				ClientsWaiting:   3,
+				ActiveTasks:      12,
+				OverdueTasks:     2,
+				CompletedToday:   4,
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAnalytics(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+		data := resp["data"].(map[string]interface{})
+		assert.Equal(t, float64(5), data["total_clients"])
+		assert.Equal(t, float64(2), data["attention_clients"])
+		assert.Equal(t, 87.5, data["avg_kbzhu_percent"])
+		assert.Equal(t, float64(10), data["total_unread"])
+	})
+
+	t.Run("service error returns 500", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAnalyticsFunc = func(ctx context.Context, curatorID int64) (*AnalyticsSummary, error) {
+			return nil, errors.New("db error")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAnalytics(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/analytics", nil)
+
+		handler.GetAnalytics(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
+// ============================================================================
+// GetAttentionList Handler Tests
+// ============================================================================
+
+func TestHandler_GetAttentionList(t *testing.T) {
+	t.Run("success returns attention items", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAttentionListFunc = func(ctx context.Context, curatorID int64) ([]AttentionItem, error) {
+			return []AttentionItem{
+				{ClientID: 1, ClientName: "Alice", Reason: "low_calories", Detail: "Калории: 500 из 2000 (25%)", Priority: 1, ActionURL: "/curator/clients/1"},
+				{ClientID: 2, ClientName: "Bob", Reason: "unread_messages", Detail: "Непрочитанных сообщений: 3", Priority: 4, ActionURL: "/curator/chat/2"},
+			}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/attention", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAttentionList(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var resp map[string]interface{}
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp["status"])
+		data := resp["data"].([]interface{})
+		assert.Len(t, data, 2)
+		first := data[0].(map[string]interface{})
+		assert.Equal(t, "low_calories", first["reason"])
+		assert.Equal(t, float64(1), first["priority"])
+	})
+
+	t.Run("service error returns 500", func(t *testing.T) {
+		handler, mock := setupCuratorTestHandler()
+		mock.getAttentionListFunc = func(ctx context.Context, curatorID int64) ([]AttentionItem, error) {
+			return nil, errors.New("db error")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/attention", nil)
+		c.Set("user_id", int64(1))
+
+		handler.GetAttentionList(c)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("unauthenticated returns 401", func(t *testing.T) {
+		handler, _ := setupCuratorTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/attention", nil)
+
+		handler.GetAttentionList(c)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 }
