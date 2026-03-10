@@ -6,17 +6,24 @@ import { curatorApi } from '../api/curatorApi'
 import { ClientCard } from './ClientCard'
 import type { ClientCard as ClientCardType } from '../types'
 
-export function ClientList() {
-    const [clients, setClients] = useState<ClientCardType[]>([])
-    const [loading, setLoading] = useState(true)
+interface ClientListProps {
+    clients?: ClientCardType[]
+}
+
+export function ClientList({ clients: externalClients }: ClientListProps = {}) {
+    const [internalClients, setInternalClients] = useState<ClientCardType[]>([])
+    const [loading, setLoading] = useState(!externalClients)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
+        if (externalClients) return
         curatorApi.getClients()
-            .then(setClients)
+            .then(setInternalClients)
             .catch(() => setError('Не удалось загрузить клиентов'))
             .finally(() => setLoading(false))
-    }, [])
+    }, [externalClients])
+
+    const clients = externalClients ?? internalClients
 
     if (loading) {
         return (
