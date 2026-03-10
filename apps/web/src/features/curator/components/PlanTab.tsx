@@ -26,15 +26,27 @@ export function PlanTab({ clientId }: PlanTabProps) {
     const [showHistory, setShowHistory] = useState(false)
 
     useEffect(() => {
-        setLoading(true)
+        let cancelled = false
+
         curatorApi
             .getWeeklyPlans(clientId)
             .then((data) => {
-                setPlans(data)
-                setError(null)
+                if (!cancelled) {
+                    setPlans(data)
+                    setError(null)
+                    setLoading(false)
+                }
             })
-            .catch(() => setError('Не удалось загрузить планы'))
-            .finally(() => setLoading(false))
+            .catch(() => {
+                if (!cancelled) {
+                    setError('Не удалось загрузить планы')
+                    setLoading(false)
+                }
+            })
+
+        return () => {
+            cancelled = true
+        }
     }, [clientId])
 
     const activePlan = plans.find((p) => p.is_active)

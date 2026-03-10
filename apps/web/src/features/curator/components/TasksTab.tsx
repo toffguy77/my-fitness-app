@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2, Plus } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { curatorApi } from '../api/curatorApi'
@@ -25,24 +25,29 @@ export function TasksTab({ clientId }: TasksTabProps) {
     const [filter, setFilter] = useState<TaskStatus>('active')
     const [showForm, setShowForm] = useState(false)
 
-    const fetchTasks = useCallback(
-        (status: TaskStatus) => {
-            setLoading(true)
-            curatorApi
-                .getTasks(clientId, status)
-                .then((data) => {
+    useEffect(() => {
+        let cancelled = false
+
+        curatorApi
+            .getTasks(clientId, filter)
+            .then((data) => {
+                if (!cancelled) {
                     setTasks(data)
                     setError(null)
-                })
-                .catch(() => setError('Не удалось загрузить задачи'))
-                .finally(() => setLoading(false))
-        },
-        [clientId],
-    )
+                    setLoading(false)
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setError('Не удалось загрузить задачи')
+                    setLoading(false)
+                }
+            })
 
-    useEffect(() => {
-        fetchTasks(filter)
-    }, [filter, fetchTasks])
+        return () => {
+            cancelled = true
+        }
+    }, [clientId, filter])
 
     const handleDelete = async (taskId: string) => {
         try {

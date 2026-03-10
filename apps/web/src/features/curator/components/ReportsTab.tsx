@@ -14,22 +14,35 @@ export function ReportsTab({ clientId }: ReportsTabProps) {
     const [reports, setReports] = useState<WeeklyReportView[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [refreshKey, setRefreshKey] = useState(0)
 
-    const fetchReports = useCallback(() => {
-        setLoading(true)
+    useEffect(() => {
+        let cancelled = false
+
         curatorApi
             .getWeeklyReports(clientId)
             .then((data) => {
-                setReports(data)
-                setError(null)
+                if (!cancelled) {
+                    setReports(data)
+                    setError(null)
+                    setLoading(false)
+                }
             })
-            .catch(() => setError('Не удалось загрузить отчёты'))
-            .finally(() => setLoading(false))
-    }, [clientId])
+            .catch(() => {
+                if (!cancelled) {
+                    setError('Не удалось загрузить отчёты')
+                    setLoading(false)
+                }
+            })
 
-    useEffect(() => {
-        fetchReports()
-    }, [fetchReports])
+        return () => {
+            cancelled = true
+        }
+    }, [clientId, refreshKey])
+
+    const handleFeedbackSaved = useCallback(() => {
+        setRefreshKey((k) => k + 1)
+    }, [])
 
     if (loading) {
         return (
@@ -58,7 +71,7 @@ export function ReportsTab({ clientId }: ReportsTabProps) {
                     key={report.id}
                     report={report}
                     clientId={clientId}
-                    onFeedbackSaved={fetchReports}
+                    onFeedbackSaved={handleFeedbackSaved}
                 />
             ))}
         </div>
