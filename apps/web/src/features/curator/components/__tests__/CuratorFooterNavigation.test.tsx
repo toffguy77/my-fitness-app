@@ -29,10 +29,10 @@ describe('CuratorFooterNavigation', () => {
         expect(screen.getByLabelText('Навигация куратора')).toBeInTheDocument()
     })
 
-    it('defaults to clients as active item', () => {
+    it('defaults to hub as active item', () => {
         render(<CuratorFooterNavigation />)
 
-        const clientsBtn = screen.getByTestId('nav-item-clients')
+        const clientsBtn = screen.getByTestId('nav-item-hub')
         expect(clientsBtn).toHaveAttribute('aria-current', 'page')
     })
 
@@ -42,7 +42,7 @@ describe('CuratorFooterNavigation', () => {
         const chatsBtn = screen.getByTestId('nav-item-chats')
         expect(chatsBtn).toHaveAttribute('aria-current', 'page')
 
-        const clientsBtn = screen.getByTestId('nav-item-clients')
+        const clientsBtn = screen.getByTestId('nav-item-hub')
         expect(clientsBtn).not.toHaveAttribute('aria-current')
     })
 
@@ -52,7 +52,7 @@ describe('CuratorFooterNavigation', () => {
         const chatsBtn = screen.getByTestId('nav-item-chats')
         expect(chatsBtn.className).toContain('text-blue-600')
 
-        const clientsBtn = screen.getByTestId('nav-item-clients')
+        const clientsBtn = screen.getByTestId('nav-item-hub')
         expect(clientsBtn.className).toContain('text-gray-600')
     })
 
@@ -74,7 +74,7 @@ describe('CuratorFooterNavigation', () => {
 
         expect(contentBtn).toHaveAttribute('aria-current', 'page')
 
-        const clientsBtn = screen.getByTestId('nav-item-clients')
+        const clientsBtn = screen.getByTestId('nav-item-hub')
         expect(clientsBtn).not.toHaveAttribute('aria-current')
     })
 
