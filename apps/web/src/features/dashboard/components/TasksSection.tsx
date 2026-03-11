@@ -52,10 +52,12 @@ function getCurrentWeekNumber(): number {
  * Helper: Format date for display
  */
 function formatDate(date: Date): string {
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return '—'
     return new Intl.DateTimeFormat('ru-RU', {
         day: 'numeric',
         month: 'short',
-    }).format(new Date(date))
+    }).format(d)
 }
 
 /**
@@ -90,6 +92,7 @@ function getTasksDueWithinDays(tasks: Task[], days: number): Task[] {
         if (task.status !== 'active') return false
 
         const dueDate = new Date(task.dueDate)
+        if (isNaN(dueDate.getTime())) return false
         // Reset time for date-only comparison
         dueDate.setHours(0, 0, 0, 0)
 
