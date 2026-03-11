@@ -1,6 +1,6 @@
 'use client'
 
-import { UtensilsCrossed, Dumbbell, Star, Ruler, Trash2 } from 'lucide-react'
+import { UtensilsCrossed, Dumbbell, Star, Ruler, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import type { TaskView, TaskType } from '../types'
 
@@ -102,10 +102,11 @@ function MiniCalendar({
 
 interface TaskCardProps {
     task: TaskView
+    onEdit?: (task: TaskView) => void
     onDelete?: (taskId: string) => void
 }
 
-export function TaskCard({ task, onDelete }: TaskCardProps) {
+export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
     const Icon = TYPE_ICONS[task.type] ?? Star
 
     return (
@@ -126,6 +127,16 @@ export function TaskCard({ task, onDelete }: TaskCardProps) {
                             >
                                 {STATUS_LABELS[task.status] ?? task.status}
                             </span>
+                            {onEdit && (
+                                <button
+                                    type="button"
+                                    onClick={() => onEdit(task)}
+                                    className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                                    aria-label="Редактировать задачу"
+                                >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                            )}
                             {onDelete && (
                                 <button
                                     type="button"
