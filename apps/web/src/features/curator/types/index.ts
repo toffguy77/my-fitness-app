@@ -225,7 +225,7 @@ export interface AttentionItem {
     client_id: number
     client_name: string
     client_avatar?: string
-    reason: 'red_alert' | 'overdue_task' | 'inactive' | 'unread_message' | 'awaiting_feedback'
+    reason: 'red_alert' | 'overdue_task' | 'inactive' | 'unread_message' | 'awaiting_feedback' | 'incomplete_profile'
     detail: string
     priority: number
     action_url: string

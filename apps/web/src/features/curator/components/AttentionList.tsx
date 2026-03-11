@@ -16,6 +16,7 @@ const reasonLabels: Record<AttentionItem['reason'], string> = {
     inactive: 'Нет активности',
     unread_message: 'Сообщение',
     awaiting_feedback: 'Ожидает отзыв',
+    incomplete_profile: 'Неполный профиль',
 }
 
 function getPriorityBadgeClass(priority: number): string {

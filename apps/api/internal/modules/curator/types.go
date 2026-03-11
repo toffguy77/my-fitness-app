@@ -134,11 +134,12 @@ type AnalyticsSummary struct {
 type AttentionReason string
 
 const (
-	AttentionReasonRedAlert         AttentionReason = "red_alert"
-	AttentionReasonOverdueTask      AttentionReason = "overdue_task"
-	AttentionReasonInactive         AttentionReason = "inactive"
-	AttentionReasonUnreadMessage    AttentionReason = "unread_message"
-	AttentionReasonAwaitingFeedback AttentionReason = "awaiting_feedback"
+	AttentionReasonRedAlert          AttentionReason = "red_alert"
+	AttentionReasonOverdueTask       AttentionReason = "overdue_task"
+	AttentionReasonInactive          AttentionReason = "inactive"
+	AttentionReasonUnreadMessage     AttentionReason = "unread_message"
+	AttentionReasonAwaitingFeedback  AttentionReason = "awaiting_feedback"
+	AttentionReasonIncompleteProfile AttentionReason = "incomplete_profile"
 )
 
 // AttentionItem represents a single item in the curator's attention list
