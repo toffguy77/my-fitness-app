@@ -40,7 +40,7 @@ export const curatorApi = {
         apiClient.get<TaskView[]>(`${BASE}/clients/${clientId}/tasks${status ? `?status=${status}` : ''}`),
     createTask: (clientId: number, req: CreateTaskRequest) =>
         apiClient.post<TaskView>(`${BASE}/clients/${clientId}/tasks`, req),
-    updateTask: (clientId: number, taskId: string, req: Partial<CreateTaskRequest>) =>
+    updateTask: (clientId: number, taskId: string, req: { title?: string; description?: string; deadline?: string; status?: string }) =>
         apiClient.put<TaskView>(`${BASE}/clients/${clientId}/tasks/${taskId}`, req),
     deleteTask: (clientId: number, taskId: string) =>
         apiClient.delete(`${BASE}/clients/${clientId}/tasks/${taskId}`),

@@ -157,10 +157,20 @@ type TaskCompletion struct {
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 }
 
-// ReportFeedback represents curator feedback on a weekly report
+// ReportFeedback represents structured curator feedback on a weekly report
 type ReportFeedback struct {
-	ReportID string  `json:"report_id"`
-	Feedback *string `json:"feedback"`
+	Nutrition       *CategoryRating `json:"nutrition,omitempty"`
+	Activity        *CategoryRating `json:"activity,omitempty"`
+	Water           *CategoryRating `json:"water,omitempty"`
+	PhotoUploaded   *bool           `json:"photo_uploaded,omitempty"`
+	Summary         string          `json:"summary"`
+	Recommendations string          `json:"recommendations,omitempty"`
+}
+
+// CategoryRating represents a rating for a specific feedback category
+type CategoryRating struct {
+	Rating  string `json:"rating"`
+	Comment string `json:"comment,omitempty"`
 }
 
 // Validate validates the task fields

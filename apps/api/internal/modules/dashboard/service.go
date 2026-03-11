@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -1270,8 +1271,8 @@ func (s *Service) GetReportFeedback(ctx context.Context, userID int64, reportID 
 	`
 
 	var id string
-	var feedback sql.NullString
-	err := s.db.QueryRowContext(ctx, query, reportID, userID).Scan(&id, &feedback)
+	var feedbackJSON sql.NullString
+	err := s.db.QueryRowContext(ctx, query, reportID, userID).Scan(&id, &feedbackJSON)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("report not found")
@@ -1288,14 +1289,18 @@ func (s *Service) GetReportFeedback(ctx context.Context, userID int64, reportID 
 		"report_id": reportID,
 	})
 
-	result := &ReportFeedback{
-		ReportID: id,
-	}
-	if feedback.Valid {
-		result.Feedback = &feedback.String
+	_ = id
+	if !feedbackJSON.Valid || feedbackJSON.String == "" {
+		return nil, fmt.Errorf("report not found")
 	}
 
-	return result, nil
+	var result ReportFeedback
+	if err := json.Unmarshal([]byte(feedbackJSON.String), &result); err != nil {
+		s.log.Error("Failed to parse curator feedback JSON", "error", err, "report_id", reportID)
+		return nil, fmt.Errorf("failed to parse feedback: %w", err)
+	}
+
+	return &result, nil
 }
 
 // ValidateWeekData validates that sufficient data exists for weekly report
