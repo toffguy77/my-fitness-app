@@ -1565,7 +1565,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             set({
                 dailyData: dailyData || {},
                 weeklyPlan: weeklyPlan || null,
-                tasks: tasks || [],
+                tasks: (tasks || []).map(mapBackendTask),
             });
         } catch (error) {
             // Log cache loading error (non-critical)
