@@ -82,6 +82,14 @@ func (m *MockService) GetTasksByWeek(ctx context.Context, userID int64, weekNumb
 	return args.Get(0).([]*Task), args.Error(1)
 }
 
+func (m *MockService) GetActiveTasks(ctx context.Context, userID int64) ([]*Task, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*Task), args.Error(1)
+}
+
 func (m *MockService) CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error) {
 	args := m.Called(ctx, curatorID, clientID, task)
 	if args.Get(0) == nil {
@@ -432,7 +440,7 @@ func TestGetTasks_Success(t *testing.T) {
 		},
 	}
 
-	mockService.On("GetTasksByWeek", mock.Anything, int64(1), mock.AnythingOfType("int")).Return(tasks, nil)
+	mockService.On("GetActiveTasks", mock.Anything, int64(1)).Return(tasks, nil)
 
 	router := gin.New()
 	router.GET("/tasks", func(c *gin.Context) {
@@ -1260,7 +1268,7 @@ func TestCreateWeeklyPlan_ServiceError(t *testing.T) {
 func TestGetTasks_ServiceError(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	mockService.On("GetTasksByWeek", mock.Anything, int64(1), mock.AnythingOfType("int")).Return(nil, fmt.Errorf("database error"))
+	mockService.On("GetActiveTasks", mock.Anything, int64(1)).Return(nil, fmt.Errorf("database error"))
 
 	router := gin.New()
 	router.GET("/tasks", func(c *gin.Context) {

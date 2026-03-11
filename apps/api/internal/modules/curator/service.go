@@ -2191,7 +2191,7 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 		return
 	}
 
-	actionURL := "/dashboard"
+	actionURL := fmt.Sprintf("/dashboard?task=%s", task.ID)
 	notification := &notifications.Notification{
 		UserID:    clientID,
 		Category:  notifications.CategoryMain,

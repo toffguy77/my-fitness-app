@@ -27,6 +27,7 @@ type ServiceInterface interface {
 	CreatePlan(ctx context.Context, curatorID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error)
 	UpdatePlan(ctx context.Context, curatorID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error)
 	GetTasksByWeek(ctx context.Context, userID int64, weekNumber int) ([]*Task, error)
+	GetActiveTasks(ctx context.Context, userID int64) ([]*Task, error)
 	CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error)
 	UpdateTaskStatus(ctx context.Context, userID int64, taskID string, status TaskStatus) (*Task, error)
 	CompleteTaskForDate(ctx context.Context, userID int64, taskID string, date string) (*Task, error)
@@ -356,14 +357,18 @@ func (h *Handler) GetTasks(c *gin.Context) {
 		return
 	}
 
-	// If no week specified, use current ISO week number
 	weekNumber := req.Week
-	if weekNumber == 0 {
-		_, weekNumber = time.Now().ISOWeek()
-	}
 
-	// Call service to get tasks
-	tasks, err := h.service.GetTasksByWeek(c.Request.Context(), userID, weekNumber)
+	var tasks []*Task
+	var err error
+
+	if weekNumber > 0 {
+		// If week specified, filter by that week
+		tasks, err = h.service.GetTasksByWeek(c.Request.Context(), userID, weekNumber)
+	} else {
+		// Otherwise show all active tasks
+		tasks, err = h.service.GetActiveTasks(c.Request.Context(), userID)
+	}
 	if err != nil {
 		h.log.Errorw("Failed to get tasks", "error", err, "user_id", userID, "week", weekNumber)
 		response.InternalError(c, "Не удалось получить задачи")

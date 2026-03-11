@@ -942,6 +942,105 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 	return tasks, nil
 }
 
+// GetActiveTasks retrieves all active tasks for a user (not filtered by week)
+func (s *Service) GetActiveTasks(ctx context.Context, userID int64) ([]*Task, error) {
+	startTime := time.Now()
+
+	query := `
+		SELECT id, user_id, curator_id, title, description, type, week_number, assigned_at,
+		       due_date, completed_at, status, recurrence, recurrence_days, created_at, updated_at
+		FROM tasks
+		WHERE user_id = $1 AND status = 'active'
+		ORDER BY due_date ASC, created_at ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			"user_id": userID,
+		})
+		return nil, fmt.Errorf("failed to query active tasks: %w", err)
+	}
+	defer rows.Close()
+
+	tasks := make([]*Task, 0)
+	for rows.Next() {
+		var task Task
+		var recurrenceDaysStr sql.NullString
+		err := rows.Scan(
+			&task.ID,
+			&task.UserID,
+			&task.CuratorID,
+			&task.Title,
+			&task.Description,
+			&task.Type,
+			&task.WeekNumber,
+			&task.AssignedAt,
+			&task.DueDate,
+			&task.CompletedAt,
+			&task.Status,
+			&task.Recurrence,
+			&recurrenceDaysStr,
+			&task.CreatedAt,
+			&task.UpdatedAt,
+		)
+		if err != nil {
+			s.log.Error("Failed to scan task", "error", err)
+			return nil, fmt.Errorf("failed to scan task: %w", err)
+		}
+		if recurrenceDaysStr.Valid {
+			task.RecurrenceDays = parseIntArray(recurrenceDaysStr.String)
+		}
+		tasks = append(tasks, &task)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating tasks: %w", err)
+	}
+
+	// Fetch completions for all tasks
+	if len(tasks) > 0 {
+		taskIDs := make([]string, len(tasks))
+		taskMap := make(map[string]*Task, len(tasks))
+		for i, t := range tasks {
+			taskIDs[i] = t.ID
+			taskMap[t.ID] = t
+		}
+
+		completionsQuery := `
+			SELECT id, task_id, completed_date, created_at
+			FROM task_completions
+			WHERE task_id = ANY($1)
+			ORDER BY completed_date DESC
+		`
+		cRows, cErr := s.db.QueryContext(ctx, completionsQuery, "{"+strings.Join(taskIDs, ",")+"}")
+		if cErr != nil {
+			s.log.Error("Failed to query task completions", "error", cErr)
+		} else {
+			defer cRows.Close()
+			for cRows.Next() {
+				var c TaskCompletion
+				var completedDate time.Time
+				if err := cRows.Scan(&c.ID, &c.TaskID, &completedDate, &c.CreatedAt); err != nil {
+					s.log.Error("Failed to scan task completion", "error", err)
+					continue
+				}
+				c.CompletedDate = completedDate.Format("2006-01-02")
+				if t, ok := taskMap[c.TaskID]; ok {
+					t.Completions = append(t.Completions, c)
+				}
+			}
+		}
+	}
+
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+		"user_id": userID,
+		"count":   len(tasks),
+	})
+
+	return tasks, nil
+}
+
 // CreateTask creates a new task (curator only)
 func (s *Service) CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error) {
 	startTime := time.Now()
