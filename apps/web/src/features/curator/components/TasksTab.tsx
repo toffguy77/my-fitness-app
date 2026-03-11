@@ -24,6 +24,7 @@ export function TasksTab({ clientId }: TasksTabProps) {
     const [error, setError] = useState<string | null>(null)
     const [filter, setFilter] = useState<TaskStatus>('active')
     const [showForm, setShowForm] = useState(false)
+    const [editingTask, setEditingTask] = useState<TaskView | undefined>()
 
     useEffect(() => {
         let cancelled = false
@@ -58,11 +59,24 @@ export function TasksTab({ clientId }: TasksTabProps) {
         }
     }
 
+    const handleEdit = (task: TaskView) => {
+        setEditingTask(task)
+        setShowForm(true)
+    }
+
     const handleTaskSaved = (task: TaskView) => {
-        if (filter === 'active') {
+        if (editingTask) {
+            setTasks((prev) => prev.map((t) => (t.id === task.id ? task : t)))
+        } else if (filter === 'active') {
             setTasks((prev) => [task, ...prev])
         }
         setShowForm(false)
+        setEditingTask(undefined)
+    }
+
+    const handleFormClose = () => {
+        setShowForm(false)
+        setEditingTask(undefined)
     }
 
     return (
@@ -106,7 +120,7 @@ export function TasksTab({ clientId }: TasksTabProps) {
             ) : (
                 <div className="space-y-2">
                     {tasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onDelete={handleDelete} />
+                        <TaskCard key={task.id} task={task} onEdit={handleEdit} onDelete={handleDelete} />
                     ))}
                 </div>
             )}
@@ -122,7 +136,12 @@ export function TasksTab({ clientId }: TasksTabProps) {
             </button>
 
             {showForm && (
-                <TaskForm clientId={clientId} onClose={() => setShowForm(false)} onSaved={handleTaskSaved} />
+                <TaskForm
+                    clientId={clientId}
+                    onClose={handleFormClose}
+                    onSaved={handleTaskSaved}
+                    existingTask={editingTask}
+                />
             )}
         </div>
     )
