@@ -36,12 +36,27 @@ import {
 /**
  * LocalStorage keys for caching
  */
+const CACHE_VERSION = '2';
+const CACHE_VERSION_KEY = 'dashboard_cache_version';
+
 const CACHE_KEYS = {
     DAILY_DATA: 'dashboard_daily_data',
     WEEKLY_PLAN: 'dashboard_weekly_plan',
     TASKS: 'dashboard_tasks',
     LAST_SYNC: 'dashboard_last_sync',
 } as const;
+
+// Invalidate old cache on version mismatch
+if (typeof window !== 'undefined') {
+    try {
+        if (localStorage.getItem(CACHE_VERSION_KEY) !== CACHE_VERSION) {
+            Object.values(CACHE_KEYS).forEach((key) => localStorage.removeItem(key));
+            localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+        }
+    } catch {
+        // Ignore localStorage errors
+    }
+}
 
 /**
  * Cache expiration time (5 minutes for localStorage)
