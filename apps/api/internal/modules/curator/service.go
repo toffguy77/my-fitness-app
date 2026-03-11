@@ -2177,6 +2177,67 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 		}
 	}
 
+	// Priority 6: Incomplete profile (missing data needed for KBJU calculation)
+	profileQuery := fmt.Sprintf(`
+		SELECT u.id,
+			us.birth_date IS NULL AS no_birth_date,
+			(us.biological_sex IS NULL OR us.biological_sex = '') AS no_sex,
+			(us.height IS NULL OR us.height = 0) AS no_height,
+			NOT EXISTS (
+				SELECT 1 FROM daily_metrics dm
+				WHERE dm.user_id = u.id AND dm.weight IS NOT NULL
+			) AS no_weight
+		FROM users u
+		LEFT JOIN user_settings us ON us.user_id = u.id
+		WHERE u.id IN %s
+			AND (
+				us.user_id IS NULL
+				OR us.birth_date IS NULL
+				OR us.biological_sex IS NULL OR us.biological_sex = ''
+				OR us.height IS NULL OR us.height = 0
+				OR NOT EXISTS (
+					SELECT 1 FROM daily_metrics dm
+					WHERE dm.user_id = u.id AND dm.weight IS NOT NULL
+				)
+			)
+	`, inClause)
+	profileRows, err := s.db.QueryContext(ctx, profileQuery, args...)
+	if err != nil {
+		s.log.Error("Failed to query incomplete profiles", "error", err)
+	} else {
+		defer profileRows.Close()
+		for profileRows.Next() {
+			var clientID int64
+			var noBirthDate, noSex, noHeight, noWeight bool
+			if err := profileRows.Scan(&clientID, &noBirthDate, &noSex, &noHeight, &noWeight); err != nil {
+				continue
+			}
+			var missing []string
+			if noBirthDate {
+				missing = append(missing, "дата рождения")
+			}
+			if noSex {
+				missing = append(missing, "пол")
+			}
+			if noHeight {
+				missing = append(missing, "рост")
+			}
+			if noWeight {
+				missing = append(missing, "вес (ни одного замера)")
+			}
+			if len(missing) == 0 {
+				continue
+			}
+			info := clientInfoMap[clientID]
+			items = append(items, AttentionItem{
+				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
+				Reason:   AttentionReasonIncompleteProfile,
+				Detail:   fmt.Sprintf("Не заполнено: %s", strings.Join(missing, ", ")),
+				Priority: 6, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
+			})
+		}
+	}
+
 	// Sort by priority ascending, then by client name
 	sort.SliceStable(items, func(i, j int) bool {
 		if items[i].Priority != items[j].Priority {
