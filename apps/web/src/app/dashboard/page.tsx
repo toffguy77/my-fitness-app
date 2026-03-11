@@ -21,7 +21,7 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { getProfile } from '@/features/settings/api/settings'
 import { CalendarNavigator } from '@/features/dashboard/components/CalendarNavigator'
@@ -53,6 +53,8 @@ interface UserData {
 
 export default function DashboardPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const highlightTaskId = searchParams.get('task')
     const [userData, setUserData] = useState<UserData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
@@ -248,7 +250,7 @@ export default function DashboardPage() {
                 <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
 
                 {/* Curator-assigned tasks (renders nothing when empty) */}
-                <ClientTasksSection className="w-full" />
+                <ClientTasksSection className="w-full" highlightTaskId={highlightTaskId} />
 
                 {/* Below-the-fold sections */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">

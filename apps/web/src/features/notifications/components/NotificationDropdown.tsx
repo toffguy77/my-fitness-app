@@ -20,7 +20,7 @@ interface GroupedNotifications {
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     const router = useRouter()
     const dropdownRef = useRef<HTMLDivElement>(null)
-    const { notifications, fetchNotifications, markAllAsRead } = useNotificationsStore()
+    const { notifications, fetchNotifications, markAllAsRead, markAsRead } = useNotificationsStore()
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
     // Fetch notifications for both categories on open
@@ -103,6 +103,9 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     }, [recentNotifications])
 
     const handleNotificationClick = (notification: Notification) => {
+        if (!notification.readAt) {
+            markAsRead(notification.id, notification.category)
+        }
         if (notification.actionUrl) {
             router.push(notification.actionUrl)
         }
