@@ -70,6 +70,7 @@ function getDeadlineColor(deadline: string): string {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
     const deadlineDate = new Date(deadline)
+    if (isNaN(deadlineDate.getTime())) return 'text-gray-500'
     deadlineDate.setHours(0, 0, 0, 0)
 
     const diffMs = deadlineDate.getTime() - now.getTime()
@@ -85,6 +86,7 @@ function getDeadlineColor(deadline: string): string {
  */
 function formatDeadline(deadline: string): string {
     const date = new Date(deadline)
+    if (isNaN(date.getTime())) return '—'
     return new Intl.DateTimeFormat('ru-RU', {
         day: 'numeric',
         month: 'short',
