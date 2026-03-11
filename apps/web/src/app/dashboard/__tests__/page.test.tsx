@@ -32,7 +32,7 @@ jest.mock('@/features/dashboard/components/DailyTrackingGrid', () => ({
     DailyTrackingGrid: () => <div data-testid="daily-tracking-grid">Daily Tracking Grid</div>,
 }))
 
-// Note: ProgressSection, PhotoUploadSection, WeeklyPlanSection, TasksSection
+// Note: ProgressSection, PhotoUploadSection, WeeklyPlanSection
 // are now lazy-loaded via @/features/dashboard barrel export, mocked below
 
 jest.mock('@/features/dashboard/components/WeightSection', () => ({
@@ -60,11 +60,9 @@ jest.mock('@/features/dashboard', () => ({
     LazyProgressSection: () => <div data-testid="progress-section">Progress Section</div>,
     LazyPhotoUploadSection: () => <div data-testid="photo-upload-section">Photo Upload Section</div>,
     LazyWeeklyPlanSection: () => <div data-testid="weekly-plan-section">Weekly Plan Section</div>,
-    LazyTasksSection: () => <div data-testid="tasks-section">Tasks Section</div>,
     ProgressSectionSkeleton: () => <div>Loading Progress...</div>,
     PhotoUploadSectionSkeleton: () => <div>Loading Photo...</div>,
     WeeklyPlanSectionSkeleton: () => <div>Loading Plan...</div>,
-    TasksSectionSkeleton: () => <div>Loading Tasks...</div>,
 }))
 
 // Mock dashboard store
@@ -271,14 +269,6 @@ describe('DashboardPage', () => {
             })
         })
 
-        it('should render TasksSection component', async () => {
-            render(<DashboardPage />)
-
-            await waitFor(() => {
-                expect(screen.getByTestId('tasks-section')).toBeInTheDocument()
-            })
-        })
-
         it('should render all sections in vertical layout', async () => {
             render(<DashboardPage />)
 
@@ -291,7 +281,6 @@ describe('DashboardPage', () => {
             expect(screen.getByTestId('progress-section')).toBeInTheDocument()
             expect(screen.getByTestId('photo-upload-section')).toBeInTheDocument()
             expect(screen.getByTestId('weekly-plan-section')).toBeInTheDocument()
-            expect(screen.getByTestId('tasks-section')).toBeInTheDocument()
         })
     })
 

@@ -31,11 +31,9 @@ import {
     LazyProgressSection,
     LazyPhotoUploadSection,
     LazyWeeklyPlanSection,
-    LazyTasksSection,
     ProgressSectionSkeleton,
     PhotoUploadSectionSkeleton,
     WeeklyPlanSectionSkeleton,
-    TasksSectionSkeleton,
 } from '@/features/dashboard'
 import { ClientTasksSection } from '@/features/dashboard/components/ClientTasksSection'
 import { CuratorFeedbackSection } from '@/features/dashboard/components/CuratorFeedbackSection'
@@ -253,9 +251,9 @@ export default function DashboardPage() {
                 <ClientTasksSection className="w-full" />
 
                 {/* Below-the-fold sections */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
                     {/* Photo Upload Section */}
-                    <div className="md:col-span-1 lg:col-span-1">
+                    <div>
                         <Suspense fallback={<PhotoUploadSectionSkeleton className="w-full h-full" />}>
                             <LazyPhotoUploadSection
                                 weekStart={selectedWeek.start}
@@ -266,16 +264,9 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Weekly Plan Section */}
-                    <div className="md:col-span-1 lg:col-span-1">
+                    <div>
                         <Suspense fallback={<WeeklyPlanSectionSkeleton className="w-full h-full" />}>
                             <LazyWeeklyPlanSection className="w-full h-full" />
-                        </Suspense>
-                    </div>
-
-                    {/* Tasks Section */}
-                    <div className="md:col-span-2 lg:col-span-1">
-                        <Suspense fallback={<TasksSectionSkeleton className="w-full h-full" />}>
-                            <LazyTasksSection className="w-full h-full" />
                         </Suspense>
                     </div>
                 </div>
