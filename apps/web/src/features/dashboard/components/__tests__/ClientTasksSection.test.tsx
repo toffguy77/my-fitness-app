@@ -137,7 +137,7 @@ describe('ClientTasksSection', () => {
             })
         })
 
-        it('shows progress bar for recurring tasks', async () => {
+        it('shows mini calendar for recurring tasks', async () => {
             const tasks = [
                 createMockTask('daily', {
                     recurrence: 'daily',
@@ -148,9 +148,13 @@ describe('ClientTasksSection', () => {
 
             render(<ClientTasksSection />)
 
+            // MiniCalendar renders day labels (Пн, Вт, etc.)
             await waitFor(() => {
-                expect(screen.getByText('3/7 дней')).toBeInTheDocument()
+                expect(screen.getByText('Пн')).toBeInTheDocument()
             })
+
+            expect(screen.getByText('Вт')).toBeInTheDocument()
+            expect(screen.getByText('Ср')).toBeInTheDocument()
         })
     })
 

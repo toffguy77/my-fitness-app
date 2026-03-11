@@ -2,10 +2,10 @@
  * ClientTasksSection Component
  *
  * Displays curator-assigned tasks with:
- * - Task type icons (nutrition, workout, habit, measurement)
- * - Deadline coloring (overdue=red, today=yellow, future=gray)
+ * - Task type icon + label (nutrition, workout, habit, measurement)
+ * - Deadline with color coding (overdue=red, today=yellow, future=gray)
  * - Checkbox for completion with optimistic update
- * - Progress bar for recurring tasks
+ * - Mini calendar for recurring tasks (last 7 days)
  * - Overdue tasks highlighted with red left border
  *
  * Renders nothing when there are no tasks.
@@ -24,16 +24,19 @@ import {
 import { dashboardApi } from '../api/dashboardApi'
 import type { ClientTaskView, ClientTaskType } from '../types'
 
-/**
- * Props for ClientTasksSection component
- */
+const DAY_LABELS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+
+const TYPE_LABELS: Record<ClientTaskType, string> = {
+    nutrition: 'Питание',
+    workout: 'Тренировка',
+    habit: 'Привычка',
+    measurement: 'Замеры',
+}
+
 export interface ClientTasksSectionProps {
     className?: string
 }
 
-/**
- * Get icon component for task type
- */
 function getTaskTypeIcon(type: ClientTaskType) {
     switch (type) {
         case 'nutrition':
@@ -47,25 +50,6 @@ function getTaskTypeIcon(type: ClientTaskType) {
     }
 }
 
-/**
- * Get label for task type
- */
-function getTaskTypeLabel(type: ClientTaskType): string {
-    switch (type) {
-        case 'nutrition':
-            return 'Питание'
-        case 'workout':
-            return 'Тренировка'
-        case 'habit':
-            return 'Привычка'
-        case 'measurement':
-            return 'Замер'
-    }
-}
-
-/**
- * Determine deadline color class based on date
- */
 function getDeadlineColor(deadline: string): string {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
@@ -81,9 +65,6 @@ function getDeadlineColor(deadline: string): string {
     return 'text-gray-500'
 }
 
-/**
- * Format deadline for display
- */
 function formatDeadline(deadline: string): string {
     const date = new Date(deadline)
     if (isNaN(date.getTime())) return '—'
@@ -93,9 +74,6 @@ function formatDeadline(deadline: string): string {
     }).format(date)
 }
 
-/**
- * Calculate expected completions for recurring tasks
- */
 function getExpectedCompletions(task: ClientTaskView): number {
     if (task.recurrence === 'daily') return 7
     if (task.recurrence === 'weekly') return task.recurrence_days?.length || 1
@@ -103,8 +81,40 @@ function getExpectedCompletions(task: ClientTaskView): number {
 }
 
 /**
- * ClientTasksSection Component
+ * Mini calendar showing last 7 days with completion status
  */
+function MiniCalendar({ completions }: { completions: string[] }) {
+    const today = new Date()
+    const completionSet = new Set(completions)
+    const days: { date: string; label: string; filled: boolean }[] = []
+
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today)
+        d.setDate(d.getDate() - i)
+        const dateStr = d.toISOString().slice(0, 10)
+        days.push({
+            date: dateStr,
+            label: DAY_LABELS[d.getDay()],
+            filled: completionSet.has(dateStr),
+        })
+    }
+
+    return (
+        <div className="flex items-center gap-1 mt-2">
+            {days.map((day) => (
+                <div key={day.date} className="flex flex-col items-center gap-0.5">
+                    <span className="text-[9px] text-gray-400">{day.label}</span>
+                    <div
+                        className={`h-3 w-3 rounded-full ${
+                            day.filled ? 'bg-green-500' : 'bg-gray-200'
+                        }`}
+                    />
+                </div>
+            ))}
+        </div>
+    )
+}
+
 export const ClientTasksSection = memo(function ClientTasksSection({
     className = '',
 }: ClientTasksSectionProps) {
@@ -122,7 +132,6 @@ export const ClientTasksSection = memo(function ClientTasksSection({
     }, [])
 
     const handleComplete = useCallback(async (taskId: string) => {
-        // Optimistic update
         setTasks((prev) =>
             prev.map((t) =>
                 t.id === taskId
@@ -131,7 +140,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                           status: 'completed' as const,
                           completions: [
                               ...(t.completions || []),
-                              new Date().toISOString(),
+                              new Date().toISOString().slice(0, 10),
                           ],
                       }
                     : t
@@ -141,7 +150,6 @@ export const ClientTasksSection = memo(function ClientTasksSection({
         try {
             await dashboardApi.completeTask(taskId)
         } catch {
-            // Revert optimistic update on failure
             setTasks((prev) =>
                 prev.map((t) =>
                     t.id === taskId
@@ -156,7 +164,6 @@ export const ClientTasksSection = memo(function ClientTasksSection({
         }
     }, [])
 
-    // Don't render the section at all if loading or no tasks
     if (loading) return null
     if (tasks.length === 0) return null
 
@@ -178,21 +185,19 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                     const isCompleted = task.status === 'completed'
                     const isOverdue = task.status === 'overdue'
                     const isRecurring = task.recurrence !== 'once'
-                    const completionCount = task.completions?.length || 0
-                    const expectedCount = getExpectedCompletions(task)
 
                     return (
                         <div
                             key={task.id}
                             role="listitem"
-                            className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                            className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-colors ${
                                 isOverdue
                                     ? 'border-l-4 border-l-red-500 border-red-200 bg-red-50'
                                     : isCompleted
                                       ? 'border-green-200 bg-green-50'
-                                      : 'border-gray-200 bg-white hover:border-gray-300'
+                                      : 'border-gray-100 bg-white shadow-sm'
                             }`}
-                            aria-label={`${getTaskTypeLabel(task.type)}: ${task.title}. ${
+                            aria-label={`${TYPE_LABELS[task.type]}: ${task.title}. ${
                                 isCompleted
                                     ? 'Выполнена'
                                     : isOverdue
@@ -225,21 +230,29 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                             </button>
 
                             {/* Task type icon */}
-                            <Icon
-                                className={`flex-shrink-0 w-4 h-4 mt-0.5 ${
-                                    isCompleted
-                                        ? 'text-green-600'
-                                        : isOverdue
-                                          ? 'text-red-500'
-                                          : 'text-gray-400'
-                                }`}
-                                aria-hidden="true"
-                            />
+                            <div className={`flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center ${
+                                isCompleted
+                                    ? 'bg-green-100'
+                                    : isOverdue
+                                      ? 'bg-red-100'
+                                      : 'bg-gray-100'
+                            }`}>
+                                <Icon
+                                    className={`w-4 h-4 ${
+                                        isCompleted
+                                            ? 'text-green-600'
+                                            : isOverdue
+                                              ? 'text-red-500'
+                                              : 'text-gray-600'
+                                    }`}
+                                    aria-hidden="true"
+                                />
+                            </div>
 
                             {/* Task content */}
                             <div className="flex-1 min-w-0">
                                 <h4
-                                    className={`text-sm font-medium ${
+                                    className={`text-sm font-semibold ${
                                         isCompleted
                                             ? 'text-green-900 line-through'
                                             : 'text-gray-900'
@@ -247,40 +260,27 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 >
                                     {task.title}
                                 </h4>
+
+                                {/* Type label + deadline */}
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-gray-400">
+                                        {TYPE_LABELS[task.type]}
+                                    </span>
+                                    <span className={`text-xs ${getDeadlineColor(task.deadline)}`}>
+                                        до {formatDeadline(task.deadline)}
+                                    </span>
+                                </div>
+
                                 {task.description && (
-                                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
                                         {task.description}
                                     </p>
                                 )}
 
-                                <div className="flex items-center gap-3 mt-2">
-                                    {/* Deadline */}
-                                    <span
-                                        className={`text-xs ${getDeadlineColor(task.deadline)}`}
-                                    >
-                                        До {formatDeadline(task.deadline)}
-                                    </span>
-
-                                    {/* Recurring task progress */}
-                                    {isRecurring && (
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-blue-500 rounded-full transition-all"
-                                                    style={{
-                                                        width: `${Math.min(100, (completionCount / expectedCount) * 100)}%`,
-                                                    }}
-                                                />
-                                            </div>
-                                            <span className="text-xs text-gray-500">
-                                                {completionCount}/{expectedCount}{' '}
-                                                {task.recurrence === 'daily'
-                                                    ? 'дней'
-                                                    : 'раз'}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
+                                {/* Mini calendar for recurring tasks */}
+                                {isRecurring && task.completions && (
+                                    <MiniCalendar completions={task.completions} />
+                                )}
                             </div>
                         </div>
                     )
