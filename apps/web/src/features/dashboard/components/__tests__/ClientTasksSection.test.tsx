@@ -52,7 +52,7 @@ describe('ClientTasksSection', () => {
 
     describe('Empty state', () => {
         it('renders nothing when API returns empty array', async () => {
-            mockDashboardApi.getMyTasks.mockResolvedValue([])
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks: [], count: 0, week: 1 })
 
             const { container } = render(<ClientTasksSection />)
 
@@ -80,7 +80,7 @@ describe('ClientTasksSection', () => {
     describe('Rendering tasks', () => {
         it('renders tasks with heading', async () => {
             const tasks = [createMockTask('1'), createMockTask('2')]
-            mockDashboardApi.getMyTasks.mockResolvedValue(tasks)
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
 
             render(<ClientTasksSection />)
 
@@ -96,7 +96,7 @@ describe('ClientTasksSection', () => {
 
         it('renders task descriptions', async () => {
             const tasks = [createMockTask('1', { description: 'Test description' })]
-            mockDashboardApi.getMyTasks.mockResolvedValue(tasks)
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
 
             render(<ClientTasksSection />)
 
@@ -115,7 +115,7 @@ describe('ClientTasksSection', () => {
                     deadline: pastDate.toISOString(),
                 }),
             ]
-            mockDashboardApi.getMyTasks.mockResolvedValue(tasks)
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
 
             render(<ClientTasksSection />)
 
@@ -127,7 +127,7 @@ describe('ClientTasksSection', () => {
 
         it('shows completed tasks with green styling', async () => {
             const tasks = [createMockTask('done', { status: 'completed' })]
-            mockDashboardApi.getMyTasks.mockResolvedValue(tasks)
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
 
             render(<ClientTasksSection />)
 
@@ -144,7 +144,7 @@ describe('ClientTasksSection', () => {
                     completions: ['2026-03-08', '2026-03-09', '2026-03-10'],
                 }),
             ]
-            mockDashboardApi.getMyTasks.mockResolvedValue(tasks)
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
 
             render(<ClientTasksSection />)
 
@@ -158,7 +158,7 @@ describe('ClientTasksSection', () => {
         it('completes a task with optimistic update', async () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('1')]
-            mockDashboardApi.getMyTasks.mockResolvedValue(tasks)
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
             mockDashboardApi.completeTask.mockResolvedValue(undefined)
 
             render(<ClientTasksSection />)
@@ -179,7 +179,7 @@ describe('ClientTasksSection', () => {
         it('reverts optimistic update on API failure', async () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('1')]
-            mockDashboardApi.getMyTasks.mockResolvedValue(tasks)
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
             mockDashboardApi.completeTask.mockRejectedValue(
                 new Error('Server error')
             )

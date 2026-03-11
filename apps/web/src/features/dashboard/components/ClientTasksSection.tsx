@@ -113,9 +113,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
         dashboardApi
             .getMyTasks()
             .then((data) => {
-                // Handle both array responses and wrapped responses
-                const taskList = Array.isArray(data) ? data : []
-                setTasks(taskList)
+                setTasks(data.tasks || [])
             })
             .catch(() => {})
             .finally(() => setLoading(false))

@@ -15,13 +15,13 @@ export const dashboardApi = {
      * Fetch current user's active tasks assigned by curator
      */
     getMyTasks: () =>
-        apiClient.get<ClientTaskView[]>(getApiUrl('/dashboard/tasks')),
+        apiClient.get<{ tasks: ClientTaskView[]; count: number; week: number }>(getApiUrl('/dashboard/tasks')),
 
     /**
      * Mark a task as completed
      */
     completeTask: (taskId: string) =>
-        apiClient.put(getApiUrl('/dashboard/tasks/' + taskId + '/complete'), {}),
+        apiClient.post(getApiUrl('/dashboard/tasks/' + taskId + '/complete'), {}),
 
     /**
      * Fetch curator feedback for a specific weekly report
