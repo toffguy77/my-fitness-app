@@ -102,26 +102,29 @@ type clientRow struct {
 func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error) {
 	startTime := time.Now()
 
-	// Main query: get clients with today's food totals and active plan
+	// Main query: get clients with today's food totals and plan (curator plan OR auto-calculated fallback)
 	query := `
 		SELECT u.id, COALESCE(u.name, '') AS name, u.avatar_url,
 		       COALESCE(SUM(fe.calories), 0) AS today_calories,
 		       COALESCE(SUM(fe.protein), 0) AS today_protein,
 		       COALESCE(SUM(fe.fat), 0) AS today_fat,
 		       COALESCE(SUM(fe.carbs), 0) AS today_carbs,
-		       wp.calories_goal AS plan_calories,
-		       wp.protein_goal AS plan_protein,
-		       wp.fat_goal AS plan_fat,
-		       wp.carbs_goal AS plan_carbs
+		       COALESCE(wp.calories_goal, dct.calories) AS plan_calories,
+		       COALESCE(wp.protein_goal, dct.protein) AS plan_protein,
+		       COALESCE(wp.fat_goal, dct.fat) AS plan_fat,
+		       COALESCE(wp.carbs_goal, dct.carbs) AS plan_carbs
 		FROM curator_client_relationships ccr
 		JOIN users u ON u.id = ccr.client_id
 		LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.date = CURRENT_DATE
 		LEFT JOIN weekly_plans wp ON wp.user_id = u.id
 		    AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
 		    AND wp.is_active = true
+		LEFT JOIN daily_calculated_targets dct ON dct.user_id = u.id
+		    AND dct.date = CURRENT_DATE
 		WHERE ccr.curator_id = $1 AND ccr.status = 'active'
 		GROUP BY u.id, u.name, u.avatar_url,
-		         wp.calories_goal, wp.protein_goal, wp.fat_goal, wp.carbs_goal
+		         wp.calories_goal, wp.protein_goal, wp.fat_goal, wp.carbs_goal,
+		         dct.calories, dct.protein, dct.fat, dct.carbs
 	`
 
 	rows, err := s.db.QueryContext(ctx, query, curatorID)
@@ -1999,18 +2002,20 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 
 	items := make([]AttentionItem, 0)
 
-	// Priority 1: Red alerts — calories <50% or >120% of plan
+	// Priority 1: Red alerts — calories <50% or >120% of plan (curator plan or auto-calculated)
 	alertQuery := fmt.Sprintf(`
 		SELECT u.id,
 			COALESCE(SUM(fe.calories), 0) AS today_cal,
-			wp.calories_goal AS plan_cal
+			COALESCE(wp.calories_goal, dct.calories) AS plan_cal
 		FROM users u
 		LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.date = CURRENT_DATE
 		LEFT JOIN weekly_plans wp ON wp.user_id = u.id
 			AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
 			AND wp.is_active = true
+		LEFT JOIN daily_calculated_targets dct ON dct.user_id = u.id
+			AND dct.date = CURRENT_DATE
 		WHERE u.id IN %s
-		GROUP BY u.id, wp.calories_goal
+		GROUP BY u.id, wp.calories_goal, dct.calories
 	`, inClause)
 	alertRows, err := s.db.QueryContext(ctx, alertQuery, args...)
 	if err != nil {
