@@ -12,6 +12,7 @@ jest.mock('next/navigation', () => ({
 
 const mockFetchNotifications = jest.fn()
 const mockMarkAllAsRead = jest.fn()
+const mockMarkAsRead = jest.fn()
 let mockNotifications: { main: Notification[]; content: Notification[] } = {
     main: [],
     content: [],
@@ -22,6 +23,7 @@ jest.mock('../../store/notificationsStore', () => ({
         notifications: mockNotifications,
         fetchNotifications: mockFetchNotifications,
         markAllAsRead: mockMarkAllAsRead,
+        markAsRead: mockMarkAsRead,
     }),
 }))
 

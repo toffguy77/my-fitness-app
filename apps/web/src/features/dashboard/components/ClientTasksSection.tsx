@@ -13,7 +13,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback, memo } from 'react'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import {
     UtensilsCrossed,
     Dumbbell,
@@ -35,6 +35,7 @@ const TYPE_LABELS: Record<ClientTaskType, string> = {
 
 export interface ClientTasksSectionProps {
     className?: string
+    highlightTaskId?: string | null
 }
 
 function getTaskTypeIcon(type: ClientTaskType) {
@@ -145,9 +146,12 @@ function MiniCalendar({
 
 export const ClientTasksSection = memo(function ClientTasksSection({
     className = '',
+    highlightTaskId,
 }: ClientTasksSectionProps) {
     const [tasks, setTasks] = useState<ClientTaskView[]>([])
     const [loading, setLoading] = useState(true)
+    const sectionRef = useRef<HTMLElement>(null)
+    const [flashId, setFlashId] = useState<string | null>(null)
 
     useEffect(() => {
         dashboardApi
@@ -158,6 +162,15 @@ export const ClientTasksSection = memo(function ClientTasksSection({
             .catch(() => {})
             .finally(() => setLoading(false))
     }, [])
+
+    // Scroll to section and flash task when highlightTaskId is set
+    useEffect(() => {
+        if (!highlightTaskId || loading || tasks.length === 0) return
+        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setFlashId(highlightTaskId)
+        const timer = setTimeout(() => setFlashId(null), 2000)
+        return () => clearTimeout(timer)
+    }, [highlightTaskId, loading, tasks.length])
 
     const handleComplete = useCallback(async (taskId: string) => {
         const today = new Date().toISOString().slice(0, 10)
@@ -193,6 +206,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
 
     return (
         <section
+            ref={sectionRef}
             className={`bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6 ${className}`}
             aria-labelledby="client-tasks-heading"
         >
@@ -214,7 +228,11 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                         <div
                             key={task.id}
                             role="listitem"
-                            className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-colors ${
+                            className={`flex items-start gap-3 p-3 sm:p-4 rounded-xl border transition-all ${
+                                flashId === task.id
+                                    ? 'ring-2 ring-blue-400 ring-offset-1'
+                                    : ''
+                            } ${
                                 isOverdue
                                     ? 'border-l-4 border-l-red-500 border-red-200 bg-red-50'
                                     : isCompleted

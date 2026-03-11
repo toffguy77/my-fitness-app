@@ -18,6 +18,7 @@ const mockRouter = {
 
 jest.mock('next/navigation', () => ({
     useRouter: () => mockRouter,
+    useSearchParams: () => new URLSearchParams(),
 }))
 
 // Mock dashboard feature components
