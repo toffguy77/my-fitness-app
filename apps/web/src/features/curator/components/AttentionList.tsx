@@ -111,7 +111,7 @@ export function AttentionList({ items }: AttentionListProps) {
                         <div className="flex flex-col items-end gap-1 shrink-0">
                             {group.items.map((item) => (
                                 <span
-                                    key={item.reason}
+                                    key={`${item.reason}-${item.detail}`}
                                     className={cn(
                                         'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                                         getPriorityBadgeClass(item.priority)

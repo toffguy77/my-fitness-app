@@ -110,7 +110,11 @@ export function PlanTab({ clientId }: PlanTabProps) {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => handleDelete(activePlan.id)}
+                                onClick={() => {
+                                    if (window.confirm('Удалить активный план?')) {
+                                        handleDelete(activePlan.id)
+                                    }
+                                }}
                                 className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                                 aria-label="Удалить план"
                             >

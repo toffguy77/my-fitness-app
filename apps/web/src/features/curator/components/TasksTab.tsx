@@ -111,7 +111,7 @@ export function TasksTab({ clientId }: TasksTabProps) {
                     <p className="text-sm text-gray-400">Нет задач</p>
                     <button
                         type="button"
-                        onClick={() => setShowForm(true)}
+                        onClick={() => { setEditingTask(undefined); setShowForm(true) }}
                         className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
                     >
                         Создать задачу
@@ -128,7 +128,7 @@ export function TasksTab({ clientId }: TasksTabProps) {
             {/* FAB */}
             <button
                 type="button"
-                onClick={() => setShowForm(true)}
+                onClick={() => { setEditingTask(undefined); setShowForm(true) }}
                 className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
                 aria-label="Создать задачу"
             >
