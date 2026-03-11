@@ -142,16 +142,23 @@ func (s *Service) GetHistory(ctx context.Context, userID int64, days int) ([]Tar
 	query := `
 		SELECT
 			d.date::date::text,
-			t.calories AS t_cal, t.protein AS t_pro, t.fat AS t_fat, t.carbs AS t_carbs,
-			t.bmr, t.tdee, t.workout_bonus, t.weight_used, t.source,
+			COALESCE(wp.calories_goal, t.calories) AS t_cal,
+			COALESCE(wp.protein_goal, t.protein) AS t_pro,
+			COALESCE(wp.fat_goal, t.fat) AS t_fat,
+			COALESCE(wp.carbs_goal, t.carbs) AS t_carbs,
+			t.bmr, t.tdee, t.workout_bonus, t.weight_used,
+			CASE WHEN wp.id IS NOT NULL THEN 'curator_override' ELSE t.source END AS source,
 			COALESCE(SUM(fe.calories), 0) AS a_cal,
 			COALESCE(SUM(fe.protein), 0) AS a_pro,
 			COALESCE(SUM(fe.fat), 0) AS a_fat,
 			COALESCE(SUM(fe.carbs), 0) AS a_carbs
 		FROM generate_series($1::date, $2::date, '1 day'::interval) AS d(date)
 		LEFT JOIN daily_calculated_targets t ON t.user_id = $3 AND t.date = d.date::date
+		LEFT JOIN weekly_plans wp ON wp.user_id = $3 AND wp.is_active = true
+			AND d.date::date >= wp.start_date AND d.date::date <= wp.end_date
 		LEFT JOIN food_entries fe ON fe.user_id = $3 AND fe.date = d.date::date
-		GROUP BY d.date, t.calories, t.protein, t.fat, t.carbs,
+		GROUP BY d.date, wp.id, wp.calories_goal, wp.protein_goal, wp.fat_goal, wp.carbs_goal,
+		         t.calories, t.protein, t.fat, t.carbs,
 		         t.bmr, t.tdee, t.workout_bonus, t.weight_used, t.source
 		ORDER BY d.date
 	`

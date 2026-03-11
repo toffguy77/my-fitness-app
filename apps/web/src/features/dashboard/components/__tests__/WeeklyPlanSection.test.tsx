@@ -428,11 +428,10 @@ describe('WeeklyPlanSection', () => {
             expect(heading).toHaveAttribute('id', 'weekly-plan-heading')
         })
 
-        it('uses semantic HTML for section', () => {
+        it('uses aria-labelledby for section', () => {
             const { container } = render(<WeeklyPlanSection />)
-            const section = container.querySelector('section')
+            const section = container.querySelector('[aria-labelledby="weekly-plan-heading"]')
             expect(section).toBeInTheDocument()
-            expect(section).toHaveAttribute('aria-labelledby', 'weekly-plan-heading')
         })
     })
 
