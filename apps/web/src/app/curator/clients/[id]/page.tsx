@@ -141,16 +141,27 @@ function CuratorWeightTooltip({ active, payload, label }: {
 }
 
 function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targetWeight?: number | null }) {
-    const chartData = useMemo(() =>
-        data.map(p => {
-            const dateObj = new Date(p.date + 'T00:00:00')
-            const label = isNaN(dateObj.getTime())
-                ? p.date
+    const chartData = useMemo(() => {
+        const formatDate = (d: string) => {
+            const dateObj = new Date(d + 'T00:00:00')
+            return isNaN(dateObj.getTime())
+                ? d
                 : dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-            return { label, weight: p.weight }
-        }),
-        [data],
-    )
+        }
+
+        const points = data.map(p => ({ label: formatDate(p.date), weight: p.weight }))
+
+        // Extend X axis to today if last data point is before today
+        if (data.length > 0) {
+            const today = new Date().toISOString().slice(0, 10)
+            const lastDate = data[data.length - 1].date
+            if (lastDate < today) {
+                points.push({ label: formatDate(today), weight: data[data.length - 1].weight })
+            }
+        }
+
+        return points
+    }, [data])
 
     if (data.length < 2) return null
 
