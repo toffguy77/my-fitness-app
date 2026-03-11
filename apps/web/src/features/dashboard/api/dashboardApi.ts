@@ -37,8 +37,8 @@ export const dashboardApi = {
     /**
      * Mark a task as completed
      */
-    completeTask: (taskId: string) =>
-        apiClient.post(getApiUrl('/dashboard/tasks/' + taskId + '/complete'), {}),
+    completeTask: (taskId: string, workoutData?: { workout_type: string; workout_duration?: number }) =>
+        apiClient.post<{ task: ClientTaskView; metric_synced: boolean }>(getApiUrl('/dashboard/tasks/' + taskId + '/complete'), workoutData ?? {}),
 
     /**
      * Fetch curator feedback for a specific weekly report

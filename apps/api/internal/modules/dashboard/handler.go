@@ -31,6 +31,7 @@ type ServiceInterface interface {
 	CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error)
 	UpdateTaskStatus(ctx context.Context, userID int64, taskID string, status TaskStatus) (*Task, error)
 	CompleteTaskForDate(ctx context.Context, userID int64, taskID string, date string) (*Task, error)
+	AutoCompleteMatchingTasks(ctx context.Context, userID int64, taskType string, date time.Time) error
 	ValidateWeekData(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (bool, []string, error)
 	CreateWeeklyReport(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (*WeeklyReport, error)
 	ValidatePhoto(fileSize int, mimeType string) error
@@ -166,6 +167,13 @@ func (h *Handler) SaveMetric(c *gin.Context) {
 	if h.nutritionCalcSvc != nil {
 		if _, recalcErr := h.nutritionCalcSvc.RecalculateForDate(c.Request.Context(), userID, date); recalcErr != nil {
 			h.log.Errorw("Failed to recalculate KBJU", "error", recalcErr, "user_id", userID)
+		}
+	}
+
+	// Auto-complete matching curator tasks
+	if taskType := metricTypeToTaskType(req.Metric.Type); taskType != "" {
+		if err := h.service.AutoCompleteMatchingTasks(c.Request.Context(), userID, taskType, date); err != nil {
+			h.log.Errorw("Failed to auto-complete tasks", "error", err, "user_id", userID)
 		}
 	}
 
@@ -646,9 +654,11 @@ func (h *Handler) CompleteTaskForDate(c *gin.Context) {
 		return
 	}
 
-	// Optional date parameter; defaults to today
+	// Optional date + workout data parameters
 	var req struct {
-		Date string `json:"date"`
+		Date            string  `json:"date"`
+		WorkoutType     *string `json:"workout_type,omitempty"`
+		WorkoutDuration *int    `json:"workout_duration,omitempty"`
 	}
 	_ = c.ShouldBindJSON(&req)
 	if req.Date == "" {
@@ -662,7 +672,40 @@ func (h *Handler) CompleteTaskForDate(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, task)
+	// If this is a workout task with workout data, save the metric too
+	metricSynced := false
+	if task.Type == "workout" && req.WorkoutType != nil {
+		userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+		date, parseErr := time.ParseInLocation("2006-01-02", req.Date, userLoc)
+		if parseErr == nil {
+			// SaveMetric expects map[string]interface{} (from JSON unmarshaling),
+			// not a typed struct — build the map directly.
+			workoutMap := map[string]interface{}{
+				"completed": true,
+				"type":      *req.WorkoutType,
+			}
+			if req.WorkoutDuration != nil {
+				workoutMap["duration"] = float64(*req.WorkoutDuration)
+			}
+			metricUpdate := MetricUpdate{Type: MetricUpdateTypeWorkout, Data: workoutMap}
+			if _, saveErr := h.service.SaveMetric(c.Request.Context(), userID, date, metricUpdate); saveErr != nil {
+				h.log.Errorw("Failed to save workout metric from task", "error", saveErr, "user_id", userID)
+			} else {
+				metricSynced = true
+				// Trigger KBJU recalculation
+				if h.nutritionCalcSvc != nil {
+					if _, recalcErr := h.nutritionCalcSvc.RecalculateForDate(c.Request.Context(), userID, date); recalcErr != nil {
+						h.log.Errorw("Failed to recalculate KBJU", "error", recalcErr, "user_id", userID)
+					}
+				}
+			}
+		}
+	}
+
+	response.Success(c, http.StatusOK, gin.H{
+		"task":          task,
+		"metric_synced": metricSynced,
+	})
 }
 
 // GetProgress handles GET /api/dashboard/progress
@@ -695,4 +738,16 @@ func (h *Handler) GetProgress(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, progressData)
+}
+
+// metricTypeToTaskType maps dashboard metric types to curator task types.
+func metricTypeToTaskType(mt MetricUpdateType) string {
+	switch mt {
+	case MetricUpdateTypeWorkout:
+		return "workout"
+	case MetricUpdateTypeWeight:
+		return "measurement"
+	default:
+		return ""
+	}
 }
