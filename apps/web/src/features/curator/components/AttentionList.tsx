@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { cn } from '@/shared/utils/cn'
@@ -23,15 +24,48 @@ function getPriorityBadgeClass(priority: number): string {
     return 'bg-blue-100 text-blue-800'
 }
 
+interface GroupedClient {
+    clientId: number
+    clientName: string
+    clientAvatar?: string
+    actionUrl: string
+    items: AttentionItem[]
+    topPriority: number
+}
+
 export function AttentionList({ items }: AttentionListProps) {
     const router = useRouter()
 
-    if (items.length === 0) return null
+    const grouped = useMemo(() => {
+        const map = new Map<number, GroupedClient>()
+        for (const item of items) {
+            const existing = map.get(item.client_id)
+            if (existing) {
+                existing.items.push(item)
+                if (item.priority < existing.topPriority) {
+                    existing.topPriority = item.priority
+                    existing.actionUrl = item.action_url
+                }
+            } else {
+                map.set(item.client_id, {
+                    clientId: item.client_id,
+                    clientName: item.client_name,
+                    clientAvatar: item.client_avatar,
+                    actionUrl: item.action_url,
+                    items: [item],
+                    topPriority: item.priority,
+                })
+            }
+        }
+        return Array.from(map.values()).sort((a, b) => a.topPriority - b.topPriority)
+    }, [items])
+
+    if (grouped.length === 0) return null
 
     return (
         <div className="space-y-2">
-            {items.map((item, idx) => {
-                const initials = item.client_name
+            {grouped.map((group) => {
+                const initials = group.clientName
                     .split(' ')
                     .map((part) => part[0])
                     .join('')
@@ -40,9 +74,9 @@ export function AttentionList({ items }: AttentionListProps) {
 
                 return (
                     <button
-                        key={`${item.client_id}-${item.reason}-${idx}`}
+                        key={group.clientId}
                         type="button"
-                        onClick={() => router.push(item.action_url)}
+                        onClick={() => router.push(group.actionUrl)}
                         className={cn(
                             'w-full rounded-xl bg-white p-3 shadow-sm border border-gray-100',
                             'text-left transition-shadow hover:shadow-md',
@@ -50,10 +84,10 @@ export function AttentionList({ items }: AttentionListProps) {
                             'flex items-center gap-3'
                         )}
                     >
-                        {item.client_avatar ? (
+                        {group.clientAvatar ? (
                             <Image
-                                src={item.client_avatar}
-                                alt={item.client_name}
+                                src={group.clientAvatar}
+                                alt={group.clientName}
                                 width={36}
                                 height={36}
                                 className="h-9 w-9 rounded-full object-cover"
@@ -67,19 +101,26 @@ export function AttentionList({ items }: AttentionListProps) {
 
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">
-                                {item.client_name}
+                                {group.clientName}
                             </p>
-                            <p className="text-xs text-gray-500 truncate">{item.detail}</p>
+                            <p className="text-xs text-gray-500 truncate">
+                                {group.items.map((i) => i.detail).join(' · ')}
+                            </p>
                         </div>
 
-                        <span
-                            className={cn(
-                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shrink-0',
-                                getPriorityBadgeClass(item.priority)
-                            )}
-                        >
-                            {reasonLabels[item.reason]}
-                        </span>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                            {group.items.map((item) => (
+                                <span
+                                    key={item.reason}
+                                    className={cn(
+                                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                        getPriorityBadgeClass(item.priority)
+                                    )}
+                                >
+                                    {reasonLabels[item.reason]}
+                                </span>
+                            ))}
+                        </div>
                     </button>
                 )
             })}
