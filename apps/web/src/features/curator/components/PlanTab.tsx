@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, ChevronDown, Plus, Pencil } from 'lucide-react'
+import { Loader2, ChevronDown, Plus, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { curatorApi } from '../api/curatorApi'
 import type { WeeklyPlanView } from '../types'
@@ -66,6 +66,15 @@ export function PlanTab({ clientId }: PlanTabProps) {
         setEditingPlan(undefined)
     }
 
+    const handleDelete = async (planId: string) => {
+        try {
+            await curatorApi.deleteWeeklyPlan(clientId, planId)
+            setPlans((prev) => prev.filter((p) => p.id !== planId))
+        } catch {
+            // silently fail
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -81,22 +90,35 @@ export function PlanTab({ clientId }: PlanTabProps) {
     return (
         <div className="space-y-4">
             {activePlan ? (
-                <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-sm font-semibold text-gray-900">Текущий план</h2>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setEditingPlan(activePlan)
-                                setShowForm(true)
-                            }}
-                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
-                        >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Скорректировать
-                        </button>
+                <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-gray-900">Текущий план</h3>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
+                                Активный
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setEditingPlan(activePlan)
+                                    setShowForm(true)
+                                }}
+                                className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                                aria-label="Редактировать план"
+                            >
+                                <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(activePlan.id)}
+                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                aria-label="Удалить план"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div className="grid grid-cols-4 gap-2 text-center text-xs mt-3">
                         <div>
                             <p className="text-gray-500">Ккал</p>
                             <p className="font-semibold text-gray-900">{Math.round(activePlan.calories)}</p>
@@ -114,13 +136,16 @@ export function PlanTab({ clientId }: PlanTabProps) {
                             <p className="font-semibold text-gray-900">{Math.round(activePlan.carbs)}</p>
                         </div>
                     </div>
-                    <p className="mt-2 text-xs text-gray-500">
-                        {formatDateRu(activePlan.start_date)} — {formatDateRu(activePlan.end_date)}
-                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-gray-400">Период</span>
+                        <span className="text-xs text-gray-500">
+                            {formatDateRu(activePlan.start_date)} — {formatDateRu(activePlan.end_date)}
+                        </span>
+                    </div>
                     {activePlan.comment && (
-                        <p className="mt-1 text-xs text-gray-500 italic">{activePlan.comment}</p>
+                        <p className="mt-1 text-xs text-gray-500 line-clamp-2">{activePlan.comment}</p>
                     )}
-                </section>
+                </div>
             ) : (
                 <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center sm:py-8">
                     <p className="text-sm text-gray-400">Активный план не задан</p>
