@@ -83,12 +83,24 @@ function isCompletedToday(task: ClientTaskView): boolean {
 }
 
 /**
- * Mini calendar showing last 7 days with completion status
+ * Mini calendar showing last 7 days with completion + scheduled status
+ * - Green filled = completed
+ * - Green ring = scheduled but not completed
+ * - Gray dot = not scheduled
  */
-function MiniCalendar({ completions }: { completions: string[] }) {
+function MiniCalendar({
+    completions,
+    recurrence,
+    recurrenceDays,
+}: {
+    completions: string[]
+    recurrence: string
+    recurrenceDays?: number[]
+}) {
     const today = new Date()
     const completionSet = new Set(completions)
-    const days: { date: string; label: string; filled: boolean }[] = []
+    const scheduledDaysSet = recurrenceDays ? new Set(recurrenceDays) : null
+    const days: { date: string; label: string; dayOfWeek: number; filled: boolean }[] = []
 
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today)
@@ -97,22 +109,36 @@ function MiniCalendar({ completions }: { completions: string[] }) {
         days.push({
             date: dateStr,
             label: DAY_LABELS[d.getDay()],
+            dayOfWeek: d.getDay(),
             filled: completionSet.has(dateStr),
         })
     }
 
+    function isScheduled(dayOfWeek: number): boolean {
+        if (recurrence === 'daily') return true
+        if (recurrence === 'weekly' && scheduledDaysSet) return scheduledDaysSet.has(dayOfWeek)
+        return false
+    }
+
     return (
         <div className="flex items-center gap-1 mt-2">
-            {days.map((day) => (
-                <div key={day.date} className="flex flex-col items-center gap-0.5">
-                    <span className="text-[9px] text-gray-400">{day.label}</span>
-                    <div
-                        className={`h-3 w-3 rounded-full ${
-                            day.filled ? 'bg-green-500' : 'bg-gray-200'
-                        }`}
-                    />
-                </div>
-            ))}
+            {days.map((day) => {
+                const scheduled = isScheduled(day.dayOfWeek)
+                return (
+                    <div key={day.date} className="flex flex-col items-center gap-0.5">
+                        <span className="text-[9px] text-gray-400">{day.label}</span>
+                        <div
+                            className={`h-3 w-3 rounded-full ${
+                                day.filled
+                                    ? 'bg-green-500'
+                                    : scheduled
+                                      ? 'border-2 border-green-400 bg-transparent'
+                                      : 'bg-gray-200'
+                            }`}
+                        />
+                    </div>
+                )
+            })}
         </div>
     )
 }
@@ -277,7 +303,11 @@ export const ClientTasksSection = memo(function ClientTasksSection({
 
                                 {/* Mini calendar for recurring tasks */}
                                 {isRecurring && task.completions && (
-                                    <MiniCalendar completions={task.completions} />
+                                    <MiniCalendar
+                                        completions={task.completions}
+                                        recurrence={task.recurrence}
+                                        recurrenceDays={task.recurrence_days}
+                                    />
                                 )}
                             </div>
                         </div>
