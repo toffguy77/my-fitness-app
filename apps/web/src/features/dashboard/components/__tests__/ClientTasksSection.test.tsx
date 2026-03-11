@@ -137,6 +137,30 @@ describe('ClientTasksSection', () => {
             })
         })
 
+        it('shows recurring task as completed when today is in completions', async () => {
+            const today = new Date().toISOString().slice(0, 10)
+            const tasks = [
+                createMockTask('recurring', {
+                    recurrence: 'daily',
+                    status: 'active',
+                    completions: [today],
+                }),
+            ]
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
+
+            render(<ClientTasksSection />)
+
+            await waitFor(() => {
+                const taskItem = screen.getByRole('listitem')
+                expect(taskItem.className).toContain('bg-green-50')
+            })
+
+            // Checkbox should be disabled
+            expect(
+                screen.getByRole('button', { name: /задача выполнена/i })
+            ).toBeDisabled()
+        })
+
         it('shows mini calendar for recurring tasks', async () => {
             const tasks = [
                 createMockTask('daily', {
@@ -180,7 +204,7 @@ describe('ClientTasksSection', () => {
             expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('1')
         })
 
-        it('reverts optimistic update on API failure', async () => {
+        it('re-fetches tasks on API failure', async () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('1')]
             mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
@@ -199,11 +223,10 @@ describe('ClientTasksSection', () => {
             })
             await user.click(completeButton)
 
-            // After failure, should revert — task should still be active
+            // After failure, should re-fetch tasks to get authoritative state
             await waitFor(() => {
-                expect(
-                    screen.getByRole('button', { name: /отметить как выполненную/i })
-                ).toBeInTheDocument()
+                // Initial load + re-fetch after error
+                expect(mockDashboardApi.getMyTasks).toHaveBeenCalledTimes(2)
             })
         })
     })
