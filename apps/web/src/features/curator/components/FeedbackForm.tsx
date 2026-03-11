@@ -93,8 +93,8 @@ export function FeedbackForm({ clientId, reportId, onClose, onSaved }: FeedbackF
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-8 shadow-xl animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40">
+            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-semibold text-gray-900">Обратная связь</h2>
                     <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
