@@ -122,35 +122,33 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     )}
                 </section>
             ) : (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 p-6 text-center">
-                    <p className="text-sm text-gray-500 mb-3">Активный план не задан</p>
+                <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center sm:py-8">
+                    <p className="text-sm text-gray-400">Активный план не задан</p>
                     <button
                         type="button"
                         onClick={() => {
                             setEditingPlan(undefined)
                             setShowForm(true)
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                        className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
                     >
-                        <Plus className="h-4 w-4" />
                         Создать план
                     </button>
                 </div>
             )}
 
-            {activePlan && (
-                <button
-                    type="button"
-                    onClick={() => {
-                        setEditingPlan(undefined)
-                        setShowForm(true)
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-                >
-                    <Plus className="h-4 w-4" />
-                    Новый план
-                </button>
-            )}
+            {/* FAB */}
+            <button
+                type="button"
+                onClick={() => {
+                    setEditingPlan(undefined)
+                    setShowForm(true)
+                }}
+                className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
+                aria-label="Создать план"
+            >
+                <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
 
             {pastPlans.length > 0 && (
                 <section>
