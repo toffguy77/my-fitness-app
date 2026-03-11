@@ -130,15 +130,26 @@ type AnalyticsSummary struct {
 	CompletedToday   int     `json:"completed_today"`
 }
 
+// AttentionReason defines the allowed reason values for attention items
+type AttentionReason string
+
+const (
+	AttentionReasonRedAlert         AttentionReason = "red_alert"
+	AttentionReasonOverdueTask      AttentionReason = "overdue_task"
+	AttentionReasonInactive         AttentionReason = "inactive"
+	AttentionReasonUnreadMessage    AttentionReason = "unread_message"
+	AttentionReasonAwaitingFeedback AttentionReason = "awaiting_feedback"
+)
+
 // AttentionItem represents a single item in the curator's attention list
 type AttentionItem struct {
-	ClientID     int64  `json:"client_id"`
-	ClientName   string `json:"client_name"`
-	ClientAvatar string `json:"client_avatar,omitempty"`
-	Reason       string `json:"reason"`
-	Detail       string `json:"detail"`
-	Priority     int    `json:"priority"`
-	ActionURL    string `json:"action_url"`
+	ClientID     int64           `json:"client_id"`
+	ClientName   string          `json:"client_name"`
+	ClientAvatar string          `json:"client_avatar,omitempty"`
+	Reason       AttentionReason `json:"reason"`
+	Detail       string          `json:"detail"`
+	Priority     int             `json:"priority"`
+	ActionURL    string          `json:"action_url"`
 }
 
 // CreateTaskRequest represents the request to create a task for a client

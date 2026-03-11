@@ -11,6 +11,8 @@ import type {
     SubmitFeedbackRequest,
     AnalyticsSummary,
     AttentionItem,
+    DailySnapshot,
+    WeeklySnapshot,
     BenchmarkData,
 } from '../types'
 
@@ -55,7 +57,7 @@ export const curatorApi = {
     getAnalytics: () => apiClient.get<AnalyticsSummary>(`${BASE}/analytics`),
     getAttentionList: () => apiClient.get<AttentionItem[]>(`${BASE}/attention`),
     getAnalyticsHistory: (period: 'daily' | 'weekly', count: number) =>
-        apiClient.get(`${BASE}/analytics/history?period=${period}&${period === 'daily' ? 'days' : 'weeks'}=${count}`),
+        apiClient.get<DailySnapshot[] | WeeklySnapshot[]>(`${BASE}/analytics/history?period=${period}&${period === 'daily' ? 'days' : 'weeks'}=${count}`),
     getBenchmark: (weeks: number) =>
         apiClient.get<BenchmarkData>(`${BASE}/analytics/benchmark?weeks=${weeks}`),
 }

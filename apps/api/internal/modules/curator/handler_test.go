@@ -1516,8 +1516,8 @@ func TestHandler_GetAttentionList(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.getAttentionListFunc = func(ctx context.Context, curatorID int64) ([]AttentionItem, error) {
 			return []AttentionItem{
-				{ClientID: 1, ClientName: "Alice", Reason: "low_calories", Detail: "Калории: 500 из 2000 (25%)", Priority: 1, ActionURL: "/curator/clients/1"},
-				{ClientID: 2, ClientName: "Bob", Reason: "unread_messages", Detail: "Непрочитанных сообщений: 3", Priority: 4, ActionURL: "/curator/chat/2"},
+				{ClientID: 1, ClientName: "Alice", Reason: AttentionReasonRedAlert, Detail: "Калории: 500 из 2000 (25%)", Priority: 1, ActionURL: "/curator/clients/1"},
+				{ClientID: 2, ClientName: "Bob", Reason: AttentionReasonUnreadMessage, Detail: "Непрочитанных сообщений: 3", Priority: 4, ActionURL: "/curator/chat/2"},
 			}, nil
 		}
 
@@ -1536,7 +1536,7 @@ func TestHandler_GetAttentionList(t *testing.T) {
 		data := resp["data"].([]interface{})
 		assert.Len(t, data, 2)
 		first := data[0].(map[string]interface{})
-		assert.Equal(t, "low_calories", first["reason"])
+		assert.Equal(t, "red_alert", first["reason"])
 		assert.Equal(t, float64(1), first["priority"])
 	})
 
