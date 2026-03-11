@@ -130,7 +130,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     return (
         <div
             ref={dropdownRef}
-            className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-lg border z-50 overflow-hidden"
+            className="fixed right-4 top-16 mt-2 w-80 bg-white rounded-2xl shadow-lg border z-50 overflow-hidden"
         >
             {recentNotifications.length === 0 ? (
                 <div className="p-4 text-center text-sm text-gray-500">
