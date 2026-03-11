@@ -2170,12 +2170,14 @@ func (s *Service) sendPlanUpdatedNotification(ctx context.Context, clientID int6
 		return
 	}
 
+	actionURL := "/dashboard"
 	notification := &notifications.Notification{
-		UserID:   clientID,
-		Category: notifications.CategoryMain,
-		Type:     notifications.TypePlanUpdated,
-		Title:    "Обновлен план питания",
-		Content:  "Ваш куратор обновил план питания на эту неделю",
+		UserID:    clientID,
+		Category:  notifications.CategoryMain,
+		Type:      notifications.TypePlanUpdated,
+		Title:     "Обновлен план питания",
+		Content:   "Ваш куратор обновил план питания на эту неделю",
+		ActionURL: &actionURL,
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
@@ -2189,12 +2191,14 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 		return
 	}
 
+	actionURL := "/dashboard"
 	notification := &notifications.Notification{
-		UserID:   clientID,
-		Category: notifications.CategoryMain,
-		Type:     notifications.TypeTaskAssigned,
-		Title:    "Новая задача",
-		Content:  fmt.Sprintf("Новая задача: %s", task.Title),
+		UserID:    clientID,
+		Category:  notifications.CategoryMain,
+		Type:      notifications.TypeTaskAssigned,
+		Title:     "Новая задача",
+		Content:   fmt.Sprintf("Новая задача: %s", task.Title),
+		ActionURL: &actionURL,
 	}
 
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {

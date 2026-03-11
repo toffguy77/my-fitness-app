@@ -18,6 +18,10 @@ import {
     Settings,
     Star,
     Info,
+    ClipboardList,
+    AlertTriangle,
+    CalendarCheck,
+    MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 
@@ -119,6 +123,14 @@ export function NotificationIcon({
                 return <Settings className={iconClassName} />;
             case 'new_feature':
                 return <Star className={iconClassName} />;
+            case 'task_assigned':
+                return <ClipboardList className={iconClassName} />;
+            case 'task_overdue':
+                return <AlertTriangle className={iconClassName} />;
+            case 'plan_updated':
+                return <CalendarCheck className={iconClassName} />;
+            case 'feedback_received':
+                return <MessageCircle className={iconClassName} />;
             case 'general':
             default:
                 return <Info className={iconClassName} />;
