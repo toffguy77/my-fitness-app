@@ -337,9 +337,35 @@ function mapBackendWeeklyPlan(raw: any): WeeklyPlan {
 }
 
 interface GetTasksResponse {
-    tasks: Task[];
+    tasks: any[];
     count: number;
     week: number;
+}
+
+/**
+ * Map backend task (snake_case) to frontend Task (camelCase).
+ * Handles already-mapped data gracefully.
+ */
+function mapBackendTask(raw: any): Task {
+    // If already in frontend shape (has camelCase keys), return as-is
+    if (raw.dueDate !== undefined) {
+        return raw as Task;
+    }
+
+    return {
+        id: raw.id,
+        userId: String(raw.user_id ?? ''),
+        curatorId: String(raw.curator_id ?? ''),
+        title: raw.title ?? '',
+        description: raw.description ?? '',
+        weekNumber: raw.week_number ?? 0,
+        assignedAt: new Date(raw.assigned_at),
+        dueDate: new Date(raw.due_date),
+        completedAt: raw.completed_at ? new Date(raw.completed_at) : undefined,
+        status: raw.status ?? 'active',
+        createdAt: new Date(raw.created_at),
+        updatedAt: new Date(raw.updated_at),
+    };
 }
 
 type UploadPhotoResponse = PhotoData;
@@ -1030,7 +1056,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                         break;
 
                     case 'tasks':
-                        const tasksData = (response as GetTasksResponse).tasks;
+                        const tasksData = (response as GetTasksResponse).tasks.map(mapBackendTask);
                         memoryCache.setTasks(tasksData);
                         updatedState.tasks = tasksData;
                         saveCachedData(CACHE_KEYS.TASKS, tasksData);
@@ -1253,8 +1279,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 1000
             );
 
-            // Update in-memory cache (only for non-filtered requests)
-            const tasksArray = response.tasks;
+            // Map snake_case backend tasks to camelCase frontend tasks
+            const tasksArray = response.tasks.map(mapBackendTask);
             if (!weekNumber) {
                 memoryCache.setTasks(tasksArray);
             }
