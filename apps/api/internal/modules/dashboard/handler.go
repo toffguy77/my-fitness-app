@@ -356,12 +356,10 @@ func (h *Handler) GetTasks(c *gin.Context) {
 		return
 	}
 
-	// If no week specified, use current week number
+	// If no week specified, use current ISO week number
 	weekNumber := req.Week
 	if weekNumber == 0 {
-		// Calculate current week number
-		now := time.Now()
-		weekNumber = int(now.Sub(time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours()/24/7) + 1
+		_, weekNumber = time.Now().ISOWeek()
 	}
 
 	// Call service to get tasks
