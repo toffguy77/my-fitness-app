@@ -1120,6 +1120,14 @@ func (s *Service) DeleteWeeklyPlan(ctx context.Context, curatorID, clientID int6
 		return fmt.Errorf("weekly plan not found")
 	}
 
+	// Best-effort: delete related plan_updated notifications for this client
+	if _, err := s.db.ExecContext(ctx,
+		`DELETE FROM notifications WHERE user_id = $1 AND type = 'plan_updated'`,
+		clientID,
+	); err != nil {
+		s.log.Error("Failed to delete plan notifications (best-effort)", "error", err, "plan_id", planID)
+	}
+
 	s.log.LogDatabaseQuery("DeleteWeeklyPlan", time.Since(startTime), nil, map[string]interface{}{
 		"curator_id": curatorID,
 		"client_id":  clientID,
@@ -1498,6 +1506,12 @@ func (s *Service) DeleteTask(ctx context.Context, curatorID, clientID int64, tas
 	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("task not found")
+	}
+
+	// Best-effort: delete related notifications
+	actionURL := fmt.Sprintf("/dashboard?task=%s", taskID)
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM notifications WHERE action_url = $1`, actionURL); err != nil {
+		s.log.Error("Failed to delete task notifications (best-effort)", "error", err, "task_id", taskID)
 	}
 
 	s.log.LogDatabaseQuery("DeleteTask", time.Since(startTime), nil, map[string]interface{}{
