@@ -46,32 +46,51 @@ function formatDeadline(deadline: string): string {
     return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-/** Mini calendar for recurring tasks showing last 7 days */
-function MiniCalendar({ completions }: { completions: string[] }) {
-    const days: { date: string; filled: boolean }[] = []
+/** Mini calendar for recurring tasks showing last 7 days with scheduled indicators */
+function MiniCalendar({
+    completions,
+    recurrence,
+    recurrenceDays,
+}: {
+    completions: string[]
+    recurrence: string
+    recurrenceDays?: number[]
+}) {
+    const days: { date: string; dayOfWeek: number; filled: boolean }[] = []
     const today = new Date()
     const completionSet = new Set(completions)
+    const scheduledDaysSet = recurrenceDays ? new Set(recurrenceDays) : null
 
     for (let i = 6; i >= 0; i--) {
         const d = new Date(today)
         d.setDate(d.getDate() - i)
         const dateStr = d.toISOString().slice(0, 10)
-        days.push({ date: dateStr, filled: completionSet.has(dateStr) })
+        days.push({ date: dateStr, dayOfWeek: d.getDay(), filled: completionSet.has(dateStr) })
     }
 
     const dayLabels = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
+    function isScheduled(dayOfWeek: number): boolean {
+        if (recurrence === 'daily') return true
+        if (recurrence === 'weekly' && scheduledDaysSet) return scheduledDaysSet.has(dayOfWeek)
+        return false
+    }
+
     return (
         <div className="flex items-center gap-1 mt-2">
             {days.map((day) => {
-                const d = new Date(day.date + 'T00:00:00')
+                const scheduled = isScheduled(day.dayOfWeek)
                 return (
                     <div key={day.date} className="flex flex-col items-center gap-0.5">
-                        <span className="text-[9px] text-gray-400">{dayLabels[d.getDay()]}</span>
+                        <span className="text-[9px] text-gray-400">{dayLabels[day.dayOfWeek]}</span>
                         <div
                             className={cn(
                                 'h-3 w-3 rounded-full',
-                                day.filled ? 'bg-green-500' : 'bg-gray-200',
+                                day.filled
+                                    ? 'bg-green-500'
+                                    : scheduled
+                                      ? 'border-2 border-green-400 bg-transparent'
+                                      : 'bg-gray-200',
                             )}
                         />
                     </div>
@@ -129,7 +148,11 @@ export function TaskCard({ task, onDelete }: TaskCardProps) {
                         <p className="mt-1 text-xs text-gray-500 line-clamp-2">{task.description}</p>
                     )}
                     {task.recurrence !== 'once' && task.completions && (
-                        <MiniCalendar completions={task.completions} />
+                        <MiniCalendar
+                            completions={task.completions}
+                            recurrence={task.recurrence}
+                            recurrenceDays={task.recurrence_days}
+                        />
                     )}
                 </div>
             </div>
