@@ -29,7 +29,11 @@ export const typeGenerator = (): fc.Arbitrary<NotificationType> => {
         'system_update',
         'new_feature',
         'general',
-        'new_content'
+        'new_content',
+        'task_assigned',
+        'task_overdue',
+        'plan_updated',
+        'feedback_received'
     );
 };
 
