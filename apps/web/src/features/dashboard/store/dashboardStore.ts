@@ -347,24 +347,19 @@ interface GetTasksResponse {
  * Handles already-mapped data gracefully.
  */
 function mapBackendTask(raw: any): Task {
-    // If already in frontend shape (has camelCase keys), return as-is
-    if (raw.dueDate !== undefined) {
-        return raw as Task;
-    }
-
     return {
         id: raw.id,
-        userId: String(raw.user_id ?? ''),
-        curatorId: String(raw.curator_id ?? ''),
+        userId: String(raw.user_id ?? raw.userId ?? ''),
+        curatorId: String(raw.curator_id ?? raw.curatorId ?? ''),
         title: raw.title ?? '',
         description: raw.description ?? '',
-        weekNumber: raw.week_number ?? 0,
-        assignedAt: new Date(raw.assigned_at),
-        dueDate: new Date(raw.due_date),
-        completedAt: raw.completed_at ? new Date(raw.completed_at) : undefined,
+        weekNumber: raw.week_number ?? raw.weekNumber ?? 0,
+        assignedAt: new Date(raw.assigned_at ?? raw.assignedAt ?? Date.now()),
+        dueDate: new Date(raw.due_date ?? raw.dueDate ?? Date.now()),
+        completedAt: (raw.completed_at || raw.completedAt) ? new Date(raw.completed_at ?? raw.completedAt) : undefined,
         status: raw.status ?? 'active',
-        createdAt: new Date(raw.created_at),
-        updatedAt: new Date(raw.updated_at),
+        createdAt: new Date(raw.created_at ?? raw.createdAt ?? Date.now()),
+        updatedAt: new Date(raw.updated_at ?? raw.updatedAt ?? Date.now()),
     };
 }
 
@@ -1074,7 +1069,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 updatedState.weeklyPlan = cachedWeeklyPlan;
             }
             if (cachedTasks && !updatedState.tasks) {
-                updatedState.tasks = cachedTasks;
+                updatedState.tasks = cachedTasks.map(mapBackendTask);
             }
 
             set({

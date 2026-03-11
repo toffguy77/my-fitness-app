@@ -23,8 +23,9 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     const { notifications, fetchNotifications, markAllAsRead } = useNotificationsStore()
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-    // Fetch content notifications and mark all as read on open
+    // Fetch notifications for both categories on open
     useEffect(() => {
+        fetchNotifications('main')
         fetchNotifications('content')
         markAllAsRead('content')
     }, [fetchNotifications, markAllAsRead])
@@ -48,10 +49,12 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
         }
     }, [onClose])
 
-    // Get last 10 content notifications
+    // Get last 10 notifications from both categories, sorted by date
     const recentNotifications = useMemo(() => {
-        return notifications.content.slice(0, 10)
-    }, [notifications.content])
+        const all = [...notifications.main, ...notifications.content]
+        all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        return all.slice(0, 10)
+    }, [notifications.main, notifications.content])
 
     // Capture mount time to avoid impure Date.now() call during render
     // eslint-disable-next-line react-hooks/purity
