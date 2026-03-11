@@ -50,10 +50,10 @@ export interface ClientCard {
     activity_level?: string | null
     fitness_goal?: string | null
     weekly_kbzhu_percent?: number
-    active_tasks_count?: number
-    overdue_tasks_count?: number
+    active_tasks_count: number
+    overdue_tasks_count: number
     last_activity_date?: string
-    streak_days?: number
+    streak_days: number
 }
 
 export interface FoodEntryView {

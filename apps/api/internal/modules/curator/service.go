@@ -2018,14 +2018,14 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			if ratio < 0.5 {
 				items = append(items, AttentionItem{
 					ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
-					Reason:   "low_calories",
+					Reason:   AttentionReasonRedAlert,
 					Detail:   fmt.Sprintf("Калории: %.0f из %.0f (%.0f%%)", todayCal, planCal.Float64, ratio*100),
 					Priority: 1, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 				})
 			} else if ratio > 1.2 {
 				items = append(items, AttentionItem{
 					ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
-					Reason:   "high_calories",
+					Reason:   AttentionReasonRedAlert,
 					Detail:   fmt.Sprintf("Калории: %.0f из %.0f (%.0f%%)", todayCal, planCal.Float64, ratio*100),
 					Priority: 1, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 				})
@@ -2058,7 +2058,7 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			info := clientInfoMap[clientID]
 			items = append(items, AttentionItem{
 				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
-				Reason:   "overdue_task",
+				Reason:   AttentionReasonOverdueTask,
 				Detail:   fmt.Sprintf("Просрочено: %s (дедлайн %s)", title, dueDate.Format("02.01")),
 				Priority: 2, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})
@@ -2087,7 +2087,7 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			info := clientInfoMap[clientID]
 			items = append(items, AttentionItem{
 				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
-				Reason:   "inactive",
+				Reason:   AttentionReasonInactive,
 				Detail:   "Нет записей о питании более 2 дней",
 				Priority: 3, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})
@@ -2104,7 +2104,7 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 				info := clientInfoMap[clientID]
 				items = append(items, AttentionItem{
 					ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
-					Reason:   "unread_messages",
+					Reason:   AttentionReasonUnreadMessage,
 					Detail:   fmt.Sprintf("Непрочитанных сообщений: %d", count),
 					Priority: 4, ActionURL: fmt.Sprintf("/curator/chat/%d", clientID),
 				})
@@ -2136,7 +2136,7 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			info := clientInfoMap[clientID]
 			items = append(items, AttentionItem{
 				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
-				Reason:   "awaiting_feedback",
+				Reason:   AttentionReasonAwaitingFeedback,
 				Detail:   fmt.Sprintf("Отчёт за неделю %s ожидает обратной связи", weekStart.Format("02.01")),
 				Priority: 5, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})

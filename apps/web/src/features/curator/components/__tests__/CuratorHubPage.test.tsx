@@ -72,6 +72,9 @@ const mockClients: ClientCardType[] = [
         weight_trend: '',
         target_weight: null,
         today_water: null,
+        active_tasks_count: 0,
+        overdue_tasks_count: 0,
+        streak_days: 0,
     },
 ]
 
