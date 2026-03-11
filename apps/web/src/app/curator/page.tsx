@@ -78,7 +78,10 @@ export default function CuratorHubPage() {
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-sm font-semibold text-gray-900">Все клиенты</h2>
                 </div>
-                <ClientList clients={clients} />
+                <ClientList
+                    clients={clients}
+                    attentionClientIds={new Set(attentionItems.map((item) => item.client_id))}
+                />
             </section>
         </div>
     )

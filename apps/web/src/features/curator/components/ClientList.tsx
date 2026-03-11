@@ -8,9 +8,11 @@ import type { ClientCard as ClientCardType } from '../types'
 
 interface ClientListProps {
     clients?: ClientCardType[]
+    /** IDs of clients already shown in AttentionList — exclude from "Требуют внимания" here */
+    attentionClientIds?: Set<number>
 }
 
-export function ClientList({ clients: externalClients }: ClientListProps = {}) {
+export function ClientList({ clients: externalClients, attentionClientIds }: ClientListProps = {}) {
     const [internalClients, setInternalClients] = useState<ClientCardType[]>([])
     const [loading, setLoading] = useState(!externalClients)
     const [error, setError] = useState<string | null>(null)
@@ -50,8 +52,9 @@ export function ClientList({ clients: externalClients }: ClientListProps = {}) {
     const needsAttention = clients
         .filter(
             (c) =>
-                c.alerts.some((a) => a.level === 'red' || a.level === 'yellow') ||
-                c.unread_count > 0
+                (c.alerts.some((a) => a.level === 'red' || a.level === 'yellow') ||
+                c.unread_count > 0) &&
+                !attentionClientIds?.has(c.id)
         )
         .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
 
@@ -59,7 +62,8 @@ export function ClientList({ clients: externalClients }: ClientListProps = {}) {
         .filter(
             (c) =>
                 !c.alerts.some((a) => a.level === 'red' || a.level === 'yellow') &&
-                c.unread_count === 0
+                c.unread_count === 0 &&
+                !attentionClientIds?.has(c.id)
         )
         .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
 
