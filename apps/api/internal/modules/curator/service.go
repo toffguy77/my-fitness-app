@@ -116,9 +116,12 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		FROM curator_client_relationships ccr
 		JOIN users u ON u.id = ccr.client_id
 		LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.date = CURRENT_DATE
-		LEFT JOIN weekly_plans wp ON wp.user_id = u.id
-		    AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
-		    AND wp.is_active = true
+		LEFT JOIN LATERAL (
+		    SELECT calories_goal, protein_goal, fat_goal, carbs_goal
+		    FROM weekly_plans
+		    WHERE user_id = u.id AND start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE AND is_active = true
+		    ORDER BY start_date DESC LIMIT 1
+		) wp ON true
 		LEFT JOIN daily_calculated_targets dct ON dct.user_id = u.id
 		    AND dct.date = CURRENT_DATE
 		WHERE ccr.curator_id = $1 AND ccr.status = 'active'
@@ -2031,6 +2034,9 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			}
 			if !planCal.Valid || planCal.Float64 == 0 {
 				continue
+			}
+			if todayCal == 0 {
+				continue // handled as "inactive" in Priority 3
 			}
 			ratio := todayCal / planCal.Float64
 			info := clientInfoMap[clientID]
