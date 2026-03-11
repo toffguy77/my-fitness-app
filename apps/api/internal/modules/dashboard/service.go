@@ -1359,6 +1359,65 @@ func (s *Service) CompleteTaskForDate(ctx context.Context, userID int64, taskID 
 	return &task, nil
 }
 
+// AutoCompleteMatchingTasks finds active tasks matching the given type for the
+// specified date and marks them as completed. This enables Direction 2 sync:
+// when a user logs a metric (workout, weight), matching curator tasks are
+// automatically completed. Errors are logged but not propagated.
+func (s *Service) AutoCompleteMatchingTasks(ctx context.Context, userID int64, taskType string, date time.Time) error {
+	dateStr := date.Format("2006-01-02")
+	weekday := int(date.Weekday()) // 0=Sun..6=Sat — matches JS convention used in recurrence_days
+
+	query := `
+		SELECT t.id, t.recurrence
+		FROM tasks t
+		LEFT JOIN task_completions tc ON tc.task_id = t.id AND tc.completed_date = $3
+		WHERE t.user_id = $1 AND t.type = $2 AND t.status = 'active'
+		  AND tc.id IS NULL
+		  AND (t.recurrence = 'once' OR t.recurrence = 'daily'
+		       OR (t.recurrence = 'weekly' AND $4 = ANY(t.recurrence_days)))
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, userID, taskType, dateStr, weekday)
+	if err != nil {
+		return fmt.Errorf("failed to query matching tasks: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var taskID string
+		var recurrence string
+		if err := rows.Scan(&taskID, &recurrence); err != nil {
+			s.log.Error("Failed to scan matching task", "error", err)
+			continue
+		}
+
+		if recurrence == "once" {
+			if _, err := s.UpdateTaskStatus(ctx, userID, taskID, TaskStatusCompleted); err != nil {
+				s.log.Error("Failed to auto-complete once task", "error", err, "task_id", taskID)
+			}
+		} else {
+			// Recurring: insert completion record
+			insertQuery := `
+				INSERT INTO task_completions (task_id, completed_date)
+				VALUES ($1, $2)
+				ON CONFLICT (task_id, completed_date) DO NOTHING
+			`
+			if _, err := s.db.ExecContext(ctx, insertQuery, taskID, dateStr); err != nil {
+				s.log.Error("Failed to auto-complete recurring task", "error", err, "task_id", taskID)
+			}
+		}
+
+		s.log.LogBusinessEvent("task_auto_completed", map[string]interface{}{
+			"task_id":   taskID,
+			"user_id":   userID,
+			"task_type": taskType,
+			"date":      dateStr,
+		})
+	}
+
+	return rows.Err()
+}
+
 // GetReportFeedback retrieves curator feedback for a specific weekly report
 func (s *Service) GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error) {
 	startTime := time.Now()

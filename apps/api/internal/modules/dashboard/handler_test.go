@@ -114,6 +114,11 @@ func (m *MockService) CompleteTaskForDate(ctx context.Context, userID int64, tas
 	return args.Get(0).(*Task), args.Error(1)
 }
 
+func (m *MockService) AutoCompleteMatchingTasks(ctx context.Context, userID int64, taskType string, date time.Time) error {
+	args := m.Called(ctx, userID, taskType, date)
+	return args.Error(0)
+}
+
 func (m *MockService) GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error) {
 	args := m.Called(ctx, userID, reportID)
 	if args.Get(0) == nil {
@@ -1423,4 +1428,498 @@ func TestUploadPhoto_ServiceError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	mockService.AssertExpectations(t)
+}
+
+// ===== Bidirectional Sync Tests =====
+
+// --- metricTypeToTaskType ---
+
+func TestMetricTypeToTaskType(t *testing.T) {
+	tests := []struct {
+		metric   MetricUpdateType
+		expected string
+	}{
+		{MetricUpdateTypeWorkout, "workout"},
+		{MetricUpdateTypeWeight, "measurement"},
+		{MetricUpdateTypeNutrition, ""},
+		{MetricUpdateTypeSteps, ""},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.metric), func(t *testing.T) {
+			assert.Equal(t, tt.expected, metricTypeToTaskType(tt.metric))
+		})
+	}
+}
+
+// --- SaveMetric with auto-complete ---
+
+func TestSaveMetric_WorkoutTriggersAutoComplete(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	testDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	metricUpdate := MetricUpdate{
+		Type: MetricUpdateTypeWorkout,
+		Data: map[string]interface{}{
+			"completed": true,
+			"type":      "Силовая",
+		},
+	}
+
+	metrics := &DailyMetrics{
+		ID:               uuid.New().String(),
+		UserID:           1,
+		Date:             testDate,
+		WorkoutCompleted: true,
+	}
+
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), metricUpdate).Return(metrics, nil)
+	mockService.On("AutoCompleteMatchingTasks", mock.Anything, int64(1), "workout", mock.AnythingOfType("time.Time")).Return(nil)
+
+	router := gin.New()
+	router.POST("/daily", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.SaveMetric(c)
+	})
+
+	reqBody := SaveMetricRequest{Date: "2024-01-15", Metric: metricUpdate}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/daily", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+	mockService.AssertCalled(t, "AutoCompleteMatchingTasks", mock.Anything, int64(1), "workout", mock.AnythingOfType("time.Time"))
+}
+
+func TestSaveMetric_WeightTriggersAutoComplete(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	testDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	weight := 75.5
+	metricUpdate := MetricUpdate{
+		Type: MetricUpdateTypeWeight,
+		Data: map[string]interface{}{
+			"weight": weight,
+		},
+	}
+
+	metrics := &DailyMetrics{
+		ID:     uuid.New().String(),
+		UserID: 1,
+		Date:   testDate,
+		Weight: &weight,
+	}
+
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), metricUpdate).Return(metrics, nil)
+	mockService.On("AutoCompleteMatchingTasks", mock.Anything, int64(1), "measurement", mock.AnythingOfType("time.Time")).Return(nil)
+
+	router := gin.New()
+	router.POST("/daily", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.SaveMetric(c)
+	})
+
+	reqBody := SaveMetricRequest{Date: "2024-01-15", Metric: metricUpdate}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/daily", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+	mockService.AssertCalled(t, "AutoCompleteMatchingTasks", mock.Anything, int64(1), "measurement", mock.AnythingOfType("time.Time"))
+}
+
+func TestSaveMetric_NutritionDoesNotTriggerAutoComplete(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	testDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	metricUpdate := MetricUpdate{
+		Type: MetricUpdateTypeNutrition,
+		Data: map[string]interface{}{
+			"calories": float64(2000),
+			"protein":  float64(150),
+			"fat":      float64(60),
+			"carbs":    float64(200),
+		},
+	}
+
+	metrics := &DailyMetrics{
+		ID:       uuid.New().String(),
+		UserID:   1,
+		Date:     testDate,
+		Calories: 2000,
+	}
+
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), metricUpdate).Return(metrics, nil)
+
+	router := gin.New()
+	router.POST("/daily", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.SaveMetric(c)
+	})
+
+	reqBody := SaveMetricRequest{Date: "2024-01-15", Metric: metricUpdate}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/daily", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertNotCalled(t, "AutoCompleteMatchingTasks", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestSaveMetric_AutoCompleteErrorDoesNotFailRequest(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	testDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	metricUpdate := MetricUpdate{
+		Type: MetricUpdateTypeWorkout,
+		Data: map[string]interface{}{
+			"completed": true,
+			"type":      "Бег",
+		},
+	}
+
+	metrics := &DailyMetrics{
+		ID:               uuid.New().String(),
+		UserID:           1,
+		Date:             testDate,
+		WorkoutCompleted: true,
+	}
+
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), metricUpdate).Return(metrics, nil)
+	mockService.On("AutoCompleteMatchingTasks", mock.Anything, int64(1), "workout", mock.AnythingOfType("time.Time")).Return(fmt.Errorf("db connection lost"))
+
+	router := gin.New()
+	router.POST("/daily", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.SaveMetric(c)
+	})
+
+	reqBody := SaveMetricRequest{Date: "2024-01-15", Metric: metricUpdate}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/daily", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+// --- CompleteTaskForDate ---
+
+func TestCompleteTaskForDate_BasicCompletion(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	task := &Task{
+		ID:         "task-123",
+		UserID:     1,
+		Type:       "habit",
+		Title:      "Drink water",
+		Status:     TaskStatusActive,
+		Recurrence: "daily",
+	}
+
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-123", mock.AnythingOfType("string")).Return(task, nil)
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	body, _ := json.Marshal(map[string]string{"date": "2024-01-15"})
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-123/complete", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	data, ok := resp["data"].(map[string]interface{})
+	require.True(t, ok, "response should have data field")
+
+	assert.NotNil(t, data["task"])
+	assert.Equal(t, false, data["metric_synced"])
+
+	mockService.AssertExpectations(t)
+}
+
+func TestCompleteTaskForDate_WorkoutWithData(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	workoutType := "Силовая"
+	task := &Task{
+		ID:         "task-456",
+		UserID:     1,
+		Type:       "workout",
+		Title:      "Morning workout",
+		Status:     TaskStatusActive,
+		Recurrence: "weekly",
+	}
+
+	metrics := &DailyMetrics{
+		ID:               uuid.New().String(),
+		UserID:           1,
+		WorkoutCompleted: true,
+		WorkoutType:      &workoutType,
+	}
+
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-456", "2024-01-15").Return(task, nil)
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), mock.MatchedBy(func(mu MetricUpdate) bool {
+		if mu.Type != MetricUpdateTypeWorkout {
+			return false
+		}
+		data, ok := mu.Data.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		return data["completed"] == true && data["type"] == "Силовая"
+	})).Return(metrics, nil)
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	reqBody := map[string]interface{}{
+		"date":         "2024-01-15",
+		"workout_type": "Силовая",
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-456/complete", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, true, data["metric_synced"])
+
+	mockService.AssertExpectations(t)
+}
+
+func TestCompleteTaskForDate_WorkoutWithDuration(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	workoutType := "HIIT"
+	dur := 45
+	task := &Task{
+		ID:         "task-789",
+		UserID:     1,
+		Type:       "workout",
+		Title:      "HIIT session",
+		Status:     TaskStatusActive,
+		Recurrence: "once",
+	}
+
+	metrics := &DailyMetrics{
+		ID:               uuid.New().String(),
+		UserID:           1,
+		WorkoutCompleted: true,
+		WorkoutType:      &workoutType,
+		WorkoutDuration:  &dur,
+	}
+
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-789", "2024-01-15").Return(task, nil)
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), mock.MatchedBy(func(mu MetricUpdate) bool {
+		data, ok := mu.Data.(map[string]interface{})
+		if !ok {
+			return false
+		}
+		return data["completed"] == true && data["type"] == "HIIT" && data["duration"] == float64(45)
+	})).Return(metrics, nil)
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	reqBody := map[string]interface{}{
+		"date":             "2024-01-15",
+		"workout_type":     "HIIT",
+		"workout_duration": 45,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-789/complete", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, true, data["metric_synced"])
+
+	mockService.AssertExpectations(t)
+}
+
+func TestCompleteTaskForDate_NonWorkoutTaskIgnoresWorkoutData(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	task := &Task{
+		ID:         "task-nutrition",
+		UserID:     1,
+		Type:       "nutrition",
+		Title:      "Log meals",
+		Status:     TaskStatusActive,
+		Recurrence: "daily",
+	}
+
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-nutrition", "2024-01-15").Return(task, nil)
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	reqBody := map[string]interface{}{
+		"date":         "2024-01-15",
+		"workout_type": "Силовая",
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-nutrition/complete", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, false, data["metric_synced"])
+
+	mockService.AssertNotCalled(t, "SaveMetric", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	mockService.AssertExpectations(t)
+}
+
+func TestCompleteTaskForDate_WorkoutSaveMetricFailure(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	task := &Task{
+		ID:         "task-fail",
+		UserID:     1,
+		Type:       "workout",
+		Title:      "Workout",
+		Status:     TaskStatusActive,
+		Recurrence: "once",
+	}
+
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-fail", "2024-01-15").Return(task, nil)
+	mockService.On("SaveMetric", mock.Anything, int64(1), mock.AnythingOfType("time.Time"), mock.Anything).Return(nil, fmt.Errorf("save failed"))
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	reqBody := map[string]interface{}{
+		"date":         "2024-01-15",
+		"workout_type": "Йога",
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-fail/complete", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, false, data["metric_synced"])
+
+	mockService.AssertExpectations(t)
+}
+
+func TestCompleteTaskForDate_DefaultsToToday(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	today := time.Now().Format("2006-01-02")
+	task := &Task{
+		ID:         "task-today",
+		UserID:     1,
+		Type:       "habit",
+		Title:      "Daily check",
+		Status:     TaskStatusActive,
+		Recurrence: "daily",
+	}
+
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-today", today).Return(task, nil)
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-today/complete", bytes.NewBuffer([]byte("{}")))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestCompleteTaskForDate_ServiceError(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	mockService.On("CompleteTaskForDate", mock.Anything, int64(1), "task-err", "2024-01-15").Return(nil, fmt.Errorf("задача уже выполнена за 2024-01-15"))
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.CompleteTaskForDate(c)
+	})
+
+	body, _ := json.Marshal(map[string]string{"date": "2024-01-15"})
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-err/complete", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockService.AssertExpectations(t)
+}
+
+func TestCompleteTaskForDate_Unauthorized(t *testing.T) {
+	handler, _ := setupTestHandlerWithMock()
+
+	router := gin.New()
+	router.POST("/tasks/:id/complete", handler.CompleteTaskForDate)
+
+	body, _ := json.Marshal(map[string]string{"date": "2024-01-15"})
+	req := httptest.NewRequest(http.MethodPost, "/tasks/task-123/complete", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

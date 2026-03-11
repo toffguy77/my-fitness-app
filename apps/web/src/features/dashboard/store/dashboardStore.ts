@@ -568,6 +568,8 @@ interface DashboardState {
 
     // Version counter bumped after metric save to signal targets re-fetch
     targetsVersion: number;
+    // Version counter bumped when tasks may have been auto-completed via metric save
+    tasksVersion: number;
 
     // Prefetch tracking
     prefetchedWeeks: Set<string>;
@@ -576,6 +578,7 @@ interface DashboardState {
     setSelectedDate: (date: Date) => void;
     navigateWeek: (direction: 'prev' | 'next') => void;
     fetchDailyData: (date: Date) => Promise<void>;
+    refreshDailyData: (date: Date) => Promise<void>;
     fetchWeekData: (weekStart: Date, weekEnd: Date) => Promise<void>;
     fetchWeekDataWithStaleWhileRevalidate: (weekStart: Date, weekEnd: Date) => Promise<void>;
     prefetchAdjacentWeeks: (currentWeekStart: Date) => void;
@@ -615,6 +618,7 @@ const initialState = {
     pollingIntervalId: null,
     prefetchedWeeks: new Set<string>(),
     targetsVersion: 0,
+    tasksVersion: 0,
 };
 
 /**
@@ -734,6 +738,17 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 get().loadFromCache();
             }
         }
+    },
+
+    /**
+     * Invalidate cache and re-fetch daily data for a specific date.
+     * Used when external changes (e.g. task completion saving a metric)
+     * require bypassing the in-memory cache.
+     */
+    refreshDailyData: async (date: Date) => {
+        const dateStr = formatDateISO(date);
+        memoryCache.invalidateDailyData(dateStr);
+        await get().fetchDailyData(date);
     },
 
     /**
@@ -1181,6 +1196,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             // Bump version to trigger targets re-fetch in NutritionBlock
             set((state) => ({ targetsVersion: state.targetsVersion + 1 }));
+
+            // Bump tasks version to trigger re-fetch in ClientTasksSection (Direction 2 sync)
+            if (metric.type === 'workout' || metric.type === 'weight') {
+                set((state) => ({ tasksVersion: state.tasksVersion + 1 }));
+            }
         } catch (error: any) {
             const mappedError = mapError(error);
 

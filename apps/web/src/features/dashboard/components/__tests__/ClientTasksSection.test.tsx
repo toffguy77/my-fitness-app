@@ -19,6 +19,11 @@ import type { ClientTaskView } from '../../types'
 jest.mock('../../api/dashboardApi')
 const mockDashboardApi = dashboardApi as jest.Mocked<typeof dashboardApi>
 
+// Mock the dashboard store
+jest.mock('../../store/dashboardStore', () => ({
+    useDashboardStore: (selector: any) => selector({ tasksVersion: 0 }),
+}))
+
 /**
  * Helper: Create a mock client task
  */
@@ -187,7 +192,7 @@ describe('ClientTasksSection', () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('1')]
             mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
-            mockDashboardApi.completeTask.mockResolvedValue(undefined)
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: false } as any)
 
             render(<ClientTasksSection />)
 
@@ -201,7 +206,153 @@ describe('ClientTasksSection', () => {
             await user.click(completeButton)
 
             // Should call API
-            expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('1')
+            expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('1', undefined)
+        })
+
+        it('opens workout dialog for workout tasks instead of completing', async () => {
+            const user = userEvent.setup()
+            const tasks = [createMockTask('w1', { type: 'workout', title: 'Morning workout' })]
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
+
+            render(<ClientTasksSection />)
+
+            await waitFor(() => {
+                expect(screen.getByText('Morning workout')).toBeInTheDocument()
+            })
+
+            const completeButton = screen.getByRole('button', {
+                name: /отметить как выполненную/i,
+            })
+            await user.click(completeButton)
+
+            // Workout dialog should appear (workout type buttons visible)
+            expect(screen.getByText('Силовая')).toBeInTheDocument()
+            expect(screen.getByText('Кардио')).toBeInTheDocument()
+            expect(screen.getByText('Йога')).toBeInTheDocument()
+            expect(screen.getByText('HIIT')).toBeInTheDocument()
+
+            // API should NOT have been called yet
+            expect(mockDashboardApi.completeTask).not.toHaveBeenCalled()
+        })
+
+        it('sends workout data when completing workout task via dialog', async () => {
+            const user = userEvent.setup()
+            const tasks = [createMockTask('w2', { type: 'workout', title: 'Workout' })]
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: true } as any)
+
+            render(<ClientTasksSection />)
+
+            await waitFor(() => {
+                expect(screen.getByText('Workout')).toBeInTheDocument()
+            })
+
+            // Click checkbox to open dialog
+            await user.click(screen.getByRole('button', { name: /отметить как выполненную/i }))
+
+            // Select workout type
+            await user.click(screen.getByText('HIIT'))
+
+            // Enter duration
+            const durationInput = screen.getByPlaceholderText('45')
+            await user.type(durationInput, '30')
+
+            // Click save
+            await user.click(screen.getByRole('button', { name: /сохранить/i }))
+
+            // Should call API with workout data
+            await waitFor(() => {
+                expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('w2', {
+                    workout_type: 'HIIT',
+                    workout_duration: 30,
+                })
+            })
+        })
+
+        it('closes workout dialog on cancel without calling API', async () => {
+            const user = userEvent.setup()
+            const tasks = [createMockTask('w3', { type: 'workout', title: 'Gym' })]
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
+
+            render(<ClientTasksSection />)
+
+            await waitFor(() => {
+                expect(screen.getByText('Gym')).toBeInTheDocument()
+            })
+
+            // Open dialog
+            await user.click(screen.getByRole('button', { name: /отметить как выполненную/i }))
+            expect(screen.getByText('Силовая')).toBeInTheDocument()
+
+            // Cancel
+            await user.click(screen.getByRole('button', { name: /отмена/i }))
+
+            // Dialog should close, API should not be called
+            expect(screen.queryByText('Тип тренировки')).not.toBeInTheDocument()
+            expect(mockDashboardApi.completeTask).not.toHaveBeenCalled()
+        })
+
+        it('disables save button when no workout type selected', async () => {
+            const user = userEvent.setup()
+            const tasks = [createMockTask('w4', { type: 'workout', title: 'Run' })]
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
+
+            render(<ClientTasksSection />)
+
+            await waitFor(() => {
+                expect(screen.getByText('Run')).toBeInTheDocument()
+            })
+
+            // Open dialog
+            await user.click(screen.getByRole('button', { name: /отметить как выполненную/i }))
+
+            // Save button should be disabled
+            const saveButton = screen.getByRole('button', { name: /сохранить/i })
+            expect(saveButton).toBeDisabled()
+        })
+
+        it('completes non-workout task immediately without dialog', async () => {
+            const user = userEvent.setup()
+            const tasks = [createMockTask('m1', { type: 'measurement', title: 'Measure weight' })]
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: false } as any)
+
+            render(<ClientTasksSection />)
+
+            await waitFor(() => {
+                expect(screen.getByText('Measure weight')).toBeInTheDocument()
+            })
+
+            await user.click(screen.getByRole('button', { name: /отметить как выполненную/i }))
+
+            // Should call API immediately (no dialog)
+            expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('m1', undefined)
+            // Workout dialog should NOT appear
+            expect(screen.queryByText('Силовая')).not.toBeInTheDocument()
+        })
+
+        it('sends workout data without duration if not provided', async () => {
+            const user = userEvent.setup()
+            const tasks = [createMockTask('w5', { type: 'workout', title: 'Quick workout' })]
+            mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: true } as any)
+
+            render(<ClientTasksSection />)
+
+            await waitFor(() => {
+                expect(screen.getByText('Quick workout')).toBeInTheDocument()
+            })
+
+            await user.click(screen.getByRole('button', { name: /отметить как выполненную/i }))
+            await user.click(screen.getByText('Бег'))
+            await user.click(screen.getByRole('button', { name: /сохранить/i }))
+
+            await waitFor(() => {
+                expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('w5', {
+                    workout_type: 'Бег',
+                    workout_duration: undefined,
+                })
+            })
         })
 
         it('re-fetches tasks on API failure', async () => {
