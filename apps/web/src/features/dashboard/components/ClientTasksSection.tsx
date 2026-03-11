@@ -74,10 +74,12 @@ function formatDeadline(deadline: string): string {
     }).format(date)
 }
 
-function getExpectedCompletions(task: ClientTaskView): number {
-    if (task.recurrence === 'daily') return 7
-    if (task.recurrence === 'weekly') return task.recurrence_days?.length || 1
-    return 1
+function isCompletedToday(task: ClientTaskView): boolean {
+    const today = new Date().toISOString().slice(0, 10)
+    return (
+        task.status === 'completed' ||
+        (task.completions || []).includes(today)
+    )
 }
 
 /**
@@ -132,35 +134,31 @@ export const ClientTasksSection = memo(function ClientTasksSection({
     }, [])
 
     const handleComplete = useCallback(async (taskId: string) => {
+        const today = new Date().toISOString().slice(0, 10)
+
         setTasks((prev) =>
-            prev.map((t) =>
-                t.id === taskId
-                    ? {
-                          ...t,
-                          status: 'completed' as const,
-                          completions: [
-                              ...(t.completions || []),
-                              new Date().toISOString().slice(0, 10),
-                          ],
-                      }
-                    : t
-            )
+            prev.map((t) => {
+                if (t.id !== taskId) return t
+                const alreadyHasToday = (t.completions || []).includes(today)
+                return {
+                    ...t,
+                    status: t.recurrence === 'once' ? ('completed' as const) : t.status,
+                    completions: alreadyHasToday
+                        ? t.completions
+                        : [...(t.completions || []), today],
+                }
+            })
         )
 
         try {
             await dashboardApi.completeTask(taskId)
         } catch {
-            setTasks((prev) =>
-                prev.map((t) =>
-                    t.id === taskId
-                        ? {
-                              ...t,
-                              status: 'active' as const,
-                              completions: (t.completions || []).slice(0, -1),
-                          }
-                        : t
-                )
-            )
+            // Don't revert — task may already be completed today (400).
+            // Re-fetch to get authoritative state.
+            dashboardApi
+                .getMyTasks()
+                .then((data) => setTasks(data.tasks || []))
+                .catch(() => {})
         }
     }, [])
 
@@ -182,8 +180,8 @@ export const ClientTasksSection = memo(function ClientTasksSection({
             <div className="space-y-2 sm:space-y-3" role="list" aria-label="Список задач от куратора">
                 {tasks.map((task) => {
                     const Icon = getTaskTypeIcon(task.type)
-                    const isCompleted = task.status === 'completed'
-                    const isOverdue = task.status === 'overdue'
+                    const isCompleted = isCompletedToday(task)
+                    const isOverdue = !isCompleted && task.status === 'overdue'
                     const isRecurring = task.recurrence !== 'once'
 
                     return (
