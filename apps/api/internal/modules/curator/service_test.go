@@ -225,7 +225,8 @@ func TestGetClients(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, clients, 1)
 		assert.Nil(t, clients[0].Plan)
-		assert.Empty(t, clients[0].Alerts) // No alerts without a plan
+		require.Len(t, clients[0].Alerts, 1)
+		assert.Equal(t, "yellow", clients[0].Alerts[0].Level) // No targets = yellow alert
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -562,11 +563,13 @@ func TestComputeAlerts(t *testing.T) {
 		assert.True(t, foundProteinAlert)
 	})
 
-	t.Run("no alerts when plan is nil", func(t *testing.T) {
+	t.Run("yellow alert when plan is nil but food exists", func(t *testing.T) {
 		today := &DailyKBZHU{Calories: 1900, Protein: 140, Fat: 65, Carbs: 240}
 
 		alerts := computeAlerts(today, nil)
-		assert.Empty(t, alerts)
+		require.Len(t, alerts, 1)
+		assert.Equal(t, "yellow", alerts[0].Level)
+		assert.Contains(t, alerts[0].Message, "целей КБЖУ")
 	})
 }
 

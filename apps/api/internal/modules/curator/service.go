@@ -709,7 +709,7 @@ func (s *Service) getUnreadCounts(ctx context.Context, curatorID int64, clientID
 func computeAlerts(today *DailyKBZHU, plan *PlanKBZHU) []Alert {
 	alerts := make([]Alert, 0)
 
-	if plan == nil || today == nil {
+	if today == nil {
 		return alerts
 	}
 
@@ -718,6 +718,15 @@ func computeAlerts(today *DailyKBZHU, plan *PlanKBZHU) []Alert {
 		alerts = append(alerts, Alert{
 			Level:   "yellow",
 			Message: "Нет записей о питании за сегодня",
+		})
+		return alerts
+	}
+
+	if plan == nil {
+		// Food exists but no targets (neither curator plan nor auto-calculated) — not normal
+		alerts = append(alerts, Alert{
+			Level:   "yellow",
+			Message: "Нет рассчитанных целей КБЖУ",
 		})
 		return alerts
 	}
