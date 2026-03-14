@@ -41,4 +41,9 @@ test.describe('Profile Page', () => {
     await profile.notificationsLink.click()
     await expect(page).toHaveURL(/\/settings\/notifications/, { timeout: 10000 })
   })
+
+  test('logout redirects to auth page', async ({ page }) => {
+    await profile.logoutButton.click()
+    await expect(page).toHaveURL(/\/auth/, { timeout: 10000 })
+  })
 })
