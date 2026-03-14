@@ -58,6 +58,7 @@ export default defineConfig({
         'tests/content-feed.spec.ts',
         'tests/workout-logging.spec.ts',
         'tests/food-tracker-nav.spec.ts',
+        'tests/settings-apple-health.spec.ts',
       ],
     },
     {
@@ -83,7 +84,14 @@ export default defineConfig({
     // --- Auth tests: no pre-authenticated session ---
     {
       name: 'auth-tests',
-      testMatch: ['tests/auth.spec.ts', 'tests/role-access.spec.ts', 'tests/landing.spec.ts'],
+      testMatch: [
+        'tests/auth.spec.ts',
+        'tests/role-access.spec.ts',
+        'tests/landing.spec.ts',
+        'tests/forgot-password.spec.ts',
+        'tests/reset-password.spec.ts',
+        'tests/legal-pages.spec.ts',
+      ],
     },
   ],
 
