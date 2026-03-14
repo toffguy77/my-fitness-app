@@ -27,13 +27,17 @@ type ServiceInterface interface {
 	CreatePlan(ctx context.Context, curatorID int64, clientID int64, plan *WeeklyPlan) (*WeeklyPlan, error)
 	UpdatePlan(ctx context.Context, curatorID int64, planID string, updates *WeeklyPlan) (*WeeklyPlan, error)
 	GetTasksByWeek(ctx context.Context, userID int64, weekNumber int) ([]*Task, error)
+	GetActiveTasks(ctx context.Context, userID int64) ([]*Task, error)
 	CreateTask(ctx context.Context, curatorID int64, clientID int64, task *Task) (*Task, error)
 	UpdateTaskStatus(ctx context.Context, userID int64, taskID string, status TaskStatus) (*Task, error)
+	CompleteTaskForDate(ctx context.Context, userID int64, taskID string, date string) (*Task, error)
+	AutoCompleteMatchingTasks(ctx context.Context, userID int64, taskType string, date time.Time) error
 	ValidateWeekData(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (bool, []string, error)
 	CreateWeeklyReport(ctx context.Context, userID int64, weekStart, weekEnd time.Time) (*WeeklyReport, error)
 	ValidatePhoto(fileSize int, mimeType string) error
 	UploadPhoto(ctx context.Context, userID int64, weekIdentifier string, fileData io.Reader, fileSize int, mimeType string) (*PhotoData, error)
 	GetProgressData(ctx context.Context, userID int64, weeks int) (*ProgressData, error)
+	GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error)
 }
 
 // Handler handles dashboard requests
@@ -163,6 +167,13 @@ func (h *Handler) SaveMetric(c *gin.Context) {
 	if h.nutritionCalcSvc != nil {
 		if _, recalcErr := h.nutritionCalcSvc.RecalculateForDate(c.Request.Context(), userID, date); recalcErr != nil {
 			h.log.Errorw("Failed to recalculate KBJU", "error", recalcErr, "user_id", userID)
+		}
+	}
+
+	// Auto-complete matching curator tasks
+	if taskType := metricTypeToTaskType(req.Metric.Type); taskType != "" {
+		if err := h.service.AutoCompleteMatchingTasks(c.Request.Context(), userID, taskType, date); err != nil {
+			h.log.Errorw("Failed to auto-complete tasks", "error", err, "user_id", userID)
 		}
 	}
 
@@ -354,16 +365,18 @@ func (h *Handler) GetTasks(c *gin.Context) {
 		return
 	}
 
-	// If no week specified, use current week number
 	weekNumber := req.Week
-	if weekNumber == 0 {
-		// Calculate current week number
-		now := time.Now()
-		weekNumber = int(now.Sub(time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)).Hours()/24/7) + 1
-	}
 
-	// Call service to get tasks
-	tasks, err := h.service.GetTasksByWeek(c.Request.Context(), userID, weekNumber)
+	var tasks []*Task
+	var err error
+
+	if weekNumber > 0 {
+		// If week specified, filter by that week
+		tasks, err = h.service.GetTasksByWeek(c.Request.Context(), userID, weekNumber)
+	} else {
+		// Otherwise show all active tasks
+		tasks, err = h.service.GetActiveTasks(c.Request.Context(), userID)
+	}
 	if err != nil {
 		h.log.Errorw("Failed to get tasks", "error", err, "user_id", userID, "week", weekNumber)
 		response.InternalError(c, "Не удалось получить задачи")
@@ -587,6 +600,114 @@ func (h *Handler) UploadPhoto(c *gin.Context) {
 	response.Success(c, http.StatusCreated, photo)
 }
 
+// GetReportFeedback handles GET /api/dashboard/weekly-reports/:reportId/feedback
+// Returns curator feedback for a specific weekly report
+func (h *Handler) GetReportFeedback(c *gin.Context) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	reportID := c.Param("reportId")
+	if reportID == "" {
+		response.Error(c, http.StatusBadRequest, "ID отчёта обязателен")
+		return
+	}
+
+	feedback, err := h.service.GetReportFeedback(c.Request.Context(), userID, reportID)
+	if err != nil {
+		h.log.Errorw("Failed to get report feedback", "error", err, "user_id", userID, "report_id", reportID)
+		response.Error(c, http.StatusNotFound, "Отчёт не найден")
+		return
+	}
+
+	response.Success(c, http.StatusOK, feedback)
+}
+
+// CompleteTaskForDate handles POST /api/dashboard/tasks/:id/complete
+// Completes a recurring task for a specific date or marks a one-time task as completed
+func (h *Handler) CompleteTaskForDate(c *gin.Context) {
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	userID, ok := userIDInterface.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", userIDInterface)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	taskID := c.Param("id")
+	if taskID == "" {
+		response.Error(c, http.StatusBadRequest, "ID задачи обязателен")
+		return
+	}
+
+	// Optional date + workout data parameters
+	var req struct {
+		Date            string  `json:"date"`
+		WorkoutType     *string `json:"workout_type,omitempty"`
+		WorkoutDuration *int    `json:"workout_duration,omitempty"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	if req.Date == "" {
+		req.Date = time.Now().Format("2006-01-02")
+	}
+
+	task, err := h.service.CompleteTaskForDate(c.Request.Context(), userID, taskID, req.Date)
+	if err != nil {
+		h.log.Errorw("Failed to complete task", "error", err, "user_id", userID, "task_id", taskID)
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// If this is a workout task with workout data, save the metric too
+	metricSynced := false
+	if task.Type == "workout" && req.WorkoutType != nil {
+		userLoc := middleware.GetUserTimezone(c.Request.Context(), h.db, userID)
+		date, parseErr := time.ParseInLocation("2006-01-02", req.Date, userLoc)
+		if parseErr == nil {
+			// SaveMetric expects map[string]interface{} (from JSON unmarshaling),
+			// not a typed struct — build the map directly.
+			workoutMap := map[string]interface{}{
+				"completed": true,
+				"type":      *req.WorkoutType,
+			}
+			if req.WorkoutDuration != nil {
+				workoutMap["duration"] = float64(*req.WorkoutDuration)
+			}
+			metricUpdate := MetricUpdate{Type: MetricUpdateTypeWorkout, Data: workoutMap}
+			if _, saveErr := h.service.SaveMetric(c.Request.Context(), userID, date, metricUpdate); saveErr != nil {
+				h.log.Errorw("Failed to save workout metric from task", "error", saveErr, "user_id", userID)
+			} else {
+				metricSynced = true
+				// Trigger KBJU recalculation
+				if h.nutritionCalcSvc != nil {
+					if _, recalcErr := h.nutritionCalcSvc.RecalculateForDate(c.Request.Context(), userID, date); recalcErr != nil {
+						h.log.Errorw("Failed to recalculate KBJU", "error", recalcErr, "user_id", userID)
+					}
+				}
+			}
+		}
+	}
+
+	response.Success(c, http.StatusOK, gin.H{
+		"task":          task,
+		"metric_synced": metricSynced,
+	})
+}
+
 // GetProgress handles GET /api/dashboard/progress
 // Retrieves progress data including weight trend and nutrition adherence
 func (h *Handler) GetProgress(c *gin.Context) {
@@ -617,4 +738,16 @@ func (h *Handler) GetProgress(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, progressData)
+}
+
+// metricTypeToTaskType maps dashboard metric types to curator task types.
+func metricTypeToTaskType(mt MetricUpdateType) string {
+	switch mt {
+	case MetricUpdateTypeWorkout:
+		return "workout"
+	case MetricUpdateTypeWeight:
+		return "measurement"
+	default:
+		return ""
+	}
 }

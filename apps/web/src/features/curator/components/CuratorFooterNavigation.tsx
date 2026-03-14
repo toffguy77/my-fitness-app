@@ -19,7 +19,7 @@ export interface CuratorFooterNavigationProps {
  * Shows: Clients, Chats, Profile.
  */
 export function CuratorFooterNavigation({
-    activeItem = 'clients',
+    activeItem = 'hub',
     onNavigate
 }: CuratorFooterNavigationProps) {
     const router = useRouter()

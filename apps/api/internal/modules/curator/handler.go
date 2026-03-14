@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
@@ -20,11 +21,11 @@ type Handler struct {
 }
 
 // NewHandler creates a new curator handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handler {
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, notificationsSvc *notifications.Service) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(db, log),
+		service: NewService(db, log, notificationsSvc),
 	}
 }
 
@@ -186,4 +187,447 @@ func (h *Handler) SetWaterGoal(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, gin.H{"message": "Цель по воде обновлена"})
+}
+
+// CreateWeeklyPlan handles POST /api/v1/curator/clients/:id/weekly-plan
+func (h *Handler) CreateWeeklyPlan(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	var req CreateWeeklyPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	plan, err := h.service.CreateWeeklyPlan(c.Request.Context(), userID, clientID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to create weekly plan", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось создать план питания")
+		return
+	}
+
+	response.Success(c, http.StatusCreated, plan)
+}
+
+// UpdateWeeklyPlan handles PUT /api/v1/curator/clients/:id/weekly-plan/:planId
+func (h *Handler) UpdateWeeklyPlan(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	planID := c.Param("planId")
+	if planID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор плана")
+		return
+	}
+
+	var req UpdateWeeklyPlanRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	plan, err := h.service.UpdateWeeklyPlan(c.Request.Context(), userID, clientID, planID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "План питания не найден")
+			return
+		}
+		h.log.Error("Failed to update weekly plan", "error", err, "curator_id", userID, "client_id", clientID, "plan_id", planID)
+		response.InternalError(c, "Не удалось обновить план питания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, plan)
+}
+
+// DeleteWeeklyPlan handles DELETE /api/v1/curator/clients/:id/weekly-plan/:planId
+func (h *Handler) DeleteWeeklyPlan(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	planID := c.Param("planId")
+	if planID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор плана")
+		return
+	}
+
+	err = h.service.DeleteWeeklyPlan(c.Request.Context(), userID, clientID, planID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "План питания не найден")
+			return
+		}
+		h.log.Error("Failed to delete weekly plan", "error", err, "curator_id", userID, "client_id", clientID, "plan_id", planID)
+		response.InternalError(c, "Не удалось удалить план питания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "План питания удалён"})
+}
+
+// CreateTask handles POST /api/v1/curator/clients/:id/tasks
+func (h *Handler) CreateTask(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	var req CreateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	task, err := h.service.CreateTask(c.Request.Context(), userID, clientID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to create task", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось создать задание")
+		return
+	}
+
+	response.Success(c, http.StatusCreated, task)
+}
+
+// UpdateTask handles PUT /api/v1/curator/clients/:id/tasks/:taskId
+func (h *Handler) UpdateTask(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	taskID := c.Param("taskId")
+	if taskID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор задания")
+		return
+	}
+
+	var req UpdateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	task, err := h.service.UpdateTask(c.Request.Context(), userID, clientID, taskID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "Задание не найдено")
+			return
+		}
+		h.log.Error("Failed to update task", "error", err, "curator_id", userID, "client_id", clientID, "task_id", taskID)
+		response.InternalError(c, "Не удалось обновить задание")
+		return
+	}
+
+	response.Success(c, http.StatusOK, task)
+}
+
+// DeleteTask handles DELETE /api/v1/curator/clients/:id/tasks/:taskId
+func (h *Handler) DeleteTask(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	taskID := c.Param("taskId")
+	if taskID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор задания")
+		return
+	}
+
+	err = h.service.DeleteTask(c.Request.Context(), userID, clientID, taskID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "Задание не найдено")
+			return
+		}
+		h.log.Error("Failed to delete task", "error", err, "curator_id", userID, "client_id", clientID, "task_id", taskID)
+		response.InternalError(c, "Не удалось удалить задание")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Задание удалено"})
+}
+
+// GetTasks handles GET /api/v1/curator/clients/:id/tasks
+func (h *Handler) GetTasks(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	status := c.Query("status")
+
+	tasks, err := h.service.GetTasks(c.Request.Context(), userID, clientID, status)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to get tasks", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось загрузить задания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, tasks)
+}
+
+// SubmitFeedback handles PUT /api/v1/curator/clients/:id/weekly-reports/:reportId/feedback
+func (h *Handler) SubmitFeedback(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	reportID := c.Param("reportId")
+	if reportID == "" {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор отчёта")
+		return
+	}
+
+	var req SubmitFeedbackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	err = h.service.SubmitFeedback(c.Request.Context(), userID, clientID, reportID, req)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			response.NotFound(c, "Еженедельный отчёт не найден")
+			return
+		}
+		h.log.Error("Failed to submit feedback", "error", err, "curator_id", userID, "client_id", clientID, "report_id", reportID)
+		response.InternalError(c, "Не удалось сохранить отзыв")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Отзыв сохранён"})
+}
+
+// GetWeeklyReports handles GET /api/v1/curator/clients/:id/weekly-reports
+func (h *Handler) GetWeeklyReports(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	reports, err := h.service.GetWeeklyReports(c.Request.Context(), userID, clientID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to get weekly reports", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось загрузить еженедельные отчёты")
+		return
+	}
+
+	response.Success(c, http.StatusOK, reports)
+}
+
+// GetAnalytics handles GET /api/v1/curator/analytics
+func (h *Handler) GetAnalytics(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	analytics, err := h.service.GetAnalytics(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("Failed to get analytics", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить аналитику")
+		return
+	}
+
+	response.Success(c, http.StatusOK, analytics)
+}
+
+// GetAttentionList handles GET /api/v1/curator/attention
+func (h *Handler) GetAttentionList(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	items, err := h.service.GetAttentionList(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("Failed to get attention list", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить список внимания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, items)
+}
+
+// GetAnalyticsHistory handles GET /api/v1/curator/analytics/history
+// Returns historical analytics snapshots (daily or weekly).
+// Query params: period=daily|weekly, days=N (for daily), weeks=N (for weekly, default 12)
+func (h *Handler) GetAnalyticsHistory(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	period := c.DefaultQuery("period", "weekly")
+	if period != "daily" && period != "weekly" {
+		period = "weekly"
+	}
+
+	countStr := c.DefaultQuery("days", "")
+	if countStr == "" {
+		countStr = c.DefaultQuery("weeks", "12")
+	}
+	count, _ := strconv.Atoi(countStr)
+	if count <= 0 || count > 90 {
+		count = 12
+	}
+
+	data, err := h.service.GetAnalyticsHistory(c.Request.Context(), userID, period, count)
+	if err != nil {
+		h.log.Error("Failed to get analytics history", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить историю аналитики")
+		return
+	}
+
+	response.Success(c, http.StatusOK, data)
+}
+
+// GetBenchmark handles GET /api/v1/curator/analytics/benchmark
+// Returns the curator's weekly snapshots alongside platform-wide benchmarks.
+// Query params: weeks=N (default 12, max 52)
+func (h *Handler) GetBenchmark(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	weeks, _ := strconv.Atoi(c.DefaultQuery("weeks", "12"))
+	if weeks <= 0 || weeks > 52 {
+		weeks = 12
+	}
+
+	data, err := h.service.GetBenchmark(c.Request.Context(), userID, weeks)
+	if err != nil {
+		h.log.Error("Failed to get benchmark", "error", err, "curator_id", userID)
+		response.InternalError(c, "Не удалось загрузить бенчмарки")
+		return
+	}
+
+	response.Success(c, http.StatusOK, data)
+}
+
+// GetWeeklyPlans handles GET /api/v1/curator/clients/:id/weekly-plans
+func (h *Handler) GetWeeklyPlans(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	plans, err := h.service.GetWeeklyPlans(c.Request.Context(), userID, clientID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unauthorized") {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to get weekly plans", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось загрузить планы питания")
+		return
+	}
+
+	response.Success(c, http.StatusOK, plans)
 }

@@ -1,27 +1,34 @@
 package curator
 
+import "encoding/json"
+
 // ClientCard represents a summary view of a client for the curator dashboard
 type ClientCard struct {
-	ID                int64       `json:"id"`
-	Name              string      `json:"name"`
-	AvatarURL         string      `json:"avatar_url,omitempty"`
-	TodayKBZHU        *DailyKBZHU `json:"today_kbzhu"`
-	Plan              *PlanKBZHU  `json:"plan"`
-	Alerts            []Alert     `json:"alerts"`
-	UnreadCount       int         `json:"unread_count"`
-	LastWeight        *float64    `json:"last_weight"`
-	WeightTrend       string      `json:"weight_trend"`
-	TargetWeight      *float64    `json:"target_weight"`
-	TodayWater        *WaterView  `json:"today_water"`
-	Email             string      `json:"email,omitempty"`
-	Height            *float64    `json:"height,omitempty"`
-	Timezone          string      `json:"timezone,omitempty"`
-	TelegramUsername  string      `json:"telegram_username,omitempty"`
-	InstagramUsername string      `json:"instagram_username,omitempty"`
-	BirthDate         *string     `json:"birth_date,omitempty"`
-	BiologicalSex     *string     `json:"biological_sex,omitempty"`
-	ActivityLevel     *string     `json:"activity_level,omitempty"`
-	FitnessGoal       *string     `json:"fitness_goal,omitempty"`
+	ID                 int64       `json:"id"`
+	Name               string      `json:"name"`
+	AvatarURL          string      `json:"avatar_url,omitempty"`
+	TodayKBZHU         *DailyKBZHU `json:"today_kbzhu"`
+	Plan               *PlanKBZHU  `json:"plan"`
+	Alerts             []Alert     `json:"alerts"`
+	UnreadCount        int         `json:"unread_count"`
+	LastWeight         *float64    `json:"last_weight"`
+	WeightTrend        string      `json:"weight_trend"`
+	TargetWeight       *float64    `json:"target_weight"`
+	TodayWater         *WaterView  `json:"today_water"`
+	Email              string      `json:"email,omitempty"`
+	Height             *float64    `json:"height,omitempty"`
+	Timezone           string      `json:"timezone,omitempty"`
+	TelegramUsername   string      `json:"telegram_username,omitempty"`
+	InstagramUsername  string      `json:"instagram_username,omitempty"`
+	BirthDate          *string     `json:"birth_date,omitempty"`
+	BiologicalSex      *string     `json:"biological_sex,omitempty"`
+	ActivityLevel      *string     `json:"activity_level,omitempty"`
+	FitnessGoal        *string     `json:"fitness_goal,omitempty"`
+	WeeklyKBZHUPercent *float64    `json:"weekly_kbzhu_percent,omitempty"`
+	ActiveTasksCount   int         `json:"active_tasks_count"`
+	OverdueTasksCount  int         `json:"overdue_tasks_count"`
+	LastActivityDate   *string     `json:"last_activity_date,omitempty"`
+	StreakDays         int         `json:"streak_days"`
 }
 
 // DailyKBZHU represents daily nutrition totals (calories, protein, fat, carbs)
@@ -109,4 +116,176 @@ type FoodEntryView struct {
 	Weight    float64 `json:"weight"`
 	CreatedBy *int64  `json:"created_by,omitempty"`
 	Time      string  `json:"time"`
+}
+
+// AnalyticsSummary represents aggregate metrics for the curator's analytics hub
+type AnalyticsSummary struct {
+	TotalClients     int     `json:"total_clients"`
+	AttentionClients int     `json:"attention_clients"`
+	AvgKBZHUPercent  float64 `json:"avg_kbzhu_percent"`
+	TotalUnread      int     `json:"total_unread"`
+	ClientsWaiting   int     `json:"clients_waiting"`
+	ActiveTasks      int     `json:"active_tasks"`
+	OverdueTasks     int     `json:"overdue_tasks"`
+	CompletedToday   int     `json:"completed_today"`
+}
+
+// AttentionReason defines the allowed reason values for attention items
+type AttentionReason string
+
+const (
+	AttentionReasonRedAlert          AttentionReason = "red_alert"
+	AttentionReasonOverdueTask       AttentionReason = "overdue_task"
+	AttentionReasonInactive          AttentionReason = "inactive"
+	AttentionReasonUnreadMessage     AttentionReason = "unread_message"
+	AttentionReasonAwaitingFeedback  AttentionReason = "awaiting_feedback"
+	AttentionReasonIncompleteProfile AttentionReason = "incomplete_profile"
+)
+
+// AttentionItem represents a single item in the curator's attention list
+type AttentionItem struct {
+	ClientID     int64           `json:"client_id"`
+	ClientName   string          `json:"client_name"`
+	ClientAvatar string          `json:"client_avatar,omitempty"`
+	Reason       AttentionReason `json:"reason"`
+	Detail       string          `json:"detail"`
+	Priority     int             `json:"priority"`
+	ActionURL    string          `json:"action_url"`
+}
+
+// CreateTaskRequest represents the request to create a task for a client
+type CreateTaskRequest struct {
+	Title          string `json:"title" binding:"required,max=200"`
+	Type           string `json:"type" binding:"required,oneof=nutrition workout habit measurement"`
+	Description    string `json:"description"`
+	Deadline       string `json:"deadline" binding:"required"`
+	Recurrence     string `json:"recurrence" binding:"required,oneof=once daily weekly"`
+	RecurrenceDays []int  `json:"recurrence_days,omitempty"`
+}
+
+// UpdateTaskRequest represents the request to update a task
+type UpdateTaskRequest struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Deadline    *string `json:"deadline"`
+	Status      *string `json:"status"`
+}
+
+// TaskView represents a task as returned to the curator
+type TaskView struct {
+	ID             string   `json:"id"`
+	Title          string   `json:"title"`
+	Type           string   `json:"type"`
+	Description    string   `json:"description,omitempty"`
+	Deadline       string   `json:"deadline"`
+	Recurrence     string   `json:"recurrence"`
+	RecurrenceDays []int    `json:"recurrence_days,omitempty"`
+	Status         string   `json:"status"`
+	Completions    []string `json:"completions,omitempty"`
+	CreatedAt      string   `json:"created_at"`
+}
+
+// CategoryRating represents a rating for a specific category in weekly report feedback
+type CategoryRating struct {
+	Rating  string `json:"rating" binding:"required,oneof=excellent good needs_improvement"`
+	Comment string `json:"comment"`
+}
+
+// SubmitFeedbackRequest represents the request to submit feedback on a weekly report
+type SubmitFeedbackRequest struct {
+	Nutrition       *CategoryRating `json:"nutrition"`
+	Activity        *CategoryRating `json:"activity"`
+	Water           *CategoryRating `json:"water"`
+	PhotoUploaded   *bool           `json:"photo_uploaded"`
+	Summary         string          `json:"summary" binding:"required"`
+	Recommendations string          `json:"recommendations"`
+}
+
+// WeeklyReportView represents a weekly report as seen by the curator
+type WeeklyReportView struct {
+	ID              string           `json:"id"`
+	WeekStart       string           `json:"week_start"`
+	WeekEnd         string           `json:"week_end"`
+	WeekNumber      int              `json:"week_number"`
+	Summary         json.RawMessage  `json:"summary"`
+	SubmittedAt     string           `json:"submitted_at"`
+	CuratorFeedback *json.RawMessage `json:"curator_feedback,omitempty"`
+	HasFeedback     bool             `json:"has_feedback"`
+}
+
+// DailySnapshot represents a daily analytics snapshot for a curator
+type DailySnapshot struct {
+	Date             string  `json:"date"`
+	TotalClients     int     `json:"total_clients"`
+	AttentionClients int     `json:"attention_clients"`
+	AvgKBZHUPercent  float64 `json:"avg_kbzhu_percent"`
+	TotalUnread      int     `json:"total_unread"`
+	ActiveTasks      int     `json:"active_tasks"`
+	OverdueTasks     int     `json:"overdue_tasks"`
+	CompletedTasks   int     `json:"completed_tasks"`
+	AvgClientStreak  float64 `json:"avg_client_streak"`
+}
+
+// WeeklySnapshot represents a weekly analytics snapshot for a curator
+type WeeklySnapshot struct {
+	WeekStart            string  `json:"week_start"`
+	AvgKBZHUPercent      float64 `json:"avg_kbzhu_percent"`
+	AvgResponseTimeHours float64 `json:"avg_response_time_hours"`
+	ClientsWithFeedback  int     `json:"clients_with_feedback"`
+	ClientsTotal         int     `json:"clients_total"`
+	TaskCompletionRate   float64 `json:"task_completion_rate"`
+	ClientsOnTrack       int     `json:"clients_on_track"`
+	ClientsOffTrack      int     `json:"clients_off_track"`
+	AvgClientStreak      float64 `json:"avg_client_streak"`
+}
+
+// PlatformBenchmark represents platform-wide weekly benchmark data
+type PlatformBenchmark struct {
+	WeekStart             string  `json:"week_start"`
+	AvgKBZHUPercent       float64 `json:"avg_kbzhu_percent"`
+	AvgResponseTimeHours  float64 `json:"avg_response_time_hours"`
+	AvgTaskCompletionRate float64 `json:"avg_task_completion_rate"`
+	AvgFeedbackRate       float64 `json:"avg_feedback_rate"`
+	AvgClientStreak       float64 `json:"avg_client_streak"`
+	CuratorCount          int     `json:"curator_count"`
+}
+
+// BenchmarkData contains both the curator's own snapshots and platform benchmarks
+type BenchmarkData struct {
+	OwnSnapshots       []WeeklySnapshot    `json:"own_snapshots"`
+	PlatformBenchmarks []PlatformBenchmark `json:"platform_benchmarks"`
+}
+
+// CreateWeeklyPlanRequest represents the request to create a weekly plan for a client
+type CreateWeeklyPlanRequest struct {
+	Calories  float64 `json:"calories" binding:"required,gt=0"`
+	Protein   float64 `json:"protein" binding:"required,gte=0"`
+	Fat       float64 `json:"fat" binding:"required,gte=0"`
+	Carbs     float64 `json:"carbs" binding:"required,gte=0"`
+	StartDate string  `json:"start_date" binding:"required"`
+	EndDate   string  `json:"end_date" binding:"required"`
+	Comment   string  `json:"comment"`
+}
+
+// UpdateWeeklyPlanRequest represents the request to update a weekly plan
+type UpdateWeeklyPlanRequest struct {
+	Calories *float64 `json:"calories"`
+	Protein  *float64 `json:"protein"`
+	Fat      *float64 `json:"fat"`
+	Carbs    *float64 `json:"carbs"`
+	Comment  *string  `json:"comment"`
+}
+
+// WeeklyPlanView represents a weekly plan as returned to the client
+type WeeklyPlanView struct {
+	ID        string  `json:"id"`
+	Calories  float64 `json:"calories"`
+	Protein   float64 `json:"protein"`
+	Fat       float64 `json:"fat"`
+	Carbs     float64 `json:"carbs"`
+	StartDate string  `json:"start_date"`
+	EndDate   string  `json:"end_date"`
+	Comment   string  `json:"comment,omitempty"`
+	IsActive  bool    `json:"is_active"`
+	CreatedAt string  `json:"created_at"`
 }

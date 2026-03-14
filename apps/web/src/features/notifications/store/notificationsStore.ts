@@ -549,29 +549,28 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
             const countsUrl = getApiUrl('/notifications/unread-counts');
             const counts = await apiClient.get<UnreadCountsResponse>(countsUrl);
 
-            set((state) => {
-                // Merge new notifications with existing ones
-                const mergeNotifications = (
-                    existing: Notification[],
-                    newOnes: Notification[] | undefined
-                ): Notification[] => {
-                    const notificationMap = new Map<string, Notification>();
-                    existing.forEach((n) => notificationMap.set(n.id, n));
-                    (newOnes || []).forEach((n) => notificationMap.set(n.id, n));
+            // Only update if we got valid responses
+            if (!mainResponse && !contentResponse) {
+                return;
+            }
 
-                    return Array.from(notificationMap.values()).sort(
+            set((state) => {
+                // Replace with server data (offset=0 fetch = authoritative)
+                // This ensures deleted notifications are removed
+                const dedupeAndSort = (notifications: Notification[]): Notification[] => {
+                    const map = new Map<string, Notification>();
+                    notifications.forEach((n) => map.set(n.id, n));
+                    return Array.from(map.values()).sort(
                         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                     );
                 };
 
-                const mainNotifications = mergeNotifications(
-                    state.notifications.main,
-                    mainResponse?.notifications
-                );
-                const contentNotifications = mergeNotifications(
-                    state.notifications.content,
-                    contentResponse?.notifications
-                );
+                const mainNotifications = mainResponse?.notifications
+                    ? dedupeAndSort(mainResponse.notifications)
+                    : state.notifications.main;
+                const contentNotifications = contentResponse?.notifications
+                    ? dedupeAndSort(contentResponse.notifications)
+                    : state.notifications.content;
 
                 // Save to cache
                 saveCachedNotifications('main', mainNotifications);

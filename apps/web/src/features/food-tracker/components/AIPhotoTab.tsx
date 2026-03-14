@@ -10,8 +10,8 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { Camera, Image, Upload, AlertCircle, CheckCircle, X, Search } from 'lucide-react';
-import type { FoodItem, KBZHU } from '../types';
+import { Camera, Image, Upload, AlertCircle, X, Search } from 'lucide-react';
+import type { FoodItem, RecognizedFood } from '../types';
 
 // ============================================================================
 // Types
@@ -33,6 +33,7 @@ export interface AIPhotoTabProps {
 export interface RecognitionResult {
     food: FoodItem;
     confidence: number; // 0-1
+    composition?: RecognizedFood[];
     boundingBox?: {
         x: number;
         y: number;
@@ -66,7 +67,6 @@ export function AIPhotoTab({
     const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [results, setResults] = useState<RecognitionResult[]>([]);
-    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     const [error, setError] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,23 +104,12 @@ export function AIPhotoTab({
         setStatus('processing');
         setError(null);
         setResults([]);
-        setSelectedItems(new Set());
 
         // Process with AI
         try {
             if (onRecognize) {
                 const recognitionResults = await onRecognize(file);
                 setResults(recognitionResults);
-
-                // Auto-select high confidence items
-                const autoSelected = new Set<string>();
-                recognitionResults.forEach(result => {
-                    if (result.confidence >= confidenceThreshold) {
-                        autoSelected.add(result.food.id);
-                    }
-                });
-                setSelectedItems(autoSelected);
-
                 setStatus('results');
             } else {
                 // Mock response for demo
@@ -134,28 +123,14 @@ export function AIPhotoTab({
 
         // Reset input
         e.target.value = '';
-    }, [onRecognize, confidenceThreshold]);
+    }, [onRecognize]);
 
-    // Toggle item selection
-    const handleToggleItem = useCallback((foodId: string) => {
-        setSelectedItems(prev => {
-            const next = new Set(prev);
-            if (next.has(foodId)) {
-                next.delete(foodId);
-            } else {
-                next.add(foodId);
-            }
-            return next;
-        });
-    }, []);
-
-    // Confirm selection
+    // Confirm selection — add the single combined dish
     const handleConfirmSelection = useCallback(() => {
-        const selectedFoods = results
-            .filter(r => selectedItems.has(r.food.id))
-            .map(r => r.food);
-        onSelectFoods(selectedFoods);
-    }, [results, selectedItems, onSelectFoods]);
+        if (results.length > 0) {
+            onSelectFoods([results[0].food]);
+        }
+    }, [results, onSelectFoods]);
 
     // Reset and try again
     const handleReset = useCallback(() => {
@@ -163,7 +138,6 @@ export function AIPhotoTab({
         setSelectedPhoto(null);
         setPhotoPreview(null);
         setResults([]);
-        setSelectedItems(new Set());
         setError(null);
     }, []);
 
@@ -260,101 +234,100 @@ export function AIPhotoTab({
                         </div>
                     )}
 
-                    {/* Results list */}
+                    {/* Results */}
                     <div className="flex-1 overflow-y-auto px-4">
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">
-                            Найденные продукты ({results.length})
-                        </h3>
-
                         {results.length === 0 ? (
                             <div className="text-center py-8">
                                 <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                                 <p className="text-gray-500">Продукты не распознаны</p>
                             </div>
                         ) : (
-                            <ul className="space-y-2" role="listbox" aria-label="Распознанные продукты">
-                                {results.map(result => (
-                                    <li
-                                        key={result.food.id}
-                                        role="option"
-                                        aria-selected={selectedItems.has(result.food.id)}
-                                        onClick={() => handleToggleItem(result.food.id)}
-                                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${selectedItems.has(result.food.id)
-                                                ? 'bg-blue-50 border-2 border-blue-500'
-                                                : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
-                                            }`}
-                                    >
-                                        {/* Checkbox */}
-                                        <div
-                                            className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${selectedItems.has(result.food.id)
-                                                    ? 'bg-blue-500 text-white'
-                                                    : 'bg-gray-200'
-                                                }`}
-                                        >
-                                            {selectedItems.has(result.food.id) && (
-                                                <CheckCircle className="w-4 h-4" />
-                                            )}
-                                        </div>
-
-                                        {/* Food info */}
+                            <div>
+                                {/* Dish name and total info */}
+                                <div className="p-3 bg-blue-50 border-2 border-blue-500 rounded-xl mb-3">
+                                    <div className="flex items-center justify-between">
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-gray-900 truncate">
-                                                {result.food.name}
+                                                {results[0].food.name}
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                {Math.round(result.food.nutritionPer100.calories)} ккал на 100г
+                                                {Math.round(results[0].food.servingSize)} г
+                                                {' \u2022 '}
+                                                {Math.round(results[0].food.nutritionPer100.calories)} ккал на 100г
                                             </p>
                                         </div>
-
-                                        {/* Confidence */}
                                         <div className="text-right">
-                                            <p className={`text-sm font-medium ${getConfidenceColor(result.confidence)}`}>
-                                                {Math.round(result.confidence * 100)}%
+                                            <p className={`text-sm font-medium ${getConfidenceColor(results[0].confidence)}`}>
+                                                {Math.round(results[0].confidence * 100)}%
                                             </p>
                                             <p className="text-xs text-gray-400">
-                                                {getConfidenceLabel(result.confidence)}
+                                                {getConfidenceLabel(results[0].confidence)}
                                             </p>
                                         </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-
-                        {/* Low confidence warning */}
-                        {hasLowConfidenceResults && (
-                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                                <div className="flex items-start gap-2">
-                                    <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-sm text-yellow-700">
-                                            Некоторые продукты распознаны с низкой уверенностью.
-                                            Проверьте выбор или найдите вручную.
-                                        </p>
-                                        {onManualSearch && (
-                                            <button
-                                                type="button"
-                                                onClick={handleManualSearch}
-                                                className="mt-2 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                                            >
-                                                <Search className="w-4 h-4" />
-                                                <span>Найти вручную</span>
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
+
+                                {/* Composition breakdown */}
+                                {results[0].composition && results[0].composition.length > 0 && (
+                                    <div className="mb-3">
+                                        <h4 className="text-sm font-medium text-gray-500 mb-2">
+                                            Состав
+                                        </h4>
+                                        <ul className="space-y-1" aria-label="Состав блюда">
+                                            {results[0].composition.map((item, idx) => (
+                                                <li
+                                                    key={idx}
+                                                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
+                                                >
+                                                    <span className="text-gray-700">
+                                                        {item.name} — {Math.round(item.estimatedWeight ?? item.estimated_weight ?? 0)} г
+                                                    </span>
+                                                    <span className="text-gray-400">
+                                                        {Math.round(item.nutrition.calories)} ккал/100г
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* Low confidence warning */}
+                                {hasLowConfidenceResults && (
+                                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                        <div className="flex items-start gap-2">
+                                            <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-sm text-yellow-700">
+                                                    Низкая уверенность в распознавании.
+                                                    Проверьте результат или найдите вручную.
+                                                </p>
+                                                {onManualSearch && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleManualSearch}
+                                                        className="mt-2 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                                                    >
+                                                        <Search className="w-4 h-4" />
+                                                        <span>Найти вручную</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
 
-                    {/* Action buttons */}
+                    {/* Action button */}
                     <div className="p-4 border-t border-gray-200">
                         <button
                             type="button"
                             onClick={handleConfirmSelection}
-                            disabled={selectedItems.size === 0}
+                            disabled={results.length === 0}
                             className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
-                            Добавить выбранные ({selectedItems.size})
+                            Добавить
                         </button>
                     </div>
                 </div>

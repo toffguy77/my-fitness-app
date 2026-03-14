@@ -33,7 +33,7 @@ export interface WorkoutBlockProps {
 /**
  * Workout type options
  */
-const WORKOUT_TYPES = [
+export const WORKOUT_TYPES = [
     'Силовая',
     'Кардио',
     'Йога',

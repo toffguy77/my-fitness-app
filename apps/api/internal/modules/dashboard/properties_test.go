@@ -1723,11 +1723,11 @@ func TestTaskStatusUpdateProperty(t *testing.T) {
 			mock.ExpectQuery(`SELECT id, user_id, curator_id, title`).
 				WithArgs(taskID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
-					"due_date", "completed_at", "status", "created_at", "updated_at",
+					"id", "user_id", "curator_id", "title", "description", "type", "week_number", "assigned_at",
+					"due_date", "completed_at", "status", "recurrence", "recurrence_days", "created_at", "updated_at",
 				}).AddRow(
-					taskID, userID, int64(100), "Test Task", "Description", 1, time.Now(),
-					time.Now().AddDate(0, 0, 7), nil, TaskStatusActive, time.Now(), time.Now(),
+					taskID, userID, int64(100), "Test Task", "Description", "habit", 1, time.Now(),
+					time.Now().AddDate(0, 0, 7), nil, TaskStatusActive, "once", nil, time.Now(), time.Now(),
 				))
 
 			// Mock update task status
@@ -1735,11 +1735,11 @@ func TestTaskStatusUpdateProperty(t *testing.T) {
 			mock.ExpectQuery(`UPDATE tasks SET status`).
 				WithArgs(TaskStatusCompleted, sqlmock.AnyArg(), taskID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
-					"due_date", "completed_at", "status", "created_at", "updated_at",
+					"id", "user_id", "curator_id", "title", "description", "type", "week_number", "assigned_at",
+					"due_date", "completed_at", "status", "recurrence", "recurrence_days", "created_at", "updated_at",
 				}).AddRow(
-					taskID, userID, int64(100), "Test Task", "Description", 1, time.Now(),
-					time.Now().AddDate(0, 0, 7), completedTime, TaskStatusCompleted, time.Now(), time.Now(),
+					taskID, userID, int64(100), "Test Task", "Description", "habit", 1, time.Now(),
+					time.Now().AddDate(0, 0, 7), completedTime, TaskStatusCompleted, "once", nil, time.Now(), time.Now(),
 				))
 
 			// Update task status
@@ -1795,11 +1795,11 @@ func TestTaskStatusUpdateProperty(t *testing.T) {
 			mock.ExpectQuery(`SELECT id, user_id, curator_id, title`).
 				WithArgs(taskID).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
-					"due_date", "completed_at", "status", "created_at", "updated_at",
+					"id", "user_id", "curator_id", "title", "description", "type", "week_number", "assigned_at",
+					"due_date", "completed_at", "status", "recurrence", "recurrence_days", "created_at", "updated_at",
 				}).AddRow(
-					taskID, ownerUserID, int64(100), "Test Task", "Description", 1, time.Now(),
-					time.Now().AddDate(0, 0, 7), nil, TaskStatusActive, time.Now(), time.Now(),
+					taskID, ownerUserID, int64(100), "Test Task", "Description", "habit", 1, time.Now(),
+					time.Now().AddDate(0, 0, 7), nil, TaskStatusActive, "once", nil, time.Now(), time.Now(),
 				))
 
 			// Attempt to update task with different user
@@ -2052,18 +2052,20 @@ func TestCuratorClientNotificationProperty(t *testing.T) {
 					curatorID,        // curator_id
 					taskTitle,        // title
 					sqlmock.AnyArg(), // description
+					sqlmock.AnyArg(), // type
 					weekNumber,       // week_number
 					sqlmock.AnyArg(), // assigned_at
 					sqlmock.AnyArg(), // due_date
 					sqlmock.AnyArg(), // completed_at
 					TaskStatusActive, // status
+					sqlmock.AnyArg(), // recurrence
 				).
 				WillReturnRows(sqlmock.NewRows([]string{
-					"id", "user_id", "curator_id", "title", "description", "week_number", "assigned_at",
-					"due_date", "completed_at", "status", "created_at", "updated_at",
+					"id", "user_id", "curator_id", "title", "description", "type", "week_number", "assigned_at",
+					"due_date", "completed_at", "status", "recurrence", "created_at", "updated_at",
 				}).AddRow(
-					taskID, clientID, curatorID, taskTitle, nil, weekNumber, time.Now(),
-					time.Now().AddDate(0, 0, 7), nil, TaskStatusActive, time.Now(), time.Now(),
+					taskID, clientID, curatorID, taskTitle, nil, "habit", weekNumber, time.Now(),
+					time.Now().AddDate(0, 0, 7), nil, TaskStatusActive, "once", time.Now(), time.Now(),
 				))
 
 			// Note: Notification sending is attempted but will fail gracefully with nil service

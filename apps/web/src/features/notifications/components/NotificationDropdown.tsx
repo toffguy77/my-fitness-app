@@ -20,11 +20,12 @@ interface GroupedNotifications {
 export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     const router = useRouter()
     const dropdownRef = useRef<HTMLDivElement>(null)
-    const { notifications, fetchNotifications, markAllAsRead } = useNotificationsStore()
+    const { notifications, fetchNotifications, markAllAsRead, markAsRead } = useNotificationsStore()
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-    // Fetch content notifications and mark all as read on open
+    // Fetch notifications for both categories on open
     useEffect(() => {
+        fetchNotifications('main')
         fetchNotifications('content')
         markAllAsRead('content')
     }, [fetchNotifications, markAllAsRead])
@@ -37,21 +38,19 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
             }
         }
 
-        // Delay adding the listener to avoid the opening click triggering it
-        const timeoutId = setTimeout(() => {
-            document.addEventListener('mousedown', handleClickOutside)
-        }, 0)
+        document.addEventListener('mousedown', handleClickOutside)
 
         return () => {
-            clearTimeout(timeoutId)
             document.removeEventListener('mousedown', handleClickOutside)
         }
     }, [onClose])
 
-    // Get last 10 content notifications
+    // Get last 10 notifications from both categories, sorted by date
     const recentNotifications = useMemo(() => {
-        return notifications.content.slice(0, 10)
-    }, [notifications.content])
+        const all = [...notifications.main, ...notifications.content]
+        all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        return all.slice(0, 10)
+    }, [notifications.main, notifications.content])
 
     // Capture mount time to avoid impure Date.now() call during render
     // eslint-disable-next-line react-hooks/purity
@@ -104,6 +103,9 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     }, [recentNotifications])
 
     const handleNotificationClick = (notification: Notification) => {
+        if (!notification.readAt) {
+            markAsRead(notification.id, notification.category)
+        }
         if (notification.actionUrl) {
             router.push(notification.actionUrl)
         }
@@ -130,7 +132,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
     return (
         <div
             ref={dropdownRef}
-            className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-lg border z-50 overflow-hidden"
+            className="fixed right-4 top-16 mt-2 w-80 bg-white rounded-2xl shadow-lg border z-50 overflow-hidden"
         >
             {recentNotifications.length === 0 ? (
                 <div className="p-4 text-center text-sm text-gray-500">

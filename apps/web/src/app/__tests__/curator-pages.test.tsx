@@ -14,6 +14,8 @@ jest.mock('next/navigation', () => ({
         back: jest.fn(),
     }),
     useParams: () => ({ id: '7', clientId: '7' }),
+    useSearchParams: () => new URLSearchParams(),
+    usePathname: () => '/curator/clients/7',
 }))
 
 // Mock next/image
@@ -26,11 +28,26 @@ jest.mock('next/image', () => ({
 jest.mock('lucide-react', () => ({
     ArrowLeft: () => <div data-testid="arrow-left">Back</div>,
     MessageCircle: () => <div>MessageCircle</div>,
-    Loader2: () => <div data-testid="loader">Loading</div>,
+    Loader2: (props: Record<string, unknown>) => <div data-testid="loader" className={String(props.className ?? '')}>Loading</div>,
     Check: () => <div>Check</div>,
     X: () => <div>X</div>,
     ChevronDown: () => <div>ChevronDown</div>,
+    ChevronUp: () => <div>ChevronUp</div>,
     Droplets: () => <div>Droplets</div>,
+    Users: () => <div>Users</div>,
+    Target: () => <div>Target</div>,
+    MessageSquare: () => <div>MessageSquare</div>,
+    CheckSquare: () => <div>CheckSquare</div>,
+    TrendingUp: () => <div>TrendingUp</div>,
+    TrendingDown: () => <div>TrendingDown</div>,
+    Minus: () => <div>Minus</div>,
+    Plus: () => <div>Plus</div>,
+    Pencil: () => <div>Pencil</div>,
+    Trash2: () => <div>Trash2</div>,
+    UtensilsCrossed: () => <div>UtensilsCrossed</div>,
+    Dumbbell: () => <div>Dumbbell</div>,
+    Star: () => <div>Star</div>,
+    Ruler: () => <div>Ruler</div>,
 }))
 
 // Mock recharts
@@ -61,6 +78,19 @@ jest.mock('@/features/curator/api/curatorApi', () => ({
         }),
         setTargetWeight: jest.fn(),
         setWaterGoal: jest.fn(),
+        getAnalytics: jest.fn().mockResolvedValue({
+            total_clients: 5,
+            attention_clients: 1,
+            avg_kbzhu_percent: 90,
+            total_unread: 2,
+            clients_waiting: 1,
+            active_tasks: 3,
+            overdue_tasks: 0,
+            completed_today: 1,
+        }),
+        getAttentionList: jest.fn().mockResolvedValue([]),
+        getClients: jest.fn().mockResolvedValue([]),
+        getBenchmark: jest.fn().mockResolvedValue({ own_snapshots: [], platform_benchmarks: [] }),
     },
 }))
 
@@ -98,6 +128,18 @@ jest.mock('@/features/curator/components/PhotosSection', () => ({
 
 jest.mock('@/features/curator/components/ClientInfoPanel', () => ({
     ClientInfoPanel: () => <div data-testid="client-info-panel">ClientInfoPanel</div>,
+}))
+
+jest.mock('@/features/curator/components/AnalyticsSummaryCards', () => ({
+    AnalyticsSummaryCards: () => <div data-testid="analytics-summary-cards">AnalyticsSummaryCards</div>,
+}))
+
+jest.mock('@/features/curator/components/AttentionList', () => ({
+    AttentionList: () => <div data-testid="attention-list">AttentionList</div>,
+}))
+
+jest.mock('@/features/curator/components/AnalyticsDynamicsChart', () => ({
+    AnalyticsDynamicsChart: () => <div data-testid="analytics-dynamics-chart">AnalyticsDynamicsChart</div>,
 }))
 
 // Mock chat feature components
@@ -171,10 +213,14 @@ import ClientDetailPage from '../curator/clients/[id]/page'
 
 describe('Curator Pages', () => {
     describe('CuratorDashboardPage', () => {
-        it('renders the page title and ClientList', () => {
+        it('renders loading state initially then analytics and client list', async () => {
             render(<CuratorDashboardPage />)
-            expect(screen.getByText('Мои клиенты')).toBeInTheDocument()
-            expect(screen.getByTestId('client-list')).toBeInTheDocument()
+
+            await waitFor(() => {
+                expect(screen.getByTestId('analytics-summary-cards')).toBeInTheDocument()
+                expect(screen.getByText('Все клиенты')).toBeInTheDocument()
+                expect(screen.getByTestId('client-list')).toBeInTheDocument()
+            })
         })
     })
 

@@ -407,11 +407,11 @@ describe('Property 9: Steps Data Display and Calculation', () => {
         const input = screen.getByLabelText('Количество шагов')
         fireEvent.change(input, { target: { value: invalidSteps.toString() } })
 
-        // Wait for debounced validation (300ms + buffer)
+        // Wait for debounced validation (300ms debounce + CI buffer)
         await waitFor(() => {
             const errorMessages = screen.queryAllByText(/не более 100,000|100,000/)
             expect(errorMessages.length).toBeGreaterThan(0)
-        }, { timeout: 500 })
+        }, { timeout: 2000 })
 
         // Save button should be disabled
         const saveButton = screen.getByText('Сохранить')

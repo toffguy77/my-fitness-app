@@ -13,6 +13,12 @@ export type {
     NavigationItemConfig,
     UserProfile,
     NotificationSummary,
+    ClientTaskView,
+    ClientTaskType,
+    TaskRecurrence,
+    CuratorFeedback,
+    CategoryRating,
+    RatingLevel,
 } from './types'
 
 // ============================================================================
@@ -99,6 +105,11 @@ export { ProgressSection } from './components/ProgressSection'
 export { PhotoUploadSection } from './components/PhotoUploadSection'
 export { WeeklyPlanSection } from './components/WeeklyPlanSection'
 export { TasksSection } from './components/TasksSection'
+export { ClientTasksSection } from './components/ClientTasksSection'
+export { CuratorFeedbackSection } from './components/CuratorFeedbackSection'
+
+// API
+export { dashboardApi } from './api/dashboardApi'
 
 // Store
 export { useDashboardStore } from './store/dashboardStore'

@@ -21,7 +21,7 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { getProfile } from '@/features/settings/api/settings'
 import { CalendarNavigator } from '@/features/dashboard/components/CalendarNavigator'
@@ -31,12 +31,12 @@ import {
     LazyProgressSection,
     LazyPhotoUploadSection,
     LazyWeeklyPlanSection,
-    LazyTasksSection,
     ProgressSectionSkeleton,
     PhotoUploadSectionSkeleton,
     WeeklyPlanSectionSkeleton,
-    TasksSectionSkeleton,
 } from '@/features/dashboard'
+import { ClientTasksSection } from '@/features/dashboard/components/ClientTasksSection'
+import { CuratorFeedbackSection } from '@/features/dashboard/components/CuratorFeedbackSection'
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import type { NavigationItemId } from '@/features/dashboard/types'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
@@ -53,6 +53,8 @@ interface UserData {
 
 export default function DashboardPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const highlightTaskId = searchParams.get('task')
     const [userData, setUserData] = useState<UserData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
@@ -247,10 +249,13 @@ export default function DashboardPage() {
                 {/* KBJU Weekly Chart */}
                 <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
 
+                {/* Curator-assigned tasks (renders nothing when empty) */}
+                <ClientTasksSection className="w-full" highlightTaskId={highlightTaskId} />
+
                 {/* Below-the-fold sections */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
                     {/* Photo Upload Section */}
-                    <div className="md:col-span-1 lg:col-span-1">
+                    <div>
                         <Suspense fallback={<PhotoUploadSectionSkeleton className="w-full h-full" />}>
                             <LazyPhotoUploadSection
                                 weekStart={selectedWeek.start}
@@ -261,19 +266,15 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Weekly Plan Section */}
-                    <div className="md:col-span-1 lg:col-span-1">
+                    <div>
                         <Suspense fallback={<WeeklyPlanSectionSkeleton className="w-full h-full" />}>
                             <LazyWeeklyPlanSection className="w-full h-full" />
                         </Suspense>
                     </div>
-
-                    {/* Tasks Section */}
-                    <div className="md:col-span-2 lg:col-span-1">
-                        <Suspense fallback={<TasksSectionSkeleton className="w-full h-full" />}>
-                            <LazyTasksSection className="w-full h-full" />
-                        </Suspense>
-                    </div>
                 </div>
+
+                {/* Curator feedback on weekly reports */}
+                <CuratorFeedbackSection className="w-full" />
             </div>
         </DashboardLayout>
     )

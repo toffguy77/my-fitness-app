@@ -35,31 +35,38 @@ const createMockFood = (overrides: Partial<FoodItem> = {}): FoodItem => ({
 
 const createMockRecognitionResult = (
     food: FoodItem,
-    confidence: number
+    confidence: number,
+    composition?: RecognitionResult['composition']
 ): RecognitionResult => ({
     food,
     confidence,
+    composition,
 });
 
-const mockHighConfidenceResults: RecognitionResult[] = [
+// New pattern: 1 combined dish with composition
+const mockHighConfidenceResult: RecognitionResult[] = [
     createMockRecognitionResult(
-        createMockFood({ id: 'food-1', name: 'Яблоко', nutritionPer100: { calories: 52, protein: 0.3, fat: 0.2, carbs: 14 } }),
-        0.95
-    ),
-    createMockRecognitionResult(
-        createMockFood({ id: 'food-2', name: 'Банан', nutritionPer100: { calories: 89, protein: 1.1, fat: 0.3, carbs: 23 } }),
-        0.88
+        createMockFood({
+            id: 'food-1',
+            name: 'Гречка с курицей',
+            servingSize: 350,
+            nutritionPer100: { calories: 142, protein: 12.5, fat: 3.2, carbs: 18 },
+        }),
+        0.88,
+        [
+            { name: 'Гречка', confidence: 0.95, estimatedWeight: 200, nutrition: { calories: 130, protein: 4.5, fat: 2.3, carbs: 25 } },
+            { name: 'Курица', confidence: 0.88, estimatedWeight: 150, nutrition: { calories: 165, protein: 31, fat: 3.6, carbs: 0 } },
+        ]
     ),
 ];
 
-const mockMixedConfidenceResults: RecognitionResult[] = [
+const mockLowConfidenceResult: RecognitionResult[] = [
     createMockRecognitionResult(
-        createMockFood({ id: 'food-1', name: 'Яблоко' }),
-        0.95
-    ),
-    createMockRecognitionResult(
-        createMockFood({ id: 'food-2', name: 'Неизвестный продукт' }),
-        0.55
+        createMockFood({ id: 'food-1', name: 'Неизвестное блюдо' }),
+        0.55,
+        [
+            { name: 'Неизвестный продукт', confidence: 0.55, estimatedWeight: 100, nutrition: { calories: 100, protein: 5, fat: 3, carbs: 10 } },
+        ]
     ),
 ];
 
@@ -194,8 +201,8 @@ describe('AIPhotoTab', () => {
     });
 
     describe('Results Display', () => {
-        it('displays recognized products', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+        it('displays the combined dish name', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -210,13 +217,12 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText('Яблоко')).toBeInTheDocument();
-                expect(screen.getByText('Банан')).toBeInTheDocument();
+                expect(screen.getByText('Гречка с курицей')).toBeInTheDocument();
             });
         });
 
-        it('displays confidence scores', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+        it('displays confidence score', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -231,13 +237,12 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText('95%')).toBeInTheDocument();
                 expect(screen.getByText('88%')).toBeInTheDocument();
             });
         });
 
         it('displays confidence labels', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -252,12 +257,12 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText('Высокая')).toBeInTheDocument();
+                expect(screen.getByText('Средняя')).toBeInTheDocument();
             });
         });
 
         it('displays calories per 100g', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -272,13 +277,12 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText(/52 ккал на 100г/)).toBeInTheDocument();
-                expect(screen.getByText(/89 ккал на 100г/)).toBeInTheDocument();
+                expect(screen.getByText(/142 ккал на 100г/)).toBeInTheDocument();
             });
         });
 
-        it('auto-selects high confidence items', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+        it('shows composition breakdown', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -293,13 +297,14 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                // Both items should be auto-selected (confidence >= 0.7)
-                expect(screen.getByRole('button', { name: /добавить выбранные \(2\)/i })).toBeInTheDocument();
+                expect(screen.getByText('Состав')).toBeInTheDocument();
+                expect(screen.getByText(/Гречка — 200 г/)).toBeInTheDocument();
+                expect(screen.getByText(/Курица — 150 г/)).toBeInTheDocument();
             });
         });
 
-        it('shows found products count', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+        it('shows single add button', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -314,46 +319,15 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText(/найденные продукты \(2\)/i)).toBeInTheDocument();
+                expect(screen.getByRole('button', { name: /добавить/i })).toBeInTheDocument();
             });
         });
     });
 
-    describe('Item Selection', () => {
-        it('toggles item selection on click', async () => {
+    describe('Add Action', () => {
+        it('calls onSelectFoods with the single combined dish', async () => {
             const user = userEvent.setup();
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
-
-            render(
-                <AIPhotoTab
-                    onSelectFoods={jest.fn()}
-                    onRecognize={onRecognize}
-                />
-            );
-
-            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
-            const mockFile = createMockFile();
-
-            fireEvent.change(fileInput, { target: { files: [mockFile] } });
-
-            await waitFor(() => {
-                expect(screen.getByText('Яблоко')).toBeInTheDocument();
-            });
-
-            // Initially 2 selected
-            expect(screen.getByRole('button', { name: /добавить выбранные \(2\)/i })).toBeInTheDocument();
-
-            // Click to deselect first item
-            const firstItem = screen.getByRole('option', { name: /яблоко/i });
-            await user.click(firstItem);
-
-            // Now 1 selected
-            expect(screen.getByRole('button', { name: /добавить выбранные \(1\)/i })).toBeInTheDocument();
-        });
-
-        it('calls onSelectFoods with selected items', async () => {
-            const user = userEvent.setup();
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
             const onSelectFoods = jest.fn();
 
             render(
@@ -369,24 +343,19 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText('Яблоко')).toBeInTheDocument();
+                expect(screen.getByText('Гречка с курицей')).toBeInTheDocument();
             });
 
-            const confirmButton = screen.getByRole('button', { name: /добавить выбранные/i });
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
             await user.click(confirmButton);
 
-            expect(onSelectFoods).toHaveBeenCalledWith(
-                expect.arrayContaining([
-                    expect.objectContaining({ name: 'Яблоко' }),
-                    expect.objectContaining({ name: 'Банан' }),
-                ])
-            );
+            expect(onSelectFoods).toHaveBeenCalledWith([
+                expect.objectContaining({ name: 'Гречка с курицей' }),
+            ]);
         });
 
-        it('disables confirm button when no items selected', async () => {
-            const user = userEvent.setup();
-            const singleResult = [mockHighConfidenceResults[0]];
-            const onRecognize = jest.fn().mockResolvedValue(singleResult);
+        it('disables confirm button when no results', async () => {
+            const onRecognize = jest.fn().mockResolvedValue([]);
 
             render(
                 <AIPhotoTab
@@ -401,21 +370,17 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText('Яблоко')).toBeInTheDocument();
+                expect(screen.getByText(/продукты не распознаны/i)).toBeInTheDocument();
             });
 
-            // Deselect the only item
-            const item = screen.getByRole('option', { name: /яблоко/i });
-            await user.click(item);
-
-            const confirmButton = screen.getByRole('button', { name: /добавить выбранные \(0\)/i });
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
             expect(confirmButton).toBeDisabled();
         });
     });
 
     describe('Low Confidence Warning', () => {
         it('shows warning for low confidence results', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockMixedConfidenceResults);
+            const onRecognize = jest.fn().mockResolvedValue(mockLowConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -430,12 +395,12 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByText(/некоторые продукты распознаны с низкой уверенностью/i)).toBeInTheDocument();
+                expect(screen.getByText(/низкая уверенность в распознавании/i)).toBeInTheDocument();
             });
         });
 
         it('shows manual search option in warning', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockMixedConfidenceResults);
+            const onRecognize = jest.fn().mockResolvedValue(mockLowConfidenceResult);
             const onManualSearch = jest.fn();
 
             render(
@@ -568,9 +533,9 @@ describe('AIPhotoTab', () => {
         });
     });
 
-    describe('Accessibility', () => {
-        it('has accessible listbox for results', async () => {
-            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResults);
+    describe('onRecognize Callback', () => {
+        it('calls onRecognize when a photo is uploaded', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
 
             render(
                 <AIPhotoTab
@@ -585,7 +550,58 @@ describe('AIPhotoTab', () => {
             fireEvent.change(fileInput, { target: { files: [mockFile] } });
 
             await waitFor(() => {
-                expect(screen.getByRole('listbox', { name: /распознанные продукты/i })).toBeInTheDocument();
+                expect(onRecognize).toHaveBeenCalledTimes(1);
+                expect(onRecognize).toHaveBeenCalledWith(mockFile);
+            });
+        });
+
+        it('displays recognition results returned by onRecognize', async () => {
+            const customResults: RecognitionResult[] = [
+                createMockRecognitionResult(
+                    createMockFood({ id: 'custom-1', name: 'Творог', nutritionPer100: { calories: 120, protein: 18, fat: 3, carbs: 3 } }),
+                    0.91
+                ),
+            ];
+            const onRecognize = jest.fn().mockResolvedValue(customResults);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            const mockFile = createMockFile();
+
+            fireEvent.change(fileInput, { target: { files: [mockFile] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Творог')).toBeInTheDocument();
+                expect(screen.getByText('91%')).toBeInTheDocument();
+                expect(screen.getByText(/120 ккал на 100г/)).toBeInTheDocument();
+            });
+        });
+    });
+
+    describe('Accessibility', () => {
+        it('has accessible composition list for results', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            const mockFile = createMockFile();
+
+            fireEvent.change(fileInput, { target: { files: [mockFile] } });
+
+            await waitFor(() => {
+                expect(screen.getByRole('list', { name: /состав блюда/i })).toBeInTheDocument();
             });
         });
 

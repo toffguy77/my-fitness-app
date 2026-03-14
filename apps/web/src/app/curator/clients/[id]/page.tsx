@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useReducer, useState, useRef, useMemo } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeft, MessageCircle, Loader2, Check, X, ChevronDown, Droplets } from 'lucide-react'
 import {
@@ -20,7 +20,12 @@ import { WaterChart } from '@/features/curator/components/WaterChart'
 import { WorkoutsSection } from '@/features/curator/components/WorkoutsSection'
 import { PhotosSection } from '@/features/curator/components/PhotosSection'
 import { ClientInfoPanel } from '@/features/curator/components/ClientInfoPanel'
+import { ClientDetailTabs } from '@/features/curator/components/ClientDetailTabs'
+import { PlanTab } from '@/features/curator/components/PlanTab'
+import { TasksTab } from '@/features/curator/components/TasksTab'
+import { ReportsTab } from '@/features/curator/components/ReportsTab'
 import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
+import type { TabId } from '@/features/curator/components/ClientDetailTabs'
 
 const RECENT_DAYS_COUNT = 3
 
@@ -136,16 +141,27 @@ function CuratorWeightTooltip({ active, payload, label }: {
 }
 
 function WeightChart({ data, targetWeight }: { data: WeightHistoryPoint[]; targetWeight?: number | null }) {
-    const chartData = useMemo(() =>
-        data.map(p => {
-            const dateObj = new Date(p.date + 'T00:00:00')
-            const label = isNaN(dateObj.getTime())
-                ? p.date
+    const chartData = useMemo(() => {
+        const formatDate = (d: string) => {
+            const dateObj = new Date(d + 'T00:00:00')
+            return isNaN(dateObj.getTime())
+                ? d
                 : dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-            return { label, weight: p.weight }
-        }),
-        [data],
-    )
+        }
+
+        const points = data.map(p => ({ label: formatDate(p.date), weight: p.weight }))
+
+        // Extend X axis to today if last data point is before today
+        if (data.length > 0) {
+            const today = new Date().toISOString().slice(0, 10)
+            const lastDate = data[data.length - 1].date
+            if (lastDate < today) {
+                points.push({ label: formatDate(today), weight: data[data.length - 1].weight })
+            }
+        }
+
+        return points
+    }, [data])
 
     if (data.length < 2) return null
 
@@ -375,7 +391,9 @@ function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId
 export default function ClientDetailPage() {
     const router = useRouter()
     const params = useParams()
+    const searchParams = useSearchParams()
     const clientId = Number(params.id)
+    const activeTab = (searchParams.get('tab') as TabId) || 'overview'
     const [state, dispatch] = useReducer(fetchReducer, { detail: null, loading: true, error: null })
     const [showOlderDays, setShowOlderDays] = useState(false)
     const [kbjuHistory, setKbjuHistory] = useState<TargetVsActual[]>([])
@@ -473,6 +491,9 @@ export default function ClientDetailPage() {
 
             {detail && <ProfileInfoRow detail={detail} />}
 
+            {/* Tab navigation */}
+            <ClientDetailTabs activeTab={activeTab} />
+
             {loading && (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -484,83 +505,119 @@ export default function ClientDetailPage() {
             )}
 
             {!loading && !error && detail && (
-                <div className="space-y-4">
-                    {/* Today's alerts summary */}
-                    {detail.alerts.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                            {detail.alerts.map((alert, idx) => (
-                                <AlertBadge key={idx} level={alert.level} message={alert.message} />
-                            ))}
+                <>
+                    {activeTab === 'overview' && (
+                        <div className="space-y-4 mt-4">
+                            {/* Mini summary */}
+                            <div className="flex items-center gap-3 text-xs">
+                                {detail.streak_days != null && detail.streak_days > 0 && (
+                                    <span className="rounded-full bg-orange-100 px-2.5 py-1 font-medium text-orange-800">
+                                        Серия: {detail.streak_days} дн.
+                                    </span>
+                                )}
+                                {detail.weight_trend && detail.weight_trend.length > 0 && (
+                                    <span className="rounded-full bg-gray-100 px-2.5 py-1 font-medium text-gray-700">
+                                        Вес: {detail.weight_trend === 'down' ? 'снижается' : detail.weight_trend === 'up' ? 'растёт' : 'стабилен'}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Today's alerts summary */}
+                            {detail.alerts.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {detail.alerts.map((alert, idx) => (
+                                        <AlertBadge key={idx} level={alert.level} message={alert.message} />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Weekly plan summary */}
+                            {detail.weekly_plan && (
+                                <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+                                    <h2 className="text-sm font-semibold text-gray-900 mb-2">Недельный план</h2>
+                                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                                        <div>
+                                            <p className="text-gray-500">Ккал</p>
+                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.calories)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500">Белки</p>
+                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.protein)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500">Жиры</p>
+                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.fat)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500">Углеводы</p>
+                                            <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.carbs)}</p>
+                                        </div>
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* KBJU weekly chart */}
+                            {kbjuHistory.length > 0 && (
+                                <KBJUWeeklyChart data={kbjuHistory} />
+                            )}
+
+                            {/* Питание: last 3 days + "Ранее" */}
+                            <div className="space-y-3">
+                                <h2 className="text-sm font-semibold text-gray-900">Питание</h2>
+                                {recentDays.map((day) => (
+                                    <DaySection key={day.date} day={day} />
+                                ))}
+
+                                {olderDays.length > 0 && (
+                                    <>
+                                        {!showOlderDays ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowOlderDays(true)}
+                                                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                Ранее ({olderDays.length} дн.)
+                                            </button>
+                                        ) : (
+                                            olderDays.map((day) => (
+                                                <DaySection key={day.date} day={day} />
+                                            ))
+                                        )}
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Dynamics sections: weight, steps, workouts */}
+                            <WeightSection detail={detail} clientId={clientId} />
+                            <StepsChart days={detail.days} />
+                            <WaterChart days={detail.days} />
+                            <WaterGoalSection detail={detail} clientId={clientId} />
+                            <WorkoutsSection days={detail.days} />
+
+                            {/* Photos section */}
+                            <PhotosSection photos={detail.photos} />
                         </div>
                     )}
 
-                    {/* Weekly plan summary */}
-                    {detail.weekly_plan && (
-                        <section className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
-                            <h2 className="text-sm font-semibold text-gray-900 mb-2">Недельный план</h2>
-                            <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                                <div>
-                                    <p className="text-gray-500">Ккал</p>
-                                    <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.calories)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500">Белки</p>
-                                    <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.protein)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500">Жиры</p>
-                                    <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.fat)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-gray-500">Углеводы</p>
-                                    <p className="font-semibold text-gray-900">{Math.round(detail.weekly_plan.carbs)}</p>
-                                </div>
-                            </div>
-                        </section>
+                    {activeTab === 'plan' && (
+                        <div className="mt-4">
+                            <PlanTab clientId={clientId} />
+                        </div>
                     )}
 
-                    {/* KBJU weekly chart */}
-                    {kbjuHistory.length > 0 && (
-                        <KBJUWeeklyChart data={kbjuHistory} />
+                    {activeTab === 'tasks' && (
+                        <div className="mt-4">
+                            <TasksTab clientId={clientId} />
+                        </div>
                     )}
 
-                    {/* Питание: last 3 days + "Ранее" */}
-                    <div className="space-y-3">
-                        <h2 className="text-sm font-semibold text-gray-900">Питание</h2>
-                        {recentDays.map((day) => (
-                            <DaySection key={day.date} day={day} />
-                        ))}
-
-                        {olderDays.length > 0 && (
-                            <>
-                                {!showOlderDays ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowOlderDays(true)}
-                                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 py-2.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <ChevronDown className="h-3.5 w-3.5" />
-                                        Ранее ({olderDays.length} дн.)
-                                    </button>
-                                ) : (
-                                    olderDays.map((day) => (
-                                        <DaySection key={day.date} day={day} />
-                                    ))
-                                )}
-                            </>
-                        )}
-                    </div>
-
-                    {/* Dynamics sections: weight, steps, workouts */}
-                    <WeightSection detail={detail} clientId={clientId} />
-                    <StepsChart days={detail.days} />
-                    <WaterChart days={detail.days} />
-                    <WaterGoalSection detail={detail} clientId={clientId} />
-                    <WorkoutsSection days={detail.days} />
-
-                    {/* Photos section */}
-                    <PhotosSection photos={detail.photos} />
-                </div>
+                    {activeTab === 'reports' && (
+                        <div className="mt-4">
+                            <ReportsTab clientId={clientId} />
+                        </div>
+                    )}
+                </>
             )}
         </div>
     )

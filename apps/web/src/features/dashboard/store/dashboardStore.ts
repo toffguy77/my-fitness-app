@@ -36,12 +36,27 @@ import {
 /**
  * LocalStorage keys for caching
  */
+const CACHE_VERSION = '2';
+const CACHE_VERSION_KEY = 'dashboard_cache_version';
+
 const CACHE_KEYS = {
     DAILY_DATA: 'dashboard_daily_data',
     WEEKLY_PLAN: 'dashboard_weekly_plan',
     TASKS: 'dashboard_tasks',
     LAST_SYNC: 'dashboard_last_sync',
 } as const;
+
+// Invalidate old cache on version mismatch
+if (typeof window !== 'undefined') {
+    try {
+        if (localStorage.getItem(CACHE_VERSION_KEY) !== CACHE_VERSION) {
+            Object.values(CACHE_KEYS).forEach((key) => localStorage.removeItem(key));
+            localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+        }
+    } catch {
+        // Ignore localStorage errors
+    }
+}
 
 /**
  * Cache expiration time (5 minutes for localStorage)
@@ -326,6 +341,7 @@ function mapBackendWeeklyPlan(raw: any): WeeklyPlan {
         fatGoal: raw.fat_goal ?? undefined,
         carbsGoal: raw.carbs_goal ?? undefined,
         stepsGoal: raw.steps_goal ?? undefined,
+        comment: raw.comment ?? undefined,
         startDate: new Date(raw.start_date ?? raw.startDate),
         endDate: new Date(raw.end_date ?? raw.endDate),
         isActive: raw.is_active ?? raw.isActive ?? false,
@@ -336,9 +352,30 @@ function mapBackendWeeklyPlan(raw: any): WeeklyPlan {
 }
 
 interface GetTasksResponse {
-    tasks: Task[];
+    tasks: any[];
     count: number;
     week: number;
+}
+
+/**
+ * Map backend task (snake_case) to frontend Task (camelCase).
+ * Handles already-mapped data gracefully.
+ */
+function mapBackendTask(raw: any): Task {
+    return {
+        id: raw.id,
+        userId: String(raw.user_id ?? raw.userId ?? ''),
+        curatorId: String(raw.curator_id ?? raw.curatorId ?? ''),
+        title: raw.title ?? '',
+        description: raw.description ?? '',
+        weekNumber: raw.week_number ?? raw.weekNumber ?? 0,
+        assignedAt: new Date(raw.assigned_at ?? raw.assignedAt ?? Date.now()),
+        dueDate: new Date(raw.due_date ?? raw.dueDate ?? Date.now()),
+        completedAt: (raw.completed_at || raw.completedAt) ? new Date(raw.completed_at ?? raw.completedAt) : undefined,
+        status: raw.status ?? 'active',
+        createdAt: new Date(raw.created_at ?? raw.createdAt ?? Date.now()),
+        updatedAt: new Date(raw.updated_at ?? raw.updatedAt ?? Date.now()),
+    };
 }
 
 type UploadPhotoResponse = PhotoData;
@@ -531,6 +568,8 @@ interface DashboardState {
 
     // Version counter bumped after metric save to signal targets re-fetch
     targetsVersion: number;
+    // Version counter bumped when tasks may have been auto-completed via metric save
+    tasksVersion: number;
 
     // Prefetch tracking
     prefetchedWeeks: Set<string>;
@@ -539,6 +578,7 @@ interface DashboardState {
     setSelectedDate: (date: Date) => void;
     navigateWeek: (direction: 'prev' | 'next') => void;
     fetchDailyData: (date: Date) => Promise<void>;
+    refreshDailyData: (date: Date) => Promise<void>;
     fetchWeekData: (weekStart: Date, weekEnd: Date) => Promise<void>;
     fetchWeekDataWithStaleWhileRevalidate: (weekStart: Date, weekEnd: Date) => Promise<void>;
     prefetchAdjacentWeeks: (currentWeekStart: Date) => void;
@@ -578,6 +618,7 @@ const initialState = {
     pollingIntervalId: null,
     prefetchedWeeks: new Set<string>(),
     targetsVersion: 0,
+    tasksVersion: 0,
 };
 
 /**
@@ -697,6 +738,17 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 get().loadFromCache();
             }
         }
+    },
+
+    /**
+     * Invalidate cache and re-fetch daily data for a specific date.
+     * Used when external changes (e.g. task completion saving a metric)
+     * require bypassing the in-memory cache.
+     */
+    refreshDailyData: async (date: Date) => {
+        const dateStr = formatDateISO(date);
+        memoryCache.invalidateDailyData(dateStr);
+        await get().fetchDailyData(date);
     },
 
     /**
@@ -1029,7 +1081,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                         break;
 
                     case 'tasks':
-                        const tasksData = (response as GetTasksResponse).tasks;
+                        const tasksData = (response as GetTasksResponse).tasks.map(mapBackendTask);
                         memoryCache.setTasks(tasksData);
                         updatedState.tasks = tasksData;
                         saveCachedData(CACHE_KEYS.TASKS, tasksData);
@@ -1047,7 +1099,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 updatedState.weeklyPlan = cachedWeeklyPlan;
             }
             if (cachedTasks && !updatedState.tasks) {
-                updatedState.tasks = cachedTasks;
+                updatedState.tasks = cachedTasks.map(mapBackendTask);
             }
 
             set({
@@ -1144,6 +1196,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             // Bump version to trigger targets re-fetch in NutritionBlock
             set((state) => ({ targetsVersion: state.targetsVersion + 1 }));
+
+            // Bump tasks version to trigger re-fetch in ClientTasksSection (Direction 2 sync)
+            if (metric.type === 'workout' || metric.type === 'weight') {
+                set((state) => ({ tasksVersion: state.tasksVersion + 1 }));
+            }
         } catch (error: any) {
             const mappedError = mapError(error);
 
@@ -1252,8 +1309,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 1000
             );
 
-            // Update in-memory cache (only for non-filtered requests)
-            const tasksArray = response.tasks;
+            // Map snake_case backend tasks to camelCase frontend tasks
+            const tasksArray = response.tasks.map(mapBackendTask);
             if (!weekNumber) {
                 memoryCache.setTasks(tasksArray);
             }
@@ -1543,7 +1600,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             set({
                 dailyData: dailyData || {},
                 weeklyPlan: weeklyPlan || null,
-                tasks: tasks || [],
+                tasks: (tasks || []).map(mapBackendTask),
             });
         } catch (error) {
             // Log cache loading error (non-critical)

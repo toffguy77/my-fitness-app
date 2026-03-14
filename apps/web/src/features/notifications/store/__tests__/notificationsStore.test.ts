@@ -82,9 +82,10 @@ describe('notificationsStore', () => {
                 hasMore: false,
             };
 
+            // pollForUpdates is called after fetchNotifications — must return same main notifications
             const mockMainResponse: GetNotificationsResponse = {
-                notifications: [],
-                total: 0,
+                notifications: mockNotifications,
+                total: 2,
                 hasMore: false,
             };
 
@@ -167,15 +168,22 @@ describe('notificationsStore', () => {
                 content: 0,
             };
 
+            const mockBothBatches: GetNotificationsResponse = {
+                notifications: [...firstBatch, ...secondBatch],
+                total: 2,
+                hasMore: false,
+            };
+
+            // pollForUpdates (called after each fetchNotifications) replaces data with server response
             mockApiClient.get
-                .mockResolvedValueOnce(mockResponse1)
-                .mockResolvedValueOnce(mockEmptyResponse)
-                .mockResolvedValueOnce(mockEmptyResponse)
-                .mockResolvedValueOnce(mockUnreadCounts)
-                .mockResolvedValueOnce(mockResponse2)
-                .mockResolvedValueOnce(mockEmptyResponse)
-                .mockResolvedValueOnce(mockEmptyResponse)
-                .mockResolvedValueOnce(mockUnreadCounts);
+                .mockResolvedValueOnce(mockResponse1)     // fetchNotifications('main', 0)
+                .mockResolvedValueOnce(mockResponse1)     // pollForUpdates → main (keeps firstBatch)
+                .mockResolvedValueOnce(mockEmptyResponse) // pollForUpdates → content
+                .mockResolvedValueOnce(mockUnreadCounts)  // pollForUpdates → counts
+                .mockResolvedValueOnce(mockResponse2)     // fetchNotifications('main', 1)
+                .mockResolvedValueOnce(mockBothBatches)   // pollForUpdates → main (server now has both)
+                .mockResolvedValueOnce(mockEmptyResponse) // pollForUpdates → content
+                .mockResolvedValueOnce(mockUnreadCounts); // pollForUpdates → counts
 
             const { result } = renderHook(() => useNotificationsStore());
 
@@ -350,7 +358,7 @@ describe('notificationsStore', () => {
                 readAt: '2024-01-15T10:30:00Z',
             };
 
-            mockApiClient.post.mockResolvedValue(mockResponse);
+            mockApiClient.post.mockResolvedValueOnce(mockResponse);
 
             const { result } = renderHook(() => useNotificationsStore());
 
@@ -369,8 +377,9 @@ describe('notificationsStore', () => {
         });
 
         it('should rollback on API failure', async () => {
+            // Use 422 (not 500) so retryWithBackoff doesn't retry (avoids 3s delay + async leaks)
             const apiError = {
-                response: { status: 500, data: { message: 'Server error' } },
+                response: { status: 422, data: { message: 'Server error' } },
             };
             mockApiClient.post.mockRejectedValue(apiError);
 
@@ -383,14 +392,12 @@ describe('notificationsStore', () => {
                     // Expected to throw
                 }
             });
-
-            // Should rollback to unread state
             const notification = result.current.notifications.main[0];
             expect(notification.readAt).toBeUndefined();
             expect(result.current.unreadCounts.main).toBe(1);
             expect(result.current.error).toEqual({
                 code: 'SERVER_ERROR',
-                message: 'Сервис временно недоступен',
+                message: 'Произошла ошибка',
             });
         });
 
@@ -976,11 +983,12 @@ describe('Property 19: Offline Caching', () => {
             content: 0,
         };
 
+        // pollForUpdates is called after fetchNotifications; must return same main data
         mockApiClient.get
-            .mockResolvedValueOnce(mockResponse)
-            .mockResolvedValueOnce(mockEmptyResponse)
-            .mockResolvedValueOnce(mockEmptyResponse)
-            .mockResolvedValueOnce(mockUnreadCounts);
+            .mockResolvedValueOnce(mockResponse)      // fetchNotifications
+            .mockResolvedValueOnce(mockResponse)       // pollForUpdates → main
+            .mockResolvedValueOnce(mockEmptyResponse)  // pollForUpdates → content
+            .mockResolvedValueOnce(mockUnreadCounts);  // pollForUpdates → counts
 
         const { result } = renderHook(() => useNotificationsStore());
 

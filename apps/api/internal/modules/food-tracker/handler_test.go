@@ -1,8 +1,11 @@
 package foodtracker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -143,6 +147,24 @@ func (m *MockService) CreateCustomRecommendation(ctx context.Context, userID int
 	return args.Get(0).(*UserCustomRecommendation), args.Error(1)
 }
 
+func (m *MockService) CheckRecognitionLimit(ctx context.Context, userID int64, dailyLimit int) (int, error) {
+	args := m.Called(ctx, userID, dailyLimit)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockService) RecordRecognitionUsage(ctx context.Context, userID int64, photoURL string, foodsCount int) error {
+	args := m.Called(ctx, userID, photoURL, foodsCount)
+	return args.Error(0)
+}
+
+func (m *MockService) RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *openrouter.Client) (*AIRecognitionResponse, error) {
+	args := m.Called(ctx, userID, imageData, contentType, s3PhotoURL, dailyLimit, orClient)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*AIRecognitionResponse), args.Error(1)
+}
+
 func (m *MockService) CreateUserFood(ctx context.Context, userID int64, req *CreateUserFoodRequest) (*UserFood, error) {
 	args := m.Called(ctx, userID, req)
 	if args.Get(0) == nil {
@@ -187,16 +209,18 @@ func (m *MockService) DeleteUserFood(ctx context.Context, userID int64, foodID s
 func setupTestHandlerWithMock() (*Handler, *MockService) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{
-		Env:       "test",
-		JWTSecret: "test-secret",
+		Env:                       "test",
+		JWTSecret:                 "test-secret",
+		FoodRecognitionDailyLimit: 20,
 	}
 	log := logger.New()
 	mockService := new(MockService)
 
 	handler := &Handler{
-		cfg:     cfg,
-		log:     log,
-		service: mockService,
+		cfg:      cfg,
+		log:      log,
+		service:  mockService,
+		orClient: openrouter.NewClient("test-key", "", log),
 	}
 
 	return handler, mockService
@@ -409,4 +433,185 @@ func TestDeleteUserFood(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		mockService.AssertExpectations(t)
 	})
+}
+
+// ============================================================================
+// AI Food Recognition Handler Tests
+// ============================================================================
+
+// createMultipartRequest creates a multipart/form-data request with a photo field
+func createMultipartRequest(t *testing.T, fieldName, fileName, contentType string, fileData []byte) *http.Request {
+	t.Helper()
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile(fieldName, fileName)
+	require.NoError(t, err)
+
+	_, err = part.Write(fileData)
+	require.NoError(t, err)
+
+	err = writer.Close()
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/food-tracker/recognize", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Override the part content type in the multipart header
+	// The multipart writer sets application/octet-stream by default.
+	// We need to re-create with a custom header for proper content-type testing.
+	if contentType != "" {
+		body2 := &bytes.Buffer{}
+		writer2 := multipart.NewWriter(body2)
+		h := make(map[string][]string)
+		h["Content-Disposition"] = []string{fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fieldName, fileName)}
+		h["Content-Type"] = []string{contentType}
+		part2, err := writer2.CreatePart(h)
+		require.NoError(t, err)
+		_, err = part2.Write(fileData)
+		require.NoError(t, err)
+		err = writer2.Close()
+		require.NoError(t, err)
+		req = httptest.NewRequest(http.MethodPost, "/food-tracker/recognize", body2)
+		req.Header.Set("Content-Type", writer2.FormDataContentType())
+	}
+
+	return req
+}
+
+func TestRecognizeFood_Success(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	imageData := []byte("fake-image-data")
+
+	expectedResp := &AIRecognitionResponse{
+		Foods: []RecognizedFood{
+			{
+				Name:            "Овсянка",
+				Confidence:      0.9,
+				EstimatedWeight: 200,
+				Nutrition:       KBZHU{Calories: 350, Protein: 12, Fat: 6, Carbs: 60},
+			},
+		},
+		Success:               true,
+		RemainingRecognitions: 19,
+	}
+
+	mockService.On("RecognizeFood", mock.Anything, int64(1), imageData, "image/jpeg", "", 20, mock.AnythingOfType("*openrouter.Client")).
+		Return(expectedResp, nil)
+
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	assert.Equal(t, "success", resp["status"])
+
+	mockService.AssertExpectations(t)
+}
+
+func TestRecognizeFood_NoFile(t *testing.T) {
+	handler, _ := setupTestHandlerWithMock()
+
+	req := httptest.NewRequest(http.MethodPost, "/food-tracker/recognize", nil)
+	req.Header.Set("Content-Type", "multipart/form-data")
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	assert.Equal(t, "error", resp["status"])
+	assert.Equal(t, "Файл фото обязателен", resp["message"])
+}
+
+func TestRecognizeFood_InvalidFileType(t *testing.T) {
+	handler, _ := setupTestHandlerWithMock()
+
+	req := createMultipartRequest(t, "photo", "test.txt", "text/plain", []byte("not an image"))
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Файл должен быть изображением", resp["message"])
+}
+
+func TestRecognizeFood_LimitExceeded(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	imageData := []byte("fake-image-data")
+
+	mockService.On("RecognizeFood", mock.Anything, int64(1), imageData, "image/jpeg", "", 20, mock.AnythingOfType("*openrouter.Client")).
+		Return(nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня"))
+
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	assert.Contains(t, resp["message"], "лимит распознаваний")
+
+	mockService.AssertExpectations(t)
+}
+
+func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mockService := new(MockService)
+
+	handler := &Handler{
+		cfg:      &config.Config{FoodRecognitionDailyLimit: 20},
+		log:      logger.New(),
+		service:  mockService,
+		orClient: nil, // No OpenRouter client configured
+	}
+
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", []byte("fake-image-data"))
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+
+	var resp map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	require.NoError(t, err)
+	assert.Equal(t, "Сервис распознавания еды недоступен", resp["message"])
 }

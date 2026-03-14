@@ -13,6 +13,10 @@ import {
     Star,
     Info,
     Newspaper,
+    ClipboardList,
+    AlertTriangle,
+    CalendarCheck,
+    MessageCircle,
 } from 'lucide-react';
 
 /**
@@ -26,6 +30,10 @@ const iconMap: Record<NotificationType, LucideIcon> = {
     new_feature: Star,
     general: Info,
     new_content: Newspaper,
+    task_assigned: ClipboardList,
+    task_overdue: AlertTriangle,
+    plan_updated: CalendarCheck,
+    feedback_received: MessageCircle,
 };
 
 /**

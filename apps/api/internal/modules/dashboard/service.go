@@ -3,9 +3,12 @@ package dashboard
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/modules/notifications"
@@ -14,6 +17,24 @@ import (
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/google/uuid"
 )
+
+// parseIntArray parses a PostgreSQL integer array string like "{1,3,5}" into []int
+func parseIntArray(s string) []int {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "{}" || s == "NULL" {
+		return nil
+	}
+	s = strings.Trim(s, "{}")
+	parts := strings.Split(s, ",")
+	result := make([]int, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if v, err := strconv.Atoi(p); err == nil {
+			result = append(result, v)
+		}
+	}
+	return result
+}
 
 // Service handles dashboard business logic
 type Service struct {
@@ -824,8 +845,8 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 	startTime := time.Now()
 
 	query := `
-		SELECT id, user_id, curator_id, title, description, week_number, assigned_at,
-		       due_date, completed_at, status, created_at, updated_at
+		SELECT id, user_id, curator_id, title, description, type, week_number, assigned_at,
+		       due_date, completed_at, status, recurrence, recurrence_days, created_at, updated_at
 		FROM tasks
 		WHERE user_id = $1 AND week_number = $2
 		ORDER BY due_date ASC, created_at ASC
@@ -844,23 +865,30 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 	tasks := make([]*Task, 0)
 	for rows.Next() {
 		var task Task
+		var recurrenceDaysStr sql.NullString
 		err := rows.Scan(
 			&task.ID,
 			&task.UserID,
 			&task.CuratorID,
 			&task.Title,
 			&task.Description,
+			&task.Type,
 			&task.WeekNumber,
 			&task.AssignedAt,
 			&task.DueDate,
 			&task.CompletedAt,
 			&task.Status,
+			&task.Recurrence,
+			&recurrenceDaysStr,
 			&task.CreatedAt,
 			&task.UpdatedAt,
 		)
 		if err != nil {
 			s.log.Error("Failed to scan task", "error", err)
 			return nil, fmt.Errorf("failed to scan task: %w", err)
+		}
+		if recurrenceDaysStr.Valid {
+			task.RecurrenceDays = parseIntArray(recurrenceDaysStr.String)
 		}
 		tasks = append(tasks, &task)
 	}
@@ -869,10 +897,145 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 		return nil, fmt.Errorf("error iterating tasks: %w", err)
 	}
 
+	// Fetch completions for all tasks
+	if len(tasks) > 0 {
+		taskIDs := make([]string, len(tasks))
+		taskMap := make(map[string]*Task, len(tasks))
+		for i, t := range tasks {
+			taskIDs[i] = t.ID
+			taskMap[t.ID] = t
+		}
+
+		completionsQuery := `
+			SELECT id, task_id, completed_date, created_at
+			FROM task_completions
+			WHERE task_id = ANY($1)
+			ORDER BY completed_date DESC
+		`
+		// Convert to a pg array parameter via interface
+		cRows, cErr := s.db.QueryContext(ctx, completionsQuery, "{"+strings.Join(taskIDs, ",")+"}")
+		if cErr != nil {
+			s.log.Error("Failed to query task completions", "error", cErr)
+		} else {
+			defer cRows.Close()
+			for cRows.Next() {
+				var c TaskCompletion
+				var completedDate time.Time
+				if err := cRows.Scan(&c.ID, &c.TaskID, &completedDate, &c.CreatedAt); err != nil {
+					s.log.Error("Failed to scan task completion", "error", err)
+					continue
+				}
+				c.CompletedDate = completedDate.Format("2006-01-02")
+				if t, ok := taskMap[c.TaskID]; ok {
+					t.Completions = append(t.Completions, c)
+				}
+			}
+		}
+	}
+
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
 		"user_id":     userID,
 		"week_number": weekNumber,
 		"count":       len(tasks),
+	})
+
+	return tasks, nil
+}
+
+// GetActiveTasks retrieves all active tasks for a user (not filtered by week)
+func (s *Service) GetActiveTasks(ctx context.Context, userID int64) ([]*Task, error) {
+	startTime := time.Now()
+
+	query := `
+		SELECT id, user_id, curator_id, title, description, type, week_number, assigned_at,
+		       due_date, completed_at, status, recurrence, recurrence_days, created_at, updated_at
+		FROM tasks
+		WHERE user_id = $1 AND status = 'active'
+		ORDER BY due_date ASC, created_at ASC
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			"user_id": userID,
+		})
+		return nil, fmt.Errorf("failed to query active tasks: %w", err)
+	}
+	defer rows.Close()
+
+	tasks := make([]*Task, 0)
+	for rows.Next() {
+		var task Task
+		var recurrenceDaysStr sql.NullString
+		err := rows.Scan(
+			&task.ID,
+			&task.UserID,
+			&task.CuratorID,
+			&task.Title,
+			&task.Description,
+			&task.Type,
+			&task.WeekNumber,
+			&task.AssignedAt,
+			&task.DueDate,
+			&task.CompletedAt,
+			&task.Status,
+			&task.Recurrence,
+			&recurrenceDaysStr,
+			&task.CreatedAt,
+			&task.UpdatedAt,
+		)
+		if err != nil {
+			s.log.Error("Failed to scan task", "error", err)
+			return nil, fmt.Errorf("failed to scan task: %w", err)
+		}
+		if recurrenceDaysStr.Valid {
+			task.RecurrenceDays = parseIntArray(recurrenceDaysStr.String)
+		}
+		tasks = append(tasks, &task)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating tasks: %w", err)
+	}
+
+	// Fetch completions for all tasks
+	if len(tasks) > 0 {
+		taskIDs := make([]string, len(tasks))
+		taskMap := make(map[string]*Task, len(tasks))
+		for i, t := range tasks {
+			taskIDs[i] = t.ID
+			taskMap[t.ID] = t
+		}
+
+		completionsQuery := `
+			SELECT id, task_id, completed_date, created_at
+			FROM task_completions
+			WHERE task_id = ANY($1)
+			ORDER BY completed_date DESC
+		`
+		cRows, cErr := s.db.QueryContext(ctx, completionsQuery, "{"+strings.Join(taskIDs, ",")+"}")
+		if cErr != nil {
+			s.log.Error("Failed to query task completions", "error", cErr)
+		} else {
+			defer cRows.Close()
+			for cRows.Next() {
+				var c TaskCompletion
+				var completedDate time.Time
+				if err := cRows.Scan(&c.ID, &c.TaskID, &completedDate, &c.CreatedAt); err != nil {
+					s.log.Error("Failed to scan task completion", "error", err)
+					continue
+				}
+				c.CompletedDate = completedDate.Format("2006-01-02")
+				if t, ok := taskMap[c.TaskID]; ok {
+					t.Completions = append(t.Completions, c)
+				}
+			}
+		}
+	}
+
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+		"user_id": userID,
+		"count":   len(tasks),
 	})
 
 	return tasks, nil
@@ -905,14 +1068,22 @@ func (s *Service) CreateTask(ctx context.Context, curatorID int64, clientID int6
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
+	// Default type and recurrence if not set
+	if task.Type == "" {
+		task.Type = "habit"
+	}
+	if task.Recurrence == "" {
+		task.Recurrence = "once"
+	}
+
 	// Insert task
 	query := `
 		INSERT INTO tasks (
-			id, user_id, curator_id, title, description, week_number, assigned_at,
-			due_date, completed_at, status, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-		RETURNING id, user_id, curator_id, title, description, week_number, assigned_at,
-		          due_date, completed_at, status, created_at, updated_at
+			id, user_id, curator_id, title, description, type, week_number, assigned_at,
+			due_date, completed_at, status, recurrence, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+		RETURNING id, user_id, curator_id, title, description, type, week_number, assigned_at,
+		          due_date, completed_at, status, recurrence, created_at, updated_at
 	`
 
 	var result Task
@@ -924,22 +1095,26 @@ func (s *Service) CreateTask(ctx context.Context, curatorID int64, clientID int6
 		task.CuratorID,
 		task.Title,
 		task.Description,
+		task.Type,
 		task.WeekNumber,
 		task.AssignedAt,
 		task.DueDate,
 		task.CompletedAt,
 		task.Status,
+		task.Recurrence,
 	).Scan(
 		&result.ID,
 		&result.UserID,
 		&result.CuratorID,
 		&result.Title,
 		&result.Description,
+		&result.Type,
 		&result.WeekNumber,
 		&result.AssignedAt,
 		&result.DueDate,
 		&result.CompletedAt,
 		&result.Status,
+		&result.Recurrence,
 		&result.CreatedAt,
 		&result.UpdatedAt,
 	)
@@ -984,24 +1159,28 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 
 	// Get existing task to verify ownership
 	existingQuery := `
-		SELECT id, user_id, curator_id, title, description, week_number, assigned_at,
-		       due_date, completed_at, status, created_at, updated_at
+		SELECT id, user_id, curator_id, title, description, type, week_number, assigned_at,
+		       due_date, completed_at, status, recurrence, recurrence_days, created_at, updated_at
 		FROM tasks
 		WHERE id = $1
 	`
 
 	var existing Task
+	var recurrenceDaysStr sql.NullString
 	err := s.db.QueryRowContext(ctx, existingQuery, taskID).Scan(
 		&existing.ID,
 		&existing.UserID,
 		&existing.CuratorID,
 		&existing.Title,
 		&existing.Description,
+		&existing.Type,
 		&existing.WeekNumber,
 		&existing.AssignedAt,
 		&existing.DueDate,
 		&existing.CompletedAt,
 		&existing.Status,
+		&existing.Recurrence,
+		&recurrenceDaysStr,
 		&existing.CreatedAt,
 		&existing.UpdatedAt,
 	)
@@ -1011,6 +1190,9 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 			return nil, fmt.Errorf("task not found")
 		}
 		return nil, fmt.Errorf("failed to query existing task: %w", err)
+	}
+	if recurrenceDaysStr.Valid {
+		existing.RecurrenceDays = parseIntArray(recurrenceDaysStr.String)
 	}
 
 	// Verify user owns this task
@@ -1030,11 +1212,12 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 		UPDATE tasks
 		SET status = $1, completed_at = $2, updated_at = NOW()
 		WHERE id = $3
-		RETURNING id, user_id, curator_id, title, description, week_number, assigned_at,
-		          due_date, completed_at, status, created_at, updated_at
+		RETURNING id, user_id, curator_id, title, description, type, week_number, assigned_at,
+		          due_date, completed_at, status, recurrence, recurrence_days, created_at, updated_at
 	`
 
 	var result Task
+	var resultRecDays sql.NullString
 	err = s.db.QueryRowContext(
 		ctx,
 		updateQuery,
@@ -1047,11 +1230,14 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 		&result.CuratorID,
 		&result.Title,
 		&result.Description,
+		&result.Type,
 		&result.WeekNumber,
 		&result.AssignedAt,
 		&result.DueDate,
 		&result.CompletedAt,
 		&result.Status,
+		&result.Recurrence,
+		&resultRecDays,
 		&result.CreatedAt,
 		&result.UpdatedAt,
 	)
@@ -1063,6 +1249,9 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 			"status":  status,
 		})
 		return nil, fmt.Errorf("failed to update task status: %w", err)
+	}
+	if resultRecDays.Valid {
+		result.RecurrenceDays = parseIntArray(resultRecDays.String)
 	}
 
 	s.log.LogDatabaseQuery(updateQuery, time.Since(startTime), nil, map[string]interface{}{
@@ -1076,6 +1265,198 @@ func (s *Service) UpdateTaskStatus(ctx context.Context, userID int64, taskID str
 		"user_id": userID,
 		"status":  status,
 	})
+
+	return &result, nil
+}
+
+// CompleteTaskForDate handles task completion with support for recurring tasks.
+// For "once" recurrence, it marks the task as completed.
+// For "daily"/"weekly" recurrence, it inserts a record into task_completions.
+func (s *Service) CompleteTaskForDate(ctx context.Context, userID int64, taskID string, date string) (*Task, error) {
+	startTime := time.Now()
+
+	// Parse date
+	completedDate, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date format, use YYYY-MM-DD: %w", err)
+	}
+	_ = completedDate
+
+	// Get existing task to verify ownership and check recurrence
+	existingQuery := `
+		SELECT id, user_id, curator_id, title, description, type, week_number, assigned_at,
+		       due_date, completed_at, status, recurrence, recurrence_days, created_at, updated_at
+		FROM tasks
+		WHERE id = $1
+	`
+
+	var task Task
+	var recurrenceDaysStr sql.NullString
+	err = s.db.QueryRowContext(ctx, existingQuery, taskID).Scan(
+		&task.ID, &task.UserID, &task.CuratorID, &task.Title, &task.Description,
+		&task.Type, &task.WeekNumber, &task.AssignedAt, &task.DueDate,
+		&task.CompletedAt, &task.Status, &task.Recurrence, &recurrenceDaysStr,
+		&task.CreatedAt, &task.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("task not found")
+		}
+		return nil, fmt.Errorf("failed to query task: %w", err)
+	}
+	if recurrenceDaysStr.Valid {
+		task.RecurrenceDays = parseIntArray(recurrenceDaysStr.String)
+	}
+
+	if task.UserID != userID {
+		return nil, fmt.Errorf("user %d is not authorized to complete task %s", userID, taskID)
+	}
+
+	if task.Recurrence == "once" {
+		// For one-time tasks, mark as completed
+		return s.UpdateTaskStatus(ctx, userID, taskID, TaskStatusCompleted)
+	}
+
+	// For recurring tasks, insert into task_completions
+	insertQuery := `
+		INSERT INTO task_completions (task_id, completed_date)
+		VALUES ($1, $2)
+		ON CONFLICT (task_id, completed_date) DO NOTHING
+		RETURNING id, created_at
+	`
+
+	var completionID string
+	var createdAt time.Time
+	err = s.db.QueryRowContext(ctx, insertQuery, taskID, date).Scan(&completionID, &createdAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Already completed for this date
+			return nil, fmt.Errorf("задача уже выполнена за %s", date)
+		}
+		return nil, fmt.Errorf("failed to insert task completion: %w", err)
+	}
+
+	// Add the new completion to the task
+	task.Completions = append(task.Completions, TaskCompletion{
+		ID:            completionID,
+		TaskID:        taskID,
+		CompletedDate: date,
+		CreatedAt:     createdAt,
+	})
+
+	s.log.LogDatabaseQuery(insertQuery, time.Since(startTime), nil, map[string]interface{}{
+		"user_id": userID,
+		"task_id": taskID,
+		"date":    date,
+	})
+
+	s.log.LogBusinessEvent("task_completed_for_date", map[string]interface{}{
+		"task_id": taskID,
+		"user_id": userID,
+		"date":    date,
+	})
+
+	return &task, nil
+}
+
+// AutoCompleteMatchingTasks finds active tasks matching the given type for the
+// specified date and marks them as completed. This enables Direction 2 sync:
+// when a user logs a metric (workout, weight), matching curator tasks are
+// automatically completed. Errors are logged but not propagated.
+func (s *Service) AutoCompleteMatchingTasks(ctx context.Context, userID int64, taskType string, date time.Time) error {
+	dateStr := date.Format("2006-01-02")
+	weekday := int(date.Weekday()) // 0=Sun..6=Sat — matches JS convention used in recurrence_days
+
+	query := `
+		SELECT t.id, t.recurrence
+		FROM tasks t
+		LEFT JOIN task_completions tc ON tc.task_id = t.id AND tc.completed_date = $3
+		WHERE t.user_id = $1 AND t.type = $2 AND t.status = 'active'
+		  AND tc.id IS NULL
+		  AND (t.recurrence = 'once' OR t.recurrence = 'daily'
+		       OR (t.recurrence = 'weekly' AND $4 = ANY(t.recurrence_days)))
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, userID, taskType, dateStr, weekday)
+	if err != nil {
+		return fmt.Errorf("failed to query matching tasks: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var taskID string
+		var recurrence string
+		if err := rows.Scan(&taskID, &recurrence); err != nil {
+			s.log.Error("Failed to scan matching task", "error", err)
+			continue
+		}
+
+		if recurrence == "once" {
+			if _, err := s.UpdateTaskStatus(ctx, userID, taskID, TaskStatusCompleted); err != nil {
+				s.log.Error("Failed to auto-complete once task", "error", err, "task_id", taskID)
+			}
+		} else {
+			// Recurring: insert completion record
+			insertQuery := `
+				INSERT INTO task_completions (task_id, completed_date)
+				VALUES ($1, $2)
+				ON CONFLICT (task_id, completed_date) DO NOTHING
+			`
+			if _, err := s.db.ExecContext(ctx, insertQuery, taskID, dateStr); err != nil {
+				s.log.Error("Failed to auto-complete recurring task", "error", err, "task_id", taskID)
+			}
+		}
+
+		s.log.LogBusinessEvent("task_auto_completed", map[string]interface{}{
+			"task_id":   taskID,
+			"user_id":   userID,
+			"task_type": taskType,
+			"date":      dateStr,
+		})
+	}
+
+	return rows.Err()
+}
+
+// GetReportFeedback retrieves curator feedback for a specific weekly report
+func (s *Service) GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error) {
+	startTime := time.Now()
+
+	query := `
+		SELECT id, curator_feedback
+		FROM weekly_reports
+		WHERE id = $1 AND user_id = $2
+	`
+
+	var id string
+	var feedbackJSON sql.NullString
+	err := s.db.QueryRowContext(ctx, query, reportID, userID).Scan(&id, &feedbackJSON)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("report not found")
+		}
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			"user_id":   userID,
+			"report_id": reportID,
+		})
+		return nil, fmt.Errorf("failed to query report feedback: %w", err)
+	}
+
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+		"user_id":   userID,
+		"report_id": reportID,
+	})
+
+	_ = id
+	if !feedbackJSON.Valid || feedbackJSON.String == "" {
+		return nil, fmt.Errorf("report not found")
+	}
+
+	var result ReportFeedback
+	if err := json.Unmarshal([]byte(feedbackJSON.String), &result); err != nil {
+		s.log.Error("Failed to parse curator feedback JSON", "error", err, "report_id", reportID)
+		return nil, fmt.Errorf("failed to parse feedback: %w", err)
+	}
 
 	return &result, nil
 }
@@ -1533,9 +1914,9 @@ func (s *Service) sendPlanUpdateNotification(ctx context.Context, clientID int64
 	notification := &notifications.Notification{
 		UserID:   clientID,
 		Category: notifications.CategoryMain,
-		Type:     notifications.TypeTrainerFeedback,
+		Type:     notifications.TypePlanUpdated,
 		Title:    "Обновлен план питания",
-		Content:  fmt.Sprintf("Ваш тренер обновил план питания: %d ккал, %d г белка в день", plan.CaloriesGoal, plan.ProteinGoal),
+		Content:  fmt.Sprintf("Ваш куратор обновил план питания на эту неделю: %d ккал, %d г белка в день", plan.CaloriesGoal, plan.ProteinGoal),
 		IconURL:  nil,
 	}
 
@@ -1571,9 +1952,9 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 	notification := &notifications.Notification{
 		UserID:   clientID,
 		Category: notifications.CategoryMain,
-		Type:     notifications.TypeTrainerFeedback,
-		Title:    "Новое задание от тренера",
-		Content:  fmt.Sprintf("Вам назначено новое задание: %s", task.Title),
+		Type:     notifications.TypeTaskAssigned,
+		Title:    "Новая задача",
+		Content:  fmt.Sprintf("Новая задача: %s", task.Title),
 		IconURL:  nil,
 	}
 

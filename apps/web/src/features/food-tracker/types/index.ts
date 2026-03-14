@@ -32,7 +32,7 @@ export type PortionType = 'grams' | 'milliliters' | 'portion';
 /**
  * Data source for food items
  */
-export type FoodSource = 'database' | 'usda' | 'openfoodfacts' | 'user';
+export type FoodSource = 'database' | 'usda' | 'openfoodfacts' | 'user' | 'ai';
 
 // ============================================================================
 // Food Item Types
@@ -149,6 +149,7 @@ export interface RecognizedFood {
     name: string;
     confidence: number;
     estimatedWeight: number;
+    estimated_weight?: number;
     nutrition: KBZHU;
     alternatives?: FoodItem[];
 }
@@ -327,7 +328,10 @@ export interface BarcodeLookupResponse {
  */
 export interface AIRecognitionResponse {
     foods: RecognizedFood[];
-    processingTime: number;
+    composition?: RecognizedFood[];
+    processingTime?: number;
+    success?: boolean;
+    remaining_recognitions?: number;
 }
 
 /**

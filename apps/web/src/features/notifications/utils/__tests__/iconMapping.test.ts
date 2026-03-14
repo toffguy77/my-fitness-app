@@ -16,6 +16,10 @@ import {
     Star,
     Info,
     Newspaper,
+    ClipboardList,
+    AlertTriangle,
+    CalendarCheck,
+    MessageCircle,
 } from 'lucide-react';
 
 describe('iconMapping', () => {
@@ -51,6 +55,10 @@ describe('iconMapping', () => {
                 new_feature: Star,
                 general: Info,
                 new_content: Newspaper,
+                task_assigned: ClipboardList,
+                task_overdue: AlertTriangle,
+                plan_updated: CalendarCheck,
+                feedback_received: MessageCircle,
             };
 
             fc.assert(

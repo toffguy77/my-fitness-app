@@ -53,6 +53,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy all source files (monorepo needs full context)
 COPY . .
 
+# Cache bust arg — change value to force rebuild
+ARG CACHE_BUST=1
+
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
