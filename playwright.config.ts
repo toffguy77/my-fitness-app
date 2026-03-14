@@ -55,6 +55,7 @@ export default defineConfig({
         'tests/notifications.spec.ts',
         'tests/food-edit-delete.spec.ts',
         'tests/chat-client.spec.ts',
+        'tests/content-feed.spec.ts',
       ],
     },
     {
@@ -66,6 +67,7 @@ export default defineConfig({
         'tests/curator-navigation.spec.ts',
         'tests/curator-client-detail.spec.ts',
         'tests/chat-curator.spec.ts',
+        'tests/content-curator.spec.ts',
       ],
     },
     {
