@@ -39,7 +39,9 @@ function BodyForm({
 }) {
     const settings = profile?.settings
 
-    const [birthDate, setBirthDate] = useState(settings?.birth_date || '')
+    const [birthDate, setBirthDate] = useState(
+        settings?.birth_date ? settings.birth_date.slice(0, 10) : ''
+    )
     const [biologicalSex, setBiologicalSex] = useState(settings?.biological_sex || '')
     const [height, setHeight] = useState<string>(settings?.height != null ? String(settings.height) : '')
     const [targetWeight, setTargetWeight] = useState<string>(settings?.target_weight != null ? String(settings.target_weight) : '')
