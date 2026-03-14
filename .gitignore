@@ -8,6 +8,8 @@ coverage/
 bin/
 e2e/.auth/
 e2e/.env
+playwright-report/
+test-results/
 
 # Build
 .next/
