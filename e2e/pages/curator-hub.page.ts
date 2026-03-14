@@ -32,8 +32,9 @@ export class CuratorHubPage {
   }
 
   async clickFirstClient() {
-    const clientCards = this.mainContent.locator('.rounded-xl.bg-white.shadow-sm')
-    const first = clientCards.first()
-    await first.click()
+    // Client cards in "Требуют внимания" section are clickable buttons
+    const section = this.attentionSection.locator('..').locator('..')
+    const clientButton = section.getByRole('button').first()
+    await clientButton.click()
   }
 }

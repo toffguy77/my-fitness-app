@@ -46,19 +46,31 @@ export default defineConfig({
         'tests/weight-logging.spec.ts',
         'tests/steps-logging.spec.ts',
         'tests/food-entry.spec.ts',
+        'tests/navigation.spec.ts',
+        'tests/profile.spec.ts',
+        'tests/settings-profile.spec.ts',
+        'tests/settings-body.spec.ts',
+        'tests/settings-notifications.spec.ts',
+        'tests/settings-social.spec.ts',
+        'tests/notifications.spec.ts',
+        'tests/food-edit-delete.spec.ts',
       ],
     },
     {
       name: 'curator-tests',
       dependencies: ['setup:curator'],
       use: { storageState: 'e2e/.auth/curator.json' },
-      testMatch: ['tests/curator-hub.spec.ts'],
+      testMatch: [
+        'tests/curator-hub.spec.ts',
+        'tests/curator-navigation.spec.ts',
+        'tests/curator-client-detail.spec.ts',
+      ],
     },
     {
       name: 'admin-tests',
       dependencies: ['setup:admin'],
       use: { storageState: 'e2e/.auth/admin.json' },
-      testMatch: ['tests/admin-panel.spec.ts'],
+      testMatch: ['tests/admin-panel.spec.ts', 'tests/admin-navigation.spec.ts'],
     },
 
     // --- Auth tests: no pre-authenticated session ---
