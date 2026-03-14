@@ -1,7 +1,7 @@
 import { type Page, expect } from '@playwright/test'
 
 export class DashboardPage {
-  constructor(private page: Page) {}
+  constructor(public page: Page) {}
 
   get layout() {
     return this.page.getByTestId('dashboard-layout')
@@ -59,5 +59,64 @@ export class DashboardPage {
   async selectDay(index: number) {
     const days = this.page.getByRole('radio')
     await days.nth(index).click()
+  }
+
+  // --- Water tracking ---
+
+  get waterHeading() {
+    return this.page.getByRole('heading', { name: 'Вода' })
+  }
+
+  async addWater() {
+    await this.addWaterButton.click()
+  }
+
+  // --- Weight logging ---
+
+  get addWeightButton() {
+    return this.page
+      .getByRole('button', { name: 'Добавить вес' })
+      .or(this.page.getByRole('button', { name: 'Изменить вес' }))
+  }
+
+  get weightInput() {
+    return this.page.getByRole('spinbutton', { name: 'Вес в килограммах' })
+  }
+
+  get saveWeightButton() {
+    return this.page.getByRole('button', { name: 'Сохранить' })
+  }
+
+  get cancelWeightButton() {
+    return this.page.getByRole('button', { name: 'Отмена' })
+  }
+
+  async logWeight(value: string) {
+    await this.addWeightButton.click()
+    await expect(this.weightInput).toBeVisible({ timeout: 3000 })
+    await this.weightInput.fill(value)
+    await this.saveWeightButton.click()
+  }
+
+  // --- Steps logging ---
+
+  get stepsRegion() {
+    return this.page.getByRole('region', { name: 'Прогресс шагов' })
+  }
+
+  get stepsProgress() {
+    return this.page.getByRole('progressbar', { name: /Прогресс шагов/ })
+  }
+
+  get stepsInput() {
+    return this.page.getByRole('spinbutton', { name: 'Количество шагов' })
+  }
+
+  async logSteps(value: string) {
+    await this.addStepsButton.first().click()
+    await expect(this.stepsInput).toBeVisible({ timeout: 3000 })
+    await this.stepsInput.fill(value)
+    // Save button near the input
+    await this.page.getByRole('button', { name: /Сохранить/i }).click()
   }
 }
