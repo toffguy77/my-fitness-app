@@ -13,6 +13,7 @@ import { useMemo } from 'react';
 import { Plus, Sunrise, Sun, Moon, Cookie } from 'lucide-react';
 import type { MealType, FoodEntry, KBZHU } from '../types';
 import { getMealSlotLabel, calculateSlotSubtotal, getFirstEntryTime } from '../utils/mealSlotUtils';
+import { FoodEntryItem } from './FoodEntryItem';
 
 // ============================================================================
 // Types
@@ -57,62 +58,6 @@ function MealIcon({ mealType, className = '' }: MealIconProps) {
         default:
             return <Cookie className={className} aria-hidden="true" />;
     }
-}
-
-// ============================================================================
-// Food Entry Item Component
-// ============================================================================
-
-interface FoodEntryItemProps {
-    entry: FoodEntry;
-    onClick?: (entry: FoodEntry) => void;
-    onEdit?: (entry: FoodEntry) => void;
-    onDelete?: (entry: FoodEntry) => void;
-}
-
-function FoodEntryItem({ entry, onClick, onEdit, onDelete }: FoodEntryItemProps) {
-    const handleClick = () => {
-        onClick?.(entry);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onClick?.(entry);
-        }
-    };
-
-    // Format portion display
-    const portionDisplay = useMemo(() => {
-        const unit = entry.portionType === 'grams' ? 'г' :
-            entry.portionType === 'milliliters' ? 'мл' : 'порц.';
-        return `${Math.round(entry.portionAmount)} ${unit}`;
-    }, [entry.portionAmount, entry.portionType]);
-
-    return (
-        <div
-            role="button"
-            tabIndex={0}
-            onClick={handleClick}
-            onKeyDown={handleKeyDown}
-            className="flex items-center justify-between py-2.5 px-1.5 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:py-3 sm:px-2 touch-manipulation"
-            aria-label={`${entry.foodName}, ${portionDisplay}, ${Math.round(entry.nutrition.calories)} ккал`}
-        >
-            <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-900 truncate sm:text-sm">
-                    {entry.foodName}
-                </p>
-                <p className="text-[10px] text-gray-500 sm:text-xs">
-                    {portionDisplay}
-                </p>
-            </div>
-            <div className="ml-3 text-right sm:ml-4">
-                <p className="text-xs font-semibold text-gray-900 sm:text-sm">
-                    {Math.round(entry.nutrition.calories)} ккал
-                </p>
-            </div>
-        </div>
-    );
 }
 
 // ============================================================================
