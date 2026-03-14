@@ -39,7 +39,14 @@ export default defineConfig({
       name: 'client-tests',
       dependencies: ['setup:client'],
       use: { storageState: 'e2e/.auth/client.json' },
-      testMatch: ['tests/dashboard.spec.ts', 'tests/food-tracker.spec.ts'],
+      testMatch: [
+        'tests/dashboard.spec.ts',
+        'tests/food-tracker.spec.ts',
+        'tests/water-tracking.spec.ts',
+        'tests/weight-logging.spec.ts',
+        'tests/steps-logging.spec.ts',
+        'tests/food-entry.spec.ts',
+      ],
     },
     {
       name: 'curator-tests',

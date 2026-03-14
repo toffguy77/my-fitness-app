@@ -46,4 +46,42 @@ export class FoodTrackerPage {
       await expect(this.page.getByText(label).first()).toBeVisible()
     }
   }
+
+  // --- Food entry modal ---
+
+  get foodModal() {
+    return this.page.getByRole('dialog')
+  }
+
+  get searchInput() {
+    return this.page.getByPlaceholder('Поиск блюд и продуктов')
+  }
+
+  get foodList() {
+    return this.page.getByRole('listbox', { name: 'Список продуктов' })
+  }
+
+  get closeModalButton() {
+    return this.page.getByLabel('Закрыть')
+  }
+
+  async openAddFoodForMeal(mealName: string) {
+    await this.addToMealButton(mealName).click()
+    await expect(this.foodModal).toBeVisible({ timeout: 5000 })
+  }
+
+  async searchFood(query: string) {
+    await this.searchInput.fill(query)
+    // Wait for debounce + results
+    await expect(this.foodList).toBeVisible({ timeout: 5000 })
+  }
+
+  async selectFirstResult() {
+    const options = this.foodList.getByRole('option')
+    await options.first().click()
+  }
+
+  async submitFoodEntry() {
+    await this.page.getByRole('button', { name: /Добавить/ }).click()
+  }
 }
