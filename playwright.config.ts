@@ -80,7 +80,7 @@ export default defineConfig({
     // --- Auth tests: no pre-authenticated session ---
     {
       name: 'auth-tests',
-      testMatch: ['tests/auth.spec.ts', 'tests/role-access.spec.ts'],
+      testMatch: ['tests/auth.spec.ts', 'tests/role-access.spec.ts', 'tests/landing.spec.ts'],
     },
   ],
 
