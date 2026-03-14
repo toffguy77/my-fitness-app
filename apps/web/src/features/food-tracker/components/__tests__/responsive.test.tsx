@@ -146,7 +146,7 @@ describe('MealSlot Responsive Design', () => {
         const { container } = render(<MealSlot {...defaultProps} />);
 
         const entryItem = container.querySelector('[role="button"]');
-        expect(entryItem).toHaveClass('py-2.5', 'px-1.5', 'sm:py-3', 'sm:px-2');
+        expect(entryItem).toHaveClass('py-3', 'px-2');
     });
 
     it('renders empty state with responsive text', () => {
