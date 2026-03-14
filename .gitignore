@@ -6,6 +6,8 @@ node_modules/
 coverage/
 *.out
 bin/
+e2e/.auth/
+e2e/.env
 
 # Build
 .next/

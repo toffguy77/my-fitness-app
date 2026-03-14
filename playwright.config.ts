@@ -1,4 +1,11 @@
 import { defineConfig, devices } from '@playwright/test'
+import dotenv from 'dotenv'
+import path from 'path'
+
+dotenv.config({ path: path.resolve(__dirname, 'e2e', '.env') })
+
+const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3069'
+const isStaging = !!process.env.E2E_BASE_URL
 
 export default defineConfig({
   testDir: './e2e',
@@ -8,18 +15,60 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3069',
+    baseURL,
     trace: 'on-first-retry',
+    ...devices['Desktop Chrome'],
   },
   projects: [
+    // --- Setup projects: authenticate once per role ---
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'setup:client',
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
+      name: 'setup:curator',
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
+      name: 'setup:admin',
+      testMatch: /auth\.setup\.ts/,
+    },
+
+    // --- Test projects with pre-authenticated sessions ---
+    {
+      name: 'client-tests',
+      dependencies: ['setup:client'],
+      use: { storageState: 'e2e/.auth/client.json' },
+      testMatch: ['tests/dashboard.spec.ts', 'tests/food-tracker.spec.ts'],
+    },
+    {
+      name: 'curator-tests',
+      dependencies: ['setup:curator'],
+      use: { storageState: 'e2e/.auth/curator.json' },
+      testMatch: ['tests/curator-hub.spec.ts'],
+    },
+    {
+      name: 'admin-tests',
+      dependencies: ['setup:admin'],
+      use: { storageState: 'e2e/.auth/admin.json' },
+      testMatch: ['tests/admin-panel.spec.ts'],
+    },
+
+    // --- Auth tests: no pre-authenticated session ---
+    {
+      name: 'auth-tests',
+      testMatch: ['tests/auth.spec.ts', 'tests/role-access.spec.ts'],
     },
   ],
-  webServer: {
-    command: 'npm run build && npm run start',
-    url: 'http://localhost:3069',
-    reuseExistingServer: !process.env.CI,
-  },
+
+  // Only start local server if not targeting staging
+  ...(!isStaging
+    ? {
+        webServer: {
+          command: 'npm run build && npm run start',
+          url: 'http://localhost:3069',
+          reuseExistingServer: !process.env.CI,
+        },
+      }
+    : {}),
 })
