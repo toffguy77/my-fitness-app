@@ -11,6 +11,7 @@ import DashboardPage from '../page'
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
     useRouter: jest.fn(),
+    useSearchParams: jest.fn(() => new URLSearchParams()),
 }))
 
 // Mock DashboardLayout component
