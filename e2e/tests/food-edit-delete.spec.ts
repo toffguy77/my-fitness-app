@@ -74,7 +74,7 @@ test.describe('Food Entry Edit & Delete', () => {
     // Save the edit
     await page
       .getByRole('dialog')
-      .getByRole('button', { name: /Сохранить/ })
+      .getByRole('button', { name: 'Сохранить', exact: true })
       .click()
 
     // Modal should close

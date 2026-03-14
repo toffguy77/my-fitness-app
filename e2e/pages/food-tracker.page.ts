@@ -72,8 +72,10 @@ export class FoodTrackerPage {
 
   async searchFood(query: string) {
     await this.searchInput.fill(query)
-    // Wait for debounce + results
-    await expect(this.foodList).toBeVisible({ timeout: 5000 })
+    // Wait for debounce + API response + results rendering
+    await expect(this.foodList.getByRole('option').first()).toBeVisible({
+      timeout: 10000,
+    })
   }
 
   async selectFirstResult() {
