@@ -1088,7 +1088,7 @@ func TestGetTasks(t *testing.T) {
 			"id", "title", "type", "description", "due_date",
 			"recurrence", "recurrence_days", "status", "completed_at", "created_at",
 		}
-		dueDate := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+		dueDate := time.Now().Add(7 * 24 * time.Hour) // 1 week in the future to avoid overdue
 		createdAt := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
 
 		mock.ExpectQuery("SELECT t.id, t.title").
@@ -1395,6 +1395,11 @@ func TestGetAttentionList(t *testing.T) {
 		mock.ExpectQuery(`SELECT wr\.user_id, wr\.week_start`).
 			WithArgs(curatorID, int64(1), int64(2)).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "week_start"}))
+
+		// Incomplete profiles (priority 6)
+		mock.ExpectQuery(`SELECT u\.id`).
+			WithArgs(int64(1), int64(2)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "no_birth_date", "no_sex", "no_height", "no_weight"}))
 
 		items, err := service.GetAttentionList(ctx, curatorID)
 
