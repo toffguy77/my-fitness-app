@@ -11,6 +11,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/admin"
+	"github.com/burcev/api/migrations"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
 	"github.com/burcev/api/internal/modules/content"
@@ -70,6 +71,12 @@ func main() {
 		"database", cfg.DatabaseName,
 		"max_open_conns", cfg.MaxOpenConns,
 	)
+
+	// Run database migrations
+	migrator := database.NewMigrator(db, migrations.FS, log)
+	if err := migrator.Run(context.Background(), cfg.MigrationBaseline); err != nil {
+		log.Fatal("Database migration failed", "error", err)
+	}
 
 	// Initialize email service
 	emailService, err := email.NewService(email.Config{

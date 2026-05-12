@@ -85,6 +85,9 @@ type Config struct {
 	OpenRouterModel           string
 	FoodRecognitionDailyLimit int
 
+	// Migrations
+	MigrationBaseline int
+
 	// Logging
 	LogLevel string
 }
@@ -169,6 +172,8 @@ func Load() (*Config, error) {
 		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterModel:           getEnv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4"),
 		FoodRecognitionDailyLimit: getEnvAsInt("FOOD_RECOGNITION_DAILY_LIMIT", 3),
+
+		MigrationBaseline: getEnvAsInt("DB_MIGRATION_BASELINE", 0),
 
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
