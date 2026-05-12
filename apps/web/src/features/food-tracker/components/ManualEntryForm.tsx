@@ -11,6 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { Save, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import type { FoodItem } from '../types';
@@ -160,6 +161,7 @@ export function ManualEntryForm({
             onSubmit(food);
         } catch (error) {
             console.error('Failed to create user food:', error);
+            toast.error('Не удалось создать продукт. Попробуйте ещё раз.');
         } finally {
             setIsSubmitting(false);
         }

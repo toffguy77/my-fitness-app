@@ -673,7 +673,47 @@ func (s *Service) getFoodItemByID(ctx context.Context, foodID string) (*FoodItem
 			})
 			return nil, fmt.Errorf("ошибка при получении продукта: %w", err)
 		}
-		// Not found in food_items — fall through to products
+
+		// Not found in food_items — check user_foods (manual entries created before the dual-write fix).
+		var uf UserFood
+		ufErr := s.db.QueryRowContext(ctx, `
+			SELECT id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+			       serving_size, serving_unit
+			FROM user_foods WHERE id = $1
+		`, foodID).Scan(
+			&uf.ID, &uf.Name, &uf.Brand,
+			&uf.CaloriesPer100, &uf.ProteinPer100, &uf.FatPer100, &uf.CarbsPer100,
+			&uf.ServingSize, &uf.ServingUnit,
+		)
+		if ufErr == nil {
+			// Backfill food_items so the FK in food_entries is satisfied on next CreateEntry.
+			_, _ = s.db.ExecContext(ctx, `
+				INSERT INTO food_items (id, name, brand, category, serving_size, serving_unit,
+				                        calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+				                        source, verified, created_at, updated_at)
+				VALUES ($1, $2, $3, 'custom', $4, $5, $6, $7, $8, $9, 'user', false, NOW(), NOW())
+				ON CONFLICT (id) DO NOTHING
+			`, uf.ID, uf.Name, uf.Brand, uf.ServingSize, uf.ServingUnit,
+				uf.CaloriesPer100, uf.ProteinPer100, uf.FatPer100, uf.CarbsPer100)
+
+			item := &FoodItem{
+				ID:             uf.ID,
+				Name:           uf.Name,
+				Brand:          uf.Brand,
+				Category:       "custom",
+				ServingSize:    uf.ServingSize,
+				ServingUnit:    uf.ServingUnit,
+				CaloriesPer100: uf.CaloriesPer100,
+				ProteinPer100:  uf.ProteinPer100,
+				FatPer100:      uf.FatPer100,
+				CarbsPer100:    uf.CarbsPer100,
+				Source:         SourceUser,
+			}
+			item.PopulateNutrition()
+			return item, nil
+		}
+
+		// Not found in food_items or user_foods — fall through to products
 	}
 
 	// Try products table (integer IDs)
@@ -2131,12 +2171,27 @@ func (s *Service) CreateUserFood(ctx context.Context, userID int64, req *CreateU
 		brand = &req.Brand
 	}
 
+	foodID := uuid.New().String()
+
+	// Mirror into food_items so food_entries.food_id FK is satisfied.
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO food_items (id, name, brand, category, serving_size, serving_unit,
+		                        calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+		                        source, verified, created_at, updated_at)
+		VALUES ($1, $2, $3, 'custom', $4, $5, $6, $7, $8, $9, 'user', false, NOW(), NOW())
+		ON CONFLICT (id) DO NOTHING
+	`, foodID, req.Name, brand, servingSize, servingUnit,
+		req.CaloriesPer100, req.ProteinPer100, req.FatPer100, req.CarbsPer100)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при зеркалировании продукта в food_items: %w", err)
+	}
+
 	var food UserFood
-	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO user_foods (user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	err = s.db.QueryRowContext(ctx, `
+		INSERT INTO user_foods (id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, user_id, name, brand, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id, created_at, updated_at
-	`, userID, req.Name, brand, req.CaloriesPer100, req.ProteinPer100, req.FatPer100, req.CarbsPer100, servingSize, servingUnit).Scan(
+	`, foodID, userID, req.Name, brand, req.CaloriesPer100, req.ProteinPer100, req.FatPer100, req.CarbsPer100, servingSize, servingUnit).Scan(
 		&food.ID, &food.UserID, &food.Name, &food.Brand,
 		&food.CaloriesPer100, &food.ProteinPer100, &food.FatPer100, &food.CarbsPer100,
 		&food.ServingSize, &food.ServingUnit, &food.SourceFoodID,

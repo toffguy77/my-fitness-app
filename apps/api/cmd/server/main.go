@@ -29,6 +29,7 @@ import (
 	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/ws"
+	"github.com/burcev/api/migrations"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -70,6 +71,12 @@ func main() {
 		"database", cfg.DatabaseName,
 		"max_open_conns", cfg.MaxOpenConns,
 	)
+
+	// Run database migrations
+	migrator := database.NewMigrator(db, migrations.FS, log)
+	if err := migrator.Run(context.Background(), cfg.MigrationBaseline); err != nil {
+		log.Fatal("Database migration failed", "error", err)
+	}
 
 	// Initialize email service
 	emailService, err := email.NewService(email.Config{
