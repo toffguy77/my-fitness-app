@@ -11,7 +11,6 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/admin"
-	"github.com/burcev/api/migrations"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
 	"github.com/burcev/api/internal/modules/content"
@@ -30,6 +29,7 @@ import (
 	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/ws"
+	"github.com/burcev/api/migrations"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
