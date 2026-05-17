@@ -18,6 +18,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// populateWorkoutTypes derives WorkoutTypes from the comma-separated WorkoutType field.
+func populateWorkoutTypes(m *DailyMetrics) {
+	if m.WorkoutType == nil || *m.WorkoutType == "" {
+		m.WorkoutTypes = nil
+		return
+	}
+	if strings.Contains(*m.WorkoutType, ",") {
+		m.WorkoutTypes = strings.Split(*m.WorkoutType, ",")
+	} else {
+		m.WorkoutTypes = []string{*m.WorkoutType}
+	}
+}
+
 // parseIntArray parses a PostgreSQL integer array string like "{1,3,5}" into []int
 func parseIntArray(s string) []int {
 	s = strings.TrimSpace(s)
@@ -124,6 +137,7 @@ func (s *Service) GetDailyMetrics(ctx context.Context, userID int64, date time.T
 		"found":   true,
 	})
 
+	populateWorkoutTypes(&metrics)
 	return &metrics, nil
 }
 
@@ -196,7 +210,19 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 				existing.WorkoutDuration = nil
 			}
 		}
-		if workoutType, ok := data["type"].(string); ok {
+		// Multiple types take precedence over single type
+		if typesRaw, ok := data["types"].([]interface{}); ok && len(typesRaw) > 0 {
+			parts := make([]string, 0, len(typesRaw))
+			for _, t := range typesRaw {
+				if s, ok := t.(string); ok && s != "" {
+					parts = append(parts, s)
+				}
+			}
+			if len(parts) > 0 {
+				joined := strings.Join(parts, ",")
+				existing.WorkoutType = &joined
+			}
+		} else if workoutType, ok := data["type"].(string); ok {
 			existing.WorkoutType = &workoutType
 		}
 		if duration, ok := data["duration"].(float64); ok {
@@ -286,6 +312,7 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 		"metric_type": metricUpdate.Type,
 	})
 
+	populateWorkoutTypes(&result)
 	return &result, nil
 }
 
@@ -339,6 +366,7 @@ func (s *Service) GetWeekMetrics(ctx context.Context, userID int64, startDate, e
 			s.log.Error("Failed to scan daily metrics", "error", err)
 			return nil, fmt.Errorf("failed to scan daily metrics: %w", err)
 		}
+		populateWorkoutTypes(&m)
 		metrics = append(metrics, m)
 	}
 

@@ -70,7 +70,7 @@ describe('PortionSelector Property Tests', () => {
                             />
                         );
 
-                        const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+                        const input = screen.getByRole('textbox', { name: /количество порции/i });
                         fireEvent.change(input, { target: { value: String(negativeValue) } });
                         fireEvent.blur(input);
 
@@ -101,7 +101,7 @@ describe('PortionSelector Property Tests', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             fireEvent.change(input, { target: { value: '0' } });
             fireEvent.blur(input);
 
@@ -127,7 +127,7 @@ describe('PortionSelector Property Tests', () => {
                     />
                 );
 
-                const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+                const input = screen.getByRole('textbox', { name: /количество порции/i });
                 fireEvent.change(input, { target: { value: nonNumericValue } });
                 fireEvent.blur(input);
 
@@ -153,7 +153,7 @@ describe('PortionSelector Property Tests', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             fireEvent.change(input, { target: { value: '' } });
 
             // Should show Russian error message
@@ -179,7 +179,7 @@ describe('PortionSelector Property Tests', () => {
                             />
                         );
 
-                        const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+                        const input = screen.getByRole('textbox', { name: /количество порции/i });
                         fireEvent.change(input, { target: { value: String(exceedingValue) } });
                         fireEvent.blur(input);
 
@@ -215,7 +215,7 @@ describe('PortionSelector Property Tests', () => {
                             />
                         );
 
-                        const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+                        const input = screen.getByRole('textbox', { name: /количество порции/i });
                         fireEvent.change(input, { target: { value: String(validValue) } });
                         fireEvent.blur(input);
 
@@ -245,7 +245,7 @@ describe('PortionSelector Property Tests', () => {
                     />
                 );
 
-                const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+                const input = screen.getByRole('textbox', { name: /количество порции/i });
                 fireEvent.change(input, { target: { value: invalidInput } });
                 fireEvent.blur(input);
 

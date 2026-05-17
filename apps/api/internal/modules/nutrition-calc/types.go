@@ -78,7 +78,8 @@ type UserProfile struct {
 
 // WorkoutInfo represents a workout for the day
 type WorkoutInfo struct {
-	Type        string
+	Type        string   // single type (legacy / fallback)
+	Types       []string // multiple types; takes precedence over Type when non-empty
 	DurationMin int
 }
 

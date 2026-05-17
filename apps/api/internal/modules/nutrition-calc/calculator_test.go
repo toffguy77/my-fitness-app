@@ -1,6 +1,7 @@
 package nutritioncalc
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -88,6 +89,46 @@ func TestCalculateTargets(t *testing.T) {
 	}
 	if targets.Source != "calculated" {
 		t.Errorf("expected source 'calculated', got %s", targets.Source)
+	}
+}
+
+func TestCalculateWorkoutBonus_MultipleTypes(t *testing.T) {
+	// Average of Силовая (300) + Кардио (400) = 350 kcal/h × 60 min = 350
+	bonus := CalculateWorkoutBonus(&WorkoutInfo{
+		Types:       []string{"Силовая", "Кардио"},
+		DurationMin: 60,
+	})
+	if bonus != 350 {
+		t.Errorf("expected 350 for two types averaged, got %f", bonus)
+	}
+}
+
+func TestCalculateWorkoutBonus_TypesFallbackToType(t *testing.T) {
+	// When Types is empty, falls back to single Type field
+	bonus := CalculateWorkoutBonus(&WorkoutInfo{Type: "Силовая", DurationMin: 60})
+	if bonus != 300 {
+		t.Errorf("expected 300 fallback to Type field, got %f", bonus)
+	}
+}
+
+func TestCalculateTargets_CaloriesMatchMacroSum(t *testing.T) {
+	profile := UserProfile{
+		BirthDate:     time.Now().AddDate(-30, 0, 0),
+		Sex:           SexMale,
+		HeightCm:      180,
+		WeightKg:      80,
+		ActivityLevel: ActivityModerate,
+		Goal:          GoalLoss,
+	}
+	workout := &WorkoutInfo{Type: "Силовая", DurationMin: 60}
+
+	targets := CalculateTargets(profile, workout)
+
+	// Calories must equal protein*4 + fat*9 + carbs*4 using the returned rounded values
+	expectedCalories := math.Round((targets.Protein*4+targets.Fat*9+targets.Carbs*4)*10) / 10
+	if targets.Calories != expectedCalories {
+		t.Errorf("Calories %f != macro sum %f (P=%f F=%f C=%f)",
+			targets.Calories, expectedCalories, targets.Protein, targets.Fat, targets.Carbs)
 	}
 }
 

@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ManualEntryForm } from '../ManualEntryForm';
 
@@ -107,7 +107,7 @@ describe('ManualEntryForm', () => {
         it('defaults serving size to 100', () => {
             renderForm();
 
-            expect(screen.getByLabelText(/Размер порции/)).toHaveValue(100);
+            expect(screen.getByLabelText(/Размер порции/)).toHaveValue('100');
         });
 
         it('shows nutrition section header', () => {
@@ -136,7 +136,7 @@ describe('ManualEntryForm', () => {
             const caloriesInput = screen.getByLabelText(/Калории/);
             await user.type(caloriesInput, '350');
 
-            expect(caloriesInput).toHaveValue(350);
+            expect(caloriesInput).toHaveValue('350');
         });
 
         it('updates brand field on input', async () => {
@@ -279,6 +279,35 @@ describe('ManualEntryForm', () => {
             });
 
             consoleSpy.mockRestore();
+        });
+    });
+
+    describe('Decimal Comma Support', () => {
+        it('treats comma as decimal separator when submitting calories', async () => {
+            const mockUserFood = {
+                id: 'uf-1', name: 'Тест',
+                calories_per_100: 256.5, protein_per_100: 7.3, fat_per_100: 0, carbs_per_100: 0,
+                serving_size: 100, serving_unit: 'г', created_at: '', updated_at: '',
+            };
+            mockApiPost.mockResolvedValueOnce(mockUserFood);
+
+            renderForm();
+
+            await userEvent.setup().type(screen.getByLabelText(/Название продукта/), 'Тест');
+            fireEvent.change(screen.getByLabelText(/Калории/), { target: { value: '256,5' } });
+            fireEvent.change(screen.getByLabelText(/Белки/), { target: { value: '7,3' } });
+
+            await userEvent.setup().click(screen.getByText('Сохранить'));
+
+            await waitFor(() => {
+                expect(mockApiPost).toHaveBeenCalledWith(
+                    expect.any(String),
+                    expect.objectContaining({
+                        calories_per_100: 256.5,
+                        protein_per_100: 7.3,
+                    })
+                );
+            });
         });
     });
 

@@ -69,7 +69,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            expect(screen.getByRole('spinbutton', { name: /количество порции/i })).toBeInTheDocument();
+            expect(screen.getByRole('textbox', { name: /количество порции/i })).toBeInTheDocument();
         });
 
         it('renders slider', () => {
@@ -122,8 +122,8 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
-            expect(input).toHaveValue(250);
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
+            expect(input).toHaveValue('250');
             expect(screen.getByRole('tab', { name: /миллилитры/i })).toHaveAttribute('aria-selected', 'true');
         });
     });
@@ -178,9 +178,9 @@ describe('PortionSelector', () => {
             const portionTab = screen.getByRole('tab', { name: /порция/i });
             await user.click(portionTab);
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             // Should reset to default for portion type (1)
-            expect(input).toHaveValue(1);
+            expect(input).toHaveValue('1');
         });
     });
 
@@ -226,7 +226,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '200');
 
@@ -276,7 +276,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '-10');
 
@@ -297,7 +297,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '0');
 
@@ -317,7 +317,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
 
             await waitFor(() => {
@@ -336,7 +336,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '3000');
 
@@ -356,7 +356,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
 
             // Enter invalid value
             await user.clear(input);
@@ -384,7 +384,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
 
             // Clear input - this sets inputValue to ''
             fireEvent.change(input, { target: { value: '' } });
@@ -398,7 +398,7 @@ describe('PortionSelector', () => {
 
             // Should reset to previous valid value and clear error
             await waitFor(() => {
-                expect(input).toHaveValue(150);
+                expect(input).toHaveValue('150');
                 expect(screen.queryByRole('alert')).not.toBeInTheDocument();
             });
         });
@@ -412,7 +412,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
 
             // Set non-numeric value directly
             fireEvent.change(input, { target: { value: 'abc' } });
@@ -426,7 +426,7 @@ describe('PortionSelector', () => {
 
             // Should reset to previous valid value and clear error
             await waitFor(() => {
-                expect(input).toHaveValue(200);
+                expect(input).toHaveValue('200');
                 expect(screen.queryByRole('alert')).not.toBeInTheDocument();
             });
         });
@@ -445,8 +445,8 @@ describe('PortionSelector', () => {
             const slider = screen.getByRole('slider', { name: /ползунок порции/i });
             fireEvent.change(slider, { target: { value: '150' } });
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
-            expect(input).toHaveValue(150);
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
+            expect(input).toHaveValue('150');
         });
 
         it('has correct min and max for grams', () => {
@@ -494,8 +494,8 @@ describe('PortionSelector', () => {
             const quickButton = screen.getByRole('button', { name: /150 г/i });
             await user.click(quickButton);
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
-            expect(input).toHaveValue(150);
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
+            expect(input).toHaveValue('150');
         });
 
         it('highlights selected quick button', async () => {
@@ -552,7 +552,7 @@ describe('PortionSelector', () => {
             });
 
             // Change amount
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '200');
 
@@ -582,7 +582,7 @@ describe('PortionSelector', () => {
             // Clear initial calls
             onPortionChange.mockClear();
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '-10');
 
@@ -592,6 +592,31 @@ describe('PortionSelector', () => {
                     expect.anything(),
                     -10,
                     expect.anything()
+                );
+            });
+        });
+    });
+
+    describe('Decimal Comma Support', () => {
+        it('treats comma as decimal separator', async () => {
+            const onPortionChange = jest.fn();
+            render(
+                <PortionSelector
+                    food={createMockFood()}
+                    initialAmount={100}
+                    onPortionChange={onPortionChange}
+                />
+            );
+            onPortionChange.mockClear();
+
+            const input = screen.getByLabelText(/количество порции/i);
+            fireEvent.change(input, { target: { value: '150,5' } });
+
+            await waitFor(() => {
+                expect(onPortionChange).toHaveBeenCalledWith(
+                    'grams',
+                    150.5,
+                    expect.any(Object)
                 );
             });
         });
@@ -607,7 +632,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            expect(screen.getByRole('spinbutton', { name: /количество порции/i })).toBeDisabled();
+            expect(screen.getByRole('textbox', { name: /количество порции/i })).toBeDisabled();
             expect(screen.getByRole('slider', { name: /ползунок порции/i })).toBeDisabled();
 
             const tabs = screen.getAllByRole('tab');
@@ -643,7 +668,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            expect(screen.getByRole('spinbutton', { name: /количество порции/i })).toBeInTheDocument();
+            expect(screen.getByRole('textbox', { name: /количество порции/i })).toBeInTheDocument();
         });
 
         it('has accessible slider with label', () => {
@@ -666,7 +691,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '-10');
 
@@ -684,7 +709,7 @@ describe('PortionSelector', () => {
                 />
             );
 
-            const input = screen.getByRole('spinbutton', { name: /количество порции/i });
+            const input = screen.getByRole('textbox', { name: /количество порции/i });
             await user.clear(input);
             await user.type(input, '-10');
 

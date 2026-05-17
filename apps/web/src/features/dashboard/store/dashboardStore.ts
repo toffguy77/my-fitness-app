@@ -260,6 +260,7 @@ interface BackendDailyMetrics {
     steps: number;
     workout_completed: boolean;
     workout_type?: string | null;
+    workout_types?: string[] | null;
     workout_duration?: number | null;
     created_at: string;
     updated_at: string;
@@ -290,6 +291,7 @@ function mapBackendMetrics(raw: BackendDailyMetrics | DailyMetrics | any): Daily
         workout: {
             completed: raw.workout_completed || false,
             type: raw.workout_type ?? undefined,
+            types: raw.workout_types ?? (raw.workout_type ? raw.workout_type.split(',') : undefined),
             duration: raw.workout_duration ?? undefined,
         },
         completionStatus: {

@@ -197,7 +197,7 @@ describe('WorkoutBlock', () => {
 
             // Check for dialog content by looking for workout type buttons
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
         })
 
@@ -211,7 +211,7 @@ describe('WorkoutBlock', () => {
             await waitFor(() => {
                 const workoutTypes = ['Силовая', 'Кардио', 'Йога', 'HIIT', 'Растяжка', 'Плавание', 'Бег', 'Велосипед', 'Другое']
                 workoutTypes.forEach(type => {
-                    expect(screen.getByRole('radio', { name: `Тип тренировки: ${type}` })).toBeInTheDocument()
+                    expect(screen.getByRole('checkbox', { name: `Тип тренировки: ${type}` })).toBeInTheDocument()
                 })
             })
         })
@@ -224,10 +224,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             expect(typeButton).toHaveClass('bg-blue-100')
@@ -241,10 +241,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
+            const otherButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             expect(screen.getByPlaceholderText('Укажите тип тренировки')).toBeInTheDocument()
@@ -272,7 +272,7 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
             const saveButtons = screen.getAllByRole('button')
@@ -288,10 +288,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
+            const otherButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -307,10 +307,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -331,10 +331,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -357,10 +357,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Йога' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Йога' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -372,6 +372,7 @@ describe('WorkoutBlock', () => {
                     type: 'workout',
                     data: {
                         completed: true,
+                        types: ['Йога'],
                         type: 'Йога',
                         duration: undefined,
                     },
@@ -387,10 +388,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: HIIT' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: HIIT' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: HIIT' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: HIIT' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -405,6 +406,7 @@ describe('WorkoutBlock', () => {
                     type: 'workout',
                     data: {
                         completed: true,
+                        types: ['HIIT'],
                         type: 'HIIT',
                         duration: 30,
                     },
@@ -420,10 +422,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
+            const otherButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             const customInput = screen.getByPlaceholderText('Укажите тип тренировки')
@@ -438,7 +440,39 @@ describe('WorkoutBlock', () => {
                     type: 'workout',
                     data: {
                         completed: true,
+                        types: ['Пилатес'],
                         type: 'Пилатес',
+                        duration: undefined,
+                    },
+                })
+            })
+        })
+
+        it('saves multiple workout types', async () => {
+            const user = userEvent.setup()
+            render(<WorkoutBlock date={mockDate} />)
+
+            const addButton = getHeaderQuickAddButton()
+            await user.click(addButton)
+
+            await waitFor(() => {
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+            })
+
+            await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' }))
+            await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' }))
+
+            const saveButtons = screen.getAllByRole('button')
+            const saveButton = saveButtons.find(btn => btn.textContent?.includes('Сохранить'))
+            await user.click(saveButton!)
+
+            await waitFor(() => {
+                expect(mockUpdateMetric).toHaveBeenCalledWith('2024-01-15', {
+                    type: 'workout',
+                    data: {
+                        completed: true,
+                        types: ['Силовая', 'Кардио'],
+                        type: 'Силовая',
                         duration: undefined,
                     },
                 })
@@ -453,10 +487,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -476,10 +510,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Кардио' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -558,7 +592,7 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
             const allButtons = screen.getAllByRole('button')
@@ -578,10 +612,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
             await user.click(typeButton)
 
             const durationInput = screen.getByPlaceholderText(/Длительность/)
@@ -595,7 +629,7 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                const reopenedTypeButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
+                const reopenedTypeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
                 expect(reopenedTypeButton).not.toHaveClass('bg-blue-100')
             })
         })
@@ -621,10 +655,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -671,16 +705,16 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })).toBeInTheDocument()
             })
 
             // Try to save without selecting type (button should be disabled, but test the validation)
             // We need to enable the button first by selecting and then deselecting
-            const typeButton = screen.getByRole('radio', { name: 'Тип тренировки: Силовая' })
+            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' })
             await user.click(typeButton)
 
             // Clear selection by clicking another type and then trying to save with empty custom
-            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
+            const otherButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             const saveButtons = screen.getAllByRole('button')
@@ -698,10 +732,10 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByRole('radio', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })).toBeInTheDocument()
             })
 
-            const otherButton = screen.getByRole('radio', { name: 'Тип тренировки: Другое' })
+            const otherButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Другое' })
             await user.click(otherButton)
 
             // Save button should be disabled when custom type is empty
@@ -735,7 +769,7 @@ describe('WorkoutBlock', () => {
 
             await waitFor(() => {
                 // Check that Йога is selected
-                const yogaButton = screen.getByRole('radio', { name: 'Тип тренировки: Йога' })
+                const yogaButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })
                 expect(yogaButton).toHaveClass('bg-blue-100')
 
                 // Check that duration is pre-filled
@@ -767,7 +801,7 @@ describe('WorkoutBlock', () => {
 
             await waitFor(() => {
                 // Check that Бег is selected
-                const runButton = screen.getByRole('radio', { name: 'Тип тренировки: Бег' })
+                const runButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
                 expect(runButton).toHaveClass('bg-blue-100')
 
                 // Check that duration is pre-filled

@@ -103,27 +103,27 @@ export function ManualEntryForm({
             newErrors.name = 'Введите название продукта';
         }
 
-        const calories = parseFloat(formData.calories);
+        const calories = parseFloat(formData.calories.replace(',', '.'));
         if (isNaN(calories) || calories < 0) {
             newErrors.calories = 'Введите корректное значение калорий';
         }
 
-        const protein = parseFloat(formData.protein);
+        const protein = parseFloat(formData.protein.replace(',', '.'));
         if (formData.protein && (isNaN(protein) || protein < 0)) {
             newErrors.protein = 'Введите корректное значение белков';
         }
 
-        const fat = parseFloat(formData.fat);
+        const fat = parseFloat(formData.fat.replace(',', '.'));
         if (formData.fat && (isNaN(fat) || fat < 0)) {
             newErrors.fat = 'Введите корректное значение жиров';
         }
 
-        const carbs = parseFloat(formData.carbs);
+        const carbs = parseFloat(formData.carbs.replace(',', '.'));
         if (formData.carbs && (isNaN(carbs) || carbs < 0)) {
             newErrors.carbs = 'Введите корректное значение углеводов';
         }
 
-        const servingSize = parseFloat(formData.servingSize);
+        const servingSize = parseFloat(formData.servingSize.replace(',', '.'));
         if (isNaN(servingSize) || servingSize <= 0) {
             newErrors.servingSize = 'Введите корректный размер порции';
         }
@@ -146,11 +146,11 @@ export function ManualEntryForm({
             const payload: CreateUserFoodRequest = {
                 name: formData.name.trim(),
                 brand: formData.brand.trim() || undefined,
-                calories_per_100: parseFloat(formData.calories) || 0,
-                protein_per_100: parseFloat(formData.protein) || 0,
-                fat_per_100: parseFloat(formData.fat) || 0,
-                carbs_per_100: parseFloat(formData.carbs) || 0,
-                serving_size: parseFloat(formData.servingSize) || 100,
+                calories_per_100: parseFloat(formData.calories.replace(',', '.')) || 0,
+                protein_per_100: parseFloat(formData.protein.replace(',', '.')) || 0,
+                fat_per_100: parseFloat(formData.fat.replace(',', '.')) || 0,
+                carbs_per_100: parseFloat(formData.carbs.replace(',', '.')) || 0,
+                serving_size: parseFloat(formData.servingSize.replace(',', '.')) || 100,
                 serving_unit: 'г',
             };
 
@@ -223,7 +223,7 @@ export function ManualEntryForm({
                         </label>
                         <input
                             id="manual-calories"
-                            type="number"
+                            type="text"
                             inputMode="decimal"
                             min="0"
                             step="0.1"
@@ -246,7 +246,7 @@ export function ManualEntryForm({
                         </label>
                         <input
                             id="manual-protein"
-                            type="number"
+                            type="text"
                             inputMode="decimal"
                             min="0"
                             step="0.1"
@@ -269,7 +269,7 @@ export function ManualEntryForm({
                         </label>
                         <input
                             id="manual-fat"
-                            type="number"
+                            type="text"
                             inputMode="decimal"
                             min="0"
                             step="0.1"
@@ -292,7 +292,7 @@ export function ManualEntryForm({
                         </label>
                         <input
                             id="manual-carbs"
-                            type="number"
+                            type="text"
                             inputMode="decimal"
                             min="0"
                             step="0.1"
@@ -317,7 +317,7 @@ export function ManualEntryForm({
                 </label>
                 <input
                     id="manual-serving"
-                    type="number"
+                    type="text"
                     inputMode="decimal"
                     min="1"
                     step="1"

@@ -18,6 +18,7 @@ type DailyMetrics struct {
 	Steps            int       `json:"steps" db:"steps"`
 	WorkoutCompleted bool      `json:"workout_completed" db:"workout_completed"`
 	WorkoutType      *string   `json:"workout_type,omitempty" db:"workout_type"`
+	WorkoutTypes     []string  `json:"workout_types,omitempty"` // derived from WorkoutType; not a DB column
 	WorkoutDuration  *int      `json:"workout_duration,omitempty" db:"workout_duration"`
 	CreatedAt        time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
@@ -354,9 +355,10 @@ type StepsData struct {
 
 // WorkoutData represents workout metric data
 type WorkoutData struct {
-	Completed bool    `json:"completed" binding:"required"`
-	Type      *string `json:"type,omitempty"`
-	Duration  *int    `json:"duration,omitempty" binding:"omitempty,min=0"`
+	Completed bool     `json:"completed" binding:"required"`
+	Type      *string  `json:"type,omitempty"`
+	Types     []string `json:"types,omitempty"`
+	Duration  *int     `json:"duration,omitempty" binding:"omitempty,min=0"`
 }
 
 // CreateWeeklyPlanRequest represents the request to create a weekly plan

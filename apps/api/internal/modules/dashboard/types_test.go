@@ -903,3 +903,25 @@ func TestMetricUpdateTypeIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestPopulateWorkoutTypes(t *testing.T) {
+	t.Run("nil workout_type produces nil WorkoutTypes", func(t *testing.T) {
+		m := &DailyMetrics{}
+		populateWorkoutTypes(m)
+		assert.Nil(t, m.WorkoutTypes)
+	})
+
+	t.Run("single type produces slice with one element", func(t *testing.T) {
+		wt := "Силовая"
+		m := &DailyMetrics{WorkoutType: &wt}
+		populateWorkoutTypes(m)
+		assert.Equal(t, []string{"Силовая"}, m.WorkoutTypes)
+	})
+
+	t.Run("comma-separated type produces multi-element slice", func(t *testing.T) {
+		wt := "Силовая,Кардио"
+		m := &DailyMetrics{WorkoutType: &wt}
+		populateWorkoutTypes(m)
+		assert.Equal(t, []string{"Силовая", "Кардио"}, m.WorkoutTypes)
+	})
+}

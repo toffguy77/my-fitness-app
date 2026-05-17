@@ -51,7 +51,7 @@ export const WORKOUT_TYPES = [
  */
 export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: WorkoutBlockProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
-    const [selectedType, setSelectedType] = useState<string>('')
+    const [selectedTypes, setSelectedTypes] = useState<string[]>([])
     const [customType, setCustomType] = useState('')
     const [duration, setDuration] = useState('')
     const [isSaving, setIsSaving] = useState(false)
@@ -66,21 +66,23 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     const workout = dayData?.workout || { completed: false }
     const isWorkoutCompleted = workout.completed
 
-    // Handle workout type selection
+    // Handle workout type toggle (multi-select)
     const handleTypeSelect = useCallback((type: string) => {
-        setSelectedType(type)
-        setCustomType('')
+        setSelectedTypes(prev =>
+            prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+        )
+        if (type !== 'Другое') setCustomType('')
         setValidationError(null)
     }, [])
 
     // Handle custom type input
     const handleCustomTypeChange = useCallback((value: string) => {
         setCustomType(value)
-        if (value.trim()) {
-            setSelectedType('Другое')
+        if (value.trim() && !selectedTypes.includes('Другое')) {
+            setSelectedTypes(prev => [...prev, 'Другое'])
         }
         setValidationError(null)
-    }, [])
+    }, [selectedTypes])
 
     // Handle duration input
     const handleDurationChange = useCallback((value: string) => {
@@ -96,12 +98,12 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     // Handle save workout
     const handleSave = useCallback(async () => {
         // Validate inputs
-        if (!selectedType) {
+        if (selectedTypes.length === 0) {
             setValidationError('Выберите тип тренировки')
             return
         }
 
-        if (selectedType === 'Другое' && !customType.trim()) {
+        if (selectedTypes.includes('Другое') && !customType.trim()) {
             setValidationError('Укажите тип тренировки')
             return
         }
@@ -118,20 +120,21 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
         setValidationError(null)
 
         try {
-            const workoutType = selectedType === 'Другое' ? customType.trim() : selectedType
+            const resolvedTypes = selectedTypes.map(t => t === 'Другое' ? customType.trim() : t)
             const workoutDuration = duration.trim() ? parseInt(duration, 10) : undefined
 
             await updateMetric(dateStr, {
                 type: 'workout',
                 data: {
                     completed: true,
-                    type: workoutType,
+                    types: resolvedTypes,
+                    type: resolvedTypes[0], // backwards compat
                     duration: workoutDuration,
                 }
             })
 
             // Reset form
-            setSelectedType('')
+            setSelectedTypes([])
             setCustomType('')
             setDuration('')
             setIsDialogOpen(false)
@@ -142,7 +145,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
         } finally {
             setIsSaving(false)
         }
-    }, [selectedType, customType, duration, dateStr, updateMetric])
+    }, [selectedTypes, customType, duration, dateStr, updateMetric])
 
     // Handle mark as not completed
     const handleMarkNotCompleted = useCallback(async () => {
@@ -168,8 +171,8 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     // Handle quick add button
     const handleQuickAdd = useCallback(() => {
         if (isWorkoutCompleted) {
-            // If workout is completed, allow editing
-            setSelectedType(workout.type || '')
+            // If workout is completed, allow editing - restore previous selection
+            setSelectedTypes(workout.types ?? (workout.type ? [workout.type] : []))
             setDuration(workout.duration?.toString() || '')
         }
         setIsDialogOpen(true)
@@ -177,7 +180,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
     // Handle cancel dialog
     const handleCancel = useCallback(() => {
-        setSelectedType('')
+        setSelectedTypes([])
         setCustomType('')
         setDuration('')
         setIsDialogOpen(false)
@@ -243,10 +246,11 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
                         {/* Workout details */}
                         <div className="space-y-2">
-                            {workout.type && (
-                                <div className="flex items-center justify-center gap-2 text-gray-700" aria-label={`Тип тренировки: ${workout.type}`}>
+                            {(workout.types ?? (workout.type ? [workout.type] : [])).length > 0 && (
+                                <div className="flex items-center justify-center gap-2 text-gray-700"
+                                    aria-label={`Тип тренировки: ${(workout.types ?? [workout.type]).join(', ')}`}>
                                     <Dumbbell className="h-4 w-4" aria-hidden="true" />
-                                    <span className="font-medium">{workout.type}</span>
+                                    <span className="font-medium">{(workout.types ?? [workout.type]).join(', ')}</span>
                                 </div>
                             )}
 
@@ -308,22 +312,22 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                             <span>Добавить тренировку</span>
                         </div>
 
-                        {/* Workout type selection */}
+                        {/* Workout type selection (multi-select) */}
                         <div className="space-y-2">
                             <label id="workout-type-label" className="text-sm font-medium text-gray-700">
-                                Тип тренировки
+                                Тип тренировки (можно выбрать несколько)
                             </label>
-                            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="workout-type-label">
+                            <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="workout-type-label">
                                 {WORKOUT_TYPES.map((type) => (
                                     <button
                                         key={type}
                                         type="button"
-                                        role="radio"
-                                        aria-checked={selectedType === type}
+                                        role="checkbox"
+                                        aria-checked={selectedTypes.includes(type)}
                                         onClick={() => handleTypeSelect(type)}
                                         className={cn(
                                             'px-3 py-2 text-sm rounded-lg border transition-colors',
-                                            selectedType === type
+                                            selectedTypes.includes(type)
                                                 ? 'bg-blue-100 border-blue-300 text-blue-700'
                                                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                                         )}
@@ -336,7 +340,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                         </div>
 
                         {/* Custom type input */}
-                        {selectedType === 'Другое' && (
+                        {selectedTypes.includes('Другое') && (
                             <div>
                                 <label htmlFor="custom-workout-type" className="sr-only">
                                     Укажите тип тренировки
@@ -384,7 +388,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                 size="sm"
                                 onClick={handleSave}
                                 isLoading={isSaving}
-                                disabled={!selectedType || (selectedType === 'Другое' && !customType.trim())}
+                                disabled={selectedTypes.length === 0 || (selectedTypes.includes('Другое') && !customType.trim())}
                                 className="flex-1"
                                 aria-label="Сохранить тренировку"
                             >

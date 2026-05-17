@@ -57,6 +57,7 @@ export interface NutritionData {
 export interface WorkoutData {
     completed: boolean
     type?: string
+    types?: string[] // multiple workout types
     duration?: number // in minutes
 }
 
@@ -278,6 +279,7 @@ export const nutritionDataSchema = z.object({
 export const workoutDataSchema = z.object({
     completed: z.boolean(),
     type: z.string().optional(),
+    types: z.array(z.string()).optional(),
     duration: z.number().min(0).max(600).optional(), // max 10 hours
 })
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
@@ -283,6 +284,7 @@ func (s *Service) getLatestWeight(ctx context.Context, userID int64, date time.T
 }
 
 // getWorkoutForDate returns workout info for a specific date, or nil.
+// Multiple types are stored as comma-separated in workout_type (e.g. "Силовая,Кардио").
 func (s *Service) getWorkoutForDate(ctx context.Context, userID int64, date time.Time) (*WorkoutInfo, error) {
 	query := `
 		SELECT workout_type, workout_duration
@@ -299,5 +301,11 @@ func (s *Service) getWorkoutForDate(ctx context.Context, userID int64, date time
 	if err != nil {
 		return nil, fmt.Errorf("getting workout: %w", err)
 	}
-	return &WorkoutInfo{Type: wType, DurationMin: wDuration}, nil
+	info := &WorkoutInfo{DurationMin: wDuration}
+	if strings.Contains(wType, ",") {
+		info.Types = strings.Split(wType, ",")
+	} else {
+		info.Type = wType
+	}
+	return info, nil
 }
