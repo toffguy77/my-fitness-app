@@ -615,3 +615,23 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Сервис распознавания еды недоступен", resp["message"])
 }
+
+func TestSearchFoodsHandler_ContextCanceled(t *testing.T) {
+	handler, mockSvc := setupTestHandlerWithMock()
+
+	mockSvc.On("SearchFoods", mock.Anything, int64(1), "apple", 20, 0).
+		Return(nil, context.Canceled)
+
+	router := gin.New()
+	router.GET("/search", func(c *gin.Context) {
+		c.Set("user_id", int64(1))
+		handler.SearchFoods(c)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/search?q=apple&limit=20", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 499, w.Code, "handler should return 499 for canceled requests, not 500")
+	mockSvc.AssertExpectations(t)
+}

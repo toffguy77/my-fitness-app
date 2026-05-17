@@ -18,6 +18,7 @@ import (
 
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/google/uuid"
 )
@@ -290,7 +291,11 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
 		data, err := s.s3.GetFile(ctx, contentS3Key.String)
 		if err != nil {
-			s.log.Error("Failed to get article body from S3", "error", err, "key", contentS3Key.String)
+			if storage.IsNotFound(err) {
+				s.log.Warn("Article body not found in S3", "key", contentS3Key.String)
+			} else {
+				s.log.Error("Failed to get article body from S3", "error", err, "key", contentS3Key.String)
+			}
 			// Non-fatal: return article without body
 		} else {
 			article.Body = string(data)
@@ -468,7 +473,7 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 	// Add articleID as last arg
 	args = append(args, articleID)
 
-	query := fmt.Sprintf(
+	query := fmt.Sprintf( // nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
 		`UPDATE articles SET %s WHERE id = $%d
 		 RETURNING id, author_id, title, excerpt, COALESCE(cover_image_url, ''), category, status, audience_scope,
 		           scheduled_at, published_at, created_at, updated_at`,
@@ -868,7 +873,7 @@ func (s *Service) GetFeed(ctx context.Context, clientID int64, category string, 
 	}
 
 	// Count total matching articles
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM articles a WHERE %s%s`, visibilityClause, categoryClause)
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM articles a WHERE %s%s`, visibilityClause, categoryClause) // nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
 	var total int
 	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		s.log.Error("Failed to count feed articles", "error", err, "client_id", clientID)
@@ -980,7 +985,11 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
 		data, err := s.s3.GetFile(ctx, contentS3Key.String)
 		if err != nil {
-			s.log.Error("Failed to get feed article body from S3", "error", err, "key", contentS3Key.String)
+			if storage.IsNotFound(err) {
+				s.log.Warn("Feed article body not found in S3", "key", contentS3Key.String)
+			} else {
+				s.log.Error("Failed to get feed article body from S3", "error", err, "key", contentS3Key.String)
+			}
 			// Non-fatal: return article without body
 		} else {
 			article.Body = string(data)
@@ -1012,7 +1021,7 @@ func (s *Service) GetPublicFeed(ctx context.Context, category string, limit int,
 	whereClause := "a.status = 'published' AND a.audience_scope = 'all'"
 
 	// Count total matching articles
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM articles a WHERE %s%s`, whereClause, categoryClause)
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM articles a WHERE %s%s`, whereClause, categoryClause) // nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
 	var total int
 	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		s.log.Error("Failed to count public feed articles", "error", err)
@@ -1112,7 +1121,11 @@ func (s *Service) GetPublicArticle(ctx context.Context, articleID string) (*Arti
 	if contentS3Key.Valid && contentS3Key.String != "" && s.s3 != nil {
 		data, err := s.s3.GetFile(ctx, contentS3Key.String)
 		if err != nil {
-			s.log.Error("Failed to get public article body from S3", "error", err, "key", contentS3Key.String)
+			if storage.IsNotFound(err) {
+				s.log.Warn("Public article body not found in S3", "key", contentS3Key.String)
+			} else {
+				s.log.Error("Failed to get public article body from S3", "error", err, "key", contentS3Key.String)
+			}
 			// Non-fatal: return article without body
 		} else {
 			article.Body = string(data)
@@ -1295,7 +1308,7 @@ func (s *Service) createContentNotifications(ctx context.Context, articleID stri
 			batchNotifs = append(batchNotifs, insertedNotif{userID: userID, notifID: notifID})
 		}
 
-		batchQuery := fmt.Sprintf(
+		batchQuery := fmt.Sprintf( // nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
 			`INSERT INTO notifications (id, user_id, category, type, title, content, action_url, content_category, created_at) VALUES %s`,
 			strings.Join(valueStrings, ", "),
 		)

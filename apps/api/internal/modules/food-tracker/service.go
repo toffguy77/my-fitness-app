@@ -742,8 +742,9 @@ func (s *Service) getFoodItemByID(ctx context.Context, foodID string) (*FoodItem
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
 				"food_id": foodID,
+				"found":   false,
 			})
 			return nil, fmt.Errorf("продукт не найден")
 		}
@@ -1024,6 +1025,9 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 
 	rows, err := s.db.QueryContext(ctx, sqlQuery, query, limit+1, offset, userID)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		s.log.LogDatabaseQuery(sqlQuery, time.Since(startTime), err, map[string]interface{}{
 			"query":   query,
 			"limit":   limit,

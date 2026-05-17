@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -656,3 +657,21 @@ func TestGetSignedURLWithMock(t *testing.T) {
 	assert.Empty(t, url)
 	assert.Contains(t, err.Error(), "does not support presigning")
 }
+
+func TestIsNotFound(t *testing.T) {
+	t.Run("returns true for NoSuchKey wrapped by GetFile", func(t *testing.T) {
+		noSuchKey := &s3types.NoSuchKey{Message: strPtr("The specified key does not exist.")}
+		wrapped := fmt.Errorf("failed to get file from S3: %w", noSuchKey)
+		assert.True(t, IsNotFound(wrapped))
+	})
+
+	t.Run("returns false for other errors", func(t *testing.T) {
+		assert.False(t, IsNotFound(errors.New("some other error")))
+	})
+
+	t.Run("returns false for nil", func(t *testing.T) {
+		assert.False(t, IsNotFound(nil))
+	})
+}
+
+func strPtr(s string) *string { return &s }
