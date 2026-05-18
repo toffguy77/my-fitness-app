@@ -7,22 +7,22 @@ import (
 
 // DailyMetrics represents daily tracking metrics for a user
 type DailyMetrics struct {
-	ID               string    `json:"id" db:"id"`
-	UserID           int64     `json:"user_id" db:"user_id"`
-	Date             time.Time `json:"date" db:"date"`
-	Calories         int       `json:"calories" db:"calories"`
-	Protein          int       `json:"protein" db:"protein"`
-	Fat              int       `json:"fat" db:"fat"`
-	Carbs            int       `json:"carbs" db:"carbs"`
-	Weight           *float64  `json:"weight,omitempty" db:"weight"`
-	Steps            int       `json:"steps" db:"steps"`
-	WorkoutCompleted    bool           `json:"workout_completed" db:"workout_completed"`
-	WorkoutType         *string        `json:"workout_type,omitempty" db:"workout_type"`
-	WorkoutTypes        []string       `json:"workout_types,omitempty"`        // derived; not a DB column
+	ID                   string         `json:"id" db:"id"`
+	UserID               int64          `json:"user_id" db:"user_id"`
+	Date                 time.Time      `json:"date" db:"date"`
+	Calories             int            `json:"calories" db:"calories"`
+	Protein              int            `json:"protein" db:"protein"`
+	Fat                  int            `json:"fat" db:"fat"`
+	Carbs                int            `json:"carbs" db:"carbs"`
+	Weight               *float64       `json:"weight,omitempty" db:"weight"`
+	Steps                int            `json:"steps" db:"steps"`
+	WorkoutCompleted     bool           `json:"workout_completed" db:"workout_completed"`
+	WorkoutType          *string        `json:"workout_type,omitempty" db:"workout_type"`
+	WorkoutTypes         []string       `json:"workout_types,omitempty"`          // derived; not a DB column
 	WorkoutTypeDurations map[string]int `json:"workout_type_durations,omitempty"` // derived; not a DB column
-	WorkoutDuration     *int           `json:"workout_duration,omitempty" db:"workout_duration"`
-	CreatedAt        time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
+	WorkoutDuration      *int           `json:"workout_duration,omitempty" db:"workout_duration"`
+	CreatedAt            time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at" db:"updated_at"`
 }
 
 // Validate validates the daily metrics fields
