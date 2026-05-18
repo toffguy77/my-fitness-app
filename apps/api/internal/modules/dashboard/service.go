@@ -18,16 +18,33 @@ import (
 	"github.com/google/uuid"
 )
 
-// populateWorkoutTypes derives WorkoutTypes from the comma-separated WorkoutType field.
+// populateWorkoutTypes derives WorkoutTypes and WorkoutTypeDurations from the WorkoutType field.
+// workout_type may encode per-type durations as "Силовая:45,Кардио:30".
 func populateWorkoutTypes(m *DailyMetrics) {
 	if m.WorkoutType == nil || *m.WorkoutType == "" {
 		m.WorkoutTypes = nil
+		m.WorkoutTypeDurations = nil
 		return
 	}
-	if strings.Contains(*m.WorkoutType, ",") {
-		m.WorkoutTypes = strings.Split(*m.WorkoutType, ",")
+	parts := strings.Split(*m.WorkoutType, ",")
+	types := make([]string, 0, len(parts))
+	durations := make(map[string]int)
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if typeName, durStr, hasDur := strings.Cut(part, ":"); hasDur {
+			if dur, err := strconv.Atoi(durStr); err == nil && dur > 0 {
+				durations[typeName] = dur
+			}
+			types = append(types, typeName)
+		} else if part != "" {
+			types = append(types, part)
+		}
+	}
+	m.WorkoutTypes = types
+	if len(durations) > 0 {
+		m.WorkoutTypeDurations = durations
 	} else {
-		m.WorkoutTypes = []string{*m.WorkoutType}
+		m.WorkoutTypeDurations = nil
 	}
 }
 
@@ -212,22 +229,47 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 		}
 		// Multiple types take precedence over single type
 		if typesRaw, ok := data["types"].([]interface{}); ok && len(typesRaw) > 0 {
-			parts := make([]string, 0, len(typesRaw))
+			types := make([]string, 0, len(typesRaw))
 			for _, t := range typesRaw {
 				if s, ok := t.(string); ok && s != "" {
-					parts = append(parts, s)
+					types = append(types, s)
 				}
 			}
-			if len(parts) > 0 {
-				joined := strings.Join(parts, ",")
-				existing.WorkoutType = &joined
+			if len(types) > 0 {
+				// Per-type durations: encode as "type:minutes" pairs
+				if durMap, ok := data["typeDurations"].(map[string]interface{}); ok && len(durMap) > 0 {
+					parts := make([]string, 0, len(types))
+					total := 0
+					for _, t := range types {
+						if durVal, hasDur := durMap[t]; hasDur {
+							if dur, ok := durVal.(float64); ok && dur > 0 {
+								parts = append(parts, fmt.Sprintf("%s:%d", t, int(dur)))
+								total += int(dur)
+								continue
+							}
+						}
+						parts = append(parts, t)
+					}
+					joined := strings.Join(parts, ",")
+					existing.WorkoutType = &joined
+					if total > 0 {
+						existing.WorkoutDuration = &total
+					}
+				} else {
+					joined := strings.Join(types, ",")
+					existing.WorkoutType = &joined
+					if duration, ok := data["duration"].(float64); ok {
+						dur := int(duration)
+						existing.WorkoutDuration = &dur
+					}
+				}
 			}
 		} else if workoutType, ok := data["type"].(string); ok {
 			existing.WorkoutType = &workoutType
-		}
-		if duration, ok := data["duration"].(float64); ok {
-			dur := int(duration)
-			existing.WorkoutDuration = &dur
+			if duration, ok := data["duration"].(float64); ok {
+				dur := int(duration)
+				existing.WorkoutDuration = &dur
+			}
 		}
 	}
 

@@ -53,7 +53,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedTypes, setSelectedTypes] = useState<string[]>([])
     const [customType, setCustomType] = useState('')
-    const [duration, setDuration] = useState('')
+    const [durations, setDurations] = useState<Record<string, string>>({})
     const [isSaving, setIsSaving] = useState(false)
     const [validationError, setValidationError] = useState<string | null>(null)
 
@@ -71,6 +71,14 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
         setSelectedTypes(prev =>
             prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
         )
+        setDurations(prev => {
+            if (prev[type] !== undefined) {
+                const next = { ...prev }
+                delete next[type]
+                return next
+            }
+            return { ...prev, [type]: '' }
+        })
         if (type !== 'Другое') setCustomType('')
         setValidationError(null)
     }, [])
@@ -80,16 +88,15 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
         setCustomType(value)
         if (value.trim() && !selectedTypes.includes('Другое')) {
             setSelectedTypes(prev => [...prev, 'Другое'])
+            setDurations(prev => ({ ...prev, 'Другое': '' }))
         }
         setValidationError(null)
     }, [selectedTypes])
 
-    // Handle duration input
-    const handleDurationChange = useCallback((value: string) => {
-        setDuration(value)
+    // Handle per-type duration input
+    const handleDurationChange = useCallback((type: string, value: string) => {
+        setDurations(prev => ({ ...prev, [type]: value }))
         setValidationError(null)
-
-        // Validate duration
         if (value.trim() && (isNaN(parseInt(value, 10)) || parseInt(value, 10) <= 0 || parseInt(value, 10) > 600)) {
             setValidationError('Длительность должна быть от 1 до 600 минут')
         }
@@ -97,7 +104,6 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
     // Handle save workout
     const handleSave = useCallback(async () => {
-        // Validate inputs
         if (selectedTypes.length === 0) {
             setValidationError('Выберите тип тренировки')
             return
@@ -108,11 +114,13 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
             return
         }
 
-        if (duration.trim()) {
-            const durationNum = parseInt(duration, 10)
-            if (isNaN(durationNum) || durationNum <= 0 || durationNum > 600) {
-                setValidationError('Длительность должна быть от 1 до 600 минут')
-                return
+        for (const val of Object.values(durations)) {
+            if (val.trim()) {
+                const n = parseInt(val, 10)
+                if (isNaN(n) || n <= 0 || n > 600) {
+                    setValidationError('Длительность должна быть от 1 до 600 минут')
+                    return
+                }
             }
         }
 
@@ -121,7 +129,13 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
 
         try {
             const resolvedTypes = selectedTypes.map(t => t === 'Другое' ? customType.trim() : t)
-            const workoutDuration = duration.trim() ? parseInt(duration, 10) : undefined
+            const typeDurations: Record<string, number> = {}
+            for (const [t, val] of Object.entries(durations)) {
+                if (val.trim()) {
+                    const resolved = t === 'Другое' ? customType.trim() : t
+                    typeDurations[resolved] = parseInt(val, 10)
+                }
+            }
 
             await updateMetric(dateStr, {
                 type: 'workout',
@@ -129,14 +143,14 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                     completed: true,
                     types: resolvedTypes,
                     type: resolvedTypes[0], // backwards compat
-                    duration: workoutDuration,
+                    typeDurations,
                 }
             })
 
             // Reset form
             setSelectedTypes([])
             setCustomType('')
-            setDuration('')
+            setDurations({})
             setIsDialogOpen(false)
             toast.success('Тренировка записана')
         } catch (error) {
@@ -145,7 +159,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
         } finally {
             setIsSaving(false)
         }
-    }, [selectedTypes, customType, duration, dateStr, updateMetric])
+    }, [selectedTypes, customType, durations, dateStr, updateMetric])
 
     // Handle mark as not completed
     const handleMarkNotCompleted = useCallback(async () => {
@@ -171,9 +185,14 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     // Handle quick add button
     const handleQuickAdd = useCallback(() => {
         if (isWorkoutCompleted) {
-            // If workout is completed, allow editing - restore previous selection
             setSelectedTypes(workout.types ?? (workout.type ? [workout.type] : []))
-            setDuration(workout.duration?.toString() || '')
+            if (workout.typeDurations) {
+                setDurations(Object.fromEntries(
+                    Object.entries(workout.typeDurations).map(([k, v]) => [k, String(v)])
+                ))
+            } else {
+                setDurations({})
+            }
         }
         setIsDialogOpen(true)
     }, [isWorkoutCompleted, workout])
@@ -182,7 +201,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     const handleCancel = useCallback(() => {
         setSelectedTypes([])
         setCustomType('')
-        setDuration('')
+        setDurations({})
         setIsDialogOpen(false)
         setValidationError(null)
     }, [])
@@ -245,16 +264,22 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                         </div>
 
                         {/* Workout details */}
-                        <div className="space-y-2">
-                            {(workout.types ?? (workout.type ? [workout.type] : [])).length > 0 && (
-                                <div className="flex items-center justify-center gap-2 text-gray-700"
-                                    aria-label={`Тип тренировки: ${(workout.types ?? [workout.type]).join(', ')}`}>
+                        <div className="space-y-1">
+                            {(workout.types ?? (workout.type ? [workout.type] : [])).map(t => (
+                                <div key={t} className="flex items-center justify-center gap-2 text-gray-700"
+                                    aria-label={`Тип тренировки: ${t}`}>
                                     <Dumbbell className="h-4 w-4" aria-hidden="true" />
-                                    <span className="font-medium">{(workout.types ?? [workout.type]).join(', ')}</span>
+                                    <span className="font-medium">{t}</span>
+                                    {workout.typeDurations?.[t] && (
+                                        <>
+                                            <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                                            <span className="text-sm text-gray-500">{formatDuration(workout.typeDurations[t])}</span>
+                                        </>
+                                    )}
                                 </div>
-                            )}
-
-                            {workout.duration && (
+                            ))}
+                            {/* Fallback: single duration for legacy records without per-type durations */}
+                            {!workout.typeDurations && workout.duration && (
                                 <div className="flex items-center justify-center gap-2 text-gray-600" aria-label={`Длительность: ${formatDuration(workout.duration)}`}>
                                     <Clock className="h-4 w-4" aria-hidden="true" />
                                     <span className="text-sm">{formatDuration(workout.duration)}</span>
@@ -355,24 +380,30 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                             </div>
                         )}
 
-                        {/* Duration input */}
-                        <div>
-                            <label htmlFor="workout-duration" className="sr-only">
-                                Длительность тренировки в минутах
-                            </label>
-                            <Input
-                                id="workout-duration"
-                                type="number"
-                                min="1"
-                                max="600"
-                                placeholder="Длительность (минуты, необязательно)"
-                                value={duration}
-                                onChange={(e) => handleDurationChange(e.target.value)}
-                                aria-label="Длительность тренировки в минутах"
-                                aria-describedby={validationError ? "workout-error" : undefined}
-                                aria-invalid={!!validationError}
-                            />
-                        </div>
+                        {/* Per-type duration inputs */}
+                        {selectedTypes.length > 0 && (
+                            <div className="space-y-2">
+                                <span className="text-sm font-medium text-gray-700">Длительность (мин, необязательно)</span>
+                                {selectedTypes.map(type => {
+                                    const displayName = type === 'Другое' ? (customType || 'Другое') : type
+                                    return (
+                                        <div key={type} className="flex items-center gap-2">
+                                            <span className="text-sm text-gray-600 min-w-[7rem] shrink-0">{displayName}:</span>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                max="600"
+                                                placeholder="мин"
+                                                value={durations[type] ?? ''}
+                                                onChange={(e) => handleDurationChange(type, e.target.value)}
+                                                aria-label={`Длительность: ${displayName}`}
+                                                aria-invalid={!!validationError}
+                                            />
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
 
                         {/* Error message */}
                         {validationError && (

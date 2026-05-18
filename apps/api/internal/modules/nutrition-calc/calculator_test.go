@@ -132,6 +132,22 @@ func TestCalculateTargets_CaloriesMatchMacroSum(t *testing.T) {
 	}
 }
 
+func TestCalculateWorkoutBonus_PerTypeDurations(t *testing.T) {
+	bonus := CalculateWorkoutBonus(&WorkoutInfo{
+		Types: []string{"Силовая", "Кардио"},
+		TypeDurations: map[string]int{
+			"Силовая": 45,
+			"Кардио":  30,
+		},
+	})
+	// Силовая: 300 kcal/h × 45/60 = 225
+	// Кардио:  400 kcal/h × 30/60 = 200
+	// Total: 425
+	if bonus != 425 {
+		t.Errorf("expected 425, got %f", bonus)
+	}
+}
+
 func TestCalculateTargets_NoWorkout_Maintain(t *testing.T) {
 	profile := UserProfile{
 		BirthDate:     time.Now().AddDate(-25, 0, 0),

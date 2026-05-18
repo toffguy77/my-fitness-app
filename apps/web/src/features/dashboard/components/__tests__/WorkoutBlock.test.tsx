@@ -250,7 +250,7 @@ describe('WorkoutBlock', () => {
             expect(screen.getByPlaceholderText('Укажите тип тренировки')).toBeInTheDocument()
         })
 
-        it('displays duration input', async () => {
+        it('displays per-type duration input after selecting a type', async () => {
             const user = userEvent.setup()
             render(<WorkoutBlock date={mockDate} />)
 
@@ -258,8 +258,12 @@ describe('WorkoutBlock', () => {
             await user.click(addButton)
 
             await waitFor(() => {
-                expect(screen.getByPlaceholderText(/Длительность/)).toBeInTheDocument()
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })).toBeInTheDocument()
             })
+
+            await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' }))
+
+            expect(screen.getByRole('spinbutton', { name: 'Длительность: Йога' })).toBeInTheDocument()
         })
     })
 
@@ -310,10 +314,9 @@ describe('WorkoutBlock', () => {
                 expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' })
-            await user.click(typeButton)
+            await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' }))
 
-            const durationInput = screen.getByPlaceholderText(/Длительность/)
+            const durationInput = screen.getByRole('spinbutton', { name: 'Длительность: Кардио' })
             await user.type(durationInput, '-10')
 
             const saveButtons = screen.getAllByRole('button')
@@ -334,10 +337,9 @@ describe('WorkoutBlock', () => {
                 expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
-            await user.click(typeButton)
+            await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' }))
 
-            const durationInput = screen.getByPlaceholderText(/Длительность/)
+            const durationInput = screen.getByRole('spinbutton', { name: 'Длительность: Бег' })
             await user.type(durationInput, '700')
 
             const saveButtons = screen.getAllByRole('button')
@@ -374,7 +376,7 @@ describe('WorkoutBlock', () => {
                         completed: true,
                         types: ['Йога'],
                         type: 'Йога',
-                        duration: undefined,
+                        typeDurations: {},
                     },
                 })
             })
@@ -391,10 +393,9 @@ describe('WorkoutBlock', () => {
                 expect(screen.getByRole('checkbox', { name: 'Тип тренировки: HIIT' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: HIIT' })
-            await user.click(typeButton)
+            await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: HIIT' }))
 
-            const durationInput = screen.getByPlaceholderText(/Длительность/)
+            const durationInput = screen.getByRole('spinbutton', { name: 'Длительность: HIIT' })
             await user.type(durationInput, '30')
 
             const saveButtons = screen.getAllByRole('button')
@@ -408,7 +409,7 @@ describe('WorkoutBlock', () => {
                         completed: true,
                         types: ['HIIT'],
                         type: 'HIIT',
-                        duration: 30,
+                        typeDurations: { HIIT: 30 },
                     },
                 })
             })
@@ -442,7 +443,7 @@ describe('WorkoutBlock', () => {
                         completed: true,
                         types: ['Пилатес'],
                         type: 'Пилатес',
-                        duration: undefined,
+                        typeDurations: {},
                     },
                 })
             })
@@ -462,6 +463,10 @@ describe('WorkoutBlock', () => {
             await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Силовая' }))
             await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Кардио' }))
 
+            // Enter per-type durations
+            await user.type(screen.getByRole('spinbutton', { name: 'Длительность: Силовая' }), '45')
+            await user.type(screen.getByRole('spinbutton', { name: 'Длительность: Кардио' }), '30')
+
             const saveButtons = screen.getAllByRole('button')
             const saveButton = saveButtons.find(btn => btn.textContent?.includes('Сохранить'))
             await user.click(saveButton!)
@@ -473,7 +478,7 @@ describe('WorkoutBlock', () => {
                         completed: true,
                         types: ['Силовая', 'Кардио'],
                         type: 'Силовая',
-                        duration: undefined,
+                        typeDurations: { Силовая: 45, Кардио: 30 },
                     },
                 })
             })
@@ -615,22 +620,21 @@ describe('WorkoutBlock', () => {
                 expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })).toBeInTheDocument()
             })
 
-            const typeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
-            await user.click(typeButton)
+            await user.click(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' }))
 
-            const durationInput = screen.getByPlaceholderText(/Длительность/)
-            await user.type(durationInput, '45')
+            await user.type(screen.getByRole('spinbutton', { name: 'Длительность: Бег' }), '45')
 
             const allButtons = screen.getAllByRole('button')
             const cancelButton = allButtons.find(btn => btn.textContent === 'Отмена')
             await user.click(cancelButton!)
 
-            // Reopen dialog
+            // Reopen dialog — Бег should not be selected and duration input should be gone
             await user.click(addButton)
 
             await waitFor(() => {
                 const reopenedTypeButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
                 expect(reopenedTypeButton).not.toHaveClass('bg-blue-100')
+                expect(screen.queryByRole('spinbutton', { name: 'Длительность: Бег' })).not.toBeInTheDocument()
             })
         })
     })
@@ -754,7 +758,8 @@ describe('WorkoutBlock', () => {
                         workout: {
                             completed: true,
                             type: 'Йога',
-                            duration: 45,
+                            types: ['Йога'],
+                            typeDurations: { 'Йога': 45 },
                         },
                     },
                 },
@@ -768,13 +773,8 @@ describe('WorkoutBlock', () => {
             await user.click(editButton!)
 
             await waitFor(() => {
-                // Check that Йога is selected
-                const yogaButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })
-                expect(yogaButton).toHaveClass('bg-blue-100')
-
-                // Check that duration is pre-filled
-                const durationInput = screen.getByPlaceholderText(/Длительность/)
-                expect(durationInput).toHaveValue(45)
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Йога' })).toHaveClass('bg-blue-100')
+                expect(screen.getByRole('spinbutton', { name: 'Длительность: Йога' })).toHaveValue(45)
             })
         })
 
@@ -786,7 +786,8 @@ describe('WorkoutBlock', () => {
                         workout: {
                             completed: true,
                             type: 'Бег',
-                            duration: 30,
+                            types: ['Бег'],
+                            typeDurations: { 'Бег': 30 },
                         },
                     },
                 },
@@ -795,18 +796,12 @@ describe('WorkoutBlock', () => {
 
             render(<WorkoutBlock date={mockDate} />)
 
-            // Click header quick add button (should have aria-label "Изменить тренировку")
             const headerButtons = screen.getAllByRole('button', { name: 'Изменить тренировку' })
             await user.click(headerButtons[0])
 
             await waitFor(() => {
-                // Check that Бег is selected
-                const runButton = screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })
-                expect(runButton).toHaveClass('bg-blue-100')
-
-                // Check that duration is pre-filled
-                const durationInput = screen.getByPlaceholderText(/Длительность/)
-                expect(durationInput).toHaveValue(30)
+                expect(screen.getByRole('checkbox', { name: 'Тип тренировки: Бег' })).toHaveClass('bg-blue-100')
+                expect(screen.getByRole('spinbutton', { name: 'Длительность: Бег' })).toHaveValue(30)
             })
         })
     })

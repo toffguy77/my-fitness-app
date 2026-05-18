@@ -78,9 +78,10 @@ type UserProfile struct {
 
 // WorkoutInfo represents a workout for the day
 type WorkoutInfo struct {
-	Type        string   // single type (legacy / fallback)
-	Types       []string // multiple types; takes precedence over Type when non-empty
-	DurationMin int
+	Type          string         // single type (legacy / fallback)
+	Types         []string       // multiple types; takes precedence over Type when non-empty
+	DurationMin   int            // total duration fallback (used when TypeDurations is empty)
+	TypeDurations map[string]int // per-type durations in minutes; when non-empty, sum is used
 }
 
 // CalculatedTargets is the result of KBJU calculation

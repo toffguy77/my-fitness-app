@@ -25,28 +25,53 @@ func CalculateTDEE(bmr float64, level ActivityLevel) float64 {
 }
 
 // CalculateWorkoutBonus returns extra kcal burned from a workout.
-// When workout.Types is non-empty, it averages kcal/hour across all known types.
-// Falls back to workout.Type for single-type entries.
+// When TypeDurations is non-empty, sums kcal per type using its individual duration.
+// Falls back to averaging kcal/hour × DurationMin for legacy single-duration entries.
 func CalculateWorkoutBonus(workout *WorkoutInfo) float64 {
-	if workout == nil || workout.DurationMin <= 0 {
+	if workout == nil {
 		return 0
 	}
 	types := workout.Types
 	if len(types) == 0 && workout.Type != "" {
 		types = []string{workout.Type}
 	}
-	var total float64
+	if len(types) == 0 {
+		return 0
+	}
+
+	// Per-type durations: sum kcal for each type individually
+	if len(workout.TypeDurations) > 0 {
+		var total float64
+		for _, t := range types {
+			kcalPerHour, ok := WorkoutCaloriesPerHour[t]
+			if !ok {
+				continue
+			}
+			durMin, hasDur := workout.TypeDurations[t]
+			if !hasDur || durMin <= 0 {
+				continue
+			}
+			total += kcalPerHour * float64(durMin) / 60.0
+		}
+		return total
+	}
+
+	// Fallback: average kcal/h × total duration
+	if workout.DurationMin <= 0 {
+		return 0
+	}
+	var rateSum float64
 	count := 0
 	for _, t := range types {
 		if kcal, ok := WorkoutCaloriesPerHour[t]; ok {
-			total += kcal
+			rateSum += kcal
 			count++
 		}
 	}
 	if count == 0 {
 		return 0
 	}
-	return (total / float64(count)) * float64(workout.DurationMin) / 60.0
+	return (rateSum / float64(count)) * float64(workout.DurationMin) / 60.0
 }
 
 // CalculateTargets computes full KBJU targets for a user profile and optional workout.
