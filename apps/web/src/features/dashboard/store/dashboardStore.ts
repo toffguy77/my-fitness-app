@@ -260,7 +260,9 @@ interface BackendDailyMetrics {
     steps: number;
     workout_completed: boolean;
     workout_type?: string | null;
+    workout_types?: string[] | null;
     workout_duration?: number | null;
+    workout_type_durations?: Record<string, number> | null;
     created_at: string;
     updated_at: string;
 }
@@ -290,7 +292,11 @@ function mapBackendMetrics(raw: BackendDailyMetrics | DailyMetrics | any): Daily
         workout: {
             completed: raw.workout_completed || false,
             type: raw.workout_type ?? undefined,
+            types: raw.workout_types ?? (raw.workout_type
+                ? raw.workout_type.split(',').map((t: string) => t.split(':')[0])
+                : undefined),
             duration: raw.workout_duration ?? undefined,
+            typeDurations: raw.workout_type_durations ?? undefined,
         },
         completionStatus: {
             nutritionFilled: (raw.calories || 0) > 0,
@@ -521,7 +527,7 @@ function loadCachedData<T>(key: string): T | null {
     } catch (error) {
         // Log cache loading error (non-critical)
         if (process.env.NODE_ENV !== 'test') {
-            console.warn(`Failed to load cached data for ${key}:`, error);
+            console.warn('Failed to load cached data for key:', key, error);
         }
         return null;
     }
@@ -539,7 +545,7 @@ function saveCachedData<T>(key: string, data: T): void {
     } catch (error) {
         // Log cache saving error (non-critical)
         if (process.env.NODE_ENV !== 'test') {
-            console.warn(`Failed to save cached data for ${key}:`, error);
+            console.warn('Failed to save cached data for key:', key, error);
         }
     }
 }
@@ -1668,7 +1674,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 } catch (error) {
                     // Log sync error for this entry
                     if (process.env.NODE_ENV !== 'test') {
-                        console.warn(`Failed to sync entry ${entry.id}:`, error);
+                        console.warn('Failed to sync entry:', entry.id, error);
                     }
 
                     // If max attempts reached, add to failed list

@@ -25,15 +25,53 @@ func CalculateTDEE(bmr float64, level ActivityLevel) float64 {
 }
 
 // CalculateWorkoutBonus returns extra kcal burned from a workout.
+// When TypeDurations is non-empty, sums kcal per type using its individual duration.
+// Falls back to averaging kcal/hour × DurationMin for legacy single-duration entries.
 func CalculateWorkoutBonus(workout *WorkoutInfo) float64 {
-	if workout == nil || workout.DurationMin <= 0 {
+	if workout == nil {
 		return 0
 	}
-	kcalPerHour, ok := WorkoutCaloriesPerHour[workout.Type]
-	if !ok {
+	types := workout.Types
+	if len(types) == 0 && workout.Type != "" {
+		types = []string{workout.Type}
+	}
+	if len(types) == 0 {
 		return 0
 	}
-	return kcalPerHour * float64(workout.DurationMin) / 60.0
+
+	// Per-type durations: sum kcal for each type individually
+	if len(workout.TypeDurations) > 0 {
+		var total float64
+		for _, t := range types {
+			kcalPerHour, ok := WorkoutCaloriesPerHour[t]
+			if !ok {
+				continue
+			}
+			durMin, hasDur := workout.TypeDurations[t]
+			if !hasDur || durMin <= 0 {
+				continue
+			}
+			total += kcalPerHour * float64(durMin) / 60.0
+		}
+		return total
+	}
+
+	// Fallback: average kcal/h × total duration
+	if workout.DurationMin <= 0 {
+		return 0
+	}
+	var rateSum float64
+	count := 0
+	for _, t := range types {
+		if kcal, ok := WorkoutCaloriesPerHour[t]; ok {
+			rateSum += kcal
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return (rateSum / float64(count)) * float64(workout.DurationMin) / 60.0
 }
 
 // CalculateTargets computes full KBJU targets for a user profile and optional workout.
@@ -59,11 +97,15 @@ func CalculateTargets(profile UserProfile, workout *WorkoutInfo) CalculatedTarge
 	}
 	carbsG := carbsKcal / 4
 
+	roundedProtein := math.Round(proteinG*10) / 10
+	roundedFat := math.Round(fatG*10) / 10
+	roundedCarbs := math.Round(carbsG*10) / 10
+
 	return CalculatedTargets{
-		Calories:     math.Round(targetCalories*10) / 10,
-		Protein:      math.Round(proteinG*10) / 10,
-		Fat:          math.Round(fatG*10) / 10,
-		Carbs:        math.Round(carbsG*10) / 10,
+		Calories:     math.Round((roundedProtein*4+roundedFat*9+roundedCarbs*4)*10) / 10,
+		Protein:      roundedProtein,
+		Fat:          roundedFat,
+		Carbs:        roundedCarbs,
 		BMR:          math.Round(bmr*10) / 10,
 		TDEE:         math.Round(tdee*10) / 10,
 		WorkoutBonus: math.Round(workoutBonus*10) / 10,

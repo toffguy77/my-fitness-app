@@ -1,6 +1,8 @@
 package foodtracker
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -46,6 +48,11 @@ func (h *Handler) SearchFoods(c *gin.Context) {
 
 	result, err := h.service.SearchFoods(c.Request.Context(), userID, req.Query, limit, req.Offset)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			c.AbortWithStatus(499)
+			return
+		}
+
 		h.log.Errorw("Не удалось выполнить поиск", "error", err, "query", req.Query)
 
 		errMsg := err.Error()

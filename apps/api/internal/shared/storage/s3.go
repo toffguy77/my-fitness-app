@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/burcev/api/internal/shared/logger"
 )
 
@@ -150,6 +152,15 @@ func (s *S3Client) GetFile(ctx context.Context, key string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// IsNotFound returns true if err is an S3 NoSuchKey (404) error.
+func IsNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	var noSuchKey *s3types.NoSuchKey
+	return errors.As(err, &noSuchKey)
 }
 
 // DeleteFile deletes a file from S3

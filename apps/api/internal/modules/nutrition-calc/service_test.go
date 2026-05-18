@@ -156,8 +156,8 @@ func TestRecalculateForDate(t *testing.T) {
 		assert.Equal(t, 1750.0, targets.BMR)
 		// TDEE = BMR * 1.55 (moderate) = 1750 * 1.55 = 2712.5
 		assert.Equal(t, 2712.5, targets.TDEE)
-		// maintain: 0% modifier, so calories = TDEE = 2712.5
-		assert.Equal(t, 2712.5, targets.Calories)
+		// calories derived from rounded macro grams: P*4+F*9+C*4 = 128*4 + 75.3*9 + 380.6*4 = 2712.1
+		assert.Equal(t, 2712.1, targets.Calories)
 		assert.Equal(t, 80.0, targets.WeightUsed)
 		assert.Equal(t, "calculated", targets.Source)
 		assert.Equal(t, 0.0, targets.WorkoutBonus)

@@ -659,6 +659,23 @@ func TestRecordRecognitionUsage(t *testing.T) {
 // Helper Functions
 // ============================================================================
 
+// TestSearchFoods_ContextCanceled verifies that a canceled context is returned
+// as-is without being wrapped in a database error message.
+func TestSearchFoods_ContextCanceled(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	mock.ExpectQuery(`WITH matched`).WillReturnError(context.Canceled)
+
+	_, err := service.SearchFoods(ctx, int64(1), "apple", 20, 0)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled, "canceled context should propagate as context.Canceled, not wrapped in a DB error")
+}
+
 // stringPtr returns a pointer to a string
 func stringPtr(s string) *string {
 	return &s

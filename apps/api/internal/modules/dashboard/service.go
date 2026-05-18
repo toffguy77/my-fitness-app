@@ -18,6 +18,36 @@ import (
 	"github.com/google/uuid"
 )
 
+// populateWorkoutTypes derives WorkoutTypes and WorkoutTypeDurations from the WorkoutType field.
+// workout_type may encode per-type durations as "Силовая:45,Кардио:30".
+func populateWorkoutTypes(m *DailyMetrics) {
+	if m.WorkoutType == nil || *m.WorkoutType == "" {
+		m.WorkoutTypes = nil
+		m.WorkoutTypeDurations = nil
+		return
+	}
+	parts := strings.Split(*m.WorkoutType, ",")
+	types := make([]string, 0, len(parts))
+	durations := make(map[string]int)
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if typeName, durStr, hasDur := strings.Cut(part, ":"); hasDur {
+			if dur, err := strconv.Atoi(durStr); err == nil && dur > 0 {
+				durations[typeName] = dur
+			}
+			types = append(types, typeName)
+		} else if part != "" {
+			types = append(types, part)
+		}
+	}
+	m.WorkoutTypes = types
+	if len(durations) > 0 {
+		m.WorkoutTypeDurations = durations
+	} else {
+		m.WorkoutTypeDurations = nil
+	}
+}
+
 // parseIntArray parses a PostgreSQL integer array string like "{1,3,5}" into []int
 func parseIntArray(s string) []int {
 	s = strings.TrimSpace(s)
@@ -124,6 +154,7 @@ func (s *Service) GetDailyMetrics(ctx context.Context, userID int64, date time.T
 		"found":   true,
 	})
 
+	populateWorkoutTypes(&metrics)
 	return &metrics, nil
 }
 
@@ -196,12 +227,49 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 				existing.WorkoutDuration = nil
 			}
 		}
-		if workoutType, ok := data["type"].(string); ok {
+		// Multiple types take precedence over single type
+		if typesRaw, ok := data["types"].([]interface{}); ok && len(typesRaw) > 0 {
+			types := make([]string, 0, len(typesRaw))
+			for _, t := range typesRaw {
+				if s, ok := t.(string); ok && s != "" {
+					types = append(types, s)
+				}
+			}
+			if len(types) > 0 {
+				// Per-type durations: encode as "type:minutes" pairs
+				if durMap, ok := data["typeDurations"].(map[string]interface{}); ok && len(durMap) > 0 {
+					parts := make([]string, 0, len(types))
+					total := 0
+					for _, t := range types {
+						if durVal, hasDur := durMap[t]; hasDur {
+							if dur, ok := durVal.(float64); ok && dur > 0 {
+								parts = append(parts, fmt.Sprintf("%s:%d", t, int(dur)))
+								total += int(dur)
+								continue
+							}
+						}
+						parts = append(parts, t)
+					}
+					joined := strings.Join(parts, ",")
+					existing.WorkoutType = &joined
+					if total > 0 {
+						existing.WorkoutDuration = &total
+					}
+				} else {
+					joined := strings.Join(types, ",")
+					existing.WorkoutType = &joined
+					if duration, ok := data["duration"].(float64); ok {
+						dur := int(duration)
+						existing.WorkoutDuration = &dur
+					}
+				}
+			}
+		} else if workoutType, ok := data["type"].(string); ok {
 			existing.WorkoutType = &workoutType
-		}
-		if duration, ok := data["duration"].(float64); ok {
-			dur := int(duration)
-			existing.WorkoutDuration = &dur
+			if duration, ok := data["duration"].(float64); ok {
+				dur := int(duration)
+				existing.WorkoutDuration = &dur
+			}
 		}
 	}
 
@@ -286,6 +354,7 @@ func (s *Service) SaveMetric(ctx context.Context, userID int64, date time.Time, 
 		"metric_type": metricUpdate.Type,
 	})
 
+	populateWorkoutTypes(&result)
 	return &result, nil
 }
 
@@ -339,6 +408,7 @@ func (s *Service) GetWeekMetrics(ctx context.Context, userID int64, startDate, e
 			s.log.Error("Failed to scan daily metrics", "error", err)
 			return nil, fmt.Errorf("failed to scan daily metrics: %w", err)
 		}
+		populateWorkoutTypes(&m)
 		metrics = append(metrics, m)
 	}
 

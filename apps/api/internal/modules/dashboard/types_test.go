@@ -903,3 +903,52 @@ func TestMetricUpdateTypeIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestPopulateWorkoutTypes(t *testing.T) {
+	t.Run("nil workout_type produces nil WorkoutTypes", func(t *testing.T) {
+		m := &DailyMetrics{}
+		populateWorkoutTypes(m)
+		assert.Nil(t, m.WorkoutTypes)
+		assert.Nil(t, m.WorkoutTypeDurations)
+	})
+
+	t.Run("single type produces slice with one element", func(t *testing.T) {
+		wt := "Силовая"
+		m := &DailyMetrics{WorkoutType: &wt}
+		populateWorkoutTypes(m)
+		assert.Equal(t, []string{"Силовая"}, m.WorkoutTypes)
+		assert.Nil(t, m.WorkoutTypeDurations)
+	})
+
+	t.Run("comma-separated type produces multi-element slice", func(t *testing.T) {
+		wt := "Силовая,Кардио"
+		m := &DailyMetrics{WorkoutType: &wt}
+		populateWorkoutTypes(m)
+		assert.Equal(t, []string{"Силовая", "Кардио"}, m.WorkoutTypes)
+		assert.Nil(t, m.WorkoutTypeDurations)
+	})
+
+	t.Run("single type with duration extracts type and duration", func(t *testing.T) {
+		wt := "Силовая:45"
+		m := &DailyMetrics{WorkoutType: &wt}
+		populateWorkoutTypes(m)
+		assert.Equal(t, []string{"Силовая"}, m.WorkoutTypes)
+		assert.Equal(t, map[string]int{"Силовая": 45}, m.WorkoutTypeDurations)
+	})
+
+	t.Run("multiple types with durations extracts all", func(t *testing.T) {
+		wt := "Силовая:45,Кардио:30"
+		m := &DailyMetrics{WorkoutType: &wt}
+		populateWorkoutTypes(m)
+		assert.Equal(t, []string{"Силовая", "Кардио"}, m.WorkoutTypes)
+		assert.Equal(t, map[string]int{"Силовая": 45, "Кардио": 30}, m.WorkoutTypeDurations)
+	})
+
+	t.Run("mixed types with and without duration", func(t *testing.T) {
+		wt := "Силовая:45,Кардио"
+		m := &DailyMetrics{WorkoutType: &wt}
+		populateWorkoutTypes(m)
+		assert.Equal(t, []string{"Силовая", "Кардио"}, m.WorkoutTypes)
+		assert.Equal(t, map[string]int{"Силовая": 45}, m.WorkoutTypeDurations)
+	})
+}

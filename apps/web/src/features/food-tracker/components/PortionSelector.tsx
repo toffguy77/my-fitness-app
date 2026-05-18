@@ -130,7 +130,7 @@ export function PortionSelector({
             return;
         }
 
-        const numValue = parseFloat(value);
+        const numValue = parseFloat(value.replace(',', '.'));
 
         if (isNaN(numValue)) {
             setError('Порция должна быть числом');
@@ -142,7 +142,7 @@ export function PortionSelector({
 
     // Handle input blur - reset to valid value if invalid
     const handleInputBlur = useCallback(() => {
-        if (inputValue === '' || isNaN(parseFloat(inputValue))) {
+        if (inputValue === '' || isNaN(parseFloat(inputValue.replace(',', '.')))) {
             setInputValue(String(amount));
             setError(null);
         }
@@ -222,7 +222,7 @@ export function PortionSelector({
                         </label>
                         <input
                             id="portion-input"
-                            type="number"
+                            type="text"
                             inputMode="decimal"
                             min={MIN_PORTION}
                             max={maxValue}

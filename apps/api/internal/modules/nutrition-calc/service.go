@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
@@ -283,15 +285,16 @@ func (s *Service) getLatestWeight(ctx context.Context, userID int64, date time.T
 }
 
 // getWorkoutForDate returns workout info for a specific date, or nil.
+// workout_type may encode per-type durations as "Силовая:45,Кардио:30".
 func (s *Service) getWorkoutForDate(ctx context.Context, userID int64, date time.Time) (*WorkoutInfo, error) {
 	query := `
 		SELECT workout_type, workout_duration
 		FROM daily_metrics
 		WHERE user_id = $1 AND date = $2
-		  AND workout_type IS NOT NULL AND workout_duration IS NOT NULL
+		  AND workout_type IS NOT NULL AND workout_completed = true
 	`
 	var wType string
-	var wDuration int
+	var wDuration sql.NullInt64
 	err := s.db.QueryRowContext(ctx, query, userID, date.Format("2006-01-02")).Scan(&wType, &wDuration)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -299,5 +302,37 @@ func (s *Service) getWorkoutForDate(ctx context.Context, userID int64, date time
 	if err != nil {
 		return nil, fmt.Errorf("getting workout: %w", err)
 	}
-	return &WorkoutInfo{Type: wType, DurationMin: wDuration}, nil
+
+	info := &WorkoutInfo{}
+	if wDuration.Valid {
+		info.DurationMin = int(wDuration.Int64)
+	}
+
+	// Parse "type:duration" encoded pairs (e.g. "Силовая:45,Кардио:30")
+	parts := strings.Split(wType, ",")
+	types := make([]string, 0, len(parts))
+	typeDurations := make(map[string]int)
+	hasDurations := false
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if typeName, durStr, hasDur := strings.Cut(part, ":"); hasDur {
+			if dur, err := strconv.Atoi(durStr); err == nil && dur > 0 {
+				typeDurations[typeName] = dur
+				hasDurations = true
+			}
+			types = append(types, typeName)
+		} else if part != "" {
+			types = append(types, part)
+		}
+	}
+
+	if len(types) > 1 {
+		info.Types = types
+	} else if len(types) == 1 {
+		info.Type = types[0]
+	}
+	if hasDurations {
+		info.TypeDurations = typeDurations
+	}
+	return info, nil
 }
