@@ -295,6 +295,20 @@ func TestHandler_GetArticle(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
+
+	t.Run("invalid uuid format returns 400 not 500", func(t *testing.T) {
+		handler, _ := setupContentTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/not-a-uuid", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "not-a-uuid"}}
+
+		handler.GetArticle(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }
 
 func TestHandler_ListArticles(t *testing.T) {
@@ -475,6 +489,53 @@ func TestHandler_PublishArticle(t *testing.T) {
 		c.Params = gin.Params{{Key: "id", Value: ""}}
 
 		handler.PublishArticle(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestHandler_GetPublicArticle(t *testing.T) {
+	t.Run("success returns article", func(t *testing.T) {
+		handler, mock := setupContentTestHandler()
+		mock.getPublicArticleFunc = func(ctx context.Context, articleID string) (*Article, error) {
+			return &Article{ID: articleID, Title: "Public Article"}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
+
+		handler.GetPublicArticle(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("not found returns 404", func(t *testing.T) {
+		handler, mock := setupContentTestHandler()
+		mock.getPublicArticleFunc = func(ctx context.Context, articleID string) (*Article, error) {
+			return nil, errors.New("not found")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
+
+		handler.GetPublicArticle(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("invalid uuid format returns 400 not 500", func(t *testing.T) {
+		handler, _ := setupContentTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/nonexistent-id", nil)
+		c.Params = gin.Params{{Key: "id", Value: "nonexistent-id"}}
+
+		handler.GetPublicArticle(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
