@@ -158,7 +158,7 @@ func TestHandler_CreateArticle(t *testing.T) {
 	t.Run("success creates article", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.createArticleFunc = func(ctx context.Context, authorID int64, req CreateArticleRequest) (*Article, error) {
-			return &Article{ID: "art-1", AuthorID: authorID, Title: req.Title, Category: req.Category}, nil
+			return &Article{ID: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", AuthorID: authorID, Title: req.Title, Category: req.Category}, nil
 		}
 
 		w := httptest.NewRecorder()
@@ -239,9 +239,9 @@ func TestHandler_GetArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/art-1", nil)
+		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.GetArticle(c)
 
@@ -256,9 +256,9 @@ func TestHandler_GetArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/art-1", nil)
+		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.GetArticle(c)
 
@@ -273,9 +273,9 @@ func TestHandler_GetArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/art-1", nil)
+		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.GetArticle(c)
 
@@ -295,6 +295,20 @@ func TestHandler_GetArticle(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
+
+	t.Run("invalid uuid format returns 400 not 500", func(t *testing.T) {
+		handler, _ := setupContentTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/content/articles/not-a-uuid", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "not-a-uuid"}}
+
+		handler.GetArticle(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }
 
 func TestHandler_ListArticles(t *testing.T) {
@@ -302,7 +316,7 @@ func TestHandler_ListArticles(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.listArticlesFunc = func(ctx context.Context, authorID int64, status string, category string, isAdmin bool) (*ArticlesListResponse, error) {
 			return &ArticlesListResponse{
-				Articles: []Article{{ID: "art-1", Title: "Test"}},
+				Articles: []Article{{ID: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", Title: "Test"}},
 				Total:    1,
 			}, nil
 		}
@@ -355,9 +369,9 @@ func TestHandler_DeleteArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodDelete, "/content/articles/art-1", nil)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.DeleteArticle(c)
 
@@ -372,9 +386,9 @@ func TestHandler_DeleteArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodDelete, "/content/articles/art-1", nil)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.DeleteArticle(c)
 
@@ -389,9 +403,9 @@ func TestHandler_DeleteArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodDelete, "/content/articles/art-1", nil)
+		c.Request = httptest.NewRequest(http.MethodDelete, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.DeleteArticle(c)
 
@@ -422,9 +436,9 @@ func TestHandler_PublishArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodPost, "/content/articles/art-1/publish", nil)
+		c.Request = httptest.NewRequest(http.MethodPost, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1/publish", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.PublishArticle(c)
 
@@ -439,9 +453,9 @@ func TestHandler_PublishArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodPost, "/content/articles/art-1/publish", nil)
+		c.Request = httptest.NewRequest(http.MethodPost, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1/publish", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.PublishArticle(c)
 
@@ -456,9 +470,9 @@ func TestHandler_PublishArticle(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodPost, "/content/articles/art-1/publish", nil)
+		c.Request = httptest.NewRequest(http.MethodPost, "/content/articles/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1/publish", nil)
 		c.Set("user_id", int64(1))
-		c.Params = gin.Params{{Key: "id", Value: "art-1"}}
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
 
 		handler.PublishArticle(c)
 
@@ -475,6 +489,53 @@ func TestHandler_PublishArticle(t *testing.T) {
 		c.Params = gin.Params{{Key: "id", Value: ""}}
 
 		handler.PublishArticle(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestHandler_GetPublicArticle(t *testing.T) {
+	t.Run("success returns article", func(t *testing.T) {
+		handler, mock := setupContentTestHandler()
+		mock.getPublicArticleFunc = func(ctx context.Context, articleID string) (*Article, error) {
+			return &Article{ID: articleID, Title: "Public Article"}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
+
+		handler.GetPublicArticle(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("not found returns 404", func(t *testing.T) {
+		handler, mock := setupContentTestHandler()
+		mock.getPublicArticleFunc = func(ctx context.Context, articleID string) (*Article, error) {
+			return nil, errors.New("not found")
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1", nil)
+		c.Params = gin.Params{{Key: "id", Value: "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1"}}
+
+		handler.GetPublicArticle(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("invalid uuid format returns 400 not 500", func(t *testing.T) {
+		handler, _ := setupContentTestHandler()
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public/content/nonexistent-id", nil)
+		c.Params = gin.Params{{Key: "id", Value: "nonexistent-id"}}
+
+		handler.GetPublicArticle(c)
 
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})

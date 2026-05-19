@@ -9,6 +9,7 @@ import (
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Handler handles content module requests
@@ -25,6 +26,21 @@ func NewHandler(cfg *config.Config, log *logger.Logger, svc ServiceInterface) *H
 		log:     log,
 		service: svc,
 	}
+}
+
+// parseArticleID extracts and validates the :id URL param as a UUID.
+// Returns empty string and writes 400 if the format is invalid.
+func (h *Handler) parseArticleID(c *gin.Context) (string, bool) {
+	id := c.Param("id")
+	if id == "" {
+		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+		return "", false
+	}
+	if _, err := uuid.Parse(id); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный формат идентификатора статьи")
+		return "", false
+	}
+	return id, true
 }
 
 // getUserID extracts the authenticated user ID from the Gin context
@@ -83,9 +99,8 @@ func (h *Handler) GetArticle(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -134,9 +149,8 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -171,9 +185,8 @@ func (h *Handler) DeleteArticle(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -202,9 +215,8 @@ func (h *Handler) PublishArticle(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -233,9 +245,8 @@ func (h *Handler) ScheduleArticle(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -270,9 +281,8 @@ func (h *Handler) UnpublishArticle(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -301,9 +311,8 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -409,9 +418,8 @@ func (h *Handler) GetFeedArticle(c *gin.Context) {
 		return
 	}
 
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
@@ -461,9 +469,8 @@ func (h *Handler) GetPublicFeed(c *gin.Context) {
 
 // GetPublicArticle handles GET /api/v1/public/content/:id
 func (h *Handler) GetPublicArticle(c *gin.Context) {
-	articleID := c.Param("id")
-	if articleID == "" {
-		response.Error(c, http.StatusBadRequest, "Не указан идентификатор статьи")
+	articleID, ok := h.parseArticleID(c)
+	if !ok {
 		return
 	}
 
