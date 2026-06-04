@@ -1272,7 +1272,7 @@ func TestGetAnalytics(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("returns analytics summary with clients", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, cleanup := setupTestServiceUnordered(t)
 		defer cleanup()
 
 		curatorID := int64(100)
@@ -1304,20 +1304,20 @@ func TestGetAnalytics(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
 				AddRow(int64(1), 5).AddRow(int64(2), 3))
 
-		// Active tasks
-		mock.ExpectQuery(`SELECT COUNT`).
-			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
-
-		// Overdue tasks
-		mock.ExpectQuery(`SELECT COUNT`).
+		// Overdue tasks (most specific: unique completed_at clause)
+		mock.ExpectQuery(`completed_at`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 
-		// Completed today
-		mock.ExpectQuery(`SELECT COUNT`).
+		// Completed today (unique: FROM task_completions)
+		mock.ExpectQuery(`task_completions`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(4))
+
+		// Active tasks (last: consumed after overdue is matched by completed_at)
+		mock.ExpectQuery(`status = 'active'`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
 
 		analytics, err := service.GetAnalytics(ctx, curatorID)
 
@@ -1625,7 +1625,7 @@ func TestCollectDailySnapshot(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("collects and upserts daily snapshot", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, cleanup := setupTestServiceUnordered(t)
 		defer cleanup()
 
 		curatorID := int64(100)
@@ -1658,20 +1658,20 @@ func TestCollectDailySnapshot(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
 				AddRow(int64(1), 5))
 
-		// Active tasks
-		mock.ExpectQuery(`SELECT COUNT`).
-			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
-
-		// Overdue tasks
-		mock.ExpectQuery(`SELECT COUNT`).
+		// Overdue tasks (most specific: unique completed_at clause)
+		mock.ExpectQuery(`completed_at`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 
-		// Completed today
-		mock.ExpectQuery(`SELECT COUNT`).
+		// Completed today (unique: FROM task_completions)
+		mock.ExpectQuery(`task_completions`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(4))
+
+		// Active tasks (last: consumed after overdue is matched by completed_at)
+		mock.ExpectQuery(`status = 'active'`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
 
 		// Active client IDs for streaks
 		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
