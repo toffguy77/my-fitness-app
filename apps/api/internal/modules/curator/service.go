@@ -168,16 +168,16 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 
 	// Fetch all per-client enrichment data in parallel
 	var (
-		unreadMap      map[int64]int
-		weightMap      map[int64]*float64
-		trendMap       map[int64]string
-		targetMap      map[int64]*float64
-		waterMap       map[int64]*WaterView
-		activeTaskMap  map[int64]int
-		overdueTaskMap map[int64]int
-		weeklyKBZHUMap map[int64]*float64
+		unreadMap       map[int64]int
+		weightMap       map[int64]*float64
+		trendMap        map[int64]string
+		targetMap       map[int64]*float64
+		waterMap        map[int64]*WaterView
+		activeTaskMap   map[int64]int
+		overdueTaskMap  map[int64]int
+		weeklyKBZHUMap  map[int64]*float64
 		lastActivityMap map[int64]*string
-		streakMap      map[int64]int
+		streakMap       map[int64]int
 	)
 
 	eg, egCtx := errgroup.WithContext(ctx)
