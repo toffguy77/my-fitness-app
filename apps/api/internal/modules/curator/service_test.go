@@ -30,6 +30,18 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 	return service, mock, cleanup
 }
 
+// setupTestServiceUnordered creates a test service with a mock database that
+// matches expectations in any order, for use with parallel helper calls.
+func setupTestServiceUnordered(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
+	mockDB, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	mock.MatchExpectationsInOrder(false)
+	db := &database.DB{DB: mockDB}
+	log := logger.New()
+	service := NewService(db, log, nil)
+	return service, mock, func() { mockDB.Close() }
+}
+
 // clientColumns defines the columns returned by the main clients query
 var clientColumns = []string{
 	"id", "name", "avatar_url",
@@ -48,7 +60,7 @@ func TestGetClients(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("returns clients grouped correctly with alerts first", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, cleanup := setupTestServiceUnordered(t)
 		defer cleanup()
 
 		curatorID := int64(100)
@@ -165,7 +177,7 @@ func TestGetClients(t *testing.T) {
 	})
 
 	t.Run("handles clients without a plan", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, cleanup := setupTestServiceUnordered(t)
 		defer cleanup()
 
 		curatorID := int64(100)

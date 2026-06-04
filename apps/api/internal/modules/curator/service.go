@@ -13,6 +13,7 @@ import (
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"golang.org/x/sync/errgroup"
 )
 
 // parseIntArray parses a PostgreSQL integer array string like "{1,3,5}" into []int
@@ -165,25 +166,68 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		"count":      len(clientRows),
 	})
 
-	// Get unread counts per client
-	unreadMap, err := s.getUnreadCounts(ctx, curatorID, clientIDs)
-	if err != nil {
-		s.log.Error("Failed to get unread counts, continuing with zeros", "error", err)
-		unreadMap = make(map[int64]int)
-	}
+	// Fetch all per-client enrichment data in parallel
+	var (
+		unreadMap      map[int64]int
+		weightMap      map[int64]*float64
+		trendMap       map[int64]string
+		targetMap      map[int64]*float64
+		waterMap       map[int64]*WaterView
+		activeTaskMap  map[int64]int
+		overdueTaskMap map[int64]int
+		weeklyKBZHUMap map[int64]*float64
+		lastActivityMap map[int64]*string
+		streakMap      map[int64]int
+	)
 
-	// Get weight data for all clients (last 2 weights + target)
-	weightMap, trendMap := s.getWeightData(ctx, clientIDs)
-	targetMap := s.getTargetWeights(ctx, clientIDs)
+	eg, egCtx := errgroup.WithContext(ctx)
 
-	// Get today's water intake for all clients
-	waterMap := s.getTodayWater(ctx, clientIDs)
+	eg.Go(func() error {
+		var err error
+		unreadMap, err = s.getUnreadCounts(egCtx, curatorID, clientIDs)
+		if err != nil {
+			s.log.Error("Failed to get unread counts, continuing with zeros", "error", err)
+			unreadMap = make(map[int64]int)
+		}
+		return nil
+	})
 
-	// Get extended fields
-	activeTaskMap, overdueTaskMap := s.getActiveTaskCounts(ctx, curatorID, clientIDs)
-	weeklyKBZHUMap := s.getWeeklyKBZHUPercent(ctx, clientIDs)
-	lastActivityMap := s.getLastActivityDates(ctx, clientIDs)
-	streakMap := s.getStreakDays(ctx, clientIDs)
+	eg.Go(func() error {
+		weightMap, trendMap = s.getWeightData(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		targetMap = s.getTargetWeights(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		waterMap = s.getTodayWater(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		activeTaskMap, overdueTaskMap = s.getActiveTaskCounts(egCtx, curatorID, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		weeklyKBZHUMap = s.getWeeklyKBZHUPercent(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		lastActivityMap = s.getLastActivityDates(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		streakMap = s.getStreakDays(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Wait() //nolint:errcheck
 
 	// Build client cards
 	cards := make([]ClientCard, 0, len(clientRows))
