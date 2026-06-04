@@ -5,6 +5,6 @@
 
 ## 2. Verification
 
-- [ ] 2.1 Apply migration to dev database and confirm via `SELECT extname FROM pg_extension WHERE extname = 'pg_trgm'` that the extension is present
-- [ ] 2.2 Run `EXPLAIN (ANALYZE, BUFFERS) SELECT id FROM products WHERE name ILIKE '%курица%'` and confirm the plan shows `Bitmap Index Scan on idx_products_name_trgm` with no `Seq Scan on products`
+- [x] 2.1 Apply migration to dev database and confirm via `SELECT extname FROM pg_extension WHERE extname = 'pg_trgm'` that the extension is present
+- [x] 2.2 Run `EXPLAIN (ANALYZE, BUFFERS) SELECT id FROM products WHERE name ILIKE '%курица%'` and confirm the plan shows `Bitmap Index Scan on idx_products_name_trgm` with no `Seq Scan on products`
 - [x] 2.3 Run full backend test suite (`cd apps/api && go test ./...`) and confirm no regressions
