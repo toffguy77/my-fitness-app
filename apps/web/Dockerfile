@@ -41,6 +41,7 @@ WORKDIR /app/apps/web
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+USER nextjs
 CMD ["npm", "run", "dev"]
 
 # Build stage
@@ -74,7 +75,7 @@ ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_YANDEX_METRIKA_ID=$NEXT_PUBLIC_YANDEX_METRIKA_ID
 
 # Build the web application
-RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build --workspace=apps/web
+RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build --workspace=apps/web
 
 # Production runtime stage - minimal and secure
 FROM base AS runner
