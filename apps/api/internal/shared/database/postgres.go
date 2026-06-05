@@ -83,24 +83,31 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 	return &DB{DB: db}, nil
 }
 
-// ensureReadWrite appends target_session_attrs=read-write to a connection URL
-// if it's not already present, ensuring connections go to the primary node.
-func ensureReadWrite(url string) string {
-	if contains(url, "target_session_attrs") {
-		return url
+// ensureConnParams appends target_session_attrs and connect_timeout to the URL
+// if they are not already present.
+// - target_session_attrs=read-write ensures connections go to the primary node.
+// - connect_timeout=3 makes pgx fail fast on the old primary during YC PG failover
+//   so it retries the standby host within seconds rather than waiting for the OS
+//   TCP timeout (20-30s).
+func ensureConnParams(url string) string {
+	if !contains(url, "target_session_attrs") {
+		sep := "?"
+		if contains(url, "?") {
+			sep = "&"
+		}
+		url = url + sep + "target_session_attrs=read-write"
 	}
-	separator := "?"
-	if contains(url, "?") {
-		separator = "&"
+	if !contains(url, "connect_timeout") {
+		url = url + "&connect_timeout=3"
 	}
-	return url + separator + "target_session_attrs=read-write"
+	return url
 }
 
 // NewPostgresFromURL creates a new PostgreSQL connection from URL
 func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error) {
 	// Ensure we always connect to the primary (read-write) node
 	// to avoid read replica lag after INSERT/UPDATE operations
-	url = ensureReadWrite(url)
+	url = ensureConnParams(url)
 
 	connConfig, err := pgx.ParseConfig(url)
 	if err != nil {

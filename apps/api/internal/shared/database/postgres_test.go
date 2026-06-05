@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,27 +75,28 @@ func TestNewPostgresFromURL_InvalidURL(t *testing.T) {
 	})
 }
 
-func TestEnsureReadWrite(t *testing.T) {
-	t.Run("appends to URL without query params", func(t *testing.T) {
-		result := ensureReadWrite("postgres://host:5432/db")
-		assert.Equal(t, "postgres://host:5432/db?target_session_attrs=read-write", result)
+func TestEnsureConnParams(t *testing.T) {
+	t.Run("appends both params to plain URL", func(t *testing.T) {
+		result := ensureConnParams("postgres://host:5432/db")
+		assert.Contains(t, result, "target_session_attrs=read-write")
+		assert.Contains(t, result, "connect_timeout=3")
 	})
 
 	t.Run("appends to URL with existing query params", func(t *testing.T) {
-		result := ensureReadWrite("postgres://host:5432/db?sslmode=require")
-		assert.Equal(t, "postgres://host:5432/db?sslmode=require&target_session_attrs=read-write", result)
+		result := ensureConnParams("postgres://host:5432/db?sslmode=require")
+		assert.Contains(t, result, "target_session_attrs=read-write")
+		assert.Contains(t, result, "connect_timeout=3")
 	})
 
-	t.Run("does not modify URL that already has target_session_attrs", func(t *testing.T) {
-		url := "postgres://host:5432/db?target_session_attrs=any"
-		result := ensureReadWrite(url)
-		assert.Equal(t, url, result)
+	t.Run("does not duplicate target_session_attrs", func(t *testing.T) {
+		result := ensureConnParams("postgres://host:5432/db?target_session_attrs=any")
+		assert.Equal(t, 1, strings.Count(result, "target_session_attrs"))
+		assert.Contains(t, result, "connect_timeout=3")
 	})
 
-	t.Run("does not modify URL with target_session_attrs=read-write", func(t *testing.T) {
-		url := "postgres://host:5432/db?target_session_attrs=read-write"
-		result := ensureReadWrite(url)
-		assert.Equal(t, url, result)
+	t.Run("does not duplicate connect_timeout", func(t *testing.T) {
+		result := ensureConnParams("postgres://host:5432/db?connect_timeout=5")
+		assert.Equal(t, 1, strings.Count(result, "connect_timeout"))
 	})
 }
 

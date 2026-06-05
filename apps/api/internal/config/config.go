@@ -115,8 +115,8 @@ func Load() (*Config, error) {
 		DatabaseUser:     getEnv("DB_USER", "web-app-user"),
 		DatabasePassword: getEnv("DB_PASSWORD", ""),
 		DatabaseSSLMode:  getEnv("DB_SSL_MODE", "require"),
-		MaxOpenConns:     getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
-		MaxIdleConns:     getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+		MaxOpenConns:     getEnvAsInt("DB_MAX_OPEN_CONNS", 10),
+		MaxIdleConns:     getEnvAsInt("DB_MAX_IDLE_CONNS", 3),
 
 		// Supabase (optional)
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
