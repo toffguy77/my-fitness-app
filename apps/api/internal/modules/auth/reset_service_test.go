@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -229,7 +230,7 @@ func TestRequestPasswordReset_RateLimitExceeded(t *testing.T) {
 	err := service.RequestPasswordReset(context.Background(), email, ipAddress, "test-agent")
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "too many requests")
+	assert.Contains(t, err.Error(), "too many attempts")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -270,6 +271,11 @@ func TestPasswordValidation(t *testing.T) {
 		{
 			name:     "No special char",
 			password: "Test1234567",
+			valid:    false,
+		},
+		{
+			name:     "Too long",
+			password: "Test123!@#" + strings.Repeat("a", 120), // 130 chars, exceeds max 128
 			valid:    false,
 		},
 	}

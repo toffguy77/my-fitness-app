@@ -1,9 +1,16 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useAuth } from '../useAuth'
 
-// Mock fetch globally
-const mockFetch = jest.fn()
-global.fetch = mockFetch
+jest.mock('@/shared/utils/api-client', () => ({
+    apiClient: {
+        get: jest.fn(),
+        post: jest.fn(),
+    },
+}))
+
+import { apiClient } from '@/shared/utils/api-client'
+
+const mockApiClient = apiClient as jest.Mocked<typeof apiClient>
 
 // Mock localStorage
 const mockLocalStorage = (() => {
@@ -37,7 +44,6 @@ describe('useAuth', () => {
     beforeEach(() => {
         jest.clearAllMocks()
         mockLocalStorage.clear()
-        mockFetch.mockReset()
     })
 
     describe('loadUser on mount', () => {
@@ -51,15 +57,12 @@ describe('useAuth', () => {
             })
 
             expect(result.current.user).toBeNull()
-            expect(mockFetch).not.toHaveBeenCalled()
+            expect(mockApiClient.get).not.toHaveBeenCalled()
         })
 
         it('should load user when a valid token exists', async () => {
             mockLocalStorage.getItem.mockReturnValue('valid-token')
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: async () => ({ data: { user: mockUser } }),
-            })
+            mockApiClient.get.mockResolvedValueOnce({ user: mockUser })
 
             const { result } = renderHook(() => useAuth())
 
@@ -68,20 +71,12 @@ describe('useAuth', () => {
             })
 
             expect(result.current.user).toEqual(mockUser)
-            expect(mockFetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/v1/auth/me'),
-                expect.objectContaining({
-                    headers: { Authorization: 'Bearer valid-token' },
-                })
-            )
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/auth/me')
         })
 
-        it('should not set user when API returns non-ok response', async () => {
+        it('should not set user when API returns error', async () => {
             mockLocalStorage.getItem.mockReturnValue('expired-token')
-            mockFetch.mockResolvedValue({
-                ok: false,
-                json: async () => ({ message: 'Unauthorized' }),
-            })
+            mockApiClient.get.mockRejectedValueOnce(new Error('API request failed'))
 
             const { result } = renderHook(() => useAuth())
 
@@ -94,7 +89,7 @@ describe('useAuth', () => {
 
         it('should handle fetch errors gracefully', async () => {
             mockLocalStorage.getItem.mockReturnValue('some-token')
-            mockFetch.mockRejectedValue(new Error('Network failure'))
+            mockApiClient.get.mockRejectedValueOnce(new Error('Network failure'))
 
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
 
@@ -116,18 +111,12 @@ describe('useAuth', () => {
 
     describe('login', () => {
         beforeEach(() => {
-            // Prevent loadUser from running fetch on mount
+            // Prevent loadUser from running on mount
             mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
         })
 
         it('should log in successfully and store token', async () => {
-            const loginResponse = {
-                data: { user: mockUser, token: 'new-token' },
-            }
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: async () => loginResponse,
-            })
+            mockApiClient.post.mockResolvedValueOnce({ user: mockUser, token: 'new-token' })
 
             const { result } = renderHook(() => useAuth())
 
@@ -143,22 +132,15 @@ describe('useAuth', () => {
 
             expect(loginResult!.success).toBe(true)
             expect(result.current.user).toEqual(mockUser)
-            expect(mockLocalStorage.setItem).toHaveBeenCalledWith('token', 'new-token')
-            expect(mockFetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/v1/auth/login'),
-                expect.objectContaining({
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
-                })
+            expect(mockLocalStorage.setItem).toHaveBeenCalledWith('auth_token', 'new-token')
+            expect(mockApiClient.post).toHaveBeenCalledWith(
+                '/api/v1/auth/login',
+                { email: 'test@example.com', password: 'password123' }
             )
         })
 
-        it('should return error when login fails with API error', async () => {
-            mockFetch.mockResolvedValue({
-                ok: false,
-                json: async () => ({ message: 'Invalid credentials' }),
-            })
+        it('should return error when login fails', async () => {
+            mockApiClient.post.mockRejectedValueOnce(new Error('Invalid credentials'))
 
             const { result } = renderHook(() => useAuth())
 
@@ -178,30 +160,8 @@ describe('useAuth', () => {
             expect(mockLocalStorage.setItem).not.toHaveBeenCalled()
         })
 
-        it('should return default error message when API provides no message', async () => {
-            mockFetch.mockResolvedValue({
-                ok: false,
-                json: async () => ({}),
-            })
-
-            const { result } = renderHook(() => useAuth())
-
-            await waitFor(() => {
-                expect(result.current.isLoading).toBe(false)
-            })
-
-            let loginResult: { success: boolean; error?: string }
-
-            await act(async () => {
-                loginResult = await result.current.login('test@example.com', 'pass')
-            })
-
-            expect(loginResult!.success).toBe(false)
-            expect(loginResult!.error).toBe('Login failed')
-        })
-
         it('should return network error when fetch throws', async () => {
-            mockFetch.mockRejectedValue(new Error('Connection refused'))
+            mockApiClient.post.mockRejectedValueOnce(new TypeError('Connection refused'))
 
             const { result } = renderHook(() => useAuth())
 
@@ -216,18 +176,15 @@ describe('useAuth', () => {
             })
 
             expect(loginResult!.success).toBe(false)
-            expect(loginResult!.error).toBe('Network error')
+            expect(loginResult!.error).toBe('Connection refused')
         })
     })
 
     describe('logout', () => {
-        it('should clear token and user on logout', async () => {
+        it('should clear auth_token and user on logout', async () => {
             // Start with a logged-in user
             mockLocalStorage.getItem.mockReturnValue('valid-token')
-            mockFetch.mockResolvedValue({
-                ok: true,
-                json: async () => ({ data: { user: mockUser } }),
-            })
+            mockApiClient.get.mockResolvedValueOnce({ user: mockUser })
 
             const { result } = renderHook(() => useAuth())
 
@@ -240,7 +197,7 @@ describe('useAuth', () => {
             })
 
             expect(result.current.user).toBeNull()
-            expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token')
+            expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('auth_token')
         })
 
         it('should work even when no user is logged in', async () => {
@@ -257,7 +214,7 @@ describe('useAuth', () => {
             })
 
             expect(result.current.user).toBeNull()
-            expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token')
+            expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('auth_token')
         })
     })
 

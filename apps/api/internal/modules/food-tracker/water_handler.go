@@ -44,7 +44,7 @@ func (h *Handler) GetWaterIntake(c *gin.Context) {
 	}
 
 	// Call service to get water intake
-	waterLog, err := h.service.GetWaterIntake(c.Request.Context(), userID, date)
+	waterLog, err := h.extras.GetWaterIntake(c.Request.Context(), userID, date)
 	if err != nil {
 		h.log.Errorw("Не удалось получить данные о воде", "error", err, "user_id", userID, "date", dateStr)
 		response.InternalError(c, "Не удалось получить данные о потреблении воды")
@@ -103,7 +103,7 @@ func (h *Handler) AddWater(c *gin.Context) {
 	}
 
 	// Call service to add water
-	waterLog, err := h.service.AddWater(c.Request.Context(), userID, date, glasses)
+	waterLog, err := h.extras.AddWater(c.Request.Context(), userID, date, glasses)
 	if err != nil {
 		h.log.Errorw("Не удалось добавить воду", "error", err, "user_id", userID, "date", req.Date, "glasses", glasses)
 

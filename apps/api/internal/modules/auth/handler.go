@@ -2,9 +2,12 @@ package auth
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
@@ -31,7 +34,7 @@ func NewHandler(db *sql.DB, cfg *config.Config, log *logger.Logger, vs *Verifica
 // RegisterRequest represents registration request
 type RegisterRequest struct {
 	Email    string         `json:"email" binding:"required,email"`
-	Password string         `json:"password" binding:"required,min=8"`
+	Password string         `json:"password" binding:"required,min=8,max=128"`
 	Name     string         `json:"name"`
 	Consents *ConsentsInput `json:"consents"`
 }
@@ -152,6 +155,44 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 	})
 }
 
+// ChangePasswordRequest represents a password change request
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=8,max=128"`
+}
+
+// ChangePassword allows an authenticated user to change their password
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "Требуется авторизация")
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	if err := h.service.ChangePassword(c.Request.Context(), userID.(int64), req.CurrentPassword, req.NewPassword); err != nil {
+		switch {
+		case errors.Is(err, apperrors.ErrInvalidCredentials):
+			response.Error(c, http.StatusUnauthorized, "Неверный текущий пароль")
+		case strings.HasPrefix(err.Error(), "новый пароль должен отличаться"):
+			response.Error(c, http.StatusUnprocessableEntity, err.Error())
+		case strings.HasPrefix(err.Error(), "пароль не соответствует требованиям"):
+			response.Error(c, http.StatusUnprocessableEntity, err.Error())
+		default:
+			h.log.Errorw("Password change failed", "error", err, "user_id", userID)
+			response.Error(c, http.StatusInternalServerError, "Не удалось изменить пароль")
+		}
+		return
+	}
+
+	response.SuccessWithMessage(c, http.StatusOK, "Пароль успешно изменён", nil)
+}
+
 // VerifyEmailRequest represents email verification request
 type VerifyEmailRequest struct {
 	Code string `json:"code" binding:"required"`
@@ -169,10 +210,10 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 
 	err := h.verificationService.VerifyCode(c.Request.Context(), userID.(int64), req.Code)
 	if err != nil {
-		switch err.Error() {
-		case "too many attempts":
+		switch {
+		case errors.Is(err, apperrors.ErrTooManyAttempts):
 			response.Error(c, http.StatusTooManyRequests, "Слишком много попыток. Запросите новый код.")
-		case "code expired":
+		case errors.Is(err, apperrors.ErrCodeExpired):
 			response.Error(c, http.StatusBadRequest, "Код истёк. Запросите новый.")
 		default:
 			response.Error(c, http.StatusBadRequest, "Неверный код")
@@ -196,7 +237,7 @@ func (h *Handler) ResendVerification(c *gin.Context) {
 		c.Request.UserAgent(),
 	)
 	if err != nil {
-		if err.Error() == "too many requests" {
+		if errors.Is(err, apperrors.ErrTooManyAttempts) {
 			response.Error(c, http.StatusTooManyRequests, "Слишком много запросов. Попробуйте позже.")
 			return
 		}

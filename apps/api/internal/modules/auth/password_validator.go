@@ -10,6 +10,7 @@ import (
 // errors to help users create secure passwords.
 type PasswordValidator struct {
 	minLength      int
+	maxLength      int // UX ceiling; bcrypt truncates at 72 bytes — 128 chars is well above that
 	requireUpper   bool
 	requireLower   bool
 	requireNumber  bool
@@ -36,6 +37,7 @@ type ValidationResult struct {
 func NewPasswordValidator() *PasswordValidator {
 	return &PasswordValidator{
 		minLength:      8,
+		maxLength:      128,
 		requireUpper:   true,
 		requireLower:   true,
 		requireNumber:  true,
@@ -69,6 +71,11 @@ func (pv *PasswordValidator) Validate(password string) ValidationResult {
 	// Check minimum length
 	if len(password) < pv.minLength {
 		errors = append(errors, "Пароль должен содержать минимум 8 символов")
+	}
+
+	// Check maximum length
+	if len(password) > pv.maxLength {
+		errors = append(errors, "Пароль не должен превышать 128 символов")
 	}
 
 	// Check for uppercase letter

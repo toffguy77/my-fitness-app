@@ -1,9 +1,12 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
@@ -70,7 +73,7 @@ func (h *ResetHandler) ForgotPassword(c *gin.Context) {
 
 	if err != nil {
 		// Check if it's a rate limit error
-		if err.Error() == "too many requests" {
+		if errors.Is(err, apperrors.ErrTooManyAttempts) || errors.Is(err, apperrors.ErrRateLimited) {
 			h.log.Warn("Password reset rate limit exceeded",
 				"email", req.Email,
 				"ip", ipAddress,
@@ -130,18 +133,18 @@ func (h *ResetHandler) ResetPassword(c *gin.Context) {
 		)
 
 		// Return appropriate error message
-		if err.Error() == "invalid token" {
+		if errors.Is(err, apperrors.ErrTokenInvalid) {
 			response.Error(c, http.StatusBadRequest, "Неверная или истекшая ссылка для сброса. Запросите новую.")
 			return
 		}
 
-		if err.Error() == "token expired" {
+		if errors.Is(err, apperrors.ErrTokenExpired) {
 			response.Error(c, http.StatusBadRequest, "Срок действия ссылки истек. Запросите новую.")
 			return
 		}
 
 		// Check if it's a password validation error
-		if len(err.Error()) > 0 && err.Error()[:8] == "password" {
+		if strings.HasPrefix(err.Error(), "пароль не соответствует требованиям") {
 			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -183,12 +186,12 @@ func (h *ResetHandler) ValidateResetToken(c *gin.Context) {
 			"ip", c.ClientIP(),
 		)
 
-		if err.Error() == "invalid token" {
+		if errors.Is(err, apperrors.ErrTokenInvalid) {
 			response.Error(c, http.StatusBadRequest, "Неверная ссылка для сброса.")
 			return
 		}
 
-		if err.Error() == "token expired" {
+		if errors.Is(err, apperrors.ErrTokenExpired) {
 			response.Error(c, http.StatusBadRequest, "Срок действия ссылки истек.")
 			return
 		}

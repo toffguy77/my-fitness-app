@@ -34,7 +34,7 @@ type mockCuratorService struct {
 	getWeeklyReportsFunc     func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
 	getAnalyticsFunc         func(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
 	getAttentionListFunc     func(ctx context.Context, curatorID int64) ([]AttentionItem, error)
-	getAnalyticsHistoryFunc  func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error)
+	getAnalyticsHistoryFunc  func(ctx context.Context, curatorID int64, period string, count int) (any, error)
 	getBenchmarkFunc         func(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error)
 	collectDailySnapshotFunc func(ctx context.Context, curatorID int64) error
 }
@@ -151,7 +151,7 @@ func (m *mockCuratorService) GetAttentionList(ctx context.Context, curatorID int
 	return []AttentionItem{}, nil
 }
 
-func (m *mockCuratorService) GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+func (m *mockCuratorService) GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (any, error) {
 	if m.getAnalyticsHistoryFunc != nil {
 		return m.getAnalyticsHistoryFunc(ctx, curatorID, period, count)
 	}
@@ -203,11 +203,11 @@ func TestHandler_GetClients(t *testing.T) {
 		handler.GetClients(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].([]interface{})
+		data := resp["data"].([]any)
 		assert.Len(t, data, 2)
 	})
 
@@ -554,11 +554,11 @@ func TestHandler_CreateWeeklyPlan(t *testing.T) {
 		handler.CreateWeeklyPlan(c)
 
 		assert.Equal(t, http.StatusCreated, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].(map[string]interface{})
+		data := resp["data"].(map[string]any)
 		assert.Equal(t, "plan-uuid-123", data["id"])
 	})
 
@@ -583,7 +583,7 @@ func TestHandler_CreateWeeklyPlan(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{"calories": 2000})
+		body, _ := json.Marshal(map[string]any{"calories": 2000})
 		c.Request = httptest.NewRequest(http.MethodPost, "/curator/clients/10/weekly-plan", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		c.Set("user_id", int64(1))
@@ -796,11 +796,11 @@ func TestHandler_GetWeeklyPlans(t *testing.T) {
 		handler.GetWeeklyPlans(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].([]interface{})
+		data := resp["data"].([]any)
 		assert.Len(t, data, 2)
 	})
 
@@ -884,11 +884,11 @@ func TestHandler_CreateTask(t *testing.T) {
 		handler.CreateTask(c)
 
 		assert.Equal(t, http.StatusCreated, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].(map[string]interface{})
+		data := resp["data"].(map[string]any)
 		assert.Equal(t, "task-uuid-1", data["id"])
 	})
 
@@ -913,7 +913,7 @@ func TestHandler_CreateTask(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{"title": "Test"})
+		body, _ := json.Marshal(map[string]any{"title": "Test"})
 		c.Request = httptest.NewRequest(http.MethodPost, "/curator/clients/10/tasks", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		c.Set("user_id", int64(1))
@@ -1124,11 +1124,11 @@ func TestHandler_GetTasks(t *testing.T) {
 		handler.GetTasks(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].([]interface{})
+		data := resp["data"].([]any)
 		assert.Len(t, data, 2)
 	})
 
@@ -1196,9 +1196,9 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{
+		body, _ := json.Marshal(map[string]any{
 			"summary":         "Good week overall",
-			"nutrition":       map[string]interface{}{"rating": "good", "comment": "Nice"},
+			"nutrition":       map[string]any{"rating": "good", "comment": "Nice"},
 			"recommendations": "Keep it up",
 		})
 		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
@@ -1209,7 +1209,7 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 		handler.SubmitFeedback(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
@@ -1220,8 +1220,8 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{
-			"nutrition": map[string]interface{}{"rating": "good", "comment": "Nice"},
+		body, _ := json.Marshal(map[string]any{
+			"nutrition": map[string]any{"rating": "good", "comment": "Nice"},
 		})
 		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
@@ -1241,7 +1241,7 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		body, _ := json.Marshal(map[string]any{"summary": "test"})
 		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		c.Set("user_id", int64(1))
@@ -1260,7 +1260,7 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		body, _ := json.Marshal(map[string]any{"summary": "test"})
 		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/nonexistent/feedback", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		c.Set("user_id", int64(1))
@@ -1276,7 +1276,7 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		body, _ := json.Marshal(map[string]any{"summary": "test"})
 		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/abc/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		c.Set("user_id", int64(1))
@@ -1308,7 +1308,7 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		body, _ := json.Marshal(map[string]interface{}{"summary": "test"})
+		body, _ := json.Marshal(map[string]any{"summary": "test"})
 		c.Request = httptest.NewRequest(http.MethodPut, "/curator/clients/42/weekly-reports/report-123/feedback", bytes.NewBuffer(body))
 		c.Request.Header.Set("Content-Type", "application/json")
 		c.Set("user_id", int64(1))
@@ -1361,18 +1361,18 @@ func TestHandler_GetWeeklyReports(t *testing.T) {
 		handler.GetWeeklyReports(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].([]interface{})
+		data := resp["data"].([]any)
 		assert.Len(t, data, 2)
 
-		first := data[0].(map[string]interface{})
+		first := data[0].(map[string]any)
 		assert.Equal(t, "r1", first["id"])
 		assert.Equal(t, true, first["has_feedback"])
 
-		second := data[1].(map[string]interface{})
+		second := data[1].(map[string]any)
 		assert.Equal(t, "r2", second["id"])
 		assert.Equal(t, false, second["has_feedback"])
 	})
@@ -1467,11 +1467,11 @@ func TestHandler_GetAnalytics(t *testing.T) {
 		handler.GetAnalytics(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].(map[string]interface{})
+		data := resp["data"].(map[string]any)
 		assert.Equal(t, float64(5), data["total_clients"])
 		assert.Equal(t, float64(2), data["attention_clients"])
 		assert.Equal(t, 87.5, data["avg_kbzhu_percent"])
@@ -1529,13 +1529,13 @@ func TestHandler_GetAttentionList(t *testing.T) {
 		handler.GetAttentionList(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].([]interface{})
+		data := resp["data"].([]any)
 		assert.Len(t, data, 2)
-		first := data[0].(map[string]interface{})
+		first := data[0].(map[string]any)
 		assert.Equal(t, "red_alert", first["reason"])
 		assert.Equal(t, float64(1), first["priority"])
 	})
@@ -1576,7 +1576,7 @@ func TestHandler_GetAttentionList(t *testing.T) {
 func TestHandler_GetAnalyticsHistory(t *testing.T) {
 	t.Run("success returns daily snapshots", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
-		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (any, error) {
 			assert.Equal(t, "daily", period)
 			assert.Equal(t, 30, count)
 			return []DailySnapshot{
@@ -1593,17 +1593,17 @@ func TestHandler_GetAnalyticsHistory(t *testing.T) {
 		handler.GetAnalyticsHistory(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].([]interface{})
+		data := resp["data"].([]any)
 		assert.Len(t, data, 2)
 	})
 
 	t.Run("defaults to weekly with 12 count", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
-		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (any, error) {
 			assert.Equal(t, "weekly", period)
 			assert.Equal(t, 12, count)
 			return []WeeklySnapshot{}, nil
@@ -1621,7 +1621,7 @@ func TestHandler_GetAnalyticsHistory(t *testing.T) {
 
 	t.Run("clamps invalid count to 12", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
-		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (any, error) {
 			assert.Equal(t, 12, count)
 			return []DailySnapshot{}, nil
 		}
@@ -1638,7 +1638,7 @@ func TestHandler_GetAnalyticsHistory(t *testing.T) {
 
 	t.Run("service error returns 500", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
-		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+		mock.getAnalyticsHistoryFunc = func(ctx context.Context, curatorID int64, period string, count int) (any, error) {
 			return nil, errors.New("db error")
 		}
 
@@ -1692,14 +1692,14 @@ func TestHandler_GetBenchmark(t *testing.T) {
 		handler.GetBenchmark(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var resp map[string]interface{}
+		var resp map[string]any
 		err := json.Unmarshal(w.Body.Bytes(), &resp)
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
-		data := resp["data"].(map[string]interface{})
-		own := data["own_snapshots"].([]interface{})
+		data := resp["data"].(map[string]any)
+		own := data["own_snapshots"].([]any)
 		assert.Len(t, own, 1)
-		platform := data["platform_benchmarks"].([]interface{})
+		platform := data["platform_benchmarks"].([]any)
 		assert.Len(t, platform, 1)
 	})
 

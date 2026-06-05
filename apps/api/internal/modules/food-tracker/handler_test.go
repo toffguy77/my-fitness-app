@@ -217,10 +217,13 @@ func setupTestHandlerWithMock() (*Handler, *MockService) {
 	mockService := new(MockService)
 
 	handler := &Handler{
-		cfg:      cfg,
-		log:      log,
-		service:  mockService,
-		orClient: openrouter.NewClient("test-key", "", log),
+		cfg:       cfg,
+		log:       log,
+		entries:   mockService,
+		search:    mockService,
+		userFoods: mockService,
+		extras:    mockService,
+		orClient:  openrouter.NewClient("test-key", "", log),
 	}
 
 	return handler, mockService
@@ -281,7 +284,7 @@ func TestGetEntries_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
@@ -307,7 +310,7 @@ func TestGetEntries_MissingDate(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
@@ -325,9 +328,9 @@ func TestCreateUserFood(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:     &config.Config{},
-			log:     logger.New(),
-			service: mockService,
+			cfg:       &config.Config{},
+			log:       logger.New(),
+			userFoods: mockService,
 		}
 
 		expected := &UserFood{
@@ -363,9 +366,9 @@ func TestCreateUserFood(t *testing.T) {
 	t.Run("missing name returns 400", func(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		handler := &Handler{
-			cfg:     &config.Config{},
-			log:     logger.New(),
-			service: new(MockService),
+			cfg:       &config.Config{},
+			log:       logger.New(),
+			userFoods: new(MockService),
 		}
 
 		w := httptest.NewRecorder()
@@ -386,9 +389,9 @@ func TestGetUserFoods(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:     &config.Config{},
-			log:     logger.New(),
-			service: mockService,
+			cfg:       &config.Config{},
+			log:       logger.New(),
+			userFoods: mockService,
 		}
 
 		foods := []UserFood{
@@ -414,9 +417,9 @@ func TestDeleteUserFood(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:     &config.Config{},
-			log:     logger.New(),
-			service: mockService,
+			cfg:       &config.Config{},
+			log:       logger.New(),
+			userFoods: mockService,
 		}
 
 		foodID := uuid.New().String()
@@ -511,7 +514,7 @@ func TestRecognizeFood_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 	assert.Equal(t, "success", resp["status"])
@@ -534,7 +537,7 @@ func TestRecognizeFood_NoFile(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 	assert.Equal(t, "error", resp["status"])
@@ -555,7 +558,7 @@ func TestRecognizeFood_InvalidFileType(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 	assert.Equal(t, "Файл должен быть изображением", resp["message"])
@@ -580,7 +583,7 @@ func TestRecognizeFood_LimitExceeded(t *testing.T) {
 
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 	assert.Contains(t, resp["message"], "лимит распознаваний")
@@ -595,7 +598,7 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 	handler := &Handler{
 		cfg:      &config.Config{FoodRecognitionDailyLimit: 20},
 		log:      logger.New(),
-		service:  mockService,
+		extras:   mockService,
 		orClient: nil, // No OpenRouter client configured
 	}
 
@@ -610,7 +613,7 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 	assert.Equal(t, "Сервис распознавания еды недоступен", resp["message"])

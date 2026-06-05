@@ -46,7 +46,7 @@ func (h *Handler) SearchFoods(c *gin.Context) {
 		limit = 20
 	}
 
-	result, err := h.service.SearchFoods(c.Request.Context(), userID, req.Query, limit, req.Offset)
+	result, err := h.search.SearchFoods(c.Request.Context(), userID, req.Query, limit, req.Offset)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			c.AbortWithStatus(499)
@@ -84,7 +84,7 @@ func (h *Handler) LookupBarcode(c *gin.Context) {
 	barcode = strings.TrimSpace(barcode)
 
 	// Call service to lookup barcode
-	result, err := h.service.LookupBarcode(c.Request.Context(), barcode)
+	result, err := h.search.LookupBarcode(c.Request.Context(), barcode)
 	if err != nil {
 		h.log.Errorw("Не удалось найти продукт по штрих-коду", "error", err, "barcode", barcode)
 
@@ -141,7 +141,7 @@ func (h *Handler) GetRecentFoods(c *gin.Context) {
 	}
 
 	// Call service to get recent foods
-	result, err := h.service.GetRecentFoods(c.Request.Context(), userID, limit)
+	result, err := h.search.GetRecentFoods(c.Request.Context(), userID, limit)
 	if err != nil {
 		h.log.Errorw("Не удалось получить недавние продукты", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось получить недавние продукты")
@@ -177,7 +177,7 @@ func (h *Handler) GetFavoriteFoods(c *gin.Context) {
 	}
 
 	// Call service to get favorite foods
-	result, err := h.service.GetFavoriteFoods(c.Request.Context(), userID, limit)
+	result, err := h.search.GetFavoriteFoods(c.Request.Context(), userID, limit)
 	if err != nil {
 		h.log.Errorw("Не удалось получить избранные продукты", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось получить избранные продукты")
@@ -206,7 +206,7 @@ func (h *Handler) AddToFavorites(c *gin.Context) {
 	}
 
 	// Call service to add to favorites
-	err := h.service.AddToFavorites(c.Request.Context(), userID, foodID)
+	err := h.search.AddToFavorites(c.Request.Context(), userID, foodID)
 	if err != nil {
 		h.log.Errorw("Не удалось добавить в избранное", "error", err, "user_id", userID, "food_id", foodID)
 
@@ -251,7 +251,7 @@ func (h *Handler) RemoveFromFavorites(c *gin.Context) {
 	}
 
 	// Call service to remove from favorites
-	err := h.service.RemoveFromFavorites(c.Request.Context(), userID, foodID)
+	err := h.search.RemoveFromFavorites(c.Request.Context(), userID, foodID)
 	if err != nil {
 		h.log.Errorw("Не удалось удалить из избранного", "error", err, "user_id", userID, "food_id", foodID)
 

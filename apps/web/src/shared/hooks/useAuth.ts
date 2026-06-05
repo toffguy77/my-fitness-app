@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiClient } from '@/shared/utils/api-client'
 
 interface User {
     id: string
@@ -14,8 +15,6 @@ interface AuthState {
     logout: () => Promise<void>
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
-
 export function useAuth(): AuthState {
     const [user, setUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -23,22 +22,14 @@ export function useAuth(): AuthState {
     useEffect(() => {
         const loadUser = async () => {
             try {
-                const token = localStorage.getItem('token')
+                const token = localStorage.getItem('auth_token')
                 if (!token) {
                     setIsLoading(false)
                     return
                 }
 
-                const response = await fetch(`${API_URL}/api/v1/auth/me`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                })
-
-                if (response.ok) {
-                    const data = await response.json()
-                    setUser(data.data.user)
-                }
+                const data = await apiClient.get<{ user: User }>('/api/v1/auth/me')
+                setUser(data.user)
             } catch (err) {
                 console.error('Failed to load user:', err)
             } finally {
@@ -51,30 +42,21 @@ export function useAuth(): AuthState {
 
     const login = async (email: string, password: string) => {
         try {
-            const response = await fetch(`${API_URL}/api/v1/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            })
-
-            const data = await response.json()
-
-            if (response.ok) {
-                setUser(data.data.user)
-                localStorage.setItem('token', data.data.token)
-                return { success: true }
-            }
-
-            return { success: false, error: data.message || 'Login failed' }
-        } catch {
-            return { success: false, error: 'Network error' }
+            const data = await apiClient.post<{ user: User; token: string }>(
+                '/api/v1/auth/login',
+                { email, password }
+            )
+            setUser(data.user)
+            localStorage.setItem('auth_token', data.token)
+            return { success: true }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Login failed'
+            return { success: false, error: message }
         }
     }
 
     const logout = async () => {
-        localStorage.removeItem('token')
+        localStorage.removeItem('auth_token')
         setUser(null)
     }
 

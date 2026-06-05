@@ -66,9 +66,9 @@ func TestRegisterService(t *testing.T) {
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		result, err := service.Register(ctx, "test@example.com", "password123", "Test User", "127.0.0.1", "TestAgent", nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, result)
+		result, err := service.Register(ctx, "test@example.com", "Password1!", "Test User", "127.0.0.1", "TestAgent", nil)
+		require.NoError(t, err)
+		require.NotNil(t, result)
 		assert.NotNil(t, result.User)
 		assert.Equal(t, "test@example.com", result.User.Email)
 		assert.Equal(t, "Test User", result.User.Name)
@@ -100,9 +100,9 @@ func TestRegisterService(t *testing.T) {
 			WithArgs(int64(2), sqlmock.AnyArg(), sqlmock.AnyArg(), "", "", false).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		result, err := service.Register(ctx, "test2@example.com", "password123", "", "", "", nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, result)
+		result, err := service.Register(ctx, "test2@example.com", "Password1!", "", "", "", nil)
+		require.NoError(t, err)
+		require.NotNil(t, result)
 		assert.Equal(t, "test2@example.com", result.User.Email)
 		assert.NotEmpty(t, result.User.Name, "should have a default name")
 		assert.Contains(t, result.User.Name, " ", "default name should be 'Color Animal' format")
@@ -259,7 +259,7 @@ func TestRefreshTokens(t *testing.T) {
 
 		result, err := service.RefreshTokens(ctx, plainToken, "", "")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid refresh token")
+		assert.Contains(t, err.Error(), "invalid token")
 		assert.Nil(t, result)
 	})
 }
@@ -295,7 +295,7 @@ func TestGenerateJWTToken(t *testing.T) {
 	assert.NotEmpty(t, token)
 
 	// Verify token can be parsed
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 		return []byte(service.cfg.JWTSecret), nil
 	})
 	require.NoError(t, err)

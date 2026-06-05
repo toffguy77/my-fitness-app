@@ -96,6 +96,7 @@ export function AuthScreen() {
                             errors={errors}
                             onEmailBlur={handleEmailBlur}
                             onPasswordBlur={handlePasswordBlur}
+                            mode={mode}
                         />
 
                         {/* Remember Me (Login only) */}

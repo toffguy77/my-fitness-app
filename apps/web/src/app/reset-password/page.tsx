@@ -7,6 +7,7 @@ import { Card, Logo } from '@/shared/components/ui'
 import { Button } from '@/shared/components/ui/Button'
 import { PasswordInput } from '@/shared/components/forms/PasswordInput'
 import toast from 'react-hot-toast'
+import { validateResetToken, resetPassword as resetPasswordApi } from '@/features/auth/api/passwordReset'
 
 function ResetPasswordContent() {
     const router = useRouter()
@@ -36,21 +37,11 @@ function ResetPasswordContent() {
         if (!token) return
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
-            const response = await fetch(
-                `${apiUrl}/api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
-            )
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Неверная или истекшая ссылка')
-            }
-
+            await validateResetToken(token)
             setIsTokenValid(true)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Неверная ссылка'
-            setTokenError(errorMessage)
+        } catch (err: any) {
+            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
+            setTokenError(serverMessage || 'Неверная или истекшая ссылка')
             setIsTokenValid(false)
         } finally {
             setIsValidating(false)
@@ -80,23 +71,7 @@ function ResetPasswordContent() {
         setIsLoading(true)
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
-            const response = await fetch(`${apiUrl}/api/v1/auth/reset-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token,
-                    password,
-                }),
-            })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Не удалось сбросить пароль')
-            }
+            await resetPasswordApi(token!, password)
 
             setIsSuccess(true)
             toast.success('Пароль успешно изменен!')
@@ -105,8 +80,16 @@ function ResetPasswordContent() {
             setTimeout(() => {
                 router.push('/auth')
             }, 2000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка'
+        } catch (err: any) {
+            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
+            let errorMessage: string
+            if (serverMessage) {
+                errorMessage = serverMessage
+            } else if (err?.response !== undefined) {
+                errorMessage = 'Не удалось сбросить пароль'
+            } else {
+                errorMessage = 'Произошла ошибка'
+            }
             setError(errorMessage)
             toast.error(errorMessage)
         } finally {

@@ -21,40 +21,41 @@ import (
 	"github.com/google/uuid"
 )
 
-// ServiceInterface defines the interface for food tracker service operations
-type ServiceInterface interface {
-	// Food entries
+// FoodEntriesService handles daily food entry CRUD.
+type FoodEntriesService interface {
 	GetEntriesByDate(ctx context.Context, userID int64, date time.Time) (*GetEntriesResponse, error)
 	CreateEntry(ctx context.Context, userID int64, req *CreateEntryRequest) (*FoodEntry, error)
 	UpdateEntry(ctx context.Context, userID int64, entryID string, req *UpdateEntryRequest) (*FoodEntry, error)
 	DeleteEntry(ctx context.Context, userID int64, entryID string) error
+}
 
-	// Food search
+// FoodSearchService handles food search and favourites.
+type FoodSearchService interface {
 	SearchFoods(ctx context.Context, userID int64, query string, limit int, offset int) (*SearchFoodsResponse, error)
 	LookupBarcode(ctx context.Context, barcode string) (*BarcodeResponse, error)
 	GetRecentFoods(ctx context.Context, userID int64, limit int) (*GetRecentFoodsResponse, error)
 	GetFavoriteFoods(ctx context.Context, userID int64, limit int) (*GetFavoriteFoodsResponse, error)
 	AddToFavorites(ctx context.Context, userID int64, foodID string) error
 	RemoveFromFavorites(ctx context.Context, userID int64, foodID string) error
+}
 
-	// User foods
+// UserFoodsService handles user-created custom foods.
+type UserFoodsService interface {
 	CreateUserFood(ctx context.Context, userID int64, req *CreateUserFoodRequest) (*UserFood, error)
 	CloneUserFood(ctx context.Context, userID int64, req *CloneUserFoodRequest) (*UserFood, error)
 	GetUserFoods(ctx context.Context, userID int64) ([]UserFood, error)
 	UpdateUserFood(ctx context.Context, userID int64, foodID string, req *UpdateUserFoodRequest) (*UserFood, error)
 	DeleteUserFood(ctx context.Context, userID int64, foodID string) error
+}
 
-	// Water tracking
+// FoodExtrasService handles water, recommendations, and AI recognition.
+type FoodExtrasService interface {
 	GetWaterIntake(ctx context.Context, userID int64, date time.Time) (*WaterLog, error)
 	AddWater(ctx context.Context, userID int64, date time.Time, glasses int) (*WaterLog, error)
-
-	// Recommendations
 	GetRecommendations(ctx context.Context, userID int64) (*GetRecommendationsResponse, error)
 	GetRecommendationDetail(ctx context.Context, nutrientID string, userID int64) (*NutrientDetailResponse, error)
 	UpdateNutrientPreferences(ctx context.Context, userID int64, nutrientIDs []string) error
 	CreateCustomRecommendation(ctx context.Context, userID int64, req *CreateCustomRecommendationRequest) (*UserCustomRecommendation, error)
-
-	// AI food recognition
 	CheckRecognitionLimit(ctx context.Context, userID int64, dailyLimit int) (remaining int, err error)
 	RecordRecognitionUsage(ctx context.Context, userID int64, photoURL string, foodsCount int) error
 	RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *openrouter.Client) (*AIRecognitionResponse, error)
@@ -62,23 +63,30 @@ type ServiceInterface interface {
 
 // Handler handles food tracker requests
 type Handler struct {
-	cfg      *config.Config
-	log      *logger.Logger
-	db       *database.DB
-	s3       *storage.S3Client
-	orClient *openrouter.Client
-	service  ServiceInterface
+	cfg       *config.Config
+	log       *logger.Logger
+	db        *database.DB
+	s3        *storage.S3Client
+	orClient  *openrouter.Client
+	entries   FoodEntriesService
+	search    FoodSearchService
+	userFoods UserFoodsService
+	extras    FoodExtrasService
 }
 
 // NewHandler creates a new food tracker handler
 func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client, orClient *openrouter.Client) *Handler {
+	svc := NewService(db, log)
 	return &Handler{
-		cfg:      cfg,
-		log:      log,
-		db:       db,
-		s3:       s3,
-		orClient: orClient,
-		service:  NewService(db, log),
+		cfg:       cfg,
+		log:       log,
+		db:        db,
+		s3:        s3,
+		orClient:  orClient,
+		entries:   svc,
+		search:    svc,
+		userFoods: svc,
+		extras:    svc,
 	}
 }
 
@@ -139,7 +147,7 @@ func (h *Handler) GetEntries(c *gin.Context) {
 	}
 
 	// Call service to get entries
-	result, err := h.service.GetEntriesByDate(c.Request.Context(), userID, date)
+	result, err := h.entries.GetEntriesByDate(c.Request.Context(), userID, date)
 	if err != nil {
 		h.log.Errorw("Не удалось получить записи", "error", err, "user_id", userID, "date", req.Date)
 		response.InternalError(c, "Не удалось получить записи о питании")
@@ -180,7 +188,7 @@ func (h *Handler) CreateEntry(c *gin.Context) {
 	}
 
 	// Call service to create entry
-	entry, err := h.service.CreateEntry(c.Request.Context(), userID, &req)
+	entry, err := h.entries.CreateEntry(c.Request.Context(), userID, &req)
 	if err != nil {
 		h.log.Errorw("Не удалось создать запись", "error", err, "user_id", userID, "food_id", req.FoodID)
 
@@ -248,7 +256,7 @@ func (h *Handler) UpdateEntry(c *gin.Context) {
 	}
 
 	// Call service to update entry
-	entry, err := h.service.UpdateEntry(c.Request.Context(), userID, entryID, &req)
+	entry, err := h.entries.UpdateEntry(c.Request.Context(), userID, entryID, &req)
 	if err != nil {
 		h.log.Errorw("Не удалось обновить запись", "error", err, "user_id", userID, "entry_id", entryID)
 
@@ -302,7 +310,7 @@ func (h *Handler) DeleteEntry(c *gin.Context) {
 	}
 
 	// Call service to delete entry
-	err := h.service.DeleteEntry(c.Request.Context(), userID, entryID)
+	err := h.entries.DeleteEntry(c.Request.Context(), userID, entryID)
 	if err != nil {
 		h.log.Errorw("Не удалось удалить запись", "error", err, "user_id", userID, "entry_id", entryID)
 
@@ -411,7 +419,7 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 	}
 
 	// Call service
-	result, err := h.service.RecognizeFood(c.Request.Context(), userID, imageData, contentType, s3PhotoURL, h.cfg.FoodRecognitionDailyLimit, h.orClient)
+	result, err := h.extras.RecognizeFood(c.Request.Context(), userID, imageData, contentType, s3PhotoURL, h.cfg.FoodRecognitionDailyLimit, h.orClient)
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "лимит распознаваний") {

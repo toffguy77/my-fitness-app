@@ -8,6 +8,7 @@
  */
 
 import { compressImage } from './compressImage';
+import { apiClient } from '@/shared/utils/api-client';
 import type { AIRecognitionResponse, RecognizedFood } from '../types';
 import type { RecognitionResult } from '../components/AIPhotoTab';
 
@@ -31,21 +32,7 @@ export async function recognizeFood(photo: File): Promise<RecognitionResult[]> {
     const formData = new FormData();
     formData.append('photo', compressed);
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-
-    const response = await fetch('/api/v1/food-tracker/recognize', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Recognition failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const result: AIRecognitionResponse = data.data !== undefined ? data.data : data;
+    const result = await apiClient.postFormData<AIRecognitionResponse>('/api/v1/food-tracker/recognize', formData);
 
     return result.foods.map((food, index) => ({
         food: {

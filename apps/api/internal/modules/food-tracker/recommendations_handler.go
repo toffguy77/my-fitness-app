@@ -25,7 +25,7 @@ func (h *Handler) GetRecommendations(c *gin.Context) {
 	}
 
 	// Call service to get recommendations
-	result, err := h.service.GetRecommendations(c.Request.Context(), userID)
+	result, err := h.extras.GetRecommendations(c.Request.Context(), userID)
 	if err != nil {
 		h.log.Errorw("Не удалось получить рекомендации", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось получить рекомендации по питанию")
@@ -56,7 +56,7 @@ func (h *Handler) GetRecommendationDetail(c *gin.Context) {
 	}
 
 	// Call service to get recommendation detail
-	result, err := h.service.GetRecommendationDetail(c.Request.Context(), nutrientID, userID)
+	result, err := h.extras.GetRecommendationDetail(c.Request.Context(), nutrientID, userID)
 	if err != nil {
 		h.log.Errorw("Не удалось получить детали рекомендации", "error", err, "user_id", userID, "nutrient_id", nutrientID)
 
@@ -106,7 +106,7 @@ func (h *Handler) UpdatePreferences(c *gin.Context) {
 	}
 
 	// Call service to update preferences
-	err := h.service.UpdateNutrientPreferences(c.Request.Context(), userID, req.NutrientIDs)
+	err := h.extras.UpdateNutrientPreferences(c.Request.Context(), userID, req.NutrientIDs)
 	if err != nil {
 		h.log.Errorw("Не удалось обновить настройки", "error", err, "user_id", userID)
 
@@ -162,7 +162,7 @@ func (h *Handler) CreateCustomRecommendation(c *gin.Context) {
 	}
 
 	// Call service to create custom recommendation
-	rec, err := h.service.CreateCustomRecommendation(c.Request.Context(), userID, &req)
+	rec, err := h.extras.CreateCustomRecommendation(c.Request.Context(), userID, &req)
 	if err != nil {
 		h.log.Errorw("Не удалось создать рекомендацию", "error", err, "user_id", userID, "name", req.Name)
 

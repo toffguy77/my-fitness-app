@@ -52,7 +52,7 @@ func (s *Service) CollectDailySnapshot(ctx context.Context, curatorID int64) err
 		return fmt.Errorf("failed to upsert daily snapshot: %w", err)
 	}
 
-	s.log.LogDatabaseQuery("CollectDailySnapshot", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("CollectDailySnapshot", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 	})
 
@@ -61,7 +61,7 @@ func (s *Service) CollectDailySnapshot(ctx context.Context, curatorID int64) err
 
 // GetAnalyticsHistory returns historical analytics data for the given period.
 // period can be "daily" or "weekly". count limits the number of results.
-func (s *Service) GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (interface{}, error) {
+func (s *Service) GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (any, error) {
 	startTime := time.Now()
 
 	if period == "daily" {
@@ -96,7 +96,7 @@ func (s *Service) getDailySnapshots(ctx context.Context, curatorID int64, count 
 		snapshots = append(snapshots, snap)
 	}
 
-	s.log.LogDatabaseQuery("GetDailySnapshots", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetDailySnapshots", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"count":      len(snapshots),
 	})
@@ -130,7 +130,7 @@ func (s *Service) getWeeklySnapshots(ctx context.Context, curatorID int64, count
 		snapshots = append(snapshots, snap)
 	}
 
-	s.log.LogDatabaseQuery("GetWeeklySnapshots", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetWeeklySnapshots", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"count":      len(snapshots),
 	})
@@ -176,7 +176,7 @@ func (s *Service) GetBenchmark(ctx context.Context, curatorID int64, weeks int) 
 		return nil, fmt.Errorf("failed to iterate platform benchmarks: %w", err)
 	}
 
-	s.log.LogDatabaseQuery("GetBenchmark", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetBenchmark", time.Since(startTime), nil, map[string]any{
 		"curator_id":    curatorID,
 		"own_snapshots": len(ownSnapshots),
 		"benchmarks":    len(benchmarks),

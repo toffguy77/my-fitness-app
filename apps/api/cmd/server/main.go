@@ -193,8 +193,11 @@ func main() {
 		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
 	}
 
-	// Initialize rate limiter
+	// Initialize rate limiter (DB-backed, for password reset)
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
+
+	// Initialize auth rate limiter (in-memory sliding window, for login/register)
+	authRateLimiter := middleware.NewAuthRateLimiter()
 
 	// Initialize reset service
 	resetService := auth.NewResetService(db.DB, cfg, log, emailService, rateLimiter)
@@ -206,6 +209,9 @@ func main() {
 
 	// Create Gin router
 	router := gin.New()
+	// Trust only RFC1918 private addresses so that nginx (docker internal IP)
+	// can set X-Forwarded-For, but external clients cannot spoof it.
+	router.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"})
 
 	// Global middleware
 	router.Use(gin.Recovery())
@@ -263,8 +269,8 @@ func main() {
 		resetHandler := auth.NewResetHandler(cfg, log, resetService)
 		authGroup := v1.Group("/auth")
 		{
-			authGroup.POST("/register", authHandler.Register)
-			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/register", authRateLimiter.Limit("register"), authHandler.Register)
+			authGroup.POST("/login", authRateLimiter.Limit("login"), authHandler.Login)
 			authGroup.POST("/refresh", authHandler.Refresh)
 			authGroup.POST("/logout", authHandler.Logout)
 			authGroup.GET("/me", middleware.RequireAuth(cfg), authHandler.GetCurrentUser)

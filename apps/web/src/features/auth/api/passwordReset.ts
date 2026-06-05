@@ -3,7 +3,7 @@
  * Handles password reset and recovery operations
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
+import { apiClient } from '@/shared/utils/api-client'
 
 export interface RequestPasswordResetParams {
     email: string
@@ -36,21 +36,10 @@ export interface ValidateTokenResponse {
 export async function requestPasswordReset(
     email: string
 ): Promise<RequestPasswordResetResponse> {
-    const response = await fetch(`${API_URL}/api/v1/auth/forgot-password`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Failed to send reset email')
-    }
-
-    return data
+    return apiClient.post<RequestPasswordResetResponse>(
+        '/api/v1/auth/forgot-password',
+        { email }
+    )
 }
 
 /**
@@ -63,21 +52,10 @@ export async function resetPassword(
     token: string,
     password: string
 ): Promise<ResetPasswordResponse> {
-    const response = await fetch(`${API_URL}/api/v1/auth/reset-password`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, password }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Failed to reset password')
-    }
-
-    return data
+    return apiClient.post<ResetPasswordResponse>(
+        '/api/v1/auth/reset-password',
+        { token, password }
+    )
 }
 
 /**
@@ -86,15 +64,7 @@ export async function resetPassword(
  * @returns Promise with validation result
  */
 export async function validateResetToken(token: string): Promise<ValidateTokenResponse> {
-    const response = await fetch(
-        `${API_URL}/api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
+    return apiClient.get<ValidateTokenResponse>(
+        `/api/v1/auth/validate-reset-token?token=${encodeURIComponent(token)}`
     )
-
-    const data = await response.json()
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Invalid token')
-    }
-
-    return data
 }

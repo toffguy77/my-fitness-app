@@ -441,7 +441,7 @@ func TestGetClientDetail(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Nil(t, detail)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -669,7 +669,7 @@ func TestCreateWeeklyPlan(t *testing.T) {
 		})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 	})
 
 	t.Run("rejects when end_date before start_date", func(t *testing.T) {
@@ -818,7 +818,7 @@ func TestDeleteWeeklyPlan(t *testing.T) {
 		err := service.DeleteWeeklyPlan(ctx, 1, 2, "plan-uuid-123")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 	})
 }
 
@@ -899,7 +899,7 @@ func TestGetWeeklyPlans(t *testing.T) {
 		_, err := service.GetWeeklyPlans(ctx, 1, 2)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 	})
 }
 
@@ -996,7 +996,7 @@ func TestCreateTask(t *testing.T) {
 		})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 	})
 
 	t.Run("rejects invalid deadline format", func(t *testing.T) {
@@ -1133,7 +1133,7 @@ func TestGetTasks(t *testing.T) {
 		_, err := service.GetTasks(ctx, 1, 2, "")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 	})
 }
 
@@ -1206,7 +1206,7 @@ func TestUpdateTask(t *testing.T) {
 		_, err := service.UpdateTask(ctx, 1, 2, "task-1", UpdateTaskRequest{Title: &newTitle})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 	})
 }
 
@@ -1260,7 +1260,7 @@ func TestDeleteTask(t *testing.T) {
 		err := service.DeleteTask(ctx, 1, 2, "task-uuid-1")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.Contains(t, err.Error(), "forbidden")
 	})
 }
 
