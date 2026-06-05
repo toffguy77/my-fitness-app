@@ -20,6 +20,8 @@ services:
       - dokploy-network
       - burcev-network
     restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
 
   # Backend API - Go (production)
   api:
@@ -121,6 +123,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    mem_limit: 256m
+    memswap_limit: 256m
 
 networks:
   dokploy-network:

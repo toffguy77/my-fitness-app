@@ -13,6 +13,7 @@ import (
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"golang.org/x/sync/errgroup"
 )
 
 // parseIntArray parses a PostgreSQL integer array string like "{1,3,5}" into []int
@@ -165,25 +166,68 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		"count":      len(clientRows),
 	})
 
-	// Get unread counts per client
-	unreadMap, err := s.getUnreadCounts(ctx, curatorID, clientIDs)
-	if err != nil {
-		s.log.Error("Failed to get unread counts, continuing with zeros", "error", err)
-		unreadMap = make(map[int64]int)
-	}
+	// Fetch all per-client enrichment data in parallel
+	var (
+		unreadMap       map[int64]int
+		weightMap       map[int64]*float64
+		trendMap        map[int64]string
+		targetMap       map[int64]*float64
+		waterMap        map[int64]*WaterView
+		activeTaskMap   map[int64]int
+		overdueTaskMap  map[int64]int
+		weeklyKBZHUMap  map[int64]*float64
+		lastActivityMap map[int64]*string
+		streakMap       map[int64]int
+	)
 
-	// Get weight data for all clients (last 2 weights + target)
-	weightMap, trendMap := s.getWeightData(ctx, clientIDs)
-	targetMap := s.getTargetWeights(ctx, clientIDs)
+	eg, egCtx := errgroup.WithContext(ctx)
 
-	// Get today's water intake for all clients
-	waterMap := s.getTodayWater(ctx, clientIDs)
+	eg.Go(func() error {
+		var err error
+		unreadMap, err = s.getUnreadCounts(egCtx, curatorID, clientIDs)
+		if err != nil {
+			s.log.Error("Failed to get unread counts, continuing with zeros", "error", err)
+			unreadMap = make(map[int64]int)
+		}
+		return nil
+	})
 
-	// Get extended fields
-	activeTaskMap, overdueTaskMap := s.getActiveTaskCounts(ctx, curatorID, clientIDs)
-	weeklyKBZHUMap := s.getWeeklyKBZHUPercent(ctx, clientIDs)
-	lastActivityMap := s.getLastActivityDates(ctx, clientIDs)
-	streakMap := s.getStreakDays(ctx, clientIDs)
+	eg.Go(func() error {
+		weightMap, trendMap = s.getWeightData(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		targetMap = s.getTargetWeights(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		waterMap = s.getTodayWater(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		activeTaskMap, overdueTaskMap = s.getActiveTaskCounts(egCtx, curatorID, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		weeklyKBZHUMap = s.getWeeklyKBZHUPercent(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		lastActivityMap = s.getLastActivityDates(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Go(func() error {
+		streakMap = s.getStreakDays(egCtx, clientIDs)
+		return nil
+	})
+
+	eg.Wait() //nolint:errcheck
 
 	// Build client cards
 	cards := make([]ClientCard, 0, len(clientRows))
@@ -1906,10 +1950,6 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 			AND (sub.today_cal < sub.plan_cal * 0.5 OR sub.today_cal > sub.plan_cal * 1.2
 				OR (sub.today_cal = 0))
 	`, inClause)
-	err = s.db.QueryRowContext(ctx, attentionQuery, args...).Scan(&summary.AttentionClients)
-	if err != nil {
-		s.log.Error("Failed to count attention clients", "error", err)
-	}
 
 	// Avg KBZHU percent across all clients this week
 	avgQuery := fmt.Sprintf(`
@@ -1925,48 +1965,69 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 			GROUP BY fe.user_id, wp.calories_goal
 		) sub
 	`, inClause)
-	err = s.db.QueryRowContext(ctx, avgQuery, args...).Scan(&summary.AvgKBZHUPercent)
-	if err != nil {
-		s.log.Error("Failed to compute avg kbzhu percent", "error", err)
-	}
 
-	// Unread messages
-	unreadMap, err := s.getUnreadCounts(ctx, curatorID, clientIDs)
-	if err != nil {
-		s.log.Error("Failed to get unread counts for analytics", "error", err)
-	} else {
+	eg, egCtx := errgroup.WithContext(ctx)
+
+	eg.Go(func() error {
+		if err := s.db.QueryRowContext(egCtx, attentionQuery, args...).Scan(&summary.AttentionClients); err != nil {
+			s.log.Error("Failed to count attention clients", "error", err)
+		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		if err := s.db.QueryRowContext(egCtx, avgQuery, args...).Scan(&summary.AvgKBZHUPercent); err != nil {
+			s.log.Error("Failed to compute avg kbzhu percent", "error", err)
+		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		unreadMap, err := s.getUnreadCounts(egCtx, curatorID, clientIDs)
+		if err != nil {
+			s.log.Error("Failed to get unread counts for analytics", "error", err)
+			return nil
+		}
 		for _, count := range unreadMap {
 			summary.TotalUnread += count
 			if count > 0 {
 				summary.ClientsWaiting++
 			}
 		}
-	}
+		return nil
+	})
 
-	// Task counts
-	err = s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active'`,
-		curatorID,
-	).Scan(&summary.ActiveTasks)
-	if err != nil {
-		s.log.Error("Failed to count active tasks", "error", err)
-	}
+	eg.Go(func() error {
+		if err := s.db.QueryRowContext(egCtx,
+			`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active'`,
+			curatorID,
+		).Scan(&summary.ActiveTasks); err != nil {
+			s.log.Error("Failed to count active tasks", "error", err)
+		}
+		return nil
+	})
 
-	err = s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active' AND due_date < CURRENT_DATE AND completed_at IS NULL`,
-		curatorID,
-	).Scan(&summary.OverdueTasks)
-	if err != nil {
-		s.log.Error("Failed to count overdue tasks", "error", err)
-	}
+	eg.Go(func() error {
+		if err := s.db.QueryRowContext(egCtx,
+			`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active' AND due_date < CURRENT_DATE AND completed_at IS NULL`,
+			curatorID,
+		).Scan(&summary.OverdueTasks); err != nil {
+			s.log.Error("Failed to count overdue tasks", "error", err)
+		}
+		return nil
+	})
 
-	err = s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM task_completions tc JOIN tasks t ON tc.task_id = t.id WHERE t.curator_id = $1 AND tc.completed_date = CURRENT_DATE`,
-		curatorID,
-	).Scan(&summary.CompletedToday)
-	if err != nil {
-		s.log.Error("Failed to count completed today", "error", err)
-	}
+	eg.Go(func() error {
+		if err := s.db.QueryRowContext(egCtx,
+			`SELECT COUNT(*) FROM task_completions tc JOIN tasks t ON tc.task_id = t.id WHERE t.curator_id = $1 AND tc.completed_date = CURRENT_DATE`,
+			curatorID,
+		).Scan(&summary.CompletedToday); err != nil {
+			s.log.Error("Failed to count completed today", "error", err)
+		}
+		return nil
+	})
+
+	eg.Wait() //nolint:errcheck
 
 	s.log.LogDatabaseQuery("GetAnalytics", time.Since(startTime), nil, map[string]interface{}{
 		"curator_id":    curatorID,
