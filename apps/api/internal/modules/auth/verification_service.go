@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 )
@@ -65,7 +66,7 @@ func (vs *VerificationService) SendCode(ctx context.Context, userID int64, userE
 		return fmt.Errorf("failed to check rate limit: %w", err)
 	}
 	if recentCount >= maxResendPerWindow {
-		return fmt.Errorf("too many requests")
+		return fmt.Errorf("SendCode.rateLimit: %w", apperrors.ErrTooManyAttempts)
 	}
 
 	// Generate code
@@ -123,11 +124,11 @@ func (vs *VerificationService) VerifyCode(ctx context.Context, userID int64, cod
 	}
 
 	if attempts >= maxVerificationAttempts {
-		return fmt.Errorf("too many attempts")
+		return fmt.Errorf("VerifyCode.maxAttempts: %w", apperrors.ErrTooManyAttempts)
 	}
 
 	if time.Now().After(expiresAt) {
-		return fmt.Errorf("code expired")
+		return fmt.Errorf("VerifyCode.expired: %w", apperrors.ErrCodeExpired)
 	}
 
 	if hashCode(code) != storedHash {

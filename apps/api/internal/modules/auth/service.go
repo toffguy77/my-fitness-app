@@ -108,9 +108,11 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	`
 
 	var user User
+	startTime := time.Now()
 	err = s.db.QueryRowContext(ctx, query, email, string(hashedPassword), name).Scan(
 		&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt,
 	)
+	s.log.LogDatabaseQuery("Register.InsertUser", time.Since(startTime), err, map[string]any{"email": email})
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при регистрации: %w", err)
 	}
@@ -190,9 +192,11 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 
 	var user User
 	var hashedPassword string
+	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt,
 	)
+	s.log.LogDatabaseQuery("Login.LookupUser", time.Since(startTime), err, map[string]any{"email": email})
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("Login.LookupUser: %w", apperrors.ErrInvalidCredentials)
@@ -247,10 +251,12 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	var revokedAt sql.NullTime
 	var rememberMe bool
 
+	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens WHERE token_hash = $1`,
 		tokenHash,
 	).Scan(&id, &userID, &expiresAt, &revokedAt, &rememberMe)
+	s.log.LogDatabaseQuery("Refresh.LookupToken", time.Since(startTime), err, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("Refresh.LookupToken: %w", apperrors.ErrTokenInvalid)
@@ -387,16 +393,18 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 // and updates the stored bcrypt hash.
 func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string) error {
 	var storedHash string
+	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
 		`SELECT password FROM users WHERE id = $1`,
 		userID,
 	).Scan(&storedHash)
+	s.log.LogDatabaseQuery("ChangePassword.GetHash", time.Since(startTime), err, map[string]any{"user_id": userID})
 	if err != nil {
 		return fmt.Errorf("ошибка при получении данных пользователя: %w", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)); err != nil {
-		return fmt.Errorf("неверный текущий пароль")
+		return fmt.Errorf("ChangePassword.verify: %w", apperrors.ErrInvalidCredentials)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(newPassword)); err == nil {
@@ -412,10 +420,12 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 		return fmt.Errorf("ошибка при хешировании пароля: %w", err)
 	}
 
+	startTime2 := time.Now()
 	_, err = s.db.ExecContext(ctx,
 		`UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2`,
 		string(newHash), userID,
 	)
+	s.log.LogDatabaseQuery("ChangePassword.UpdateHash", time.Since(startTime2), err, map[string]any{"user_id": userID})
 	if err != nil {
 		return fmt.Errorf("ошибка при обновлении пароля: %w", err)
 	}
@@ -426,10 +436,12 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 // RevokeRefreshToken revokes a single refresh token (for logout)
 func (s *Service) RevokeRefreshToken(ctx context.Context, plainToken string) error {
 	tokenHash := s.tokens.HashToken(plainToken)
+	startTime := time.Now()
 	_, err := s.db.ExecContext(ctx,
 		`UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = $1 AND revoked_at IS NULL`,
 		tokenHash,
 	)
+	s.log.LogDatabaseQuery("Logout.RevokeToken", time.Since(startTime), err, nil)
 	return err
 }
 
@@ -446,11 +458,13 @@ func (s *Service) createRefreshToken(ctx context.Context, userID int64, ip, ua s
 	}
 	expiresAt := time.Now().Add(ttl)
 
+	startTime := time.Now()
 	_, err = s.db.ExecContext(ctx,
 		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, remember_me, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
 		userID, hashedToken, expiresAt, ip, ua, rememberMe,
 	)
+	s.log.LogDatabaseQuery("RefreshToken.Insert", time.Since(startTime), err, map[string]any{"user_id": userID})
 	if err != nil {
 		return "", fmt.Errorf("failed to store refresh token: %w", err)
 	}

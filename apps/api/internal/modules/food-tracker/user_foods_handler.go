@@ -25,7 +25,7 @@ func (h *Handler) CreateUserFood(c *gin.Context) {
 		return
 	}
 
-	food, err := h.service.CreateUserFood(c.Request.Context(), userID, &req)
+	food, err := h.userFoods.CreateUserFood(c.Request.Context(), userID, &req)
 	if err != nil {
 		h.log.Errorw("Failed to create user food", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось создать продукт")
@@ -53,7 +53,7 @@ func (h *Handler) CloneUserFood(c *gin.Context) {
 		return
 	}
 
-	food, err := h.service.CloneUserFood(c.Request.Context(), userID, &req)
+	food, err := h.userFoods.CloneUserFood(c.Request.Context(), userID, &req)
 	if err != nil {
 		h.log.Errorw("Failed to clone user food", "error", err, "user_id", userID)
 		response.Error(c, http.StatusBadRequest, err.Error())
@@ -70,7 +70,7 @@ func (h *Handler) GetUserFoods(c *gin.Context) {
 		return
 	}
 
-	foods, err := h.service.GetUserFoods(c.Request.Context(), userID)
+	foods, err := h.userFoods.GetUserFoods(c.Request.Context(), userID)
 	if err != nil {
 		h.log.Errorw("Failed to get user foods", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось получить пользовательские продукты")
@@ -95,7 +95,7 @@ func (h *Handler) UpdateUserFood(c *gin.Context) {
 		return
 	}
 
-	food, err := h.service.UpdateUserFood(c.Request.Context(), userID, foodID, &req)
+	food, err := h.userFoods.UpdateUserFood(c.Request.Context(), userID, foodID, &req)
 	if err != nil {
 		h.log.Errorw("Failed to update user food", "error", err, "user_id", userID, "food_id", foodID)
 		response.Error(c, http.StatusBadRequest, err.Error())
@@ -114,7 +114,7 @@ func (h *Handler) DeleteUserFood(c *gin.Context) {
 
 	foodID := c.Param("id")
 
-	if err := h.service.DeleteUserFood(c.Request.Context(), userID, foodID); err != nil {
+	if err := h.userFoods.DeleteUserFood(c.Request.Context(), userID, foodID); err != nil {
 		h.log.Errorw("Failed to delete user food", "error", err, "user_id", userID, "food_id", foodID)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return

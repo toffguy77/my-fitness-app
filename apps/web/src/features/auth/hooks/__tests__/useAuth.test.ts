@@ -32,6 +32,7 @@ jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
         setToken: jest.fn(),
         clearToken: jest.fn(),
+        post: jest.fn().mockResolvedValue({}),
     },
 }));
 
@@ -538,12 +539,9 @@ describe('useAuth', () => {
             });
 
             // Verify backend revocation was attempted
-            expect(global.fetch).toHaveBeenCalledWith(
+            expect(apiClient.post).toHaveBeenCalledWith(
                 expect.stringContaining('/auth/logout'),
-                expect.objectContaining({
-                    method: 'POST',
-                    body: JSON.stringify({ refresh_token: 'stored-refresh-token' }),
-                })
+                { refresh_token: 'stored-refresh-token' }
             );
 
             // Verify local auth was cleared
@@ -556,7 +554,7 @@ describe('useAuth', () => {
 
         it('should still clear auth and redirect even if backend revocation fails', async () => {
             (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue('stored-refresh-token');
-            (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+            (apiClient.post as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
             const { result } = renderHook(() => useAuth());
 
@@ -580,7 +578,7 @@ describe('useAuth', () => {
             });
 
             // Verify no backend call was made
-            expect(global.fetch).not.toHaveBeenCalled();
+            expect(apiClient.post).not.toHaveBeenCalled();
 
             // Verify local auth was cleared
             expect(tokenStorage.clearAuth).toHaveBeenCalled();

@@ -3,11 +3,13 @@ package admin
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/stretchr/testify/assert"
@@ -200,7 +202,7 @@ func TestChangeRole(t *testing.T) {
 
 		err := service.ChangeRole(ctx, 1, "client")
 		assert.Error(t, err)
-		assert.Equal(t, "cannot change super_admin role", err.Error())
+		assert.True(t, errors.Is(err, apperrors.ErrForbidden))
 	})
 
 	t.Run("returns error when user not found", func(t *testing.T) {
@@ -214,7 +216,7 @@ func TestChangeRole(t *testing.T) {
 
 		err := service.ChangeRole(ctx, 999, "coordinator")
 		assert.Error(t, err)
-		assert.Equal(t, "user not found", err.Error())
+		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 	})
 
 	t.Run("demotes coordinator to client with no active clients", func(t *testing.T) {
@@ -335,7 +337,7 @@ func TestAssignCurator(t *testing.T) {
 
 		err := service.AssignCurator(ctx, 999, 10)
 		assert.Error(t, err)
-		assert.Equal(t, "client not found", err.Error())
+		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 	})
 
 	t.Run("curator not found", func(t *testing.T) {
@@ -353,7 +355,7 @@ func TestAssignCurator(t *testing.T) {
 
 		err := service.AssignCurator(ctx, 100, 999)
 		assert.Error(t, err)
-		assert.Equal(t, "curator not found", err.Error())
+		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 	})
 
 	t.Run("user is not a client", func(t *testing.T) {
@@ -530,7 +532,7 @@ func TestGetConversationMessages(t *testing.T) {
 
 		messages, err := service.GetConversationMessages(ctx, "nonexistent", "", 50)
 		assert.Error(t, err)
-		assert.Equal(t, "conversation not found", err.Error())
+		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 		assert.Nil(t, messages)
 	})
 

@@ -2,10 +2,12 @@ package auth
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
@@ -174,14 +176,13 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	}
 
 	if err := h.service.ChangePassword(c.Request.Context(), userID.(int64), req.CurrentPassword, req.NewPassword); err != nil {
-		msg := err.Error()
 		switch {
-		case msg == "неверный текущий пароль":
-			response.Error(c, http.StatusUnauthorized, msg)
-		case msg == "новый пароль должен отличаться от текущего":
-			response.Error(c, http.StatusUnprocessableEntity, msg)
-		case strings.HasPrefix(msg, "пароль не соответствует требованиям"):
-			response.Error(c, http.StatusUnprocessableEntity, msg)
+		case errors.Is(err, apperrors.ErrInvalidCredentials):
+			response.Error(c, http.StatusUnauthorized, "Неверный текущий пароль")
+		case strings.HasPrefix(err.Error(), "новый пароль должен отличаться"):
+			response.Error(c, http.StatusUnprocessableEntity, err.Error())
+		case strings.HasPrefix(err.Error(), "пароль не соответствует требованиям"):
+			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		default:
 			h.log.Errorw("Password change failed", "error", err, "user_id", userID)
 			response.Error(c, http.StatusInternalServerError, "Не удалось изменить пароль")
@@ -209,10 +210,10 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 
 	err := h.verificationService.VerifyCode(c.Request.Context(), userID.(int64), req.Code)
 	if err != nil {
-		switch err.Error() {
-		case "too many attempts":
+		switch {
+		case errors.Is(err, apperrors.ErrTooManyAttempts):
 			response.Error(c, http.StatusTooManyRequests, "Слишком много попыток. Запросите новый код.")
-		case "code expired":
+		case errors.Is(err, apperrors.ErrCodeExpired):
 			response.Error(c, http.StatusBadRequest, "Код истёк. Запросите новый.")
 		default:
 			response.Error(c, http.StatusBadRequest, "Неверный код")
@@ -236,7 +237,7 @@ func (h *Handler) ResendVerification(c *gin.Context) {
 		c.Request.UserAgent(),
 	)
 	if err != nil {
-		if err.Error() == "too many requests" {
+		if errors.Is(err, apperrors.ErrTooManyAttempts) {
 			response.Error(c, http.StatusTooManyRequests, "Слишком много запросов. Попробуйте позже.")
 			return
 		}

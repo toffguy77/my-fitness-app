@@ -1,115 +1,73 @@
 import { requestPasswordReset, resetPassword, validateResetToken } from '../passwordReset'
 
+jest.mock('@/shared/utils/api-client', () => ({
+    apiClient: {
+        post: jest.fn(),
+        get: jest.fn(),
+    },
+}))
+
+import { apiClient } from '@/shared/utils/api-client'
+
+const mockApiClient = apiClient as jest.Mocked<typeof apiClient>
+
 describe('passwordReset API', () => {
     beforeEach(() => {
-        global.fetch = jest.fn()
-    })
-
-    afterEach(() => {
-        jest.restoreAllMocks()
+        jest.clearAllMocks()
     })
 
     describe('requestPasswordReset', () => {
-        it('sends POST request with email', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ message: 'Email sent' }),
-            })
+        it('sends POST request with email to forgot-password endpoint', async () => {
+            mockApiClient.post.mockResolvedValueOnce({ message: 'Email sent' })
 
             const result = await requestPasswordReset('user@example.com')
 
-            expect(global.fetch).toHaveBeenCalledWith(
+            expect(mockApiClient.post).toHaveBeenCalledWith(
                 '/api/v1/auth/forgot-password',
-                expect.objectContaining({
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'user@example.com' }),
-                })
+                { email: 'user@example.com' }
             )
             expect(result).toEqual({ message: 'Email sent' })
         })
 
-        it('throws error on failure with server message', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: false,
-                json: () => Promise.resolve({ error: 'User not found' }),
-            })
+        it('throws error on failure', async () => {
+            mockApiClient.post.mockRejectedValueOnce(new Error('User not found'))
 
             await expect(requestPasswordReset('bad@example.com')).rejects.toThrow('User not found')
-        })
-
-        it('throws default error when no server message', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: false,
-                json: () => Promise.resolve({}),
-            })
-
-            await expect(requestPasswordReset('test@example.com')).rejects.toThrow(
-                'Failed to send reset email'
-            )
         })
     })
 
     describe('resetPassword', () => {
-        it('sends POST request with token and password', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: true,
-                json: () =>
-                    Promise.resolve({ success: true, message: 'Password reset' }),
-            })
+        it('sends POST request with token and password to reset-password endpoint', async () => {
+            mockApiClient.post.mockResolvedValueOnce({ success: true, message: 'Password reset' })
 
             const result = await resetPassword('reset-token-123', 'newPassword123')
 
-            expect(global.fetch).toHaveBeenCalledWith(
+            expect(mockApiClient.post).toHaveBeenCalledWith(
                 '/api/v1/auth/reset-password',
-                expect.objectContaining({
-                    method: 'POST',
-                    body: JSON.stringify({
-                        token: 'reset-token-123',
-                        password: 'newPassword123',
-                    }),
-                })
+                { token: 'reset-token-123', password: 'newPassword123' }
             )
             expect(result).toEqual({ success: true, message: 'Password reset' })
         })
 
         it('throws error on failure', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: false,
-                json: () => Promise.resolve({ error: 'Invalid token' }),
-            })
+            mockApiClient.post.mockRejectedValueOnce(new Error('Invalid token'))
 
             await expect(
                 resetPassword('bad-token', 'password')
             ).rejects.toThrow('Invalid token')
         })
-
-        it('throws default error when no server message', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: false,
-                json: () => Promise.resolve({}),
-            })
-
-            await expect(
-                resetPassword('token', 'pass')
-            ).rejects.toThrow('Failed to reset password')
-        })
     })
 
     describe('validateResetToken', () => {
-        it('sends GET request with encoded token', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: true,
-                json: () =>
-                    Promise.resolve({
-                        valid: true,
-                        expires_at: '2026-04-01T00:00:00Z',
-                    }),
+        it('sends GET request with encoded token to validate-reset-token endpoint', async () => {
+            mockApiClient.get.mockResolvedValueOnce({
+                valid: true,
+                expires_at: '2026-04-01T00:00:00Z',
             })
 
             const result = await validateResetToken('my-token')
 
-            expect(global.fetch).toHaveBeenCalledWith(
+            expect(mockApiClient.get).toHaveBeenCalledWith(
                 '/api/v1/auth/validate-reset-token?token=my-token'
             )
             expect(result).toEqual({
@@ -119,36 +77,19 @@ describe('passwordReset API', () => {
         })
 
         it('encodes special characters in token', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: true,
-                json: () => Promise.resolve({ valid: true, expires_at: '' }),
-            })
+            mockApiClient.get.mockResolvedValueOnce({ valid: true, expires_at: '' })
 
             await validateResetToken('token with spaces & special=chars')
 
-            expect(global.fetch).toHaveBeenCalledWith(
+            expect(mockApiClient.get).toHaveBeenCalledWith(
                 expect.stringContaining('token%20with%20spaces')
             )
         })
 
         it('throws error on invalid token', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: false,
-                json: () => Promise.resolve({ error: 'Token expired' }),
-            })
+            mockApiClient.get.mockRejectedValueOnce(new Error('Token expired'))
 
-            await expect(validateResetToken('expired-token')).rejects.toThrow(
-                'Token expired'
-            )
-        })
-
-        it('throws default error when no server message', async () => {
-            ;(global.fetch as jest.Mock).mockResolvedValue({
-                ok: false,
-                json: () => Promise.resolve({}),
-            })
-
-            await expect(validateResetToken('token')).rejects.toThrow('Invalid token')
+            await expect(validateResetToken('expired-token')).rejects.toThrow('Token expired')
         })
     })
 })

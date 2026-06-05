@@ -5,6 +5,7 @@ jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
         get: jest.fn(),
         post: jest.fn(),
+        postFormData: jest.fn(),
     },
 }))
 
@@ -80,57 +81,32 @@ describe('chatApi', () => {
     })
 
     describe('uploadFile', () => {
-        const originalFetch = global.fetch
-
-        afterEach(() => {
-            global.fetch = originalFetch
-            localStorage.clear()
-        })
-
-        it('uploads file with FormData and auth token', async () => {
-            localStorage.setItem('auth_token', 'test-token')
-            const mockResponse = {
-                ok: true,
-                json: jest.fn().mockResolvedValue({ data: { id: 'att-1', file_url: '/file.png' } }),
-            }
-            global.fetch = jest.fn().mockResolvedValue(mockResponse)
+        it('uploads file via postFormData and returns attachment', async () => {
+            const attachment = { id: 'att-1', file_url: '/file.png' }
+            mockApiClient.postFormData.mockResolvedValueOnce(attachment)
 
             const file = new File(['content'], 'test.png', { type: 'image/png' })
             const result = await chatApi.uploadFile('conv-1', file)
 
-            expect(global.fetch).toHaveBeenCalledWith(
+            expect(mockApiClient.postFormData).toHaveBeenCalledWith(
                 '/api/v1/conversations/conv-1/upload',
-                expect.objectContaining({
-                    method: 'POST',
-                    headers: { Authorization: 'Bearer test-token' },
-                })
+                expect.any(FormData)
             )
-            expect(result).toEqual({ id: 'att-1', file_url: '/file.png' })
+            expect(result).toEqual(attachment)
         })
 
-        it('uploads file without auth token', async () => {
-            const mockResponse = {
-                ok: true,
-                json: jest.fn().mockResolvedValue({ id: 'att-1' }),
-            }
-            global.fetch = jest.fn().mockResolvedValue(mockResponse)
+        it('appends file as file field in FormData', async () => {
+            mockApiClient.postFormData.mockResolvedValueOnce({ id: 'att-1' })
 
             const file = new File(['content'], 'test.txt', { type: 'text/plain' })
-            const result = await chatApi.uploadFile('conv-1', file)
+            await chatApi.uploadFile('conv-1', file)
 
-            expect(global.fetch).toHaveBeenCalledWith(
-                '/api/v1/conversations/conv-1/upload',
-                expect.objectContaining({
-                    method: 'POST',
-                    headers: {},
-                })
-            )
-            // Falls back to json root when data is absent
-            expect(result).toEqual({ id: 'att-1' })
+            const formData = (mockApiClient.postFormData as jest.Mock).mock.calls[0][1] as FormData
+            expect(formData.get('file')).toBe(file)
         })
 
         it('throws on non-ok response', async () => {
-            global.fetch = jest.fn().mockResolvedValue({ ok: false })
+            mockApiClient.postFormData.mockRejectedValueOnce(new Error('Upload failed'))
 
             const file = new File(['content'], 'test.txt', { type: 'text/plain' })
             await expect(chatApi.uploadFile('conv-1', file)).rejects.toThrow('Upload failed')

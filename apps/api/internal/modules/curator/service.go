@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/modules/notifications"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"golang.org/x/sync/errgroup"
@@ -63,7 +64,7 @@ type ServiceInterface interface {
 	GetWeeklyReports(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
 	GetAnalytics(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
 	GetAttentionList(ctx context.Context, curatorID int64) ([]AttentionItem, error)
-	GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (interface{}, error)
+	GetAnalyticsHistory(ctx context.Context, curatorID int64, period string, count int) (any, error)
 	GetBenchmark(ctx context.Context, curatorID int64, weeks int) (*BenchmarkData, error)
 	CollectDailySnapshot(ctx context.Context, curatorID int64) error
 }
@@ -133,7 +134,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 
 	rows, err := s.db.QueryContext(ctx, query, curatorID)
 	if err != nil {
-		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]any{
 			"curator_id": curatorID,
 		})
 		return nil, fmt.Errorf("failed to query clients: %w", err)
@@ -161,7 +162,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		return nil, fmt.Errorf("error iterating client rows: %w", err)
 	}
 
-	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"count":      len(clientRows),
 	})
@@ -324,7 +325,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 
 	var exists bool
 	if err := s.db.QueryRowContext(ctx, relationshipQuery, curatorID, clientID).Scan(&exists); err != nil {
-		s.log.LogDatabaseQuery(relationshipQuery, time.Since(startTime), err, map[string]interface{}{
+		s.log.LogDatabaseQuery(relationshipQuery, time.Since(startTime), err, map[string]any{
 			"curator_id": curatorID,
 			"client_id":  clientID,
 		})
@@ -332,7 +333,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	}
 
 	if !exists {
-		return nil, fmt.Errorf("unauthorized: no active relationship between curator %d and client %d", curatorID, clientID)
+		return nil, fmt.Errorf("GetClientDetail.verifyRelationship: %w", apperrors.ErrForbidden)
 	}
 
 	// Get client info
@@ -365,7 +366,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		&birthDate, &biologicalSex, &activityLevel, &fitnessGoal,
 	); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("client not found")
+			return nil, fmt.Errorf("GetClientDetail.client: %w", apperrors.ErrNotFound)
 		}
 		return nil, fmt.Errorf("failed to get client info: %w", err)
 	}
@@ -692,7 +693,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 		detail.FitnessGoal = &s
 	}
 
-	s.log.LogDatabaseQuery("GetClientDetail", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetClientDetail", time.Since(startTime), nil, map[string]any{
 		"curator_id":  curatorID,
 		"client_id":   clientID,
 		"start_date":  startDateStr,
@@ -971,7 +972,7 @@ func (s *Service) SetTargetWeight(ctx context.Context, curatorID int64, clientID
 		return fmt.Errorf("failed to verify relationship: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("unauthorized")
+		return fmt.Errorf("SetTargetWeight.verifyRelationship: %w", apperrors.ErrForbidden)
 	}
 
 	_, err = s.db.ExecContext(ctx,
@@ -998,7 +999,7 @@ func (s *Service) verifyRelationship(ctx context.Context, curatorID, clientID in
 		return fmt.Errorf("failed to verify relationship: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("unauthorized: no active relationship between curator %d and client %d", curatorID, clientID)
+		return fmt.Errorf("verifyRelationship: %w", apperrors.ErrForbidden)
 	}
 	return nil
 }
@@ -1047,7 +1048,7 @@ func (s *Service) CreateWeeklyPlan(ctx context.Context, curatorID, clientID int6
 		return nil, fmt.Errorf("failed to create weekly plan: %w", err)
 	}
 
-	s.log.LogDatabaseQuery("CreateWeeklyPlan", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("CreateWeeklyPlan", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"plan_id":    planID,
@@ -1143,7 +1144,7 @@ func (s *Service) UpdateWeeklyPlan(ctx context.Context, curatorID, clientID int6
 		plan.Comment = comment.String
 	}
 
-	s.log.LogDatabaseQuery("UpdateWeeklyPlan", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("UpdateWeeklyPlan", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"plan_id":    planID,
@@ -1187,7 +1188,7 @@ func (s *Service) DeleteWeeklyPlan(ctx context.Context, curatorID, clientID int6
 		s.log.Error("Failed to delete plan notifications (best-effort)", "error", err, "plan_id", planID)
 	}
 
-	s.log.LogDatabaseQuery("DeleteWeeklyPlan", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("DeleteWeeklyPlan", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"plan_id":    planID,
@@ -1247,7 +1248,7 @@ func (s *Service) GetWeeklyPlans(ctx context.Context, curatorID, clientID int64)
 		return nil, fmt.Errorf("error iterating weekly plans: %w", err)
 	}
 
-	s.log.LogDatabaseQuery("GetWeeklyPlans", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetWeeklyPlans", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"count":      len(plans),
@@ -1274,7 +1275,7 @@ func (s *Service) CreateTask(ctx context.Context, curatorID, clientID int64, req
 	_, weekNumber := deadline.ISOWeek()
 
 	// Format recurrence_days as PostgreSQL array literal
-	var recurrenceDaysParam interface{}
+	var recurrenceDaysParam any
 	if len(req.RecurrenceDays) > 0 {
 		parts := make([]string, len(req.RecurrenceDays))
 		for i, d := range req.RecurrenceDays {
@@ -1296,7 +1297,7 @@ func (s *Service) CreateTask(ctx context.Context, curatorID, clientID int64, req
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
-	s.log.LogDatabaseQuery("CreateTask", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("CreateTask", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"task_id":    taskID,
@@ -1446,7 +1447,7 @@ func (s *Service) GetTasks(ctx context.Context, curatorID, clientID int64, statu
 		tasks = append(tasks, task)
 	}
 
-	s.log.LogDatabaseQuery("GetTasks", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetTasks", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"count":      len(tasks),
@@ -1534,7 +1535,7 @@ func (s *Service) UpdateTask(ctx context.Context, curatorID, clientID int64, tas
 		task.RecurrenceDays = parseIntArray(recurrenceDays.String)
 	}
 
-	s.log.LogDatabaseQuery("UpdateTask", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("UpdateTask", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"task_id":    taskID,
@@ -1573,7 +1574,7 @@ func (s *Service) DeleteTask(ctx context.Context, curatorID, clientID int64, tas
 		s.log.Error("Failed to delete task notifications (best-effort)", "error", err, "task_id", taskID)
 	}
 
-	s.log.LogDatabaseQuery("DeleteTask", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("DeleteTask", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"task_id":    taskID,
@@ -1594,7 +1595,7 @@ func (s *Service) SetWaterGoal(ctx context.Context, curatorID int64, clientID in
 		return fmt.Errorf("failed to verify relationship: %w", err)
 	}
 	if !exists {
-		return fmt.Errorf("unauthorized")
+		return fmt.Errorf("SetWaterGoal.verifyRelationship: %w", apperrors.ErrForbidden)
 	}
 
 	_, err = s.db.ExecContext(ctx,
@@ -1626,7 +1627,7 @@ func (s *Service) SubmitFeedback(ctx context.Context, curatorID, clientID int64,
 	query := `UPDATE weekly_reports SET curator_feedback = $1, reviewed_at = NOW(), updated_at = NOW() WHERE id = $2 AND curator_id = $3`
 	result, err := s.db.ExecContext(ctx, query, feedbackJSON, reportID, curatorID)
 	if err != nil {
-		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]any{
 			"curator_id": curatorID,
 			"report_id":  reportID,
 		})
@@ -1641,7 +1642,7 @@ func (s *Service) SubmitFeedback(ctx context.Context, curatorID, clientID int64,
 		return fmt.Errorf("weekly report not found")
 	}
 
-	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"report_id":  reportID,
 	})
@@ -1670,7 +1671,7 @@ func (s *Service) GetWeeklyReports(ctx context.Context, curatorID, clientID int6
 
 	rows, err := s.db.QueryContext(ctx, query, clientID)
 	if err != nil {
-		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]any{
 			"curator_id": curatorID,
 			"client_id":  clientID,
 		})
@@ -1711,7 +1712,7 @@ func (s *Service) GetWeeklyReports(ctx context.Context, curatorID, clientID int6
 		return nil, fmt.Errorf("failed to iterate weekly reports: %w", err)
 	}
 
-	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"client_id":  clientID,
 		"count":      len(reports),
@@ -2029,7 +2030,7 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 
 	eg.Wait() //nolint:errcheck
 
-	s.log.LogDatabaseQuery("GetAnalytics", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetAnalytics", time.Since(startTime), nil, map[string]any{
 		"curator_id":    curatorID,
 		"total_clients": summary.TotalClients,
 	})
@@ -2312,7 +2313,7 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 		items = items[:20]
 	}
 
-	s.log.LogDatabaseQuery("GetAttentionList", time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery("GetAttentionList", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
 		"count":      len(items),
 	})

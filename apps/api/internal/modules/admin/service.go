@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 )
@@ -174,7 +175,7 @@ func (s *Service) ChangeRole(ctx context.Context, userID int64, newRole string) 
 	err := s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&currentRole)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("user not found")
+			return fmt.Errorf("ChangeRole: %w", apperrors.ErrNotFound)
 		}
 		return fmt.Errorf("failed to get user role: %w", err)
 	}
@@ -185,7 +186,7 @@ func (s *Service) ChangeRole(ctx context.Context, userID int64, newRole string) 
 
 	// Cannot change super_admin role
 	if currentRole == "super_admin" {
-		return fmt.Errorf("cannot change super_admin role")
+		return fmt.Errorf("cannot change super_admin role: %w", apperrors.ErrForbidden)
 	}
 
 	// If demoting coordinator -> client, handle client reassignment in a transaction
@@ -277,7 +278,7 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 		}
 
 		if remainingCount == 0 {
-			return fmt.Errorf("cannot demote: no remaining curators to reassign %d clients", len(orphanedClients))
+			return fmt.Errorf("cannot demote: no remaining curators to reassign %d clients: %w", len(orphanedClients), apperrors.ErrForbidden)
 		}
 
 		for _, clientID := range orphanedClients {
@@ -341,7 +342,7 @@ func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) 
 	err := s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = $1`, clientID).Scan(&clientRole)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("client not found")
+			return fmt.Errorf("AssignCurator.client: %w", apperrors.ErrNotFound)
 		}
 		return fmt.Errorf("failed to verify client: %w", err)
 	}
@@ -354,7 +355,7 @@ func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) 
 	err = s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = $1`, curatorID).Scan(&curatorRole)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("curator not found")
+			return fmt.Errorf("AssignCurator.curator: %w", apperrors.ErrNotFound)
 		}
 		return fmt.Errorf("failed to verify curator: %w", err)
 	}
@@ -474,7 +475,7 @@ func (s *Service) GetConversationMessages(ctx context.Context, conversationID st
 		return nil, fmt.Errorf("failed to check conversation: %w", err)
 	}
 	if !exists {
-		return nil, fmt.Errorf("conversation not found")
+		return nil, fmt.Errorf("GetConversationMessages: %w", apperrors.ErrNotFound)
 	}
 
 	var rows *sql.Rows

@@ -61,21 +61,21 @@ func NewResetService(
 func (rs *ResetService) RequestPasswordReset(ctx context.Context, userEmail string, ipAddress string, userAgent string) error {
 	// Check rate limits first
 	if err := rs.rateLimiter.CheckEmailRateLimit(ctx, userEmail); err != nil {
-		rs.log.LogSecurityEvent("password_reset_rate_limit", "high", map[string]interface{}{
+		rs.log.LogSecurityEvent("password_reset_rate_limit", "high", map[string]any{
 			"email":      userEmail,
 			"ip_address": ipAddress,
 			"reason":     "email_rate_limit",
 		})
-		return fmt.Errorf("RequestPasswordReset.emailRateLimit: %w", apperrors.ErrTooManyAttempts)
+		return fmt.Errorf("email rate limit: %w", apperrors.ErrTooManyAttempts)
 	}
 
 	if err := rs.rateLimiter.CheckIPRateLimit(ctx, ipAddress); err != nil {
-		rs.log.LogSecurityEvent("password_reset_rate_limit", "high", map[string]interface{}{
+		rs.log.LogSecurityEvent("password_reset_rate_limit", "high", map[string]any{
 			"email":      userEmail,
 			"ip_address": ipAddress,
 			"reason":     "ip_rate_limit",
 		})
-		return fmt.Errorf("RequestPasswordReset.ipRateLimit: %w", apperrors.ErrTooManyAttempts)
+		return fmt.Errorf("ip rate limit: %w", apperrors.ErrTooManyAttempts)
 	}
 
 	// Record the attempt
@@ -210,7 +210,7 @@ func (rs *ResetService) ValidateResetToken(ctx context.Context, plainToken strin
 		rs.log.Warn("Invalid reset token attempted",
 			"token_hash", hashedToken[:10]+"...",
 		)
-		return nil, fmt.Errorf("ValidateResetToken.lookup: %w", apperrors.ErrTokenInvalid)
+		return nil, fmt.Errorf("lookup: %w", apperrors.ErrTokenInvalid)
 	}
 
 	if err != nil {
@@ -228,7 +228,7 @@ func (rs *ResetService) ValidateResetToken(ctx context.Context, plainToken strin
 			"token_id", tokenData.ID,
 			"user_id", tokenData.UserID,
 		)
-		return nil, fmt.Errorf("ValidateResetToken.used: %w", apperrors.ErrTokenInvalid)
+		return nil, fmt.Errorf("already used: %w", apperrors.ErrTokenInvalid)
 	}
 
 	// Check if token has expired
@@ -247,7 +247,7 @@ func (rs *ResetService) ValidateResetToken(ctx context.Context, plainToken strin
 			)
 		}
 
-		return nil, fmt.Errorf("ValidateResetToken.expired: %w", apperrors.ErrTokenExpired)
+		return nil, fmt.Errorf("expired: %w", apperrors.ErrTokenExpired)
 	}
 
 	return &tokenData, nil
@@ -367,7 +367,7 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 		}
 	}
 
-	rs.log.LogSecurityEvent("password_reset_completed", "info", map[string]interface{}{
+	rs.log.LogSecurityEvent("password_reset_completed", "info", map[string]any{
 		"user_id":    tokenData.UserID,
 		"ip_address": ipAddress,
 	})

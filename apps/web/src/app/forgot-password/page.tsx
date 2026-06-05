@@ -1,15 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, Logo } from '@/shared/components/ui'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import toast from 'react-hot-toast'
+import { requestPasswordReset } from '@/features/auth/api/passwordReset'
 
 export default function ForgotPasswordPage() {
-    const router = useRouter()
     const [email, setEmail] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isSubmitted, setIsSubmitted] = useState(false)
@@ -41,23 +40,7 @@ export default function ForgotPasswordPage() {
         setIsLoading(true)
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
-            const response = await fetch(`${apiUrl}/api/v1/auth/forgot-password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email: trimmedEmail }),
-            })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                if (response.status === 429) {
-                    throw new Error('Слишком много запросов. Попробуйте позже.')
-                }
-                throw new Error(data.error || 'Не удалось отправить письмо')
-            }
+            await requestPasswordReset(trimmedEmail)
 
             setIsSubmitted(true)
             toast.success('Проверьте почту для инструкций по сбросу пароля')

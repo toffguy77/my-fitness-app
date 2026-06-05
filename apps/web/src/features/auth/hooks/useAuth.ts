@@ -15,8 +15,6 @@ import { setRefreshToken, getRefreshToken, clearAuth } from '@/shared/utils/toke
 import type { AuthFormData, ConsentState, AuthError } from '@/features/auth/types';
 import toast from 'react-hot-toast';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
 export function useAuth() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
@@ -110,11 +108,7 @@ export function useAuth() {
         // Best-effort backend revocation
         if (refreshToken) {
             try {
-                await fetch(`${API_BASE}/api/v1/auth/logout`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refresh_token: refreshToken }),
-                });
+                await apiClient.post('/api/v1/auth/logout', { refresh_token: refreshToken });
             } catch {
                 // Ignore errors — local cleanup proceeds regardless
             }

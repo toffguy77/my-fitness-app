@@ -193,8 +193,11 @@ func main() {
 		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
 	}
 
-	// Initialize rate limiter
+	// Initialize rate limiter (DB-backed, for password reset)
 	rateLimiter := middleware.NewRateLimiter(db.DB, log)
+
+	// Initialize auth rate limiter (in-memory sliding window, for login/register)
+	authRateLimiter := middleware.NewAuthRateLimiter()
 
 	// Initialize reset service
 	resetService := auth.NewResetService(db.DB, cfg, log, emailService, rateLimiter)
@@ -263,8 +266,8 @@ func main() {
 		resetHandler := auth.NewResetHandler(cfg, log, resetService)
 		authGroup := v1.Group("/auth")
 		{
-			authGroup.POST("/register", authHandler.Register)
-			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/register", authRateLimiter.Limit("register"), authHandler.Register)
+			authGroup.POST("/login", authRateLimiter.Limit("login"), authHandler.Login)
 			authGroup.POST("/refresh", authHandler.Refresh)
 			authGroup.POST("/logout", authHandler.Logout)
 			authGroup.GET("/me", middleware.RequireAuth(cfg), authHandler.GetCurrentUser)
@@ -275,9 +278,6 @@ func main() {
 			authGroup.POST("/forgot-password", resetHandler.ForgotPassword)
 			authGroup.POST("/reset-password", resetHandler.ResetPassword)
 			authGroup.GET("/validate-reset-token", resetHandler.ValidateResetToken)
-
-			// Password change (authenticated)
-			authGroup.POST("/change-password", middleware.RequireAuth(cfg), authHandler.ChangePassword)
 		}
 
 		// Shared nutrition-calc service (used by multiple handlers for KBJU recalculation)

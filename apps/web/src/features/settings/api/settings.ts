@@ -43,15 +43,8 @@ export async function updateSettings(settings: Partial<UserSettings>): Promise<{
 export async function uploadAvatar(file: File): Promise<string> {
     const formData = new FormData()
     formData.append('avatar', file)
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-    const res = await fetch('/api/v1/users/avatar', {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-    })
-    if (!res.ok) throw new Error('Upload failed')
-    const data = await res.json()
-    return data.data?.avatar_url || data.avatar_url
+    const result = await apiClient.postFormData<{ avatar_url: string }>('/api/v1/users/avatar', formData)
+    return result.avatar_url
 }
 
 export async function deleteAvatar(): Promise<void> {

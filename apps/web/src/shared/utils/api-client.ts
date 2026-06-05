@@ -179,7 +179,120 @@ class ApiClient {
      * Check if URL is an auth endpoint that should not trigger refresh
      */
     private isAuthEndpoint(url: string): boolean {
-        return url.includes('/auth/refresh') || url.includes('/auth/login');
+        return (
+            url.includes('/auth/refresh') ||
+            url.includes('/auth/login') ||
+            url.includes('/auth/forgot-password') ||
+            url.includes('/auth/reset-password') ||
+            url.includes('/auth/validate-reset-token')
+        );
+    }
+
+    /**
+     * Make a POST request with FormData body (for file uploads)
+     * Does NOT set Content-Type so the browser can add the correct multipart boundary.
+     * Uses the same 401 → token refresh → retry logic as request().
+     */
+    async postFormData<T>(url: string, body: FormData): Promise<T> {
+        const token = this.getToken();
+        const requestId = crypto.randomUUID();
+
+        const headers: Record<string, string> = {
+            'X-Request-Id': requestId,
+            'X-Client-Request-Id': requestId,
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body,
+            cache: 'no-store',
+        });
+
+        if (response.status === 401 && !this.isAuthEndpoint(url)) {
+            return this.handleUnauthorizedFormData<T>(url, body);
+        }
+
+        if (!response.ok) {
+            const error: any = new Error('API request failed');
+            error.response = {
+                status: response.status,
+                data: await response.json().catch(() => ({})),
+            };
+            throw error;
+        }
+
+        const data = await response.json();
+        return data.data !== undefined ? data.data : data;
+    }
+
+    /**
+     * Handle 401 for FormData requests by refreshing the token and retrying
+     */
+    private handleUnauthorizedFormData<T>(url: string, body: FormData): Promise<T> {
+        const retryFetch = (token: string): Promise<T> => {
+            const retryId = crypto.randomUUID();
+            const headers: Record<string, string> = {
+                'Authorization': `Bearer ${token}`,
+                'X-Request-Id': retryId,
+                'X-Client-Request-Id': retryId,
+            };
+            return fetch(url, { method: 'POST', headers, body, cache: 'no-store' })
+                .then(async (res) => {
+                    if (!res.ok) {
+                        const error: any = new Error('API request failed');
+                        error.response = {
+                            status: res.status,
+                            data: await res.json().catch(() => ({})),
+                        };
+                        throw error;
+                    }
+                    const data = await res.json();
+                    return data.data !== undefined ? data.data : data;
+                });
+        };
+
+        if (isRefreshing) {
+            return new Promise<T>((resolve, reject) => {
+                addRefreshSubscriber((newToken: string) => {
+                    retryFetch(newToken).then(resolve).catch(reject);
+                });
+            });
+        }
+
+        isRefreshing = true;
+        const refreshToken = getRefreshToken();
+
+        if (!refreshToken) {
+            isRefreshing = false;
+            clearAuth();
+            if (typeof window !== 'undefined') {
+                window.location.href = '/auth';
+            }
+            return Promise.reject(new Error('No refresh token'));
+        }
+
+        return this.refreshWithRetry(refreshToken, 3, 1000)
+            .then((data: { token: string; refresh_token: string }) => {
+                setToken(data.token);
+                setRefreshToken(data.refresh_token);
+                isRefreshing = false;
+                onTokenRefreshed(data.token);
+                return retryFetch(data.token);
+            })
+            .catch((err) => {
+                isRefreshing = false;
+                refreshSubscribers = [];
+                clearAuth();
+                if (typeof window !== 'undefined') {
+                    window.location.href = '/auth';
+                }
+                throw err;
+            });
     }
 
     /**

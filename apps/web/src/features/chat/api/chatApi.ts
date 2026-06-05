@@ -36,20 +36,11 @@ export const chatApi = {
 
     /**
      * Upload a file attachment to a conversation
-     * Uses raw fetch since apiClient doesn't support FormData
      */
     uploadFile: async (convId: string, file: File): Promise<MessageAttachment> => {
         const formData = new FormData()
         formData.append('file', file)
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-        const res = await fetch(`/api/v1/conversations/${convId}/upload`, {
-            method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-            body: formData,
-        })
-        if (!res.ok) throw new Error('Upload failed')
-        const json = await res.json()
-        return json.data ?? json
+        return apiClient.postFormData<MessageAttachment>(`/api/v1/conversations/${convId}/upload`, formData)
     },
 
     /**
