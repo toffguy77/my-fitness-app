@@ -209,6 +209,9 @@ func main() {
 
 	// Create Gin router
 	router := gin.New()
+	// Trust only RFC1918 private addresses so that nginx (docker internal IP)
+	// can set X-Forwarded-For, but external clients cannot spoof it.
+	router.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"})
 
 	// Global middleware
 	router.Use(gin.Recovery())
