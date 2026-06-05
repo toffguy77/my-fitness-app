@@ -41,7 +41,11 @@ export function FeedCard({ article }: FeedCardProps) {
                         alt={article.title}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        unoptimized
+                        onError={(e) => {
+                            // Hide broken image — show the card's background color instead
+                            (e.target as HTMLImageElement).style.display = 'none'
+                        }}
                     />
                 </div>
             )}
