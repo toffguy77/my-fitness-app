@@ -18,6 +18,10 @@ const baseConfig: NextConfig = {
     deviceSizes: [640, 768, 1024, 1280, 1536],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     minimumCacheTTL: 60 * 60 * 24 * 7, // 7 days
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'storage.yandexcloud.net' },
+    ],
   },
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,

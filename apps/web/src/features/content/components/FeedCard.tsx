@@ -41,7 +41,7 @@ export function FeedCard({ article }: FeedCardProps) {
                         alt={article.title}
                         fill
                         className="object-cover"
-                        unoptimized
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                 </div>
             )}
