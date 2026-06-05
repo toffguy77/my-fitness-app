@@ -39,9 +39,9 @@ function ResetPasswordContent() {
         try {
             await validateResetToken(token)
             setIsTokenValid(true)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Неверная ссылка'
-            setTokenError(errorMessage)
+        } catch (err: any) {
+            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
+            setTokenError(serverMessage || 'Неверная или истекшая ссылка')
             setIsTokenValid(false)
         } finally {
             setIsValidating(false)
@@ -80,8 +80,16 @@ function ResetPasswordContent() {
             setTimeout(() => {
                 router.push('/auth')
             }, 2000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка'
+        } catch (err: any) {
+            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
+            let errorMessage: string
+            if (serverMessage) {
+                errorMessage = serverMessage
+            } else if (err?.response !== undefined) {
+                errorMessage = 'Не удалось сбросить пароль'
+            } else {
+                errorMessage = 'Произошла ошибка'
+            }
             setError(errorMessage)
             toast.error(errorMessage)
         } finally {

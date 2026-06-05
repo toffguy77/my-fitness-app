@@ -44,8 +44,19 @@ export default function ForgotPasswordPage() {
 
             setIsSubmitted(true)
             toast.success('Проверьте почту для инструкций по сбросу пароля')
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Произошла ошибка'
+        } catch (err: any) {
+            const status = err?.response?.status
+            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
+            let errorMessage: string
+            if (status === 429) {
+                errorMessage = 'Слишком много запросов. Попробуйте позже.'
+            } else if (serverMessage) {
+                errorMessage = serverMessage
+            } else if (err?.response !== undefined) {
+                errorMessage = 'Не удалось отправить письмо'
+            } else {
+                errorMessage = 'Произошла ошибка'
+            }
             setError(errorMessage)
             toast.error(errorMessage)
         } finally {
