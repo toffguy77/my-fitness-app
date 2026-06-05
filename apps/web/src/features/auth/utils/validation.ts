@@ -14,18 +14,24 @@ export const emailSchema = z
     .email('Invalid email format')
     .max(100, 'Email too long');
 
-/**
- * Password validation schema
- * - Required: Must not be empty
- * - Length: Min 6 characters, max 128 characters
- * - No format restrictions (allows special chars, emoji)
- *
- * Validates: Requirements AC-5.3, AC-2.2
- */
 export const passwordSchema = z
     .string()
-    .min(6, 'Password must be at least 6 characters')
-    .max(128, 'Password too long');
+    .min(8, 'Пароль должен содержать минимум 8 символов')
+    .max(128, 'Пароль не должен превышать 128 символов')
+    .superRefine((val, ctx) => {
+        if (!/[A-Z]/.test(val)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы одну заглавную букву' });
+        }
+        if (!/[a-z]/.test(val)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы одну строчную букву' });
+        }
+        if (!/[0-9]/.test(val)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы одну цифру' });
+        }
+        if (!/[^A-Za-z0-9]/.test(val)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы один специальный символ' });
+        }
+    });
 
 /**
  * Consent validation schema

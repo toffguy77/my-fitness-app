@@ -49,7 +49,7 @@ describe('AuthForm', () => {
             const passwordInput = screen.getByLabelText(/password/i);
             expect(passwordInput).toBeInTheDocument();
             expect(passwordInput).toHaveAttribute('type', 'password');
-            expect(passwordInput).toHaveAttribute('placeholder', 'Минимум 6 символов');
+            expect(passwordInput).toHaveAttribute('placeholder', 'Минимум 8 символов');
             expect(passwordInput).toHaveAttribute('required');
         });
 

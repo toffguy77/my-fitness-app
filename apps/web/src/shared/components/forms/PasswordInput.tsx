@@ -1,17 +1,17 @@
 'use client'
 
 import { forwardRef, useState } from 'react'
-import { Input } from '../ui/Input'
+import { Input, type InputProps } from '../ui/Input'
 import { Eye, EyeOff, Check, X } from 'lucide-react'
 
-export interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface PasswordInputProps extends InputProps {
     showRequirements?: boolean
     showStrengthIndicator?: boolean
-    error?: string
 }
 
 interface PasswordRequirements {
     minLength: boolean
+    maxLength: boolean
     hasUppercase: boolean
     hasLowercase: boolean
     hasNumber: boolean
@@ -23,6 +23,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         const [showPassword, setShowPassword] = useState(false)
         const [requirements, setRequirements] = useState<PasswordRequirements>({
             minLength: false,
+            maxLength: true,
             hasUppercase: false,
             hasLowercase: false,
             hasNumber: false,
@@ -32,10 +33,11 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         const validatePassword = (password: string): PasswordRequirements => {
             return {
                 minLength: password.length >= 8,
+                maxLength: password.length <= 128,
                 hasUppercase: /[A-Z]/.test(password),
                 hasLowercase: /[a-z]/.test(password),
                 hasNumber: /[0-9]/.test(password),
-                hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+                hasSpecialChar: /[^A-Za-z0-9]/.test(password),
             }
         }
 
@@ -55,10 +57,10 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             if (password.length === 0) {
                 return { label: '', color: '', width: '0%' }
             }
-            if (metCount <= 2) {
+            if (metCount <= 3) {
                 return { label: 'Слабый', color: 'bg-red-500', width: '33%' }
             }
-            if (metCount <= 4) {
+            if (metCount <= 5) {
                 return { label: 'Средний', color: 'bg-yellow-500', width: '66%' }
             }
             return { label: 'Сильный', color: 'bg-green-500', width: '100%' }
@@ -105,11 +107,12 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
                     </div>
                 )}
 
-                {showRequirements && (
+                {showRequirements && (value as string)?.length > 0 && (
                     <div className="space-y-2 text-sm">
                         <p className="font-medium text-gray-700">Пароль должен содержать:</p>
                         <ul className="space-y-1">
                             <RequirementItem met={requirements.minLength} text="Минимум 8 символов" />
+                            <RequirementItem met={requirements.maxLength} text="Не более 128 символов" />
                             <RequirementItem met={requirements.hasUppercase} text="Одну заглавную букву" />
                             <RequirementItem met={requirements.hasLowercase} text="Одну строчную букву" />
                             <RequirementItem met={requirements.hasNumber} text="Одну цифру" />

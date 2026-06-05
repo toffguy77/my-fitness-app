@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -48,19 +49,21 @@ func generateDefaultIdentity(userID int64) (name, avatarURL string) {
 
 // Service handles auth business logic
 type Service struct {
-	db     *sql.DB
-	cfg    *config.Config
-	log    *logger.Logger
-	tokens *TokenGenerator
+	db          *sql.DB
+	cfg         *config.Config
+	log         *logger.Logger
+	tokens      *TokenGenerator
+	passwordVal *PasswordValidator
 }
 
 // NewService creates a new auth service
 func NewService(db *sql.DB, cfg *config.Config, log *logger.Logger) *Service {
 	return &Service{
-		db:     db,
-		cfg:    cfg,
-		log:    log,
-		tokens: NewTokenGenerator(),
+		db:          db,
+		cfg:         cfg,
+		log:         log,
+		tokens:      NewTokenGenerator(),
+		passwordVal: NewPasswordValidator(),
 	}
 }
 
@@ -85,6 +88,11 @@ type LoginResult struct {
 // Register registers a new user and returns login result with tokens
 func (s *Service) Register(ctx context.Context, email, password, name, ip, ua string, consents *ConsentsInput) (*LoginResult, error) {
 	s.log.Infow("User registration", "email", email)
+
+	// Validate password policy
+	if result := s.passwordVal.Validate(password); !result.Valid {
+		return nil, fmt.Errorf("пароль не соответствует требованиям: %v", result.Errors)
+	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -187,7 +195,7 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("неверные учетные данные")
+			return nil, fmt.Errorf("Login.LookupUser: %w", apperrors.ErrInvalidCredentials)
 		}
 		return nil, fmt.Errorf("ошибка при входе: %w", err)
 	}
@@ -197,10 +205,10 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 		// If stored password is not a bcrypt hash, try plaintext comparison
 		// and migrate to bcrypt on success
 		if strings.HasPrefix(hashedPassword, "$2") {
-			return nil, fmt.Errorf("неверные учетные данные")
+			return nil, fmt.Errorf("Login.VerifyPassword: %w", apperrors.ErrInvalidCredentials)
 		}
 		if hashedPassword != password {
-			return nil, fmt.Errorf("неверные учетные данные")
+			return nil, fmt.Errorf("Login.VerifyPassword: %w", apperrors.ErrInvalidCredentials)
 		}
 		// Migrate plaintext password to bcrypt
 		newHash, hashErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -245,7 +253,7 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	).Scan(&id, &userID, &expiresAt, &revokedAt, &rememberMe)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("invalid refresh token")
+			return nil, fmt.Errorf("Refresh.LookupToken: %w", apperrors.ErrTokenInvalid)
 		}
 		return nil, fmt.Errorf("failed to look up refresh token: %w", err)
 	}
@@ -268,7 +276,7 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 
 	// Check expiry
 	if time.Now().After(expiresAt) {
-		return nil, fmt.Errorf("refresh token expired")
+		return nil, fmt.Errorf("Refresh.CheckExpiry: %w", apperrors.ErrTokenExpired)
 	}
 
 	// Use a detached context with timeout for token rotation.
@@ -372,6 +380,47 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 		Token:        accessToken,
 		RefreshToken: newPlain,
 	}, nil
+}
+
+// ChangePassword allows an authenticated user to update their password.
+// It verifies the current password, validates the new one against policy,
+// and updates the stored bcrypt hash.
+func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string) error {
+	var storedHash string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT password FROM users WHERE id = $1`,
+		userID,
+	).Scan(&storedHash)
+	if err != nil {
+		return fmt.Errorf("ошибка при получении данных пользователя: %w", err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)); err != nil {
+		return fmt.Errorf("неверный текущий пароль")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(newPassword)); err == nil {
+		return fmt.Errorf("новый пароль должен отличаться от текущего")
+	}
+
+	if result := s.passwordVal.Validate(newPassword); !result.Valid {
+		return fmt.Errorf("пароль не соответствует требованиям: %v", result.Errors)
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("ошибка при хешировании пароля: %w", err)
+	}
+
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2`,
+		string(newHash), userID,
+	)
+	if err != nil {
+		return fmt.Errorf("ошибка при обновлении пароля: %w", err)
+	}
+
+	return nil
 }
 
 // RevokeRefreshToken revokes a single refresh token (for logout)

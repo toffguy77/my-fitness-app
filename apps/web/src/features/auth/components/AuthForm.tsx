@@ -9,7 +9,8 @@
 
 import Link from 'next/link';
 import { Input } from '@/shared/components/ui';
-import type { AuthFormData, ValidationErrors } from '@/features/auth/types';
+import { PasswordInput } from '@/shared/components/forms/PasswordInput';
+import type { AuthFormData, AuthMode, ValidationErrors } from '@/features/auth/types';
 
 export interface AuthFormProps {
     formData: AuthFormData;
@@ -17,6 +18,7 @@ export interface AuthFormProps {
     errors: ValidationErrors;
     onEmailBlur: () => void;
     onPasswordBlur: () => void;
+    mode?: AuthMode;
 }
 
 export function AuthForm({
@@ -25,6 +27,7 @@ export function AuthForm({
     errors,
     onEmailBlur,
     onPasswordBlur,
+    mode,
 }: AuthFormProps) {
     return (
         <div className="space-y-4">
@@ -40,14 +43,14 @@ export function AuthForm({
                 aria-label="Email address"
             />
 
-            <Input
-                type="password"
+            <PasswordInput
                 label="Пароль"
-                placeholder="Минимум 6 символов"
+                placeholder="Минимум 8 символов"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 onBlur={onPasswordBlur}
                 error={errors.password}
+                showRequirements={mode === 'register'}
                 required
                 aria-label="Password"
             />

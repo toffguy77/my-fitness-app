@@ -105,127 +105,56 @@ describe('Email Validation', () => {
 });
 
 describe('Password Validation', () => {
-    describe('Property 3: Password Validation', () => {
-        it('should validate password length correctly for all string inputs', () => {
-            // Feature: auth-screen, Property 3: Password Validation
-            // **Validates: Requirements AC-5.3, AC-2.2**
+    const VALID = 'Test123!'
 
-            fc.assert(
-                fc.property(
-                    fc.string(),
-                    (input) => {
-                        const result = passwordSchema.safeParse(input);
+    it('accepts a password meeting all rules', () => {
+        expect(passwordSchema.safeParse(VALID).success).toBe(true)
+    })
 
-                        // Define what makes a valid password according to our requirements:
-                        // 1. At least 6 characters
-                        // 2. At most 128 characters
-                        // No format restrictions - allows special chars, emoji, etc.
+    it('rejects password shorter than 8 characters', () => {
+        expect(passwordSchema.safeParse('Te1!').success).toBe(false)
+    })
 
-                        const isValidLength = input.length >= 6 && input.length <= 128;
+    it('rejects password of exactly 7 characters', () => {
+        expect(passwordSchema.safeParse('Test12!').success).toBe(false)
+    })
 
-                        // Password should be valid if and only if length is within range
-                        if (isValidLength) {
-                            expect(result.success).toBe(true);
-                        } else {
-                            expect(result.success).toBe(false);
-                        }
-                    }
-                ),
-                { numRuns: 100 }
-            );
-        });
+    it('accepts password of exactly 8 characters', () => {
+        expect(passwordSchema.safeParse('Test123!').success).toBe(true)
+    })
 
-        it('should accept valid password examples', () => {
-            // Unit test examples to complement property test
-            const validPasswords = [
-                '123456',                           // Minimum length (6 chars)
-                'password',                         // Simple password
-                'P@ssw0rd!',                       // With special characters
-                'пароль123',                       // Cyrillic characters
-                '密码123456',                       // Chinese characters
-                '🔒secure🔑',                      // With emoji
-                'a'.repeat(128),                   // Maximum length (128 chars)
-                'My Super Secure Password 2024!',  // With spaces
-                'a b c d e f',                     // Minimum length with spaces
-            ];
+    it('rejects password longer than 128 characters', () => {
+        const long = 'Test123!' + 'a'.repeat(121) // 129 chars
+        expect(passwordSchema.safeParse(long).success).toBe(false)
+    })
 
-            validPasswords.forEach(password => {
-                const result = passwordSchema.safeParse(password);
-                expect(result.success).toBe(true);
-            });
-        });
+    it('accepts password of exactly 128 characters', () => {
+        const max = 'Test123!' + 'a'.repeat(120) // 128 chars
+        expect(passwordSchema.safeParse(max).success).toBe(true)
+    })
 
-        it('should reject invalid password examples', () => {
-            // Unit test examples for edge cases
-            const invalidPasswords = [
-                '',                    // Empty string
-                'a',                   // Too short (1 char)
-                'ab',                  // Too short (2 chars)
-                'abc',                 // Too short (3 chars)
-                'abcd',                // Too short (4 chars)
-                'abcde',               // Too short (5 chars)
-                'a'.repeat(129),       // Too long (129 chars)
-                'a'.repeat(200),       // Way too long (200 chars)
-            ];
+    it('rejects password with no uppercase letter', () => {
+        expect(passwordSchema.safeParse('test123!').success).toBe(false)
+    })
 
-            invalidPasswords.forEach(password => {
-                const result = passwordSchema.safeParse(password);
-                expect(result.success).toBe(false);
-            });
-        });
+    it('rejects password with no lowercase letter', () => {
+        expect(passwordSchema.safeParse('TEST123!').success).toBe(false)
+    })
 
-        it('should handle edge case: exactly 6 characters', () => {
-            // Minimum valid length
-            const password = '123456';
-            expect(password.length).toBe(6);
+    it('rejects password with no digit', () => {
+        expect(passwordSchema.safeParse('TestTest!').success).toBe(false)
+    })
 
-            const result = passwordSchema.safeParse(password);
-            expect(result.success).toBe(true);
-        });
+    it('rejects password with no special character', () => {
+        expect(passwordSchema.safeParse('Test1234').success).toBe(false)
+    })
 
-        it('should handle edge case: exactly 128 characters', () => {
-            // Maximum valid length
-            const password = 'a'.repeat(128);
-            expect(password.length).toBe(128);
-
-            const result = passwordSchema.safeParse(password);
-            expect(result.success).toBe(true);
-        });
-
-        it('should reject password with 5 characters', () => {
-            // Just below minimum
-            const password = '12345';
-            expect(password.length).toBe(5);
-
-            const result = passwordSchema.safeParse(password);
-            expect(result.success).toBe(false);
-        });
-
-        it('should reject password with 129 characters', () => {
-            // Just above maximum
-            const password = 'a'.repeat(129);
-            expect(password.length).toBe(129);
-
-            const result = passwordSchema.safeParse(password);
-            expect(result.success).toBe(false);
-        });
-
-        it('should allow special characters and emoji', () => {
-            // Verify no format restrictions
-            const specialPasswords = [
-                '!@#$%^',              // Special characters only
-                '      ',              // Spaces only (6 spaces)
-                '🔒🔑🔐🔓🗝️🛡️',        // Emoji only
-                '\n\t\r\n\t\r',        // Whitespace characters
-                '密码密码密码',          // Multi-byte characters
-            ];
-
-            specialPasswords.forEach(password => {
-                if (password.length >= 6 && password.length <= 128) {
-                    const result = passwordSchema.safeParse(password);
-                    expect(result.success).toBe(true);
-                }
-            });
-        });
-    });
+    it('returns all violated rule messages at once', () => {
+        const result = passwordSchema.safeParse('short')
+        expect(result.success).toBe(false)
+        if (!result.success) {
+            const messages = result.error.issues.map((i) => i.message)
+            expect(messages.some((m) => m.includes('минимум 8'))).toBe(true)
+        }
+    })
 });

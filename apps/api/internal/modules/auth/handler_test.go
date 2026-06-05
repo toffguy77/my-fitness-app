@@ -61,7 +61,7 @@ func TestRegister(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		body, _ := json.Marshal(RegisterRequest{
 			Email:    "test@example.com",
-			Password: "password123",
+			Password: "Test123!@#",
 			Name:     "Test User",
 		})
 		c.Request = httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
@@ -324,6 +324,25 @@ func TestLogout(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
+}
+
+func TestChangePasswordHandler_Unauthenticated(t *testing.T) {
+	handler, _, cleanup := setupTestHandler(t)
+	defer cleanup()
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	body, _ := json.Marshal(ChangePasswordRequest{
+		CurrentPassword: "OldPass123!",
+		NewPassword:     "NewPass123!",
+	})
+	c.Request = httptest.NewRequest(http.MethodPost, "/auth/change-password", bytes.NewBuffer(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	// No user_id set in context — simulates missing auth middleware
+	handler.ChangePassword(c)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestGetCurrentUser(t *testing.T) {

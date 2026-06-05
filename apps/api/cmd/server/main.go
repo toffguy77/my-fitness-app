@@ -275,6 +275,9 @@ func main() {
 			authGroup.POST("/forgot-password", resetHandler.ForgotPassword)
 			authGroup.POST("/reset-password", resetHandler.ResetPassword)
 			authGroup.GET("/validate-reset-token", resetHandler.ValidateResetToken)
+
+			// Password change (authenticated)
+			authGroup.POST("/change-password", middleware.RequireAuth(cfg), authHandler.ChangePassword)
 		}
 
 		// Shared nutrition-calc service (used by multiple handlers for KBJU recalculation)

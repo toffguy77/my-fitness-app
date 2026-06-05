@@ -47,7 +47,7 @@ describe('useFormValidation', () => {
 
             // Then validate with valid password
             act(() => {
-                result.current.validatePassword('validpassword123');
+                result.current.validatePassword('ValidPass123!');
             });
 
             // Error should be cleared
@@ -122,11 +122,11 @@ describe('useFormValidation', () => {
     });
 
     describe('Password Validation', () => {
-        it('should validate passwords with minimum length', () => {
+        it('should validate passwords meeting all policy rules', () => {
             const { result } = renderHook(() => useFormValidation());
 
             act(() => {
-                const isValid = result.current.validatePassword('123456');
+                const isValid = result.current.validatePassword('ValidPass1!');
                 expect(isValid).toBe(true);
             });
 
@@ -144,12 +144,12 @@ describe('useFormValidation', () => {
             expect(result.current.errors.password).toBeDefined();
         });
 
-        it('should accept passwords with special characters', () => {
+        it('should accept passwords with special characters that meet all rules', () => {
             const passwords = [
                 'Pass@123',
-                'пароль123',
-                'password!@#$%',
-                'emoji😀pass',
+                'Valid!Pass1',
+                'MyP@ssw0rd',
+                'SecureP@ss1',
             ];
 
             passwords.forEach(password => {
@@ -169,7 +169,7 @@ describe('useFormValidation', () => {
 
             const validData: AuthFormData = {
                 email: 'user@example.com',
-                password: 'password123',
+                password: 'Password123!',
             };
 
             act(() => {
@@ -184,7 +184,7 @@ describe('useFormValidation', () => {
 
             const invalidData: AuthFormData = {
                 email: 'invalid-email',
-                password: 'password123',
+                password: 'Password123!',
             };
 
             act(() => {
@@ -218,7 +218,7 @@ describe('useFormValidation', () => {
 
             const validData: AuthFormData = {
                 email: 'user@example.com',
-                password: 'password123',
+                password: 'Password123!',
             };
 
             const validConsents: ConsentState = {
@@ -240,7 +240,7 @@ describe('useFormValidation', () => {
 
             const validData: AuthFormData = {
                 email: 'user@example.com',
-                password: 'password123',
+                password: 'Password123!',
             };
 
             const invalidConsents: ConsentState = {
@@ -263,7 +263,7 @@ describe('useFormValidation', () => {
 
             const validData: AuthFormData = {
                 email: 'user@example.com',
-                password: 'password123',
+                password: 'Password123!',
             };
 
             const consents: ConsentState = {
@@ -284,7 +284,7 @@ describe('useFormValidation', () => {
 
             const invalidData: AuthFormData = {
                 email: 'invalid-email',
-                password: 'password123',
+                password: 'Password123!',
             };
 
             const validConsents: ConsentState = {

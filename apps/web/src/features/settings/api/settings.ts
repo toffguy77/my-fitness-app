@@ -57,3 +57,7 @@ export async function uploadAvatar(file: File): Promise<string> {
 export async function deleteAvatar(): Promise<void> {
     await apiClient.delete('/api/v1/users/avatar')
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiClient.post('/api/auth/change-password', { current_password: currentPassword, new_password: newPassword })
+}

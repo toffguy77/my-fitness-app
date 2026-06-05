@@ -62,11 +62,18 @@ describe('PasswordInput', () => {
     })
 
     describe('password requirements', () => {
-        it('shows requirement list when showRequirements is true', () => {
+        it('hides requirement list when value is empty', () => {
             render(<PasswordInput aria-label="Password" showRequirements value="" onChange={jest.fn()} />)
+
+            expect(screen.queryByText('Пароль должен содержать:')).not.toBeInTheDocument()
+        })
+
+        it('shows all six requirement items once user starts typing', () => {
+            render(<PasswordInput aria-label="Password" showRequirements value="a" onChange={jest.fn()} />)
 
             expect(screen.getByText('Пароль должен содержать:')).toBeInTheDocument()
             expect(screen.getByText('Минимум 8 символов')).toBeInTheDocument()
+            expect(screen.getByText('Не более 128 символов')).toBeInTheDocument()
             expect(screen.getByText('Одну заглавную букву')).toBeInTheDocument()
             expect(screen.getByText('Одну строчную букву')).toBeInTheDocument()
             expect(screen.getByText('Одну цифру')).toBeInTheDocument()
@@ -79,42 +86,43 @@ describe('PasswordInput', () => {
             expect(screen.queryByText('Пароль должен содержать:')).not.toBeInTheDocument()
         })
 
-        it('updates requirement indicators when typing a strong password', async () => {
+        it('marks all six rules as met for a fully valid password', async () => {
             const user = userEvent.setup()
-            let currentValue = ''
-            const onChange = jest.fn().mockImplementation((e: React.ChangeEvent<HTMLInputElement>) => {
-                currentValue = e.target.value
-            })
+            const onChange = jest.fn()
 
             const { rerender } = render(
-                <PasswordInput
-                    aria-label="Password"
-                    showRequirements
-                    value={currentValue}
-                    onChange={onChange}
-                />
+                <PasswordInput aria-label="Password" showRequirements value="" onChange={onChange} />
+            )
+
+            rerender(
+                <PasswordInput aria-label="Password" showRequirements value="Abcdef1!" onChange={onChange} />
             )
 
             const input = screen.getByLabelText('Password')
-            await user.type(input, 'Abcdef1!')
+            await user.type(input, 'x')
 
-            // Rerender with the full password to check requirement indicators
-            rerender(
-                <PasswordInput
-                    aria-label="Password"
-                    showRequirements
-                    value="Abcdef1!"
-                    onChange={onChange}
-                />
+            const metIcons = screen.getAllByLabelText('Требование выполнено')
+            expect(metIcons.length).toBe(6)
+        })
+
+        it('marks max-length rule as unmet for a 129-char password', async () => {
+            const user = userEvent.setup()
+            const onChange = jest.fn()
+            const longPw = 'Test123!' + 'a'.repeat(121)
+
+            const { rerender } = render(
+                <PasswordInput aria-label="Password" showRequirements value="" onChange={onChange} />
             )
 
-            // Type into the re-rendered input to trigger requirement validation
-            await user.clear(input)
-            await user.type(input, 'Abcdef1!')
+            rerender(
+                <PasswordInput aria-label="Password" showRequirements value={longPw} onChange={onChange} />
+            )
 
-            // All requirement icons should show as met
-            const metIcons = screen.getAllByLabelText('Требование выполнено')
-            expect(metIcons.length).toBe(5)
+            const input = screen.getByLabelText('Password')
+            await user.type(input, 'x')
+
+            const unmetIcons = screen.getAllByLabelText('Требование не выполнено')
+            expect(unmetIcons.length).toBeGreaterThanOrEqual(1)
         })
     })
 

@@ -66,7 +66,7 @@ func TestRegisterService(t *testing.T) {
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		result, err := service.Register(ctx, "test@example.com", "password123", "Test User", "127.0.0.1", "TestAgent", nil)
+		result, err := service.Register(ctx, "test@example.com", "Test123!@#", "Test User", "127.0.0.1", "TestAgent", nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.NotNil(t, result.User)
@@ -100,13 +100,112 @@ func TestRegisterService(t *testing.T) {
 			WithArgs(int64(2), sqlmock.AnyArg(), sqlmock.AnyArg(), "", "", false).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		result, err := service.Register(ctx, "test2@example.com", "password123", "", "", "", nil)
+		result, err := service.Register(ctx, "test2@example.com", "Test123!@#", "", "", "", nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, "test2@example.com", result.User.Email)
 		assert.NotEmpty(t, result.User.Name, "should have a default name")
 		assert.Contains(t, result.User.Name, " ", "default name should be 'Color Animal' format")
 	})
+}
+
+func TestRegister_WeakPassword(t *testing.T) {
+	cases := []struct {
+		name     string
+		password string
+	}{
+		{"too short", "Ab1!"},
+		{"no uppercase", "test123!@#"},
+		{"no lowercase", "TEST123!@#"},
+		{"no digit", "TestTest!@#"},
+		{"no special char", "Test12345678"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			service, _, cleanup := setupTestService(t)
+			defer cleanup()
+			_, err := service.Register(context.Background(), "u@example.com", tc.password, "", "", "", nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "пароль не соответствует требованиям")
+		})
+	}
+}
+
+func TestRegister_PasswordTooLong(t *testing.T) {
+	service, _, cleanup := setupTestService(t)
+	defer cleanup()
+	long := "Test123!@#" + strings.Repeat("a", 120) // 130 chars
+	_, err := service.Register(context.Background(), "u@example.com", long, "", "", "", nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "пароль не соответствует требованиям")
+}
+
+func TestChangePassword_Success(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	currentPw := "OldPass1!"
+	currentHash, _ := bcrypt.GenerateFromPassword([]byte(currentPw), bcrypt.MinCost)
+
+	mock.ExpectQuery("SELECT password FROM users").
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(string(currentHash)))
+
+	mock.ExpectExec("UPDATE users SET password").
+		WithArgs(sqlmock.AnyArg(), int64(1)).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	err := service.ChangePassword(ctx, 1, currentPw, "NewPass1!")
+	assert.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestChangePassword_WrongCurrentPassword(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	correctHash, _ := bcrypt.GenerateFromPassword([]byte("CorrectPw1!"), bcrypt.MinCost)
+	mock.ExpectQuery("SELECT password FROM users").
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(string(correctHash)))
+
+	err := service.ChangePassword(ctx, 1, "WrongPw1!", "NewPass1!")
+	assert.Error(t, err)
+	assert.Equal(t, "неверный текущий пароль", err.Error())
+}
+
+func TestChangePassword_WeakNewPassword(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	currentPw := "Current1!"
+	currentHash, _ := bcrypt.GenerateFromPassword([]byte(currentPw), bcrypt.MinCost)
+	mock.ExpectQuery("SELECT password FROM users").
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(string(currentHash)))
+
+	err := service.ChangePassword(ctx, 1, currentPw, "weakpass")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "пароль не соответствует требованиям")
+}
+
+func TestChangePassword_SamePassword(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	pw := "SamePass1!"
+	hash, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.MinCost)
+	mock.ExpectQuery("SELECT password FROM users").
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(string(hash)))
+
+	err := service.ChangePassword(ctx, 1, pw, pw)
+	assert.Error(t, err)
+	assert.Equal(t, "новый пароль должен отличаться от текущего", err.Error())
 }
 
 func TestLoginService(t *testing.T) {
@@ -259,7 +358,7 @@ func TestRefreshTokens(t *testing.T) {
 
 		result, err := service.RefreshTokens(ctx, plainToken, "", "")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid refresh token")
+		assert.Contains(t, err.Error(), "invalid token")
 		assert.Nil(t, result)
 	})
 }

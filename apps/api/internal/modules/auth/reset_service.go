@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -65,7 +66,7 @@ func (rs *ResetService) RequestPasswordReset(ctx context.Context, userEmail stri
 			"ip_address": ipAddress,
 			"reason":     "email_rate_limit",
 		})
-		return fmt.Errorf("too many requests")
+		return fmt.Errorf("RequestPasswordReset.emailRateLimit: %w", apperrors.ErrTooManyAttempts)
 	}
 
 	if err := rs.rateLimiter.CheckIPRateLimit(ctx, ipAddress); err != nil {
@@ -74,7 +75,7 @@ func (rs *ResetService) RequestPasswordReset(ctx context.Context, userEmail stri
 			"ip_address": ipAddress,
 			"reason":     "ip_rate_limit",
 		})
-		return fmt.Errorf("too many requests")
+		return fmt.Errorf("RequestPasswordReset.ipRateLimit: %w", apperrors.ErrTooManyAttempts)
 	}
 
 	// Record the attempt
@@ -209,7 +210,7 @@ func (rs *ResetService) ValidateResetToken(ctx context.Context, plainToken strin
 		rs.log.Warn("Invalid reset token attempted",
 			"token_hash", hashedToken[:10]+"...",
 		)
-		return nil, fmt.Errorf("invalid token")
+		return nil, fmt.Errorf("ValidateResetToken.lookup: %w", apperrors.ErrTokenInvalid)
 	}
 
 	if err != nil {
@@ -227,7 +228,7 @@ func (rs *ResetService) ValidateResetToken(ctx context.Context, plainToken strin
 			"token_id", tokenData.ID,
 			"user_id", tokenData.UserID,
 		)
-		return nil, fmt.Errorf("invalid token")
+		return nil, fmt.Errorf("ValidateResetToken.used: %w", apperrors.ErrTokenInvalid)
 	}
 
 	// Check if token has expired
@@ -246,7 +247,7 @@ func (rs *ResetService) ValidateResetToken(ctx context.Context, plainToken strin
 			)
 		}
 
-		return nil, fmt.Errorf("token expired")
+		return nil, fmt.Errorf("ValidateResetToken.expired: %w", apperrors.ErrTokenExpired)
 	}
 
 	return &tokenData, nil
