@@ -1364,7 +1364,9 @@ func (s *Service) proxyExternalImages(ctx context.Context, articleID, coverURL, 
 		if err != nil || parsed.Scheme == "" || parsed.Scheme == "data" {
 			return false
 		}
-		return !strings.Contains(parsed.Host, s3Domain)
+		host := parsed.Hostname() // strips port if present
+		onS3 := host == s3Domain || strings.HasSuffix(host, "."+s3Domain)
+		return !onS3
 	}
 
 	isBlockedHost := func(hostname string) bool {

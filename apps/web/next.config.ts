@@ -20,7 +20,12 @@ const baseConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 7, // 7 days
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'storage.yandexcloud.net' },
+      // Pin to specific buckets — prevents the Next.js image proxy from being
+      // used as an open proxy for arbitrary Yandex Cloud buckets.
+      { protocol: 'https', hostname: 'storage.yandexcloud.net', pathname: '/curator-content/**' },
+      { protocol: 'https', hostname: 'storage.yandexcloud.net', pathname: '/profiles-photos/**' },
+      { protocol: 'https', hostname: 'storage.yandexcloud.net', pathname: '/weekly-progress-photos/**' },
+      { protocol: 'https', hostname: 'storage.yandexcloud.net', pathname: '/food-photos/**' },
     ],
   },
   env: {
