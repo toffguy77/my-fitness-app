@@ -69,8 +69,12 @@ type Config struct {
 	ContentS3Bucket          string
 	ContentS3Region          string
 	ContentS3Endpoint        string
+	// ContentS3PathPrefix overrides S3PathPrefix for content only.
+	// Defaults to "" because the curator-content bucket has no path prefix
+	// (files live at content/{uuid}/body.md, not prod/content/...).
+	ContentS3PathPrefix string
 
-	// S3 Path Prefix (dev/ or prod/ — applied to all S3 clients)
+	// S3 Path Prefix (dev/ or prod/ — applied to all S3 clients except content)
 	S3PathPrefix string
 
 	// Food Photos S3 — falls back to generic S3_* vars
@@ -158,6 +162,8 @@ func Load() (*Config, error) {
 		ContentS3Bucket:          getEnvWithFallback("CONTENT_S3_BUCKET", "S3_BUCKET", "curator-content"),
 		ContentS3Region:          getEnvWithFallback("CONTENT_S3_REGION", "S3_REGION", "ru-central1"),
 		ContentS3Endpoint:        getEnvWithFallback("CONTENT_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
+		// Default to "" — content files have no prefix in the curator-content bucket
+		ContentS3PathPrefix: getEnv("CONTENT_S3_PATH_PREFIX", ""),
 
 		S3PathPrefix: getEnv("S3_PATH_PREFIX", ""),
 

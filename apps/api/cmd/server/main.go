@@ -159,7 +159,7 @@ func main() {
 			Bucket:          cfg.ContentS3Bucket,
 			Region:          cfg.ContentS3Region,
 			Endpoint:        cfg.ContentS3Endpoint,
-			PathPrefix:      cfg.S3PathPrefix,
+			PathPrefix:      cfg.ContentS3PathPrefix,
 		}, log)
 		if err != nil {
 			log.Error("Failed to initialize content S3 client", "error", err)

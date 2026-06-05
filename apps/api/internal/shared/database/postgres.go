@@ -63,11 +63,14 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 	// Register the driver and open connection
 	db := stdlib.OpenDB(*connConfig)
 
-	// Set connection pool settings
+	// Set connection pool settings.
+	// Short MaxLifetime (10m) ensures connections to the old primary are recycled
+	// quickly after a Yandex Cloud PG failover — the pool re-dials target_session_attrs=read-write
+	// and picks up the new primary rather than retrying the now-read-only node for up to an hour.
 	db.SetMaxOpenConns(cfg.MaxOpenConns)
 	db.SetMaxIdleConns(cfg.MaxIdleConns)
-	db.SetConnMaxLifetime(time.Hour)
-	db.SetConnMaxIdleTime(5 * time.Minute)
+	db.SetConnMaxLifetime(10 * time.Minute)
+	db.SetConnMaxIdleTime(2 * time.Minute)
 
 	// Verify connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -123,11 +126,11 @@ func NewPostgresFromURL(url string, maxOpenConns, maxIdleConns int) (*DB, error)
 
 	db := stdlib.OpenDB(*connConfig)
 
-	// Set connection pool settings
+	// Set connection pool settings — same as NewPostgres, see comment there.
 	db.SetMaxOpenConns(maxOpenConns)
 	db.SetMaxIdleConns(maxIdleConns)
-	db.SetConnMaxLifetime(time.Hour)
-	db.SetConnMaxIdleTime(5 * time.Minute)
+	db.SetConnMaxLifetime(10 * time.Minute)
+	db.SetConnMaxIdleTime(2 * time.Minute)
 
 	// Verify connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
