@@ -38,7 +38,7 @@ export default async function Image() {
                         maxWidth: 800,
                     }}
                 >
-                    Персональный трекер питания и фитнеса
+                    Personal fitness &amp; nutrition tracker
                 </div>
                 <div
                     style={{
