@@ -2058,6 +2058,8 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 	}
 	clientInfoMap := make(map[int64]clientInfo)
 	inClause, args := buildPlaceholders(clientIDs, 0)
+	// For queries that bind curatorID as $1, client IDs must start at $2.
+	inClauseOffset, clientOffsetArgs := buildPlaceholders(clientIDs, 1)
 
 	infoQuery := fmt.Sprintf(`SELECT id, COALESCE(name, ''), COALESCE(avatar_url, '') FROM users WHERE id IN %s`, inClause)
 	infoRows, err := s.db.QueryContext(ctx, infoQuery, args...)
@@ -2137,9 +2139,8 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			AND t.user_id IN %s
 		ORDER BY t.due_date ASC
 		LIMIT 20
-	`, inClause)
-	overdueArgs := append([]any{curatorID}, args...)
-	overdueRows, err := s.db.QueryContext(ctx, overdueQuery, overdueArgs...)
+	`, inClauseOffset)
+	overdueRows, err := s.db.QueryContext(ctx, overdueQuery, append([]any{curatorID}, clientOffsetArgs...)...)
 	if err != nil {
 		s.log.Error("Failed to query overdue tasks", "error", err)
 	} else {
@@ -2216,9 +2217,8 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			AND wr.user_id IN %s
 		ORDER BY wr.submitted_at ASC
 		LIMIT 20
-	`, inClause)
-	feedbackArgs := append([]any{curatorID}, args...)
-	feedbackRows, err := s.db.QueryContext(ctx, feedbackQuery, feedbackArgs...)
+	`, inClauseOffset)
+	feedbackRows, err := s.db.QueryContext(ctx, feedbackQuery, append([]any{curatorID}, clientOffsetArgs...)...)
 	if err != nil {
 		s.log.Error("Failed to query awaiting feedback", "error", err)
 	} else {

@@ -26,6 +26,7 @@ import (
 // S3Uploader defines the S3 operations used by the content service.
 type S3Uploader interface {
 	UploadFile(ctx context.Context, key string, data io.Reader, contentType string, fileSize int64) (string, error)
+	UploadPublicFile(ctx context.Context, key string, data io.Reader, contentType string, fileSize int64) (string, error)
 	GetFile(ctx context.Context, key string) ([]byte, error)
 	DeleteFile(ctx context.Context, key string) error
 }
@@ -839,7 +840,7 @@ func (s *Service) UploadCoverImage(ctx context.Context, file *multipart.FileHead
 	}
 	s3Key := fmt.Sprintf("cover-images/%s%s", uuid.New().String(), ext)
 
-	url, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(data), contentType, int64(len(data)))
+	url, err := s.s3.UploadPublicFile(ctx, s3Key, bytes.NewReader(data), contentType, int64(len(data)))
 	if err != nil {
 		return "", fmt.Errorf("failed to upload cover image: %w", err)
 	}
