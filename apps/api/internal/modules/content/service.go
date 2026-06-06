@@ -43,6 +43,7 @@ type ServiceInterface interface {
 	UnpublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
 	UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error)
 	UploadMarkdownFile(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error)
+	UploadCoverImage(ctx context.Context, file *multipart.FileHeader) (string, error)
 
 	// Client operations
 	GetFeed(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error)
@@ -802,6 +803,46 @@ func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID str
 	}
 
 	s.log.Info("Media file uploaded", "article_id", articleID, "filename", file.Filename, "url", url)
+
+	return url, nil
+}
+
+// UploadCoverImage uploads a cover image to S3 and returns its public URL.
+// Files are stored under cover-images/{uuid}.{ext} in the content bucket.
+func (s *Service) UploadCoverImage(ctx context.Context, file *multipart.FileHeader) (string, error) {
+	if err := s.requireS3(); err != nil {
+		return "", err
+	}
+
+	contentType := file.Header.Get("Content-Type")
+	switch contentType {
+	case "image/jpeg", "image/png", "image/webp", "image/gif":
+		// allowed
+	default:
+		return "", fmt.Errorf("unsupported image type: %s", contentType)
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	data, err := io.ReadAll(src)
+	if err != nil {
+		return "", fmt.Errorf("failed to read uploaded file: %w", err)
+	}
+
+	ext := path.Ext(file.Filename)
+	if ext == "" {
+		ext = ".jpg"
+	}
+	s3Key := fmt.Sprintf("cover-images/%s%s", uuid.New().String(), ext)
+
+	url, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(data), contentType, int64(len(data)))
+	if err != nil {
+		return "", fmt.Errorf("failed to upload cover image: %w", err)
+	}
 
 	return url, nil
 }

@@ -488,6 +488,7 @@ func main() {
 		contentManageGroup.POST("/:id/unpublish", contentHandler.UnpublishArticle)
 		contentManageGroup.POST("/:id/media", contentHandler.UploadMedia)
 		contentManageGroup.POST("/upload", contentHandler.UploadMarkdownFile)
+		contentManageGroup.POST("/cover", contentHandler.UploadCoverImage)
 	}
 
 	// Client content feed

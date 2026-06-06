@@ -38,4 +38,10 @@ describe('StatusBadge', () => {
         expect(badge.className).toContain('bg-green-100');
         expect(badge.className).toContain('text-green-700');
     });
+
+    it('falls back gracefully for unknown status values', () => {
+        // Test the ?? fallback branch in STATUS_CONFIG lookup
+        render(<StatusBadge status={'unknown' as any} />);
+        expect(screen.getByText('unknown')).toBeInTheDocument();
+    });
 });

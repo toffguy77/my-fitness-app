@@ -15,9 +15,8 @@ import type { DailyMetrics, WeeklyPlan } from '../../types'
 jest.mock('../../store/dashboardStore')
 const mockUseDashboardStore = useDashboardStore as jest.MockedFunction<typeof useDashboardStore>
 
-// Mock window.location for navigation tests
-delete (window as any).location
-    ; (window as any).location = { href: '' }
+// jest-environment-jsdom 30 uses http://localhost/ as the default URL, so
+// window.location.href works without a custom override.
 
 describe('NutritionBlock', () => {
     const mockDate = new Date('2024-01-15')
@@ -91,8 +90,8 @@ describe('NutritionBlock', () => {
 
     beforeEach(() => {
         jest.clearAllMocks()
-            // Reset location href
-            ; (window as any).location.href = ''
+        // Reset URL to root so navigation assertions start from a clean state
+        window.history.pushState({}, '', '/')
     })
 
     describe('Basic Rendering', () => {

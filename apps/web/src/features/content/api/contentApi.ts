@@ -42,6 +42,12 @@ export const contentApi = {
     unpublishArticle: (id: string) =>
         apiClient.post(`${ARTICLES_BASE}/${id}/unpublish`, {}),
 
+    uploadCoverImage: (file: File) => {
+        const form = new FormData()
+        form.append('file', file)
+        return apiClient.postFormData<{ url: string }>(`${ARTICLES_BASE}/cover`, form)
+    },
+
     // Client feed
     getFeed: (category?: string, limit = 20, offset = 0) => {
         const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })

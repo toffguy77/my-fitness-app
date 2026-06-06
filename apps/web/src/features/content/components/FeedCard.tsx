@@ -28,20 +28,33 @@ function formatDate(dateStr?: string): string {
     })
 }
 
+const ALLOWED_IMAGE_HOSTS = ['storage.yandexcloud.net']
+
+function isTrustedImageUrl(url: string): boolean {
+    try {
+        return ALLOWED_IMAGE_HOSTS.includes(new URL(url).hostname)
+    } catch {
+        return false
+    }
+}
+
 export function FeedCard({ article }: FeedCardProps) {
     return (
         <Link
             href={`/content/${article.id}`}
             className="block rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
         >
-            {article.cover_image_url && (
+            {article.cover_image_url && isTrustedImageUrl(article.cover_image_url) && (
                 <div className="relative w-full aspect-[16/9]">
                     <Image
                         src={article.cover_image_url}
                         alt={article.title}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        unoptimized
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none'
+                        }}
                     />
                 </div>
             )}
