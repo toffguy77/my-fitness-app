@@ -106,6 +106,10 @@ func (m *mockContentService) UploadMarkdownFile(ctx context.Context, authorID in
 	return &Article{}, nil
 }
 
+func (m *mockContentService) UploadCoverImage(ctx context.Context, file *multipart.FileHeader) (string, error) {
+	return "https://storage.yandexcloud.net/curator-content/cover-images/test.jpg", nil
+}
+
 func (m *mockContentService) GetFeed(ctx context.Context, clientID int64, category string, limit int, offset int) (*FeedResponse, error) {
 	if m.getFeedFunc != nil {
 		return m.getFeedFunc(ctx, clientID, category, limit, offset)

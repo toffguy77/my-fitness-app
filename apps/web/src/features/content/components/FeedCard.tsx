@@ -28,7 +28,7 @@ function formatDate(dateStr?: string): string {
     })
 }
 
-const ALLOWED_IMAGE_HOSTS = ['images.unsplash.com', 'storage.yandexcloud.net']
+const ALLOWED_IMAGE_HOSTS = ['storage.yandexcloud.net']
 
 function isTrustedImageUrl(url: string): boolean {
     try {

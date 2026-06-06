@@ -28,6 +28,20 @@ func NewHandler(cfg *config.Config, log *logger.Logger, svc ServiceInterface) *H
 	}
 }
 
+const allowedCoverHost = "storage.yandexcloud.net"
+
+// validateCoverImageURL returns false and writes 400 if the URL is not from our S3.
+func (h *Handler) validateCoverImageURL(c *gin.Context, url string) bool {
+	if url == "" {
+		return true
+	}
+	if !strings.HasPrefix(url, "https://"+allowedCoverHost+"/") {
+		response.Error(c, http.StatusBadRequest, "Изображение обложки должно быть загружено на наш S3 (storage.yandexcloud.net)")
+		return false
+	}
+	return true
+}
+
 // parseArticleID extracts and validates the :id URL param as a UUID.
 // Returns empty string and writes 400 if the format is invalid.
 func (h *Handler) parseArticleID(c *gin.Context) (string, bool) {
@@ -79,6 +93,10 @@ func (h *Handler) CreateArticle(c *gin.Context) {
 	var req CreateArticleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	if !h.validateCoverImageURL(c, req.CoverImageURL) {
 		return
 	}
 
@@ -157,6 +175,10 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 	var req UpdateArticleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, "Неверные данные: "+err.Error())
+		return
+	}
+
+	if req.CoverImageURL != nil && !h.validateCoverImageURL(c, *req.CoverImageURL) {
 		return
 	}
 
@@ -374,6 +396,33 @@ func (h *Handler) UploadMarkdownFile(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusCreated, article)
+}
+
+// UploadCoverImage handles POST /api/v1/content/articles/cover
+func (h *Handler) UploadCoverImage(c *gin.Context) {
+	_, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Файл не загружен")
+		return
+	}
+
+	url, err := h.service.UploadCoverImage(c.Request.Context(), file)
+	if err != nil {
+		if strings.Contains(err.Error(), "unsupported image type") {
+			response.Error(c, http.StatusBadRequest, "Поддерживаются только изображения (JPEG, PNG, WebP, GIF)")
+			return
+		}
+		h.log.Error("Failed to upload cover image", "error", err)
+		response.InternalError(c, "Не удалось загрузить изображение")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"url": url})
 }
 
 // --- Client feed handlers ---
