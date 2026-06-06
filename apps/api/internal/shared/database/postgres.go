@@ -85,10 +85,10 @@ func NewPostgres(cfg PostgresConfig) (*DB, error) {
 
 // ensureConnParams appends target_session_attrs and connect_timeout to the URL
 // if they are not already present.
-// - target_session_attrs=read-write ensures connections go to the primary node.
-// - connect_timeout=3 makes pgx fail fast on the old primary during YC PG failover
-//   so it retries the standby host within seconds rather than waiting for the OS
-//   TCP timeout (20-30s).
+//   - target_session_attrs=read-write ensures connections go to the primary node.
+//   - connect_timeout=3 makes pgx fail fast on the old primary during YC PG failover
+//     so it retries the standby host within seconds rather than waiting for the OS
+//     TCP timeout (20-30s).
 func ensureConnParams(url string) string {
 	if !contains(url, "target_session_attrs") {
 		sep := "?"

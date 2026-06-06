@@ -90,11 +90,11 @@ describe('FeedCard', () => {
     it('shows cover image when provided', () => {
         const articleWithCover: ArticleCard = {
             ...baseArticle,
-            cover_image_url: 'https://example.com/image.jpg',
+            cover_image_url: 'https://storage.yandexcloud.net/curator-content/cover-images/test.jpg',
         };
         render(<FeedCard article={articleWithCover} />);
         const img = screen.getByRole('img');
-        expect(img).toHaveAttribute('src', 'https://example.com/image.jpg');
+        expect(img).toHaveAttribute('src', 'https://storage.yandexcloud.net/curator-content/cover-images/test.jpg');
         expect(img).toHaveAttribute('alt', baseArticle.title);
     });
 

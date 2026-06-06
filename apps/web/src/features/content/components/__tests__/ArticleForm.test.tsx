@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ArticleForm } from '../ArticleForm'
 import type { Article } from '@/features/content/types'
@@ -17,6 +17,15 @@ jest.mock('../AudienceSelector', () => ({
     ),
 }))
 
+const mockUploadCoverImage = jest.fn()
+jest.mock('@/features/content/api/contentApi', () => ({
+    contentApi: {
+        uploadCoverImage: (...args: unknown[]) => mockUploadCoverImage(...args),
+    },
+}))
+
+const S3_COVER_URL = 'https://storage.yandexcloud.net/curator-content/cover-images/cover.jpg'
+
 const baseArticle: Article = {
     id: 'article-1',
     author_id: 1,
@@ -26,7 +35,7 @@ const baseArticle: Article = {
     category: 'nutrition',
     status: 'draft',
     audience_scope: 'all',
-    cover_image_url: 'https://example.com/cover.jpg',
+    cover_image_url: S3_COVER_URL,
     is_own: true,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -39,6 +48,7 @@ describe('ArticleForm', () => {
 
     beforeEach(() => {
         jest.clearAllMocks()
+        mockUploadCoverImage.mockResolvedValue({ url: S3_COVER_URL })
     })
 
     it('renders all form fields', () => {
@@ -47,7 +57,7 @@ describe('ArticleForm', () => {
         expect(screen.getByLabelText(/Заголовок/)).toBeInTheDocument()
         expect(screen.getByLabelText('Краткое описание')).toBeInTheDocument()
         expect(screen.getByLabelText('Категория')).toBeInTheDocument()
-        expect(screen.getByLabelText('Обложка')).toBeInTheDocument()
+        expect(screen.getByText('Загрузить изображение обложки')).toBeInTheDocument()
     })
 
     it('populates fields from article prop', () => {
@@ -56,7 +66,9 @@ describe('ArticleForm', () => {
         expect(screen.getByLabelText(/Заголовок/)).toHaveValue('Test Title')
         expect(screen.getByLabelText('Краткое описание')).toHaveValue('Short description')
         expect(screen.getByLabelText('Категория')).toHaveValue('nutrition')
-        expect(screen.getByLabelText('Обложка')).toHaveValue('https://example.com/cover.jpg')
+        // Cover image is shown as a preview img, not a text input
+        const img = screen.getByAltText('Превью обложки')
+        expect(img).toHaveAttribute('src', S3_COVER_URL)
     })
 
     it('calls onSave with create data for new article', async () => {
@@ -65,7 +77,6 @@ describe('ArticleForm', () => {
 
         await user.type(screen.getByLabelText(/Заголовок/), 'New Article')
         await user.type(screen.getByLabelText('Краткое описание'), 'Description')
-        await user.type(screen.getByLabelText('Обложка'), 'https://example.com/img.jpg')
 
         fireEvent.click(screen.getByText('Сохранить черновик'))
 
@@ -75,7 +86,6 @@ describe('ArticleForm', () => {
                 excerpt: 'Description',
                 category: 'general',
                 audience_scope: 'all',
-                cover_image_url: 'https://example.com/img.jpg',
             })
         )
     })
@@ -184,10 +194,8 @@ describe('ArticleForm', () => {
     it('fills form fields from importedData', async () => {
         const { rerender } = render(<ArticleForm onSave={onSave} />)
 
-        // Initially empty
         expect(screen.getByLabelText(/Заголовок/)).toHaveValue('')
 
-        // Rerender with importedData to trigger the useEffect
         rerender(
             <ArticleForm
                 onSave={onSave}
@@ -196,7 +204,7 @@ describe('ArticleForm', () => {
                     excerpt: 'Imported excerpt',
                     category: 'training',
                     audience: 'my_clients',
-                    coverUrl: 'https://example.com/cover.jpg',
+                    coverUrl: S3_COVER_URL,
                     body: 'body text',
                 }}
             />
@@ -205,18 +213,60 @@ describe('ArticleForm', () => {
         expect(screen.getByLabelText(/Заголовок/)).toHaveValue('Imported Title')
         expect(screen.getByLabelText('Краткое описание')).toHaveValue('Imported excerpt')
         expect(screen.getByLabelText('Категория')).toHaveValue('training')
-        expect(screen.getByLabelText('Обложка')).toHaveValue('https://example.com/cover.jpg')
+        // After import, cover URL is set → preview img should appear
+        const img = screen.getByAltText('Превью обложки')
+        expect(img).toHaveAttribute('src', S3_COVER_URL)
     })
 
-    it('shows cover image preview when URL is set', async () => {
-        const user = userEvent.setup()
-        render(<ArticleForm onSave={onSave} />)
-
-        await user.type(screen.getByLabelText('Обложка'), 'https://example.com/img.jpg')
-
+    it('shows cover image preview when article has cover', () => {
+        render(<ArticleForm article={baseArticle} onSave={onSave} />)
         const img = screen.getByAltText('Превью обложки')
         expect(img).toBeInTheDocument()
-        expect(img).toHaveAttribute('src', 'https://example.com/img.jpg')
+        expect(img).toHaveAttribute('src', S3_COVER_URL)
+    })
+
+    it('shows upload prompt when article has no cover', () => {
+        const articleNoCover = { ...baseArticle, cover_image_url: '' }
+        render(<ArticleForm article={articleNoCover} onSave={onSave} />)
+        expect(screen.getByText('Загрузить изображение обложки')).toBeInTheDocument()
+        expect(screen.queryByAltText('Превью обложки')).not.toBeInTheDocument()
+    })
+
+    it('uploads cover image and shows preview', async () => {
+        render(<ArticleForm onSave={onSave} />)
+
+        const file = new File(['img'], 'cover.jpg', { type: 'image/jpeg' })
+        const input = document.querySelector('input[type="file"]') as HTMLInputElement
+        await userEvent.upload(input, file)
+
+        await waitFor(() => {
+            expect(mockUploadCoverImage).toHaveBeenCalledWith(file)
+        })
+        await waitFor(() => {
+            expect(screen.getByAltText('Превью обложки')).toHaveAttribute('src', S3_COVER_URL)
+        })
+    })
+
+    it('shows error when cover upload fails', async () => {
+        mockUploadCoverImage.mockRejectedValueOnce(new Error('upload failed'))
+        render(<ArticleForm onSave={onSave} />)
+
+        const file = new File(['img'], 'cover.jpg', { type: 'image/jpeg' })
+        const input = document.querySelector('input[type="file"]') as HTMLInputElement
+        await userEvent.upload(input, file)
+
+        await waitFor(() => {
+            expect(screen.getByText(/Не удалось загрузить изображение/)).toBeInTheDocument()
+        })
+    })
+
+    it('removes cover when delete button clicked', () => {
+        render(<ArticleForm article={baseArticle} onSave={onSave} />)
+        // Delete button has aria-label
+        const removeBtn = screen.getByLabelText('Удалить обложку')
+        fireEvent.click(removeBtn)
+        expect(screen.queryByAltText('Превью обложки')).not.toBeInTheDocument()
+        expect(screen.getByText('Загрузить изображение обложки')).toBeInTheDocument()
     })
 
     it('hides schedule section for published articles', () => {

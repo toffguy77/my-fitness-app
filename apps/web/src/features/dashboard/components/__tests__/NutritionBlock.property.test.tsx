@@ -15,12 +15,11 @@ import type { NutritionData, WeeklyPlan, DailyMetrics } from '../../types'
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')
 
-// Mock window.location for navigation tests
-const mockLocation = {
-    href: '',
-}
-delete (window as any).location
-    ; (window as any).location = mockLocation
+// Navigation tests use window.location.href directly (jest-environment-jsdom 30
+// defaults to http://localhost/, so no custom override is needed).
+// The skipped property test references mockLocation — keep it as a plain object
+// so the skip annotation compiles without errors.
+const mockLocation = { href: '' }
 
 /**
  * Generate realistic nutrition data
