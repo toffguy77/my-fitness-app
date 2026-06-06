@@ -51,6 +51,14 @@ func (m *mockS3) UploadFile(_ context.Context, _ string, _ io.Reader, _ string, 
 	return m.uploadURL, nil
 }
 
+func (m *mockS3) UploadPublicFile(_ context.Context, _ string, _ io.Reader, _ string, _ int64) (string, error) {
+	m.uploadCount++
+	if m.uploadErr != nil {
+		return "", m.uploadErr
+	}
+	return m.uploadURL, nil
+}
+
 func (m *mockS3) GetFile(_ context.Context, _ string) ([]byte, error) {
 	return nil, nil
 }

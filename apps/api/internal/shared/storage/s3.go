@@ -94,18 +94,27 @@ func (s *S3Client) prefixKey(key string) string {
 	return s.pathPrefix + key
 }
 
-// UploadFile uploads a file to S3
+// UploadFile uploads a file to S3 with private ACL.
 func (s *S3Client) UploadFile(ctx context.Context, key string, data io.Reader, contentType string, fileSize int64) (string, error) {
+	return s.uploadWithACL(ctx, key, data, contentType, fileSize, "private")
+}
+
+// UploadPublicFile uploads a file to S3 with public-read ACL so it is
+// directly accessible via its URL (e.g. cover images in the content bucket).
+func (s *S3Client) UploadPublicFile(ctx context.Context, key string, data io.Reader, contentType string, fileSize int64) (string, error) {
+	return s.uploadWithACL(ctx, key, data, contentType, fileSize, "public-read")
+}
+
+func (s *S3Client) uploadWithACL(ctx context.Context, key string, data io.Reader, contentType string, fileSize int64, acl s3types.ObjectCannedACL) (string, error) {
 	startTime := time.Now()
 
-	// Upload to S3
 	input := &s3.PutObjectInput{
 		Bucket:        aws.String(s.bucket),
 		Key:           aws.String(s.prefixKey(key)),
 		Body:          data,
 		ContentType:   aws.String(contentType),
 		ContentLength: aws.Int64(fileSize),
-		ACL:           "private", // Private by default
+		ACL:           acl,
 	}
 
 	_, err := s.client.PutObject(ctx, input)
@@ -119,7 +128,6 @@ func (s *S3Client) UploadFile(ctx context.Context, key string, data io.Reader, c
 		return "", fmt.Errorf("failed to upload file to S3: %w", err)
 	}
 
-	// Generate URL
 	url := fmt.Sprintf("%s/%s/%s", s.endpoint, s.bucket, s.prefixKey(key))
 
 	s.log.Info("File uploaded to S3",
