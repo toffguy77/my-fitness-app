@@ -52,12 +52,25 @@ const securityConfig = [
         }
     },
     {
-        // Relaxed rules for test files
+        // Relaxed rules for test files — add Jest globals so no-undef doesn't fire
         files: [
             '**/*.test.{js,ts,jsx,tsx}',
             '**/*.spec.{js,ts,jsx,tsx}',
             'src/__tests__/**/*.{js,ts,jsx,tsx}'
         ],
+        languageOptions: {
+            globals: {
+                describe: 'readonly',
+                it: 'readonly',
+                test: 'readonly',
+                expect: 'readonly',
+                beforeAll: 'readonly',
+                afterAll: 'readonly',
+                beforeEach: 'readonly',
+                afterEach: 'readonly',
+                jest: 'readonly',
+            }
+        },
         rules: {
             'no-console': 'off'
         }
