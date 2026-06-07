@@ -4,48 +4,58 @@ import { useEffect } from 'react'
 
 const SW_CLEANUP_KEY = 'sw-cleanup-v3'
 
-/**
- * One-time nuclear cleanup: unregisters ALL service workers and purges
- * ALL caches, then reloads so next-pwa can install a fresh SW with
- * correct NetworkOnly rules for API routes.
- *
- * Uses a localStorage flag so it only runs once per browser profile.
- */
 export function ServiceWorkerCleanup() {
     useEffect(() => {
-        if (typeof window === 'undefined') return
-        if (localStorage.getItem(SW_CLEANUP_KEY)) return
+        if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
 
-        const cleanup = async () => {
-            let didWork = false
+        // When next-pwa's skipWaiting:true activates a new SW while the old
+        // page is still open, the browser fires 'controllerchange'. At that
+        // point the old JS bundles (with old server-action IDs) are stale, so
+        // we reload immediately to pick up fresh chunks from the new SW.
+        // existingController guard prevents a reload on the very first install
+        // (no previous controller → not an update, just initial activation).
+        const existingController = navigator.serviceWorker.controller
+        let reloading = false
+        const handleControllerChange = () => {
+            if (existingController && !reloading) {
+                reloading = true
+                window.location.reload()
+            }
+        }
+        navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange)
 
-            // Unregister all service workers
-            if ('serviceWorker' in navigator) {
+        // One-time nuclear cleanup: purge stale caches from old next-pwa
+        // installations. Runs once per browser profile, then sets a flag.
+        if (!localStorage.getItem(SW_CLEANUP_KEY)) {
+            const cleanup = async () => {
+                let didWork = false
+
                 const registrations = await navigator.serviceWorker.getRegistrations()
                 for (const reg of registrations) {
                     await reg.unregister()
                     didWork = true
                 }
-            }
 
-            // Delete all caches
-            if ('caches' in window) {
-                const names = await caches.keys()
-                for (const name of names) {
-                    await caches.delete(name)
-                    didWork = true
+                if ('caches' in window) {
+                    const names = await caches.keys()
+                    for (const name of names) {
+                        await caches.delete(name)
+                        didWork = true
+                    }
+                }
+
+                localStorage.setItem(SW_CLEANUP_KEY, Date.now().toString())
+
+                if (didWork) {
+                    window.location.reload()
                 }
             }
-
-            localStorage.setItem(SW_CLEANUP_KEY, Date.now().toString())
-
-            if (didWork) {
-                console.log('[SW-Cleanup] Unregistered old SWs and purged caches, reloading...')
-                window.location.reload()
-            }
+            cleanup()
         }
 
-        cleanup()
+        return () => {
+            navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange)
+        }
     }, [])
 
     return null
