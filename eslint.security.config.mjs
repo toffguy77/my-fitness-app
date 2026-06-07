@@ -4,6 +4,7 @@
  */
 
 import js from '@eslint/js';
+import globals from 'globals';
 
 const securityConfig = [
     js.configs.recommended,
@@ -52,7 +53,7 @@ const securityConfig = [
         }
     },
     {
-        // Relaxed rules for test files — add Jest globals so no-undef doesn't fire
+        // Relaxed rules for test files — add Jest + browser globals so no-undef doesn't fire
         files: [
             '**/*.test.{js,ts,jsx,tsx}',
             '**/*.spec.{js,ts,jsx,tsx}',
@@ -60,15 +61,8 @@ const securityConfig = [
         ],
         languageOptions: {
             globals: {
-                describe: 'readonly',
-                it: 'readonly',
-                test: 'readonly',
-                expect: 'readonly',
-                beforeAll: 'readonly',
-                afterAll: 'readonly',
-                beforeEach: 'readonly',
-                afterEach: 'readonly',
-                jest: 'readonly',
+                ...globals.browser,
+                ...globals.jest,
             }
         },
         rules: {
