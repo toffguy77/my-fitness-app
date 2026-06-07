@@ -251,16 +251,26 @@ func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}
 	return db.DB.ExecContext(ctx, query, args...)
 }
 
-// Health checks database health
+// Health checks database health with one retry to survive transient DNS/network blips.
 func (db *DB) Health(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(ctx); err != nil {
-		return fmt.Errorf("database health check failed: %w", err)
+	const attempts = 2
+	var lastErr error
+	for i := range attempts {
+		pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		lastErr = db.PingContext(pingCtx)
+		cancel()
+		if lastErr == nil {
+			return nil
+		}
+		if i < attempts-1 {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("database health check failed: %w", ctx.Err())
+			case <-time.After(500 * time.Millisecond):
+			}
+		}
 	}
-
-	return nil
+	return fmt.Errorf("database health check failed: %w", lastErr)
 }
 
 // Stats returns database statistics
