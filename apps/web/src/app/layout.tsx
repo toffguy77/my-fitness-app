@@ -55,6 +55,11 @@ export default function RootLayout({
 }) {
     return (
         <html lang="ru">
+            <head>
+                {/* Registers controllerchange before React hydration so skipWaiting SW
+                    activations that race ahead of useEffect still trigger a reload. */}
+                <script dangerouslySetInnerHTML={{ __html: `(function(){if(!('serviceWorker'in navigator))return;var c=navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',function(){if(c)window.location.reload();});})();` }} />
+            </head>
             <body>
                 <YandexMetrika />
                 <ServiceWorkerCleanup />
