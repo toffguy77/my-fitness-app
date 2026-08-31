@@ -2,6 +2,12 @@
 FROM node:20-alpine AS base
 
 # Security: Update packages and install security updates
+# hadolint ignore=DL3018
+# DL3018 asks for pinned apk versions. We deliberately do not pin: the base
+# image tag already fixes the Alpine release, and `apk upgrade` is here to pull
+# security patches — pinning would defeat that and break the build whenever
+# Alpine rotates a package version out of the repository. Recorded in
+# .security-exceptions.yml.
 RUN apk update && apk upgrade && apk add --no-cache \
     libc6-compat \
     dumb-init \

@@ -2,6 +2,12 @@
 FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
+# hadolint ignore=DL3018
+# DL3018 asks for pinned apk versions. We deliberately do not pin: the base
+# image tag already fixes the Alpine release, and `apk upgrade` is here to pull
+# security patches — pinning would defeat that and break the build whenever
+# Alpine rotates a package version out of the repository. Recorded in
+# .security-exceptions.yml.
 RUN apk add --no-cache git
 
 WORKDIR /app
@@ -19,6 +25,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/serv
 # Development stage
 FROM golang:1.26-alpine AS development
 
+# hadolint ignore=DL3018
+# DL3018 asks for pinned apk versions. We deliberately do not pin: the base
+# image tag already fixes the Alpine release, and `apk upgrade` is here to pull
+# security patches — pinning would defeat that and break the build whenever
+# Alpine rotates a package version out of the repository. Recorded in
+# .security-exceptions.yml.
 RUN apk add --no-cache git
 
 # Install air for hot reload
@@ -41,6 +53,12 @@ CMD ["air", "-c", ".air.toml"]
 # Production runtime
 FROM alpine:3.19 AS production
 
+# hadolint ignore=DL3018
+# DL3018 asks for pinned apk versions. We deliberately do not pin: the base
+# image tag already fixes the Alpine release, and `apk upgrade` is here to pull
+# security patches — pinning would defeat that and break the build whenever
+# Alpine rotates a package version out of the repository. Recorded in
+# .security-exceptions.yml.
 RUN apk add --no-cache ca-certificates tzdata \
     && adduser -S -D -H -u 10001 appuser \
     && update-ca-certificates

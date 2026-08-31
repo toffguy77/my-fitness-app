@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
+import { generateErrorId } from '@/shared/errors/errorId'
 import { reportError } from '@/shared/errors/reportError'
 
 /**
@@ -15,11 +16,11 @@ export default function GlobalError({
     error: Error & { digest?: string }
     reset: () => void
 }) {
-    const [errorId, setErrorId] = useState<string>('')
+    const errorId = useMemo(() => generateErrorId(), [error])
 
     useEffect(() => {
-        setErrorId(reportError(error, { source: 'global-error', digest: error.digest }))
-    }, [error])
+        reportError(error, { source: 'global-error', errorId, digest: error.digest })
+    }, [error, errorId])
 
     return (
         <html lang="ru">
@@ -54,6 +55,9 @@ export default function GlobalError({
                             >
                                 Повторить
                             </button>
+                            {/* eslint-disable-next-line @next/next/no-html-link-for-pages --
+                                global-error replaces the entire document, including the router,
+                                so navigation here must be a plain full-page load. */}
                             <a href="/" style={{ color: '#2563eb', fontSize: '0.875rem', alignSelf: 'center' }}>
                                 На главную
                             </a>

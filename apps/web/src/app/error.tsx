@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { ErrorState } from '@/shared/components/ErrorState'
+import { generateErrorId } from '@/shared/errors/errorId'
 import { reportError } from '@/shared/errors/reportError'
 
 export default function RootError({
@@ -11,17 +12,11 @@ export default function RootError({
     error: Error & { digest?: string }
     reset: () => void
 }) {
-    const [errorId, setErrorId] = useState<string>('')
+    const errorId = useMemo(() => generateErrorId(), [error])
 
     useEffect(() => {
-        setErrorId(reportError(error, { source: 'route-error', digest: error.digest }))
-    }, [error])
+        reportError(error, { source: 'route-error', errorId, digest: error.digest })
+    }, [error, errorId])
 
-    return (
-        <ErrorState
-            errorId={errorId}
-            onRetry={reset}
-            debugDetail={error.stack}
-        />
-    )
+    return <ErrorState errorId={errorId} onRetry={reset} debugDetail={error.stack} />
 }

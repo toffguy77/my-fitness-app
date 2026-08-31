@@ -25,12 +25,18 @@ function fingerprint(error: Error): string {
 export interface ReportContext {
     /** Where the error surfaced: an error boundary, a route segment, a global handler. */
     source: string
+    /**
+     * Pre-generated id. Route error components derive the id during render so
+     * they do not have to setState inside an effect, which would cause a
+     * cascading re-render.
+     */
+    errorId?: string
     [key: string]: unknown
 }
 
 /** Reports an error and returns the id shown to the user. */
 export function reportError(error: Error, context: ReportContext): string {
-    const errorId = generateErrorId()
+    const errorId = context.errorId ?? generateErrorId()
     const key = fingerprint(error)
     const now = Date.now()
 

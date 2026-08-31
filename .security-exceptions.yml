@@ -15,4 +15,13 @@
 # Trivy findings additionally need an entry in .trivyignore, which is the file
 # that tool reads. This file is the record of *why*.
 
-exceptions: []
+exceptions:
+  - id: DL3018
+    tool: hadolint
+    reason: >-
+      Alpine package versions are deliberately unpinned. The base image tag
+      already fixes the Alpine release, and `apk upgrade` exists to pull
+      security patches — pinning would defeat it and break the build whenever
+      Alpine rotates a version out of the repository.
+    review_by: 2027-03-01
+    owner: platform

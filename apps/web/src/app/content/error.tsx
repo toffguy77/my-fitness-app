@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { ErrorState } from '@/shared/components/ErrorState'
+import { generateErrorId } from '@/shared/errors/errorId'
 import { reportError } from '@/shared/errors/reportError'
 
 export default function SegmentError({
@@ -11,11 +12,13 @@ export default function SegmentError({
     error: Error & { digest?: string }
     reset: () => void
 }) {
-    const [errorId, setErrorId] = useState<string>('')
+    // Derived during render so the effect only reports; setting state inside
+    // the effect would trigger a cascading re-render.
+    const errorId = useMemo(() => generateErrorId(), [error])
 
     useEffect(() => {
-        setErrorId(reportError(error, { source: 'route-error', segment: 'content', digest: error.digest }))
-    }, [error])
+        reportError(error, { source: 'route-error', segment: 'content', errorId, digest: error.digest })
+    }, [error, errorId])
 
     return <ErrorState errorId={errorId} onRetry={reset} debugDetail={error.stack} />
 }
