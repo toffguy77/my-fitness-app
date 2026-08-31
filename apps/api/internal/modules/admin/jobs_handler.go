@@ -86,6 +86,14 @@ func (h *JobsHandler) Run(c *gin.Context) {
 		return
 	}
 
+	// Throttle before touching the database: a request we are going to reject
+	// should not cost a query.
+	if last, ok := h.lastManualRun[name]; ok && time.Since(last) < manualRunCooldown {
+		response.Error(c, http.StatusTooManyRequests,
+			"Задачу можно запускать вручную не чаще одного раза в минуту")
+		return
+	}
+
 	running, err := h.scheduler.IsRunning(c.Request.Context(), name)
 	if err != nil {
 		response.InternalError(c, "Не удалось проверить состояние задачи")
@@ -96,11 +104,6 @@ func (h *JobsHandler) Run(c *gin.Context) {
 		return
 	}
 
-	if last, ok := h.lastManualRun[name]; ok && time.Since(last) < manualRunCooldown {
-		response.Error(c, http.StatusTooManyRequests,
-			"Задачу можно запускать вручную не чаще одного раза в минуту")
-		return
-	}
 	h.lastManualRun[name] = time.Now()
 
 	// Detached from the request: the operator should not have to hold the
