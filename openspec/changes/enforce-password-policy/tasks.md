@@ -22,17 +22,17 @@
   - Check new password is not identical to current (compare hashes); return error if same
   - `s.passwordVal.Validate(newPassword)`; return validation errors on failure
   - Hash new password with `bcrypt.DefaultCost` and `UPDATE users SET password = $1`
-- [ ] 3.4 **ИСПРАВЛЕНИЕ: ранее отмечено выполненным, но роут фактически не зарегистрирован.** Зарегистрировать `POST /api/v1/auth/change-password` с middleware `RequireAuth` в группе `authGroup` (`cmd/server/main.go:270-284` либо `internal/router/auth.go` после изменения `fix-authorization-gaps`). Обратить внимание: все маршруты живут под префиксом `/api/v1`, а nginx проксирует в API только `/api/v1/` (`deploy/nginx/burcev.team.conf:64`). Проверка: интеграционный тест — `POST /api/v1/auth/change-password` с валидным токеном возвращает не `404`.
+- [x] 3.4 **ИСПРАВЛЕНИЕ: ранее отмечено выполненным, но роут фактически не зарегистрирован.** Зарегистрировать `POST /api/v1/auth/change-password` с middleware `RequireAuth` в группе `authGroup` (`cmd/server/main.go:270-284` либо `internal/router/auth.go` после изменения `fix-authorization-gaps`). Обратить внимание: все маршруты живут под префиксом `/api/v1`, а nginx проксирует в API только `/api/v1/` (`deploy/nginx/burcev.team.conf:64`). Проверка: интеграционный тест — `POST /api/v1/auth/change-password` с валидным токеном возвращает не `404`.
 
 ## 4. Backend: Tests
 
-- [ ] 4.1 In `reset_service_test.go` `TestPasswordValidation`, add a case for password exceeding 128 characters (expect failure)
-- [ ] 4.2 Add `TestRegister_WeakPassword` in `service_test.go` covering: too short, no uppercase, no lowercase, no digit, no special char
-- [ ] 4.3 Add `TestRegister_PasswordTooLong` in `service_test.go` for > 128 chars
-- [ ] 4.4 Add `TestChangePassword_Success` in `service_test.go`
-- [ ] 4.5 Add `TestChangePassword_WrongCurrentPassword` in `service_test.go`
-- [ ] 4.6 Add `TestChangePassword_WeakNewPassword` in `service_test.go`
-- [ ] 4.7 Add `TestChangePassword_SamePassword` in `service_test.go`
+- [x] 4.1 In `reset_service_test.go` `TestPasswordValidation`, add a case for password exceeding 128 characters (expect failure)
+- [x] 4.2 Add `TestRegister_WeakPassword` in `service_test.go` covering: too short, no uppercase, no lowercase, no digit, no special char
+- [x] 4.3 Add `TestRegister_PasswordTooLong` in `service_test.go` for > 128 chars
+- [x] 4.4 Add `TestChangePassword_Success` in `service_test.go`
+- [x] 4.5 Add `TestChangePassword_WrongCurrentPassword` in `service_test.go`
+- [x] 4.6 Add `TestChangePassword_WeakNewPassword` in `service_test.go`
+- [x] 4.7 Add `TestChangePassword_SamePassword` in `service_test.go`
 - [x] 4.8 Add `TestChangePasswordHandler_Unauthenticated` in `handler_test.go`
 - [x] 4.9 Run `go test ./internal/modules/auth/...` and confirm all tests pass
 
@@ -62,7 +62,7 @@
 
 ## 9. Frontend: Settings — Password Change
 
-- [ ] 9.1 **ИСПРАВЛЕНИЕ: путь на фронтенде неверный.** В `apps/web/src/features/settings/api/settings.ts:55` заменить `POST /api/auth/change-password` на `POST /api/v1/auth/change-password`. Проверка: сквозной тест смены пароля проходит против поднятого API.
+- [x] 9.1 **ИСПРАВЛЕНИЕ: путь на фронтенде неверный.** В `apps/web/src/features/settings/api/settings.ts:55` заменить `POST /api/auth/change-password` на `POST /api/v1/auth/change-password`. Проверка: сквозной тест смены пароля проходит против поднятого API.
 - [x] 9.2 Create `apps/web/src/features/settings/components/SettingsPassword.tsx` with a form: current password field (no checklist), new password field + `<PasswordChecklist>`, confirm new password field
 - [x] 9.3 Use `passwordSchema` for the new password field and a simple `z.string().min(1)` for current password; add a `superRefine` to confirm field that checks new === confirm
 - [x] 9.4 On submit: call `changePassword()`, show success state, clear all fields on success; show server error on failure (wrong current password, policy violation)
@@ -78,10 +78,10 @@
 ## 11. Проверка сквозной связки и отзыв сессий
 
 - [ ] 11.1 Добавить сквозной тест Playwright: вход → настройки → смена пароля → успех → вход с новым паролем. Проверка: тест падает на текущем коде (маршрут отсутствует) и проходит после задач 3.4 и 9.1.
-- [ ] 11.2 Добавить интеграционный тест, проверяющий, что каждый путь API, вызываемый фронтендом, зарегистрирован в роутере. Проверка: тест обнаруживает расхождение вида «фронтенд зовёт путь, которого нет»; согласовать с задачей 3.3 изменения `ci-quality-gates`, чтобы не дублировать проверку.
-- [ ] 11.3 Вызвать отзыв всех сессий пользователя при успешной смене пароля, выдав инициатору новую пару токенов. Проверка: сценарий «Смена пароля из настроек отзывает сессии» спека `session-revocation` изменения `secure-token-lifecycle`.
-- [ ] 11.4 Пройти задачи 4.1–4.7, оставшиеся невыполненными. Проверка: `go test ./internal/modules/auth/... -race` зелёные.
-- [ ] 11.5 Сверить фактическое состояние всех отмеченных выполненными задач с кодом. Проверка: для каждой отметки `[x]` приведена строка кода или тест; расхождения исправлены.
+- [x] 11.2 Добавить интеграционный тест, проверяющий, что каждый путь API, вызываемый фронтендом, зарегистрирован в роутере. Проверка: тест обнаруживает расхождение вида «фронтенд зовёт путь, которого нет»; согласовать с задачей 3.3 изменения `ci-quality-gates`, чтобы не дублировать проверку.
+- [x] 11.3 Вызвать отзыв всех сессий пользователя при успешной смене пароля, выдав инициатору новую пару токенов. Проверка: сценарий «Смена пароля из настроек отзывает сессии» спека `session-revocation` изменения `secure-token-lifecycle`.
+- [x] 11.4 Пройти задачи 4.1–4.7, оставшиеся невыполненными. Проверка: `go test ./internal/modules/auth/... -race` зелёные.
+- [x] 11.5 Сверить фактическое состояние всех отмеченных выполненными задач с кодом. Проверка: для каждой отметки `[x]` приведена строка кода или тест; расхождения исправлены.
 
 ## 12. Выкатка
 

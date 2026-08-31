@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -179,9 +178,9 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		switch {
 		case errors.Is(err, apperrors.ErrInvalidCredentials):
 			response.Error(c, http.StatusUnauthorized, "Неверный текущий пароль")
-		case strings.HasPrefix(err.Error(), "новый пароль должен отличаться"):
+		case errors.Is(err, apperrors.ErrPasswordUnchanged):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
-		case strings.HasPrefix(err.Error(), "пароль не соответствует требованиям"):
+		case errors.Is(err, apperrors.ErrPasswordPolicy):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		default:
 			h.log.Errorw("Password change failed", "error", err, "user_id", userID)

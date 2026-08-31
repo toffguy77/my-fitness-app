@@ -52,5 +52,5 @@ export async function deleteAvatar(): Promise<void> {
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await apiClient.post('/api/auth/change-password', { current_password: currentPassword, new_password: newPassword })
+    await apiClient.post('/api/v1/auth/change-password', { current_password: currentPassword, new_password: newPassword })
 }

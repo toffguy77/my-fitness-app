@@ -59,6 +59,7 @@ GET /health
 GET /ws
 POST /api/v1/admin/assignments
 POST /api/v1/admin/users/:id/role
+POST /api/v1/auth/change-password
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/login
 POST /api/v1/auth/logout

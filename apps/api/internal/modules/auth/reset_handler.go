@@ -3,7 +3,6 @@ package auth
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -144,7 +143,7 @@ func (h *ResetHandler) ResetPassword(c *gin.Context) {
 		}
 
 		// Check if it's a password validation error
-		if strings.HasPrefix(err.Error(), "пароль не соответствует требованиям") {
+		if errors.Is(err, apperrors.ErrPasswordPolicy) {
 			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}

@@ -20,6 +20,7 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/me", middleware.RequireAuth(d.Cfg), d.Auth.GetCurrentUser)
 	g.POST("/verify-email", middleware.RequireAuth(d.Cfg), d.Auth.VerifyEmail)
 	g.POST("/resend-verification", middleware.RequireAuth(d.Cfg), d.Auth.ResendVerification)
+	g.POST("/change-password", middleware.RequireAuth(d.Cfg), d.Auth.ChangePassword)
 
 	g.POST("/forgot-password", d.Reset.ForgotPassword)
 	g.POST("/reset-password", d.Reset.ResetPassword)

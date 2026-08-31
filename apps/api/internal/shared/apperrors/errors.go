@@ -13,4 +13,6 @@ var (
 	ErrTooManyAttempts    = errors.New("too many attempts")
 	ErrRateLimited        = errors.New("rate limit exceeded")
 	ErrUnsupportedMedia   = errors.New("unsupported media type")
+	ErrPasswordPolicy     = errors.New("password does not meet policy")
+	ErrPasswordUnchanged  = errors.New("new password must differ from the current one")
 )
