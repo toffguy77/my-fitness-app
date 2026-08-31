@@ -1,4 +1,8 @@
-CREATE TABLE daily_calculated_targets (
+-- IF NOT EXISTS added so the chain can be applied to an empty database:
+-- several of these objects are also created by earlier migrations, and a
+-- bare CREATE aborted the run. Idempotent statements are a no-op where the
+-- object already exists, so production is unaffected.
+CREATE TABLE IF NOT EXISTS daily_calculated_targets (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     date DATE NOT NULL,
@@ -16,7 +20,7 @@ CREATE TABLE daily_calculated_targets (
     CONSTRAINT uq_user_date UNIQUE (user_id, date)
 );
 
-CREATE INDEX idx_dct_user_date ON daily_calculated_targets(user_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_dct_user_date ON daily_calculated_targets(user_id, date DESC);
 
 DO $$ BEGIN
     EXECUTE 'GRANT ALL ON TABLE daily_calculated_targets TO PUBLIC';

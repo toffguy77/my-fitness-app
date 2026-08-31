@@ -1,5 +1,9 @@
+-- IF NOT EXISTS added so the chain can be applied to an empty database:
+-- several of these objects are also created by earlier migrations, and a
+-- bare CREATE aborted the run. Idempotent statements are a no-op where the
+-- object already exists, so production is unaffected.
 -- Content notification preferences (opt-out model: record = unsubscribed)
-CREATE TABLE content_notification_preferences (
+CREATE TABLE IF NOT EXISTS content_notification_preferences (
     user_id    BIGINT REFERENCES users(id) ON DELETE CASCADE,
     category   content_category NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -7,7 +11,7 @@ CREATE TABLE content_notification_preferences (
 );
 
 -- Content notification mute (global "do not disturb")
-CREATE TABLE content_notification_mute (
+CREATE TABLE IF NOT EXISTS content_notification_mute (
     user_id  BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     muted_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -1,3 +1,7 @@
+-- IF NOT EXISTS added so the chain can be applied to an empty database:
+-- several of these objects are also created by earlier migrations, and a
+-- bare CREATE aborted the run. Idempotent statements are a no-op where the
+-- object already exists, so production is unaffected.
 -- IF NOT EXISTS: migration 009 already creates this table. Without the guard
 -- the chain cannot be applied from scratch — 028 fails with "relation
 -- user_foods already exists". Migration 036 reconciles the column differences
@@ -18,6 +22,6 @@ CREATE TABLE IF NOT EXISTS user_foods (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_user_foods_user_id ON user_foods(user_id);
-CREATE INDEX idx_user_foods_name_fts ON user_foods
+CREATE INDEX IF NOT EXISTS idx_user_foods_user_id ON user_foods(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_foods_name_fts ON user_foods
     USING gin(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')));
