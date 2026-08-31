@@ -34,7 +34,6 @@ jobs:
 
     env:
       DATABASE_URL: postgres://burcev:burcev@localhost:5432/burcev_e2e?sslmode=disable
-      NODE_ENV: development
       # A 32-byte secret: production config validation rejects anything shorter.
       JWT_SECRET: e2e-only-secret-value-not-used-anywhere-else
       PORT: '4000'
@@ -70,6 +69,10 @@ jobs:
       # same code path production uses.
       - name: Start API
         working-directory: apps/api
+        # NODE_ENV is set only here. Job-wide it would also reach `next build`,
+        # which requires "production".
+        env:
+          NODE_ENV: development
         run: |
           ./bin/server > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do
@@ -83,6 +86,8 @@ jobs:
 
       - name: Seed test accounts
         working-directory: apps/api
+        env:
+          NODE_ENV: development
         run: go run ./cmd/seed-e2e
 
       - name: Build and start web

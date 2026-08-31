@@ -223,7 +223,7 @@ func (s *Service) weeklyMetricsFor(ctx context.Context, curatorID int64, weekSta
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT user_id) FROM weekly_reports
 		WHERE user_id = ANY($1) AND created_at >= $2 AND created_at < $3
-		  AND feedback IS NOT NULL`,
+		  AND curator_feedback IS NOT NULL`,
 		clientIDs, weekStart, weekEnd).Scan(&m.ClientsWithFeedback); err != nil {
 		return m, fmt.Errorf("clients with feedback: %w", err)
 	}
