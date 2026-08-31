@@ -17,17 +17,6 @@ func registerUserRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.PUT("/onboarding/complete", d.Users.CompleteOnboarding)
 }
 
-func registerNutritionRoutes(v1 *gin.RouterGroup, d Deps) {
-	g := v1.Group("/nutrition")
-	g.Use(middleware.RequireAuth(d.Cfg))
-
-	g.GET("/entries", d.Nutrition.GetEntries)
-	g.POST("/entries", d.Nutrition.CreateEntry)
-	g.GET("/entries/:id", d.Nutrition.GetEntry)
-	g.PUT("/entries/:id", d.Nutrition.UpdateEntry)
-	g.DELETE("/entries/:id", d.Nutrition.DeleteEntry)
-}
-
 func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/notifications")
 	g.Use(middleware.RequireAuth(d.Cfg))

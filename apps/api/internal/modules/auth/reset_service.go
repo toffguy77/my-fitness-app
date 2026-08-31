@@ -367,6 +367,14 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 		}
 	}
 
+	// End every session before reporting success: whoever triggered the reset
+	// may be recovering from a compromise.
+	if err := rs.InvalidateUserSessions(ctx, tokenData.UserID); err != nil {
+		rs.log.Errorw("Failed to invalidate sessions after password reset",
+			"error", err, "user_id", tokenData.UserID)
+		return fmt.Errorf("failed to invalidate sessions after password reset: %w", err)
+	}
+
 	rs.log.LogSecurityEvent("password_reset_completed", "info", map[string]any{
 		"user_id":    tokenData.UserID,
 		"ip_address": ipAddress,
@@ -375,19 +383,31 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 	return nil
 }
 
-// InvalidateUserSessions invalidates all JWT sessions for a user
-// Note: This is a placeholder - actual implementation would depend on session storage
+// InvalidateUserSessions revokes every refresh token issued to the user.
+//
+// This used to be a stub that logged "User sessions invalidated" and did
+// nothing, and nothing called it. A password reset therefore left an attacker's
+// stolen refresh token working — the token survived the very action the victim
+// took to stop it.
+//
+// Access tokens already issued still work until they expire; closing that
+// window needs a token version on the user record and is handled by the
+// secure-token-lifecycle change.
 func (rs *ResetService) InvalidateUserSessions(ctx context.Context, userID int64) error {
-	// TODO: Implement session invalidation
-	// This could involve:
-	// 1. Adding tokens to a blacklist
-	// 2. Incrementing a user's token version number
-	// 3. Clearing session store entries
-
-	rs.log.Info("User sessions invalidated",
-		"user_id", userID,
+	startTime := time.Now()
+	result, err := rs.db.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = NOW()
+		 WHERE user_id = $1 AND revoked_at IS NULL`,
+		userID,
 	)
+	rs.log.LogDatabaseQuery("InvalidateUserSessions", time.Since(startTime), err,
+		map[string]any{"user_id": userID})
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh tokens: %w", err)
+	}
 
+	revoked, _ := result.RowsAffected()
+	rs.log.Info("User sessions invalidated", "user_id", userID, "revoked_tokens", revoked)
 	return nil
 }
 

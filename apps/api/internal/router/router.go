@@ -22,7 +22,6 @@ import (
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
-	"github.com/burcev/api/internal/modules/nutrition"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/shared/database"
@@ -45,7 +44,6 @@ type Deps struct {
 	Auth          *auth.Handler
 	Reset         *auth.ResetHandler
 	Users         *users.Handler
-	Nutrition     *nutrition.Handler
 	Notifications *notifications.Handler
 	Logs          *logs.Handler
 	FoodTracker   *foodtracker.Handler
@@ -86,7 +84,6 @@ func New(d Deps) *gin.Engine {
 	v1 := engine.Group("/api/v1")
 	registerAuthRoutes(v1, d)
 	registerUserRoutes(v1, d)
-	registerNutritionRoutes(v1, d)
 	registerNotificationRoutes(v1, d)
 	registerLogRoutes(v1, d)
 	registerFoodTrackerRoutes(v1, d)

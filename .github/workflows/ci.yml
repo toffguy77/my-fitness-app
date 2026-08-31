@@ -28,6 +28,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check frontend/backend API contract
+        run: node scripts/check-api-contract.mjs
+
+      - name: Check codebase integrity
+        run: node scripts/check-codebase-integrity.mjs
+
       - name: Run TypeScript check
         run: npm run type-check
 

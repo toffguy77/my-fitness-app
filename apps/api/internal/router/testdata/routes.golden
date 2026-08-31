@@ -4,7 +4,6 @@ DELETE /api/v1/curator/clients/:id/weekly-plan/:planId
 DELETE /api/v1/food-tracker/entries/:id
 DELETE /api/v1/food-tracker/favorites/:foodId
 DELETE /api/v1/food-tracker/user-foods/:id
-DELETE /api/v1/nutrition/entries/:id
 DELETE /api/v1/users/avatar
 GET /api/v1/admin/conversations
 GET /api/v1/admin/conversations/:id/messages
@@ -50,8 +49,6 @@ GET /api/v1/notifications/preferences
 GET /api/v1/notifications/unread-counts
 GET /api/v1/nutrition-calc/history
 GET /api/v1/nutrition-calc/targets
-GET /api/v1/nutrition/entries
-GET /api/v1/nutrition/entries/:id
 GET /api/v1/public/content
 GET /api/v1/public/content/:id
 GET /api/v1/users/profile
@@ -98,7 +95,6 @@ POST /api/v1/logs
 POST /api/v1/notifications/:id/read
 POST /api/v1/notifications/mark-all-read
 POST /api/v1/nutrition-calc/recalculate
-POST /api/v1/nutrition/entries
 POST /api/v1/users/avatar
 PUT /api/v1/content/articles/:id
 PUT /api/v1/curator/clients/:id/target-weight
@@ -111,7 +107,6 @@ PUT /api/v1/food-tracker/entries/:id
 PUT /api/v1/food-tracker/recommendations/preferences
 PUT /api/v1/food-tracker/user-foods/:id
 PUT /api/v1/notifications/preferences
-PUT /api/v1/nutrition/entries/:id
 PUT /api/v1/users/onboarding/complete
 PUT /api/v1/users/profile
 PUT /api/v1/users/settings

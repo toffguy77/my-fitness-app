@@ -19,7 +19,6 @@ import (
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
-	"github.com/burcev/api/internal/modules/nutrition"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/router"
@@ -207,7 +206,6 @@ func main() {
 		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
-		Nutrition:     nutrition.NewHandler(cfg, log),
 		Notifications: notifications.NewHandler(cfg, log, db),
 		Logs:          logs.NewHandler(cfg, log),
 		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient),

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -373,6 +374,10 @@ func TestResetPassword_Success(t *testing.T) {
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"email"}).AddRow("user@example.com"))
 
+	// Completing a reset must end every existing session.
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
 	err := service.ResetPassword(context.Background(), plainToken, newPassword, ipAddress)
 
 	// Should succeed even if email fails (password was already changed)
@@ -614,6 +619,10 @@ func TestResetPassword_EmailLookupFailure(t *testing.T) {
 		WithArgs(userID).
 		WillReturnError(fmt.Errorf("database error"))
 
+	// Completing a reset must end every existing session.
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WillReturnResult(sqlmock.NewResult(0, 2))
+
 	err := service.ResetPassword(context.Background(), plainToken, newPassword, ipAddress)
 
 	// Should succeed even if email lookup fails (password was already changed)
@@ -701,14 +710,34 @@ func TestResetPassword_ExpiredToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// Sessions must actually end. The previous version of this test asserted that
+// the function "should not error" while it was a stub that did nothing, so a
+// stolen refresh token survived a password reset with the suite green.
 func TestInvalidateUserSessions(t *testing.T) {
-	service, _, cleanup := setupResetServiceTest(t)
-	defer cleanup()
+	t.Run("revokes every active refresh token", func(t *testing.T) {
+		service, mock, cleanup := setupResetServiceTest(t)
+		defer cleanup()
 
-	userID := int64(123)
+		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+			WithArgs(int64(123)).
+			WillReturnResult(sqlmock.NewResult(0, 4))
 
-	// This is a placeholder function, should not error
-	err := service.InvalidateUserSessions(context.Background(), userID)
+		err := service.InvalidateUserSessions(context.Background(), int64(123))
 
-	assert.NoError(t, err)
+		require.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("reports a failure instead of claiming success", func(t *testing.T) {
+		service, mock, cleanup := setupResetServiceTest(t)
+		defer cleanup()
+
+		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+			WithArgs(int64(123)).
+			WillReturnError(errors.New("connection reset"))
+
+		err := service.InvalidateUserSessions(context.Background(), int64(123))
+
+		require.Error(t, err)
+	})
 }

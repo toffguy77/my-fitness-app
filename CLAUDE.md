@@ -71,7 +71,7 @@ Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
 Follows a **handler/service pattern** organized by domain module.
 
 - `cmd/server/main.go` — Application entry point
-- `internal/modules/` — Domain modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **logs**, **notifications**, **nutrition**, **nutrition-calc**, **users**
+- `internal/modules/` — Domain modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **logs**, **notifications**, **nutrition-calc**, **users**
   - Each module has: `handler.go` (HTTP handlers), `service.go` (business logic), `*_test.go`
 - `internal/router/` — HTTP route registration, one file per domain. **All routes are registered here, not in `main.go`.**
 - `internal/shared/` — Cross-cutting concerns:
@@ -83,7 +83,7 @@ Follows a **handler/service pattern** organized by domain module.
 - `migrations/` — SQL migration files (numbered up/down pairs)
 
 ### Key Technical Details
-- React Compiler is enabled (`reactCompiler: true` in next.config.ts)
+- React Compiler is enabled (`reactCompiler: true` in `apps/web/next.config.ts` — the only Next.js config; there is no root-level one)
 - Frontend runs on port **3069**, backend on port **4000**
 - Next.js standalone output mode for containerized deployment
 - API proxied through Next.js rewrites in production
@@ -143,3 +143,18 @@ consistently and is listed in a startup `WARN` and in `GET /health`.
 In production, missing required variables are fatal at startup: `config.Load()`
 reports every problem at once rather than failing on the first. See
 `apps/api/.env.example` for the authoritative list.
+
+## Integrity Checks
+
+Two scripts guard defects the audit found shipping to production. Both run in CI
+and both fail the build:
+
+- `scripts/check-api-contract.mjs` — every `/api/...` path the frontend calls
+  must exist in the backend's route table (`routes.golden`). The password-change
+  feature shipped broken because nothing checked this.
+- `scripts/check-codebase-integrity.mjs` — no unused `NEXT_PUBLIC_*` variables,
+  no secret-shaped names with a public prefix, exactly one `next.config.*`, and
+  no `TODO: Implement` handlers behind registered routes.
+
+Declare a `NEXT_PUBLIC_*` variable together with the code that reads it, not
+ahead of it.
