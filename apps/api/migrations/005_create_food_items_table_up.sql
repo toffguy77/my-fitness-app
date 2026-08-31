@@ -4,6 +4,47 @@
 -- Date: 2025-01-30
 
 -- ============================================================================
+-- 0. Products catalogue
+-- ============================================================================
+-- `products` holds the imported food catalogue (OpenFoodFacts and similar). It
+-- has existed in production since before this migration set — created outside
+-- the migrations and never captured here — while migrations 012, 018 and 044
+-- build indexes on it. A database created purely from migrations therefore
+-- failed at 012 with "relation products does not exist", which meant the schema
+-- could not be reproduced from the repository at all: no local database from
+-- scratch, no restore from migrations alone.
+--
+-- Added to this already-applied migration deliberately, rather than as a new
+-- one: no version below 012 was free, and the statement is idempotent, so it is
+-- a no-op everywhere the table already exists. Columns are those the
+-- application reads (internal/modules/food-tracker/service.go).
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS products (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    brand TEXT,
+    category_id BIGINT,
+    -- Nutrition per 100 g, matching how the application interprets these.
+    calories NUMERIC(10,2),
+    proteins NUMERIC(10,2),
+    fats NUMERIC(10,2),
+    carbs NUMERIC(10,2),
+    fiber NUMERIC(10,2),
+    -- barcode is what a scanner reads; vendor_code is the supplier identifier.
+    barcode TEXT,
+    vendor_code TEXT,
+    -- 'database' marks the curated catalogue, which search ranks first.
+    source TEXT DEFAULT 'database',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
+CREATE INDEX IF NOT EXISTS idx_products_vendor_code ON products(vendor_code);
+
+COMMENT ON TABLE products IS 'Imported food catalogue; predates the migration set, captured here so the schema can be built from scratch';
+
+-- ============================================================================
 -- 1. Create food_items table
 -- ============================================================================
 

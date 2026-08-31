@@ -2,12 +2,12 @@
 FROM node:20-alpine AS base
 
 # Security: Update packages and install security updates
-# hadolint ignore=DL3018
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
-# image tag already fixes the Alpine release, and `apk upgrade` is here to pull
+# image tag already fixes the Alpine release, and `apk upgrade` exists to pull
 # security patches — pinning would defeat that and break the build whenever
 # Alpine rotates a package version out of the repository. Recorded in
 # .security-exceptions.yml.
+# hadolint ignore=DL3018
 RUN apk update && apk upgrade && apk add --no-cache \
     libc6-compat \
     dumb-init \
@@ -93,6 +93,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Security: Remove unnecessary packages and clean up
 # Remove npm (not needed in production runtime) to eliminate bundled dependency vulnerabilities
+# DL3018 asks for pinned apk versions. We deliberately do not pin: the base
+# image tag already fixes the Alpine release, and `apk upgrade` exists to pull
+# security patches — pinning would defeat that and break the build whenever
+# Alpine rotates a package version out of the repository. Recorded in
+# .security-exceptions.yml.
+# hadolint ignore=DL3018
 RUN apk del libc6-compat && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/* \
     /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
