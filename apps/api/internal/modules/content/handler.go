@@ -328,6 +328,11 @@ func (h *Handler) UnpublishArticle(c *gin.Context) {
 
 // UploadMedia handles POST /api/v1/content/articles/:id/media
 func (h *Handler) UploadMedia(c *gin.Context) {
+	if !h.cfg.Features.ContentMedia {
+		response.FeatureUnavailable(c, "Загрузка медиафайлов недоступна в этом окружении")
+		return
+	}
+
 	userID, ok := h.getUserID(c)
 	if !ok {
 		return

@@ -224,6 +224,11 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 func (h *Handler) UploadAvatar(c *gin.Context) {
 	userID := getUserID(c)
 
+	if !h.cfg.Features.ProfileAvatars {
+		response.FeatureUnavailable(c, "Загрузка фото профиля недоступна в этом окружении")
+		return
+	}
+
 	file, header, err := c.Request.FormFile("avatar")
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Файл не найден")

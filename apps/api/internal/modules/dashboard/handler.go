@@ -548,6 +548,11 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 // UploadPhoto handles POST /api/dashboard/photo-upload
 // Uploads a weekly photo for the authenticated user
 func (h *Handler) UploadPhoto(c *gin.Context) {
+	if !h.cfg.Features.WeeklyPhotos {
+		response.FeatureUnavailable(c, "Загрузка фото прогресса недоступна в этом окружении")
+		return
+	}
+
 	// Get user ID from context (set by auth middleware)
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {

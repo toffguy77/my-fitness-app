@@ -166,6 +166,8 @@ func setupTestHandlerWithMock() (*Handler, *MockService) {
 	cfg := &config.Config{
 		Env:       "test",
 		JWTSecret: "test-secret",
+		// Photo upload tests run against an environment where the bucket is configured.
+		Features: config.Features{WeeklyPhotos: true},
 	}
 	log := logger.New()
 	mockService := new(MockService)

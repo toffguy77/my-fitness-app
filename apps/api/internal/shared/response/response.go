@@ -1,6 +1,8 @@
 package response
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,4 +56,11 @@ func NotFound(c *gin.Context, message string) {
 // InternalError sends internal server error response
 func InternalError(c *gin.Context, message string) {
 	Error(c, 500, message)
+}
+
+// FeatureUnavailable reports that an optional capability is switched off in
+// this environment. Every disabled capability answers the same way, so clients
+// can handle one shape instead of guessing from a nil-pointer 500.
+func FeatureUnavailable(c *gin.Context, message string) {
+	Error(c, http.StatusServiceUnavailable, message)
 }

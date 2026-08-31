@@ -39,10 +39,26 @@ func main() {
 	log := logger.New()
 	defer func() { _ = log.Sync() }()
 
-	// Load configuration
+	// Load configuration. validate() joins every problem it finds, so unwrap
+	// and print one line each — an operator fixing a broken environment should
+	// see the whole list, not discover it one deploy at a time.
 	cfg, err := config.Load()
 	if err != nil {
+		if joined, ok := err.(interface{ Unwrap() []error }); ok {
+			for _, problem := range joined.Unwrap() {
+				log.Error("Configuration problem", "error", problem)
+			}
+		}
 		log.Fatal("Failed to load configuration", "error", err)
+	}
+
+	if cfg.JWTSecretIsUnsafe() {
+		log.Warn("JWT_SECRET is unsafe (placeholder or shorter than 32 bytes). "+
+			"This is fatal in production; set a random secret.", "env", cfg.Env)
+	}
+	if disabled := cfg.Features.Disabled(); len(disabled) > 0 {
+		log.Warn("Optional capabilities are disabled — the credentials for them are not set",
+			"disabled", disabled)
 	}
 
 	// Initialize database
@@ -245,6 +261,7 @@ func main() {
 			"timestamp":   time.Now().Format(time.RFC3339),
 			"environment": cfg.Env,
 			"database":    dbStatus,
+			"features":    cfg.Features.Map(),
 		})
 	})
 

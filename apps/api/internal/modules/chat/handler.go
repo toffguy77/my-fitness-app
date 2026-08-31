@@ -184,6 +184,11 @@ func (h *Handler) SendMessage(c *gin.Context) {
 
 // UploadAttachment handles POST /api/v1/conversations/:id/upload
 func (h *Handler) UploadAttachment(c *gin.Context) {
+	if !h.cfg.Features.ChatAttachments {
+		response.FeatureUnavailable(c, "Загрузка вложений недоступна в этом окружении")
+		return
+	}
+
 	userID, ok := h.getUserID(c)
 	if !ok {
 		return
@@ -210,11 +215,6 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		return
 	}
 	defer file.Close()
-
-	if h.s3 == nil {
-		response.InternalError(c, "Загрузка файлов временно недоступна")
-		return
-	}
 
 	// Generate S3 key
 	ext := filepath.Ext(header.Filename)

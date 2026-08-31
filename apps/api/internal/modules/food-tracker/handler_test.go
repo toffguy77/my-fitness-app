@@ -212,6 +212,7 @@ func setupTestHandlerWithMock() (*Handler, *MockService) {
 		Env:                       "test",
 		JWTSecret:                 "test-secret",
 		FoodRecognitionDailyLimit: 20,
+		Features:                  config.Features{FoodRecognition: true},
 	}
 	log := logger.New()
 	mockService := new(MockService)
@@ -328,7 +329,7 @@ func TestCreateUserFood(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: mockService,
 		}
@@ -366,7 +367,7 @@ func TestCreateUserFood(t *testing.T) {
 	t.Run("missing name returns 400", func(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: new(MockService),
 		}
@@ -389,7 +390,7 @@ func TestGetUserFoods(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: mockService,
 		}
@@ -417,7 +418,7 @@ func TestDeleteUserFood(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: mockService,
 		}
@@ -596,10 +597,10 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 	mockService := new(MockService)
 
 	handler := &Handler{
-		cfg:      &config.Config{FoodRecognitionDailyLimit: 20},
-		log:      logger.New(),
-		extras:   mockService,
-		orClient: nil, // No OpenRouter client configured
+		cfg:    &config.Config{FoodRecognitionDailyLimit: 20},
+		log:    logger.New(),
+		extras: mockService,
+		// Capability disabled: OPENROUTER_API_KEY is absent in this environment.
 	}
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", []byte("fake-image-data"))
@@ -616,7 +617,7 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Equal(t, "Сервис распознавания еды недоступен", resp["message"])
+	assert.Equal(t, "Распознавание еды недоступно в этом окружении", resp["message"])
 }
 
 func TestSearchFoodsHandler_ContextCanceled(t *testing.T) {

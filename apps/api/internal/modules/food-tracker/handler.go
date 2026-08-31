@@ -355,9 +355,8 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 		return
 	}
 
-	// Check if OpenRouter client is configured
-	if h.orClient == nil {
-		response.Error(c, http.StatusServiceUnavailable, "Сервис распознавания еды недоступен")
+	if !h.cfg.Features.FoodRecognition {
+		response.FeatureUnavailable(c, "Распознавание еды недоступно в этом окружении")
 		return
 	}
 

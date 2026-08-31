@@ -1,12 +1,74 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
+
+// minJWTSecretLen is the minimum acceptable length of JWT_SECRET in bytes.
+const minJWTSecretLen = 32
+
+// unsafeJWTSecrets are well-known placeholder values that must never be used
+// outside development. They are rejected in production regardless of length.
+var unsafeJWTSecrets = map[string]struct{}{
+	"dev-secret-key": {},
+	"change-me":      {},
+	"changeme":       {},
+	"secret":         {},
+	"test":           {},
+}
+
+// Features records which optional capabilities are enabled by the current
+// environment. A capability is enabled when its credentials are present.
+// Handlers check these flags instead of nil-checking their clients, so a
+// disabled capability produces one consistent 503 everywhere.
+type Features struct {
+	Email           bool
+	FoodRecognition bool
+	WeeklyPhotos    bool
+	ProfileAvatars  bool
+	ChatAttachments bool
+	ContentMedia    bool
+}
+
+// Disabled returns the names of the capabilities that are turned off, in a
+// stable order, for logging at startup.
+func (f Features) Disabled() []string {
+	var off []string
+	for _, c := range []struct {
+		name string
+		on   bool
+	}{
+		{"email", f.Email},
+		{"food_recognition", f.FoodRecognition},
+		{"weekly_photos", f.WeeklyPhotos},
+		{"profile_avatars", f.ProfileAvatars},
+		{"chat_attachments", f.ChatAttachments},
+		{"content_media", f.ContentMedia},
+	} {
+		if !c.on {
+			off = append(off, c.name)
+		}
+	}
+	return off
+}
+
+// Map renders the feature flags for the health endpoint.
+func (f Features) Map() map[string]bool {
+	return map[string]bool{
+		"email":            f.Email,
+		"food_recognition": f.FoodRecognition,
+		"weekly_photos":    f.WeeklyPhotos,
+		"profile_avatars":  f.ProfileAvatars,
+		"chat_attachments": f.ChatAttachments,
+		"content_media":    f.ContentMedia,
+	}
+}
 
 // Config holds application configuration
 type Config struct {
@@ -89,11 +151,22 @@ type Config struct {
 	OpenRouterModel           string
 	FoodRecognitionDailyLimit int
 
+	// AppDomain is the public domain; drives ResetPasswordURL and email links.
+	AppDomain string
+
 	// Migrations
 	MigrationBaseline int
 
 	// Logging
 	LogLevel string
+
+	// Features records which optional capabilities are enabled.
+	Features Features
+}
+
+// IsProduction reports whether the service runs with production strictness.
+func (c *Config) IsProduction() bool {
+	return strings.EqualFold(c.Env, "production")
 }
 
 // Load loads configuration from environment variables
@@ -123,6 +196,9 @@ func Load() (*Config, error) {
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-key"),
+
+		// Application domain (drives ResetPasswordURL and links in emails)
+		AppDomain: getEnv("APP_DOMAIN", ""),
 
 		// SMTP Configuration (Yandex Mail)
 		SMTPHost:        getEnv("SMTP_HOST", "smtp.yandex.ru"),
@@ -184,12 +260,89 @@ func Load() (*Config, error) {
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
 
-	// Validate required configuration
-	if cfg.DatabaseURL == "" && cfg.DatabasePassword == "" {
-		return nil, fmt.Errorf("DATABASE_URL or DB_PASSWORD is required")
+	cfg.Features = deriveFeatures(cfg)
+
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
+}
+
+// deriveFeatures turns the presence of credentials into capability flags.
+func deriveFeatures(c *Config) Features {
+	s3 := func(key, secret string) bool { return key != "" && secret != "" }
+	return Features{
+		Email:           c.SMTPUsername != "" && c.SMTPPassword != "" && c.SMTPFromAddress != "",
+		FoodRecognition: c.OpenRouterAPIKey != "",
+		WeeklyPhotos:    s3(c.WeeklyPhotosS3AccessKeyID, c.WeeklyPhotosS3SecretAccessKey),
+		ProfileAvatars:  s3(c.ProfilePhotosS3AccessKeyID, c.ProfilePhotosS3SecretAccessKey),
+		ChatAttachments: s3(c.ChatS3AccessKeyID, c.ChatS3SecretAccessKey),
+		ContentMedia:    s3(c.ContentS3AccessKeyID, c.ContentS3SecretAccessKey),
+	}
+}
+
+// validate collects every configuration problem and returns them joined, so an
+// operator fixes a broken environment in one pass instead of one deploy per
+// variable. Required-variable checks apply only in production; development
+// keeps working defaults and gets warnings from the caller instead.
+func (c *Config) validate() error {
+	var problems []error
+
+	if c.DatabaseURL == "" && c.DatabasePassword == "" {
+		problems = append(problems, errors.New("DATABASE_URL or DB_PASSWORD is required"))
+	}
+
+	if err := c.validateJWTSecret(); err != nil {
+		problems = append(problems, err)
+	}
+
+	if c.IsProduction() {
+		required := []struct {
+			name  string
+			value string
+		}{
+			{"SMTP_USERNAME", c.SMTPUsername},
+			{"SMTP_PASSWORD", c.SMTPPassword},
+			{"SMTP_FROM_ADDRESS", c.SMTPFromAddress},
+			{"APP_DOMAIN", c.AppDomain},
+		}
+		for _, r := range required {
+			if r.value == "" {
+				problems = append(problems, fmt.Errorf("%s is required when NODE_ENV=production", r.name))
+			}
+		}
+	}
+
+	return errors.Join(problems...)
+}
+
+// validateJWTSecret rejects absent, short and placeholder secrets. In
+// production this is fatal: booting with a publicly known secret would let
+// anyone mint a super_admin token.
+func (c *Config) validateJWTSecret() error {
+	if !c.IsProduction() {
+		return nil
+	}
+	if c.JWTSecret == "" {
+		return errors.New("JWT_SECRET is required when NODE_ENV=production")
+	}
+	if _, unsafe := unsafeJWTSecrets[strings.ToLower(c.JWTSecret)]; unsafe {
+		return errors.New("JWT_SECRET is set to a well-known placeholder value; generate a random secret")
+	}
+	if len(c.JWTSecret) < minJWTSecretLen {
+		return fmt.Errorf("JWT_SECRET must be at least %d bytes, got %d", minJWTSecretLen, len(c.JWTSecret))
+	}
+	return nil
+}
+
+// JWTSecretIsUnsafe reports whether the secret in use is a known placeholder or
+// too short. Non-production boots are allowed to continue, but must warn.
+func (c *Config) JWTSecretIsUnsafe() bool {
+	if _, unsafe := unsafeJWTSecrets[strings.ToLower(c.JWTSecret)]; unsafe {
+		return true
+	}
+	return len(c.JWTSecret) < minJWTSecretLen
 }
 
 func getEnv(key, defaultValue string) string {
