@@ -47,8 +47,12 @@ security_scanning:
     enabled: true
     tools:
       eslint_security:
+        # Security rules live in the repository-root eslint.config.mjs and run
+        # as part of the main lint pass. The former standalone config used the
+        # default parser and could not read TypeScript, so it never inspected
+        # anything; it has been removed.
         enabled: true
-        config_file: ".eslintrc.security.js"
+        config_file: "eslint.config.mjs"
         extensions: [".js", ".jsx", ".ts", ".tsx"]
         timeout: 300
         fail_on_error: true

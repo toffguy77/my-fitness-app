@@ -170,7 +170,10 @@ jobs:
       # all back in reverse.
       - name: Migrations and integration tests
         working-directory: apps/api
-        run: go test -race -tags=integration ./... -run Integration -count=1 -v
+        # No -run filter: the previous "-run Integration" matched no test name
+        # and the job passed without executing anything — the same class of
+        # empty check this pipeline exists to remove.
+        run: go test -race -tags=integration ./... -count=1 -v
 
   build-images:
     name: Build Images
@@ -273,8 +276,8 @@ jobs:
           pip install detect-secrets
           detect-secrets scan --baseline .secrets.baseline
 
-      - name: ESLint security rules
-        run: npx eslint --config eslint.security.config.mjs "apps/web/src/**/*.{js,ts,jsx,tsx}" --no-error-on-unmatched-pattern
+      # Security lint rules now run inside the main ESLint pass (Static Checks),
+      # with a parser that can actually read TypeScript.
 
   performance-analysis:
     name: Performance Analysis

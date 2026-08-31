@@ -49,6 +49,27 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Security rules, merged in from the former eslint.security.config.mjs.
+    //
+    // That file ran as a separate CI step with the default parser, which cannot
+    // read TypeScript or JSX: all ~280 of its findings were parse errors, so it
+    // had never inspected a line. It also carried continue-on-error, so the
+    // failure was invisible. Rather than keep a second, differently-broken
+    // linter pass, its rules live here and run with the real parser.
+    rules: {
+      "no-eval": "error",
+      "no-implied-eval": "error",
+      "no-new-func": "error",
+      "no-script-url": "error",
+      "no-debugger": "error",
+      // no-alert also covers confirm() and prompt(). The five current uses are
+      // confirmations before destructive actions, not XSS vectors, so this is a
+      // UX debt rather than a security defect: replacing them needs a reusable
+      // dialog component. Kept visible as a warning.
+      "no-alert": "warn",
+    },
+  },
+  {
     // React Compiler rules, temporarily at "warn".
     //
     // ESLint had been crashing on startup (an ajv 8 override reaching the
