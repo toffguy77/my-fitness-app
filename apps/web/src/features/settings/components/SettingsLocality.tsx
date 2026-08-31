@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { LanguageSelector, UnitSelector, TimezoneSelector, PhotoUploader } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import toast from 'react-hot-toast'
@@ -34,6 +35,7 @@ function ProfileSettingsForm({
     onAvatarUpload: (file: File) => Promise<string>
     onAvatarDelete: () => Promise<void>
 }) {
+    const router = useRouter()
     const [name, setName] = useState(profile?.name || '')
     const [nameChanged, setNameChanged] = useState(false)
     const [height, setHeight] = useState<string>(profile?.settings.height != null ? String(profile.settings.height) : '')
@@ -111,11 +113,7 @@ function ProfileSettingsForm({
         }).catch(() => {})
     }
 
-    function handleDeleteAccount() {
-        if (window.confirm('Вы уверены?')) {
-            toast('Функция в разработке')
-        }
-    }
+
 
     return (
         <>
@@ -192,10 +190,11 @@ function ProfileSettingsForm({
                 />
             </div>
 
-            {/* Delete account */}
+            {/* Data export and account deletion live on their own page: both
+                need explanation and confirmation, not a one-line dialog. */}
             <div className="mt-12">
                 <button
-                    onClick={handleDeleteAccount}
+                    onClick={() => router.push('/settings/privacy')}
                     className="w-full rounded-lg border border-red-200 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
                 >
                     Удалить аккаунт
