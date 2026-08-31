@@ -195,12 +195,12 @@ describe('useFormValidation', () => {
             expect(result.current.errors.email).toBeDefined();
         });
 
-        it('should reject login with short password', () => {
+        it('should reject login with no password at all', () => {
             const { result } = renderHook(() => useFormValidation());
 
             const invalidData: AuthFormData = {
                 email: 'user@example.com',
-                password: '123',
+                password: '',
             };
 
             act(() => {
@@ -209,6 +209,24 @@ describe('useFormValidation', () => {
             });
 
             expect(result.current.errors.password).toBeDefined();
+        });
+
+        // An account created before the complexity policy still has a valid
+        // password. Judging it by today's rules would lock its owner out of
+        // their own data, with the form claiming their correct password is
+        // wrong.
+        it('should accept a password that predates the complexity policy', () => {
+            const { result } = renderHook(() => useFormValidation());
+
+            const legacyData: AuthFormData = {
+                email: 'user@example.com',
+                password: 'oldpass',
+            };
+
+            act(() => {
+                const isValid = result.current.validateLogin(legacyData);
+                expect(isValid).toBe(true);
+            });
         });
     });
 

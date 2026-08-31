@@ -75,12 +75,29 @@ func main() {
 	}
 	fmt.Println("created curator-client conversation")
 
+	// Water tracking only appears once a curator has set a goal — a client
+	// with no goal sees no water block at all, which is correct in the product
+	// and useless as a fixture.
+	if err := setWaterGoal(ctx, db, ids["client"], 8); err != nil {
+		log.Fatalf("set water goal: %v", err)
+	}
+	fmt.Println("set water goal for client")
+
 	// Food search has nothing to find in an empty catalogue: `products` is
 	// populated by an importer in real environments, not by migrations.
 	if err := seedProducts(ctx, db); err != nil {
 		log.Fatalf("seed products: %v", err)
 	}
 	fmt.Println("seeded catalogue products")
+}
+
+func setWaterGoal(ctx context.Context, db *sql.DB, userID int64, glasses int) error {
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO user_settings (user_id, water_goal)
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) DO UPDATE SET water_goal = EXCLUDED.water_goal`,
+		userID, glasses)
+	return err
 }
 
 func ensureConversation(ctx context.Context, db *sql.DB, curatorID, clientID int64) error {

@@ -45,6 +45,7 @@ type Deps struct {
 
 	Auth          *auth.Handler
 	Reset         *auth.ResetHandler
+	OAuth         *auth.OAuthHandler
 	Users         *users.Handler
 	Account       *account.Handler
 	Notifications *notifications.Handler

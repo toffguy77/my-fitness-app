@@ -1,2 +1,5 @@
 tmp/
 tmp/
+
+# Built helper binaries (go build ./cmd/... drops them here)
+/seed-e2e

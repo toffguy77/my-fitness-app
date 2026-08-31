@@ -14,6 +14,7 @@ import (
 	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/modules/admin"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/modules/auth/oauth"
 	"github.com/burcev/api/internal/modules/chat"
 	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
@@ -208,6 +209,22 @@ func main() {
 	notificationsSvc := notifications.NewService(db, log)
 	verificationService := auth.NewVerificationService(db.DB, log, emailService)
 
+	// Only providers with credentials are registered, so an unconfigured one
+	// is absent rather than broken.
+	oauthRegistry := oauth.NewRegistry()
+	if p := oauth.NewYandex(cfg.YandexOAuthClientID, cfg.YandexOAuthClientSecret); p != nil {
+		oauthRegistry.Register(p)
+		log.Info("External sign-in provider registered", "provider", p.Name())
+	}
+	if p := oauth.NewVK(cfg.VKOAuthClientID, cfg.VKOAuthClientSecret); p != nil {
+		oauthRegistry.Register(p)
+		log.Info("External sign-in provider registered", "provider", p.Name())
+	}
+	if !oauthRegistry.Enabled() {
+		log.Warn("No external sign-in providers configured; only password sign-in is available")
+	}
+	authService := auth.NewService(db.DB, cfg, log)
+
 	var contentS3Uploader content.S3Uploader
 	if contentS3 != nil {
 		contentS3Uploader = contentS3
@@ -260,6 +277,7 @@ func main() {
 
 		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
+		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
 		Account:       account.NewHandler(accountService, log),
 		Notifications: notifications.NewHandler(cfg, log, db),

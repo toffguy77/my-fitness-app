@@ -50,15 +50,26 @@ export const consentSchema = z.object({
 });
 
 /**
+ * Sign-in checks only that a password was typed.
+ *
+ * The complexity rules belong to registration and password change. Applying
+ * them here would lock out every account created before the policy existed —
+ * the form would refuse to submit a password that is, in fact, correct — and
+ * would tell a visitor which rules our passwords follow before they have
+ * proved anything.
+ */
+const loginPasswordSchema = z.string().min(1, 'Введите пароль');
+
+/**
  * Login validation schema
- * - Requires valid email and password
+ * - Requires valid email and a non-empty password
  * - No consent validation (consents given at registration)
  *
  * Validates: Requirements AC-1.1, AC-1.2, AC-1.7
  */
 export const loginSchema = z.object({
     email: emailSchema,
-    password: passwordSchema,
+    password: loginPasswordSchema,
 });
 
 /**

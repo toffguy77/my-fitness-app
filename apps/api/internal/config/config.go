@@ -156,6 +156,13 @@ type Config struct {
 	DataExportsS3Region          string
 	DataExportsS3Endpoint        string
 
+	// External sign-in providers. Absent credentials mean the provider is
+	// simply not offered — a deployment must not show a button that cannot work.
+	YandexOAuthClientID     string
+	YandexOAuthClientSecret string
+	VKOAuthClientID         string
+	VKOAuthClientSecret     string
+
 	// OpenRouter (AI food recognition)
 	OpenRouterAPIKey          string
 	OpenRouterModel           string
@@ -270,6 +277,12 @@ func Load() (*Config, error) {
 		DataExportsS3Bucket:          getEnvWithFallback("DATA_EXPORTS_S3_BUCKET", "S3_BUCKET", "data-exports"),
 		DataExportsS3Region:          getEnvWithFallback("DATA_EXPORTS_S3_REGION", "S3_REGION", "ru-central1"),
 		DataExportsS3Endpoint:        getEnvWithFallback("DATA_EXPORTS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
+
+		// External sign-in providers
+		YandexOAuthClientID:     getEnv("YANDEX_OAUTH_CLIENT_ID", ""),
+		YandexOAuthClientSecret: getEnv("YANDEX_OAUTH_CLIENT_SECRET", ""),
+		VKOAuthClientID:         getEnv("VK_OAUTH_CLIENT_ID", ""),
+		VKOAuthClientSecret:     getEnv("VK_OAUTH_CLIENT_SECRET", ""),
 
 		// OpenRouter (AI food recognition)
 		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),

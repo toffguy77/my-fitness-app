@@ -175,7 +175,11 @@ export function DietTab({
             <button
                 type="button"
                 onClick={handleFabClick}
-                className="fixed bottom-4 right-4 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex items-center justify-center z-50 sm:bottom-6 sm:right-6 sm:w-14 sm:h-14 touch-manipulation"
+                // The footer navigation is a fixed 64px bar at the bottom of
+                // every signed-in page. At bottom-4 this button sat entirely
+                // behind it: visible in a screenshot, but every tap landed on
+                // the nav instead.
+                className="fixed bottom-20 right-4 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex items-center justify-center z-50 sm:bottom-24 sm:right-6 sm:w-14 sm:h-14 touch-manipulation"
                 aria-label="Добавить еду"
                 data-testid="fab-add-food"
             >

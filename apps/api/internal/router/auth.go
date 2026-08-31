@@ -23,6 +23,14 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 		middleware.RequireAuth(d.Cfg), d.Auth.ResendVerification)
 	g.POST("/change-password", middleware.RequireAuth(d.Cfg), d.Auth.ChangePassword)
 
+	// External sign-in. The list is public so the sign-in screen only offers
+	// providers this deployment can actually use.
+	g.GET("/providers", d.OAuth.Providers)
+	g.GET("/oauth/:provider", d.OAuth.Start)
+	g.GET("/oauth/:provider/callback", d.OAuth.Callback)
+	g.GET("/providers/linked", middleware.RequireAuth(d.Cfg), d.OAuth.LinkedProviders)
+	g.DELETE("/providers/:provider", middleware.RequireAuth(d.Cfg), d.OAuth.Unlink)
+
 	g.POST("/forgot-password", d.Reset.ForgotPassword)
 	g.POST("/reset-password", d.Reset.ResetPassword)
 	g.GET("/validate-reset-token", d.Reset.ValidateResetToken)

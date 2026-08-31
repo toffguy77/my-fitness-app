@@ -19,6 +19,10 @@ type vkProvider struct {
 	clientID     string
 	clientSecret string
 	httpClient   *http.Client
+	// Endpoints are fields rather than constants so the exchange can be
+	// exercised against a stub in tests.
+	authURL  string
+	tokenURL string
 }
 
 // NewVK creates the adapter. Returns nil when credentials are absent.
@@ -30,6 +34,8 @@ func NewVK(clientID, clientSecret string) Provider {
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		httpClient:   &http.Client{Timeout: 15 * time.Second},
+		authURL:      "https://id.vk.com/authorize",
+		tokenURL:     "https://id.vk.com/oauth2/auth",
 	}
 }
 
@@ -45,7 +51,7 @@ func (p *vkProvider) AuthorizationURL(state, codeChallenge, redirectURI string) 
 		"code_challenge":        {codeChallenge},
 		"code_challenge_method": {"s256"},
 	}
-	return "https://id.vk.com/authorize?" + params.Encode()
+	return p.authURL + "?" + params.Encode()
 }
 
 func (p *vkProvider) Exchange(ctx context.Context, code, codeVerifier, redirectURI string) (*Profile, error) {
@@ -59,7 +65,7 @@ func (p *vkProvider) Exchange(ctx context.Context, code, codeVerifier, redirectU
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://id.vk.com/oauth2/auth", strings.NewReader(form.Encode()))
+		p.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("build token request: %w", err)
 	}

@@ -19,6 +19,11 @@ type yandexProvider struct {
 	clientID     string
 	clientSecret string
 	httpClient   *http.Client
+	// Endpoints are fields rather than constants so the exchange can be
+	// exercised against a stub in tests.
+	authURL    string
+	tokenURL   string
+	profileURL string
 }
 
 // NewYandex creates the adapter. Returns nil when credentials are absent, so an
@@ -31,6 +36,9 @@ func NewYandex(clientID, clientSecret string) Provider {
 		clientID:     clientID,
 		clientSecret: clientSecret,
 		httpClient:   &http.Client{Timeout: 15 * time.Second},
+		authURL:      "https://oauth.yandex.ru/authorize",
+		tokenURL:     "https://oauth.yandex.ru/token",
+		profileURL:   "https://login.yandex.ru/info?format=json",
 	}
 }
 
@@ -45,7 +53,7 @@ func (p *yandexProvider) AuthorizationURL(state, codeChallenge, redirectURI stri
 		"code_challenge":        {codeChallenge},
 		"code_challenge_method": {"S256"},
 	}
-	return "https://oauth.yandex.ru/authorize?" + params.Encode()
+	return p.authURL + "?" + params.Encode()
 }
 
 func (p *yandexProvider) Exchange(ctx context.Context, code, codeVerifier, redirectURI string) (*Profile, error) {
@@ -67,7 +75,7 @@ func (p *yandexProvider) exchangeCode(ctx context.Context, code, codeVerifier, r
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://oauth.yandex.ru/token", strings.NewReader(form.Encode()))
+		p.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return "", fmt.Errorf("build token request: %w", err)
 	}
@@ -96,7 +104,7 @@ func (p *yandexProvider) exchangeCode(ctx context.Context, code, codeVerifier, r
 }
 
 func (p *yandexProvider) fetchProfile(ctx context.Context, token string) (*Profile, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://login.yandex.ru/info?format=json", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.profileURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build profile request: %w", err)
 	}

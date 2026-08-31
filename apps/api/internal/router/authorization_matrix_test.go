@@ -104,6 +104,14 @@ var protectedRoutes = map[string]protection{
 	// handler before the archive is released.
 	"GET /api/v1/users/me/export/:id": protOwner,
 
+	// :provider names a sign-in service from a fixed registry, not another
+	// user's resource. Starting a flow and returning from one are public by
+	// necessity — the user is not signed in yet — and are protected by the PKCE
+	// state check instead. Unlinking is scoped to the caller's own account.
+	"GET /api/v1/auth/oauth/:provider":          protPublic,
+	"GET /api/v1/auth/oauth/:provider/callback": protPublic,
+	"DELETE /api/v1/auth/providers/:provider":   protOwner,
+
 	// Public by design — drives SEO for published articles.
 	"GET /api/v1/public/content/:id": protPublic,
 }
