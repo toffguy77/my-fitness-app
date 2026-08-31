@@ -34,6 +34,7 @@ type Features struct {
 	ProfileAvatars  bool
 	ChatAttachments bool
 	ContentMedia    bool
+	DataExports     bool
 }
 
 // Disabled returns the names of the capabilities that are turned off, in a
@@ -50,6 +51,7 @@ func (f Features) Disabled() []string {
 		{"profile_avatars", f.ProfileAvatars},
 		{"chat_attachments", f.ChatAttachments},
 		{"content_media", f.ContentMedia},
+		{"data_exports", f.DataExports},
 	} {
 		if !c.on {
 			off = append(off, c.name)
@@ -67,6 +69,7 @@ func (f Features) Map() map[string]bool {
 		"profile_avatars":  f.ProfileAvatars,
 		"chat_attachments": f.ChatAttachments,
 		"content_media":    f.ContentMedia,
+		"data_exports":     f.DataExports,
 	}
 }
 
@@ -145,6 +148,13 @@ type Config struct {
 	FoodPhotosS3Bucket          string
 	FoodPhotosS3Region          string
 	FoodPhotosS3Endpoint        string
+
+	// Data Exports S3 — archives of a user's own data
+	DataExportsS3AccessKeyID     string
+	DataExportsS3SecretAccessKey string
+	DataExportsS3Bucket          string
+	DataExportsS3Region          string
+	DataExportsS3Endpoint        string
 
 	// OpenRouter (AI food recognition)
 	OpenRouterAPIKey          string
@@ -254,6 +264,13 @@ func Load() (*Config, error) {
 		FoodPhotosS3Region:          getEnvWithFallback("FOOD_PHOTOS_S3_REGION", "S3_REGION", "ru-central1"),
 		FoodPhotosS3Endpoint:        getEnvWithFallback("FOOD_PHOTOS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
+		// Data Exports S3 — falls back to generic S3_* vars
+		DataExportsS3AccessKeyID:     getEnvWithFallback("DATA_EXPORTS_S3_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID", ""),
+		DataExportsS3SecretAccessKey: getEnvWithFallback("DATA_EXPORTS_S3_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY", ""),
+		DataExportsS3Bucket:          getEnvWithFallback("DATA_EXPORTS_S3_BUCKET", "S3_BUCKET", "data-exports"),
+		DataExportsS3Region:          getEnvWithFallback("DATA_EXPORTS_S3_REGION", "S3_REGION", "ru-central1"),
+		DataExportsS3Endpoint:        getEnvWithFallback("DATA_EXPORTS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
+
 		// OpenRouter (AI food recognition)
 		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterModel:           getEnv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4"),
@@ -283,6 +300,7 @@ func deriveFeatures(c *Config) Features {
 		ProfileAvatars:  s3(c.ProfilePhotosS3AccessKeyID, c.ProfilePhotosS3SecretAccessKey),
 		ChatAttachments: s3(c.ChatS3AccessKeyID, c.ChatS3SecretAccessKey),
 		ContentMedia:    s3(c.ContentS3AccessKeyID, c.ContentS3SecretAccessKey),
+		DataExports:     s3(c.DataExportsS3AccessKeyID, c.DataExportsS3SecretAccessKey),
 	}
 }
 

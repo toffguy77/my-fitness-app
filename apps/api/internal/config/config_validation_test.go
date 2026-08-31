@@ -148,6 +148,7 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	// The generic S3_* pair is the documented fallback for every bucket.
 	assert.True(t, cfg.Features.WeeklyPhotos)
 	assert.True(t, cfg.Features.ChatAttachments)
+	assert.True(t, cfg.Features.DataExports)
 	assert.Empty(t, cfg.Features.Disabled())
 }
 

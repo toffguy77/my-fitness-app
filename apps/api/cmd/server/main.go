@@ -11,6 +11,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/jobsetup"
+	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/modules/admin"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
@@ -155,6 +156,14 @@ func main() {
 		Endpoint:        cfg.ContentS3Endpoint,
 		PathPrefix:      cfg.ContentS3PathPrefix,
 	})
+	dataExportsS3 := initS3(log, "data exports", &storage.S3Config{
+		AccessKeyID:     cfg.DataExportsS3AccessKeyID,
+		SecretAccessKey: cfg.DataExportsS3SecretAccessKey,
+		Bucket:          cfg.DataExportsS3Bucket,
+		Region:          cfg.DataExportsS3Region,
+		Endpoint:        cfg.DataExportsS3Endpoint,
+		PathPrefix:      cfg.S3PathPrefix,
+	})
 	foodPhotosS3 := initS3(log, "food photos", &storage.S3Config{
 		AccessKeyID:     cfg.FoodPhotosS3AccessKeyID,
 		SecretAccessKey: cfg.FoodPhotosS3SecretAccessKey,
@@ -208,6 +217,16 @@ func main() {
 	// read the same code path.
 	curatorService := curator.NewService(db, log, notificationsSvc)
 
+	// Erasure must reach every store that holds user files; a bucket missing
+	// from this map is data that survives an account deletion.
+	accountService := account.NewService(db, log, map[string]*storage.S3Client{
+		"weekly-photos":  s3Client,
+		"profile-photos": profilePhotosS3,
+		"chat":           chatS3,
+		"food-photos":    foodPhotosS3,
+		"exports":        dataExportsS3,
+	})
+
 	// Periodic work. Every job takes a PostgreSQL advisory lock, so running
 	// more than one instance does not run the work twice, and every execution
 	// is recorded — which is what makes "are snapshots being collected?"
@@ -225,6 +244,7 @@ func main() {
 		metrics.ObserveJob(name, string(status), d)
 	})
 	jobsetup.Register(jobRegistry, jobsetup.Deps{
+		Account:     accountService,
 		Content:     contentService,
 		Curator:     curatorService,
 		RateLimiter: rateLimiter,
@@ -241,6 +261,7 @@ func main() {
 		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
+		Account:       account.NewHandler(accountService, log),
 		Notifications: notifications.NewHandler(cfg, log, db),
 		Logs:          logs.NewHandler(cfg, log),
 		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient),

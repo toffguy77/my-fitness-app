@@ -15,6 +15,15 @@ func registerUserRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/avatar", d.Users.UploadAvatar)
 	g.DELETE("/avatar", d.Users.DeleteAvatar)
 	g.PUT("/onboarding/complete", d.Users.CompleteOnboarding)
+
+	// Account lifecycle the user controls: deletion with a cancellation window,
+	// and taking their own data with them.
+	g.POST("/me/deletion", d.Account.RequestDeletion)
+	g.DELETE("/me/deletion", d.Account.CancelDeletion)
+	g.GET("/me/deletion", d.Account.GetDeletionStatus)
+	g.POST("/me/export", d.Account.RequestExport)
+	g.GET("/me/export", d.Account.ListExports)
+	g.GET("/me/export/:id", d.Account.DownloadExport)
 }
 
 func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {

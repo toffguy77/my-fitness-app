@@ -11,6 +11,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/shared/jobs"
@@ -23,6 +24,7 @@ const historyRetention = 30 * 24 * time.Hour
 
 // Deps are the services the jobs act on.
 type Deps struct {
+	Account     *account.Service
 	Content     *content.Service
 	Curator     *curator.Service
 	RateLimiter *middleware.RateLimiter
@@ -79,6 +81,28 @@ func Register(registry *jobs.Registry, d Deps) {
 		Timeout: 2 * time.Minute,
 		Run: func(ctx context.Context) (int, error) {
 			return d.RateLimiter.CleanupOldAttempts(ctx)
+		},
+	})
+
+	// Building an archive with a year of photographs cannot happen inside an
+	// HTTP request, so it happens here.
+	registry.MustRegister(jobs.Job{
+		Name:     "account.build-exports",
+		Interval: time.Minute,
+		Timeout:  10 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Account.BuildPendingExports(ctx)
+		},
+	})
+
+	// Irreversible erasure of accounts whose cancellation window has closed.
+	registry.MustRegister(jobs.Job{
+		Name:    "account.execute-deletions",
+		RunAt:   jobs.At(5, 0),
+		Period:  jobs.PeriodDaily,
+		Timeout: 30 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Account.ExecuteDueDeletions(ctx)
 		},
 	})
 

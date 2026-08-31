@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/modules/admin"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
@@ -45,6 +46,7 @@ type Deps struct {
 	Auth          *auth.Handler
 	Reset         *auth.ResetHandler
 	Users         *users.Handler
+	Account       *account.Handler
 	Notifications *notifications.Handler
 	Logs          *logs.Handler
 	FoodTracker   *foodtracker.Handler

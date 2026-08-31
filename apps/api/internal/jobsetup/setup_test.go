@@ -30,6 +30,8 @@ func TestRegister_DeclaresEveryJobValidly(t *testing.T) {
 		"curator.weekly-snapshot",
 		"cleanup.password-reset-attempts",
 		"cleanup.job-runs",
+		"account.build-exports",
+		"account.execute-deletions",
 	}, names)
 }
 

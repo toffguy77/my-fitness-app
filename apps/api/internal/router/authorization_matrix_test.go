@@ -100,6 +100,10 @@ var protectedRoutes = map[string]protection{
 	"POST /api/v1/content/articles/:id/unpublish": protRole,
 	"POST /api/v1/content/articles/:id/media":     protRole,
 
+	// A user's own export: the id is theirs, and ownership is checked in the
+	// handler before the archive is released.
+	"GET /api/v1/users/me/export/:id": protOwner,
+
 	// Public by design — drives SEO for published articles.
 	"GET /api/v1/public/content/:id": protPublic,
 }

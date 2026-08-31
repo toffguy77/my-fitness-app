@@ -5,6 +5,7 @@ DELETE /api/v1/food-tracker/entries/:id
 DELETE /api/v1/food-tracker/favorites/:foodId
 DELETE /api/v1/food-tracker/user-foods/:id
 DELETE /api/v1/users/avatar
+DELETE /api/v1/users/me/deletion
 GET /api/v1/admin/conversations
 GET /api/v1/admin/conversations/:id/messages
 GET /api/v1/admin/curators
@@ -53,6 +54,9 @@ GET /api/v1/nutrition-calc/history
 GET /api/v1/nutrition-calc/targets
 GET /api/v1/public/content
 GET /api/v1/public/content/:id
+GET /api/v1/users/me/deletion
+GET /api/v1/users/me/export
+GET /api/v1/users/me/export/:id
 GET /api/v1/users/profile
 GET /health
 GET /ready
@@ -100,6 +104,8 @@ POST /api/v1/notifications/:id/read
 POST /api/v1/notifications/mark-all-read
 POST /api/v1/nutrition-calc/recalculate
 POST /api/v1/users/avatar
+POST /api/v1/users/me/deletion
+POST /api/v1/users/me/export
 PUT /api/v1/content/articles/:id
 PUT /api/v1/curator/clients/:id/target-weight
 PUT /api/v1/curator/clients/:id/tasks/:taskId

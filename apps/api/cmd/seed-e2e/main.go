@@ -66,6 +66,60 @@ func main() {
 		log.Fatalf("assign curator: %v", err)
 	}
 	fmt.Println("assigned curator to client")
+
+	// The chat screens need a conversation. The API creates these at startup
+	// for existing relationships, but seeding happens after the API is already
+	// running, so the conversation has to be created here.
+	if err := ensureConversation(ctx, db, ids["coordinator"], ids["client"]); err != nil {
+		log.Fatalf("create conversation: %v", err)
+	}
+	fmt.Println("created curator-client conversation")
+
+	// Food search has nothing to find in an empty catalogue: `products` is
+	// populated by an importer in real environments, not by migrations.
+	if err := seedProducts(ctx, db); err != nil {
+		log.Fatalf("seed products: %v", err)
+	}
+	fmt.Println("seeded catalogue products")
+}
+
+func ensureConversation(ctx context.Context, db *sql.DB, curatorID, clientID int64) error {
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO conversations (curator_id, client_id)
+		SELECT $1, $2
+		WHERE NOT EXISTS (
+			SELECT 1 FROM conversations WHERE curator_id = $1 AND client_id = $2
+		)`, curatorID, clientID)
+	return err
+}
+
+// catalogue entries the food-search tests look for.
+var catalogue = []struct {
+	name     string
+	brand    string
+	calories float64
+	proteins float64
+	fats     float64
+	carbs    float64
+}{
+	{"Гречка", "Мистраль", 329, 12.6, 3.3, 62.1},
+	{"Куриная грудка", "Петелинка", 113, 23.6, 1.9, 0.4},
+	{"Творог 5%", "Простоквашино", 121, 16, 5, 3},
+	{"Яблоко", "", 47, 0.4, 0.4, 9.8},
+	{"Овсянка", "Ясно Солнышко", 342, 12.3, 6.1, 59.5},
+}
+
+func seedProducts(ctx context.Context, db *sql.DB) error {
+	for _, p := range catalogue {
+		if _, err := db.ExecContext(ctx, `
+			INSERT INTO products (name, brand, calories, proteins, fats, carbs, source)
+			SELECT $1, $2, $3, $4, $5, $6, 'database'
+			WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = $1)`,
+			p.name, p.brand, p.calories, p.proteins, p.fats, p.carbs); err != nil {
+			return fmt.Errorf("insert %s: %w", p.name, err)
+		}
+	}
+	return nil
 }
 
 func upsertUser(ctx context.Context, db *sql.DB, a account) (int64, error) {

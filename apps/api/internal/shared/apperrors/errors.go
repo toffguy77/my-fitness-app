@@ -17,4 +17,5 @@ var (
 	ErrPasswordUnchanged  = errors.New("new password must differ from the current one")
 	ErrEmailUnavailable   = errors.New("email delivery is not configured")
 	ErrConflict           = errors.New("conflicting state")
+	ErrGone               = errors.New("no longer available")
 )
