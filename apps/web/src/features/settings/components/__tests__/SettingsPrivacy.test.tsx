@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SettingsPrivacy } from '../SettingsPrivacy'
-import { accountApi } from '../../api/account'
+import { accountApi, type DataExport, type DeletionStatus } from '../../api/account'
 import { ApiError } from '@/shared/errors/apiErrors'
 
 jest.mock('../../api/account', () => ({
@@ -22,7 +22,7 @@ jest.mock('react-hot-toast', () => ({
 
 const api = accountApi as jest.Mocked<typeof accountApi>
 
-function mockState(status: Parameters<typeof api.getDeletionStatus>[0] extends never ? never : unknown, exports: unknown[] = []) {
+function mockState(status: DeletionStatus, exports: DataExport[] = []) {
     ;(api.getDeletionStatus as jest.Mock).mockResolvedValue(status)
     ;(api.listExports as jest.Mock).mockResolvedValue({ exports })
 }
@@ -106,7 +106,7 @@ describe('SettingsPrivacy', () => {
             { id: 'a', status: 'ready', requested_at: '2026-03-01T10:00:00Z', downloaded: false },
             { id: 'b', status: 'ready', requested_at: '2026-02-01T10:00:00Z', downloaded: true },
             { id: 'c', status: 'building', requested_at: '2026-01-01T10:00:00Z', downloaded: false },
-        ])
+        ] as DataExport[])
 
         render(<SettingsPrivacy />)
 
