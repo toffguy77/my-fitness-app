@@ -23,5 +23,16 @@ CREATE TABLE IF NOT EXISTS user_foods (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_foods_user_id ON user_foods(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_foods_name_fts ON user_foods
-    USING gin(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')));
+-- The full-text index spans `brand`, which only exists when this migration
+-- created the table. Where migration 009 created it first, `brand` arrives in
+-- migration 036, which builds this index there instead.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'user_foods' AND column_name = 'brand'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_user_foods_name_fts ON user_foods
+            USING gin(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')));
+    END IF;
+END $$;
