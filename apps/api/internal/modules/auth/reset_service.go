@@ -153,6 +153,12 @@ func (rs *ResetService) RequestPasswordReset(ctx context.Context, userEmail stri
 		SupportEmail:   "support@burcev.team",
 	}
 
+	if rs.emailService == nil {
+		// Email is an optional capability; without it a reset link cannot be
+		// delivered, so the request fails rather than silently doing nothing.
+		return fmt.Errorf("password reset requires email: %w", apperrors.ErrEmailUnavailable)
+	}
+
 	err = rs.emailService.SendPasswordResetEmail(ctx, emailData)
 	if err != nil {
 		rs.log.WithError(err).Error("Failed to send reset email",
@@ -359,7 +365,11 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 			SupportEmail: "support@burcev.team",
 		}
 
-		if err := rs.emailService.SendPasswordChangedEmail(ctx, emailData); err != nil {
+		if rs.emailService == nil {
+			// Notifying the user is best effort; the password has already
+			// changed and that must not be undone.
+			rs.log.Warn("Password changed but no email service is configured", "user_id", tokenData.UserID)
+		} else if err := rs.emailService.SendPasswordChangedEmail(ctx, emailData); err != nil {
 			rs.log.WithError(err).Error("Failed to send password changed email",
 				"user_id", tokenData.UserID,
 			)

@@ -95,23 +95,29 @@ func main() {
 		log.Fatal("Database migration failed", "error", err)
 	}
 
-	// Initialize email service
-	emailService, err := email.NewService(email.Config{
-		SMTPHost:     cfg.SMTPHost,
-		SMTPPort:     cfg.SMTPPort,
-		SMTPUsername: cfg.SMTPUsername,
-		SMTPPassword: cfg.SMTPPassword,
-		FromAddress:  cfg.SMTPFromAddress,
-		FromName:     cfg.SMTPFromName,
-	}, log)
-	if err != nil {
-		log.Fatal("Failed to initialize email service", "error", err)
+	// Email is an optional capability. In production the config validation
+	// above already requires the SMTP settings, so reaching the disabled branch
+	// there is impossible; elsewhere — local development, the e2e environment —
+	// the service starts without a mail server and the flows that need one
+	// decline with 503 rather than preventing startup.
+	var emailService *email.Service
+	if cfg.Features.Email {
+		emailService, err = email.NewService(email.Config{
+			SMTPHost:     cfg.SMTPHost,
+			SMTPPort:     cfg.SMTPPort,
+			SMTPUsername: cfg.SMTPUsername,
+			SMTPPassword: cfg.SMTPPassword,
+			FromAddress:  cfg.SMTPFromAddress,
+			FromName:     cfg.SMTPFromName,
+		}, log)
+		if err != nil {
+			log.Fatal("Failed to initialize email service", "error", err)
+		}
+		log.Info("Email service initialized", "smtp_host", cfg.SMTPHost, "smtp_port", cfg.SMTPPort)
+	} else {
+		log.Warn("Email is disabled: SMTP settings are not configured. " +
+			"Verification and password recovery will decline with 503.")
 	}
-
-	log.Info("Email service initialized successfully",
-		"smtp_host", cfg.SMTPHost,
-		"smtp_port", cfg.SMTPPort,
-	)
 
 	// Optional S3 clients. Each bucket has its own credentials but falls back
 	// to the generic S3_* pair; an absent pair simply leaves the client nil and
