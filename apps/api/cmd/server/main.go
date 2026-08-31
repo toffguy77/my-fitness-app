@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/jobsetup"
 	"github.com/burcev/api/internal/modules/admin"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
@@ -24,6 +25,7 @@ import (
 	"github.com/burcev/api/internal/router"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/email"
+	"github.com/burcev/api/internal/shared/jobs"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/openrouter"
@@ -195,6 +197,27 @@ func main() {
 		contentS3Uploader = contentS3
 	}
 	contentService := content.NewService(db, log, contentS3Uploader, wsHub)
+	// Shared with the curator handler so the snapshot jobs and the HTTP layer
+	// read the same code path.
+	curatorService := curator.NewService(db, log, notificationsSvc)
+
+	// Periodic work. Every job takes a PostgreSQL advisory lock, so running
+	// more than one instance does not run the work twice, and every execution
+	// is recorded — which is what makes "are snapshots being collected?"
+	// answerable at all.
+	moscow, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		log.Warn("Failed to load Europe/Moscow; scheduling jobs in UTC", "error", err)
+		moscow = time.UTC
+	}
+	jobRegistry := jobs.NewRegistry()
+	scheduler := jobs.NewScheduler(db.DB, jobRegistry, log, moscow)
+	jobsetup.Register(jobRegistry, jobsetup.Deps{
+		Content:     contentService,
+		Curator:     curatorService,
+		RateLimiter: rateLimiter,
+		Scheduler:   scheduler,
+	})
 
 	// Routing lives in internal/router, one file per domain.
 	router := router.New(router.Deps{
@@ -214,13 +237,16 @@ func main() {
 		Chat:          chat.NewHandler(cfg, log, db, chatS3, wsHub),
 		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
 		Admin:         admin.NewHandler(cfg, log, db),
+		AdminJobs:     admin.NewJobsHandler(scheduler),
 		Content:       content.NewHandler(cfg, log, contentService),
 	})
 
-	// Start content scheduler (uses same contentService instance)
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
-	defer schedulerCancel()
-	go contentService.RunScheduler(schedulerCtx)
+	schedulerDone := make(chan struct{})
+	go func() {
+		defer close(schedulerDone)
+		scheduler.Run(schedulerCtx)
+	}()
 
 	// Create HTTP server
 	srv := &http.Server{
@@ -245,6 +271,15 @@ func main() {
 	<-quit
 
 	log.Info("Shutting down server...")
+
+	// Stop scheduling and let any in-flight job finish, so a run cannot be left
+	// recorded as "running" forever or interrupted half-written.
+	schedulerCancel()
+	select {
+	case <-schedulerDone:
+	case <-time.After(30 * time.Second):
+		log.Warn("Timed out waiting for background jobs to finish")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

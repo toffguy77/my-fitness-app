@@ -61,4 +61,8 @@ func registerAdminRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/assignments", d.Admin.AssignCurator)
 	g.GET("/conversations", d.Admin.GetConversations)
 	g.GET("/conversations/:id/messages", d.Admin.GetConversationMessages)
+
+	// Background job visibility and manual triggering.
+	g.GET("/jobs", d.AdminJobs.List)
+	g.POST("/jobs/:name/run", d.AdminJobs.Run)
 }

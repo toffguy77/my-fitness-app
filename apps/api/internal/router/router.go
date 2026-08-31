@@ -52,6 +52,7 @@ type Deps struct {
 	Chat          *chat.Handler
 	Curator       *curator.Handler
 	Admin         *admin.Handler
+	AdminJobs     *admin.JobsHandler
 	Content       *content.Handler
 }
 
