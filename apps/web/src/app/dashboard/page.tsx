@@ -20,6 +20,7 @@
 
 'use client'
 
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
@@ -247,10 +248,14 @@ export default function DashboardPage() {
                 />
 
                 {/* KBJU Weekly Chart */}
-                <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
+                <ErrorBoundary variant="inline" label="dashboard-kbju-chart">
+                    <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
+                </ErrorBoundary>
 
                 {/* Curator-assigned tasks (renders nothing when empty) */}
-                <ClientTasksSection className="w-full" highlightTaskId={highlightTaskId} />
+                <ErrorBoundary variant="inline" label="dashboard-tasks">
+                    <ClientTasksSection className="w-full" highlightTaskId={highlightTaskId} />
+                </ErrorBoundary>
 
                 {/* Below-the-fold sections */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
@@ -274,7 +279,9 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Curator feedback on weekly reports */}
-                <CuratorFeedbackSection className="w-full" />
+                <ErrorBoundary variant="inline" label="dashboard-curator-feedback">
+                    <CuratorFeedbackSection className="w-full" />
+                </ErrorBoundary>
             </div>
         </DashboardLayout>
     )

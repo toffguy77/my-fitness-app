@@ -35,6 +35,6 @@ func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 func registerLogRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/logs")
 
-	g.POST("", d.Logs.ReceiveLogs)
+	g.POST("", d.AuthRateLimiter.Limit("client-logs"), d.Logs.ReceiveLogs)
 	g.GET("/stats", middleware.RequireAuth(d.Cfg), middleware.RequireRole("super_admin"), d.Logs.GetLogStats)
 }

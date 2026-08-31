@@ -45,7 +45,7 @@ describe('ErrorBoundary', () => {
 
         expect(screen.queryByText('Child content')).not.toBeInTheDocument()
         expect(screen.getByText(/Что-то пошло не так/)).toBeInTheDocument()
-        expect(screen.getByText(/Произошла непредвиденная ошибка/)).toBeInTheDocument()
+        expect(screen.getByText(/Мы уже знаем о проблеме/)).toBeInTheDocument()
     })
 
     it('shows reload button in default fallback', () => {
@@ -55,7 +55,7 @@ describe('ErrorBoundary', () => {
             </ErrorBoundary>
         )
 
-        expect(screen.getByRole('button', { name: /Перезагрузить страницу/ })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /Повторить/ })).toBeInTheDocument()
     })
 
     it('renders a clickable reload button in default fallback', async () => {
@@ -67,7 +67,7 @@ describe('ErrorBoundary', () => {
             </ErrorBoundary>
         )
 
-        const reloadButton = screen.getByRole('button', { name: /Перезагрузить страницу/ })
+        const reloadButton = screen.getByRole('button', { name: /Повторить/ })
         expect(reloadButton).toBeEnabled()
 
         // Verify the button can be clicked without throwing
@@ -111,9 +111,13 @@ describe('ErrorBoundary', () => {
         )
 
         expect(logger.error).toHaveBeenCalledWith(
-            'React Error Boundary caught an error',
-            expect.objectContaining({ message: 'Test error' }),
-            expect.objectContaining({ errorBoundary: true })
+            'Test error',
+            expect.any(Error),
+            expect.objectContaining({
+                source: 'error-boundary',
+                errorId: expect.stringMatching(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/),
+                componentStack: expect.any(String),
+            }),
         )
     })
 })

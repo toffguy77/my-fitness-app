@@ -1,19 +1,34 @@
 'use client'
 
 import React, { Component, ErrorInfo, ReactNode } from 'react'
-import { logger } from '../utils/logger'
+import { ErrorState } from './ErrorState'
+import { reportError } from '../errors/reportError'
 
 interface Props {
     children: ReactNode
+    /** Custom fallback. When omitted, an ErrorState is rendered. */
     fallback?: ReactNode
+    /** Names the failing area in the log entry, e.g. "dashboard-chart". */
+    label?: string
+    /** `inline` keeps the rest of the page usable when a single widget fails. */
+    variant?: 'page' | 'inline'
     onError?: (error: Error, errorInfo: ErrorInfo) => void
 }
 
 interface State {
     hasError: boolean
     error?: Error
+    errorId?: string
 }
 
+/**
+ * Catches render errors below it.
+ *
+ * Route-level failures are handled by App Router `error.tsx` files; this class
+ * exists for finer granularity — a chart that throws should not take the whole
+ * dashboard with it. It was previously written and tested but mounted nowhere,
+ * so it caught nothing.
+ */
 export class ErrorBoundary extends Component<Props, State> {
     constructor(props: Props) {
         super(props)
@@ -25,59 +40,42 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        // Log error to our logging system
-        logger.error('React Error Boundary caught an error', error, {
+        const errorId = reportError(error, {
+            source: 'error-boundary',
+            label: this.props.label,
             componentStack: errorInfo.componentStack,
-            errorBoundary: true,
         })
-
-        // Call custom error handler if provided
+        this.setState({ errorId })
         this.props.onError?.(error, errorInfo)
     }
 
-    render() {
-        if (this.state.hasError) {
-            // Custom fallback UI
-            if (this.props.fallback) {
-                return this.props.fallback
-            }
+    private reset = () => {
+        this.setState({ hasError: false, error: undefined, errorId: undefined })
+    }
 
-            // Default fallback UI
-            return (
-                <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-                    <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6">
-                        <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                            <svg
-                                className="w-6 h-6 text-red-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                />
-                            </svg>
-                        </div>
-                        <h2 className="mt-4 text-xl font-semibold text-center text-gray-900">
-                            Что-то пошло не так
-                        </h2>
-                        <p className="mt-2 text-sm text-center text-gray-600">
-                            Произошла непредвиденная ошибка. Мы уже получили уведомление и работаем над исправлением.
-                        </p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="mt-6 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-                        >
-                            Перезагрузить страницу
-                        </button>
-                    </div>
-                </div>
-            )
+    render() {
+        if (!this.state.hasError) {
+            return this.props.children
+        }
+        if (this.props.fallback) {
+            return this.props.fallback
         }
 
-        return this.props.children
+        const inline = this.props.variant === 'inline'
+        return (
+            <ErrorState
+                variant={this.props.variant ?? 'page'}
+                title={inline ? 'Не удалось загрузить блок' : undefined}
+                description={
+                    inline
+                        ? 'Остальная страница работает. Попробуйте обновить этот блок.'
+                        : undefined
+                }
+                errorId={this.state.errorId}
+                onRetry={this.reset}
+                showHomeLink={!inline}
+                debugDetail={this.state.error?.stack}
+            />
+        )
     }
 }

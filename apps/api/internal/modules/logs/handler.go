@@ -37,6 +37,9 @@ type LogEntry struct {
 	UserID    string                 `json:"userId,omitempty"`
 	SessionID string                 `json:"sessionId,omitempty"`
 	RequestID string                 `json:"requestId,omitempty"`
+	// ErrorID is the short identifier shown to the user on an error screen;
+	// support uses it to find this entry.
+	ErrorID string `json:"errorId,omitempty"`
 }
 
 // ErrorInfo represents error information

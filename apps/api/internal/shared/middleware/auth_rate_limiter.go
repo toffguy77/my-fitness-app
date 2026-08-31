@@ -17,6 +17,11 @@ type authLimitConfig struct {
 var authLimitConfigs = map[string]authLimitConfig{
 	"login":    {maxRequests: 10, window: 15 * time.Minute},
 	"register": {maxRequests: 5, window: time.Hour},
+	// Sends an email from our SMTP account, so it is abusable as a mailer.
+	"resend-verification": {maxRequests: 3, window: time.Hour},
+	// Public endpoint that accepts batches of client errors. A page throwing in
+	// a render loop must not be able to flood our own log pipeline.
+	"client-logs": {maxRequests: 60, window: time.Minute},
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.

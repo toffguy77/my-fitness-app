@@ -3,6 +3,7 @@
  * Integrates with Golang backend API for login and registration
  */
 
+import { isNetworkError } from '@/shared/errors/apiErrors';
 import { apiClient } from '@/shared/utils/api-client';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '@/features/auth/types';
 
@@ -58,8 +59,9 @@ export async function registerUser(
  * @returns Structured AuthError with appropriate message
  */
 export function mapApiError(error: any): AuthError {
-    // Network errors
-    if (error.name === 'TypeError' || error.message?.includes('fetch')) {
+    // Transport failures. The api client now raises a typed NetworkError; the
+    // TypeError check stays for any call path that still reaches fetch directly.
+    if (isNetworkError(error) || error.name === 'TypeError' || error.message?.includes('fetch')) {
         return {
             code: 'network_error',
             message: 'Check internet connection',
