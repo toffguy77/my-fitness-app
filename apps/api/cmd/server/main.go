@@ -30,6 +30,7 @@ import (
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/burcev/api/migrations"
 	"github.com/gin-gonic/gin"
@@ -216,8 +217,13 @@ func main() {
 		log.Warn("Failed to load Europe/Moscow; scheduling jobs in UTC", "error", err)
 		moscow = time.UTC
 	}
+	metrics := telemetry.New("burcev", db.DB.Stats)
+
 	jobRegistry := jobs.NewRegistry()
 	scheduler := jobs.NewScheduler(db.DB, jobRegistry, log, moscow)
+	scheduler.SetObserver(func(name string, status jobs.Status, d time.Duration, _ int) {
+		metrics.ObserveJob(name, string(status), d)
+	})
 	jobsetup.Register(jobRegistry, jobsetup.Deps{
 		Content:     contentService,
 		Curator:     curatorService,
@@ -244,6 +250,7 @@ func main() {
 		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
 		Admin:         admin.NewHandler(cfg, log, db),
 		AdminJobs:     admin.NewJobsHandler(scheduler),
+		Metrics:       metrics,
 		Content:       content.NewHandler(cfg, log, contentService),
 	})
 

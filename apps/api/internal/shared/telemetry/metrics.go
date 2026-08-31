@@ -5,6 +5,7 @@
 package telemetry
 
 import (
+	"database/sql"
 	"strconv"
 	"time"
 
@@ -33,17 +34,14 @@ type Metrics struct {
 	domainEvents *prometheus.CounterVec
 }
 
-// DBStats is the subset of sql.DBStats the gauges expose.
-type DBStats interface {
-	OpenConnections() int
-	InUse() int
-	Idle() int
-	WaitCount() int64
-}
+// DBStatsFunc reports pool statistics on demand. Taking a function rather than
+// a snapshot matters: the gauges must read current values at scrape time, not
+// whatever the pool looked like at startup.
+type DBStatsFunc func() sql.DBStats
 
 // New builds the metric set. The registry is private rather than the global
 // default so tests can build an isolated instance.
-func New(namespace string, db DBStats) *Metrics {
+func New(namespace string, stats DBStatsFunc) *Metrics {
 	m := &Metrics{registry: prometheus.NewRegistry()}
 
 	m.httpDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -97,18 +95,18 @@ func New(namespace string, db DBStats) *Metrics {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
-	if db != nil {
+	if stats != nil {
 		m.dbConnsOpen = gauge(namespace, "db_connections_open", "Open database connections.",
-			func() float64 { return float64(db.OpenConnections()) })
+			func() float64 { return float64(stats().OpenConnections) })
 		m.dbConnsInUse = gauge(namespace, "db_connections_in_use", "Database connections in use.",
-			func() float64 { return float64(db.InUse()) })
+			func() float64 { return float64(stats().InUse) })
 		m.dbConnsIdle = gauge(namespace, "db_connections_idle", "Idle database connections.",
-			func() float64 { return float64(db.Idle()) })
+			func() float64 { return float64(stats().Idle) })
 		m.dbWaitCount = prometheus.NewCounterFunc(prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "db_connection_waits_total",
 			Help:      "Times a caller waited for a connection — the signal that the pool is too small.",
-		}, func() float64 { return float64(db.WaitCount()) })
+		}, func() float64 { return float64(stats().WaitCount) })
 		m.registry.MustRegister(m.dbConnsOpen, m.dbConnsInUse, m.dbConnsIdle, m.dbWaitCount)
 	}
 

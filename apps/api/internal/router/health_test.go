@@ -12,6 +12,7 @@ import (
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,4 +94,20 @@ func TestHealth_DoesNotQueryDependencies(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.NoError(t, mock.ExpectationsWereMet(), "liveness must make no database calls")
+}
+
+// The scrape endpoint is only registered when metrics are wired, so the default
+// test engine (and any deployment without them) does not expose it.
+func TestMetricsEndpoint_OnlyWhenConfigured(t *testing.T) {
+	withoutMetrics := testEngine(t)
+	assert.Equal(t, http.StatusNotFound, get(withoutMetrics, "/metrics").Code)
+
+	gin.SetMode(gin.TestMode)
+	withMetrics := New(Deps{
+		Cfg:             &config.Config{Env: "test"},
+		Log:             logger.New(),
+		AuthRateLimiter: middleware.NewAuthRateLimiter(),
+		Metrics:         telemetry.New("test", nil),
+	})
+	assert.Equal(t, http.StatusOK, get(withMetrics, "/metrics").Code)
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -53,7 +54,10 @@ type Deps struct {
 	Curator       *curator.Handler
 	Admin         *admin.Handler
 	AdminJobs     *admin.JobsHandler
-	Content       *content.Handler
+
+	// Metrics is optional; when nil no instrumentation is installed.
+	Metrics *telemetry.Metrics
+	Content *content.Handler
 }
 
 // New builds the engine with global middleware and every route registered.
@@ -66,6 +70,9 @@ func New(d Deps) *gin.Engine {
 
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.BodyLimit(middleware.MaxBodyBytes))
+	if d.Metrics != nil {
+		engine.Use(d.Metrics.Middleware())
+	}
 	engine.Use(middleware.NoCacheAPI())
 	engine.Use(middleware.Logger(d.Log))
 	engine.Use(middleware.ErrorHandler(d.Log))
@@ -82,6 +89,12 @@ func New(d Deps) *gin.Engine {
 	}))
 
 	registerHealth(engine, d)
+
+	// Scrape endpoint. nginx blocks it from the public internet; the route
+	// exists so an in-cluster scraper can reach it.
+	if d.Metrics != nil {
+		engine.GET("/metrics", d.Metrics.Handler())
+	}
 
 	v1 := engine.Group("/api/v1")
 	registerAuthRoutes(v1, d)
