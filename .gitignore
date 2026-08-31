@@ -55,3 +55,8 @@ yarn-error.log*
 *.pem
 .vercel
 .worktrees/
+
+# Graphify output
+graphify-out/
+apps/api/graphify-out/
+reports/

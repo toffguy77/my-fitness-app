@@ -22,7 +22,7 @@
   - Check new password is not identical to current (compare hashes); return error if same
   - `s.passwordVal.Validate(newPassword)`; return validation errors on failure
   - Hash new password with `bcrypt.DefaultCost` and `UPDATE users SET password = $1`
-- [x] 3.4 Register route `POST /api/auth/change-password` with `RequireAuth` middleware in the auth router
+- [ ] 3.4 **ИСПРАВЛЕНИЕ: ранее отмечено выполненным, но роут фактически не зарегистрирован.** Зарегистрировать `POST /api/v1/auth/change-password` с middleware `RequireAuth` в группе `authGroup` (`cmd/server/main.go:270-284` либо `internal/router/auth.go` после изменения `fix-authorization-gaps`). Обратить внимание: все маршруты живут под префиксом `/api/v1`, а nginx проксирует в API только `/api/v1/` (`deploy/nginx/burcev.team.conf:64`). Проверка: интеграционный тест — `POST /api/v1/auth/change-password` с валидным токеном возвращает не `404`.
 
 ## 4. Backend: Tests
 
@@ -62,7 +62,7 @@
 
 ## 9. Frontend: Settings — Password Change
 
-- [x] 9.1 Add `changePassword(currentPassword: string, newPassword: string): Promise<void>` to `apps/web/src/features/settings/api/settings.ts` calling `POST /api/auth/change-password`
+- [ ] 9.1 **ИСПРАВЛЕНИЕ: путь на фронтенде неверный.** В `apps/web/src/features/settings/api/settings.ts:55` заменить `POST /api/auth/change-password` на `POST /api/v1/auth/change-password`. Проверка: сквозной тест смены пароля проходит против поднятого API.
 - [x] 9.2 Create `apps/web/src/features/settings/components/SettingsPassword.tsx` with a form: current password field (no checklist), new password field + `<PasswordChecklist>`, confirm new password field
 - [x] 9.3 Use `passwordSchema` for the new password field and a simple `z.string().min(1)` for current password; add a `superRefine` to confirm field that checks new === confirm
 - [x] 9.4 On submit: call `changePassword()`, show success state, clear all fields on success; show server error on failure (wrong current password, policy violation)
@@ -74,3 +74,16 @@
 - [x] 10.2 Add unit tests for `PasswordChecklist`: each rule flag toggles correctly as the password prop changes
 - [x] 10.3 Add unit tests for `SettingsPassword`: form validation, success state, wrong-password error from API
 - [x] 10.4 Run `cd apps/web && npx jest features/auth features/settings` and confirm all tests pass
+
+## 11. Проверка сквозной связки и отзыв сессий
+
+- [ ] 11.1 Добавить сквозной тест Playwright: вход → настройки → смена пароля → успех → вход с новым паролем. Проверка: тест падает на текущем коде (маршрут отсутствует) и проходит после задач 3.4 и 9.1.
+- [ ] 11.2 Добавить интеграционный тест, проверяющий, что каждый путь API, вызываемый фронтендом, зарегистрирован в роутере. Проверка: тест обнаруживает расхождение вида «фронтенд зовёт путь, которого нет»; согласовать с задачей 3.3 изменения `ci-quality-gates`, чтобы не дублировать проверку.
+- [ ] 11.3 Вызвать отзыв всех сессий пользователя при успешной смене пароля, выдав инициатору новую пару токенов. Проверка: сценарий «Смена пароля из настроек отзывает сессии» спека `session-revocation` изменения `secure-token-lifecycle`.
+- [ ] 11.4 Пройти задачи 4.1–4.7, оставшиеся невыполненными. Проверка: `go test ./internal/modules/auth/... -race` зелёные.
+- [ ] 11.5 Сверить фактическое состояние всех отмеченных выполненными задач с кодом. Проверка: для каждой отметки `[x]` приведена строка кода или тест; расхождения исправлены.
+
+## 12. Выкатка
+
+- [ ] 12.1 Задеплоить на dev, вручную сменить пароль через `/settings/password`. Проверка: пароль меняется, старый не работает, сессии на втором устройстве завершены.
+- [ ] 12.2 Задеплоить на prod, повторить проверку. Проверка: чек-лист пройден.
