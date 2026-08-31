@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
@@ -149,7 +150,7 @@ func (s *Service) MarkAsRead(ctx context.Context, userID int64, notificationID s
 				"notification_id": notificationID,
 				"user_id":         userID,
 			})
-			return nil, fmt.Errorf("notification not found or already read")
+			return nil, fmt.Errorf("notification not found or already read: %w", apperrors.ErrNotFound)
 		}
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
 			"notification_id": notificationID,

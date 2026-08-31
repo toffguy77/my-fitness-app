@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -95,12 +96,12 @@ func (s *Service) verifyOwnership(ctx context.Context, authorID int64, articleID
 	).Scan(&ownerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("article not found")
+			return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 		return fmt.Errorf("failed to verify article ownership: %w", err)
 	}
 	if ownerID != authorID {
-		return fmt.Errorf("unauthorized: article does not belong to author")
+		return fmt.Errorf("article does not belong to author: %w", apperrors.ErrForbidden)
 	}
 	return nil
 }
@@ -271,7 +272,7 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("article not found")
+			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 		s.log.Error("Failed to get article", "error", err, "article_id", articleID)
 		return nil, fmt.Errorf("failed to get article: %w", err)
@@ -279,7 +280,7 @@ func (s *Service) GetArticle(ctx context.Context, authorID int64, articleID stri
 
 	// Ownership check (skip for admins)
 	if !isAdmin && article.AuthorID != authorID {
-		return nil, fmt.Errorf("unauthorized: article does not belong to author")
+		return nil, fmt.Errorf("article does not belong to author: %w", apperrors.ErrForbidden)
 	}
 
 	if scheduledAt.Valid {
@@ -513,7 +514,7 @@ func (s *Service) UpdateArticle(ctx context.Context, authorID int64, articleID s
 					"diag_status", existsStatus,
 				)
 			}
-			return nil, fmt.Errorf("article not found")
+			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 		s.log.Error("Failed to update article", "error", err, "article_id", articleID)
 		return nil, fmt.Errorf("failed to update article: %w", err)
@@ -594,7 +595,7 @@ func (s *Service) DeleteArticle(ctx context.Context, authorID int64, articleID s
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("article not found")
+		return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 	}
 
 	// Best-effort: delete related notifications
@@ -670,7 +671,7 @@ func (s *Service) PublishArticle(ctx context.Context, authorID int64, articleID 
 				"diag_status", existsStatus,
 			)
 		}
-		return fmt.Errorf("article not found")
+		return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 	}
 
 	s.log.LogDatabaseQuery("PublishArticle", time.Since(startTime), nil, map[string]interface{}{
@@ -716,7 +717,7 @@ func (s *Service) ScheduleArticle(ctx context.Context, authorID int64, articleID
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("article not found")
+		return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 	}
 
 	s.log.LogDatabaseQuery("ScheduleArticle", time.Since(startTime), nil, map[string]interface{}{
@@ -758,7 +759,7 @@ func (s *Service) UnpublishArticle(ctx context.Context, authorID int64, articleI
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("article not found")
+		return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 	}
 
 	s.log.LogDatabaseQuery("UnpublishArticle", time.Since(startTime), nil, map[string]interface{}{
@@ -820,7 +821,7 @@ func (s *Service) UploadCoverImage(ctx context.Context, file *multipart.FileHead
 	case "image/jpeg", "image/png", "image/webp", "image/gif":
 		// allowed
 	default:
-		return "", fmt.Errorf("unsupported image type: %s", contentType)
+		return "", fmt.Errorf("unsupported image type %s: %w", contentType, apperrors.ErrUnsupportedMedia)
 	}
 
 	src, err := file.Open()
@@ -1013,7 +1014,7 @@ func (s *Service) GetFeedArticle(ctx context.Context, clientID int64, articleID 
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("article not found")
+			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 		s.log.Error("Failed to get feed article", "error", err, "article_id", articleID, "client_id", clientID)
 		return nil, fmt.Errorf("failed to get feed article: %w", err)
@@ -1149,7 +1150,7 @@ func (s *Service) GetPublicArticle(ctx context.Context, articleID string) (*Arti
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("article not found")
+			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 		s.log.Error("Failed to get public article", "error", err, "article_id", articleID)
 		return nil, fmt.Errorf("failed to get public article: %w", err)

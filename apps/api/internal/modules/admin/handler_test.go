@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -458,7 +459,7 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
 		mock.getConversationMsgsFunc = func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error) {
-			return nil, fmt.Errorf("conversation not found")
+			return nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()

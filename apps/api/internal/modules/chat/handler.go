@@ -2,11 +2,12 @@ package chat
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/database"
@@ -315,7 +316,7 @@ func (h *Handler) CreateFoodEntry(c *gin.Context) {
 	if err != nil {
 		h.log.Error("Failed to create food entry", "error", err, "conversation_id", conversationID, "user_id", userID)
 		// Check for authorization errors from the service
-		if strings.Contains(err.Error(), "only the curator") || strings.Contains(err.Error(), "no active relationship") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, err.Error())
 			return
 		}

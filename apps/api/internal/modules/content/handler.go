@@ -1,6 +1,8 @@
 package content
 
 import (
+	"errors"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -124,11 +126,11 @@ func (h *Handler) GetArticle(c *gin.Context) {
 
 	article, err := h.service.GetArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "не принадлежит") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
@@ -184,11 +186,11 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 
 	article, err := h.service.UpdateArticle(c.Request.Context(), userID, articleID, req, h.isAdmin(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "не принадлежит") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
@@ -214,11 +216,11 @@ func (h *Handler) DeleteArticle(c *gin.Context) {
 
 	err := h.service.DeleteArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "не принадлежит") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
@@ -244,11 +246,11 @@ func (h *Handler) PublishArticle(c *gin.Context) {
 
 	err := h.service.PublishArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "не принадлежит") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
@@ -280,11 +282,11 @@ func (h *Handler) ScheduleArticle(c *gin.Context) {
 
 	err := h.service.ScheduleArticle(c.Request.Context(), userID, articleID, req, h.isAdmin(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "не принадлежит") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
@@ -310,11 +312,11 @@ func (h *Handler) UnpublishArticle(c *gin.Context) {
 
 	err := h.service.UnpublishArticle(c.Request.Context(), userID, articleID, h.isAdmin(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "не принадлежит") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
@@ -351,11 +353,11 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 
 	url, err := h.service.UploadMedia(c.Request.Context(), userID, articleID, file, h.isAdmin(c))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
-		if strings.Contains(err.Error(), "unauthorized") || strings.Contains(err.Error(), "не принадлежит") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
@@ -418,7 +420,7 @@ func (h *Handler) UploadCoverImage(c *gin.Context) {
 
 	url, err := h.service.UploadCoverImage(c.Request.Context(), file)
 	if err != nil {
-		if strings.Contains(err.Error(), "unsupported image type") {
+		if errors.Is(err, apperrors.ErrUnsupportedMedia) {
 			response.Error(c, http.StatusBadRequest, "Поддерживаются только изображения (JPEG, PNG, WebP, GIF)")
 			return
 		}
@@ -479,7 +481,7 @@ func (h *Handler) GetFeedArticle(c *gin.Context) {
 
 	article, err := h.service.GetFeedArticle(c.Request.Context(), userID, articleID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}
@@ -530,7 +532,7 @@ func (h *Handler) GetPublicArticle(c *gin.Context) {
 
 	article, err := h.service.GetPublicArticle(c.Request.Context(), articleID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Статья не найдена")
 			return
 		}

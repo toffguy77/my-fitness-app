@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -255,7 +257,7 @@ func TestHandler_GetArticle(t *testing.T) {
 	t.Run("not found returns 404", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error) {
-			return nil, errors.New("not found")
+			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -272,7 +274,7 @@ func TestHandler_GetArticle(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.getArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) (*Article, error) {
-			return nil, errors.New("unauthorized: не принадлежит этому автору")
+			return nil, fmt.Errorf("не принадлежит этому автору: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -385,7 +387,7 @@ func TestHandler_DeleteArticle(t *testing.T) {
 	t.Run("not found returns 404", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
-			return errors.New("not found")
+			return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -402,7 +404,7 @@ func TestHandler_DeleteArticle(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.deleteArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
-			return errors.New("unauthorized: не принадлежит")
+			return fmt.Errorf("не принадлежит: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -452,7 +454,7 @@ func TestHandler_PublishArticle(t *testing.T) {
 	t.Run("not found returns 404", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
-			return errors.New("not found")
+			return fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -469,7 +471,7 @@ func TestHandler_PublishArticle(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.publishArticleFunc = func(ctx context.Context, authorID int64, articleID string, isAdmin bool) error {
-			return errors.New("unauthorized: не принадлежит")
+			return fmt.Errorf("не принадлежит: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -518,7 +520,7 @@ func TestHandler_GetPublicArticle(t *testing.T) {
 	t.Run("not found returns 404", func(t *testing.T) {
 		handler, mock := setupContentTestHandler()
 		mock.getPublicArticleFunc = func(ctx context.Context, articleID string) (*Article, error) {
-			return nil, errors.New("not found")
+			return nil, fmt.Errorf("article not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()

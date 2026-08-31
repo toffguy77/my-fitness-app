@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -130,7 +131,7 @@ func TestPublishArticle(t *testing.T) {
 		err := service.PublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -150,7 +151,7 @@ func TestPublishArticle(t *testing.T) {
 		err := service.PublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.ErrorIs(t, err, apperrors.ErrForbidden)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -172,7 +173,7 @@ func TestPublishArticle(t *testing.T) {
 		err := service.PublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -226,7 +227,7 @@ func TestScheduleArticle(t *testing.T) {
 		}, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -251,7 +252,7 @@ func TestScheduleArticle(t *testing.T) {
 		}, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -298,7 +299,7 @@ func TestUnpublishArticle(t *testing.T) {
 		err := service.UnpublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.ErrorIs(t, err, apperrors.ErrForbidden)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -320,7 +321,7 @@ func TestUnpublishArticle(t *testing.T) {
 		err := service.UnpublishArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -609,7 +610,7 @@ func TestDeleteArticle(t *testing.T) {
 		err := service.DeleteArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -627,7 +628,7 @@ func TestDeleteArticle(t *testing.T) {
 		err := service.DeleteArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.ErrorIs(t, err, apperrors.ErrForbidden)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -671,7 +672,7 @@ func TestDeleteArticle(t *testing.T) {
 		err := service.DeleteArticle(ctx, authorID, articleID, false)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -862,7 +863,7 @@ func TestVerifyOwnership(t *testing.T) {
 		err := service.verifyOwnership(ctx, int64(1), "missing")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "article not found")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -877,7 +878,7 @@ func TestVerifyOwnership(t *testing.T) {
 		err := service.verifyOwnership(ctx, int64(1), "article-123")
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unauthorized")
+		assert.ErrorIs(t, err, apperrors.ErrForbidden)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 

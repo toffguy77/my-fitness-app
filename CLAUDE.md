@@ -73,6 +73,7 @@ Follows a **handler/service pattern** organized by domain module.
 - `cmd/server/main.go` — Application entry point
 - `internal/modules/` — Domain modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **logs**, **notifications**, **nutrition**, **nutrition-calc**, **users**
   - Each module has: `handler.go` (HTTP handlers), `service.go` (business logic), `*_test.go`
+- `internal/router/` — HTTP route registration, one file per domain. **All routes are registered here, not in `main.go`.**
 - `internal/shared/` — Cross-cutting concerns:
   - `database/` — PostgreSQL connection, migrations
   - `middleware/` — Auth (JWT), error handling, logging, rate limiting
@@ -104,3 +105,41 @@ Follows a **handler/service pattern** organized by domain module.
 - State backend: S3 bucket `burcev-terraform-state`
 - Manages: service accounts, S3 access keys, IAM bindings, PostgreSQL users/databases
 - Secrets (credentials, passwords) are in `.claude/CLAUDE.local.md` (local only, not in git)
+
+## Authorization & Data Isolation
+
+Row Level Security was enabled by migration 004 and **disabled** by migration 015.
+There is no database-level isolation: every query must scope by the caller's id,
+and every route addressing someone else's resource must be guarded explicitly.
+
+Two mechanisms keep that honest:
+
+1. **`middleware.RequireClientRelationship`** guards the whole
+   `/api/v1/curator/clients/:id` group, so a route added there is protected even
+   when its handler lives in another module. (This is how the target-history
+   IDOR happened: that one route's handler is in `nutrition-calc`.)
+2. **`internal/router/authorization_matrix_test.go`** holds `protectedRoutes` —
+   a registry of every route carrying a resource id, with the mechanism that
+   protects it (`relationship`, `participant`, `owner`, `role`, `public`).
+   Adding a route with an id parameter and no registry entry **fails the build**.
+
+**When adding a route:** register it in the relevant `internal/router/*.go`, and
+if its path contains an id, add it to `protectedRoutes` with a deliberate choice
+of protection. Then run `go test ./internal/router/`.
+
+Routing changes also update `internal/router/testdata/routes.golden`; regenerate
+with `UPDATE_GOLDEN=1 go test ./internal/router/` and review the diff.
+
+Authorization decisions use `errors.Is` with `internal/shared/apperrors` —
+never string matching on error text.
+
+## Optional Capabilities
+
+`config.Features` derives which capabilities are on from the presence of
+credentials: `email`, `food_recognition`, `weekly_photos`, `profile_avatars`,
+`chat_attachments`, `content_media`. A disabled capability answers `503`
+consistently and is listed in a startup `WARN` and in `GET /health`.
+
+In production, missing required variables are fatal at startup: `config.Load()`
+reports every problem at once rather than failing on the first. See
+`apps/api/.env.example` for the authoritative list.

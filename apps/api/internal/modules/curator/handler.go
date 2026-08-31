@@ -1,9 +1,10 @@
 package curator
 
 import (
+	"errors"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/notifications"
@@ -93,12 +94,11 @@ func (h *Handler) GetClientDetail(c *gin.Context) {
 	detail, err := h.service.GetClientDetail(c.Request.Context(), userID, clientID, date, days)
 	if err != nil {
 		h.log.Error("Failed to get client detail", "error", err, "curator_id", userID, "client_id", clientID)
-		// Check if it's an authorization error
-		if err.Error() == "unauthorized: no active relationship between curator "+strconv.FormatInt(userID, 10)+" and client "+strconv.FormatInt(clientID, 10) {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
-		if err.Error() == "client not found" {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Клиент не найден")
 			return
 		}
@@ -134,7 +134,7 @@ func (h *Handler) SetTargetWeight(c *gin.Context) {
 	}
 
 	if err := h.service.SetTargetWeight(c.Request.Context(), userID, clientID, req.TargetWeight); err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
@@ -177,7 +177,7 @@ func (h *Handler) SetWaterGoal(c *gin.Context) {
 	}
 
 	if err := h.service.SetWaterGoal(c.Request.Context(), userID, clientID, req.WaterGoal); err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
@@ -210,7 +210,7 @@ func (h *Handler) CreateWeeklyPlan(c *gin.Context) {
 
 	plan, err := h.service.CreateWeeklyPlan(c.Request.Context(), userID, clientID, req)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
@@ -249,11 +249,11 @@ func (h *Handler) UpdateWeeklyPlan(c *gin.Context) {
 
 	plan, err := h.service.UpdateWeeklyPlan(c.Request.Context(), userID, clientID, planID, req)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "План питания не найден")
 			return
 		}
@@ -286,11 +286,11 @@ func (h *Handler) DeleteWeeklyPlan(c *gin.Context) {
 
 	err = h.service.DeleteWeeklyPlan(c.Request.Context(), userID, clientID, planID)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "План питания не найден")
 			return
 		}
@@ -323,7 +323,7 @@ func (h *Handler) CreateTask(c *gin.Context) {
 
 	task, err := h.service.CreateTask(c.Request.Context(), userID, clientID, req)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
@@ -362,11 +362,11 @@ func (h *Handler) UpdateTask(c *gin.Context) {
 
 	task, err := h.service.UpdateTask(c.Request.Context(), userID, clientID, taskID, req)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Задание не найдено")
 			return
 		}
@@ -399,11 +399,11 @@ func (h *Handler) DeleteTask(c *gin.Context) {
 
 	err = h.service.DeleteTask(c.Request.Context(), userID, clientID, taskID)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Задание не найдено")
 			return
 		}
@@ -432,7 +432,7 @@ func (h *Handler) GetTasks(c *gin.Context) {
 
 	tasks, err := h.service.GetTasks(c.Request.Context(), userID, clientID, status)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
@@ -471,11 +471,11 @@ func (h *Handler) SubmitFeedback(c *gin.Context) {
 
 	err = h.service.SubmitFeedback(c.Request.Context(), userID, clientID, reportID, req)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
-		if strings.Contains(err.Error(), "not found") {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Еженедельный отчёт не найден")
 			return
 		}
@@ -502,7 +502,7 @@ func (h *Handler) GetWeeklyReports(c *gin.Context) {
 
 	reports, err := h.service.GetWeeklyReports(c.Request.Context(), userID, clientID)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}
@@ -620,7 +620,7 @@ func (h *Handler) GetWeeklyPlans(c *gin.Context) {
 
 	plans, err := h.service.GetWeeklyPlans(c.Request.Context(), userID, clientID)
 	if err != nil {
-		if strings.Contains(err.Error(), "unauthorized") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, "Нет активной связи с данным клиентом")
 			return
 		}

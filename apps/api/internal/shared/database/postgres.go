@@ -211,43 +211,28 @@ func findSubstring(s, substr string) bool {
 	return false
 }
 
-// rlsContextKey is the context key for RLS-aware database connections
-type rlsContextKey struct{}
+// Row Level Security was enabled by migration 004 and disabled again by
+// migration 015, and the middleware that would have populated a per-request
+// connection was never registered. The connection-swapping wrappers that used
+// to live here always took the plain path, so they were removed: leaving them
+// in place suggested a database-level isolation guarantee that does not exist.
+//
+// Data isolation is enforced entirely in the application layer. See
+// internal/router/authorization_matrix_test.go for the registry that keeps
+// every id-addressed route accounted for.
 
-// WithRLSConn stores an RLS-aware connection in the context
-func WithRLSConn(ctx context.Context, conn *sql.Conn) context.Context {
-	return context.WithValue(ctx, rlsContextKey{}, conn)
-}
-
-// rlsConnFromContext retrieves the RLS connection from context
-func rlsConnFromContext(ctx context.Context) *sql.Conn {
-	if conn, ok := ctx.Value(rlsContextKey{}).(*sql.Conn); ok {
-		return conn
-	}
-	return nil
-}
-
-// QueryContext executes a query, using RLS connection if available in context
+// QueryContext executes a query.
 func (db *DB) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	if conn := rlsConnFromContext(ctx); conn != nil {
-		return conn.QueryContext(ctx, query, args...)
-	}
 	return db.DB.QueryContext(ctx, query, args...)
 }
 
-// QueryRowContext executes a query returning a single row, using RLS connection if available
+// QueryRowContext executes a query returning a single row.
 func (db *DB) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	if conn := rlsConnFromContext(ctx); conn != nil {
-		return conn.QueryRowContext(ctx, query, args...)
-	}
 	return db.DB.QueryRowContext(ctx, query, args...)
 }
 
-// ExecContext executes a statement, using RLS connection if available in context
+// ExecContext executes a statement.
 func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	if conn := rlsConnFromContext(ctx); conn != nil {
-		return conn.ExecContext(ctx, query, args...)
-	}
 	return db.DB.ExecContext(ctx, query, args...)
 }
 

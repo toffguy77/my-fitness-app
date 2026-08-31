@@ -22,6 +22,7 @@ import (
 	"github.com/burcev/api/internal/modules/nutrition"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/users"
+	"github.com/burcev/api/internal/router"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
@@ -30,7 +31,6 @@ import (
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/burcev/api/migrations"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -112,95 +112,49 @@ func main() {
 		"smtp_port", cfg.SMTPPort,
 	)
 
-	// Initialize weekly photos S3 client (optional, for photo uploads)
-	var s3Client *storage.S3Client
-	if cfg.WeeklyPhotosS3AccessKeyID != "" && cfg.WeeklyPhotosS3SecretAccessKey != "" {
-		s3Client, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:     cfg.WeeklyPhotosS3AccessKeyID,
-			SecretAccessKey: cfg.WeeklyPhotosS3SecretAccessKey,
-			Bucket:          cfg.WeeklyPhotosS3Bucket,
-			Region:          cfg.WeeklyPhotosS3Region,
-			Endpoint:        cfg.WeeklyPhotosS3Endpoint,
-			PathPrefix:      cfg.S3PathPrefix,
-		}, log)
-		if err != nil {
-			log.Error("Failed to initialize weekly photos S3 client", "error", err)
-		} else {
-			log.Info("Weekly photos S3 client initialized", "bucket", cfg.WeeklyPhotosS3Bucket)
-		}
-	}
-
-	// Initialize profile photos S3 client
-	var profilePhotosS3 *storage.S3Client
-	if cfg.ProfilePhotosS3AccessKeyID != "" && cfg.ProfilePhotosS3SecretAccessKey != "" {
-		profilePhotosS3, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:     cfg.ProfilePhotosS3AccessKeyID,
-			SecretAccessKey: cfg.ProfilePhotosS3SecretAccessKey,
-			Bucket:          cfg.ProfilePhotosS3Bucket,
-			Region:          cfg.ProfilePhotosS3Region,
-			Endpoint:        cfg.ProfilePhotosS3Endpoint,
-			PathPrefix:      cfg.S3PathPrefix,
-		}, log)
-		if err != nil {
-			log.Error("Failed to initialize profile photos S3 client", "error", err)
-		} else {
-			log.Info("Profile photos S3 client initialized", "bucket", cfg.ProfilePhotosS3Bucket)
-		}
-	}
-
-	// Initialize chat S3 client
-	var chatS3 *storage.S3Client
-	if cfg.ChatS3AccessKeyID != "" && cfg.ChatS3SecretAccessKey != "" {
-		chatS3, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:     cfg.ChatS3AccessKeyID,
-			SecretAccessKey: cfg.ChatS3SecretAccessKey,
-			Bucket:          cfg.ChatS3Bucket,
-			Region:          cfg.ChatS3Region,
-			Endpoint:        cfg.ChatS3Endpoint,
-			PathPrefix:      cfg.S3PathPrefix,
-		}, log)
-		if err != nil {
-			log.Error("Failed to initialize chat S3 client", "error", err)
-		} else {
-			log.Info("Chat S3 client initialized", "bucket", cfg.ChatS3Bucket)
-		}
-	}
-
-	// Initialize content S3 client
-	var contentS3 *storage.S3Client
-	if cfg.ContentS3AccessKeyID != "" && cfg.ContentS3SecretAccessKey != "" {
-		contentS3, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:     cfg.ContentS3AccessKeyID,
-			SecretAccessKey: cfg.ContentS3SecretAccessKey,
-			Bucket:          cfg.ContentS3Bucket,
-			Region:          cfg.ContentS3Region,
-			Endpoint:        cfg.ContentS3Endpoint,
-			PathPrefix:      cfg.ContentS3PathPrefix,
-		}, log)
-		if err != nil {
-			log.Error("Failed to initialize content S3 client", "error", err)
-		} else {
-			log.Info("Content S3 client initialized", "bucket", cfg.ContentS3Bucket)
-		}
-	}
-
-	// Initialize food photos S3 client
-	var foodPhotosS3 *storage.S3Client
-	if cfg.FoodPhotosS3AccessKeyID != "" && cfg.FoodPhotosS3SecretAccessKey != "" {
-		foodPhotosS3, err = storage.NewS3Client(&storage.S3Config{
-			AccessKeyID:     cfg.FoodPhotosS3AccessKeyID,
-			SecretAccessKey: cfg.FoodPhotosS3SecretAccessKey,
-			Bucket:          cfg.FoodPhotosS3Bucket,
-			Region:          cfg.FoodPhotosS3Region,
-			Endpoint:        cfg.FoodPhotosS3Endpoint,
-			PathPrefix:      cfg.S3PathPrefix,
-		}, log)
-		if err != nil {
-			log.Error("Failed to initialize food photos S3 client", "error", err)
-		} else {
-			log.Info("Food photos S3 client initialized", "bucket", cfg.FoodPhotosS3Bucket)
-		}
-	}
+	// Optional S3 clients. Each bucket has its own credentials but falls back
+	// to the generic S3_* pair; an absent pair simply leaves the client nil and
+	// the corresponding capability disabled (see cfg.Features).
+	s3Client := initS3(log, "weekly photos", &storage.S3Config{
+		AccessKeyID:     cfg.WeeklyPhotosS3AccessKeyID,
+		SecretAccessKey: cfg.WeeklyPhotosS3SecretAccessKey,
+		Bucket:          cfg.WeeklyPhotosS3Bucket,
+		Region:          cfg.WeeklyPhotosS3Region,
+		Endpoint:        cfg.WeeklyPhotosS3Endpoint,
+		PathPrefix:      cfg.S3PathPrefix,
+	})
+	profilePhotosS3 := initS3(log, "profile photos", &storage.S3Config{
+		AccessKeyID:     cfg.ProfilePhotosS3AccessKeyID,
+		SecretAccessKey: cfg.ProfilePhotosS3SecretAccessKey,
+		Bucket:          cfg.ProfilePhotosS3Bucket,
+		Region:          cfg.ProfilePhotosS3Region,
+		Endpoint:        cfg.ProfilePhotosS3Endpoint,
+		PathPrefix:      cfg.S3PathPrefix,
+	})
+	chatS3 := initS3(log, "chat", &storage.S3Config{
+		AccessKeyID:     cfg.ChatS3AccessKeyID,
+		SecretAccessKey: cfg.ChatS3SecretAccessKey,
+		Bucket:          cfg.ChatS3Bucket,
+		Region:          cfg.ChatS3Region,
+		Endpoint:        cfg.ChatS3Endpoint,
+		PathPrefix:      cfg.S3PathPrefix,
+	})
+	contentS3 := initS3(log, "content", &storage.S3Config{
+		AccessKeyID:     cfg.ContentS3AccessKeyID,
+		SecretAccessKey: cfg.ContentS3SecretAccessKey,
+		Bucket:          cfg.ContentS3Bucket,
+		Region:          cfg.ContentS3Region,
+		Endpoint:        cfg.ContentS3Endpoint,
+		PathPrefix:      cfg.ContentS3PathPrefix,
+	})
+	foodPhotosS3 := initS3(log, "food photos", &storage.S3Config{
+		AccessKeyID:     cfg.FoodPhotosS3AccessKeyID,
+		SecretAccessKey: cfg.FoodPhotosS3SecretAccessKey,
+		Bucket:          cfg.FoodPhotosS3Bucket,
+		Region:          cfg.FoodPhotosS3Region,
+		Endpoint:        cfg.FoodPhotosS3Endpoint,
+		PathPrefix:      cfg.S3PathPrefix,
+	})
 
 	// Initialize OpenRouter client (for AI food recognition)
 	var orClient *openrouter.Client
@@ -223,301 +177,47 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Create Gin router
-	router := gin.New()
-	// Trust only RFC1918 private addresses so that nginx (docker internal IP)
-	// can set X-Forwarded-For, but external clients cannot spoof it.
-	router.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"})
-
-	// Global middleware
-	router.Use(gin.Recovery())
-	router.Use(middleware.NoCacheAPI())
-	router.Use(middleware.Logger(log))
-	router.Use(middleware.ErrorHandler(log))
-
-	// CORS configuration
-	// API is behind Next.js proxy — not exposed directly to the internet.
-	// Allow all origins so forwarded Origin headers from the proxy don't get blocked.
-	router.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Requested-With"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: false,
-		MaxAge:           12 * time.Hour,
-	}))
-
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		// Check database health
-		dbStatus := "ok"
-		if err := db.Health(c.Request.Context()); err != nil {
-			dbStatus = "unhealthy"
-			log.Error("Database health check failed", "error", err)
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status":      "ok",
-			"timestamp":   time.Now().Format(time.RFC3339),
-			"environment": cfg.Env,
-			"database":    dbStatus,
-			"features":    cfg.Features.Map(),
-		})
-	})
-
-	// WebSocket hub (shared between chat handler for REST and WS)
+	// WebSocket hub, shared between the REST chat handler and the WS endpoint.
 	wsHub := ws.NewHub()
 
-	// Chat handler (used for both REST routes and WebSocket)
-	chatHandler := chat.NewHandler(cfg, log, db, chatS3, wsHub)
-
-	// Ensure conversations exist for all active curator-client relationships
+	// Ensure conversations exist for all active curator-client relationships.
 	chatService := chat.NewService(db, log)
 	if err := chatService.EnsureConversationsExist(context.Background()); err != nil {
 		log.Error("Failed to ensure conversations exist", "error", err)
 	}
 
-	// API v1 routes
-	v1 := router.Group("/api/v1")
-	{
-		// Auth routes
-		verificationService := auth.NewVerificationService(db.DB, log, emailService)
-		authHandler := auth.NewHandler(db.DB, cfg, log, verificationService)
-		resetHandler := auth.NewResetHandler(cfg, log, resetService)
-		authGroup := v1.Group("/auth")
-		{
-			authGroup.POST("/register", authRateLimiter.Limit("register"), authHandler.Register)
-			authGroup.POST("/login", authRateLimiter.Limit("login"), authHandler.Login)
-			authGroup.POST("/refresh", authHandler.Refresh)
-			authGroup.POST("/logout", authHandler.Logout)
-			authGroup.GET("/me", middleware.RequireAuth(cfg), authHandler.GetCurrentUser)
-			authGroup.POST("/verify-email", middleware.RequireAuth(cfg), authHandler.VerifyEmail)
-			authGroup.POST("/resend-verification", middleware.RequireAuth(cfg), authHandler.ResendVerification)
+	// Services shared by more than one handler.
+	nutritionCalcSvc := nutritioncalc.NewService(db, log)
+	notificationsSvc := notifications.NewService(db, log)
+	verificationService := auth.NewVerificationService(db.DB, log, emailService)
 
-			// Password reset routes
-			authGroup.POST("/forgot-password", resetHandler.ForgotPassword)
-			authGroup.POST("/reset-password", resetHandler.ResetPassword)
-			authGroup.GET("/validate-reset-token", resetHandler.ValidateResetToken)
-		}
-
-		// Shared nutrition-calc service (used by multiple handlers for KBJU recalculation)
-		nutritionCalcSvc := nutritioncalc.NewService(db, log)
-
-		// Users routes (protected)
-		usersHandler := users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc)
-		usersGroup := v1.Group("/users")
-		usersGroup.Use(middleware.RequireAuth(cfg))
-		{
-			usersGroup.GET("/profile", usersHandler.GetProfile)
-			usersGroup.PUT("/profile", usersHandler.UpdateProfile)
-			usersGroup.PUT("/settings", usersHandler.UpdateSettings)
-			usersGroup.POST("/avatar", usersHandler.UploadAvatar)
-			usersGroup.DELETE("/avatar", usersHandler.DeleteAvatar)
-			usersGroup.PUT("/onboarding/complete", usersHandler.CompleteOnboarding)
-		}
-
-		// Nutrition routes (protected)
-		nutritionHandler := nutrition.NewHandler(cfg, log)
-		nutritionGroup := v1.Group("/nutrition")
-		nutritionGroup.Use(middleware.RequireAuth(cfg))
-		{
-			nutritionGroup.GET("/entries", nutritionHandler.GetEntries)
-			nutritionGroup.POST("/entries", nutritionHandler.CreateEntry)
-			nutritionGroup.GET("/entries/:id", nutritionHandler.GetEntry)
-			nutritionGroup.PUT("/entries/:id", nutritionHandler.UpdateEntry)
-			nutritionGroup.DELETE("/entries/:id", nutritionHandler.DeleteEntry)
-		}
-
-		// Notifications routes (protected)
-		notificationsHandler := notifications.NewHandler(cfg, log, db)
-		notificationsGroup := v1.Group("/notifications")
-		notificationsGroup.Use(middleware.RequireAuth(cfg))
-		{
-			notificationsGroup.GET("", notificationsHandler.GetNotifications)
-			notificationsGroup.POST("/:id/read", notificationsHandler.MarkAsRead)
-			notificationsGroup.GET("/unread-counts", notificationsHandler.GetUnreadCounts)
-			notificationsGroup.POST("/mark-all-read", notificationsHandler.MarkAllAsRead)
-			notificationsGroup.GET("/preferences", notificationsHandler.GetPreferences)
-			notificationsGroup.PUT("/preferences", notificationsHandler.UpdatePreferences)
-		}
-
-		// Logs routes (public for frontend logging)
-		logsHandler := logs.NewHandler(cfg, log)
-		logsGroup := v1.Group("/logs")
-		{
-			logsGroup.POST("", logsHandler.ReceiveLogs)
-			// Protected stats endpoint
-			logsGroup.GET("/stats", middleware.RequireAuth(cfg), middleware.RequireRole("super_admin"), logsHandler.GetLogStats)
-		}
-
-		// Food tracker routes (protected)
-		foodTrackerHandler := foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient)
-		ftGroup := v1.Group("/food-tracker")
-		ftGroup.Use(middleware.RequireAuth(cfg))
-		{
-			// Food entries
-			ftGroup.GET("/entries", foodTrackerHandler.GetEntries)
-			ftGroup.POST("/entries", foodTrackerHandler.CreateEntry)
-			ftGroup.PUT("/entries/:id", foodTrackerHandler.UpdateEntry)
-			ftGroup.DELETE("/entries/:id", foodTrackerHandler.DeleteEntry)
-
-			// AI food recognition
-			ftGroup.POST("/recognize", foodTrackerHandler.RecognizeFood)
-
-			// Food search
-			ftGroup.GET("/search", foodTrackerHandler.SearchFoods)
-			ftGroup.GET("/barcode/:code", foodTrackerHandler.LookupBarcode)
-			ftGroup.GET("/recent", foodTrackerHandler.GetRecentFoods)
-			ftGroup.GET("/favorites", foodTrackerHandler.GetFavoriteFoods)
-			ftGroup.POST("/favorites/:foodId", foodTrackerHandler.AddToFavorites)
-			ftGroup.DELETE("/favorites/:foodId", foodTrackerHandler.RemoveFromFavorites)
-
-			// User foods
-			ftGroup.POST("/user-foods", foodTrackerHandler.CreateUserFood)
-			ftGroup.POST("/user-foods/clone", foodTrackerHandler.CloneUserFood)
-			ftGroup.GET("/user-foods", foodTrackerHandler.GetUserFoods)
-			ftGroup.PUT("/user-foods/:id", foodTrackerHandler.UpdateUserFood)
-			ftGroup.DELETE("/user-foods/:id", foodTrackerHandler.DeleteUserFood)
-
-			// Water tracking
-			ftGroup.GET("/water", foodTrackerHandler.GetWaterIntake)
-			ftGroup.POST("/water", foodTrackerHandler.AddWater)
-
-			// Recommendations
-			ftGroup.GET("/recommendations", foodTrackerHandler.GetRecommendations)
-			ftGroup.GET("/recommendations/:id", foodTrackerHandler.GetRecommendationDetail)
-			ftGroup.PUT("/recommendations/preferences", foodTrackerHandler.UpdatePreferences)
-			ftGroup.POST("/recommendations/custom", foodTrackerHandler.CreateCustomRecommendation)
-		}
-
-		// Nutrition calculator routes (protected)
-		nutritionCalcHandler := nutritioncalc.NewHandler(cfg, log, db)
-		ncGroup := v1.Group("/nutrition-calc")
-		ncGroup.Use(middleware.RequireAuth(cfg))
-		{
-			ncGroup.GET("/targets", nutritionCalcHandler.GetTargets)
-			ncGroup.GET("/history", nutritionCalcHandler.GetHistory)
-			ncGroup.POST("/recalculate", nutritionCalcHandler.Recalculate)
-		}
-
-		// Dashboard routes (protected)
-		notificationsSvc := notifications.NewService(db, log)
-		dashboardHandler := dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc)
-		dashGroup := v1.Group("/dashboard")
-		dashGroup.Use(middleware.RequireAuth(cfg))
-		{
-			dashGroup.GET("/daily/:date", dashboardHandler.GetDailyMetrics)
-			dashGroup.POST("/daily", dashboardHandler.SaveMetric)
-			dashGroup.GET("/week", dashboardHandler.GetWeekMetrics)
-			dashGroup.GET("/progress", dashboardHandler.GetProgress)
-			dashGroup.GET("/weekly-plan", dashboardHandler.GetWeeklyPlan)
-			dashGroup.POST("/weekly-plan", dashboardHandler.CreateWeeklyPlan)
-			dashGroup.GET("/tasks", dashboardHandler.GetTasks)
-			dashGroup.POST("/tasks", dashboardHandler.CreateTask)
-			dashGroup.PUT("/tasks/:id", dashboardHandler.UpdateTaskStatus)
-			dashGroup.POST("/tasks/:id/complete", dashboardHandler.CompleteTaskForDate)
-			dashGroup.GET("/weekly-reports/:reportId/feedback", dashboardHandler.GetReportFeedback)
-			dashGroup.POST("/weekly-report", dashboardHandler.SubmitWeeklyReport)
-			dashGroup.POST("/photo-upload", dashboardHandler.UploadPhoto)
-		}
-
-		// Chat routes (protected, both roles)
-		convGroup := v1.Group("/conversations")
-		convGroup.Use(middleware.RequireAuth(cfg))
-		{
-			convGroup.GET("", chatHandler.GetConversations)
-			convGroup.GET("/unread", chatHandler.GetUnreadCount)
-			convGroup.GET("/:id/messages", chatHandler.GetMessages)
-			convGroup.POST("/:id/messages", chatHandler.SendMessage)
-			convGroup.POST("/:id/upload", chatHandler.UploadAttachment)
-			convGroup.POST("/:id/read", chatHandler.MarkAsRead)
-			convGroup.POST("/:id/messages/:msgId/food-entry", chatHandler.CreateFoodEntry)
-		}
-
-		// Curator routes (coordinator role only)
-		curatorHandler := curator.NewHandler(cfg, log, db, notificationsSvc)
-		curatorGroup := v1.Group("/curator")
-		curatorGroup.Use(middleware.RequireAuth(cfg))
-		curatorGroup.Use(middleware.RequireRole("coordinator"))
-		{
-			curatorGroup.GET("/analytics", curatorHandler.GetAnalytics)
-			curatorGroup.GET("/analytics/history", curatorHandler.GetAnalyticsHistory)
-			curatorGroup.GET("/analytics/benchmark", curatorHandler.GetBenchmark)
-			curatorGroup.GET("/attention", curatorHandler.GetAttentionList)
-			curatorGroup.GET("/clients", curatorHandler.GetClients)
-			curatorGroup.GET("/clients/:id", curatorHandler.GetClientDetail)
-			curatorGroup.PUT("/clients/:id/target-weight", curatorHandler.SetTargetWeight)
-			curatorGroup.PUT("/clients/:id/water-goal", curatorHandler.SetWaterGoal)
-			curatorGroup.POST("/clients/:id/weekly-plan", curatorHandler.CreateWeeklyPlan)
-			curatorGroup.PUT("/clients/:id/weekly-plan/:planId", curatorHandler.UpdateWeeklyPlan)
-			curatorGroup.DELETE("/clients/:id/weekly-plan/:planId", curatorHandler.DeleteWeeklyPlan)
-			curatorGroup.GET("/clients/:id/weekly-plans", curatorHandler.GetWeeklyPlans)
-			curatorGroup.POST("/clients/:id/tasks", curatorHandler.CreateTask)
-			curatorGroup.PUT("/clients/:id/tasks/:taskId", curatorHandler.UpdateTask)
-			curatorGroup.DELETE("/clients/:id/tasks/:taskId", curatorHandler.DeleteTask)
-			curatorGroup.GET("/clients/:id/tasks", curatorHandler.GetTasks)
-			curatorGroup.PUT("/clients/:id/weekly-reports/:reportId/feedback", curatorHandler.SubmitFeedback)
-			curatorGroup.GET("/clients/:id/weekly-reports", curatorHandler.GetWeeklyReports)
-			curatorGroup.GET("/clients/:id/targets/history", nutritionCalcHandler.GetClientHistory)
-		}
-
-		// Admin routes (super_admin role only)
-		adminHandler := admin.NewHandler(cfg, log, db)
-		adminGroup := v1.Group("/admin")
-		adminGroup.Use(middleware.RequireAuth(cfg))
-		adminGroup.Use(middleware.RequireRole("super_admin"))
-		{
-			adminGroup.GET("/users", adminHandler.GetUsers)
-			adminGroup.GET("/curators", adminHandler.GetCurators)
-			adminGroup.POST("/users/:id/role", adminHandler.ChangeRole)
-			adminGroup.POST("/assignments", adminHandler.AssignCurator)
-			adminGroup.GET("/conversations", adminHandler.GetConversations)
-			adminGroup.GET("/conversations/:id/messages", adminHandler.GetConversationMessages)
-		}
-	}
-
-	// Content management routes (coordinator + super_admin)
 	var contentS3Uploader content.S3Uploader
 	if contentS3 != nil {
 		contentS3Uploader = contentS3
 	}
 	contentService := content.NewService(db, log, contentS3Uploader, wsHub)
-	contentHandler := content.NewHandler(cfg, log, contentService)
 
-	// Public content routes (no auth required)
-	publicContentGroup := v1.Group("/public/content")
-	{
-		publicContentGroup.GET("", contentHandler.GetPublicFeed)
-		publicContentGroup.GET("/:id", contentHandler.GetPublicArticle)
-	}
+	// Routing lives in internal/router, one file per domain.
+	router := router.New(router.Deps{
+		Cfg:             cfg,
+		Log:             log,
+		DB:              db,
+		AuthRateLimiter: authRateLimiter,
 
-	contentManageGroup := v1.Group("/content/articles")
-	contentManageGroup.Use(middleware.RequireAuth(cfg))
-	contentManageGroup.Use(middleware.RequireRole("coordinator", "super_admin"))
-	{
-		contentManageGroup.POST("", contentHandler.CreateArticle)
-		contentManageGroup.GET("", contentHandler.ListArticles)
-		contentManageGroup.GET("/:id", contentHandler.GetArticle)
-		contentManageGroup.PUT("/:id", contentHandler.UpdateArticle)
-		contentManageGroup.DELETE("/:id", contentHandler.DeleteArticle)
-		contentManageGroup.POST("/:id/publish", contentHandler.PublishArticle)
-		contentManageGroup.POST("/:id/schedule", contentHandler.ScheduleArticle)
-		contentManageGroup.POST("/:id/unpublish", contentHandler.UnpublishArticle)
-		contentManageGroup.POST("/:id/media", contentHandler.UploadMedia)
-		contentManageGroup.POST("/upload", contentHandler.UploadMarkdownFile)
-		contentManageGroup.POST("/cover", contentHandler.UploadCoverImage)
-	}
-
-	// Client content feed
-	contentFeedGroup := v1.Group("/content/feed")
-	contentFeedGroup.Use(middleware.RequireAuth(cfg))
-	{
-		contentFeedGroup.GET("", contentHandler.GetFeed)
-		contentFeedGroup.GET("/:id", contentHandler.GetFeedArticle)
-	}
-
-	// WebSocket endpoint (JWT checked in handler via query param)
-	router.GET("/ws", chatHandler.HandleWebSocket)
+		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService),
+		Reset:         auth.NewResetHandler(cfg, log, resetService),
+		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
+		Nutrition:     nutrition.NewHandler(cfg, log),
+		Notifications: notifications.NewHandler(cfg, log, db),
+		Logs:          logs.NewHandler(cfg, log),
+		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient),
+		NutritionCalc: nutritioncalc.NewHandler(cfg, log, db),
+		Dashboard:     dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc),
+		Chat:          chat.NewHandler(cfg, log, db, chatS3, wsHub),
+		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
+		Admin:         admin.NewHandler(cfg, log, db),
+		Content:       content.NewHandler(cfg, log, contentService),
+	})
 
 	// Start content scheduler (uses same contentService instance)
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())
@@ -556,4 +256,20 @@ func main() {
 	}
 
 	log.Info("Server exited")
+}
+
+// initS3 builds an optional S3 client. Missing credentials are not an error:
+// the capability is simply off, which config.Features already reports at
+// startup and handlers answer with 503.
+func initS3(log *logger.Logger, name string, c *storage.S3Config) *storage.S3Client {
+	if c.AccessKeyID == "" || c.SecretAccessKey == "" {
+		return nil
+	}
+	client, err := storage.NewS3Client(c, log)
+	if err != nil {
+		log.Error("Failed to initialize S3 client", "client", name, "error", err)
+		return nil
+	}
+	log.Info("S3 client initialized", "client", name, "bucket", c.Bucket)
+	return client
 }

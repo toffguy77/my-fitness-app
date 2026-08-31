@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -277,7 +279,7 @@ func TestHandler_GetClientDetail(t *testing.T) {
 	t.Run("client not found returns 404", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.getClientDetailFunc = func(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error) {
-			return nil, errors.New("client not found")
+			return nil, fmt.Errorf("client not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -294,7 +296,7 @@ func TestHandler_GetClientDetail(t *testing.T) {
 	t.Run("unauthorized relationship returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.getClientDetailFunc = func(ctx context.Context, curatorID int64, clientID int64, date string, days int) (*ClientDetail, error) {
-			return nil, errors.New("unauthorized: no active relationship between curator 1 and client 10")
+			return nil, fmt.Errorf("no active relationship between curator 1 and client 10: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -363,7 +365,7 @@ func TestHandler_SetTargetWeight(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.setTargetWeightFunc = func(ctx context.Context, curatorID int64, clientID int64, targetWeight *float64) error {
-			return errors.New("unauthorized: no active relationship")
+			return fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -478,7 +480,7 @@ func TestHandler_SetWaterGoal(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.setWaterGoalFunc = func(ctx context.Context, curatorID int64, clientID int64, waterGoal *int) error {
-			return errors.New("unauthorized: no active relationship")
+			return fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -597,7 +599,7 @@ func TestHandler_CreateWeeklyPlan(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.createWeeklyPlanFunc = func(ctx context.Context, curatorID, clientID int64, req CreateWeeklyPlanRequest) (*WeeklyPlanView, error) {
-			return nil, errors.New("unauthorized: no active relationship between curator 1 and client 10")
+			return nil, fmt.Errorf("no active relationship between curator 1 and client 10: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -664,7 +666,7 @@ func TestHandler_UpdateWeeklyPlan(t *testing.T) {
 	t.Run("plan not found returns 404", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.updateWeeklyPlanFunc = func(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error) {
-			return nil, errors.New("weekly plan not found")
+			return nil, fmt.Errorf("weekly plan not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -684,7 +686,7 @@ func TestHandler_UpdateWeeklyPlan(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.updateWeeklyPlanFunc = func(ctx context.Context, curatorID, clientID int64, planID string, req UpdateWeeklyPlanRequest) (*WeeklyPlanView, error) {
-			return nil, errors.New("unauthorized: no active relationship")
+			return nil, fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -727,7 +729,7 @@ func TestHandler_DeleteWeeklyPlan(t *testing.T) {
 	t.Run("plan not found returns 404", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.deleteWeeklyPlanFunc = func(ctx context.Context, curatorID, clientID int64, planID string) error {
-			return errors.New("weekly plan not found")
+			return fmt.Errorf("weekly plan not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -744,7 +746,7 @@ func TestHandler_DeleteWeeklyPlan(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.deleteWeeklyPlanFunc = func(ctx context.Context, curatorID, clientID int64, planID string) error {
-			return errors.New("unauthorized: no active relationship")
+			return fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -807,7 +809,7 @@ func TestHandler_GetWeeklyPlans(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.getWeeklyPlansFunc = func(ctx context.Context, curatorID, clientID int64) ([]WeeklyPlanView, error) {
-			return nil, errors.New("unauthorized: no active relationship")
+			return nil, fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -927,7 +929,7 @@ func TestHandler_CreateTask(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.createTaskFunc = func(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error) {
-			return nil, errors.New("unauthorized: no active relationship between curator 1 and client 10")
+			return nil, fmt.Errorf("no active relationship between curator 1 and client 10: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -992,7 +994,7 @@ func TestHandler_UpdateTask(t *testing.T) {
 	t.Run("task not found returns 404", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.updateTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error) {
-			return nil, errors.New("task not found")
+			return nil, fmt.Errorf("task not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -1012,7 +1014,7 @@ func TestHandler_UpdateTask(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.updateTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error) {
-			return nil, errors.New("unauthorized: no active relationship")
+			return nil, fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -1055,7 +1057,7 @@ func TestHandler_DeleteTask(t *testing.T) {
 	t.Run("task not found returns 404", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.deleteTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string) error {
-			return errors.New("task not found")
+			return fmt.Errorf("task not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -1072,7 +1074,7 @@ func TestHandler_DeleteTask(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.deleteTaskFunc = func(ctx context.Context, curatorID, clientID int64, taskID string) error {
-			return errors.New("unauthorized: no active relationship")
+			return fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -1135,7 +1137,7 @@ func TestHandler_GetTasks(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.getTasksFunc = func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error) {
-			return nil, errors.New("unauthorized: no active relationship")
+			return nil, fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -1236,7 +1238,7 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.submitFeedbackFunc = func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
-			return errors.New("unauthorized: no active relationship between curator 1 and client 42")
+			return fmt.Errorf("no active relationship between curator 1 and client 42: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -1255,7 +1257,7 @@ func TestHandler_SubmitFeedback(t *testing.T) {
 	t.Run("report not found returns 404", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.submitFeedbackFunc = func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error {
-			return errors.New("weekly report not found")
+			return fmt.Errorf("weekly report not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -1380,7 +1382,7 @@ func TestHandler_GetWeeklyReports(t *testing.T) {
 	t.Run("unauthorized returns 403", func(t *testing.T) {
 		handler, mock := setupCuratorTestHandler()
 		mock.getWeeklyReportsFunc = func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error) {
-			return nil, errors.New("unauthorized: no active relationship")
+			return nil, fmt.Errorf("no active relationship: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()

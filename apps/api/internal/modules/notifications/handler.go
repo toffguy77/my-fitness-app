@@ -2,6 +2,8 @@ package notifications
 
 import (
 	"context"
+	"errors"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"time"
 
@@ -115,7 +117,7 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 		h.log.Errorw("Не удалось отметить уведомление как прочитанное", "error", err, "user_id", userID, "notification_id", notificationID)
 
 		// Check if it's a not found error
-		if err.Error() == "notification not found or already read" {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Notification not found or already read")
 			return
 		}

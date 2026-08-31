@@ -12,4 +12,5 @@ var (
 	ErrCodeExpired        = errors.New("code expired")
 	ErrTooManyAttempts    = errors.New("too many attempts")
 	ErrRateLimited        = errors.New("rate limit exceeded")
+	ErrUnsupportedMedia   = errors.New("unsupported media type")
 )

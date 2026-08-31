@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"errors"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"strconv"
 
@@ -138,7 +140,7 @@ func (h *Handler) GetConversationMessages(c *gin.Context) {
 	if err != nil {
 		h.log.Error("Failed to get messages", "error", err, "conversation_id", conversationID)
 
-		if err.Error() == "conversation not found" {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Чат не найден")
 			return
 		}
