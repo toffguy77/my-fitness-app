@@ -20,6 +20,7 @@ type S3API interface {
 	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
 	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
+	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 }
 
 // S3Client handles interactions with Yandex Object Storage (S3-compatible)
@@ -269,4 +270,47 @@ func (s *S3Client) GetFileSize(ctx context.Context, key string) (int64, error) {
 	}
 
 	return *result.ContentLength, nil
+}
+
+// DeleteByPrefix removes every object under a key prefix and reports how many
+// were deleted.
+//
+// Account erasure needs this: object keys carry the owner's id, and without a
+// prefix delete the files of a deleted account would simply stay in the bucket.
+// Listing is paginated because a user with a year of photographs exceeds the
+// 1000-key page size.
+func (s *S3Client) DeleteByPrefix(ctx context.Context, prefix string) (int, error) {
+	full := s.pathPrefix + prefix
+	deleted := 0
+
+	var continuationToken *string
+	for {
+		listed, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(s.bucket),
+			Prefix:            aws.String(full),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			return deleted, fmt.Errorf("list objects under %s: %w", full, err)
+		}
+
+		for _, obj := range listed.Contents {
+			if _, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+				Bucket: aws.String(s.bucket),
+				Key:    obj.Key,
+			}); err != nil {
+				// Report progress with the error: a partial delete is still
+				// progress, and the caller retries the remainder.
+				return deleted, fmt.Errorf("delete %s: %w", aws.ToString(obj.Key), err)
+			}
+			deleted++
+		}
+
+		if listed.IsTruncated == nil || !*listed.IsTruncated {
+			break
+		}
+		continuationToken = listed.NextContinuationToken
+	}
+
+	return deleted, nil
 }

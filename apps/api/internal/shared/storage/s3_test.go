@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/burcev/api/internal/shared/logger"
@@ -36,6 +37,14 @@ func (m *MockS3Client) DeleteObject(ctx context.Context, params *s3.DeleteObject
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*s3.DeleteObjectOutput), args.Error(1)
+}
+
+func (m *MockS3Client) ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	args := m.Called(ctx, params)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*s3.ListObjectsV2Output), args.Error(1)
 }
 
 func (m *MockS3Client) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
@@ -675,3 +684,75 @@ func TestIsNotFound(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+// Account erasure depends on this: object keys carry the owner's id, and
+// without a prefix delete the files of a deleted account would stay in the
+// bucket after every database row was gone.
+func TestDeleteByPrefix(t *testing.T) {
+	t.Run("deletes every object under the prefix", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		client := createTestS3ClientWithMock(mockClient)
+
+		mockClient.On("ListObjectsV2", mock.Anything, mock.Anything).
+			Return(&s3.ListObjectsV2Output{
+				Contents: []s3types.Object{
+					{Key: aws.String("avatars/42/a.jpg")},
+					{Key: aws.String("avatars/42/b.jpg")},
+				},
+			}, nil).Once()
+		mockClient.On("DeleteObject", mock.Anything, mock.Anything).
+			Return(&s3.DeleteObjectOutput{}, nil).Times(2)
+
+		deleted, err := client.DeleteByPrefix(context.Background(), "42/")
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, deleted)
+		mockClient.AssertExpectations(t)
+	})
+
+	// A user with a year of photographs exceeds the 1000-key page size, so a
+	// single unpaginated listing would silently leave files behind.
+	t.Run("follows pagination", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		client := createTestS3ClientWithMock(mockClient)
+
+		truncated := true
+		mockClient.On("ListObjectsV2", mock.Anything, mock.Anything).
+			Return(&s3.ListObjectsV2Output{
+				Contents:              []s3types.Object{{Key: aws.String("a")}},
+				IsTruncated:           &truncated,
+				NextContinuationToken: aws.String("next"),
+			}, nil).Once()
+		mockClient.On("ListObjectsV2", mock.Anything, mock.Anything).
+			Return(&s3.ListObjectsV2Output{
+				Contents: []s3types.Object{{Key: aws.String("b")}},
+			}, nil).Once()
+		mockClient.On("DeleteObject", mock.Anything, mock.Anything).
+			Return(&s3.DeleteObjectOutput{}, nil).Times(2)
+
+		deleted, err := client.DeleteByPrefix(context.Background(), "42/")
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, deleted, "objects on the second page must be deleted too")
+	})
+
+	// A partial delete is still progress; the caller retries the remainder.
+	t.Run("reports how many were deleted before a failure", func(t *testing.T) {
+		mockClient := new(MockS3Client)
+		client := createTestS3ClientWithMock(mockClient)
+
+		mockClient.On("ListObjectsV2", mock.Anything, mock.Anything).
+			Return(&s3.ListObjectsV2Output{
+				Contents: []s3types.Object{{Key: aws.String("a")}, {Key: aws.String("b")}},
+			}, nil).Once()
+		mockClient.On("DeleteObject", mock.Anything, mock.Anything).
+			Return(&s3.DeleteObjectOutput{}, nil).Once()
+		mockClient.On("DeleteObject", mock.Anything, mock.Anything).
+			Return(nil, errors.New("network")).Once()
+
+		deleted, err := client.DeleteByPrefix(context.Background(), "42/")
+
+		require.Error(t, err)
+		assert.Equal(t, 1, deleted)
+	})
+}

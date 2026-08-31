@@ -16,4 +16,5 @@ var (
 	ErrPasswordPolicy     = errors.New("password does not meet policy")
 	ErrPasswordUnchanged  = errors.New("new password must differ from the current one")
 	ErrEmailUnavailable   = errors.New("email delivery is not configured")
+	ErrConflict           = errors.New("conflicting state")
 )

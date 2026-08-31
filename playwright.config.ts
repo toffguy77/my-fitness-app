@@ -101,7 +101,10 @@ export default defineConfig({
         webServer: {
           command: 'npm run build && npm run start',
           url: 'http://localhost:3069',
-          reuseExistingServer: !process.env.CI,
+          // Always reuse: in CI the workflow starts the web server itself,
+          // because it also has to start the API and seed test accounts before
+          // the suite runs. Playwright only needs the URL to be live.
+          reuseExistingServer: true,
         },
       }
     : {}),
