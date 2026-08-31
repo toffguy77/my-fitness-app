@@ -12,7 +12,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Two workers in CI: the runner has two cores, and a single worker made the
+  // suite long enough to be cancelled by the job timeout.
+  workers: process.env.CI ? 2 : undefined,
   reporter: 'html',
   use: {
     baseURL,

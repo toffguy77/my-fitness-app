@@ -16,7 +16,9 @@ jobs:
   e2e:
     name: Playwright
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # The suite runs ~14 minutes of tests; retries on failures push it past a
+    # tighter budget, and being cancelled mid-run tells us nothing.
+    timeout-minutes: 40
 
     services:
       postgres:
