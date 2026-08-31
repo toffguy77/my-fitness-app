@@ -1,4 +1,8 @@
-CREATE TABLE user_foods (
+-- IF NOT EXISTS: migration 009 already creates this table. Without the guard
+-- the chain cannot be applied from scratch — 028 fails with "relation
+-- user_foods already exists". Migration 036 reconciles the column differences
+-- between the two definitions.
+CREATE TABLE IF NOT EXISTS user_foods (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,

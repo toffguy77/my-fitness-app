@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/burcev/api/internal/shared/database"
@@ -37,26 +38,46 @@ func testDSN(t *testing.T) string {
 }
 
 // freshDatabase gives each test its own schema so they cannot interfere.
+//
+// The search_path goes in the connection string, not a SET statement: sql.DB is
+// a pool, so SET would apply to whichever single connection ran it and later
+// queries would silently land in public — which made tests contaminate each
+// other and report "relation already exists".
 func freshDatabase(t *testing.T) *database.DB {
 	t.Helper()
-	raw, err := sql.Open("pgx", testDSN(t))
-	require.NoError(t, err)
-	require.NoError(t, raw.Ping())
 
-	schema := fmt.Sprintf("mig_test_%d", os.Getpid()+int(testCounter()))
-	_, err = raw.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
+	admin, err := sql.Open("pgx", testDSN(t))
 	require.NoError(t, err)
-	_, err = raw.Exec(fmt.Sprintf("CREATE SCHEMA %s", schema))
+	defer func() { _ = admin.Close() }()
+	require.NoError(t, admin.Ping())
+
+	schema := fmt.Sprintf("mig_test_%d_%d", os.Getpid(), testCounter())
+	_, err = admin.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
 	require.NoError(t, err)
-	_, err = raw.Exec(fmt.Sprintf("SET search_path TO %s", schema))
+	_, err = admin.Exec(fmt.Sprintf("CREATE SCHEMA %s", schema))
 	require.NoError(t, err)
+
+	// Extensions live in public; keep it on the path so gen_random_uuid and the
+	// trigram operators resolve.
+	dsn := testDSN(t)
+	separator := "?"
+	if strings.Contains(dsn, "?") {
+		separator = "&"
+	}
+	scoped, err := sql.Open("pgx", fmt.Sprintf("%s%ssearch_path=%s,public", dsn, separator, schema))
+	require.NoError(t, err)
+	require.NoError(t, scoped.Ping())
 
 	t.Cleanup(func() {
-		_, _ = raw.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
-		_ = raw.Close()
+		_ = scoped.Close()
+		cleanup, err := sql.Open("pgx", testDSN(t))
+		if err == nil {
+			_, _ = cleanup.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
+			_ = cleanup.Close()
+		}
 	})
 
-	return &database.DB{DB: raw}
+	return &database.DB{DB: scoped}
 }
 
 var counter int
