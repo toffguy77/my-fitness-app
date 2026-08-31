@@ -233,17 +233,16 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to get curator clients: %w", err)
 	}
+	defer clientRows.Close()
 
 	var orphanedClients []int64
 	for clientRows.Next() {
 		var clientID int64
 		if err := clientRows.Scan(&clientID); err != nil {
-			clientRows.Close()
 			return fmt.Errorf("failed to scan client: %w", err)
 		}
 		orphanedClients = append(orphanedClients, clientID)
 	}
-	clientRows.Close()
 
 	if err := clientRows.Err(); err != nil {
 		return fmt.Errorf("error iterating clients: %w", err)

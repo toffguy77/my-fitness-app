@@ -79,7 +79,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to database", "error", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	log.Info("Database connected successfully",
 		"host", cfg.DatabaseHost,

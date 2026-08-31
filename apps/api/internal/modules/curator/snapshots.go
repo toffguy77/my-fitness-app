@@ -95,6 +95,9 @@ func (s *Service) getDailySnapshots(ctx context.Context, curatorID int64, count 
 		snap.Date = d.Format("2006-01-02")
 		snapshots = append(snapshots, snap)
 	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating query results", "error", err)
+	}
 
 	s.log.LogDatabaseQuery("GetDailySnapshots", time.Since(startTime), nil, map[string]any{
 		"curator_id": curatorID,
@@ -128,6 +131,9 @@ func (s *Service) getWeeklySnapshots(ctx context.Context, curatorID int64, count
 		}
 		snap.WeekStart = ws.Format("2006-01-02")
 		snapshots = append(snapshots, snap)
+	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating query results", "error", err)
 	}
 
 	s.log.LogDatabaseQuery("GetWeeklySnapshots", time.Since(startTime), nil, map[string]any{

@@ -1,0 +1,121 @@
+name: Deploy
+
+# Nothing connected a green pipeline to a deployment: Dokploy deployed on its
+# own schedule, outside the repository. This workflow makes the link explicit
+# and verifies the result instead of assuming it.
+#
+# dev  — deploys automatically once CI and E2E pass on the dev branch.
+# prod — deploys when a version tag is pushed, which is a deliberate act.
+#
+# Requires repository secrets: DOKPLOY_API_KEY.
+
+on:
+  workflow_run:
+    workflows: ['CI Pipeline', 'E2E']
+    branches: [dev]
+    types: [completed]
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  contents: read
+
+env:
+  DOKPLOY_URL: http://5.178.3.32:3000
+  DEV_COMPOSE_ID: 1ZT-mVffbMajV284h60QF
+  PROD_COMPOSE_ID: zsMl30RU6urKGuOOg8VZn
+  DEV_HEALTH_URL: https://new.burcev.team/ready
+  PROD_HEALTH_URL: https://burcev.team/ready
+
+jobs:
+  resolve:
+    name: Resolve target
+    runs-on: ubuntu-latest
+    # A workflow_run trigger fires regardless of outcome; deploy only on success.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      environment: ${{ steps.pick.outputs.environment }}
+      compose_id: ${{ steps.pick.outputs.compose_id }}
+      health_url: ${{ steps.pick.outputs.health_url }}
+    steps:
+      - id: pick
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            env_name=prod
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            env_name="${{ inputs.environment }}"
+          else
+            env_name=dev
+          fi
+          echo "environment=$env_name" >> "$GITHUB_OUTPUT"
+          if [ "$env_name" = "prod" ]; then
+            echo "compose_id=${{ env.PROD_COMPOSE_ID }}" >> "$GITHUB_OUTPUT"
+            echo "health_url=${{ env.PROD_HEALTH_URL }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "compose_id=${{ env.DEV_COMPOSE_ID }}" >> "$GITHUB_OUTPUT"
+            echo "health_url=${{ env.DEV_HEALTH_URL }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Deploy ${{ needs.resolve.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [resolve]
+    environment: ${{ needs.resolve.outputs.environment }}
+    steps:
+      - name: Trigger Dokploy deployment
+        run: |
+          set -euo pipefail
+          response=$(curl -sS -w '\n%{http_code}' -X POST \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" \
+            -H 'Content-Type: application/json' \
+            -d '{"json":{"composeId":"${{ needs.resolve.outputs.compose_id }}"}}' \
+            "${{ env.DOKPLOY_URL }}/api/trpc/compose.deploy")
+          status=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          echo "$body"
+          if [ "$status" -ge 300 ]; then
+            echo "Dokploy returned HTTP $status"
+            exit 1
+          fi
+
+      # The deployment is not done when the API call returns; it is done when
+      # the new container answers its readiness probe. Without this the workflow
+      # would report success for a container stuck in a crash loop — which is
+      # exactly what strict config validation now causes on a missing variable.
+      - name: Wait for readiness
+        run: |
+          set -uo pipefail
+          url="${{ needs.resolve.outputs.health_url }}"
+          echo "Polling $url"
+          for attempt in $(seq 1 60); do
+            code=$(curl -s -o /tmp/ready.json -w '%{http_code}' --max-time 10 "$url" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "Ready after ${attempt} attempts:"
+              cat /tmp/ready.json
+              exit 0
+            fi
+            echo "attempt ${attempt}: HTTP ${code}"
+            sleep 10
+          done
+          echo "Service did not become ready within 10 minutes."
+          echo "Last response:"; cat /tmp/ready.json 2>/dev/null || true
+          exit 1
+
+      - name: Report result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "### Deployed ${{ needs.resolve.outputs.environment }} ✅" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Deployment to ${{ needs.resolve.outputs.environment }} failed ❌" >> "$GITHUB_STEP_SUMMARY"
+            echo "Readiness probe: ${{ needs.resolve.outputs.health_url }}" >> "$GITHUB_STEP_SUMMARY"
+          fi

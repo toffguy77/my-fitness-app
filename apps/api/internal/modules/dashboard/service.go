@@ -1000,6 +1000,9 @@ func (s *Service) GetTasksByWeek(ctx context.Context, userID int64, weekNumber i
 					t.Completions = append(t.Completions, c)
 				}
 			}
+			if err := cRows.Err(); err != nil {
+				s.log.Error("Failed while iterating task completions", "error", err)
+			}
 		}
 	}
 
@@ -1099,6 +1102,9 @@ func (s *Service) GetActiveTasks(ctx context.Context, userID int64) ([]*Task, er
 				if t, ok := taskMap[c.TaskID]; ok {
 					t.Completions = append(t.Completions, c)
 				}
+			}
+			if err := cRows.Err(); err != nil {
+				s.log.Error("Failed while iterating task completions", "error", err)
 			}
 		}
 	}

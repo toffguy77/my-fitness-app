@@ -53,6 +53,7 @@ GET /api/v1/public/content
 GET /api/v1/public/content/:id
 GET /api/v1/users/profile
 GET /health
+GET /ready
 GET /ws
 POST /api/v1/admin/assignments
 POST /api/v1/admin/users/:id/role

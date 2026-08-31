@@ -338,7 +338,6 @@ func (s *Service) ListArticles(ctx context.Context, authorID int64, status strin
 	if category != "" {
 		query += fmt.Sprintf(" AND a.category = $%d", argIdx)
 		args = append(args, category)
-		argIdx++
 	}
 
 	query += " ORDER BY a.created_at DESC"
@@ -1445,7 +1444,12 @@ func (s *Service) proxyExternalImages(ctx context.Context, articleID, coverURL, 
 		}
 
 		client := &http.Client{Timeout: 30 * time.Second}
-		resp, err := client.Get(imgURL)
+		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, imgURL, nil)
+		if reqErr != nil {
+			s.log.Warn("Failed to build image request", "url", imgURL, "error", reqErr)
+			return imgURL
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			s.log.Warn("Failed to download external image", "url", imgURL, "error", err)
 			return imgURL

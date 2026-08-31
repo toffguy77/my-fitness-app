@@ -211,9 +211,11 @@ func TestVerifyToken(t *testing.T) {
 	})
 
 	t.Run("handles empty strings", func(t *testing.T) {
+		// An empty token must never verify: a reset link with a blank token
+		// would otherwise be accepted. (The previous version of this test had
+		// an empty branch and a comment claiming the opposite.)
 		if tg.VerifyToken("", "") {
-			// Empty strings hash to the same value, so this should pass
-			// This is expected behavior
+			t.Error("VerifyToken accepted an empty token")
 		}
 
 		plain, hashed, _ := tg.GenerateToken()
@@ -319,10 +321,10 @@ func TestTokenSecurity(t *testing.T) {
 			t.Error("Hashed token is same as plain token - not secure")
 		}
 
-		// Verify we can't verify the hash against itself
+		// The stored hash must not work as the token itself: a database read
+		// must not be enough to pass verification.
 		if tg.VerifyToken(hashed, hashed) {
-			// This might pass if we hash the hash, which is fine
-			// The important thing is that plain != hashed
+			t.Error("VerifyToken accepted the stored hash as the plain token")
 		}
 	})
 }

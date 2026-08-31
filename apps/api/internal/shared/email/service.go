@@ -246,19 +246,24 @@ func (s *Service) sendEmailTLS(addr string, auth smtp.Auth, to string, message [
 		MinVersion: tls.VersionTLS12,
 	}
 
-	// Connect with TLS
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	// Connect with TLS under a deadline: a hung SMTP host must not hold the
+	// calling goroutine indefinitely.
+	dialCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	dialer := &tls.Dialer{Config: tlsConfig}
+	netConn, err := dialer.DialContext(dialCtx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
-	defer conn.Close()
+	conn := netConn.(*tls.Conn)
+	defer func() { _ = conn.Close() }()
 
 	// Create SMTP client
 	client, err := smtp.NewClient(conn, s.smtpHost)
 	if err != nil {
 		return fmt.Errorf("failed to create SMTP client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Authenticate
 	if err := client.Auth(auth); err != nil {

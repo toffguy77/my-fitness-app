@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/database"
@@ -421,7 +423,12 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 				FROM conversations WHERE id = $1
 			`
 			var otherID int64
-			if err := h.db.DB.QueryRow(query, typing.ConversationID, senderID).Scan(&otherID); err != nil {
+			// The gin request context ended when the handshake returned, so
+			// this lookup carries its own short deadline instead of no context.
+			lookupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			err := h.db.QueryRowContext(lookupCtx, query, typing.ConversationID, senderID).Scan(&otherID)
+			cancel()
+			if err != nil {
 				return
 			}
 

@@ -101,19 +101,50 @@ func New(d Deps) *gin.Engine {
 	return engine
 }
 
+// registerHealth exposes liveness and readiness as separate probes.
+//
+// They answer different questions and drive different actions. Liveness asks
+// "is this process alive" and drives restarts; readiness asks "can it serve
+// traffic right now" and drives load-balancer membership. Merging them, as the
+// single /health endpoint did, meant a service with an unreachable database
+// still answered 200 "status: ok" — so nothing ever noticed it was broken.
+//
+// Restarting a container because the database is unreachable does not help: it
+// comes back into the same failure. Hence liveness deliberately touches no
+// dependency.
 func registerHealth(engine *gin.Engine, d Deps) {
 	engine.GET("/health", func(c *gin.Context) {
-		dbStatus := "ok"
-		if err := d.DB.Health(c.Request.Context()); err != nil {
-			dbStatus = "unhealthy"
-			d.Log.Error("Database health check failed", "error", err)
-		}
-
 		c.JSON(http.StatusOK, gin.H{
 			"status":      "ok",
 			"timestamp":   time.Now().Format(time.RFC3339),
 			"environment": d.Cfg.Env,
-			"database":    dbStatus,
+			"version":     d.Cfg.Version,
+		})
+	})
+
+	engine.GET("/ready", func(c *gin.Context) {
+		checks := gin.H{}
+		ready := true
+
+		if err := d.DB.Health(c.Request.Context()); err != nil {
+			d.Log.Error("Readiness check failed: database unreachable", "error", err)
+			checks["database"] = "unhealthy"
+			ready = false
+		} else {
+			checks["database"] = "ok"
+		}
+
+		status := http.StatusOK
+		if !ready {
+			status = http.StatusServiceUnavailable
+		}
+
+		c.JSON(status, gin.H{
+			"ready":       ready,
+			"timestamp":   time.Now().Format(time.RFC3339),
+			"environment": d.Cfg.Env,
+			"version":     d.Cfg.Version,
+			"checks":      checks,
 			"features":    d.Cfg.Features.Map(),
 		})
 	})

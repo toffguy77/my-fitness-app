@@ -154,6 +154,9 @@ type Config struct {
 	// AppDomain is the public domain; drives ResetPasswordURL and email links.
 	AppDomain string
 
+	// Version identifies the running build; set from APP_VERSION at deploy time.
+	Version string
+
 	// Migrations
 	MigrationBaseline int
 
@@ -199,6 +202,7 @@ func Load() (*Config, error) {
 
 		// Application domain (drives ResetPasswordURL and links in emails)
 		AppDomain: getEnv("APP_DOMAIN", ""),
+		Version:   getEnv("APP_VERSION", "dev"),
 
 		// SMTP Configuration (Yandex Mail)
 		SMTPHost:        getEnv("SMTP_HOST", "smtp.yandex.ru"),

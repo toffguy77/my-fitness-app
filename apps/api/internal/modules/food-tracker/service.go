@@ -1131,6 +1131,9 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 				item.PopulateNutrition()
 				foods = append(foods, item)
 			}
+			if err := fallbackRows.Err(); err != nil {
+				s.log.Error("Failed while iterating fallback search results", "error", err)
+			}
 			hasMore = len(foods) > limit
 			if hasMore {
 				foods = foods[:limit]
@@ -1909,6 +1912,9 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			Percentage:             percentage,
 		})
 	}
+	if err := weeklyRows.Err(); err != nil {
+		s.log.Error("Failed while iterating weekly recommendations", "error", err)
+	}
 
 	s.log.LogDatabaseQuery(weeklyQuery, time.Since(startTime), nil, map[string]interface{}{
 		"user_id": userID,
@@ -1947,6 +1953,9 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			continue
 		}
 		custom = append(custom, rec)
+	}
+	if err := customRows.Err(); err != nil {
+		s.log.Error("Failed while iterating custom recommendations", "error", err)
 	}
 
 	s.log.LogDatabaseQuery(customQuery, time.Since(startTime), nil, map[string]interface{}{
@@ -2387,7 +2396,7 @@ func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []b
 	// Map OpenRouter results to individual composition items
 	composition := make([]RecognizedFood, 0, len(orResp.Items))
 	var totalWeight float64
-	var minConfidence float64 = 1.0
+	minConfidence := 1.0
 	var weightedCal, weightedProt, weightedFat, weightedCarbs float64
 
 	for _, item := range orResp.Items {
