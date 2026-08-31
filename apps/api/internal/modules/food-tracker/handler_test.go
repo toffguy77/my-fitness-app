@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +23,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+// testPNG returns a real, minimal PNG. Recognition uploads are validated by
+// content now, so a placeholder byte string is correctly rejected.
+func testPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, img))
+	return buf.Bytes()
+}
 
 // ============================================================================
 // Mock Service Implementation
@@ -486,7 +498,7 @@ func createMultipartRequest(t *testing.T, fieldName, fileName, contentType strin
 func TestRecognizeFood_Success(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	imageData := []byte("fake-image-data")
+	imageData := testPNG(t)
 
 	expectedResp := &AIRecognitionResponse{
 		Foods: []RecognizedFood{
@@ -501,7 +513,7 @@ func TestRecognizeFood_Success(t *testing.T) {
 		RemainingRecognitions: 19,
 	}
 
-	mockService.On("RecognizeFood", mock.Anything, int64(1), imageData, "image/jpeg", "", 20, mock.AnythingOfType("*openrouter.Client")).
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*openrouter.Client")).
 		Return(expectedResp, nil)
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
@@ -562,15 +574,17 @@ func TestRecognizeFood_InvalidFileType(t *testing.T) {
 	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Equal(t, "Файл должен быть изображением", resp["message"])
+	// The rejection now names the accepted formats rather than repeating the
+	// client's claim about the file.
+	assert.Contains(t, resp["message"], "допустимые форматы")
 }
 
 func TestRecognizeFood_LimitExceeded(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	imageData := []byte("fake-image-data")
+	imageData := testPNG(t)
 
-	mockService.On("RecognizeFood", mock.Anything, int64(1), imageData, "image/jpeg", "", 20, mock.AnythingOfType("*openrouter.Client")).
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*openrouter.Client")).
 		Return(nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня"))
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
@@ -603,7 +617,7 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 		// Capability disabled: OPENROUTER_API_KEY is absent in this environment.
 	}
 
-	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", []byte("fake-image-data"))
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", testPNG(t))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

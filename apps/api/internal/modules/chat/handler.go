@@ -1,13 +1,14 @@
 package chat
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/upload"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -186,6 +187,9 @@ func (h *Handler) SendMessage(c *gin.Context) {
 }
 
 // UploadAttachment handles POST /api/v1/conversations/:id/upload
+// maxAttachmentBytes bounds a chat attachment.
+const maxAttachmentBytes = 10 * 1024 * 1024
+
 func (h *Handler) UploadAttachment(c *gin.Context) {
 	if !h.cfg.Features.ChatAttachments {
 		response.FeatureUnavailable(c, "Загрузка вложений недоступна в этом окружении")
@@ -206,44 +210,38 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form (max 10MB)
-	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-		response.Error(c, http.StatusBadRequest, "Файл слишком большой (максимум 10 МБ)")
-		return
-	}
-
-	file, header, err := c.Request.FormFile("file")
+	header, err := c.FormFile("file")
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Файл не найден в запросе")
 		return
 	}
-	defer file.Close()
 
-	// Generate S3 key
-	ext := filepath.Ext(header.Filename)
-	s3Key := fmt.Sprintf("chat/%s/%s%s", conversationID, uuid.New().String(), ext)
-
-	// Determine content type
-	contentType := header.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
+	// Chat previously accepted anything, defaulting an absent header to
+	// application/octet-stream. Now the type is read from the bytes and only
+	// images and PDFs are stored.
+	uploaded, err := upload.Receive(header, upload.AllowedChatAttachments, maxAttachmentBytes)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
+		return
 	}
 
-	// Upload to S3
-	fileURL, err := h.s3.UploadFile(c.Request.Context(), s3Key, file, contentType, header.Size)
+	// The key is server-generated; the client filename is kept only for display.
+	s3Key := upload.Key("chat/"+conversationID, userID, uploaded.Kind)
+
+	fileURL, err := h.s3.UploadFile(c.Request.Context(), s3Key,
+		bytes.NewReader(uploaded.Data), uploaded.ContentType(), int64(uploaded.Size))
 	if err != nil {
 		h.log.Error("Failed to upload file", "error", err, "conversation_id", conversationID)
 		response.InternalError(c, "Не удалось загрузить файл")
 		return
 	}
 
-	// Build attachment info
 	att := MessageAttachment{
 		ID:       uuid.New().String(),
 		FileURL:  fileURL,
-		FileName: header.Filename,
-		FileSize: header.Size,
-		MimeType: contentType,
+		FileName: uploaded.OriginalName,
+		FileSize: int64(uploaded.Size),
+		MimeType: uploaded.ContentType(),
 	}
 
 	response.Success(c, http.StatusOK, att)

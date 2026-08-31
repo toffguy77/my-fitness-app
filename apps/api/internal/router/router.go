@@ -65,6 +65,7 @@ func New(d Deps) *gin.Engine {
 	_ = engine.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"})
 
 	engine.Use(gin.Recovery())
+	engine.Use(middleware.BodyLimit(middleware.MaxBodyBytes))
 	engine.Use(middleware.NoCacheAPI())
 	engine.Use(middleware.Logger(d.Log))
 	engine.Use(middleware.ErrorHandler(d.Log))

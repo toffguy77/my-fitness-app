@@ -3,10 +3,8 @@ package foodtracker
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"io"
+	"github.com/burcev/api/internal/shared/upload"
 	"net/http"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,7 +16,6 @@ import (
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 // FoodEntriesService handles daily food entry CRUD.
@@ -360,65 +357,35 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form
-	file, header, err := c.Request.FormFile("photo")
+	header, err := c.FormFile("photo")
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Файл фото обязателен")
 		return
 	}
-	defer file.Close()
 
-	// Validate file size
-	if header.Size > maxPhotoSize {
-		response.Error(c, http.StatusBadRequest, "Размер файла не должен превышать 10 МБ")
-		return
-	}
-
-	// Validate content type
-	contentType := header.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "image/") {
-		response.Error(c, http.StatusBadRequest, "Файл должен быть изображением")
-		return
-	}
-
-	// Read file data
-	imageData, err := io.ReadAll(file)
+	// The photo is sent to a paid vision model, so it is validated by content
+	// before anything is spent on it.
+	uploaded, err := upload.Receive(header, upload.AllowedImages, maxPhotoSize)
 	if err != nil {
-		h.log.Error("Failed to read uploaded file", "error", err)
-		response.InternalError(c, "Не удалось прочитать файл")
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Upload to S3 if client is available
+	// Keeping the photo is best effort: recognition still works without it.
 	var s3PhotoURL string
 	if h.s3 != nil {
-		ext := filepath.Ext(header.Filename)
-		if ext == "" {
-			// Determine extension from content type
-			switch contentType {
-			case "image/jpeg":
-				ext = ".jpg"
-			case "image/png":
-				ext = ".png"
-			case "image/webp":
-				ext = ".webp"
-			default:
-				ext = ".jpg"
-			}
-		}
-
-		s3Key := fmt.Sprintf("food-photos/%d/%s%s", userID, uuid.New().String(), ext)
-		uploadedURL, err := h.s3.UploadFile(c.Request.Context(), s3Key, bytes.NewReader(imageData), contentType, header.Size)
-		if err != nil {
-			h.log.Error("Failed to upload photo to S3", "error", err, "user_id", userID)
-			// Continue without S3 URL — not a critical failure
+		s3Key := upload.Key("food-photos", userID, uploaded.Kind)
+		uploadedURL, uploadErr := h.s3.UploadFile(c.Request.Context(), s3Key,
+			bytes.NewReader(uploaded.Data), uploaded.ContentType(), int64(uploaded.Size))
+		if uploadErr != nil {
+			h.log.Error("Failed to upload photo to S3", "error", uploadErr, "user_id", userID)
 		} else {
 			s3PhotoURL = uploadedURL
 		}
 	}
 
 	// Call service
-	result, err := h.extras.RecognizeFood(c.Request.Context(), userID, imageData, contentType, s3PhotoURL, h.cfg.FoodRecognitionDailyLimit, h.orClient)
+	result, err := h.extras.RecognizeFood(c.Request.Context(), userID, uploaded.Data, uploaded.ContentType(), s3PhotoURL, h.cfg.FoodRecognitionDailyLimit, h.orClient)
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "лимит распознаваний") {

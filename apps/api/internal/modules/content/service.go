@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/upload"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -770,6 +771,9 @@ func (s *Service) UnpublishArticle(ctx context.Context, authorID int64, articleI
 }
 
 // UploadMedia uploads a media file for an article and returns the S3 URL.
+// maxMediaBytes bounds an article illustration.
+const maxMediaBytes = 10 * 1024 * 1024
+
 func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error) {
 	if err := s.requireS3(); err != nil {
 		return "", err
@@ -780,24 +784,19 @@ func (s *Service) UploadMedia(ctx context.Context, authorID int64, articleID str
 		}
 	}
 
-	src, err := file.Open()
+	// Validated by content, not by the client's header, and re-encoded so a
+	// polyglot file cannot survive.
+	uploaded, err := upload.Receive(file, upload.AllowedContentMedia, maxMediaBytes)
 	if err != nil {
-		return "", fmt.Errorf("failed to open uploaded file: %w", err)
-	}
-	defer src.Close()
-
-	data, err := io.ReadAll(src)
-	if err != nil {
-		return "", fmt.Errorf("failed to read uploaded file: %w", err)
+		return "", fmt.Errorf("%w: %w", apperrors.ErrUnsupportedMedia, err)
 	}
 
-	s3Key := fmt.Sprintf("content/%s/media/%s", articleID, file.Filename)
-	contentType := file.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
+	// The key used to interpolate the client's filename directly, so a name
+	// like "../../x" escaped the article's prefix. It is server-generated now.
+	s3Key := upload.Key("content/"+articleID+"/media", authorID, uploaded.Kind)
 
-	url, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(data), contentType, int64(len(data)))
+	url, err := s.s3.UploadFile(ctx, s3Key, bytes.NewReader(uploaded.Data),
+		uploaded.ContentType(), int64(uploaded.Size))
 	if err != nil {
 		s.log.Error("Failed to upload media file", "error", err, "article_id", articleID, "filename", file.Filename)
 		return "", fmt.Errorf("failed to upload media file: %w", err)
@@ -815,32 +814,20 @@ func (s *Service) UploadCoverImage(ctx context.Context, file *multipart.FileHead
 		return "", err
 	}
 
-	contentType := file.Header.Get("Content-Type")
-	switch contentType {
-	case "image/jpeg", "image/png", "image/webp", "image/gif":
-		// allowed
-	default:
-		return "", fmt.Errorf("unsupported image type %s: %w", contentType, apperrors.ErrUnsupportedMedia)
-	}
-
-	src, err := file.Open()
+	// This object goes into a *public* bucket, so trusting the client about
+	// its type was the worst case of the pattern: an HTML file announced as an
+	// image would have been served as HTML from our storage domain.
+	uploaded, err := upload.Receive(file, upload.AllowedContentMedia, maxMediaBytes)
 	if err != nil {
-		return "", fmt.Errorf("failed to open uploaded file: %w", err)
-	}
-	defer src.Close()
-
-	data, err := io.ReadAll(src)
-	if err != nil {
-		return "", fmt.Errorf("failed to read uploaded file: %w", err)
+		return "", fmt.Errorf("%w: %w", apperrors.ErrUnsupportedMedia, err)
 	}
 
-	ext := path.Ext(file.Filename)
-	if ext == "" {
-		ext = ".jpg"
-	}
-	s3Key := fmt.Sprintf("cover-images/%s%s", uuid.New().String(), ext)
+	// Cover images are not owned by a user, so the key uses the article-free
+	// prefix with a random name and the detected extension.
+	s3Key := fmt.Sprintf("cover-images/%s%s", uuid.New().String(), uploaded.StoredKind.Extension())
 
-	url, err := s.s3.UploadPublicFile(ctx, s3Key, bytes.NewReader(data), contentType, int64(len(data)))
+	url, err := s.s3.UploadPublicFile(ctx, s3Key, bytes.NewReader(uploaded.Data),
+		uploaded.ContentType(), int64(uploaded.Size))
 	if err != nil {
 		return "", fmt.Errorf("failed to upload cover image: %w", err)
 	}
