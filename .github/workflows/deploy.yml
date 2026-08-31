@@ -29,8 +29,8 @@ permissions:
 
 env:
   DOKPLOY_URL: http://5.178.3.32:3000
-  DEV_COMPOSE_ID: 1ZT-mVffbMajV284h60QF
-  PROD_COMPOSE_ID: zsMl30RU6urKGuOOg8VZn
+  DEV_COMPOSE_ID: huTmvX7ZWv6KglFd3KEvy
+  PROD_COMPOSE_ID: BUHm2MytH3YwSdnhEhfP4
   DEV_HEALTH_URL: https://new.burcev.team/ready
   PROD_HEALTH_URL: https://burcev.team/ready
 
