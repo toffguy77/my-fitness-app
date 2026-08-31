@@ -56,6 +56,7 @@ func registerAdminRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.Use(middleware.RequireRole("super_admin"))
 
 	g.GET("/users", d.Admin.GetUsers)
+	g.GET("/users/:id", d.Admin.GetUser)
 	g.GET("/curators", d.Admin.GetCurators)
 	g.POST("/users/:id/role", d.Admin.ChangeRole)
 	g.POST("/assignments", d.Admin.AssignCurator)

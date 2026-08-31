@@ -90,6 +90,7 @@ var protectedRoutes = map[string]protection{
 	// :name is a job identifier from a fixed registry, not another user's
 	// resource, and the group already requires super_admin.
 	"POST /api/v1/admin/jobs/:name/run":           protRole,
+	"GET /api/v1/admin/users/:id":                 protRole,
 	"POST /api/v1/admin/users/:id/role":           protRole,
 	"GET /api/v1/content/articles/:id":            protRole,
 	"PUT /api/v1/content/articles/:id":            protRole,

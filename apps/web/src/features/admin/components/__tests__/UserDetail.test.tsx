@@ -1,3 +1,4 @@
+import { ApiError } from '@/shared/errors/apiErrors'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { UserDetail } from '../UserDetail'
 import { adminApi } from '../../api/adminApi'
@@ -6,7 +7,7 @@ import type { AdminUser, CuratorLoad } from '../../types'
 
 jest.mock('../../api/adminApi', () => ({
     adminApi: {
-        getUsers: jest.fn(),
+        getUsers: jest.fn(), getUser: jest.fn(),
         getCurators: jest.fn(),
         changeRole: jest.fn(),
         assignCurator: jest.fn(),
@@ -58,7 +59,7 @@ describe('UserDetail', () => {
     })
 
     it('shows loading state', () => {
-        mockAdminApi.getUsers.mockReturnValue(new Promise(() => {}))
+        mockAdminApi.getUser.mockReturnValue(new Promise(() => {}))
         mockAdminApi.getCurators.mockReturnValue(new Promise(() => {}))
 
         render(<UserDetail userId={1} />)
@@ -67,7 +68,9 @@ describe('UserDetail', () => {
     })
 
     it('shows error when user not found', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([])
+        // A 404 is a different situation from a failed load, so the component
+        // distinguishes them; the mock has to be a real ApiError.
+        mockAdminApi.getUser.mockRejectedValue(new ApiError(404, {}))
         mockAdminApi.getCurators.mockResolvedValue([])
 
         render(<UserDetail userId={999} />)
@@ -78,7 +81,7 @@ describe('UserDetail', () => {
     })
 
     it('shows error on API failure', async () => {
-        mockAdminApi.getUsers.mockRejectedValue(new Error('fail'))
+        mockAdminApi.getUser.mockRejectedValue(new Error('fail'))
         mockAdminApi.getCurators.mockRejectedValue(new Error('fail'))
 
         render(<UserDetail userId={1} />)
@@ -97,7 +100,7 @@ describe('UserDetail', () => {
             created_at: '2025-01-15T00:00:00Z',
             last_login_at: '2025-06-01T00:00:00Z',
         })
-        mockAdminApi.getUsers.mockResolvedValue([user])
+        mockAdminApi.getUser.mockResolvedValue(user)
         mockAdminApi.getCurators.mockResolvedValue([])
 
         render(<UserDetail userId={1} />)
@@ -114,7 +117,7 @@ describe('UserDetail', () => {
     })
 
     it('role change buttons: current role is disabled', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1, role: 'client' })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
         mockAdminApi.getCurators.mockResolvedValue([])
 
         render(<UserDetail userId={1} />)
@@ -132,7 +135,7 @@ describe('UserDetail', () => {
     })
 
     it('does not show role management for super_admin', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1, role: 'super_admin' })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'super_admin' }))
         mockAdminApi.getCurators.mockResolvedValue([])
 
         render(<UserDetail userId={1} />)
@@ -145,12 +148,12 @@ describe('UserDetail', () => {
     })
 
     it('shows toast on successful role change', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1, role: 'client' })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
         mockAdminApi.getCurators.mockResolvedValue([])
         mockAdminApi.changeRole.mockResolvedValue(undefined)
         // After role change, refresh returns updated user
-        mockAdminApi.getUsers.mockResolvedValueOnce([makeUser({ id: 1, role: 'client' })])
-            .mockResolvedValueOnce([makeUser({ id: 1, role: 'coordinator' })])
+        mockAdminApi.getUser.mockResolvedValueOnce(makeUser({ id: 1, role: 'client' }))
+            .mockResolvedValueOnce(makeUser({ id: 1, role: 'coordinator' }))
 
         render(<UserDetail userId={1} />)
 
@@ -167,7 +170,7 @@ describe('UserDetail', () => {
     })
 
     it('shows toast on role change failure', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1, role: 'client' })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
         mockAdminApi.getCurators.mockResolvedValue([])
         mockAdminApi.changeRole.mockRejectedValue(new Error('fail'))
 
@@ -186,7 +189,7 @@ describe('UserDetail', () => {
 
     it('shows curator assignment section for client role users', async () => {
         const curator = makeCurator({ id: 10, name: 'Куратор Один' })
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1, role: 'client' })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
         mockAdminApi.getCurators.mockResolvedValue([curator])
 
         render(<UserDetail userId={1} />)
@@ -198,7 +201,7 @@ describe('UserDetail', () => {
     })
 
     it('does not show curator assignment for coordinator role', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1, role: 'coordinator' })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'coordinator' }))
         mockAdminApi.getCurators.mockResolvedValue([makeCurator()])
 
         render(<UserDetail userId={1} />)
@@ -212,12 +215,12 @@ describe('UserDetail', () => {
 
     it('assigns curator and shows success toast', async () => {
         const curator = makeCurator({ id: 10 })
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1, role: 'client' })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
         mockAdminApi.getCurators.mockResolvedValue([curator])
         mockAdminApi.assignCurator.mockResolvedValue(undefined)
         // After assign, refresh returns updated user
-        mockAdminApi.getUsers.mockResolvedValueOnce([makeUser({ id: 1, role: 'client' })])
-            .mockResolvedValueOnce([makeUser({ id: 1, role: 'client', curator_id: 10 })])
+        mockAdminApi.getUser.mockResolvedValueOnce(makeUser({ id: 1, role: 'client' }))
+            .mockResolvedValueOnce(makeUser({ id: 1, role: 'client', curator_id: 10 }))
 
         render(<UserDetail userId={1} />)
 
@@ -239,9 +242,7 @@ describe('UserDetail', () => {
 
     it('shows "Текущий" label for assigned curator', async () => {
         const curator = makeCurator({ id: 10 })
-        mockAdminApi.getUsers.mockResolvedValue([
-            makeUser({ id: 1, role: 'client', curator_id: 10 }),
-        ])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client', curator_id: 10 }))
         mockAdminApi.getCurators.mockResolvedValue([curator])
 
         render(<UserDetail userId={1} />)
@@ -252,7 +253,7 @@ describe('UserDetail', () => {
     })
 
     it('shows back button that navigates to /admin/users', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([makeUser({ id: 1 })])
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1 }))
         mockAdminApi.getCurators.mockResolvedValue([])
 
         render(<UserDetail userId={1} />)

@@ -19,6 +19,8 @@ const ROLE_COLORS: Record<string, string> = {
     super_admin: 'bg-purple-100 text-purple-700',
 }
 
+const PAGE_SIZE = 50
+
 export function UserList() {
     const router = useRouter()
     const [users, setUsers] = useState<AdminUser[]>([])
@@ -27,12 +29,33 @@ export function UserList() {
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState<string>('all')
 
+    const [total, setTotal] = useState(0)
+    const [loadingMore, setLoadingMore] = useState(false)
+
     useEffect(() => {
-        adminApi.getUsers()
-            .then(setUsers)
+        adminApi.getUsers({ limit: PAGE_SIZE, offset: 0 })
+            .then((page) => {
+                setUsers(page.items)
+                setTotal(page.total)
+            })
             .catch(() => setError('Не удалось загрузить пользователей'))
             .finally(() => setLoading(false))
     }, [])
+
+    // The list is paginated now: it used to load every user at once, joined
+    // against an aggregate over every refresh token ever issued.
+    const loadMore = async () => {
+        setLoadingMore(true)
+        try {
+            const page = await adminApi.getUsers({ limit: PAGE_SIZE, offset: users.length })
+            setUsers((current) => [...current, ...page.items])
+            setTotal(page.total)
+        } catch {
+            setError('Не удалось загрузить пользователей')
+        } finally {
+            setLoadingMore(false)
+        }
+    }
 
     if (loading) {
         return (
@@ -144,6 +167,22 @@ export function UserList() {
                             </button>
                         )
                     })}
+                </div>
+            )}
+
+            {users.length < total && (
+                <div className="mt-6 text-center">
+                    <p className="mb-2 text-xs text-gray-500">
+                        Показано {users.length} из {total}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={loadMore}
+                        disabled={loadingMore}
+                        className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+                    >
+                        {loadingMore ? 'Загружаем…' : 'Показать ещё'}
+                    </button>
                 </div>
             )}
         </div>

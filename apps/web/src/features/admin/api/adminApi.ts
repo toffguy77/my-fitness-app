@@ -1,10 +1,19 @@
 import { apiClient } from '@/shared/utils/api-client'
 import type { AdminUser, CuratorLoad, AdminConversation, AdminMessage } from '../types'
+import type { Page, PageRequest } from '@/shared/types/pagination'
+import { pageQuery } from '@/shared/types/pagination'
 
 const BASE = '/api/v1/admin'
 
 export const adminApi = {
-    getUsers: () => apiClient.get<AdminUser[]>(`${BASE}/users`),
+    // Paginated: the list used to be unbounded and joined an aggregate over
+    // every refresh token ever issued.
+    getUsers: (page?: PageRequest) =>
+        apiClient.get<Page<AdminUser>>(`${BASE}/users${pageQuery(page)}`),
+
+    // Fetching one user by id. The detail screen used to load the whole list
+    // and search it client-side, which stops working once the list is paged.
+    getUser: (userId: number) => apiClient.get<AdminUser>(`${BASE}/users/${userId}`),
 
     getCurators: () => apiClient.get<CuratorLoad[]>(`${BASE}/curators`),
 

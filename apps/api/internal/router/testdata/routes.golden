@@ -10,6 +10,7 @@ GET /api/v1/admin/conversations/:id/messages
 GET /api/v1/admin/curators
 GET /api/v1/admin/jobs
 GET /api/v1/admin/users
+GET /api/v1/admin/users/:id
 GET /api/v1/auth/me
 GET /api/v1/auth/validate-reset-token
 GET /api/v1/content/articles

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/burcev/api/internal/shared/response"
 	"testing"
 	"time"
 
@@ -50,9 +51,12 @@ func TestGetUsers(t *testing.T) {
 				nil, nil, 5,
 				now, nil)
 
+		// The paginated listing counts the total first.
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT u.id").WillReturnRows(rows)
 
-		users, err := service.GetUsers(ctx)
+		users, _, err := service.GetUsers(ctx, response.Page{Limit: 20})
 		assert.NoError(t, err)
 		require.Len(t, users, 2)
 
@@ -85,9 +89,12 @@ func TestGetUsers(t *testing.T) {
 			"created_at", "last_login",
 		})
 
+		// The paginated listing counts the total first.
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT u.id").WillReturnRows(rows)
 
-		users, err := service.GetUsers(ctx)
+		users, _, err := service.GetUsers(ctx, response.Page{Limit: 20})
 		assert.NoError(t, err)
 		assert.NotNil(t, users)
 		assert.Len(t, users, 0)
@@ -98,9 +105,12 @@ func TestGetUsers(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
+		// The paginated listing counts the total first.
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT u.id").WillReturnError(fmt.Errorf("db error"))
 
-		users, err := service.GetUsers(ctx)
+		users, _, err := service.GetUsers(ctx, response.Page{Limit: 20})
 		assert.Error(t, err)
 		assert.Nil(t, users)
 		assert.Contains(t, err.Error(), "failed to query users")

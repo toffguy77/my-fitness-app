@@ -31,14 +31,38 @@ func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handle
 
 // GetUsers handles GET /api/v1/admin/users
 func (h *Handler) GetUsers(c *gin.Context) {
-	users, err := h.service.GetUsers(c.Request.Context())
+	page := response.ParsePage(c)
+
+	users, total, err := h.service.GetUsers(c.Request.Context(), page)
 	if err != nil {
 		h.log.Error("Failed to get users", "error", err)
 		response.InternalError(c, "Не удалось загрузить пользователей")
 		return
 	}
 
-	response.Success(c, http.StatusOK, users)
+	response.Success(c, http.StatusOK, response.Paginated(users, total, page))
+}
+
+// GetUser handles GET /api/v1/admin/users/:id
+func (h *Handler) GetUser(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	user, err := h.service.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			response.NotFound(c, "Пользователь не найден")
+			return
+		}
+		h.log.Error("Failed to get user", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось загрузить пользователя")
+		return
+	}
+
+	response.Success(c, http.StatusOK, user)
 }
 
 // GetCurators handles GET /api/v1/admin/curators
