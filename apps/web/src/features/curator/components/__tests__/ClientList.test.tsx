@@ -87,7 +87,7 @@ describe('ClientList', () => {
         })
     })
 
-    it('separates clients needing attention from normal ones', async () => {
+    it('separates clients needing attention from the rest', async () => {
         mockCuratorApi.getClients.mockResolvedValue([
             makeClient({ id: 1, name: 'Анна', alerts: [{ level: 'red', message: 'alert' }] }),
             makeClient({ id: 2, name: 'Борис', alerts: [] }),
@@ -97,7 +97,7 @@ describe('ClientList', () => {
 
         await waitFor(() => {
             expect(screen.getByText('Требуют внимания')).toBeInTheDocument()
-            expect(screen.getByText('В норме')).toBeInTheDocument()
+            expect(screen.getByText('Остальные')).toBeInTheDocument()
         })
     })
 
@@ -111,7 +111,7 @@ describe('ClientList', () => {
 
         await waitFor(() => {
             expect(screen.getByText('Требуют внимания')).toBeInTheDocument()
-            expect(screen.getByText('В норме')).toBeInTheDocument()
+            expect(screen.getByText('Остальные')).toBeInTheDocument()
         })
     })
 
@@ -126,7 +126,26 @@ describe('ClientList', () => {
             expect(screen.getByText('Анна')).toBeInTheDocument()
         })
 
+        // With nothing to separate, a heading would only add furniture.
         expect(screen.queryByText('Требуют внимания')).not.toBeInTheDocument()
-        expect(screen.getByText('В норме')).toBeInTheDocument()
+        expect(screen.queryByText('Остальные')).not.toBeInTheDocument()
+    })
+
+    // The page above this list already shows its own attention block. Leaving
+    // those clients out of both groups here emptied the roster completely for a
+    // curator whose only client needed attention.
+    it('keeps a client the page already flagged in the roster', async () => {
+        mockCuratorApi.getClients.mockResolvedValue([])
+
+        render(
+            <ClientList
+                clients={[makeClient({ id: 7, name: 'Анна', alerts: [{ level: 'red', message: 'alert' }] })]}
+                attentionClientIds={new Set([7])}
+            />
+        )
+
+        expect(await screen.findByText('Анна')).toBeInTheDocument()
+        // ...but not under a second copy of the heading it already appears under.
+        expect(screen.queryByText('Требуют внимания')).not.toBeInTheDocument()
     })
 })

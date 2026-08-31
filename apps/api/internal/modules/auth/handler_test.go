@@ -2,9 +2,11 @@ package auth
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -372,4 +374,60 @@ func TestGetCurrentUser(t *testing.T) {
 	assert.Equal(t, "user-123", user["id"])
 	assert.Equal(t, "test@example.com", user["email"])
 	assert.Equal(t, "client", user["role"])
+}
+
+// A session started at an external provider arrives with its refresh token in
+// an HttpOnly cookie: the page that completes the sign-in cannot read it, so it
+// sends no body at all.
+func TestRefresh_AcceptsTheTokenFromTheCookie(t *testing.T) {
+	cases := []struct {
+		name   string
+		body   string
+		cookie string
+	}{
+		{name: "empty body", body: "", cookie: "cookie-token"},
+		{name: "empty JSON object", body: "{}", cookie: "cookie-token"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, mock, cleanup := setupTestHandler(t)
+			defer cleanup()
+
+			// Reaching the lookup is the assertion: the handler took the token
+			// from the cookie rather than rejecting the request outright.
+			hash := handler.service.tokens.HashToken(tc.cookie)
+			mock.ExpectQuery("FROM refresh_tokens WHERE token_hash").
+				WithArgs(hash).
+				WillReturnError(sql.ErrNoRows)
+
+			r := gin.New()
+			r.POST("/refresh", handler.Refresh)
+
+			req := httptest.NewRequest(http.MethodPost, "/refresh", strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			req.AddCookie(&http.Cookie{Name: "refresh_token", Value: tc.cookie})
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusUnauthorized, w.Code)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+// Without a token in either place there is nothing to refresh.
+func TestRefresh_RejectsARequestCarryingNoToken(t *testing.T) {
+	handler, _, cleanup := setupTestHandler(t)
+	defer cleanup()
+
+	r := gin.New()
+	r.POST("/refresh", handler.Refresh)
+
+	req := httptest.NewRequest(http.MethodPost, "/refresh", strings.NewReader("{}"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

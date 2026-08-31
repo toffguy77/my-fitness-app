@@ -9,6 +9,7 @@ import (
 
 	"github.com/burcev/api/internal/modules/auth/oauth"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // OAuthOutcome describes what an external sign-in resulted in.
@@ -103,6 +104,17 @@ func (s *Service) SignInWithProvider(ctx context.Context, provider string, profi
 // against it, so sending our own confirmation mail would ask them to prove
 // something they just proved.
 func (s *Service) registerFromProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string) (*LoginResult, error) {
+	return s.createUserFromProvider(ctx, provider, profile, ip, ua, true)
+}
+
+// registerFromProviderUnverified creates an account for an address the user
+// typed themselves. Nobody has proved it belongs to them, so it starts
+// unverified and goes through the usual confirmation mail.
+func (s *Service) registerFromProviderUnverified(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string) (*LoginResult, error) {
+	return s.createUserFromProvider(ctx, provider, profile, ip, ua, false)
+}
+
+func (s *Service) createUserFromProvider(ctx context.Context, provider string, profile *oauth.Profile, ip, ua string, emailVerified bool) (*LoginResult, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin registration: %w", err)
@@ -112,8 +124,8 @@ func (s *Service) registerFromProvider(ctx context.Context, provider string, pro
 	var userID int64
 	if err := tx.QueryRowContext(ctx, `
 		INSERT INTO users (email, password, name, role, email_verified, onboarding_completed)
-		VALUES ($1, NULL, $2, 'client', true, false)
-		RETURNING id`, profile.Email, nullIfEmpty(profile.Name)).Scan(&userID); err != nil {
+		VALUES ($1, NULL, $2, 'client', $3, false)
+		RETURNING id`, profile.Email, nullIfEmpty(profile.Name), emailVerified).Scan(&userID); err != nil {
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
@@ -297,4 +309,148 @@ func (s *Service) issueTokensForUser(ctx context.Context, userID int64, ip, ua s
 	}
 
 	return &LoginResult{User: &user, Token: token, RefreshToken: refreshToken}, nil
+}
+
+// PendingLinkTTL bounds how long an unfinished external sign-in can be resumed.
+const PendingLinkTTL = 15 * time.Minute
+
+// storePendingLink parks a profile the callback could not finish with.
+//
+// The profile stays on the server: a client able to hand us a provider identity
+// could claim anybody's. The browser carries only the row's id.
+func (s *Service) storePendingLink(ctx context.Context, provider string, profile *oauth.Profile) (string, error) {
+	var id string
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO oauth_pending_links
+			(provider, provider_user_id, email, name, avatar_url, expires_at)
+		VALUES ($1, $2, $3, $4, $5, NOW() + $6::interval)
+		RETURNING id`,
+		provider, profile.ProviderUserID,
+		nullIfEmpty(profile.Email), nullIfEmpty(profile.Name), nullIfEmpty(profile.AvatarURL),
+		fmt.Sprintf("%d seconds", int(PendingLinkTTL.Seconds())),
+	).Scan(&id)
+	if err != nil {
+		return "", fmt.Errorf("store pending link: %w", err)
+	}
+	return id, nil
+}
+
+// pendingLink loads an unfinished attempt. An expired row is treated as absent.
+func (s *Service) pendingLink(ctx context.Context, id string) (string, *oauth.Profile, error) {
+	var provider string
+	var profile oauth.Profile
+	var email, name, avatar sql.NullString
+
+	err := s.db.QueryRowContext(ctx, `
+		SELECT provider, provider_user_id, email, name, avatar_url
+		FROM oauth_pending_links
+		WHERE id = $1 AND expires_at > NOW()`, id).
+		Scan(&provider, &profile.ProviderUserID, &email, &name, &avatar)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil, fmt.Errorf("pending link not found: %w", apperrors.ErrTokenInvalid)
+	}
+	if err != nil {
+		return "", nil, fmt.Errorf("load pending link: %w", err)
+	}
+
+	profile.Email = email.String
+	profile.Name = name.String
+	profile.AvatarURL = avatar.String
+	return provider, &profile, nil
+}
+
+func (s *Service) deletePendingLink(ctx context.Context, id string) {
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM oauth_pending_links WHERE id = $1`, id); err != nil {
+		s.log.Errorw("Failed to delete pending link", "error", err)
+	}
+}
+
+// PurgeExpiredPendingLinks drops attempts nobody came back to finish.
+func (s *Service) PurgeExpiredPendingLinks(ctx context.Context) (int64, error) {
+	result, err := s.db.ExecContext(ctx, `DELETE FROM oauth_pending_links WHERE expires_at <= NOW()`)
+	if err != nil {
+		return 0, fmt.Errorf("purge pending links: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	return affected, nil
+}
+
+// ConfirmLinkWithPassword finishes a sign-in whose address already had an
+// account, once the person has proved they own it.
+//
+// The password is the proof. Without it, an attacker who can make a provider
+// assert our user's address would be signing in as them.
+func (s *Service) ConfirmLinkWithPassword(ctx context.Context, pendingID, password, ip, ua string) (*LoginResult, error) {
+	provider, profile, err := s.pendingLink(ctx, pendingID)
+	if err != nil {
+		return nil, err
+	}
+	if profile.Email == "" {
+		return nil, fmt.Errorf("pending link carries no address: %w", apperrors.ErrTokenInvalid)
+	}
+
+	var userID int64
+	var hash sql.NullString
+	err = s.db.QueryRowContext(ctx,
+		`SELECT id, password FROM users WHERE email = $1`, profile.Email).Scan(&userID, &hash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("no account for address: %w", apperrors.ErrInvalidCredentials)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("look up account: %w", err)
+	}
+
+	// An account created through another provider has no password, so there is
+	// nothing to prove ownership with here. Signing in with the provider that
+	// already owns it is the way in.
+	if !hash.Valid {
+		return nil, fmt.Errorf("account has no password: %w", apperrors.ErrConflict)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash.String), []byte(password)); err != nil {
+		return nil, fmt.Errorf("confirm link: %w", apperrors.ErrInvalidCredentials)
+	}
+
+	if err := insertIdentity(ctx, s.db, userID, provider, profile); err != nil {
+		return nil, err
+	}
+	s.deletePendingLink(ctx, pendingID)
+	s.log.Info("Linked external provider after password confirmation",
+		"user_id", userID, "provider", provider)
+
+	return s.issueTokensForUser(ctx, userID, ip, ua)
+}
+
+// CompleteWithEmail finishes a sign-in whose provider returned no address.
+//
+// The address comes from the user, so it is unverified: an account created here
+// starts unverified and gets the usual confirmation mail. When the address
+// already exists, ownership has to be proved with a password first — otherwise
+// typing somebody else's address would be enough to take their account.
+func (s *Service) CompleteWithEmail(ctx context.Context, pendingID, email, ip, ua string) (*OAuthOutcome, error) {
+	provider, profile, err := s.pendingLink(ctx, pendingID)
+	if err != nil {
+		return nil, err
+	}
+
+	existingID, err := s.userIDForEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	if existingID != 0 {
+		profile.Email = email
+		return &OAuthOutcome{
+			Result:         OAuthNeedsLinkConfirmation,
+			Email:          email,
+			Provider:       provider,
+			ProviderUserID: profile.ProviderUserID,
+		}, nil
+	}
+
+	profile.Email = email
+	result, err := s.registerFromProviderUnverified(ctx, provider, profile, ip, ua)
+	if err != nil {
+		return nil, err
+	}
+	s.deletePendingLink(ctx, pendingID)
+	return &OAuthOutcome{Result: OAuthRegistered, User: result}, nil
 }

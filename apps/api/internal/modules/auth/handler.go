@@ -109,12 +109,21 @@ func (h *Handler) Login(c *gin.Context) {
 // Refresh handles token refresh
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	// The body is optional: a session started through an external provider has
+	// its refresh token in an HttpOnly cookie, which the page that completes
+	// the sign-in cannot read.
+	_ = c.ShouldBindJSON(&req)
+
+	token := req.RefreshToken
+	if token == "" {
+		token, _ = c.Cookie("refresh_token")
+	}
+	if token == "" {
 		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
 		return
 	}
 
-	result, err := h.service.RefreshTokens(c.Request.Context(), req.RefreshToken, c.ClientIP(), c.Request.UserAgent())
+	result, err := h.service.RefreshTokens(c.Request.Context(), token, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		h.log.Errorw("Token refresh failed", "error", err)
 		response.Error(c, http.StatusUnauthorized, "Invalid or expired refresh token")
