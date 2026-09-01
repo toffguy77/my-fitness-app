@@ -35,9 +35,16 @@ export function SettingsProviders() {
     }
 
     useEffect(() => {
-        refresh()
-            .catch(() => toast.error('Не удалось загрузить привязки'))
-            .finally(() => setLoading(false))
+        async function loadInitial() {
+            try {
+                await refresh()
+            } catch {
+                toast.error('Не удалось загрузить привязки')
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadInitial()
     }, [])
 
     const isOnlyWayIn = (provider: string) =>

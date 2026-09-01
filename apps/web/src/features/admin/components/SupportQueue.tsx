@@ -44,9 +44,16 @@ export function SupportQueue() {
     }, [])
 
     useEffect(() => {
-        load()
-            .catch(() => toast.error('Не удалось загрузить обращения'))
-            .finally(() => setLoading(false))
+        async function loadInitial() {
+            try {
+                await load()
+            } catch {
+                toast.error('Не удалось загрузить обращения')
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadInitial()
     }, [load])
 
     const openThread = async (conversation: SupportConversation) => {

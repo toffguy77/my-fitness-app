@@ -47,31 +47,33 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
     useEffect(() => {
         let cancelled = false
 
-        setLoading(true)
-        setError(null)
-        contentApi
-            .listArticles(
-                statusFilter || undefined,
-                categoryFilter || undefined,
-            )
-            .then((res) => {
+        // Inside the effect rather than run from its body: two setState calls
+        // before the request even leaves render the list twice.
+        async function load() {
+            setLoading(true)
+            setError(null)
+
+            try {
+                const res = await contentApi.listArticles(
+                    statusFilter || undefined,
+                    categoryFilter || undefined,
+                )
                 if (!cancelled) setArticles(res.articles ?? [])
-            })
-            .catch((err) => {
+            } catch (err) {
                 console.error('[ArticleList] fetch error:', err)
                 if (!cancelled) {
-                    const msg = err?.response?.data?.message || err?.message || 'Не удалось загрузить статьи'
-                    setError(`Ошибка: ${msg} (status: ${err?.response?.status ?? 'unknown'})`)
+                    const error = err as { response?: { data?: { message?: string }; status?: number }; message?: string }
+                    const msg = error?.response?.data?.message || error?.message || 'Не удалось загрузить статьи'
+                    setError(`Ошибка: ${msg} (status: ${error?.response?.status ?? 'unknown'})`)
                     setArticles([])
                 }
-            })
-            .finally(() => {
+            } finally {
                 if (!cancelled) setLoading(false)
-            })
-
-        return () => {
-            cancelled = true
+            }
         }
+
+        load()
+        return () => { cancelled = true }
     }, [statusFilter, categoryFilter])
 
     const handleDelete = async (id: string) => {

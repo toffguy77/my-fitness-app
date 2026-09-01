@@ -70,23 +70,20 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // React Compiler rules, temporarily at "warn".
+    // React Compiler rules, blocking.
     //
-    // ESLint had been crashing on startup (an ajv 8 override reaching the
-    // config loader, which uses the ajv 6 API), so nothing here was ever
-    // reported. With the crash fixed and the lint step now blocking, these 15
-    // pre-existing violations surfaced at once. They are real — with React
-    // Compiler enabled, immutability and manual-memoization violations can
-    // change behaviour — but fixing them means restructuring data fetching in
-    // ten components, which is its own change with its own risk.
-    //
-    // Tracked by openspec/changes/fix-react-compiler-violations. Raise these
-    // back to "error" as part of it; everything else stays blocking meanwhile.
+    // They were briefly at "warn": ESLint had been crashing on startup (an ajv
+    // 8 override reaching the config loader, which uses the ajv 6 API), so the
+    // twenty violations these found surfaced all at once when it was fixed.
+    // They are now fixed — data loading moved inside its effects, the food
+    // entry modal resets by remounting rather than by correcting itself after
+    // a render — and the rules block again, because with React Compiler
+    // enabled an immutability or memoization violation changes behaviour.
     rules: {
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/immutability": "warn",
-      "react-hooks/preserve-manual-memoization": "warn",
-      "react-hooks/refs": "warn",
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/immutability": "error",
+      "react-hooks/preserve-manual-memoization": "error",
+      "react-hooks/refs": "error",
     },
   },
 ]);

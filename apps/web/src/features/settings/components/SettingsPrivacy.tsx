@@ -35,9 +35,19 @@ export function SettingsPrivacy() {
     }
 
     useEffect(() => {
-        refresh()
-            .catch(() => toast.error('Не удалось загрузить состояние аккаунта'))
-            .finally(() => setLoading(false))
+        // Declared inside the effect: React can then see that nothing is set
+        // synchronously, and a component-scope loader cannot be mistaken for a
+        // synchronous one.
+        async function loadInitial() {
+            try {
+                await refresh()
+            } catch {
+                toast.error('Не удалось загрузить состояние аккаунта')
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadInitial()
     }, [])
 
     const handleExport = async () => {

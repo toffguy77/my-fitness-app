@@ -129,12 +129,32 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
         };
     }, []);
 
-    // Auto-load recent foods on mount
-    useEffect(() => {
-        if (autoLoadRecent) {
-            loadRecentFoods();
+    // Load recent foods
+    const loadRecentFoods = useCallback(async () => {
+        setIsLoadingRecent(true);
+
+        try {
+            const url = getApiUrl('/food-tracker/recent');
+            const response = await apiClient.get<{ items: FoodItem[] }>(url);
+            setRecentFoods(response.items);
+        } catch {
+            // Silently fail - recent foods are not critical
+            setRecentFoods([]);
+        } finally {
+            setIsLoadingRecent(false);
         }
-    }, [autoLoadRecent]);
+    }, []);
+
+    // Auto-load recent foods on mount. Wrapped so the loader's own setState is
+    // not a synchronous update inside the effect body.
+    useEffect(() => {
+        if (!autoLoadRecent) return;
+
+        async function load() {
+            await loadRecentFoods();
+        }
+        load();
+    }, [autoLoadRecent, loadRecentFoods]);
 
     // Perform search
     const performSearch = useCallback(
@@ -255,21 +275,6 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
         setCurrentPage(0);
     }, []);
 
-    // Load recent foods
-    const loadRecentFoods = useCallback(async () => {
-        setIsLoadingRecent(true);
-
-        try {
-            const url = getApiUrl('/food-tracker/recent');
-            const response = await apiClient.get<{ items: FoodItem[] }>(url);
-            setRecentFoods(response.items);
-        } catch {
-            // Silently fail - recent foods are not critical
-            setRecentFoods([]);
-        } finally {
-            setIsLoadingRecent(false);
-        }
-    }, []);
 
     // Load favorite foods
     const loadFavoriteFoods = useCallback(async () => {

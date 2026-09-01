@@ -1,8 +1,9 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense } from 'react'
 import { OnboardingWizard } from '@/features/onboarding'
 import { GuestOnboarding } from '@/features/onboarding/components/GuestOnboarding'
+import { useSignedIn } from '@/shared/hooks/useSignedIn'
 
 /**
  * One path, two audiences.
@@ -11,15 +12,7 @@ import { GuestOnboarding } from '@/features/onboarding/components/GuestOnboardin
  * already registered gets the short one that finishes setting up their account.
  */
 export default function OnboardingPage() {
-    const [signedIn, setSignedIn] = useState<boolean | null>(null)
-
-    useEffect(() => {
-        try {
-            setSignedIn(Boolean(localStorage.getItem('auth_token')))
-        } catch {
-            setSignedIn(false)
-        }
-    }, [])
+    const signedIn = useSignedIn()
 
     // Nothing is rendered until it is known which of the two this is: showing
     // the guest wizard to a signed-in user, even for a frame, invites them to

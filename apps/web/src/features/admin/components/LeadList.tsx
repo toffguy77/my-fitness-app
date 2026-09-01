@@ -41,9 +41,16 @@ export function LeadList() {
     }, [])
 
     useEffect(() => {
-        load()
-            .catch(() => toast.error('Не удалось загрузить заявки'))
-            .finally(() => setLoading(false))
+        async function loadInitial() {
+            try {
+                await load()
+            } catch {
+                toast.error('Не удалось загрузить заявки')
+            } finally {
+                setLoading(false)
+            }
+        }
+        loadInitial()
     }, [load])
 
     const handleMarkHandled = async (lead: Lead) => {

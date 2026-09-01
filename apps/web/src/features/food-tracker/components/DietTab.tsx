@@ -187,7 +187,11 @@ export function DietTab({
             </button>
 
             {/* Food Entry Modal */}
+            {/* Keyed on what it is editing: opening the modal remounts it, so
+                its state starts correct instead of being corrected by an
+                effect after the first render. */}
             <FoodEntryModal
+                key={isModalOpen ? (editingEntry?.id ?? `new-${selectedMealType}`) : 'closed'}
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
                 mealType={selectedMealType}

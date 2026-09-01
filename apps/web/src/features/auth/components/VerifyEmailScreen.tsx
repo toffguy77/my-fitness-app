@@ -63,11 +63,15 @@ export function VerifyEmailScreen() {
         }
     }, [code, router])
 
-    // Auto-submit when all 6 digits entered
+    // Auto-submit when all 6 digits entered. Wrapped so the submission — which
+    // sets state — is not a synchronous update inside the effect body.
     useEffect(() => {
-        if (code.every((d) => d !== '') && !isLoading) {
-            handleSubmit()
+        if (!code.every((d) => d !== '') || isLoading) return
+
+        async function submit() {
+            await handleSubmit()
         }
+        submit()
     }, [code, isLoading, handleSubmit])
 
     async function handleResend() {

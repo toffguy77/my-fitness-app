@@ -87,13 +87,21 @@ export function SearchTab({
             clearTimeout(debounceTimerRef.current);
         }
 
-        if (query.length < MIN_SEARCH_LENGTH) {
-            setInternalResults([]);
-            setHasSearched(false);
-            return;
-        }
+        // Every state change here happens on a timer or in its callback: the
+        // short-query reset used to run in the effect body, rendering twice for
+        // every keystroke below the minimum length.
+        const resetTimer = setTimeout(() => {
+            if (query.length < MIN_SEARCH_LENGTH) {
+                setInternalResults([]);
+                setHasSearched(false);
+            } else {
+                setIsSearching(true);
+            }
+        }, 0);
 
-        setIsSearching(true);
+        if (query.length < MIN_SEARCH_LENGTH) {
+            return () => clearTimeout(resetTimer);
+        }
 
         debounceTimerRef.current = setTimeout(async () => {
             try {
@@ -114,17 +122,21 @@ export function SearchTab({
         }, DEBOUNCE_DELAY);
 
         return () => {
+            clearTimeout(resetTimer);
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
             }
         };
     }, [query, onSearch]);
 
-    // Update hasSearched when external results change
+    // Results supplied from outside mean a search has happened. Deferred by a
+    // tick for the same reason: it is a consequence of a render, not a
+    // synchronous correction to one.
     useEffect(() => {
-        if (searchResults !== undefined && query.length >= MIN_SEARCH_LENGTH) {
-            setHasSearched(true);
-        }
+        if (searchResults === undefined || query.length < MIN_SEARCH_LENGTH) return;
+
+        const timer = setTimeout(() => setHasSearched(true), 0);
+        return () => clearTimeout(timer);
     }, [searchResults, query]);
 
     // Handle input change

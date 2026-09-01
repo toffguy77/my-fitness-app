@@ -177,24 +177,22 @@ export const ClientTasksSection = memo(function ClientTasksSection({
             .finally(() => setLoading(false))
     }, [tasksVersion])
 
-    // Scroll to section and flash task when highlightTaskId is set
+    // Scroll to section and flash task when highlightTaskId is set.
+    //
+    // The flash starts on a timer rather than in the effect body: it is a
+    // consequence of having rendered, not a correction to the render.
     useEffect(() => {
         if (!highlightTaskId || loading || tasks.length === 0) return
-        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        setFlashId(highlightTaskId)
-        const timer = setTimeout(() => setFlashId(null), 2000)
-        return () => clearTimeout(timer)
-    }, [highlightTaskId, loading, tasks.length])
 
-    const handleComplete = useCallback((taskId: string) => {
-        const task = tasks.find((t) => t.id === taskId)
-        if (task?.type === 'workout') {
-            // Open workout dialog instead of completing immediately
-            setWorkoutTaskId(taskId)
-            return
+        sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+        const start = setTimeout(() => setFlashId(highlightTaskId), 0)
+        const stop = setTimeout(() => setFlashId(null), 2000)
+        return () => {
+            clearTimeout(start)
+            clearTimeout(stop)
         }
-        completeTaskOptimistic(taskId)
-    }, [tasks])
+    }, [highlightTaskId, loading, tasks.length])
 
     const completeTaskOptimistic = useCallback(async (
         taskId: string,
@@ -230,6 +228,16 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                 .catch(() => {})
         }
     }, [])
+
+    const handleComplete = useCallback((taskId: string) => {
+        const task = tasks.find((t) => t.id === taskId)
+        if (task?.type === 'workout') {
+            // Open workout dialog instead of completing immediately
+            setWorkoutTaskId(taskId)
+            return
+        }
+        completeTaskOptimistic(taskId)
+    }, [tasks, completeTaskOptimistic])
 
     const handleWorkoutComplete = useCallback(async () => {
         if (!workoutTaskId || !workoutType) return
