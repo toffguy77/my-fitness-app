@@ -34,6 +34,10 @@ var accounts = []account{
 	{"E2E_CLIENT_EMAIL", "E2E_CLIENT_PASSWORD", "client", "E2E Client"},
 	{"E2E_CURATOR_EMAIL", "E2E_CURATOR_PASSWORD", "coordinator", "E2E Curator"},
 	{"E2E_ADMIN_EMAIL", "E2E_ADMIN_PASSWORD", "super_admin", "E2E Admin"},
+	// Its own account, because changing a password ends every session that
+	// user has: sharing the client account would sign the rest of the suite
+	// out mid-run.
+	{"E2E_PASSWORD_EMAIL", "E2E_PASSWORD_PASSWORD", "client", "E2E Password"},
 }
 
 func main() {
