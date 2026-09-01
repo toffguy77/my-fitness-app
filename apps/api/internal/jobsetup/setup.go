@@ -103,6 +103,29 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Spent and expired socket tickets. They live for thirty seconds; without
+	// this the table keeps every one ever issued.
+	registry.MustRegister(jobs.Job{
+		Name:     "cleanup.ws-tickets",
+		Interval: time.Hour,
+		Timeout:  2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Auth.PurgeExpiredWSTickets(ctx)
+		},
+	})
+
+	// Revoked and expired refresh tokens, once reuse detection no longer needs
+	// them to tell a stolen token from a concurrent tab.
+	registry.MustRegister(jobs.Job{
+		Name:    "cleanup.refresh-tokens",
+		RunAt:   jobs.At(2, 45),
+		Period:  jobs.PeriodDaily,
+		Timeout: 5 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Auth.PurgeRevokedRefreshTokens(ctx)
+		},
+	})
+
 	// An external sign-in nobody came back to finish leaves a row holding a
 	// provider profile. They expire in minutes; without this the table keeps
 	// them forever.

@@ -193,13 +193,24 @@ class ApiClient {
     /**
      * Check if URL is an auth endpoint that should not trigger refresh
      */
+    /**
+     * Endpoints whose 401 means "these credentials are wrong", not "this
+     * session has expired".
+     *
+     * Refreshing and retrying makes no sense for any of them, and treating a
+     * mistyped current password as an expired session signed the user out of
+     * the settings screen they were standing on.
+     */
     private isAuthEndpoint(url: string): boolean {
         return (
             url.includes('/auth/refresh') ||
             url.includes('/auth/login') ||
             url.includes('/auth/forgot-password') ||
             url.includes('/auth/reset-password') ||
-            url.includes('/auth/validate-reset-token')
+            url.includes('/auth/validate-reset-token') ||
+            url.includes('/auth/change-password') ||
+            url.includes('/auth/oauth/link') ||
+            url.includes('/users/me/deletion')
         );
     }
 

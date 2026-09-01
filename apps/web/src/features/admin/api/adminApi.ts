@@ -23,7 +23,10 @@ export const adminApi = {
     assignCurator: (clientId: number, curatorId: number) =>
         apiClient.post<void>(`${BASE}/assignments`, { client_id: clientId, curator_id: curatorId }),
 
-    getConversations: () => apiClient.get<AdminConversation[]>(`${BASE}/conversations`),
+    // Paginated: the list joins an aggregate over every message ever sent, so
+    // an unbounded version gets slower with every conversation the product has.
+    getConversations: (page?: PageRequest) =>
+        apiClient.get<Page<AdminConversation>>(`${BASE}/conversations${pageQuery(page)}`),
 
     getConversationMessages: (conversationId: string, cursor?: string, limit?: number) => {
         const params = new URLSearchParams()

@@ -20,7 +20,7 @@ type ServiceInterface interface {
 	GetCurators(ctx context.Context) ([]CuratorLoad, error)
 	ChangeRole(ctx context.Context, userID int64, newRole string) error
 	AssignCurator(ctx context.Context, clientID, curatorID int64) error
-	GetConversations(ctx context.Context) ([]AdminConversation, error)
+	GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error)
 	GetConversationMessages(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error)
 }
 
@@ -463,8 +463,16 @@ func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) 
 }
 
 // GetConversations returns all conversations with participant names and message counts
-func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, error) {
+func (s *Service) GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error) {
 	startTime := time.Now()
+
+	// Paginated for the same reason the user list is: this joins an aggregate
+	// over every message ever sent, and an unbounded version of it gets slower
+	// with every conversation the product has.
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count conversations: %w", err)
+	}
 
 	query := `
 		SELECT c.id, c.client_id, COALESCE(client.name, '') AS client_name,
@@ -480,12 +488,13 @@ func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, er
 			GROUP BY conversation_id
 		) msg_counts ON msg_counts.conversation_id = c.id
 		ORDER BY c.updated_at DESC
+		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := s.db.QueryContext(ctx, query)
+	rows, err := s.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, nil)
-		return nil, fmt.Errorf("failed to query conversations: %w", err)
+		return nil, 0, fmt.Errorf("failed to query conversations: %w", err)
 	}
 	defer rows.Close()
 
@@ -498,13 +507,13 @@ func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, er
 			&conv.MessageCount, &conv.UpdatedAt,
 		); err != nil {
 			s.log.Error("Failed to scan conversation", "error", err)
-			return nil, fmt.Errorf("failed to scan conversation: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan conversation: %w", err)
 		}
 		conversations = append(conversations, conv)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating conversations: %w", err)
+		return nil, 0, fmt.Errorf("error iterating conversations: %w", err)
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
@@ -515,7 +524,7 @@ func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, er
 		conversations = []AdminConversation{}
 	}
 
-	return conversations, nil
+	return conversations, total, nil
 }
 
 // GetConversationMessages returns messages for a conversation with sender names (read-only, for admin)

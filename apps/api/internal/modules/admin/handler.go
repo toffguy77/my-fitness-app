@@ -138,14 +138,16 @@ func (h *Handler) AssignCurator(c *gin.Context) {
 
 // GetConversations handles GET /api/v1/admin/conversations
 func (h *Handler) GetConversations(c *gin.Context) {
-	conversations, err := h.service.GetConversations(c.Request.Context())
+	page := response.ParsePage(c)
+
+	conversations, total, err := h.service.GetConversations(c.Request.Context(), page.Limit, page.Offset)
 	if err != nil {
 		h.log.Error("Failed to get conversations", "error", err)
 		response.InternalError(c, "Не удалось загрузить чаты")
 		return
 	}
 
-	response.Success(c, http.StatusOK, conversations)
+	response.Success(c, http.StatusOK, response.Paginated(conversations, total, page))
 }
 
 // GetConversationMessages handles GET /api/v1/admin/conversations/:id/messages

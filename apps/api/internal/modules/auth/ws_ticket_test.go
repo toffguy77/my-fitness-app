@@ -86,3 +86,31 @@ func TestRedeemWSTicket_RefusesAnEmptyTicket(t *testing.T) {
 
 	assert.ErrorIs(t, err, apperrors.ErrTokenInvalid)
 }
+
+func TestPurgeExpiredWSTickets_DeletesSpentAndExpired(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectExec("DELETE FROM ws_tickets").WillReturnResult(sqlmock.NewResult(0, 12))
+
+	deleted, err := service.PurgeExpiredWSTickets(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, 12, deleted)
+}
+
+// Revoked rows are kept briefly on purpose: reuse detection reads them to tell
+// a stolen token from a concurrent tab. After that they are just a table that
+// grows.
+func TestPurgeRevokedRefreshTokens_DeletesOnlyWhatIsPastUse(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectExec("DELETE FROM refresh_tokens").WillReturnResult(sqlmock.NewResult(0, 5))
+
+	deleted, err := service.PurgeRevokedRefreshTokens(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, 5, deleted)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}

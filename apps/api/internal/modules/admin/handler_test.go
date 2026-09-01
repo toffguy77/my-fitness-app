@@ -49,8 +49,9 @@ func (m *mockService) AssignCurator(ctx context.Context, clientID, curatorID int
 	return m.assignCuratorFunc(ctx, clientID, curatorID)
 }
 
-func (m *mockService) GetConversations(ctx context.Context) ([]AdminConversation, error) {
-	return m.getConversationsFunc(ctx)
+func (m *mockService) GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error) {
+	conversations, err := m.getConversationsFunc(ctx)
+	return conversations, len(conversations), err
 }
 
 func (m *mockService) GetConversationMessages(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error) {
@@ -394,8 +395,11 @@ func TestHandlerGetConversations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
 
-		data := resp["data"].([]interface{})
-		assert.Len(t, data, 1)
+		// A page, with a total: the list joins an aggregate over every message
+		// ever sent, so it cannot be unbounded.
+		data := resp["data"].(map[string]interface{})
+		assert.Len(t, data["items"], 1)
+		assert.EqualValues(t, 1, data["total"])
 	})
 
 	t.Run("returns 500 on error", func(t *testing.T) {

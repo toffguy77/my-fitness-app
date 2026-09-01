@@ -74,6 +74,37 @@ func (s *Service) RedeemWSTicket(ctx context.Context, ticket string) (int64, err
 	return userID, nil
 }
 
+// PurgeExpiredWSTickets removes spent and expired tickets.
+//
+// They are cleared opportunistically on every issue as well; this is the job
+// that keeps the table empty on an instance that issues none.
+func (s *Service) PurgeExpiredWSTickets(ctx context.Context) (int, error) {
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM ws_tickets WHERE expires_at < NOW() - INTERVAL '1 hour'`)
+	if err != nil {
+		return 0, fmt.Errorf("purge websocket tickets: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	return int(affected), nil
+}
+
+// PurgeRevokedRefreshTokens removes refresh tokens that can no longer be used.
+//
+// Revoked and expired rows are kept briefly on purpose: reuse detection reads
+// them to tell a stolen token from a concurrent tab. After that they are just
+// a growing table.
+func (s *Service) PurgeRevokedRefreshTokens(ctx context.Context) (int, error) {
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM refresh_tokens
+		WHERE (revoked_at IS NOT NULL AND revoked_at < NOW() - INTERVAL '30 days')
+		   OR expires_at < NOW() - INTERVAL '30 days'`)
+	if err != nil {
+		return 0, fmt.Errorf("purge refresh tokens: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	return int(affected), nil
+}
+
 func hashTicket(ticket string) string {
 	sum := sha256.Sum256([]byte(ticket))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
