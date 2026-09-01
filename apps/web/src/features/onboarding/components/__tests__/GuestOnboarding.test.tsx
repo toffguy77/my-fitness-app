@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { GuestOnboarding } from '../GuestOnboarding'
-import { guestApi, leadToken } from '../../api/guest'
+import { guestApi, leadToken, rememberLeadToken } from '../../api/guest'
 import { useGuestOnboardingStore, GUEST_STEPS } from '../../store/guestOnboardingStore'
 
 jest.mock('../../api/guest', () => {
@@ -206,5 +206,87 @@ describe('The guest onboarding', () => {
         expect(await screen.findByTestId('guest-calories')).toHaveTextContent('1800')
         expect(api.resume).toHaveBeenCalledWith('signed-token')
         expect(leadToken()).toBe('signed-token')
+    })
+
+    it('lets somebody go back and change an answer', async () => {
+        useGuestOnboardingStore.setState({ step: GUEST_STEPS.body, goal: 'loss' })
+
+        render(<GuestOnboarding />)
+        await userEvent.click(screen.getByRole('button', { name: 'Назад' }))
+
+        expect(screen.getByText('Какая у вас цель?')).toBeInTheDocument()
+    })
+
+    // Nothing offers to go back from the first question, because there is
+    // nowhere to go.
+    it('offers no way back from the first question', () => {
+        render(<GuestOnboarding />)
+
+        expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
+    })
+
+    it('says so when the calculation fails', async () => {
+        answerEverything()
+        useGuestOnboardingStore.setState({ step: GUEST_STEPS.activity })
+        api.calculate.mockRejectedValue(new Error('parameters refused'))
+        const toast = (await import('react-hot-toast')).default
+
+        render(<GuestOnboarding />)
+        await userEvent.click(screen.getByRole('button', { name: 'Показать мою норму' }))
+
+        await waitFor(() =>
+            expect(toast.error).toHaveBeenCalledWith('Не удалось выполнить расчёт. Проверьте параметры.')
+        )
+        // They stay where they are, with their answers intact.
+        expect(useGuestOnboardingStore.getState().step).toBe(GUEST_STEPS.activity)
+    })
+
+    // The step is a hint for whoever follows up. It must never interrupt
+    // somebody mid-wizard, and it only exists once there is a lead to attach
+    // it to.
+    it('records progress only once an attempt has been saved', async () => {
+        answerEverything()
+        useGuestOnboardingStore.setState({ step: GUEST_STEPS.activity })
+        api.calculate.mockResolvedValue(result)
+
+        render(<GuestOnboarding />)
+        await userEvent.click(screen.getByRole('button', { name: 'Показать мою норму' }))
+        await screen.findByTestId('guest-calories')
+
+        expect(api.updateStep).not.toHaveBeenCalled()
+
+        rememberLeadToken('signed.token')
+        await userEvent.click(screen.getByRole('button', { name: 'Сохранить результат' }))
+
+        await waitFor(() => expect(api.updateStep).toHaveBeenCalledWith('signed.token', 'contact'))
+    })
+
+    it('keeps somebody on the contact step when saving fails', async () => {
+        answerEverything()
+        useGuestOnboardingStore.setState({ step: GUEST_STEPS.contact, result })
+        api.createLead.mockRejectedValue(new Error('server refused'))
+        const toast = (await import('react-hot-toast')).default
+
+        render(<GuestOnboarding />)
+        await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+        await userEvent.click(screen.getByRole('checkbox', { name: /обработку персональных данных/ }))
+        await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
+
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Не удалось сохранить результат'))
+        expect(push).not.toHaveBeenCalled()
+    })
+
+    // A link that has expired is not a dead end: the parameters can be typed
+    // again, and saying so beats an empty screen.
+    it('explains an expired return link', async () => {
+        searchParams = new URLSearchParams({ resume: 'stale' })
+        api.resume.mockRejectedValue(new Error('gone'))
+        const toast = (await import('react-hot-toast')).default
+
+        render(<GuestOnboarding />)
+
+        await waitFor(() =>
+            expect(toast.error).toHaveBeenCalledWith('Ссылка устарела — параметры можно ввести заново')
+        )
     })
 })

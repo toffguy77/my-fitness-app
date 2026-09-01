@@ -145,4 +145,62 @@ describe('SupportQueue', () => {
 
         expect(await screen.findByText('Обращений пока нет')).toBeInTheDocument()
     })
+
+    it('says so when the queue cannot be loaded', async () => {
+        ;(api.getSupportConversations as jest.Mock).mockRejectedValue(new Error('down'))
+        const toast = (await import('react-hot-toast')).default
+
+        render(<SupportQueue />)
+
+        await waitFor(() =>
+            expect(toast.error).toHaveBeenCalledWith('Не удалось загрузить обращения')
+        )
+    })
+
+    it('says so when a conversation cannot be opened', async () => {
+        listReturns([conversation()])
+        ;(api.getSupportThread as jest.Mock).mockRejectedValue(new Error('down'))
+        const toast = (await import('react-hot-toast')).default
+
+        render(<SupportQueue />)
+        await userEvent.click(await screen.findByTestId('support-conversation'))
+
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Не удалось открыть обращение'))
+    })
+
+    // An answer that did not reach Telegram must not look as if it did.
+    it('reports an undelivered answer', async () => {
+        listReturns([conversation()])
+        ;(api.getSupportThread as jest.Mock).mockResolvedValue(thread())
+        ;(api.replyToSupport as jest.Mock).mockRejectedValue(new Error('blocked'))
+        const toast = (await import('react-hot-toast')).default
+
+        render(<SupportQueue />)
+        await userEvent.click(await screen.findByTestId('support-conversation'))
+        await userEvent.type(await screen.findByLabelText('Ответ'), 'ответ')
+        await userEvent.click(screen.getByRole('button', { name: 'Отправить в Telegram' }))
+
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Не удалось отправить ответ'))
+    })
+
+    it('returns to the queue from a conversation', async () => {
+        listReturns([conversation()])
+        ;(api.getSupportThread as jest.Mock).mockResolvedValue(thread())
+
+        render(<SupportQueue />)
+        await userEvent.click(await screen.findByTestId('support-conversation'))
+        await userEvent.click(await screen.findByRole('button', { name: '← К списку' }))
+
+        expect(await screen.findByTestId('support-conversation')).toBeInTheDocument()
+    })
+
+    // A chat the bot is still handling is not something an operator has to act
+    // on, and the queue says which is which.
+    it('distinguishes a chat the bot is still handling', async () => {
+        listReturns([conversation({ status: 'open', escalation_reason: undefined })])
+
+        render(<SupportQueue />)
+
+        expect(await screen.findByText('Отвечает бот')).toBeInTheDocument()
+    })
 })

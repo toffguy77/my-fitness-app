@@ -107,4 +107,20 @@ describe('sitemap', () => {
         const result = await sitemap()
         expect(result).toHaveLength(5)
     })
+
+    // The build must not stall on an API that is not there. Without a deadline
+    // this request hung until Next's own 60-second page timeout, three times,
+    // and then failed the build over a list the sitemap can do without.
+    it('gives up on the article list rather than hanging the build', async () => {
+        ;(global.fetch as jest.Mock).mockImplementation((_url, init) => {
+            expect((init as RequestInit).signal).toBeDefined()
+            return Promise.reject(new DOMException('The operation was aborted', 'TimeoutError'))
+        })
+
+        const result = await sitemap()
+
+        // The static pages are still a correct sitemap.
+        expect(result.length).toBeGreaterThan(0)
+        expect(result.every((entry) => !entry.url.includes('/content/'))).toBe(true)
+    })
 })
