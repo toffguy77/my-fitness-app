@@ -21,7 +21,6 @@ jest.mock('react-hot-toast', () => ({
 
 jest.mock('@/features/settings/api/settings', () => ({
     updateSettings: jest.fn(),
-    uploadAvatar: jest.fn(),
     getProfile: jest.fn().mockResolvedValue({}),
 }))
 
@@ -30,12 +29,9 @@ jest.mock('../../api/onboarding', () => ({
 }))
 
 jest.mock('@/shared/components/settings', () => ({
-    PhotoUploader: () => <div data-testid="photo-uploader">Photo</div>,
     LanguageSelector: () => <div data-testid="language-selector">Lang</div>,
     UnitSelector: () => <div data-testid="unit-selector">Units</div>,
     TimezoneSelector: () => <div data-testid="timezone-selector">TZ</div>,
-    SocialAccountsForm: () => <div data-testid="social-form">Social</div>,
-    AppleHealthToggle: () => <div data-testid="apple-health">AH</div>,
 }))
 
 const mockPush = jest.fn()
@@ -58,10 +54,13 @@ describe('OnboardingWizard', () => {
         localStorage.clear()
     })
 
-    it('renders step 0 (photo) by default with correct title', () => {
+    // The wizard now begins with what has to be set for the app to work at
+    // all. A portrait is the most personal thing we could ask for and the least
+    // useful; it belongs in settings, not in front of the first screen.
+    it('opens on settings rather than a request for a photograph', () => {
         render(<OnboardingWizard />)
-        expect(screen.getByText('Фото профиля')).toBeInTheDocument()
-        expect(screen.getByTestId('photo-uploader')).toBeInTheDocument()
+        expect(screen.getByText('Настройки')).toBeInTheDocument()
+        expect(screen.queryByTestId('photo-uploader')).not.toBeInTheDocument()
     })
 
     it('redirects to /auth if no auth_token in localStorage', () => {
@@ -76,7 +75,7 @@ describe('OnboardingWizard', () => {
     })
 
     it('shows "Завершить" on last step', () => {
-        useOnboardingStore.setState({ currentStep: 4 })
+        useOnboardingStore.setState({ currentStep: 1 })
         render(<OnboardingWizard />)
         expect(screen.getByRole('button', { name: 'Завершить' })).toBeInTheDocument()
     })
@@ -86,12 +85,12 @@ describe('OnboardingWizard', () => {
         expect(screen.getByRole('button', { name: 'Пропустить' })).toBeInTheDocument()
     })
 
-    it('navigates to next step on "Далее" click (step 0)', async () => {
+    it('navigates to next step on "Далее" click', async () => {
         render(<OnboardingWizard />)
         await user.click(screen.getByRole('button', { name: 'Далее' }))
 
         await waitFor(() => {
-            expect(screen.getByText('Настройки')).toBeInTheDocument()
+            expect(screen.getByText('Тело и цели')).toBeInTheDocument()
         })
     })
 
@@ -100,34 +99,11 @@ describe('OnboardingWizard', () => {
         await user.click(screen.getByRole('button', { name: 'Пропустить' }))
 
         await waitFor(() => {
-            expect(screen.getByText('Настройки')).toBeInTheDocument()
+            expect(screen.getByText('Тело и цели')).toBeInTheDocument()
         })
     })
 
-    it('calls updateSettings when navigating from step 1 (settings)', async () => {
-        useOnboardingStore.setState({ currentStep: 1 })
-        render(<OnboardingWizard />)
-
-        await user.click(screen.getByRole('button', { name: 'Далее' }))
-
-        await waitFor(() => {
-            expect(mockUpdateSettings).toHaveBeenCalledTimes(1)
-        })
-    })
-
-    it('calls updateSettings when navigating from step 2 (body & goals)', async () => {
-        useOnboardingStore.setState({ currentStep: 2 })
-        render(<OnboardingWizard />)
-
-        await user.click(screen.getByRole('button', { name: 'Далее' }))
-
-        await waitFor(() => {
-            expect(mockUpdateSettings).toHaveBeenCalledTimes(1)
-        })
-    })
-
-    it('calls updateSettings when navigating from step 3 (social)', async () => {
-        useOnboardingStore.setState({ currentStep: 3 })
+    it('calls updateSettings when navigating from the settings step', async () => {
         render(<OnboardingWizard />)
 
         await user.click(screen.getByRole('button', { name: 'Далее' }))
@@ -138,7 +114,7 @@ describe('OnboardingWizard', () => {
     })
 
     it('calls completeOnboarding on last step and redirects to /dashboard', async () => {
-        useOnboardingStore.setState({ currentStep: 4 })
+        useOnboardingStore.setState({ currentStep: 1 })
         render(<OnboardingWizard />)
 
         await user.click(screen.getByRole('button', { name: 'Завершить' }))
@@ -151,7 +127,7 @@ describe('OnboardingWizard', () => {
     })
 
     it('shows error toast on API failure during handleNext', async () => {
-        useOnboardingStore.setState({ currentStep: 1 })
+        useOnboardingStore.setState({ currentStep: 0 })
         mockUpdateSettings.mockRejectedValueOnce(new Error('Network error'))
 
         render(<OnboardingWizard />)
@@ -165,7 +141,7 @@ describe('OnboardingWizard', () => {
     })
 
     it('shows error toast on API failure during handleSkip on last step', async () => {
-        useOnboardingStore.setState({ currentStep: 4 })
+        useOnboardingStore.setState({ currentStep: 1 })
         mockCompleteOnboarding.mockRejectedValueOnce(new Error('Network error'))
 
         render(<OnboardingWizard />)
@@ -179,13 +155,7 @@ describe('OnboardingWizard', () => {
     })
 
     describe('step titles', () => {
-        const titles = [
-            'Фото профиля',
-            'Настройки',
-            'Тело и цели',
-            'Социальные сети',
-            'Apple Health',
-        ]
+        const titles = ['Настройки', 'Тело и цели']
 
         titles.forEach((title, index) => {
             it(`shows "${title}" for step ${index}`, () => {

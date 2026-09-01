@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Logo } from '@/shared/components/ui'
 import { JsonLd } from '@/shared/components/JsonLd'
 import { AuthRedirect } from './_components/AuthRedirect'
+import { SupportLink } from '@/shared/components/SupportLink'
 
 export const metadata: Metadata = {
     title: 'BURCEV — Трекер питания и фитнеса',
@@ -72,11 +73,20 @@ export default function Home() {
                             Сканируйте штрих-коды, ищите продукты и получайте персональные рекомендации по питанию.
                         </p>
                         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+                            {/* Into the wizard, not the registration form: the
+                                calculation is the first useful thing we have,
+                                and it needs no account. */}
                             <Link
-                                href="/auth"
+                                href="/onboarding"
                                 className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                             >
-                                Начать бесплатно
+                                Рассчитать мою норму
+                            </Link>
+                            <Link
+                                href="/auth?mode=register"
+                                className="inline-flex h-12 items-center justify-center rounded-lg border border-gray-300 px-8 text-lg font-medium text-gray-900 transition-colors hover:bg-gray-50"
+                            >
+                                Создать аккаунт
                             </Link>
                         </div>
                     </div>
@@ -146,10 +156,10 @@ export default function Home() {
                         </p>
                         <div className="mt-8">
                             <Link
-                                href="/auth"
+                                href="/onboarding"
                                 className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                             >
-                                Зарегистрироваться
+                                Рассчитать мою норму
                             </Link>
                         </div>
                     </div>
@@ -160,6 +170,7 @@ export default function Home() {
                     <div className="mx-auto max-w-5xl flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
                         <Logo width={120} height={36} className="text-gray-400" />
                         <nav className="flex gap-6 text-sm text-gray-500">
+                            <SupportLink className="hover:text-gray-700" />
                             <Link href="/content" className="hover:text-gray-700">Статьи</Link>
                             <Link href="/legal/terms" className="hover:text-gray-700">Оферта</Link>
                             <Link href="/legal/privacy" className="hover:text-gray-700">Конфиденциальность</Link>

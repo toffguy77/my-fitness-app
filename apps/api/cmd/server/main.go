@@ -24,6 +24,7 @@ import (
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
+	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/router"
 	"github.com/burcev/api/internal/shared/database"
@@ -33,6 +34,7 @@ import (
 	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/telegram"
 	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/burcev/api/migrations"
@@ -249,6 +251,21 @@ func main() {
 	// links are signed with the same secret that signs sessions.
 	leadsService := leads.NewService(db.DB, log, cfg.JWTSecret)
 
+	// Support bot. Absent credentials mean no bot at all rather than a broken
+	// one: the routes are not registered and the capability reports itself off.
+	var supportService *support.Service
+	if cfg.Features.SupportBot {
+		supportService = support.NewService(
+			db.DB, log,
+			openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log),
+			telegram.NewClient(cfg.TelegramBotToken),
+			leadsService,
+			cfg.SupportDailyLimit,
+		)
+	} else {
+		log.Warn("Support bot is disabled", "reason", "TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET or OPENROUTER_API_KEY is absent")
+	}
+
 	// Periodic work. Every job takes a PostgreSQL advisory lock, so running
 	// more than one instance does not run the work twice, and every execution
 	// is recorded — which is what makes "are snapshots being collected?"
@@ -271,6 +288,7 @@ func main() {
 		Content:     contentService,
 		Curator:     curatorService,
 		Leads:       leadsService,
+		Support:     supportService,
 		Email:       emailService,
 		AppDomain:   cfg.AppDomain,
 		RateLimiter: rateLimiter,
@@ -299,6 +317,7 @@ func main() {
 		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
 		Admin:         admin.NewHandler(cfg, log, db),
 		AdminJobs:     admin.NewJobsHandler(scheduler),
+		Support:       support.NewHandler(cfg, log, supportService),
 		Metrics:       metrics,
 		Content:       content.NewHandler(cfg, log, contentService),
 	})

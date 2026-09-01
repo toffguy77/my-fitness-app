@@ -13,6 +13,7 @@ import { loginUser, registerUser } from '@/features/auth/api/auth';
 import { apiClient } from '@/shared/utils/api-client';
 import { getRefreshToken, clearAuth } from '@/shared/utils/token-storage';
 import { storeSession, destinationFor } from '@/features/auth/utils/session';
+import { forgetLeadToken } from '@/features/onboarding/api/guest';
 import type { AuthFormData, ConsentState, AuthError } from '@/features/auth/types';
 import toast from 'react-hot-toast';
 
@@ -59,6 +60,9 @@ export function useAuth() {
             const response = await registerUser(data, consents);
 
             storeSession(response);
+            // The lead has been carried onto the account; keeping the claim
+            // would let a later registration in this browser take it again.
+            forgetLeadToken();
 
             toast.success('Регистрация успешна');
             router.push('/auth/verify-email');

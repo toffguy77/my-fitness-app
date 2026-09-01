@@ -5,25 +5,23 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
 import {
-    PhotoUploader,
     LanguageSelector,
     UnitSelector,
     TimezoneSelector,
-    SocialAccountsForm,
-    AppleHealthToggle,
 } from '@/shared/components/settings'
-import { updateSettings, uploadAvatar, getProfile } from '@/features/settings/api/settings'
+import { updateSettings, getProfile } from '@/features/settings/api/settings'
 import { completeOnboarding } from '../api/onboarding'
 import { useOnboardingStore } from '../store/onboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { cn } from '@/shared/utils/cn'
 
+// What actually has to happen before the first useful screen. The photo,
+// social accounts and Apple Health used to stand between a new user and their
+// dashboard; they are optional, they live in settings, and asking for a
+// portrait first put the most personal step in front of the least value.
 const stepTitles = [
-    'Фото профиля',
     'Настройки',
     'Тело и цели',
-    'Социальные сети',
-    'Apple Health',
 ]
 
 const activityLevelOptions = [
@@ -40,7 +38,6 @@ export function OnboardingWizard() {
     const {
         currentStep,
         totalSteps,
-        avatarUrl,
         language,
         units,
         timezone,
@@ -54,7 +51,6 @@ export function OnboardingWizard() {
         instagram,
         appleHealthEnabled,
         nextStep,
-        setAvatarUrl,
         setLanguage,
         setUnits,
         setTimezone,
@@ -82,7 +78,6 @@ export function OnboardingWizard() {
         async function loadProfile() {
             try {
                 const profile = await getProfile()
-                if (profile.avatar_url) setAvatarUrl(profile.avatar_url)
                 if (profile.settings) {
                     const s = profile.settings
                     if (s.language === 'ru' || s.language === 'en') {
@@ -115,12 +110,6 @@ export function OnboardingWizard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    async function handlePhotoUpload(file: File): Promise<string> {
-        const url = await uploadAvatar(file)
-        setAvatarUrl(url)
-        return url
-    }
-
     function buildSettingsPayload() {
         return {
             language,
@@ -148,31 +137,14 @@ export function OnboardingWizard() {
         try {
             switch (currentStep) {
                 case 0:
-                    // Photo step — avatar already uploaded via PhotoUploader
-                    nextStep()
-                    break
-
-                case 1:
                     // Settings step — save language, units & timezone
                     await updateSettings(buildSettingsPayload())
                     nextStep()
                     break
 
-                case 2:
-                    // Body & Goals step — save body profile fields
+                case 1:
+                    // Body & goals, then straight to the dashboard.
                     await updateSettings({ ...buildSettingsPayload(), ...buildBodyPayload() })
-                    nextStep()
-                    break
-
-                case 3:
-                    // Social accounts step — save all current values
-                    await updateSettings(buildSettingsPayload())
-                    nextStep()
-                    break
-
-                case 4:
-                    // Final step — save, complete onboarding, redirect
-                    await updateSettings(buildSettingsPayload())
                     await completeOnboarding()
                     toast('Добро пожаловать!')
                     router.push('/dashboard')
@@ -220,13 +192,6 @@ export function OnboardingWizard() {
                 {/* Step content */}
                 <div className="mb-8">
                     {currentStep === 0 && (
-                        <PhotoUploader
-                            avatarUrl={avatarUrl || undefined}
-                            onUpload={handlePhotoUpload}
-                        />
-                    )}
-
-                    {currentStep === 1 && (
                         <div className="flex flex-col gap-6">
                             <LanguageSelector
                                 value={language}
@@ -243,7 +208,7 @@ export function OnboardingWizard() {
                         </div>
                     )}
 
-                    {currentStep === 2 && (
+                    {currentStep === 1 && (
                         <div className="flex flex-col gap-6">
                             {/* Дата рождения */}
                             <div>
@@ -399,21 +364,6 @@ export function OnboardingWizard() {
                         </div>
                     )}
 
-                    {currentStep === 3 && (
-                        <SocialAccountsForm
-                            telegram={telegram}
-                            instagram={instagram}
-                            onTelegramChange={setTelegram}
-                            onInstagramChange={setInstagram}
-                        />
-                    )}
-
-                    {currentStep === 4 && (
-                        <AppleHealthToggle
-                            enabled={appleHealthEnabled}
-                            onChange={setAppleHealth}
-                        />
-                    )}
                 </div>
 
                 {/* Bottom buttons */}

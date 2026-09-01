@@ -25,6 +25,7 @@ import (
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
+	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
@@ -59,6 +60,7 @@ type Deps struct {
 	Curator       *curator.Handler
 	Admin         *admin.Handler
 	AdminJobs     *admin.JobsHandler
+	Support       *support.Handler
 
 	// Metrics is optional; when nil no instrumentation is installed.
 	Metrics *telemetry.Metrics
@@ -115,6 +117,7 @@ func New(d Deps) *gin.Engine {
 	registerContentRoutes(v1, d)
 	registerLeadRoutes(v1, d)
 	registerAdminLeadRoutes(v1, d)
+	registerSupportRoutes(v1, d)
 
 	// WebSocket upgrade. Authentication happens inside the handler because
 	// browsers cannot set headers on a WebSocket handshake.

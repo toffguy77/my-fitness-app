@@ -204,6 +204,18 @@ func (s *Service) ClaimInto(ctx context.Context, token string, userID int64) err
 	return s.ApplyToProfile(ctx, lead, userID)
 }
 
+// LeadIDForToken validates a resume token and returns the lead it names.
+//
+// The support bot needs exactly this and nothing else: the identifier, proved
+// to have come from a link we minted.
+func (s *Service) LeadIDForToken(ctx context.Context, token string) (string, error) {
+	lead, err := s.ByToken(ctx, token)
+	if err != nil {
+		return "", err
+	}
+	return lead.ID, nil
+}
+
 // List returns leads for the administrative section, newest first.
 func (s *Service) List(ctx context.Context, limit, offset int) ([]Lead, int, error) {
 	var total int

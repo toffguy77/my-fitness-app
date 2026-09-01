@@ -17,6 +17,7 @@ import (
 	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/leads"
+	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/jobs"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -36,6 +37,9 @@ type Deps struct {
 	Content *content.Service
 	Curator *curator.Service
 	Leads   *leads.Service
+	// Support is nil when the bot is not configured; its cleanup job then has
+	// nothing to clean.
+	Support *support.Service
 	// Email may be nil: mail is an optional capability, and the reminder job
 	// declares itself unavailable rather than failing every night.
 	Email       *email.Service
@@ -120,6 +124,21 @@ func Register(registry *jobs.Registry, d Deps) {
 		Timeout:  5 * time.Minute,
 		Run: func(ctx context.Context) (int, error) {
 			return sendLeadReminders(ctx, d)
+		},
+	})
+
+	// Support chats hold what people typed before they had accounts, so they
+	// are not kept forever either.
+	registry.MustRegister(jobs.Job{
+		Name:    "support.purge-conversations",
+		RunAt:   jobs.At(3, 45),
+		Period:  jobs.PeriodDaily,
+		Timeout: 5 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			if d.Support == nil {
+				return 0, nil
+			}
+			return d.Support.PurgeOld(ctx)
 		},
 	})
 

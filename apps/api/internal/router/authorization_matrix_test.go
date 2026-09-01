@@ -125,6 +125,13 @@ var protectedRoutes = map[string]protection{
 	// group addresses its lead by a signed token instead, precisely so a
 	// stranger cannot walk the table and read somebody's body measurements.
 	"POST /api/v1/admin/leads/:id/handled": protRole,
+
+	// Support conversations. :id is a conversation, and every route touching
+	// one is behind the administrative role — the person on the other end of
+	// the chat reaches it through Telegram, never through these.
+	"GET /api/v1/admin/support/conversations/:id":        protRole,
+	"POST /api/v1/admin/support/conversations/:id/reply": protRole,
+	"POST /api/v1/admin/support/conversations/:id/close": protRole,
 }
 
 // nonResourceParams are path parameters that address a value rather than

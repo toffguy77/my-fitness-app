@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
-import { updateSettings, getProfile, uploadAvatar } from '@/features/settings/api/settings'
+import { updateSettings, getProfile } from '@/features/settings/api/settings'
 import { completeOnboarding } from '../../api/onboarding'
 import { useOnboardingStore } from '../../store/onboardingStore'
 import { OnboardingWizard } from '../OnboardingWizard'
@@ -22,7 +22,6 @@ jest.mock('react-hot-toast', () => ({
 
 jest.mock('@/features/settings/api/settings', () => ({
     updateSettings: jest.fn(),
-    uploadAvatar: jest.fn(),
     getProfile: jest.fn().mockResolvedValue({}),
 }))
 
@@ -31,23 +30,15 @@ jest.mock('../../api/onboarding', () => ({
 }))
 
 jest.mock('@/shared/components/settings', () => ({
-    PhotoUploader: ({ onUpload }: { onUpload: (f: File) => Promise<string> }) => (
-        <div data-testid="photo-uploader">
-            <button onClick={() => onUpload(new File([''], 'test.jpg'))}>upload</button>
-        </div>
-    ),
     LanguageSelector: () => <div data-testid="language-selector">Lang</div>,
     UnitSelector: () => <div data-testid="unit-selector">Units</div>,
     TimezoneSelector: () => <div data-testid="timezone-selector">TZ</div>,
-    SocialAccountsForm: () => <div data-testid="social-form">Social</div>,
-    AppleHealthToggle: () => <div data-testid="apple-health">AH</div>,
 }))
 
 const mockPush = jest.fn()
 const mockUpdateSettings = updateSettings as jest.MockedFunction<typeof updateSettings>
 const mockCompleteOnboarding = completeOnboarding as jest.MockedFunction<typeof completeOnboarding>
 const mockGetProfile = getProfile as jest.MockedFunction<typeof getProfile>
-const mockUploadAvatar = uploadAvatar as jest.MockedFunction<typeof uploadAvatar>
 
 describe('OnboardingWizard - branch coverage', () => {
     const user = userEvent.setup()
@@ -89,7 +80,6 @@ describe('OnboardingWizard - branch coverage', () => {
 
         await waitFor(() => {
             const state = useOnboardingStore.getState()
-            expect(state.avatarUrl).toBe('https://example.com/avatar.jpg')
             expect(state.language).toBe('en')
             expect(state.units).toBe('imperial')
             expect(state.timezone).toBe('US/Eastern')
@@ -151,8 +141,10 @@ describe('OnboardingWizard - branch coverage', () => {
         }
     )
 
-    // Branch: loadProfile with no avatar_url (line 85)
-    it('does not set avatar url when profile has none', async () => {
+    // The photograph moved to settings, so the wizard neither shows nor loads
+    // one — an account that already has an avatar is simply not this screen's
+    // business.
+    it('does not touch the avatar at all', async () => {
         mockGetProfile.mockResolvedValue({
             settings: { language: 'ru' },
         } as never)
@@ -247,27 +239,14 @@ describe('OnboardingWizard - branch coverage', () => {
         render(<OnboardingWizard />)
 
         await waitFor(() => {
-            expect(screen.getByText('Фото профиля')).toBeInTheDocument()
-        })
-    })
-
-    // Branch: handlePhotoUpload (line 118-122)
-    it('handles photo upload via PhotoUploader', async () => {
-        mockUploadAvatar.mockResolvedValue('https://example.com/new-avatar.jpg')
-        render(<OnboardingWizard />)
-
-        await user.click(screen.getByText('upload'))
-
-        await waitFor(() => {
-            expect(mockUploadAvatar).toHaveBeenCalled()
-            expect(useOnboardingStore.getState().avatarUrl).toBe('https://example.com/new-avatar.jpg')
+            expect(screen.getByText('Настройки')).toBeInTheDocument()
         })
     })
 
     // Branch: buildBodyPayload with body values set (lines 137-143)
-    it('includes body payload fields in step 2 when values are set', async () => {
+    it('includes body payload fields on the body step when values are set', async () => {
         useOnboardingStore.setState({
-            currentStep: 2,
+            currentStep: 1,
             birthDate: '1990-01-01',
             biologicalSex: 'male',
             activityLevel: 'active',
@@ -277,7 +256,7 @@ describe('OnboardingWizard - branch coverage', () => {
         })
 
         render(<OnboardingWizard />)
-        await user.click(screen.getByRole('button', { name: 'Далее' }))
+        await user.click(screen.getByRole('button', { name: 'Завершить' }))
 
         await waitFor(() => {
             expect(mockUpdateSettings).toHaveBeenCalledWith(
@@ -294,9 +273,9 @@ describe('OnboardingWizard - branch coverage', () => {
     })
 
     // Branch: buildBodyPayload with no body values (lines 137-143 all false)
-    it('sends only settings payload when no body values set in step 2', async () => {
+    it('sends only settings payload when no body values are set', async () => {
         useOnboardingStore.setState({
-            currentStep: 2,
+            currentStep: 1,
             birthDate: '',
             biologicalSex: '',
             activityLevel: 'moderate',
@@ -306,7 +285,7 @@ describe('OnboardingWizard - branch coverage', () => {
         })
 
         render(<OnboardingWizard />)
-        await user.click(screen.getByRole('button', { name: 'Далее' }))
+        await user.click(screen.getByRole('button', { name: 'Завершить' }))
 
         await waitFor(() => {
             expect(mockUpdateSettings).toHaveBeenCalled()
@@ -319,8 +298,8 @@ describe('OnboardingWizard - branch coverage', () => {
     })
 
     // Branch: step rendering — step 2 content (lines 246-400)
-    it('renders body and goals form on step 2', () => {
-        useOnboardingStore.setState({ currentStep: 2 })
+    it('renders body and goals form on the body step', () => {
+        useOnboardingStore.setState({ currentStep: 1 })
         render(<OnboardingWizard />)
 
         expect(screen.getByLabelText(/Дата рождения/)).toBeInTheDocument()
@@ -334,20 +313,6 @@ describe('OnboardingWizard - branch coverage', () => {
         expect(screen.getByText('Набор')).toBeInTheDocument()
     })
 
-    // Branch: step 3 shows social accounts form (line 402-409)
-    it('renders social accounts form on step 3', () => {
-        useOnboardingStore.setState({ currentStep: 3 })
-        render(<OnboardingWizard />)
-        expect(screen.getByTestId('social-form')).toBeInTheDocument()
-    })
-
-    // Branch: step 4 shows apple health toggle (line 411-416)
-    it('renders apple health toggle on step 4', () => {
-        useOnboardingStore.setState({ currentStep: 4 })
-        render(<OnboardingWizard />)
-        expect(screen.getByTestId('apple-health')).toBeInTheDocument()
-    })
-
     // Branch: saving state - shows spinner (line 431-458)
     it('shows saving spinner while saving', async () => {
         let resolveUpdate: () => void
@@ -355,7 +320,7 @@ describe('OnboardingWizard - branch coverage', () => {
             resolveUpdate = resolve
         }) as never)
 
-        useOnboardingStore.setState({ currentStep: 1 })
+        useOnboardingStore.setState({ currentStep: 0 })
         render(<OnboardingWizard />)
 
         await user.click(screen.getByRole('button', { name: 'Далее' }))
@@ -371,14 +336,14 @@ describe('OnboardingWizard - branch coverage', () => {
 
     // Branch: units === 'metric' vs 'imperial' label text (lines 310, 320, 328, 338)
     it('shows metric labels when units is metric', () => {
-        useOnboardingStore.setState({ currentStep: 2, units: 'metric' })
+        useOnboardingStore.setState({ currentStep: 1, units: 'metric' })
         render(<OnboardingWizard />)
         expect(screen.getByLabelText(/кг/)).toBeInTheDocument()
         expect(screen.getByLabelText(/см/)).toBeInTheDocument()
     })
 
     it('shows imperial labels when units is imperial', () => {
-        useOnboardingStore.setState({ currentStep: 2, units: 'imperial' })
+        useOnboardingStore.setState({ currentStep: 1, units: 'imperial' })
         render(<OnboardingWizard />)
         expect(screen.getByLabelText(/lbs/)).toBeInTheDocument()
         expect(screen.getByLabelText(/\bin\b/)).toBeInTheDocument()
@@ -386,7 +351,7 @@ describe('OnboardingWizard - branch coverage', () => {
 
     // Branch: handleSkip on last step succeeds (line 189-194)
     it('completes onboarding and redirects on skip at last step', async () => {
-        useOnboardingStore.setState({ currentStep: 4 })
+        useOnboardingStore.setState({ currentStep: 1 })
         render(<OnboardingWizard />)
 
         await user.click(screen.getByRole('button', { name: 'Пропустить' }))
@@ -399,19 +364,19 @@ describe('OnboardingWizard - branch coverage', () => {
 
     // Branch: handleSkip on non-last step (line 200-202)
     it('advances to next step on skip at non-last step', async () => {
-        useOnboardingStore.setState({ currentStep: 2 })
+        useOnboardingStore.setState({ currentStep: 0 })
         render(<OnboardingWizard />)
 
         await user.click(screen.getByRole('button', { name: 'Пропустить' }))
 
         await waitFor(() => {
-            expect(screen.getByText('Социальные сети')).toBeInTheDocument()
+            expect(screen.getByText('Тело и цели')).toBeInTheDocument()
         })
     })
 
     // Branch: handleNext step 4 success with toast (line 177)
     it('shows welcome toast on completing last step', async () => {
-        useOnboardingStore.setState({ currentStep: 4 })
+        useOnboardingStore.setState({ currentStep: 1 })
         render(<OnboardingWizard />)
 
         await user.click(screen.getByRole('button', { name: 'Завершить' }))

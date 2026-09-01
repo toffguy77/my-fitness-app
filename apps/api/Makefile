@@ -1,4 +1,4 @@
-.PHONY: build test test-race test-coverage-ci coverage-gate lint vet
+.PHONY: build test test-race test-coverage-ci coverage-gate lint vet sync-knowledge
 
 # Minimum statement coverage. Set to the level measured when the gate was
 # introduced (49.5%): the purpose is to forbid regression, not to force a number
@@ -33,3 +33,10 @@ vet:
 
 lint: vet
 	golangci-lint run ./...
+
+# The support bot answers from docs/user-guide, embedded in the binary because
+# go:embed cannot reach outside the module. This refreshes the copy; the drift
+# between the two is a test failure, not a silent staleness.
+sync-knowledge:
+	rm -f internal/modules/support/knowledge/*.md
+	cp ../../docs/user-guide/*.md internal/modules/support/knowledge/

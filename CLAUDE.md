@@ -144,6 +144,21 @@ In production, missing required variables are fatal at startup: `config.Load()`
 reports every problem at once rather than failing on the first. See
 `apps/api/.env.example` for the authoritative list.
 
+## Support Bot Knowledge Base
+
+`docs/user-guide/` is not only documentation: the Telegram support bot answers
+strictly from it and refuses anything it does not cover. The files are embedded
+in the API binary (`internal/modules/support/knowledge/`), because `go:embed`
+cannot reach outside the module.
+
+**When product behaviour changes, update `docs/user-guide/` and run
+`make sync-knowledge` in `apps/api`.** `TestKnowledgeMatchesUserGuide` fails the
+build when the embedded copy drifts — a stale copy would have the bot answering
+from documentation nobody is reading any more.
+
+The prefix sent to the model must stay byte-stable: a timestamp, a request id or
+a varying greeting before the cache point turns every question into a cache miss.
+
 ## Integrity Checks
 
 Two scripts guard defects the audit found shipping to production. Both run in CI

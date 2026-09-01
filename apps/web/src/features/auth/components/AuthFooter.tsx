@@ -7,6 +7,8 @@
 
 'use client';
 
+import { SupportLink } from '@/shared/components/SupportLink';
+
 export function AuthFooter() {
     const supportEmail = 'support@burcev.team';
 
@@ -20,6 +22,10 @@ export function AuthFooter() {
                 >
                     Связаться с нами
                 </a>
+            </p>
+            {/* Faster than email, and available before there is an account. */}
+            <p className="mt-2">
+                <SupportLink />
             </p>
         </footer>
     );

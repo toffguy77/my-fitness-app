@@ -5,6 +5,7 @@
 
 import { isNetworkError } from '@/shared/errors/apiErrors';
 import { apiClient } from '@/shared/utils/api-client';
+import { leadToken } from '@/features/onboarding/api/guest';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '@/features/auth/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
@@ -45,6 +46,9 @@ export async function registerUser(
             email: data.email,
             password: data.password,
             consents: consents,
+            // Whatever they worked out before registering. Without it the new
+            // account asks the same six questions again.
+            lead_token: leadToken() ?? undefined,
         });
 
         return response;

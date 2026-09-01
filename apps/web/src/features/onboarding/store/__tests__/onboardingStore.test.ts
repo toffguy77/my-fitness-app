@@ -13,7 +13,7 @@ describe('useOnboardingStore', () => {
             const { result } = renderHook(() => useOnboardingStore())
 
             expect(result.current.currentStep).toBe(0)
-            expect(result.current.totalSteps).toBe(5)
+            expect(result.current.totalSteps).toBe(2)
             expect(result.current.avatarUrl).toBe('')
             expect(result.current.language).toBe('ru')
             expect(result.current.units).toBe('metric')
@@ -40,11 +40,6 @@ describe('useOnboardingStore', () => {
                 result.current.nextStep()
             })
             expect(result.current.currentStep).toBe(1)
-
-            act(() => {
-                result.current.nextStep()
-            })
-            expect(result.current.currentStep).toBe(2)
         })
 
         it('nextStep does not exceed totalSteps - 1', () => {
@@ -56,7 +51,7 @@ describe('useOnboardingStore', () => {
                     result.current.nextStep()
                 })
             }
-            expect(result.current.currentStep).toBe(4)
+            expect(result.current.currentStep).toBe(1)
         })
 
         it('prevStep decrements currentStep by 1', () => {
@@ -306,7 +301,7 @@ describe('useOnboardingStore', () => {
 
             // Verify all defaults restored
             expect(result.current.currentStep).toBe(0)
-            expect(result.current.totalSteps).toBe(5)
+            expect(result.current.totalSteps).toBe(2)
             expect(result.current.avatarUrl).toBe('')
             expect(result.current.language).toBe('ru')
             expect(result.current.units).toBe('metric')

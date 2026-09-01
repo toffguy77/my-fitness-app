@@ -238,3 +238,70 @@ func leadRow(id string) *sqlmock.Rows {
 		"contact", "landing", true, true, nil, time.Now(), time.Now(),
 	)
 }
+
+// The whole point of the token: the auth module hands over a string it cannot
+// forge, and gets back the lead it names.
+func TestLeadIDForToken_AcceptsOnlyWhatWeMinted(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectQuery("FROM leads WHERE id").WillReturnRows(leadRow("lead-7"))
+
+	id, err := service.LeadIDForToken(context.Background(), service.ResumeToken("lead-7"))
+
+	require.NoError(t, err)
+	assert.Equal(t, "lead-7", id)
+
+	_, err = service.LeadIDForToken(context.Background(), "lead-7")
+	assert.ErrorIs(t, err, apperrors.ErrTokenInvalid)
+}
+
+// Registration is finished by the time this runs, so a failure here must not
+// be able to take the account with it — but it must still be reported.
+func TestClaimInto_MovesEverythingInOneCall(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectQuery("FROM leads WHERE id").WillReturnRows(leadRow("lead-7"))
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE user_consents SET user_id").WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("DELETE FROM leads").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	mock.ExpectExec("INSERT INTO user_settings").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO daily_metrics").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, service.ClaimInto(context.Background(), service.ResumeToken("lead-7"), 42))
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestMarkHandled_RecordsWhoDealtWithIt(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectExec("UPDATE leads SET handled_at").
+		WithArgs("lead-7", int64(3)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, service.MarkHandled(context.Background(), "lead-7", 3))
+}
+
+func TestMarkReminded_RecordsTheSend(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectExec("UPDATE leads SET reminder_sent_at").
+		WithArgs("lead-7").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, service.MarkReminded(context.Background(), "lead-7"))
+}
+
+func TestList_CountsAndReturns(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectQuery("SELECT COUNT").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	mock.ExpectQuery("FROM leads ORDER BY").WillReturnRows(leadRow("lead-7"))
+
+	leads, total, err := service.List(context.Background(), 50, 0)
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, total)
+	require.Len(t, leads, 1)
+	assert.Equal(t, "guest@example.com", leads[0].Email)
+}

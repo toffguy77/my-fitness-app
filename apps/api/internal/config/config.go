@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/joho/godotenv"
 )
 
@@ -35,6 +36,7 @@ type Features struct {
 	ChatAttachments bool
 	ContentMedia    bool
 	DataExports     bool
+	SupportBot      bool
 }
 
 // Disabled returns the names of the capabilities that are turned off, in a
@@ -52,6 +54,7 @@ func (f Features) Disabled() []string {
 		{"chat_attachments", f.ChatAttachments},
 		{"content_media", f.ContentMedia},
 		{"data_exports", f.DataExports},
+		{"support_bot", f.SupportBot},
 	} {
 		if !c.on {
 			off = append(off, c.name)
@@ -70,6 +73,7 @@ func (f Features) Map() map[string]bool {
 		"chat_attachments": f.ChatAttachments,
 		"content_media":    f.ContentMedia,
 		"data_exports":     f.DataExports,
+		"support_bot":      f.SupportBot,
 	}
 }
 
@@ -167,6 +171,15 @@ type Config struct {
 	OpenRouterAPIKey          string
 	OpenRouterModel           string
 	FoodRecognitionDailyLimit int
+
+	// Telegram support bot. Absent credentials disable the capability rather
+	// than failing startup: support before registration is optional, and an
+	// instance without a bot must answer 503 on its webhook rather than crash.
+	TelegramBotToken      string
+	TelegramWebhookSecret string
+	TelegramBotUsername   string
+	SupportModel          string
+	SupportDailyLimit     int
 
 	// AppDomain is the public domain; drives ResetPasswordURL and email links.
 	AppDomain string
@@ -286,7 +299,12 @@ func Load() (*Config, error) {
 
 		// OpenRouter (AI food recognition)
 		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),
-		OpenRouterModel:           getEnv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4"),
+		OpenRouterModel:           getEnv("OPENROUTER_MODEL", openrouter.DefaultModel),
+		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
+		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
+		SupportModel:              getEnv("SUPPORT_MODEL", openrouter.DefaultSupportModel),
+		SupportDailyLimit:         getEnvAsInt("SUPPORT_DAILY_LIMIT", 500),
 		FoodRecognitionDailyLimit: getEnvAsInt("FOOD_RECOGNITION_DAILY_LIMIT", 3),
 
 		MigrationBaseline: getEnvAsInt("DB_MIGRATION_BASELINE", 0),
@@ -314,6 +332,9 @@ func deriveFeatures(c *Config) Features {
 		ChatAttachments: s3(c.ChatS3AccessKeyID, c.ChatS3SecretAccessKey),
 		ContentMedia:    s3(c.ContentS3AccessKeyID, c.ContentS3SecretAccessKey),
 		DataExports:     s3(c.DataExportsS3AccessKeyID, c.DataExportsS3SecretAccessKey),
+		// The bot needs all three: a token to reply with, a secret to tell a
+		// genuine update from anybody's POST, and a model to answer with.
+		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" && c.OpenRouterAPIKey != "",
 	}
 }
 

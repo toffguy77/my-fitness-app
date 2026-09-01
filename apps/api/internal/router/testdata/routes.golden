@@ -12,6 +12,8 @@ GET /api/v1/admin/conversations/:id/messages
 GET /api/v1/admin/curators
 GET /api/v1/admin/jobs
 GET /api/v1/admin/leads
+GET /api/v1/admin/support/conversations
+GET /api/v1/admin/support/conversations/:id
 GET /api/v1/admin/users
 GET /api/v1/admin/users/:id
 GET /api/v1/auth/me
@@ -72,6 +74,8 @@ GET /ws
 POST /api/v1/admin/assignments
 POST /api/v1/admin/jobs/:name/run
 POST /api/v1/admin/leads/:id/handled
+POST /api/v1/admin/support/conversations/:id/close
+POST /api/v1/admin/support/conversations/:id/reply
 POST /api/v1/admin/users/:id/role
 POST /api/v1/auth/change-password
 POST /api/v1/auth/forgot-password
@@ -117,6 +121,7 @@ POST /api/v1/nutrition-calc/recalculate
 POST /api/v1/public/leads
 POST /api/v1/public/leads/step
 POST /api/v1/public/nutrition/calculate
+POST /api/v1/public/support/telegram
 POST /api/v1/users/avatar
 POST /api/v1/users/me/deletion
 POST /api/v1/users/me/export
