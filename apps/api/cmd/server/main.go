@@ -318,7 +318,7 @@ func main() {
 		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient),
 		NutritionCalc: nutritioncalc.NewHandler(cfg, log, db),
 		Dashboard:     dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc),
-		Chat:          chat.NewHandler(cfg, log, db, chatS3, wsHub),
+		Chat:          chat.NewHandler(cfg, log, db, chatS3, wsHub).WithTickets(authService),
 		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
 		Admin:         admin.NewHandler(cfg, log, db),
 		AdminJobs:     admin.NewJobsHandler(scheduler),

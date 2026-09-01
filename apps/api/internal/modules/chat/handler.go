@@ -15,12 +15,10 @@ import (
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -33,6 +31,8 @@ type Handler struct {
 	service ServiceInterface
 	s3      *storage.S3Client
 	hub     *ws.Hub
+	// tickets authenticates socket connections; nil disables the socket.
+	tickets TicketRedeemer
 }
 
 // NewHandler creates a new chat handler
@@ -350,38 +350,44 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// HandleWebSocket handles GET /ws
+// TicketRedeemer exchanges a single-use ticket for the user it belongs to.
+type TicketRedeemer interface {
+	RedeemWSTicket(ctx context.Context, ticket string) (int64, error)
+}
+
+// WithTickets attaches the redeemer used to authenticate socket connections.
+func (h *Handler) WithTickets(redeemer TicketRedeemer) *Handler {
+	h.tickets = redeemer
+	return h
+}
+
+// HandleWebSocket handles GET /ws.
+//
+// Authenticated with a single-use ticket rather than the access token: a URL is
+// the least private place a credential can be — proxy logs, server logs,
+// browser history, Referer headers — and the token that used to travel here was
+// good for hours against the whole API.
 func (h *Handler) HandleWebSocket(c *gin.Context) {
-	// Extract JWT from query param (standard browser WebSocket limitation —
-	// browsers don't support custom headers in the WebSocket constructor)
-	tokenStr := c.Query("token")
-	if tokenStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "token required"})
+	if c.Query("token") != "" {
+		// Refused rather than accepted for compatibility: leaving the old path
+		// open would mean the token keeps ending up in logs.
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "use a ws-ticket"})
 		return
 	}
 
-	// Parse JWT with algorithm validation to prevent algorithm substitution attacks
-	token, err := jwt.ParseWithClaims(tokenStr, &middleware.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return []byte(h.cfg.JWTSecret), nil
-	})
-	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+	if h.tickets == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "chat is unavailable"})
 		return
 	}
 
-	claims, ok := token.Claims.(*middleware.UserClaims)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid claims"})
+	userID, err := h.tickets.RedeemWSTicket(c.Request.Context(), c.Query("ticket"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid ticket"})
 		return
 	}
 
-	// Capture values from Gin context before upgrading to WebSocket.
-	// The Gin context lifecycle ends after the HTTP handler returns,
-	// so we must not use it inside goroutines or WebSocket callbacks.
-	userID := claims.UserID
+	// Capture values from the Gin context before upgrading: its lifecycle ends
+	// when this handler returns, so nothing below may reach for it.
 	requestCtx := c.Request.Context()
 
 	// Upgrade HTTP connection to WebSocket

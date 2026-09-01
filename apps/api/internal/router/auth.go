@@ -23,6 +23,11 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 		middleware.RequireAuth(d.Cfg), d.Auth.ResendVerification)
 	g.POST("/change-password", middleware.RequireAuth(d.Cfg), d.Auth.ChangePassword)
 
+	// A single-use credential for opening the chat socket. Rate limited like
+	// the other credential-minting endpoints.
+	g.POST("/ws-ticket", d.AuthRateLimiter.Limit("ws-ticket"),
+		middleware.RequireAuth(d.Cfg), d.Auth.WSTicket)
+
 	// External sign-in. The list is public so the sign-in screen only offers
 	// providers this deployment can actually use.
 	g.GET("/providers", d.OAuth.Providers)

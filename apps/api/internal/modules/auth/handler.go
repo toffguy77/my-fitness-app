@@ -151,6 +151,31 @@ func (h *Handler) Register(c *gin.Context) {
 	response.Success(c, http.StatusCreated, result)
 }
 
+// WSTicket handles POST /api/v1/auth/ws-ticket.
+//
+// Browsers cannot set headers on a WebSocket connection, so something has to
+// travel in the URL. This is what travels — instead of the access token, which
+// was good for hours against the whole API and ended up in every proxy log.
+func (h *Handler) WSTicket(c *gin.Context) {
+	userID, ok := c.Get("user_id")
+	if !ok {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	ticket, err := h.service.IssueWSTicket(c.Request.Context(), userID.(int64))
+	if err != nil {
+		h.log.Errorw("Failed to issue websocket ticket", "error", err)
+		response.InternalError(c, "Не удалось подготовить подключение")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{
+		"ticket":     ticket,
+		"expires_in": int(WSTicketTTL.Seconds()),
+	})
+}
+
 // Login handles user login
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest

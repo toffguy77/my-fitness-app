@@ -122,3 +122,39 @@ func TestLoggerMiddleware(t *testing.T) {
 		}
 	})
 }
+
+// Logs are copied, shipped and kept far longer than any of these credentials
+// live, and a token in a log is a token anybody with log access can use.
+func TestMaskSecrets(t *testing.T) {
+	cases := []struct {
+		name  string
+		query string
+		want  string
+	}{
+		{"nothing to hide", "date=2026-03-01&limit=50", "date=2026-03-01&limit=50"},
+		{"a reset token", "token=abc123", "token=***"},
+		{"a websocket ticket", "ticket=xyz", "ticket=***"},
+		{"a provider state", "code=auth-code&state=csrf-state", "code=***&state=***"},
+		{"mixed with ordinary parameters", "date=2026-03-01&token=secret&limit=5",
+			"date=2026-03-01&token=***&limit=5"},
+		{"regardless of case", "Token=secret", "Token=***"},
+		{"empty", "", ""},
+		{"a bare flag has no value to hide", "verbose", "verbose"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, maskSecrets(tc.query))
+		})
+	}
+}
+
+// The parameter name stays: knowing that a request carried a token is useful,
+// knowing which token is not.
+func TestMaskSecrets_KeepsTheShapeOfTheRequest(t *testing.T) {
+	masked := maskSecrets("token=abc&date=2026-03-01")
+
+	assert.Contains(t, masked, "token=")
+	assert.NotContains(t, masked, "abc")
+	assert.Contains(t, masked, "date=2026-03-01")
+}

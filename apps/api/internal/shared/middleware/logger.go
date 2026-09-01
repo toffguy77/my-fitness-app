@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/shared/logger"
@@ -56,7 +57,7 @@ func Logger(log *logger.Logger) gin.HandlerFunc {
 		}
 
 		if query != "" {
-			fields["query"] = query
+			fields["query"] = maskSecrets(query)
 		}
 
 		if userID != nil {
@@ -71,4 +72,43 @@ func Logger(log *logger.Logger) gin.HandlerFunc {
 		// Log the request
 		log.LogHTTPRequest(method, path, statusCode, duration, fields)
 	}
+}
+
+// secretParams are query parameters whose values must never reach a log.
+//
+// Every one of them is a credential that arrives in a URL: a password reset
+// token, a WebSocket ticket, a sign-in state. Logs are copied, shipped and kept
+// far longer than any of these live, and a token in a log is a token anybody
+// with log access can use.
+var secretParams = map[string]struct{}{
+	"token":         {},
+	"ticket":        {},
+	"refresh_token": {},
+	"code":          {},
+	"state":         {},
+	"password":      {},
+	"access_token":  {},
+	"secret":        {},
+}
+
+// maskSecrets replaces the values of sensitive query parameters.
+//
+// The parameter names are kept: knowing that a request carried a token is
+// useful, and knowing which token is not.
+func maskSecrets(rawQuery string) string {
+	if rawQuery == "" {
+		return rawQuery
+	}
+
+	parts := strings.Split(rawQuery, "&")
+	for i, part := range parts {
+		name, _, found := strings.Cut(part, "=")
+		if !found {
+			continue
+		}
+		if _, secret := secretParams[strings.ToLower(name)]; secret {
+			parts[i] = name + "=***"
+		}
+	}
+	return strings.Join(parts, "&")
 }

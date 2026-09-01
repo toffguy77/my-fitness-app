@@ -28,6 +28,9 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// Batched, so a busy session sends a handful of requests an hour. The
 	// ceiling is what stops a public writable endpoint becoming free storage.
 	"analytics": {maxRequests: 120, window: 15 * time.Minute},
+	// One per socket connection, plus reconnections. Generous enough for a flaky
+	// network, tight enough that nothing mints tickets in a loop.
+	"ws-ticket": {maxRequests: 60, window: 15 * time.Minute},
 	// Sends an email from our SMTP account, so it is abusable as a mailer.
 	"resend-verification": {maxRequests: 3, window: time.Hour},
 	// Public endpoint that accepts batches of client errors. A page throwing in
