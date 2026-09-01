@@ -159,6 +159,17 @@ from documentation nobody is reading any more.
 The prefix sent to the model must stay byte-stable: a timestamp, a request id or
 a varying greeting before the cache point turns every question into a cache miss.
 
+## Required Checks
+
+Merging into `main` requires these checks by name, through a repository ruleset:
+`CI Pipeline`, `Performance Analysis`, `Comprehensive Security Scan`,
+`Container Security Scan`.
+
+**The names are a contract.** Renaming a job in `.github/workflows/ci.yml`
+makes its required check unsatisfiable: every pull request then reports
+mergeable and blocked at the same time, with nothing failing and nothing
+saying why. If a job has to be renamed, change the ruleset in the same breath.
+
 ## Integrity Checks
 
 Two scripts guard defects the audit found shipping to production. Both run in CI
