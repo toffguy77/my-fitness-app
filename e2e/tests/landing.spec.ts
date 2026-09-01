@@ -11,7 +11,17 @@ test.describe('Landing Page', () => {
     await expect(
       page.getByRole('heading', { name: 'Трекер питания и фитнеса' })
     ).toBeVisible({ timeout: 15000 })
-    await expect(page.getByRole('link', { name: 'Начать бесплатно' })).toBeVisible()
+
+    // The primary action leads into the wizard, not the registration form: the
+    // calculation is the first useful thing here and needs no account.
+    const calculate = page.getByRole('link', { name: 'Рассчитать мою норму' }).first()
+    await expect(calculate).toBeVisible()
+    await expect(calculate).toHaveAttribute('href', '/onboarding')
+
+    // Somebody who already knows what they want can still register directly.
+    await expect(
+      page.getByRole('link', { name: 'Создать аккаунт' })
+    ).toHaveAttribute('href', '/auth?mode=register')
   })
 
   test('features section is visible', async ({ page }) => {

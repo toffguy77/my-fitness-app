@@ -90,6 +90,7 @@ export default defineConfig({
         'tests/auth.spec.ts',
         'tests/role-access.spec.ts',
         'tests/landing.spec.ts',
+        'tests/guest-onboarding.spec.ts',
         'tests/forgot-password.spec.ts',
         'tests/reset-password.spec.ts',
         'tests/legal-pages.spec.ts',

@@ -1,3 +1,5 @@
+import { messageForCode } from '@/shared/i18n'
+
 /**
  * Distinguishes "the request never reached the server" from "the server
  * answered with a failure".
@@ -47,6 +49,20 @@ export function messageFor(error: unknown): string {
         return 'Нет связи с сервером. Проверьте интернет-соединение и попробуйте снова.'
     }
     if (isApiError(error)) {
+        // The code first: the server names what happened, and this side decides
+        // how to say it. Falling back to the server's own sentence keeps the
+        // handlers that have not been migrated working.
+        const body = error.data as { code?: string; message?: string } | undefined
+        if (body?.code) {
+            const translated = messageForCode(body.code)
+            if (translated) return translated
+
+            // A code this client does not know is a dictionary that has fallen
+            // behind the API — worth seeing in the logs rather than silently
+            // becoming "something went wrong".
+            console.warn(`[i18n] no message for error code "${body.code}"`)
+            if (body.message) return body.message
+        }
         if (error.status >= 500) {
             return 'Сервис временно недоступен. Мы уже разбираемся — попробуйте через минуту.'
         }

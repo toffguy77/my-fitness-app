@@ -82,6 +82,7 @@ func New(d Deps) *gin.Engine {
 	if d.Metrics != nil {
 		engine.Use(d.Metrics.Middleware())
 	}
+	engine.Use(middleware.Language())
 	engine.Use(middleware.NoCacheAPI())
 	engine.Use(middleware.Logger(d.Log))
 	engine.Use(middleware.ErrorHandler(d.Log))
