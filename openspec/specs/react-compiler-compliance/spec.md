@@ -1,0 +1,34 @@
+# react-compiler-compliance Specification
+
+## Purpose
+TBD - created by archiving change fix-react-compiler-violations. Update Purpose after archive.
+## Requirements
+### Requirement: Код фронтенда соответствует правилам React Compiler
+
+Исходный код `apps/web/src` MUST NOT содержать нарушений правил `react-hooks/set-state-in-effect`, `react-hooks/immutability`, `react-hooks/preserve-manual-memoization` и `react-hooks/refs`. Эти правила SHALL иметь уровень `error` и блокировать слияние.
+
+#### Scenario: Проверка кодовой базы
+
+- **WHEN** запускается ESLint на `apps/web/src`
+- **THEN** нарушений перечисленных правил не обнаружено
+
+#### Scenario: Новое нарушение
+
+- **WHEN** в код добавляется синхронный вызов установки состояния внутри эффекта
+- **THEN** проверка ESLint завершается неуспешно
+
+### Requirement: Поведение затронутых экранов не меняется
+
+Устранение нарушений SHALL сохранять наблюдаемое поведение экранов списков, поиска и форм, затронутых изменением.
+
+#### Scenario: Смена фильтра в списке
+
+- **WHEN** пользователь переключает категорию в ленте контента
+- **THEN** прежние элементы не отображаются во время загрузки новых
+- **AND** после загрузки отображаются элементы выбранной категории
+
+#### Scenario: Повторный поиск продукта
+
+- **WHEN** пользователь вводит новый запрос в поиске продуктов
+- **THEN** результаты предыдущего запроса не смешиваются с новыми
+
