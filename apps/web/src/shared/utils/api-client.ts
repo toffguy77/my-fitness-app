@@ -5,6 +5,31 @@
  */
 
 import { getRefreshToken, setToken, setRefreshToken, clearAuth } from './token-storage';
+import { ApiError, NetworkError } from '../errors/apiErrors';
+
+/**
+ * Builds a typed error from a failed response, preserving the legacy
+ * `error.response` shape that existing callers read.
+ */
+async function toApiError(response: Response): Promise<ApiError> {
+    const data = await response.json().catch(() => ({}));
+    const errorId = (data as { error_id?: string })?.error_id;
+    const error = new ApiError(response.status, data, errorId);
+    (error as unknown as { response: unknown }).response = { status: response.status, data };
+    return error;
+}
+
+/**
+ * Wraps fetch so a transport failure surfaces as NetworkError rather than a
+ * bare TypeError indistinguishable from a bug.
+ */
+async function request(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    try {
+        return await fetch(input, init);
+    } catch (cause) {
+        throw new NetworkError(cause);
+    }
+}
 
 interface RequestOptions extends RequestInit {
     headers?: Record<string, string>;
@@ -45,7 +70,7 @@ class ApiClient {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(url, {
+        const response = await request(url, {
             ...options,
             headers,
             cache: 'no-store',
@@ -56,12 +81,7 @@ class ApiClient {
         }
 
         if (!response.ok) {
-            const error: any = new Error('API request failed');
-            error.response = {
-                status: response.status,
-                data: await response.json().catch(() => ({})),
-            };
-            throw error;
+            throw await toApiError(response);
         }
 
         const data = await response.json();
@@ -82,15 +102,10 @@ class ApiClient {
                 'X-Request-Id': retryId,
                 'X-Client-Request-Id': retryId,
             };
-            return fetch(url, { ...options, headers, cache: 'no-store' })
+            return request(url, { ...options, headers, cache: 'no-store' })
                 .then(async (res) => {
                     if (!res.ok) {
-                        const error: any = new Error('API request failed');
-                        error.response = {
-                            status: res.status,
-                            data: await res.json().catch(() => ({})),
-                        };
-                        throw error;
+                        throw await toApiError(res);
                     }
                     const data = await res.json();
                     return data.data !== undefined ? data.data : data;
@@ -147,7 +162,7 @@ class ApiClient {
     ): Promise<{ token: string; refresh_token: string }> {
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
-                const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+                const res = await request(`${API_BASE}/api/v1/auth/refresh`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -178,13 +193,24 @@ class ApiClient {
     /**
      * Check if URL is an auth endpoint that should not trigger refresh
      */
+    /**
+     * Endpoints whose 401 means "these credentials are wrong", not "this
+     * session has expired".
+     *
+     * Refreshing and retrying makes no sense for any of them, and treating a
+     * mistyped current password as an expired session signed the user out of
+     * the settings screen they were standing on.
+     */
     private isAuthEndpoint(url: string): boolean {
         return (
             url.includes('/auth/refresh') ||
             url.includes('/auth/login') ||
             url.includes('/auth/forgot-password') ||
             url.includes('/auth/reset-password') ||
-            url.includes('/auth/validate-reset-token')
+            url.includes('/auth/validate-reset-token') ||
+            url.includes('/auth/change-password') ||
+            url.includes('/auth/oauth/link') ||
+            url.includes('/users/me/deletion')
         );
     }
 
@@ -206,7 +232,7 @@ class ApiClient {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(url, {
+        const response = await request(url, {
             method: 'POST',
             headers,
             body,
@@ -218,12 +244,7 @@ class ApiClient {
         }
 
         if (!response.ok) {
-            const error: any = new Error('API request failed');
-            error.response = {
-                status: response.status,
-                data: await response.json().catch(() => ({})),
-            };
-            throw error;
+            throw await toApiError(response);
         }
 
         const data = await response.json();
@@ -241,15 +262,10 @@ class ApiClient {
                 'X-Request-Id': retryId,
                 'X-Client-Request-Id': retryId,
             };
-            return fetch(url, { method: 'POST', headers, body, cache: 'no-store' })
+            return request(url, { method: 'POST', headers, body, cache: 'no-store' })
                 .then(async (res) => {
                     if (!res.ok) {
-                        const error: any = new Error('API request failed');
-                        error.response = {
-                            status: res.status,
-                            data: await res.json().catch(() => ({})),
-                        };
-                        throw error;
+                        throw await toApiError(res);
                     }
                     const data = await res.json();
                     return data.data !== undefined ? data.data : data;

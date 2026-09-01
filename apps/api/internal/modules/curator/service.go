@@ -881,6 +881,12 @@ func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int
 		}
 		clientWeights[userID] = append(clientWeights[userID], weightEntry{weight: weight})
 	}
+	if err := rows.Err(); err != nil {
+		// Iteration failed part-way: returning what we have would show the
+		// curator a silently truncated picture.
+		s.log.Error("Failed while iterating weight data", "error", err)
+		return weightMap, trendMap
+	}
 
 	for userID, entries := range clientWeights {
 		if len(entries) > 0 {
@@ -927,6 +933,9 @@ func (s *Service) getTargetWeights(ctx context.Context, clientIDs []int64) map[i
 		w := weight
 		result[userID] = &w
 	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating target weights", "error", err)
+	}
 
 	return result
 }
@@ -955,6 +964,9 @@ func (s *Service) getTodayWater(ctx context.Context, clientIDs []int64) map[int6
 			continue
 		}
 		result[userID] = &w
+	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating today water", "error", err)
 	}
 
 	return result
@@ -1412,6 +1424,9 @@ func (s *Service) GetTasks(ctx context.Context, curatorID, clientID int64, statu
 				}
 				completionMap[taskID] = append(completionMap[taskID], completedDate.Format("2006-01-02"))
 			}
+			if err := completionRows.Err(); err != nil {
+				s.log.Error("Failed while iterating task completions", "error", err)
+			}
 		}
 	}
 
@@ -1781,6 +1796,9 @@ func (s *Service) getActiveTaskCounts(ctx context.Context, curatorID int64, clie
 		activeMap[userID] = active
 		overdueMap[userID] = overdue
 	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating query results", "error", err)
+	}
 	return
 }
 
@@ -1824,6 +1842,9 @@ func (s *Service) getWeeklyKBZHUPercent(ctx context.Context, clientIDs []int64) 
 			result[userID] = &pct
 		}
 	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating query results", "error", err)
+	}
 	return result
 }
 
@@ -1851,6 +1872,9 @@ func (s *Service) getLastActivityDates(ctx context.Context, clientIDs []int64) m
 		}
 		ds := d.Format("2006-01-02")
 		result[userID] = &ds
+	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating query results", "error", err)
 	}
 	return result
 }
@@ -1887,6 +1911,9 @@ func (s *Service) getStreakDays(ctx context.Context, clientIDs []int64) map[int6
 			continue
 		}
 		clientDates[userID] = append(clientDates[userID], d.Truncate(24*time.Hour))
+	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating query results", "error", err)
 	}
 
 	today := time.Now().UTC().Truncate(24 * time.Hour)
@@ -2075,6 +2102,9 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 		}
 		clientInfoMap[id] = info
 	}
+	if err := infoRows.Err(); err != nil {
+		s.log.Error("Failed while iterating query results", "error", err)
+	}
 
 	items := make([]AttentionItem, 0)
 
@@ -2129,6 +2159,9 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 				})
 			}
 		}
+		if err := alertRows.Err(); err != nil {
+			s.log.Error("Failed while iterating query results", "error", err)
+		}
 	}
 
 	// Priority 2: Overdue tasks
@@ -2160,6 +2193,9 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 				Priority: 2, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})
 		}
+		if err := overdueRows.Err(); err != nil {
+			s.log.Error("Failed while iterating query results", "error", err)
+		}
 	}
 
 	// Priority 3: Inactive clients (no food entries in last 2 days)
@@ -2188,6 +2224,9 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 				Detail:   "Нет записей о питании более 2 дней",
 				Priority: 3, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})
+		}
+		if err := inactiveRows.Err(); err != nil {
+			s.log.Error("Failed while iterating query results", "error", err)
 		}
 	}
 
@@ -2236,6 +2275,9 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 				Detail:   fmt.Sprintf("Отчёт за неделю %s ожидает обратной связи", weekStart.Format("02.01")),
 				Priority: 5, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})
+		}
+		if err := feedbackRows.Err(); err != nil {
+			s.log.Error("Failed while iterating query results", "error", err)
 		}
 	}
 
@@ -2297,6 +2339,9 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 				Detail:   fmt.Sprintf("Не заполнено: %s", strings.Join(missing, ", ")),
 				Priority: 6, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})
+		}
+		if err := profileRows.Err(); err != nil {
+			s.log.Error("Failed while iterating query results", "error", err)
 		}
 	}
 

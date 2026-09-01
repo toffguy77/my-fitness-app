@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/config"
@@ -12,6 +11,7 @@ import (
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/upload"
 	"github.com/gin-gonic/gin"
 )
 
@@ -221,28 +221,32 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 }
 
 // UploadAvatar handles avatar file upload
+// maxAvatarBytes bounds a profile photo.
+const maxAvatarBytes = 5 * 1024 * 1024
+
 func (h *Handler) UploadAvatar(c *gin.Context) {
 	userID := getUserID(c)
 
-	file, header, err := c.Request.FormFile("avatar")
+	if !h.cfg.Features.ProfileAvatars {
+		response.FeatureUnavailable(c, "Загрузка фото профиля недоступна в этом окружении")
+		return
+	}
+
+	header, err := c.FormFile("avatar")
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Файл не найден")
 		return
 	}
-	defer file.Close()
 
-	contentType := header.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "image/") {
-		response.Error(c, http.StatusBadRequest, "Допустимы только изображения")
+	// Type comes from the bytes, not from the client's header; the image is
+	// re-encoded, which also strips EXIF.
+	uploaded, err := upload.Receive(header, upload.AllowedImages, maxAvatarBytes)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if header.Size > 5*1024*1024 {
-		response.Error(c, http.StatusBadRequest, "Максимальный размер файла 5 МБ")
-		return
-	}
-
-	url, err := h.service.UploadAvatar(c.Request.Context(), userID, file, contentType, header.Size)
+	url, err := h.service.UploadAvatar(c.Request.Context(), userID, uploaded)
 	if err != nil {
 		h.log.Errorw("Не удалось загрузить фото", "error", err, "user_id", userID)
 		response.Error(c, http.StatusInternalServerError, "Не удалось загрузить фото")

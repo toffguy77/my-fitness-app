@@ -12,7 +12,7 @@ DROP FUNCTION IF EXISTS cleanup_old_reset_attempts();
 DROP FUNCTION IF EXISTS cleanup_expired_reset_tokens();
 
 -- Remove password_changed_at column from users table (if it exists)
-DO $
+DO $$
 BEGIN
     IF EXISTS (
         SELECT FROM information_schema.columns
@@ -20,7 +20,7 @@ BEGIN
     ) THEN
         ALTER TABLE users DROP COLUMN password_changed_at;
     END IF;
-END $;
+END $$;
 
 -- Drop password_reset_attempts table
 DROP TABLE IF EXISTS password_reset_attempts;

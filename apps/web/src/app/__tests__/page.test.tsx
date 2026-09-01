@@ -17,9 +17,19 @@ describe('Home Page', () => {
         expect(heading).toBeTruthy()
     })
 
-    it('renders the CTA link', () => {
+    // The landing page leads into the wizard, not into a registration form: the
+    // calculation is the first useful thing here and it needs no account.
+    it('leads with the calculation rather than the registration form', () => {
         render(<Home />)
-        const link = screen.getByText(/Начать бесплатно/i)
-        expect(link).toBeTruthy()
+
+        const cta = screen.getAllByText(/Рассчитать мою норму/i)[0]
+        expect(cta.closest('a')).toHaveAttribute('href', '/onboarding')
+    })
+
+    it('still offers a direct route to registration', () => {
+        render(<Home />)
+
+        const register = screen.getByText(/Создать аккаунт/i)
+        expect(register.closest('a')).toHaveAttribute('href', '/auth?mode=register')
     })
 })

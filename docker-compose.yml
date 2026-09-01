@@ -9,6 +9,10 @@ services:
         - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
         - NEXT_PUBLIC_YANDEX_METRIKA_ID=${NEXT_PUBLIC_YANDEX_METRIKA_ID}
+        # Inlined at build time: empty means the "ask in Telegram" link is not
+        # shown at all, which is better than a link to a bot nobody runs.
+        - NEXT_PUBLIC_TELEGRAM_BOT=${NEXT_PUBLIC_TELEGRAM_BOT}
+        - NEXT_PUBLIC_APP_VERSION=${APP_VERSION:-dev}
         - CACHE_BUST=${CACHE_BUST:-1}
     expose:
       - "3069"
@@ -43,11 +47,19 @@ services:
       - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-rest.entrypoints=websecure"
       - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-rest.tls.certresolver=letsencrypt"
       - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-rest.service=burcev-${APP_ENV:-dev}-api"
-      # Health check: /health -> API
+      # Liveness: /health -> API. Answers while the process is alive, without
+      # touching the database.
       - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/health`)"
       - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.entrypoints=websecure"
       - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.tls.certresolver=letsencrypt"
       - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-health.service=burcev-${APP_ENV:-dev}-api"
+      # Readiness: /ready -> API. Checks the database and answers 503 when it is
+      # unreachable, which is what a deployment should wait for — without this
+      # route it reached Next.js and returned 404 for every probe.
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ready.rule=Host(`${APP_DOMAIN:-new.burcev.team}`) && Path(`/ready`)"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ready.entrypoints=websecure"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ready.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.burcev-${APP_ENV:-dev}-api-ready.service=burcev-${APP_ENV:-dev}-api"
       # Service definition
       - "traefik.http.services.burcev-${APP_ENV:-dev}-api.loadbalancer.server.port=4000"
     environment:
@@ -105,6 +117,18 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL}
       - FOOD_RECOGNITION_DAILY_LIMIT=${FOOD_RECOGNITION_DAILY_LIMIT}
+      # Optional capabilities: absent values switch the feature off and are
+      # reported at startup and in /health, rather than failing the boot.
+      - YANDEX_OAUTH_CLIENT_ID=${YANDEX_OAUTH_CLIENT_ID}
+      - YANDEX_OAUTH_CLIENT_SECRET=${YANDEX_OAUTH_CLIENT_SECRET}
+      - VK_OAUTH_CLIENT_ID=${VK_OAUTH_CLIENT_ID}
+      - VK_OAUTH_CLIENT_SECRET=${VK_OAUTH_CLIENT_SECRET}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - SUPPORT_MODEL=${SUPPORT_MODEL}
+      - SUPPORT_DAILY_LIMIT=${SUPPORT_DAILY_LIMIT}
+      - APP_VERSION=${APP_VERSION:-dev}
     networks:
       - dokploy-network
       - burcev-network

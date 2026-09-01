@@ -21,7 +21,14 @@ export function useSettings() {
         }
     }, [])
 
-    useEffect(() => { loadProfile() }, [loadProfile])
+    useEffect(() => {
+        // Wrapped rather than called directly: the loader sets state, and from
+        // the effect body that reads as a synchronous update.
+        async function load() {
+            await loadProfile()
+        }
+        load()
+    }, [loadProfile])
 
     const saveSettings = useCallback(async (settings: Partial<UserSettings>) => {
         try {

@@ -13,11 +13,13 @@ export default function AdminDashboardPage() {
     useEffect(() => {
         Promise.all([
             adminApi.getCurators(),
-            adminApi.getUsers(),
+            // The dashboard shows counts and a recent slice, not the whole
+            // table, so it asks for a page.
+            adminApi.getUsers({ limit: 50 }),
         ])
-            .then(([curatorsData, usersData]) => {
+            .then(([curatorsData, usersPage]) => {
                 setCurators(curatorsData)
-                setUsers(usersData)
+                setUsers(usersPage.items)
             })
             .catch(() => { /* errors handled per section */ })
             .finally(() => setLoading(false))

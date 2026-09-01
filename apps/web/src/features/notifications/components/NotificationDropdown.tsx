@@ -52,13 +52,16 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
         return all.slice(0, 10)
     }, [notifications.main, notifications.content])
 
-    // Capture mount time to avoid impure Date.now() call during render
-    // eslint-disable-next-line react-hooks/purity
-    const mountTimeRef = useRef(Date.now())
+    // The window this screen calls "recent" is fixed at mount rather than read
+    // from the clock on every render, so a notification does not silently leave
+    // the group while somebody is looking at it. State rather than a ref: this
+    // value is used to render, and a ref read during render is a value React
+    // cannot see changing.
+    const [mountTime] = useState(() => Date.now())
 
     // Group unread notifications by contentCategory if 3+ within last hour
     const { groups, ungroupedNotifications } = useMemo(() => {
-        const oneHourAgo = new Date(mountTimeRef.current - 60 * 60 * 1000)
+        const oneHourAgo = new Date(mountTime - 60 * 60 * 1000)
         const unreadRecent: Notification[] = []
         const rest: Notification[] = []
 

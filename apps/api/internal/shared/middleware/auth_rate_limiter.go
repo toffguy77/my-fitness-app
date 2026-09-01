@@ -17,6 +17,25 @@ type authLimitConfig struct {
 var authLimitConfigs = map[string]authLimitConfig{
 	"login":    {maxRequests: 10, window: 15 * time.Minute},
 	"register": {maxRequests: 5, window: time.Hour},
+	// Finishing an external sign-in: the password step is a guessing target
+	// against a known address, like login itself.
+	"oauth-link": {maxRequests: 10, window: 15 * time.Minute},
+	// The guest wizard: arithmetic anybody can ask for, and a table anybody can
+	// write a row into. Generous enough for a person redoing their numbers,
+	// tight enough that the leads table is not a guestbook.
+	"guest-calculate": {maxRequests: 60, window: 15 * time.Minute},
+	"lead-create":     {maxRequests: 5, window: time.Hour},
+	// Batched, so a busy session sends a handful of requests an hour. The
+	// ceiling is what stops a public writable endpoint becoming free storage.
+	"analytics": {maxRequests: 120, window: 15 * time.Minute},
+	// One per socket connection, plus reconnections. Generous enough for a flaky
+	// network, tight enough that nothing mints tickets in a loop.
+	"ws-ticket": {maxRequests: 60, window: 15 * time.Minute},
+	// Sends an email from our SMTP account, so it is abusable as a mailer.
+	"resend-verification": {maxRequests: 3, window: time.Hour},
+	// Public endpoint that accepts batches of client errors. A page throwing in
+	// a render loop must not be able to flood our own log pipeline.
+	"client-logs": {maxRequests: 60, window: time.Minute},
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.

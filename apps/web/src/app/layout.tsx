@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { Toaster } from 'react-hot-toast'
 import { YandexMetrika } from '@/shared/components/YandexMetrika'
 import { ServiceWorkerCleanup } from '@/shared/components/ServiceWorkerCleanup'
+import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
+import { GlobalErrorHandlers } from '@/shared/components/GlobalErrorHandlers'
 import './globals.css'
 
 export const viewport: Viewport = {
@@ -63,7 +65,8 @@ export default function RootLayout({
             <body>
                 <YandexMetrika />
                 <ServiceWorkerCleanup />
-                {children}
+                <GlobalErrorHandlers />
+                <ErrorBoundary>{children}</ErrorBoundary>
                 <Toaster
                     position="top-center"
                     toastOptions={{

@@ -12,7 +12,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Two workers in CI: the runner has two cores, and a single worker made the
+  // suite long enough to be cancelled by the job timeout.
+  workers: process.env.CI ? 2 : undefined,
   reporter: 'html',
   use: {
     baseURL,
@@ -49,6 +51,7 @@ export default defineConfig({
         'tests/navigation.spec.ts',
         'tests/profile.spec.ts',
         'tests/settings-profile.spec.ts',
+        'tests/change-password.spec.ts',
         'tests/settings-body.spec.ts',
         'tests/settings-notifications.spec.ts',
         'tests/settings-social.spec.ts',
@@ -88,6 +91,8 @@ export default defineConfig({
         'tests/auth.spec.ts',
         'tests/role-access.spec.ts',
         'tests/landing.spec.ts',
+        'tests/guest-onboarding.spec.ts',
+        'tests/error-screens.spec.ts',
         'tests/forgot-password.spec.ts',
         'tests/reset-password.spec.ts',
         'tests/legal-pages.spec.ts',
@@ -101,7 +106,10 @@ export default defineConfig({
         webServer: {
           command: 'npm run build && npm run start',
           url: 'http://localhost:3069',
-          reuseExistingServer: !process.env.CI,
+          // Always reuse: in CI the workflow starts the web server itself,
+          // because it also has to start the API and seed test accounts before
+          // the suite runs. Playwright only needs the URL to be live.
+          reuseExistingServer: true,
         },
       }
     : {}),

@@ -218,6 +218,9 @@ func (s *Service) GetHistory(ctx context.Context, userID int64, days int) ([]Tar
 
 		result = append(result, day)
 	}
+	if err := rows.Err(); err != nil {
+		s.log.Error("Failed while iterating target history", "error", err)
+	}
 
 	return result, nil
 }

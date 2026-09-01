@@ -342,23 +342,45 @@ describe('FoodEntryModal', () => {
     });
 
     describe('Modal Reset', () => {
-        it('resets to default tab when reopened', async () => {
-            const { rerender } = render(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
+        // Opening the modal remounts it — the parent keys it on what it is
+        // editing — so its state starts correct rather than being corrected by
+        // an effect after the first render.
+        it('starts on the default tab on a fresh open', () => {
+            const { rerender } = render(
+                <FoodEntryModal key="open-1" isOpen={true} onClose={jest.fn()} />
+            );
 
-            // Switch to chat tab
             fireEvent.click(screen.getByRole('tab', { name: 'Чат' }));
             expect(screen.getByRole('tab', { name: 'Чат' })).toHaveAttribute('aria-selected', 'true');
 
-            // Close modal
-            rerender(<FoodEntryModal isOpen={false} onClose={jest.fn()} />);
+            rerender(<FoodEntryModal key="closed" isOpen={false} onClose={jest.fn()} />);
+            rerender(<FoodEntryModal key="open-2" isOpen={true} onClose={jest.fn()} />);
 
-            // Reopen modal
-            rerender(<FoodEntryModal isOpen={true} onClose={jest.fn()} />);
+            expect(screen.getByRole('tab', { name: 'Поиск' })).toHaveAttribute('aria-selected', 'true');
+        });
 
-            // Should be back to search tab (wait for async reset via setTimeout)
-            await waitFor(() => {
-                expect(screen.getByRole('tab', { name: 'Поиск' })).toHaveAttribute('aria-selected', 'true');
-            });
+        // Editing an entry opens straight on its portion, with its own numbers:
+        // there is no render in between showing somebody else's food.
+        it('opens an edited entry already filled in', () => {
+            render(
+                <FoodEntryModal
+                    isOpen={true}
+                    onClose={jest.fn()}
+                    editingEntry={{
+                        id: 'entry-1',
+                        foodId: 'food-1',
+                        foodName: 'Гречка',
+                        mealType: 'breakfast',
+                        portionAmount: 200,
+                        portionType: 'grams',
+                        nutrition: { calories: 658, protein: 25.2, fat: 6.6, carbs: 124.2 },
+                    } as never}
+                />
+            );
+
+            // Straight to the portion step, with the entry's own name.
+            expect(screen.getByText('Гречка')).toBeInTheDocument();
+            expect(screen.getAllByDisplayValue('200').length).toBeGreaterThan(0);
         });
     });
 

@@ -3,7 +3,9 @@ package admin
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/burcev/api/internal/shared/response"
 	"time"
 
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -13,11 +15,12 @@ import (
 
 // ServiceInterface defines the contract for the admin service
 type ServiceInterface interface {
-	GetUsers(ctx context.Context) ([]AdminUser, error)
+	GetUsers(ctx context.Context, page response.Page) ([]AdminUser, int, error)
+	GetUser(ctx context.Context, userID int64) (*AdminUser, error)
 	GetCurators(ctx context.Context) ([]CuratorLoad, error)
 	ChangeRole(ctx context.Context, userID int64, newRole string) error
 	AssignCurator(ctx context.Context, clientID, curatorID int64) error
-	GetConversations(ctx context.Context) ([]AdminConversation, error)
+	GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error)
 	GetConversationMessages(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error)
 }
 
@@ -36,9 +39,19 @@ func NewService(db *database.DB, log *logger.Logger) *Service {
 }
 
 // GetUsers returns all users with role, curator assignment, and client count
-func (s *Service) GetUsers(ctx context.Context) ([]AdminUser, error) {
+func (s *Service) GetUsers(ctx context.Context, page response.Page) ([]AdminUser, int, error) {
 	startTime := time.Now()
 
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	// The last-login lookup used to be a LEFT JOIN over an aggregate of the
+	// whole refresh_tokens table, which scanned every token ever issued
+	// regardless of how many users were being displayed. It is now a correlated
+	// lookup restricted to the page, so cost follows page size rather than the
+	// lifetime volume of logins.
 	query := `
 		SELECT u.id, u.email, COALESCE(u.name, '') AS name, u.role,
 		       COALESCE(u.avatar_url, '') AS avatar_url,
@@ -46,7 +59,7 @@ func (s *Service) GetUsers(ctx context.Context) ([]AdminUser, error) {
 		       ccr_client.curator_id,
 		       COALESCE(client_counts.cnt, 0) AS client_count,
 		       u.created_at,
-		       last_tokens.last_login
+		       (SELECT MAX(rt.created_at) FROM refresh_tokens rt WHERE rt.user_id = u.id) AS last_login
 		FROM users u
 		LEFT JOIN curator_client_relationships ccr_client
 			ON ccr_client.client_id = u.id AND ccr_client.status = 'active'
@@ -58,22 +71,18 @@ func (s *Service) GetUsers(ctx context.Context) ([]AdminUser, error) {
 			WHERE status = 'active'
 			GROUP BY curator_id
 		) client_counts ON client_counts.curator_id = u.id
-		LEFT JOIN (
-			SELECT user_id, MAX(created_at) AS last_login
-			FROM refresh_tokens
-			GROUP BY user_id
-		) last_tokens ON last_tokens.user_id = u.id
 		ORDER BY u.created_at DESC
+		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := s.db.QueryContext(ctx, query)
+	rows, err := s.db.QueryContext(ctx, query, page.Limit, page.Offset)
 	if err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, nil)
-		return nil, fmt.Errorf("failed to query users: %w", err)
+		return nil, 0, fmt.Errorf("failed to query users: %w", err)
 	}
 	defer rows.Close()
 
-	var users []AdminUser
+	users := make([]AdminUser, 0, page.Limit)
 	for rows.Next() {
 		var u AdminUser
 		var curatorName sql.NullString
@@ -86,7 +95,7 @@ func (s *Service) GetUsers(ctx context.Context) ([]AdminUser, error) {
 			&u.CreatedAt, &lastLogin,
 		); err != nil {
 			s.log.Error("Failed to scan user row", "error", err)
-			return nil, fmt.Errorf("failed to scan user: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan user: %w", err)
 		}
 
 		if curatorName.Valid {
@@ -103,18 +112,71 @@ func (s *Service) GetUsers(ctx context.Context) ([]AdminUser, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating users: %w", err)
+		return nil, 0, fmt.Errorf("error iterating users: %w", err)
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
-		"count": len(users),
+		"count": len(users), "total": total,
 	})
 
-	if users == nil {
-		users = []AdminUser{}
+	return users, total, nil
+}
+
+// GetUser returns a single user.
+//
+// The admin UI used to fetch every user and find one by id client-side, which
+// stops working the moment the list is paginated — and was the reason the list
+// had to be unbounded in the first place.
+func (s *Service) GetUser(ctx context.Context, userID int64) (*AdminUser, error) {
+	query := `
+		SELECT u.id, u.email, COALESCE(u.name, '') AS name, u.role,
+		       COALESCE(u.avatar_url, '') AS avatar_url,
+		       COALESCE(curator.name, '') AS curator_name,
+		       ccr_client.curator_id,
+		       COALESCE(client_counts.cnt, 0) AS client_count,
+		       u.created_at,
+		       (SELECT MAX(rt.created_at) FROM refresh_tokens rt WHERE rt.user_id = u.id) AS last_login
+		FROM users u
+		LEFT JOIN curator_client_relationships ccr_client
+			ON ccr_client.client_id = u.id AND ccr_client.status = 'active'
+		LEFT JOIN users curator
+			ON curator.id = ccr_client.curator_id
+		LEFT JOIN (
+			SELECT curator_id, COUNT(*) AS cnt
+			FROM curator_client_relationships
+			WHERE status = 'active'
+			GROUP BY curator_id
+		) client_counts ON client_counts.curator_id = u.id
+		WHERE u.id = $1
+	`
+
+	var u AdminUser
+	var curatorName sql.NullString
+	var curatorID sql.NullInt64
+	var lastLogin sql.NullTime
+
+	err := s.db.QueryRowContext(ctx, query, userID).Scan(
+		&u.ID, &u.Email, &u.Name, &u.Role, &u.AvatarURL,
+		&curatorName, &curatorID, &u.ClientCount, &u.CreatedAt, &lastLogin,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("user not found: %w", apperrors.ErrNotFound)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user: %w", err)
 	}
 
-	return users, nil
+	if curatorName.Valid {
+		u.CuratorName = &curatorName.String
+	}
+	if curatorID.Valid {
+		u.CuratorID = &curatorID.Int64
+	}
+	if lastLogin.Valid {
+		u.LastLoginAt = &lastLogin.Time
+	}
+
+	return &u, nil
 }
 
 // GetCurators returns all coordinators with their active client counts
@@ -233,17 +295,16 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 	if err != nil {
 		return fmt.Errorf("failed to get curator clients: %w", err)
 	}
+	defer clientRows.Close()
 
 	var orphanedClients []int64
 	for clientRows.Next() {
 		var clientID int64
 		if err := clientRows.Scan(&clientID); err != nil {
-			clientRows.Close()
 			return fmt.Errorf("failed to scan client: %w", err)
 		}
 		orphanedClients = append(orphanedClients, clientID)
 	}
-	clientRows.Close()
 
 	if err := clientRows.Err(); err != nil {
 		return fmt.Errorf("error iterating clients: %w", err)
@@ -402,8 +463,16 @@ func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) 
 }
 
 // GetConversations returns all conversations with participant names and message counts
-func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, error) {
+func (s *Service) GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error) {
 	startTime := time.Now()
+
+	// Paginated for the same reason the user list is: this joins an aggregate
+	// over every message ever sent, and an unbounded version of it gets slower
+	// with every conversation the product has.
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count conversations: %w", err)
+	}
 
 	query := `
 		SELECT c.id, c.client_id, COALESCE(client.name, '') AS client_name,
@@ -419,12 +488,13 @@ func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, er
 			GROUP BY conversation_id
 		) msg_counts ON msg_counts.conversation_id = c.id
 		ORDER BY c.updated_at DESC
+		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := s.db.QueryContext(ctx, query)
+	rows, err := s.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, nil)
-		return nil, fmt.Errorf("failed to query conversations: %w", err)
+		return nil, 0, fmt.Errorf("failed to query conversations: %w", err)
 	}
 	defer rows.Close()
 
@@ -437,13 +507,13 @@ func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, er
 			&conv.MessageCount, &conv.UpdatedAt,
 		); err != nil {
 			s.log.Error("Failed to scan conversation", "error", err)
-			return nil, fmt.Errorf("failed to scan conversation: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan conversation: %w", err)
 		}
 		conversations = append(conversations, conv)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating conversations: %w", err)
+		return nil, 0, fmt.Errorf("error iterating conversations: %w", err)
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
@@ -454,7 +524,7 @@ func (s *Service) GetConversations(ctx context.Context) ([]AdminConversation, er
 		conversations = []AdminConversation{}
 	}
 
-	return conversations, nil
+	return conversations, total, nil
 }
 
 // GetConversationMessages returns messages for a conversation with sender names (read-only, for admin)

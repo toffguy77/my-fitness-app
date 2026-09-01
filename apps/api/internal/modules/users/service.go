@@ -1,10 +1,11 @@
 package users
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
+	"github.com/burcev/api/internal/shared/upload"
 	"strings"
 
 	"github.com/burcev/api/internal/config"
@@ -233,27 +234,16 @@ func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Set
 }
 
 // UploadAvatar uploads a user avatar to S3 and updates the avatar URL
-func (s *Service) UploadAvatar(ctx context.Context, userID int64, file io.Reader, contentType string, size int64) (string, error) {
+func (s *Service) UploadAvatar(ctx context.Context, userID int64, file upload.File) (string, error) {
 	if s.s3 == nil {
 		return "", fmt.Errorf("загрузка фото недоступна")
 	}
 
-	// Determine file extension from content type
-	var ext string
-	switch {
-	case strings.Contains(contentType, "jpeg") || strings.Contains(contentType, "jpg"):
-		ext = ".jpg"
-	case strings.Contains(contentType, "png"):
-		ext = ".png"
-	case strings.Contains(contentType, "webp"):
-		ext = ".webp"
-	default:
-		ext = ".jpg"
-	}
+	// The key is server-generated and its extension follows the detected type,
+	// so a crafted filename cannot influence where the object lands.
+	key := upload.Key("avatars", userID, file.Kind)
 
-	key := fmt.Sprintf("avatars/%d/avatar%s", userID, ext)
-
-	url, err := s.s3.UploadFile(ctx, key, file, contentType, size)
+	url, err := s.s3.UploadFile(ctx, key, bytes.NewReader(file.Data), file.ContentType(), int64(file.Size))
 	if err != nil {
 		return "", fmt.Errorf("ошибка при загрузке аватара: %w", err)
 	}

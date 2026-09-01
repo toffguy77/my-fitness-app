@@ -29,6 +29,11 @@ function makeConversation(overrides: Partial<AdminConversation> = {}): AdminConv
     }
 }
 
+/** The endpoint answers with a page; the list reads its items. */
+function pageOf(items: AdminConversation[]) {
+    return { items, total: items.length, limit: 20, offset: 0 }
+}
+
 describe('AdminConversationList', () => {
     beforeEach(() => {
         jest.clearAllMocks()
@@ -51,7 +56,7 @@ describe('AdminConversationList', () => {
     })
 
     it('shows empty state', async () => {
-        mockAdminApi.getConversations.mockResolvedValue([])
+        mockAdminApi.getConversations.mockResolvedValue(pageOf([]))
         render(<AdminConversationList />)
 
         await waitFor(() => {
@@ -60,14 +65,14 @@ describe('AdminConversationList', () => {
     })
 
     it('renders conversation list with client-curator names', async () => {
-        mockAdminApi.getConversations.mockResolvedValue([
+        mockAdminApi.getConversations.mockResolvedValue(pageOf([
             makeConversation({
                 id: 'conv-1',
                 client_name: 'Анна',
                 curator_name: 'Мария',
                 message_count: 15,
             }),
-        ])
+        ]))
 
         render(<AdminConversationList />)
 
@@ -78,9 +83,9 @@ describe('AdminConversationList', () => {
     })
 
     it('shows date for each conversation', async () => {
-        mockAdminApi.getConversations.mockResolvedValue([
+        mockAdminApi.getConversations.mockResolvedValue(pageOf([
             makeConversation({ updated_at: '2025-06-01T12:00:00Z' }),
-        ])
+        ]))
 
         render(<AdminConversationList />)
 
@@ -92,9 +97,9 @@ describe('AdminConversationList', () => {
     })
 
     it('navigates to /admin/chats/:id on click', async () => {
-        mockAdminApi.getConversations.mockResolvedValue([
+        mockAdminApi.getConversations.mockResolvedValue(pageOf([
             makeConversation({ id: 'conv-42' }),
-        ])
+        ]))
 
         render(<AdminConversationList />)
 
@@ -107,10 +112,10 @@ describe('AdminConversationList', () => {
     })
 
     it('renders multiple conversations', async () => {
-        mockAdminApi.getConversations.mockResolvedValue([
+        mockAdminApi.getConversations.mockResolvedValue(pageOf([
             makeConversation({ id: 'c1', client_name: 'Анна', curator_name: 'Мария' }),
             makeConversation({ id: 'c2', client_name: 'Борис', curator_name: 'Света' }),
-        ])
+        ]))
 
         render(<AdminConversationList />)
 

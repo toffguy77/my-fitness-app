@@ -1,20 +1,29 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  BURCEV — платформа трекинга питания и работы с куратором (RU-рынок).
+  Монорепозиторий npm workspaces:
+    - apps/web — Next.js 16 (App Router), React 19, Tailwind v4, Zustand, Jest+RTL+MSW. Порт 3069.
+    - apps/api — Go 1.26, Gin, PostgreSQL (pgx/v5, database/sql), JWT, zap. Порт 4000.
+    - packages/{types,ui,utils,config} — общие пакеты.
+  Бэкенд: internal/modules/<domain>/{handler.go,service.go}, internal/shared/{database,middleware,response,apperrors,email,storage,ws,openrouter,openfoodfacts}.
+  Фронтенд: src/features/<feature>/{api,components,hooks,store,types}, src/shared/, алиас @/ -> src/.
+  Миграции: apps/api/migrations/NNN_name_{up,down}.sql, применяются на старте через internal/shared/database/migrator.go.
+  Деплой: Docker + Dokploy, nginx перед сервисами (deploy/nginx/*.conf), PostgreSQL и S3 в Yandex Cloud, SMTP Yandex.
+  Прод — один инстанс каждого сервиса; многоинстансность не гарантирована, но код не должен её ломать.
+  Язык интерфейса и пользовательских текстов — русский.
+  Коммиты — conventional commits. CI — .github/workflows/ci.yml.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Пиши на русском языке
+    - Всегда указывай конкретные файлы и строки существующего кода в разделе Impact
+  design:
+    - Пиши на русском языке
+    - В Decisions обязательно указывай отвергнутые альтернативы и причину отказа
+  specs:
+    - Названия требований и сценариев — на русском, ключевые слова WHEN/THEN/SHALL/MUST — на английском
+    - Каждое требование должно быть проверяемо автотестом
+  tasks:
+    - Пиши на русском языке
+    - Каждая задача должна включать проверку (тест, команда, наблюдаемый результат)

@@ -50,10 +50,10 @@ describe('UserList', () => {
     })
 
     it('renders user list after loading', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1, name: 'Анна', email: 'anna@test.com' }),
             makeUser({ id: 2, name: 'Борис', email: 'boris@test.com' }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -64,10 +64,10 @@ describe('UserList', () => {
     })
 
     it('shows user count text', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1 }),
             makeUser({ id: 2 }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -77,10 +77,10 @@ describe('UserList', () => {
     })
 
     it('filters by search (name)', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1, name: 'Анна', email: 'anna@test.com' }),
             makeUser({ id: 2, name: 'Борис', email: 'boris@test.com' }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -97,10 +97,10 @@ describe('UserList', () => {
     })
 
     it('filters by search (email)', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1, name: 'Анна', email: 'anna@test.com' }),
             makeUser({ id: 2, name: 'Борис', email: 'boris@test.com' }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -116,10 +116,10 @@ describe('UserList', () => {
     })
 
     it('filters by role', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1, name: 'Алексей Клиентов', role: 'client' }),
             makeUser({ id: 2, name: 'Мария Кураторова', role: 'coordinator' }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -135,9 +135,9 @@ describe('UserList', () => {
     })
 
     it('shows empty filtered results message', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1, name: 'Анна', email: 'anna@test.com' }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -152,9 +152,11 @@ describe('UserList', () => {
     })
 
     it('navigates to user detail on click', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        // total matches the page, so no "load more" control is rendered and
+        // the row is the only button.
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 42, name: 'Анна' }),
-        ])
+        ], total: 1, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -167,9 +169,9 @@ describe('UserList', () => {
     })
 
     it('shows curator name for client users', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1, name: 'Анна', role: 'client', curator_name: 'Мария' }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 
@@ -179,9 +181,9 @@ describe('UserList', () => {
     })
 
     it('shows client count for coordinators', async () => {
-        mockAdminApi.getUsers.mockResolvedValue([
+        mockAdminApi.getUsers.mockResolvedValue({ items: [
             makeUser({ id: 1, name: 'Мария', role: 'coordinator', client_count: 3 }),
-        ])
+        ], total: 2, limit: 50, offset: 0 })
 
         render(<UserList />)
 

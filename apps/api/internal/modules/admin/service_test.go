@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/burcev/api/internal/shared/response"
 	"testing"
 	"time"
 
@@ -50,9 +51,12 @@ func TestGetUsers(t *testing.T) {
 				nil, nil, 5,
 				now, nil)
 
+		// The paginated listing counts the total first.
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT u.id").WillReturnRows(rows)
 
-		users, err := service.GetUsers(ctx)
+		users, _, err := service.GetUsers(ctx, response.Page{Limit: 20})
 		assert.NoError(t, err)
 		require.Len(t, users, 2)
 
@@ -85,9 +89,12 @@ func TestGetUsers(t *testing.T) {
 			"created_at", "last_login",
 		})
 
+		// The paginated listing counts the total first.
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT u.id").WillReturnRows(rows)
 
-		users, err := service.GetUsers(ctx)
+		users, _, err := service.GetUsers(ctx, response.Page{Limit: 20})
 		assert.NoError(t, err)
 		assert.NotNil(t, users)
 		assert.Len(t, users, 0)
@@ -98,9 +105,12 @@ func TestGetUsers(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
+		// The paginated listing counts the total first.
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT u.id").WillReturnError(fmt.Errorf("db error"))
 
-		users, err := service.GetUsers(ctx)
+		users, _, err := service.GetUsers(ctx, response.Page{Limit: 20})
 		assert.Error(t, err)
 		assert.Nil(t, users)
 		assert.Contains(t, err.Error(), "failed to query users")
@@ -406,9 +416,12 @@ func TestGetConversations(t *testing.T) {
 			AddRow("conv-1", int64(100), "Client One", int64(10), "Curator One", 15, now).
 			AddRow("conv-2", int64(200), "Client Two", int64(20), "Curator Two", 0, now)
 
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT c.id").WillReturnRows(rows)
 
-		conversations, err := service.GetConversations(ctx)
+		conversations, total, err := service.GetConversations(ctx, 20, 0)
+		assert.Equal(t, 2, total)
 		assert.NoError(t, err)
 		require.Len(t, conversations, 2)
 
@@ -433,9 +446,12 @@ func TestGetConversations(t *testing.T) {
 			"curator_id", "curator_name",
 			"message_count", "updated_at",
 		})
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 		mock.ExpectQuery("SELECT c.id").WillReturnRows(rows)
 
-		conversations, err := service.GetConversations(ctx)
+		conversations, total, err := service.GetConversations(ctx, 20, 0)
+		assert.Equal(t, 2, total)
 		assert.NoError(t, err)
 		assert.NotNil(t, conversations)
 		assert.Len(t, conversations, 0)
@@ -446,9 +462,11 @@ func TestGetConversations(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
+		mock.ExpectQuery("SELECT COUNT").
+			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 		mock.ExpectQuery("SELECT c.id").WillReturnError(fmt.Errorf("db error"))
 
-		conversations, err := service.GetConversations(ctx)
+		conversations, _, err := service.GetConversations(ctx, 20, 0)
 		assert.Error(t, err)
 		assert.Nil(t, conversations)
 		assert.Contains(t, err.Error(), "failed to query conversations")

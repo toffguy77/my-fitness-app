@@ -25,6 +25,10 @@ const mockProfile = {
   settings: baseSettings,
 }
 
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: jest.fn() }),
+}))
+
 jest.mock('../SettingsPageLayout', () => ({
   SettingsPageLayout: ({ children }: { children: (props: Record<string, unknown>) => React.ReactNode }) =>
     <div data-testid="settings-layout">{children({

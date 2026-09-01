@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import type { WebSocketEvent } from '../types'
+import { apiClient } from '@/shared/utils/api-client'
 
 interface WebSocketContextValue {
     sendEvent: (event: WebSocketEvent) => void
@@ -33,11 +34,29 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             }
         }
 
-        const connect = () => {
+        const connect = async () => {
             if (!isMounted.current) return
 
             const token = localStorage.getItem('auth_token')
             if (!token) return
+
+            // A single-use ticket rather than the access token. Browsers cannot
+            // set headers on a WebSocket, so something has to travel in the
+            // URL — and a URL reaches proxy logs, server logs, browser history
+            // and Referer headers. This one is good for thirty seconds and one
+            // connection.
+            let ticket: string
+            try {
+                const response = await apiClient.post<{ ticket: string }>('/api/v1/auth/ws-ticket', {})
+                ticket = response.ticket
+            } catch {
+                // No ticket, no socket. The reconnect timer below is not armed
+                // here on purpose: a failing ticket endpoint should not become
+                // a request loop.
+                return
+            }
+
+            if (!isMounted.current) return
 
             // Close any existing connection before creating a new one
             if (wsRef.current) {
@@ -47,7 +66,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             }
 
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-            const ws = new WebSocket(`${protocol}//${window.location.host}/ws?token=${token}`)
+            const ws = new WebSocket(
+                `${protocol}//${window.location.host}/ws?ticket=${encodeURIComponent(ticket)}`
+            )
 
             ws.onopen = () => {
                 if (!isMounted.current) return
@@ -70,7 +91,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                 const currentToken = localStorage.getItem('auth_token')
                 if (currentToken && document.visibilityState === 'visible') {
                     clearReconnectTimer()
-                    reconnectTimer.current = setTimeout(connect, reconnectDelay.current)
+                    // A reconnection mints a fresh ticket; the previous one is
+                    // spent and would be refused.
+                    reconnectTimer.current = setTimeout(() => {
+                        void connect()
+                    }, reconnectDelay.current)
                     reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000)
                 }
             }
@@ -92,12 +117,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible' && !wsRef.current?.OPEN) {
                 reconnectDelay.current = 1000
-                connect()
+                void connect()
             }
         }
 
         document.addEventListener('visibilitychange', handleVisibilityChange)
-        connect()
+        void connect()
 
         return () => {
             isMounted.current = false

@@ -23,16 +23,6 @@ function ResetPasswordContent() {
     const [error, setError] = useState('')
     const [tokenError, setTokenError] = useState('')
 
-    useEffect(() => {
-        if (!token) {
-            setTokenError('Неверная ссылка для сброса. Токен не указан.')
-            setIsValidating(false)
-            return
-        }
-
-        validateToken()
-    }, [token])
-
     const validateToken = async () => {
         if (!token) return
 
@@ -47,6 +37,22 @@ function ResetPasswordContent() {
             setIsValidating(false)
         }
     }
+
+    useEffect(() => {
+        // One function inside the effect: both branches set state, and from the
+        // effect body that is a render before the page has done anything.
+        async function check() {
+            if (!token) {
+                setTokenError('Неверная ссылка для сброса. Токен не указан.')
+                setIsValidating(false)
+                return
+            }
+            await validateToken()
+        }
+        check()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token])
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"database/sql"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"testing"
 	"time"
 
@@ -221,7 +222,7 @@ func TestMarkAsRead(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "notification not found or already read")
+		assert.ErrorIs(t, err, apperrors.ErrNotFound)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }

@@ -14,20 +14,7 @@ test.describe('Curator Task Management', () => {
     await hub.goto()
     await hub.expectLoaded()
 
-    const clientLink = page.locator('a[href*="/curator/clients/"]').first()
-    const clientButton = page
-      .getByRole('button')
-      .filter({ hasText: /Калории|Нет записей|Нет активности/ })
-      .first()
-
-    const hasLink = await clientLink.isVisible().catch(() => false)
-    if (hasLink) {
-      await clientLink.click()
-    } else {
-      await clientButton.click()
-    }
-
-    await expect(page).toHaveURL(/\/curator\/clients\//, { timeout: 10000 })
+    await hub.openFirstClient()
     await detail.expectLoaded()
 
     // Switch to tasks tab

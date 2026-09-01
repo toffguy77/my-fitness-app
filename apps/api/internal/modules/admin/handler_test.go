@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/response"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,7 +20,8 @@ import (
 
 // mockService implements ServiceInterface for handler tests
 type mockService struct {
-	getUsersFunc            func(ctx context.Context) ([]AdminUser, error)
+	getUsersFunc            func(ctx context.Context, page response.Page) ([]AdminUser, int, error)
+	getUserFunc             func(ctx context.Context, userID int64) (*AdminUser, error)
 	getCuratorsFunc         func(ctx context.Context) ([]CuratorLoad, error)
 	changeRoleFunc          func(ctx context.Context, userID int64, newRole string) error
 	assignCuratorFunc       func(ctx context.Context, clientID, curatorID int64) error
@@ -26,8 +29,12 @@ type mockService struct {
 	getConversationMsgsFunc func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error)
 }
 
-func (m *mockService) GetUsers(ctx context.Context) ([]AdminUser, error) {
-	return m.getUsersFunc(ctx)
+func (m *mockService) GetUsers(ctx context.Context, page response.Page) ([]AdminUser, int, error) {
+	return m.getUsersFunc(ctx, page)
+}
+
+func (m *mockService) GetUser(ctx context.Context, userID int64) (*AdminUser, error) {
+	return m.getUserFunc(ctx, userID)
 }
 
 func (m *mockService) GetCurators(ctx context.Context) ([]CuratorLoad, error) {
@@ -42,8 +49,9 @@ func (m *mockService) AssignCurator(ctx context.Context, clientID, curatorID int
 	return m.assignCuratorFunc(ctx, clientID, curatorID)
 }
 
-func (m *mockService) GetConversations(ctx context.Context) ([]AdminConversation, error) {
-	return m.getConversationsFunc(ctx)
+func (m *mockService) GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error) {
+	conversations, err := m.getConversationsFunc(ctx)
+	return conversations, len(conversations), err
 }
 
 func (m *mockService) GetConversationMessages(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error) {
@@ -67,11 +75,11 @@ func TestHandlerGetUsers(t *testing.T) {
 
 		now := time.Now()
 		curatorName := "Curator"
-		mock.getUsersFunc = func(ctx context.Context) ([]AdminUser, error) {
+		mock.getUsersFunc = func(ctx context.Context, page response.Page) ([]AdminUser, int, error) {
 			return []AdminUser{
 				{ID: 1, Email: "user@example.com", Name: "User", Role: "client", CuratorName: &curatorName, CreatedAt: now},
 				{ID: 2, Email: "curator@example.com", Name: "Curator", Role: "coordinator", ClientCount: 3, CreatedAt: now},
-			}, nil
+			}, 42, nil
 		}
 
 		w := httptest.NewRecorder()
@@ -87,15 +95,19 @@ func TestHandlerGetUsers(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
 
-		data := resp["data"].([]interface{})
-		assert.Len(t, data, 2)
+		// The response is now a page, not a bare array: total is what tells the
+		// client there is more without probing.
+		data := resp["data"].(map[string]interface{})
+		assert.Len(t, data["items"], 2)
+		assert.Equal(t, float64(42), data["total"])
+		assert.Equal(t, float64(response.DefaultLimit), data["limit"])
 	})
 
 	t.Run("returns 500 on service error", func(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
-		mock.getUsersFunc = func(ctx context.Context) ([]AdminUser, error) {
-			return nil, fmt.Errorf("db error")
+		mock.getUsersFunc = func(ctx context.Context, page response.Page) ([]AdminUser, int, error) {
+			return nil, 0, fmt.Errorf("db error")
 		}
 
 		w := httptest.NewRecorder()
@@ -383,8 +395,11 @@ func TestHandlerGetConversations(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "success", resp["status"])
 
-		data := resp["data"].([]interface{})
-		assert.Len(t, data, 1)
+		// A page, with a total: the list joins an aggregate over every message
+		// ever sent, so it cannot be unbounded.
+		data := resp["data"].(map[string]interface{})
+		assert.Len(t, data["items"], 1)
+		assert.EqualValues(t, 1, data["total"])
 	})
 
 	t.Run("returns 500 on error", func(t *testing.T) {
@@ -458,7 +473,7 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
 		mock.getConversationMsgsFunc = func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error) {
-			return nil, fmt.Errorf("conversation not found")
+			return nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -486,5 +501,56 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 		handler.GetConversationMessages(c)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
+// The admin UI used to fetch every user and find one by id client-side. That is
+// why the list had to be unbounded; a dedicated lookup is what makes pagination
+// possible.
+func TestHandlerGetUser(t *testing.T) {
+	t.Run("returns the requested user", func(t *testing.T) {
+		handler, mock := setupTestHandler(t)
+		mock.getUserFunc = func(ctx context.Context, userID int64) (*AdminUser, error) {
+			return &AdminUser{ID: userID, Email: "user@example.com", Role: "client"}, nil
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/admin/users/7", nil)
+		c.Params = gin.Params{{Key: "id", Value: "7"}}
+
+		handler.GetUser(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "user@example.com")
+	})
+
+	t.Run("returns 404 for an unknown user", func(t *testing.T) {
+		handler, mock := setupTestHandler(t)
+		mock.getUserFunc = func(ctx context.Context, userID int64) (*AdminUser, error) {
+			return nil, fmt.Errorf("user not found: %w", apperrors.ErrNotFound)
+		}
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/admin/users/999", nil)
+		c.Params = gin.Params{{Key: "id", Value: "999"}}
+
+		handler.GetUser(c)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("rejects a non-numeric id", func(t *testing.T) {
+		handler, _ := setupTestHandler(t)
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/admin/users/abc", nil)
+		c.Params = gin.Params{{Key: "id", Value: "abc"}}
+
+		handler.GetUser(c)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

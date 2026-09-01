@@ -33,6 +33,7 @@ export function ClientCard({ client }: ClientCardProps) {
         <button
             type="button"
             onClick={handleClick}
+            data-testid="client-card"
             className={cn(
                 'w-full rounded-xl bg-white p-4 shadow-sm border border-gray-100',
                 'text-left transition-shadow hover:shadow-md',

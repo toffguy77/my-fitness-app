@@ -1,22 +1,25 @@
 package chat
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/upload"
 	"net/http"
-	"path/filepath"
 	"strconv"
-	"strings"
+	"time"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/internal/shared/middleware"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -29,6 +32,8 @@ type Handler struct {
 	service ServiceInterface
 	s3      *storage.S3Client
 	hub     *ws.Hub
+	// tickets authenticates socket connections; nil disables the socket.
+	tickets TicketRedeemer
 }
 
 // NewHandler creates a new chat handler
@@ -179,11 +184,20 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		}
 	}
 
+	telemetry.Record(telemetry.EventMessageSent)
 	response.Success(c, http.StatusCreated, msg)
 }
 
 // UploadAttachment handles POST /api/v1/conversations/:id/upload
+// maxAttachmentBytes bounds a chat attachment.
+const maxAttachmentBytes = 10 * 1024 * 1024
+
 func (h *Handler) UploadAttachment(c *gin.Context) {
+	if !h.cfg.Features.ChatAttachments {
+		response.FeatureUnavailable(c, "Загрузка вложений недоступна в этом окружении")
+		return
+	}
+
 	userID, ok := h.getUserID(c)
 	if !ok {
 		return
@@ -198,49 +212,38 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form (max 10MB)
-	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-		response.Error(c, http.StatusBadRequest, "Файл слишком большой (максимум 10 МБ)")
-		return
-	}
-
-	file, header, err := c.Request.FormFile("file")
+	header, err := c.FormFile("file")
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Файл не найден в запросе")
 		return
 	}
-	defer file.Close()
 
-	if h.s3 == nil {
-		response.InternalError(c, "Загрузка файлов временно недоступна")
+	// Chat previously accepted anything, defaulting an absent header to
+	// application/octet-stream. Now the type is read from the bytes and only
+	// images and PDFs are stored.
+	uploaded, err := upload.Receive(header, upload.AllowedChatAttachments, maxAttachmentBytes)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Generate S3 key
-	ext := filepath.Ext(header.Filename)
-	s3Key := fmt.Sprintf("chat/%s/%s%s", conversationID, uuid.New().String(), ext)
+	// The key is server-generated; the client filename is kept only for display.
+	s3Key := upload.Key("chat/"+conversationID, userID, uploaded.Kind)
 
-	// Determine content type
-	contentType := header.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-
-	// Upload to S3
-	fileURL, err := h.s3.UploadFile(c.Request.Context(), s3Key, file, contentType, header.Size)
+	fileURL, err := h.s3.UploadFile(c.Request.Context(), s3Key,
+		bytes.NewReader(uploaded.Data), uploaded.ContentType(), int64(uploaded.Size))
 	if err != nil {
 		h.log.Error("Failed to upload file", "error", err, "conversation_id", conversationID)
 		response.InternalError(c, "Не удалось загрузить файл")
 		return
 	}
 
-	// Build attachment info
 	att := MessageAttachment{
 		ID:       uuid.New().String(),
 		FileURL:  fileURL,
-		FileName: header.Filename,
-		FileSize: header.Size,
-		MimeType: contentType,
+		FileName: uploaded.OriginalName,
+		FileSize: int64(uploaded.Size),
+		MimeType: uploaded.ContentType(),
 	}
 
 	response.Success(c, http.StatusOK, att)
@@ -315,7 +318,7 @@ func (h *Handler) CreateFoodEntry(c *gin.Context) {
 	if err != nil {
 		h.log.Error("Failed to create food entry", "error", err, "conversation_id", conversationID, "user_id", userID)
 		// Check for authorization errors from the service
-		if strings.Contains(err.Error(), "only the curator") || strings.Contains(err.Error(), "no active relationship") {
+		if errors.Is(err, apperrors.ErrForbidden) {
 			response.Forbidden(c, err.Error())
 			return
 		}
@@ -349,38 +352,44 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// HandleWebSocket handles GET /ws
+// TicketRedeemer exchanges a single-use ticket for the user it belongs to.
+type TicketRedeemer interface {
+	RedeemWSTicket(ctx context.Context, ticket string) (int64, error)
+}
+
+// WithTickets attaches the redeemer used to authenticate socket connections.
+func (h *Handler) WithTickets(redeemer TicketRedeemer) *Handler {
+	h.tickets = redeemer
+	return h
+}
+
+// HandleWebSocket handles GET /ws.
+//
+// Authenticated with a single-use ticket rather than the access token: a URL is
+// the least private place a credential can be — proxy logs, server logs,
+// browser history, Referer headers — and the token that used to travel here was
+// good for hours against the whole API.
 func (h *Handler) HandleWebSocket(c *gin.Context) {
-	// Extract JWT from query param (standard browser WebSocket limitation —
-	// browsers don't support custom headers in the WebSocket constructor)
-	tokenStr := c.Query("token")
-	if tokenStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "token required"})
+	if c.Query("token") != "" {
+		// Refused rather than accepted for compatibility: leaving the old path
+		// open would mean the token keeps ending up in logs.
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "use a ws-ticket"})
 		return
 	}
 
-	// Parse JWT with algorithm validation to prevent algorithm substitution attacks
-	token, err := jwt.ParseWithClaims(tokenStr, &middleware.UserClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return []byte(h.cfg.JWTSecret), nil
-	})
-	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+	if h.tickets == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "chat is unavailable"})
 		return
 	}
 
-	claims, ok := token.Claims.(*middleware.UserClaims)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid claims"})
+	userID, err := h.tickets.RedeemWSTicket(c.Request.Context(), c.Query("ticket"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid ticket"})
 		return
 	}
 
-	// Capture values from Gin context before upgrading to WebSocket.
-	// The Gin context lifecycle ends after the HTTP handler returns,
-	// so we must not use it inside goroutines or WebSocket callbacks.
-	userID := claims.UserID
+	// Capture values from the Gin context before upgrading: its lifecycle ends
+	// when this handler returns, so nothing below may reach for it.
 	requestCtx := c.Request.Context()
 
 	// Upgrade HTTP connection to WebSocket
@@ -420,7 +429,12 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 				FROM conversations WHERE id = $1
 			`
 			var otherID int64
-			if err := h.db.DB.QueryRow(query, typing.ConversationID, senderID).Scan(&otherID); err != nil {
+			// The gin request context ended when the handshake returned, so
+			// this lookup carries its own short deadline instead of no context.
+			lookupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			err := h.db.QueryRowContext(lookupCtx, query, typing.ConversationID, senderID).Scan(&otherID)
+			cancel()
+			if err != nil {
 				return
 			}
 

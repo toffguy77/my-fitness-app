@@ -1,0 +1,46 @@
+# Deliberately a small set. A linter that produces hundreds of findings on
+# existing code gets switched off; this list starts with analysers that map to
+# defects this codebase can actually have — unchecked errors, leaked rows and
+# response bodies, requests without a context.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - noctx
+
+  settings:
+    errcheck:
+      # Deferred Close/Rollback is idiomatic: there is no caller left to handle
+      # the error, and Rollback after a successful Commit always returns
+      # ErrTxDone. Everything else must be checked.
+      exclude-functions:
+        - (io.Closer).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.Tx).Rollback
+        - (*database/sql.Conn).Close
+        - (*os.File).Close
+        - (io.ReadCloser).Close
+
+  exclusions:
+    presets:
+      - common-false-positives
+    rules:
+      # Tests may ignore errors from fixtures and cleanup helpers.
+      - path: _test\.go
+        linters: [errcheck, bodyclose, noctx, rowserrcheck]
+      # QF1003/S1016 are style preferences, not defects: an explicit if-chain
+      # and a spelled-out struct copy read better than the suggested rewrite.
+      - linters: [staticcheck]
+        text: "(QF1003|S1016)"
+
+formatters:
+  enable:
+    - gofmt

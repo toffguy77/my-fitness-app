@@ -1,5 +1,7 @@
 export { SettingsBody } from './components/SettingsBody'
 export { SettingsPassword } from './components/SettingsPassword'
+export { SettingsPrivacy } from './components/SettingsPrivacy'
+export { SettingsProviders, SettingsProvidersPage } from './components/SettingsProviders'
 export { SettingsLocality } from './components/SettingsLocality'
 export { SettingsSocial } from './components/SettingsSocial'
 export { SettingsAppleHealth } from './components/SettingsAppleHealth'

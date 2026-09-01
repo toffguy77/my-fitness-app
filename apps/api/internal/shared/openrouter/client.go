@@ -17,9 +17,15 @@ import (
 
 const (
 	DefaultBaseURL = "https://openrouter.ai/api/v1/chat/completions"
-	DefaultModel   = "anthropic/claude-sonnet-4"
-	Timeout        = 30 * time.Second
-	UserAgent      = "BurcevFitnessApp/1.0 (https://burcev.team)"
+	// Both defaults are overridable by configuration: which model answers, and
+	// what it costs, is an operational decision rather than a constant. The
+	// previous default here was pinned to a model two generations old.
+	DefaultModel = "anthropic/claude-sonnet-5"
+	// The support bot reads the whole documentation corpus on every question,
+	// so the prefix is cached and a stronger model is affordable.
+	DefaultSupportModel = "anthropic/claude-opus-5"
+	Timeout             = 30 * time.Second
+	UserAgent           = "BurcevFitnessApp/1.0 (https://burcev.team)"
 )
 
 // RecognizedFoodItem represents a food item recognized from a photo by the AI model.
@@ -78,6 +84,14 @@ type contentPart struct {
 	Type     string    `json:"type"`
 	Text     string    `json:"text,omitempty"`
 	ImageURL *imageURL `json:"image_url,omitempty"`
+	// CacheControl marks a block the provider may keep between requests. The
+	// support bot sends the same corpus every time; without this it would pay
+	// full price for it on every question.
+	CacheControl *cacheControl `json:"cache_control,omitempty"`
+}
+
+type cacheControl struct {
+	Type string `json:"type"`
 }
 
 type imageURL struct {
@@ -211,4 +225,87 @@ func stripMarkdownCodeFences(s string) string {
 	}
 
 	return s
+}
+
+// Ask puts one question to the model behind a fixed instruction block.
+//
+// The instruction goes first and is marked for caching, so it must be
+// byte-stable: a timestamp, a request id or a varying greeting before the cache
+// point would make every request a cache miss and multiply the cost of the
+// corpus by the number of questions.
+func (c *Client) Ask(ctx context.Context, cachedPrefix, question string, history []Turn) (string, error) {
+	messages := []chatMessage{
+		{
+			Role: "system",
+			Content: []contentPart{{
+				Type:         "text",
+				Text:         cachedPrefix,
+				CacheControl: &cacheControl{Type: "ephemeral"},
+			}},
+		},
+	}
+
+	// Everything after the cache point varies per conversation.
+	for _, turn := range history {
+		messages = append(messages, chatMessage{
+			Role:    turn.Role,
+			Content: []contentPart{{Type: "text", Text: turn.Text}},
+		})
+	}
+	messages = append(messages, chatMessage{
+		Role:    "user",
+		Content: []contentPart{{Type: "text", Text: question}},
+	})
+
+	bodyBytes, err := json.Marshal(chatRequest{Model: c.model, Messages: messages})
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("HTTP-Referer", "https://burcev.team")
+	req.Header.Set("User-Agent", UserAgent)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.log.Error("failed to close response body", "error", closeErr)
+		}
+	}()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("OpenRouter API error (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var chatResp chatResponse
+	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+		return "", fmt.Errorf("failed to parse API response: %w", err)
+	}
+	if chatResp.Error != nil {
+		return "", fmt.Errorf("OpenRouter API error: %s", chatResp.Error.Message)
+	}
+	if len(chatResp.Choices) == 0 {
+		return "", fmt.Errorf("no choices in API response")
+	}
+
+	return strings.TrimSpace(chatResp.Choices[0].Message.Content), nil
+}
+
+// Turn is one earlier exchange, replayed so a follow-up question makes sense.
+type Turn struct {
+	// Role is "user" or "assistant".
+	Role string
+	Text string
 }

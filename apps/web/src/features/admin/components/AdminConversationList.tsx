@@ -14,10 +14,17 @@ export function AdminConversationList() {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        adminApi.getConversations()
-            .then(setConversations)
-            .catch(() => setError('Не удалось загрузить чаты'))
-            .finally(() => setLoading(false))
+        async function load() {
+            try {
+                const page = await adminApi.getConversations()
+                setConversations(page.items)
+            } catch {
+                setError('Не удалось загрузить чаты')
+            } finally {
+                setLoading(false)
+            }
+        }
+        load()
     }, [])
 
     if (loading) {

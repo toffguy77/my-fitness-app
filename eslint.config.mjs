@@ -48,6 +48,44 @@ const eslintConfig = defineConfig([
       "react/no-unescaped-entities": "off",
     },
   },
+  {
+    // Security rules, merged in from the former eslint.security.config.mjs.
+    //
+    // That file ran as a separate CI step with the default parser, which cannot
+    // read TypeScript or JSX: all ~280 of its findings were parse errors, so it
+    // had never inspected a line. It also carried continue-on-error, so the
+    // failure was invisible. Rather than keep a second, differently-broken
+    // linter pass, its rules live here and run with the real parser.
+    rules: {
+      "no-eval": "error",
+      "no-implied-eval": "error",
+      "no-new-func": "error",
+      "no-script-url": "error",
+      "no-debugger": "error",
+      // no-alert also covers confirm() and prompt(). The five current uses are
+      // confirmations before destructive actions, not XSS vectors, so this is a
+      // UX debt rather than a security defect: replacing them needs a reusable
+      // dialog component. Kept visible as a warning.
+      "no-alert": "warn",
+    },
+  },
+  {
+    // React Compiler rules, blocking.
+    //
+    // They were briefly at "warn": ESLint had been crashing on startup (an ajv
+    // 8 override reaching the config loader, which uses the ajv 6 API), so the
+    // twenty violations these found surfaced all at once when it was fixed.
+    // They are now fixed — data loading moved inside its effects, the food
+    // entry modal resets by remounting rather than by correcting itself after
+    // a render — and the rules block again, because with React Compiler
+    // enabled an immutability or memoization violation changes behaviour.
+    rules: {
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/immutability": "error",
+      "react-hooks/preserve-manual-memoization": "error",
+      "react-hooks/refs": "error",
+    },
+  },
 ]);
 
 export default eslintConfig;

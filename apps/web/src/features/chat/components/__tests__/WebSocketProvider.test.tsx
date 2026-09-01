@@ -1,5 +1,34 @@
 import { render, screen, act } from '@testing-library/react'
 import { WebSocketProvider, useWebSocketContext } from '../WebSocketProvider'
+import { apiClient } from '@/shared/utils/api-client'
+
+// The socket authenticates with a single-use ticket rather than the access
+// token: a URL reaches proxy logs, server logs, browser history and Referer
+// headers, and the token that used to travel here was good for hours against
+// the whole API.
+jest.mock('@/shared/utils/api-client', () => ({
+    apiClient: { post: jest.fn() },
+}))
+
+const ticketRequest = apiClient.post as jest.Mock
+
+/** Lets the ticket exchange settle; the socket is not constructed until it does. */
+async function flushTicket() {
+    await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+    })
+}
+
+/**
+ * Renders the provider and lets the ticket exchange settle, since the socket
+ * is not constructed until the ticket arrives.
+ */
+async function renderProvider(children: React.ReactNode = <TestConsumer />) {
+    const result = render(<WebSocketProvider>{children}</WebSocketProvider>)
+    await flushTicket()
+    return result
+}
 
 // Mock WebSocket
 class MockWebSocket {
@@ -37,6 +66,8 @@ describe('WebSocketProvider', () => {
         MockWebSocket.instances = []
         ;(global as Record<string, unknown>).WebSocket = MockWebSocket
         localStorage.setItem('auth_token', 'test-token')
+        ticketRequest.mockReset()
+        ticketRequest.mockResolvedValue({ ticket: 'test-ticket' })
     })
 
     afterEach(() => {
@@ -45,41 +76,41 @@ describe('WebSocketProvider', () => {
         jest.restoreAllMocks()
     })
 
-    it('renders children', () => {
-        render(
-            <WebSocketProvider>
-                <div data-testid="child">Hello</div>
-            </WebSocketProvider>
-        )
+    it('renders children', async () => {
+        await renderProvider(<div data-testid="child">Hello</div>)
         expect(screen.getByTestId('child')).toBeInTheDocument()
     })
 
-    it('connects to WebSocket when auth token exists', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('connects to WebSocket when auth token exists', async () => {
+        await renderProvider()
+        expect(ticketRequest).toHaveBeenCalledWith('/api/v1/auth/ws-ticket', {})
         expect(MockWebSocket.instances).toHaveLength(1)
-        expect(MockWebSocket.instances[0].url).toContain('token=test-token')
+        expect(MockWebSocket.instances[0].url).toContain('ticket=test-ticket')
+        // The access token must not reach the URL.
+        expect(MockWebSocket.instances[0].url).not.toContain('test-token')
     })
 
-    it('does not connect when no auth token', () => {
+    it('does not connect when no auth token', async () => {
         localStorage.removeItem('auth_token')
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+        await renderProvider()
+
+        expect(MockWebSocket.instances).toHaveLength(0)
+        // No session, no ticket request either.
+        expect(ticketRequest).not.toHaveBeenCalled()
+    })
+
+    // No ticket, no socket — and no reconnect loop hammering an endpoint that
+    // is already failing.
+    it('does not connect when the ticket cannot be obtained', async () => {
+        ticketRequest.mockRejectedValueOnce(new Error('unauthorized'))
+
+        await renderProvider()
+
         expect(MockWebSocket.instances).toHaveLength(0)
     })
 
-    it('sets isConnected to true on open', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('sets isConnected to true on open', async () => {
+        await renderProvider()
 
         act(() => {
             MockWebSocket.instances[0].onopen?.(new Event('open'))
@@ -88,12 +119,8 @@ describe('WebSocketProvider', () => {
         expect(screen.getByTestId('connected')).toHaveTextContent('yes')
     })
 
-    it('sets isConnected to false on close', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('sets isConnected to false on close', async () => {
+        await renderProvider()
 
         act(() => {
             MockWebSocket.instances[0].onopen?.(new Event('open'))
@@ -106,12 +133,8 @@ describe('WebSocketProvider', () => {
         expect(screen.getByTestId('connected')).toHaveTextContent('no')
     })
 
-    it('processes incoming messages and sets lastEvent', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('processes incoming messages and sets lastEvent', async () => {
+        await renderProvider()
 
         const event = { type: 'new_message', data: { text: 'hello' } }
         act(() => {
@@ -123,12 +146,8 @@ describe('WebSocketProvider', () => {
         expect(screen.getByTestId('last-event')).toHaveTextContent(JSON.stringify(event))
     })
 
-    it('ignores malformed messages', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('ignores malformed messages', async () => {
+        await renderProvider()
 
         act(() => {
             MockWebSocket.instances[0].onmessage?.(
@@ -139,12 +158,8 @@ describe('WebSocketProvider', () => {
         expect(screen.getByTestId('last-event')).toHaveTextContent('none')
     })
 
-    it('sends events through WebSocket', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('sends events through WebSocket', async () => {
+        await renderProvider()
 
         act(() => {
             MockWebSocket.instances[0].onopen?.(new Event('open'))
@@ -159,12 +174,8 @@ describe('WebSocketProvider', () => {
         )
     })
 
-    it('closes WebSocket on unmount', () => {
-        const { unmount } = render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('closes WebSocket on unmount', async () => {
+        const { unmount } = await renderProvider()
 
         const ws = MockWebSocket.instances[0]
         unmount()
@@ -179,6 +190,8 @@ describe('WebSocketProvider reconnect guards', () => {
         MockWebSocket.instances = []
         ;(global as Record<string, unknown>).WebSocket = MockWebSocket
         localStorage.setItem('auth_token', 'test-token')
+        ticketRequest.mockReset()
+        ticketRequest.mockResolvedValue({ ticket: 'test-ticket' })
         jest.useFakeTimers()
         Object.defineProperty(document, 'visibilityState', {
             writable: true,
@@ -193,12 +206,8 @@ describe('WebSocketProvider reconnect guards', () => {
         jest.restoreAllMocks()
     })
 
-    it.each([1008, 4401, 4403])('does not reconnect on auth failure close code %i', (code) => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it.each([1008, 4401, 4403])('does not reconnect on auth failure close code %i', async (code) => {
+        await renderProvider()
         expect(MockWebSocket.instances).toHaveLength(1)
 
         act(() => {
@@ -212,12 +221,8 @@ describe('WebSocketProvider reconnect guards', () => {
         expect(MockWebSocket.instances).toHaveLength(1)
     })
 
-    it('does not reconnect when tab is hidden', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('does not reconnect when tab is hidden', async () => {
+        await renderProvider()
         expect(MockWebSocket.instances).toHaveLength(1)
 
         Object.defineProperty(document, 'visibilityState', { value: 'hidden' })
@@ -233,12 +238,8 @@ describe('WebSocketProvider reconnect guards', () => {
         expect(MockWebSocket.instances).toHaveLength(1)
     })
 
-    it('reconnects when hidden tab becomes visible', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('reconnects when hidden tab becomes visible', async () => {
+        await renderProvider()
         expect(MockWebSocket.instances).toHaveLength(1)
 
         // Simulate tab hidden, then connection closes
@@ -252,16 +253,13 @@ describe('WebSocketProvider reconnect guards', () => {
         act(() => {
             document.dispatchEvent(new Event('visibilitychange'))
         })
+        await flushTicket()
 
         expect(MockWebSocket.instances).toHaveLength(2)
     })
 
-    it('closes old WebSocket before creating a new one on visibility reconnect', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('closes old WebSocket before creating a new one on visibility reconnect', async () => {
+        await renderProvider()
         const firstWs = MockWebSocket.instances[0]
 
         // Simulate tab hidden → visible without close event
@@ -269,17 +267,14 @@ describe('WebSocketProvider reconnect guards', () => {
         act(() => {
             document.dispatchEvent(new Event('visibilitychange'))
         })
+        await flushTicket()
 
         // Old WS should have been closed (onclose nulled, then close() called)
         expect(firstWs.close).toHaveBeenCalled()
     })
 
-    it('clears pending reconnect timer on unmount', () => {
-        const { unmount } = render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('clears pending reconnect timer on unmount', async () => {
+        const { unmount } = await renderProvider()
 
         // Trigger a close so a reconnect timer is scheduled
         act(() => {
@@ -296,25 +291,17 @@ describe('WebSocketProvider reconnect guards', () => {
         expect(MockWebSocket.instances).toHaveLength(1)
     })
 
-    it('removes visibilitychange listener on unmount', () => {
+    it('removes visibilitychange listener on unmount', async () => {
         const removeSpy = jest.spyOn(document, 'removeEventListener')
-        const { unmount } = render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+        const { unmount } = await renderProvider()
 
         unmount()
 
         expect(removeSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
     })
 
-    it('stops reconnecting after repeated 1006 failures', () => {
-        render(
-            <WebSocketProvider>
-                <TestConsumer />
-            </WebSocketProvider>
-        )
+    it('stops reconnecting after repeated 1006 failures', async () => {
+        await renderProvider()
 
         // Simulate multiple 1006 failures with exponential backoff
         // 1s → 2s → 4s → 8s (delay > 8000 on next close = stop)

@@ -38,7 +38,7 @@ interface OnboardingState {
 
 const initialState = {
     currentStep: 0,
-    totalSteps: 5,
+    totalSteps: 2,
     avatarUrl: '',
     language: 'ru' as const,
     units: 'metric' as const,

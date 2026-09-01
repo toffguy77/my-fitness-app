@@ -1,7 +1,9 @@
 package dashboard
 
 import (
+	"bytes"
 	"context"
+	"github.com/burcev/api/internal/shared/upload"
 	"io"
 	"net/http"
 	"strconv"
@@ -547,7 +549,15 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 
 // UploadPhoto handles POST /api/dashboard/photo-upload
 // Uploads a weekly photo for the authenticated user
+// maxProgressPhotoBytes bounds a weekly progress photo.
+const maxProgressPhotoBytes = 10 * 1024 * 1024
+
 func (h *Handler) UploadPhoto(c *gin.Context) {
+	if !h.cfg.Features.WeeklyPhotos {
+		response.FeatureUnavailable(c, "Загрузка фото прогресса недоступна в этом окружении")
+		return
+	}
+
 	// Get user ID from context (set by auth middleware)
 	userIDInterface, exists := c.Get("user_id")
 	if !exists {
@@ -569,28 +579,24 @@ func (h *Handler) UploadPhoto(c *gin.Context) {
 		return
 	}
 
-	// Get file from form data
-	file, header, err := c.Request.FormFile("photo")
+	header, err := c.FormFile("photo")
 	if err != nil {
 		h.log.Errorw("Failed to get file from form", "error", err)
 		response.Error(c, http.StatusBadRequest, "Файл фото обязателен")
 		return
 	}
-	defer file.Close()
 
-	// Get file size and mime type
-	fileSize := int(header.Size)
-	mimeType := header.Header.Get("Content-Type")
-
-	// Validate photo
-	if err := h.service.ValidatePhoto(fileSize, mimeType); err != nil {
-		h.log.Errorw("Photo validation failed", "error", err, "user_id", userID)
+	// Progress photos are pictures of someone's body taken at home. Re-encoding
+	// strips EXIF, which routinely carries GPS coordinates.
+	uploaded, err := upload.Receive(header, upload.AllowedImages, maxProgressPhotoBytes)
+	if err != nil {
+		h.log.Warn("Progress photo rejected", "error", err, "user_id", userID)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	// Call service to upload photo
-	photo, err := h.service.UploadPhoto(c.Request.Context(), userID, weekIdentifier, file, fileSize, mimeType)
+	photo, err := h.service.UploadPhoto(c.Request.Context(), userID, weekIdentifier,
+		bytes.NewReader(uploaded.Data), uploaded.Size, uploaded.ContentType())
 	if err != nil {
 		h.log.Errorw("Не удалось загрузить фото", "error", err, "user_id", userID, "week_identifier", weekIdentifier)
 		response.InternalError(c, "Не удалось загрузить фото")

@@ -291,6 +291,10 @@ func TestHandler_GetClientHistory(t *testing.T) {
 		handler, mock, cleanup := setupNutritionCalcTestHandler(t)
 		defer cleanup()
 
+		mock.ExpectQuery("curator_client_relationships").
+			WithArgs(int64(1), int64(10)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
 		mock.ExpectQuery("SELECT").
 			WillReturnRows(sqlmock.NewRows([]string{
 				"date",
@@ -313,5 +317,28 @@ func TestHandler_GetClientHistory(t *testing.T) {
 		handler.GetClientHistory(c)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	// Regression: this route sits under /curator/clients/:id but its handler
+	// lives outside the curator module, so it never inherited the relationship
+	// check — any curator could read any user's target history by id.
+	t.Run("foreign client returns 403", func(t *testing.T) {
+		handler, mock, cleanup := setupNutritionCalcTestHandler(t)
+		defer cleanup()
+
+		mock.ExpectQuery("curator_client_relationships").
+			WithArgs(int64(1), int64(999)).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/curator/clients/999/targets/history", nil)
+		c.Set("user_id", int64(1))
+		c.Params = gin.Params{{Key: "id", Value: "999"}}
+
+		handler.GetClientHistory(c)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.NotContains(t, w.Body.String(), "days")
 	})
 }

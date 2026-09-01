@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"errors"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"strconv"
 
@@ -29,14 +31,38 @@ func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handle
 
 // GetUsers handles GET /api/v1/admin/users
 func (h *Handler) GetUsers(c *gin.Context) {
-	users, err := h.service.GetUsers(c.Request.Context())
+	page := response.ParsePage(c)
+
+	users, total, err := h.service.GetUsers(c.Request.Context(), page)
 	if err != nil {
 		h.log.Error("Failed to get users", "error", err)
 		response.InternalError(c, "Не удалось загрузить пользователей")
 		return
 	}
 
-	response.Success(c, http.StatusOK, users)
+	response.Success(c, http.StatusOK, response.Paginated(users, total, page))
+}
+
+// GetUser handles GET /api/v1/admin/users/:id
+func (h *Handler) GetUser(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return
+	}
+
+	user, err := h.service.GetUser(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrNotFound) {
+			response.NotFound(c, "Пользователь не найден")
+			return
+		}
+		h.log.Error("Failed to get user", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось загрузить пользователя")
+		return
+	}
+
+	response.Success(c, http.StatusOK, user)
 }
 
 // GetCurators handles GET /api/v1/admin/curators
@@ -112,14 +138,16 @@ func (h *Handler) AssignCurator(c *gin.Context) {
 
 // GetConversations handles GET /api/v1/admin/conversations
 func (h *Handler) GetConversations(c *gin.Context) {
-	conversations, err := h.service.GetConversations(c.Request.Context())
+	page := response.ParsePage(c)
+
+	conversations, total, err := h.service.GetConversations(c.Request.Context(), page.Limit, page.Offset)
 	if err != nil {
 		h.log.Error("Failed to get conversations", "error", err)
 		response.InternalError(c, "Не удалось загрузить чаты")
 		return
 	}
 
-	response.Success(c, http.StatusOK, conversations)
+	response.Success(c, http.StatusOK, response.Paginated(conversations, total, page))
 }
 
 // GetConversationMessages handles GET /api/v1/admin/conversations/:id/messages
@@ -138,7 +166,7 @@ func (h *Handler) GetConversationMessages(c *gin.Context) {
 	if err != nil {
 		h.log.Error("Failed to get messages", "error", err, "conversation_id", conversationID)
 
-		if err.Error() == "conversation not found" {
+		if errors.Is(err, apperrors.ErrNotFound) {
 			response.NotFound(c, "Чат не найден")
 			return
 		}

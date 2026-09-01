@@ -6,6 +6,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useFoodTracker } from '../useFoodTracker';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
 import type { MealType, CreateFoodEntryRequest, FoodEntry, KBZHU } from '../../types';
+import { formatLocalDate } from '@/shared/utils/format';
 
 // Mock the store
 jest.mock('../../store/foodTrackerStore');
@@ -389,7 +390,10 @@ describe('useFoodTracker', () => {
 
     describe('default options', () => {
         it('uses today as default initial date when not provided', () => {
-            const today = new Date().toISOString().split('T')[0];
+            // The tracker's day is the user's local day: toISOString() would
+            // name yesterday for anyone east of UTC after midnight, and this
+            // test would only fail there.
+            const today = formatLocalDate(new Date());
 
             renderHook(() => useFoodTracker());
 

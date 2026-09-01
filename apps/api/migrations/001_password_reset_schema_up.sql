@@ -30,7 +30,7 @@ CREATE INDEX IF NOT EXISTS idx_reset_tokens_user_id ON reset_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_reset_tokens_expires_at ON reset_tokens(expires_at);
 
 -- Add foreign key constraint if users table exists
-DO $
+DO $$
 BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
         -- Add foreign key constraint if it doesn't already exist
@@ -49,7 +49,7 @@ BEGIN
         RAISE NOTICE 'Run this command after creating users table:';
         RAISE NOTICE 'ALTER TABLE reset_tokens ADD CONSTRAINT reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;';
     END IF;
-END $;
+END $$;
 
 -- Add comment for documentation
 COMMENT ON TABLE reset_tokens IS 'Stores password reset tokens with expiration and usage tracking';
@@ -94,7 +94,7 @@ COMMENT ON COLUMN password_reset_attempts.ip_address IS 'IP address of the reque
 -- Note: This assumes a 'users' table exists. If it doesn't exist yet,
 -- this migration will fail and should be adjusted based on actual schema.
 
-DO $
+DO $$
 BEGIN
     -- Check if users table exists before adding column
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
@@ -109,7 +109,7 @@ BEGIN
     ELSE
         RAISE NOTICE 'Users table does not exist yet. Skipping password_changed_at column addition.';
     END IF;
-END $;
+END $$;
 
 -- ============================================================================
 -- 4. Create cleanup function for expired tokens
@@ -118,7 +118,7 @@ END $;
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION cleanup_expired_reset_tokens()
-RETURNS INTEGER AS $
+RETURNS INTEGER AS $$
 DECLARE
     deleted_count INTEGER;
 BEGIN
@@ -129,7 +129,7 @@ BEGIN
     GET DIAGNOSTICS deleted_count = ROW_COUNT;
     RETURN deleted_count;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION cleanup_expired_reset_tokens IS 'Removes expired and unused reset tokens from the database';
 
@@ -140,7 +140,7 @@ COMMENT ON FUNCTION cleanup_expired_reset_tokens IS 'Removes expired and unused 
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION cleanup_old_reset_attempts()
-RETURNS INTEGER AS $
+RETURNS INTEGER AS $$
 DECLARE
     deleted_count INTEGER;
 BEGIN
@@ -150,7 +150,7 @@ BEGIN
     GET DIAGNOSTICS deleted_count = ROW_COUNT;
     RETURN deleted_count;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION cleanup_old_reset_attempts IS 'Removes password reset attempts older than 24 hours';
 

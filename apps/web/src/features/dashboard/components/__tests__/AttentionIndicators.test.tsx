@@ -10,6 +10,7 @@ import { NutritionBlock } from '../NutritionBlock'
 import { StepsBlock } from '../StepsBlock'
 import { WorkoutBlock } from '../WorkoutBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 
 // Mock the store
 jest.mock('../../store/dashboardStore')
@@ -24,11 +25,14 @@ jest.mock('react-hot-toast', () => ({
 }))
 
 describe('Attention Indicators', () => {
+    // The dashboard's "today" is the user's local day. Deriving it with
+    // toISOString() named yesterday for anyone east of UTC after midnight, so
+    // these tests failed there and only there.
     const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
+    const todayStr = formatLocalDate(today)
     const yesterday = new Date(today)
     yesterday.setDate(today.getDate() - 1)
-    const yesterdayStr = yesterday.toISOString().split('T')[0]
+    const yesterdayStr = formatLocalDate(yesterday)
 
     beforeEach(() => {
         jest.clearAllMocks()

@@ -1,12 +1,81 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
+	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/joho/godotenv"
 )
+
+// minJWTSecretLen is the minimum acceptable length of JWT_SECRET in bytes.
+const minJWTSecretLen = 32
+
+// unsafeJWTSecrets are well-known placeholder values that must never be used
+// outside development. They are rejected in production regardless of length.
+var unsafeJWTSecrets = map[string]struct{}{
+	"dev-secret-key": {},
+	"change-me":      {},
+	"changeme":       {},
+	"secret":         {},
+	"test":           {},
+}
+
+// Features records which optional capabilities are enabled by the current
+// environment. A capability is enabled when its credentials are present.
+// Handlers check these flags instead of nil-checking their clients, so a
+// disabled capability produces one consistent 503 everywhere.
+type Features struct {
+	Email           bool
+	FoodRecognition bool
+	WeeklyPhotos    bool
+	ProfileAvatars  bool
+	ChatAttachments bool
+	ContentMedia    bool
+	DataExports     bool
+	SupportBot      bool
+}
+
+// Disabled returns the names of the capabilities that are turned off, in a
+// stable order, for logging at startup.
+func (f Features) Disabled() []string {
+	var off []string
+	for _, c := range []struct {
+		name string
+		on   bool
+	}{
+		{"email", f.Email},
+		{"food_recognition", f.FoodRecognition},
+		{"weekly_photos", f.WeeklyPhotos},
+		{"profile_avatars", f.ProfileAvatars},
+		{"chat_attachments", f.ChatAttachments},
+		{"content_media", f.ContentMedia},
+		{"data_exports", f.DataExports},
+		{"support_bot", f.SupportBot},
+	} {
+		if !c.on {
+			off = append(off, c.name)
+		}
+	}
+	return off
+}
+
+// Map renders the feature flags for the health endpoint.
+func (f Features) Map() map[string]bool {
+	return map[string]bool{
+		"email":            f.Email,
+		"food_recognition": f.FoodRecognition,
+		"weekly_photos":    f.WeeklyPhotos,
+		"profile_avatars":  f.ProfileAvatars,
+		"chat_attachments": f.ChatAttachments,
+		"content_media":    f.ContentMedia,
+		"data_exports":     f.DataExports,
+		"support_bot":      f.SupportBot,
+	}
+}
 
 // Config holds application configuration
 type Config struct {
@@ -84,16 +153,53 @@ type Config struct {
 	FoodPhotosS3Region          string
 	FoodPhotosS3Endpoint        string
 
+	// Data Exports S3 — archives of a user's own data
+	DataExportsS3AccessKeyID     string
+	DataExportsS3SecretAccessKey string
+	DataExportsS3Bucket          string
+	DataExportsS3Region          string
+	DataExportsS3Endpoint        string
+
+	// External sign-in providers. Absent credentials mean the provider is
+	// simply not offered — a deployment must not show a button that cannot work.
+	YandexOAuthClientID     string
+	YandexOAuthClientSecret string
+	VKOAuthClientID         string
+	VKOAuthClientSecret     string
+
 	// OpenRouter (AI food recognition)
 	OpenRouterAPIKey          string
 	OpenRouterModel           string
 	FoodRecognitionDailyLimit int
+
+	// Telegram support bot. Absent credentials disable the capability rather
+	// than failing startup: support before registration is optional, and an
+	// instance without a bot must answer 503 on its webhook rather than crash.
+	TelegramBotToken      string
+	TelegramWebhookSecret string
+	TelegramBotUsername   string
+	SupportModel          string
+	SupportDailyLimit     int
+
+	// AppDomain is the public domain; drives ResetPasswordURL and email links.
+	AppDomain string
+
+	// Version identifies the running build; set from APP_VERSION at deploy time.
+	Version string
 
 	// Migrations
 	MigrationBaseline int
 
 	// Logging
 	LogLevel string
+
+	// Features records which optional capabilities are enabled.
+	Features Features
+}
+
+// IsProduction reports whether the service runs with production strictness.
+func (c *Config) IsProduction() bool {
+	return strings.EqualFold(c.Env, "production")
 }
 
 // Load loads configuration from environment variables
@@ -123,6 +229,10 @@ func Load() (*Config, error) {
 		SupabaseServiceKey: getEnv("SUPABASE_SERVICE_KEY", ""),
 
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-key"),
+
+		// Application domain (drives ResetPasswordURL and links in emails)
+		AppDomain: getEnv("APP_DOMAIN", ""),
+		Version:   getEnv("APP_VERSION", "dev"),
 
 		// SMTP Configuration (Yandex Mail)
 		SMTPHost:        getEnv("SMTP_HOST", "smtp.yandex.ru"),
@@ -174,9 +284,27 @@ func Load() (*Config, error) {
 		FoodPhotosS3Region:          getEnvWithFallback("FOOD_PHOTOS_S3_REGION", "S3_REGION", "ru-central1"),
 		FoodPhotosS3Endpoint:        getEnvWithFallback("FOOD_PHOTOS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
 
+		// Data Exports S3 — falls back to generic S3_* vars
+		DataExportsS3AccessKeyID:     getEnvWithFallback("DATA_EXPORTS_S3_ACCESS_KEY_ID", "S3_ACCESS_KEY_ID", ""),
+		DataExportsS3SecretAccessKey: getEnvWithFallback("DATA_EXPORTS_S3_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY", ""),
+		DataExportsS3Bucket:          getEnvWithFallback("DATA_EXPORTS_S3_BUCKET", "S3_BUCKET", "data-exports"),
+		DataExportsS3Region:          getEnvWithFallback("DATA_EXPORTS_S3_REGION", "S3_REGION", "ru-central1"),
+		DataExportsS3Endpoint:        getEnvWithFallback("DATA_EXPORTS_S3_ENDPOINT", "S3_ENDPOINT", "https://storage.yandexcloud.net"),
+
+		// External sign-in providers
+		YandexOAuthClientID:     getEnv("YANDEX_OAUTH_CLIENT_ID", ""),
+		YandexOAuthClientSecret: getEnv("YANDEX_OAUTH_CLIENT_SECRET", ""),
+		VKOAuthClientID:         getEnv("VK_OAUTH_CLIENT_ID", ""),
+		VKOAuthClientSecret:     getEnv("VK_OAUTH_CLIENT_SECRET", ""),
+
 		// OpenRouter (AI food recognition)
 		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),
-		OpenRouterModel:           getEnv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4"),
+		OpenRouterModel:           getEnv("OPENROUTER_MODEL", openrouter.DefaultModel),
+		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
+		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
+		SupportModel:              getEnv("SUPPORT_MODEL", openrouter.DefaultSupportModel),
+		SupportDailyLimit:         getEnvAsInt("SUPPORT_DAILY_LIMIT", 500),
 		FoodRecognitionDailyLimit: getEnvAsInt("FOOD_RECOGNITION_DAILY_LIMIT", 3),
 
 		MigrationBaseline: getEnvAsInt("DB_MIGRATION_BASELINE", 0),
@@ -184,12 +312,93 @@ func Load() (*Config, error) {
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
 
-	// Validate required configuration
-	if cfg.DatabaseURL == "" && cfg.DatabasePassword == "" {
-		return nil, fmt.Errorf("DATABASE_URL or DB_PASSWORD is required")
+	cfg.Features = deriveFeatures(cfg)
+
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
+}
+
+// deriveFeatures turns the presence of credentials into capability flags.
+func deriveFeatures(c *Config) Features {
+	s3 := func(key, secret string) bool { return key != "" && secret != "" }
+	return Features{
+		Email:           c.SMTPUsername != "" && c.SMTPPassword != "" && c.SMTPFromAddress != "",
+		FoodRecognition: c.OpenRouterAPIKey != "",
+		WeeklyPhotos:    s3(c.WeeklyPhotosS3AccessKeyID, c.WeeklyPhotosS3SecretAccessKey),
+		ProfileAvatars:  s3(c.ProfilePhotosS3AccessKeyID, c.ProfilePhotosS3SecretAccessKey),
+		ChatAttachments: s3(c.ChatS3AccessKeyID, c.ChatS3SecretAccessKey),
+		ContentMedia:    s3(c.ContentS3AccessKeyID, c.ContentS3SecretAccessKey),
+		DataExports:     s3(c.DataExportsS3AccessKeyID, c.DataExportsS3SecretAccessKey),
+		// The bot needs all three: a token to reply with, a secret to tell a
+		// genuine update from anybody's POST, and a model to answer with.
+		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" && c.OpenRouterAPIKey != "",
+	}
+}
+
+// validate collects every configuration problem and returns them joined, so an
+// operator fixes a broken environment in one pass instead of one deploy per
+// variable. Required-variable checks apply only in production; development
+// keeps working defaults and gets warnings from the caller instead.
+func (c *Config) validate() error {
+	var problems []error
+
+	if c.DatabaseURL == "" && c.DatabasePassword == "" {
+		problems = append(problems, errors.New("DATABASE_URL or DB_PASSWORD is required"))
+	}
+
+	if err := c.validateJWTSecret(); err != nil {
+		problems = append(problems, err)
+	}
+
+	if c.IsProduction() {
+		required := []struct {
+			name  string
+			value string
+		}{
+			{"SMTP_USERNAME", c.SMTPUsername},
+			{"SMTP_PASSWORD", c.SMTPPassword},
+			{"SMTP_FROM_ADDRESS", c.SMTPFromAddress},
+			{"APP_DOMAIN", c.AppDomain},
+		}
+		for _, r := range required {
+			if r.value == "" {
+				problems = append(problems, fmt.Errorf("%s is required when NODE_ENV=production", r.name))
+			}
+		}
+	}
+
+	return errors.Join(problems...)
+}
+
+// validateJWTSecret rejects absent, short and placeholder secrets. In
+// production this is fatal: booting with a publicly known secret would let
+// anyone mint a super_admin token.
+func (c *Config) validateJWTSecret() error {
+	if !c.IsProduction() {
+		return nil
+	}
+	if c.JWTSecret == "" {
+		return errors.New("JWT_SECRET is required when NODE_ENV=production")
+	}
+	if _, unsafe := unsafeJWTSecrets[strings.ToLower(c.JWTSecret)]; unsafe {
+		return errors.New("JWT_SECRET is set to a well-known placeholder value; generate a random secret")
+	}
+	if len(c.JWTSecret) < minJWTSecretLen {
+		return fmt.Errorf("JWT_SECRET must be at least %d bytes, got %d", minJWTSecretLen, len(c.JWTSecret))
+	}
+	return nil
+}
+
+// JWTSecretIsUnsafe reports whether the secret in use is a known placeholder or
+// too short. Non-production boots are allowed to continue, but must warn.
+func (c *Config) JWTSecretIsUnsafe() bool {
+	if _, unsafe := unsafeJWTSecrets[strings.ToLower(c.JWTSecret)]; unsafe {
+		return true
+	}
+	return len(c.JWTSecret) < minJWTSecretLen
 }
 
 func getEnv(key, defaultValue string) string {

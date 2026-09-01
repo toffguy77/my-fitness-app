@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test'
 import { DashboardPage } from '../pages/dashboard.page'
 
-test.describe('Workout Logging', () => {
+// Workout logging on the client dashboard does not exist. The product tracks
+// nutrition; "тренировка" appears only as a task type a curator can assign.
+// Keeping workouts out of scope was an explicit decision, so these tests are
+// skipped rather than deleted — they describe the feature if it is ever built.
+//
+// Tracked by the repository audit, finding 13.
+test.describe.skip('Workout Logging', () => {
   let dashboard: DashboardPage
 
   test.beforeEach(async ({ page }) => {

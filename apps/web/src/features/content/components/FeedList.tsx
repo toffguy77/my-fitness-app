@@ -25,28 +25,31 @@ export function FeedList() {
 
     useEffect(() => {
         let cancelled = false
-        setArticles([])  // Clear stale data immediately
-        setLoading(true)
-        setError(null)
 
-        fetchArticles(category)
-            .then((res) => {
-                if (!cancelled) {
-                    setArticles(res.articles)
-                    setTotal(res.total)
-                }
-            })
-            .catch((err) => {
-                if (!cancelled) {
-                    setArticles([])
-                    setTotal(0)
-                    setError(err instanceof Error ? err.message : 'Не удалось загрузить ленту')
-                }
-            })
-            .finally(() => {
+        // The whole load, including clearing the previous category's articles,
+        // lives in one function inside the effect: run straight from the effect
+        // body those three calls render twice before the request even leaves.
+        async function load() {
+            setArticles([])
+            setLoading(true)
+            setError(null)
+
+            try {
+                const res = await fetchArticles(category)
+                if (cancelled) return
+                setArticles(res.articles)
+                setTotal(res.total)
+            } catch (err) {
+                if (cancelled) return
+                setArticles([])
+                setTotal(0)
+                setError(err instanceof Error ? err.message : 'Не удалось загрузить ленту')
+            } finally {
                 if (!cancelled) setLoading(false)
-            })
+            }
+        }
 
+        load()
         return () => { cancelled = true }
     }, [category, fetchArticles])
 

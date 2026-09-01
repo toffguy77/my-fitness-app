@@ -71,6 +71,19 @@ const DEFAULT_TAB: EntryMethodTab = 'search';
 // Component
 // ============================================================================
 
+/** Nutrition per 100 units, from an entry recorded as a portion. */
+function per100Of(entry: FoodEntry): KBZHU {
+    const scale = (value: number) =>
+        entry.portionAmount > 0 ? (value / entry.portionAmount) * 100 : 0;
+
+    return {
+        calories: scale(entry.nutrition.calories),
+        protein: scale(entry.nutrition.protein),
+        fat: scale(entry.nutrition.fat),
+        carbs: scale(entry.nutrition.carbs),
+    };
+}
+
 export function FoodEntryModal({
     isOpen,
     onClose,
@@ -78,89 +91,58 @@ export function FoodEntryModal({
     editingEntry,
     className = '',
 }: FoodEntryModalProps) {
-    // State
+    // Initial state, computed once at mount.
+    //
+    // The modal used to reset itself in an effect that fired when `isOpen` went
+    // true, which meant a render with the previous entry's data before the
+    // correction landed. The parent now remounts it with a key instead, so
+    // "opening" and "having the right state" are the same event.
     const [activeTab, setActiveTab] = useState<EntryMethodTab>(DEFAULT_TAB);
-    const [step, setStep] = useState<ModalStep>('select-food');
-    const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-    const [portionType, setPortionType] = useState<PortionType>('grams');
-    const [portionAmount, setPortionAmount] = useState<number>(100);
+    const [step, setStep] = useState<ModalStep>(editingEntry ? 'select-portion' : 'select-food');
+    const [selectedFood, setSelectedFood] = useState<FoodItem | null>(
+        editingEntry
+            ? ({
+                  id: editingEntry.foodId,
+                  name: editingEntry.foodName,
+                  nutritionPer100: per100Of(editingEntry),
+                  servingSize: editingEntry.portionAmount,
+                  servingUnit: editingEntry.portionType === 'milliliters' ? 'мл' : 'г',
+              } as FoodItem)
+            : null
+    );
+    const [portionType, setPortionType] = useState<PortionType>(
+        editingEntry ? editingEntry.portionType : 'grams'
+    );
+    const [portionAmount, setPortionAmount] = useState<number>(
+        editingEntry ? editingEntry.portionAmount : 100
+    );
     const [calculatedNutrition, setCalculatedNutrition] = useState<KBZHU | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [batchFoods, setBatchFoods] = useState<FoodItem[]>([]);
     const [batchIndex, setBatchIndex] = useState(0);
     const [isEditingDetails, setIsEditingDetails] = useState(false);
-    const [editedName, setEditedName] = useState('');
-    const [editedNutritionPer100, setEditedNutritionPer100] = useState<KBZHU>({
-        calories: 0, protein: 0, fat: 0, carbs: 0,
-    });
+    const [editedName, setEditedName] = useState(editingEntry?.foodName ?? '');
+    const [editedNutritionPer100, setEditedNutritionPer100] = useState<KBZHU>(
+        editingEntry ? per100Of(editingEntry) : { calories: 0, protein: 0, fat: 0, carbs: 0 }
+    );
 
     // Refs
     const modalRef = useRef<HTMLDivElement>(null);
     const firstFocusableRef = useRef<HTMLButtonElement>(null);
-    const wasOpenRef = useRef(false);
 
     // Store hooks
     const addEntry = useFoodTrackerStore((state) => state.addEntry);
     const updateEntry = useFoodTrackerStore((state) => state.updateEntry);
     const selectedDate = useFoodTrackerStore((state) => state.selectedDate);
 
-    // Reset state when modal opens
+    // Focus lands on the first control when the modal opens. Everything else
+    // the reset used to do is now the mount itself.
     useEffect(() => {
-        if (isOpen && !wasOpenRef.current) {
-            if (editingEntry) {
-                // Edit mode: pre-fill with existing data
-                setActiveTab(DEFAULT_TAB);
-                setStep('select-portion');
-                setSelectedFood({
-                    id: editingEntry.foodId,
-                    name: editingEntry.foodName,
-                    nutritionPer100: {
-                        calories: editingEntry.portionAmount > 0
-                            ? (editingEntry.nutrition.calories / editingEntry.portionAmount) * 100
-                            : 0,
-                        protein: editingEntry.portionAmount > 0
-                            ? (editingEntry.nutrition.protein / editingEntry.portionAmount) * 100
-                            : 0,
-                        fat: editingEntry.portionAmount > 0
-                            ? (editingEntry.nutrition.fat / editingEntry.portionAmount) * 100
-                            : 0,
-                        carbs: editingEntry.portionAmount > 0
-                            ? (editingEntry.nutrition.carbs / editingEntry.portionAmount) * 100
-                            : 0,
-                    },
-                    servingSize: editingEntry.portionAmount,
-                    servingUnit: editingEntry.portionType === 'milliliters' ? 'мл' : 'г',
-                } as FoodItem);
-                setPortionType(editingEntry.portionType);
-                setPortionAmount(editingEntry.portionAmount);
-                setEditedName(editingEntry.foodName);
-                const per100 = {
-                    calories: editingEntry.portionAmount > 0
-                        ? (editingEntry.nutrition.calories / editingEntry.portionAmount) * 100 : 0,
-                    protein: editingEntry.portionAmount > 0
-                        ? (editingEntry.nutrition.protein / editingEntry.portionAmount) * 100 : 0,
-                    fat: editingEntry.portionAmount > 0
-                        ? (editingEntry.nutrition.fat / editingEntry.portionAmount) * 100 : 0,
-                    carbs: editingEntry.portionAmount > 0
-                        ? (editingEntry.nutrition.carbs / editingEntry.portionAmount) * 100 : 0,
-                };
-                setEditedNutritionPer100(per100);
-            } else {
-                // New entry mode
-                setActiveTab(DEFAULT_TAB);
-                setStep('select-food');
-                setSelectedFood(null);
-                setPortionType('grams');
-                setPortionAmount(100);
-            }
-            setCalculatedNutrition(null);
-            setBatchFoods([]);
-            setBatchIndex(0);
-            setIsEditingDetails(false);
-            setTimeout(() => firstFocusableRef.current?.focus(), 0);
-        }
-        wasOpenRef.current = isOpen;
-    }, [isOpen, editingEntry]);
+        if (!isOpen) return
+
+        const timer = setTimeout(() => firstFocusableRef.current?.focus(), 0);
+        return () => clearTimeout(timer);
+    }, [isOpen]);
 
     // Handle escape key
     useEffect(() => {

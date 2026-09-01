@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -21,6 +23,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+// testPNG returns a real, minimal PNG. Recognition uploads are validated by
+// content now, so a placeholder byte string is correctly rejected.
+func testPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, img))
+	return buf.Bytes()
+}
 
 // ============================================================================
 // Mock Service Implementation
@@ -212,6 +224,7 @@ func setupTestHandlerWithMock() (*Handler, *MockService) {
 		Env:                       "test",
 		JWTSecret:                 "test-secret",
 		FoodRecognitionDailyLimit: 20,
+		Features:                  config.Features{FoodRecognition: true},
 	}
 	log := logger.New()
 	mockService := new(MockService)
@@ -328,7 +341,7 @@ func TestCreateUserFood(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: mockService,
 		}
@@ -366,7 +379,7 @@ func TestCreateUserFood(t *testing.T) {
 	t.Run("missing name returns 400", func(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: new(MockService),
 		}
@@ -389,7 +402,7 @@ func TestGetUserFoods(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: mockService,
 		}
@@ -417,7 +430,7 @@ func TestDeleteUserFood(t *testing.T) {
 		gin.SetMode(gin.TestMode)
 		mockService := new(MockService)
 		handler := &Handler{
-			cfg:       &config.Config{},
+			cfg:       &config.Config{Features: config.Features{FoodRecognition: true}},
 			log:       logger.New(),
 			userFoods: mockService,
 		}
@@ -485,7 +498,7 @@ func createMultipartRequest(t *testing.T, fieldName, fileName, contentType strin
 func TestRecognizeFood_Success(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	imageData := []byte("fake-image-data")
+	imageData := testPNG(t)
 
 	expectedResp := &AIRecognitionResponse{
 		Foods: []RecognizedFood{
@@ -500,7 +513,7 @@ func TestRecognizeFood_Success(t *testing.T) {
 		RemainingRecognitions: 19,
 	}
 
-	mockService.On("RecognizeFood", mock.Anything, int64(1), imageData, "image/jpeg", "", 20, mock.AnythingOfType("*openrouter.Client")).
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*openrouter.Client")).
 		Return(expectedResp, nil)
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
@@ -561,15 +574,17 @@ func TestRecognizeFood_InvalidFileType(t *testing.T) {
 	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Equal(t, "Файл должен быть изображением", resp["message"])
+	// The rejection now names the accepted formats rather than repeating the
+	// client's claim about the file.
+	assert.Contains(t, resp["message"], "допустимые форматы")
 }
 
 func TestRecognizeFood_LimitExceeded(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	imageData := []byte("fake-image-data")
+	imageData := testPNG(t)
 
-	mockService.On("RecognizeFood", mock.Anything, int64(1), imageData, "image/jpeg", "", 20, mock.AnythingOfType("*openrouter.Client")).
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*openrouter.Client")).
 		Return(nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня"))
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
@@ -596,13 +611,13 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 	mockService := new(MockService)
 
 	handler := &Handler{
-		cfg:      &config.Config{FoodRecognitionDailyLimit: 20},
-		log:      logger.New(),
-		extras:   mockService,
-		orClient: nil, // No OpenRouter client configured
+		cfg:    &config.Config{FoodRecognitionDailyLimit: 20},
+		log:    logger.New(),
+		extras: mockService,
+		// Capability disabled: OPENROUTER_API_KEY is absent in this environment.
 	}
 
-	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", []byte("fake-image-data"))
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", testPNG(t))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -616,7 +631,7 @@ func TestRecognizeFood_ServiceUnavailable(t *testing.T) {
 	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Equal(t, "Сервис распознавания еды недоступен", resp["message"])
+	assert.Equal(t, "Распознавание еды недоступно в этом окружении", resp["message"])
 }
 
 func TestSearchFoodsHandler_ContextCanceled(t *testing.T) {

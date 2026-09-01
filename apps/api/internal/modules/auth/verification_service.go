@@ -87,6 +87,10 @@ func (vs *VerificationService) SendCode(ctx context.Context, userID int64, userE
 	}
 
 	// Send email
+	if vs.emailService == nil {
+		return fmt.Errorf("verification requires email: %w", apperrors.ErrEmailUnavailable)
+	}
+
 	err = vs.emailService.SendVerificationEmail(ctx, email.VerificationEmailData{
 		UserEmail: userEmail,
 		Code:      code,

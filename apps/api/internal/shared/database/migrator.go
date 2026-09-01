@@ -180,7 +180,7 @@ func (m *Migrator) loadPending(applied map[int]struct{}) ([]migration, error) {
 func (m *Migrator) seedBaseline(ctx context.Context, pending []migration, baseline int) error {
 	m.log.Infow("Migrations: seeding baseline", "baseline", baseline)
 
-	tx, err := m.db.DB.BeginTx(ctx, nil)
+	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin baseline tx: %w", err)
 	}
@@ -211,7 +211,7 @@ func (m *Migrator) seedBaseline(ctx context.Context, pending []migration, baseli
 
 // apply runs a single migration inside a transaction and records it.
 func (m *Migrator) apply(ctx context.Context, mg migration) error {
-	tx, err := m.db.DB.BeginTx(ctx, nil)
+	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}

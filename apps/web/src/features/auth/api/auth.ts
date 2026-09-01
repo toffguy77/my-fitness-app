@@ -3,7 +3,10 @@
  * Integrates with Golang backend API for login and registration
  */
 
+import { isNetworkError } from '@/shared/errors/apiErrors';
 import { apiClient } from '@/shared/utils/api-client';
+import { leadToken } from '@/features/onboarding/api/guest';
+import { visitorId } from '@/shared/analytics';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '@/features/auth/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
@@ -44,6 +47,12 @@ export async function registerUser(
             email: data.email,
             password: data.password,
             consents: consents,
+            // Whatever they worked out before registering. Without it the new
+            // account asks the same six questions again.
+            lead_token: leadToken() ?? undefined,
+            // Joins what this browser did before the account to what it does
+            // after; without it the funnel breaks at exactly that point.
+            visitor_id: visitorId() || undefined,
         });
 
         return response;
@@ -58,8 +67,9 @@ export async function registerUser(
  * @returns Structured AuthError with appropriate message
  */
 export function mapApiError(error: any): AuthError {
-    // Network errors
-    if (error.name === 'TypeError' || error.message?.includes('fetch')) {
+    // Transport failures. The api client now raises a typed NetworkError; the
+    // TypeError check stays for any call path that still reaches fetch directly.
+    if (isNetworkError(error) || error.name === 'TypeError' || error.message?.includes('fetch')) {
         return {
             code: 'network_error',
             message: 'Check internet connection',

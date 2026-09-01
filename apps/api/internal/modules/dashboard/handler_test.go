@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -20,6 +22,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+// testPNG returns a real, minimal PNG. Uploads are now validated by content, so
+// a placeholder string is correctly rejected — which is the point.
+func testPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, img))
+	return buf.Bytes()
+}
 
 // MockService is a mock implementation of the ServiceInterface
 type MockService struct {
@@ -166,6 +178,8 @@ func setupTestHandlerWithMock() (*Handler, *MockService) {
 	cfg := &config.Config{
 		Env:       "test",
 		JWTSecret: "test-secret",
+		// Photo upload tests run against an environment where the bucket is configured.
+		Features: config.Features{WeeklyPhotos: true},
 	}
 	log := logger.New()
 	mockService := new(MockService)
@@ -641,7 +655,6 @@ func TestUploadPhoto_Success(t *testing.T) {
 		MimeType:       "application/octet-stream",
 	}
 
-	mockService.On("ValidatePhoto", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Return(nil)
 	mockService.On("UploadPhoto", mock.Anything, int64(1), "2024-W03", mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("string")).Return(photo, nil)
 
 	router := gin.New()
@@ -657,7 +670,7 @@ func TestUploadPhoto_Success(t *testing.T) {
 
 	part, err := writer.CreateFormFile("photo", "test.jpg")
 	require.NoError(t, err)
-	part.Write([]byte("fake image data"))
+	_, _ = part.Write(testPNG(t))
 	writer.Close()
 
 	req := httptest.NewRequest(http.MethodPost, "/photo-upload", body)
@@ -671,8 +684,6 @@ func TestUploadPhoto_Success(t *testing.T) {
 
 func TestUploadPhoto_ValidationFailed(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
-
-	mockService.On("ValidatePhoto", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Return(fmt.Errorf("file size must be 10MB or less"))
 
 	router := gin.New()
 	router.POST("/photo-upload", func(c *gin.Context) {
@@ -714,7 +725,7 @@ func TestUploadPhoto_MissingWeekIdentifier(t *testing.T) {
 
 	part, err := writer.CreateFormFile("photo", "test.jpg")
 	require.NoError(t, err)
-	part.Write([]byte("fake image data"))
+	_, _ = part.Write(testPNG(t))
 	writer.Close()
 
 	req := httptest.NewRequest(http.MethodPost, "/photo-upload", body)
@@ -1139,7 +1150,7 @@ func TestUploadPhoto_Unauthorized(t *testing.T) {
 
 	part, err := writer.CreateFormFile("photo", "test.jpg")
 	require.NoError(t, err)
-	part.Write([]byte("fake image data"))
+	_, _ = part.Write(testPNG(t))
 	writer.Close()
 
 	req := httptest.NewRequest(http.MethodPost, "/photo-upload", body)
@@ -1402,7 +1413,6 @@ func TestSubmitWeeklyReport_CreateServiceError(t *testing.T) {
 func TestUploadPhoto_ServiceError(t *testing.T) {
 	handler, mockService := setupTestHandlerWithMock()
 
-	mockService.On("ValidatePhoto", mock.AnythingOfType("int"), mock.AnythingOfType("string")).Return(nil)
 	mockService.On("UploadPhoto", mock.Anything, int64(1), "2024-W03", mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("string")).Return(nil, fmt.Errorf("S3 upload failed"))
 
 	router := gin.New()
@@ -1418,7 +1428,7 @@ func TestUploadPhoto_ServiceError(t *testing.T) {
 
 	part, err := writer.CreateFormFile("photo", "test.jpg")
 	require.NoError(t, err)
-	part.Write([]byte("fake image data"))
+	_, _ = part.Write(testPNG(t))
 	writer.Close()
 
 	req := httptest.NewRequest(http.MethodPost, "/photo-upload", body)

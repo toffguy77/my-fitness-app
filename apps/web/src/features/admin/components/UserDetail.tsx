@@ -1,5 +1,6 @@
 'use client'
 
+import { isApiError } from '@/shared/errors/apiErrors'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
@@ -28,19 +29,20 @@ export function UserDetail({ userId }: UserDetailProps) {
 
     useEffect(() => {
         Promise.all([
-            adminApi.getUsers(),
+            adminApi.getUser(userId),
             adminApi.getCurators(),
         ])
-            .then(([users, curatorsData]) => {
-                const found = users.find((u) => u.id === userId)
-                if (!found) {
-                    setError('Пользователь не найден')
-                } else {
-                    setUser(found)
-                }
+            .then(([found, curatorsData]) => {
+                setUser(found)
                 setCurators(curatorsData)
             })
-            .catch(() => setError('Не удалось загрузить данные'))
+            .catch((err) => {
+                // A missing user is a different situation from a failed load,
+                // and the operator needs to be able to tell them apart.
+                setError(isApiError(err) && err.status === 404
+                    ? 'Пользователь не найден'
+                    : 'Не удалось загрузить данные')
+            })
             .finally(() => setLoading(false))
     }, [userId])
 
@@ -59,11 +61,8 @@ export function UserDetail({ userId }: UserDetailProps) {
             await adminApi.changeRole(user.id, newRole)
             toast.success('Роль изменена')
             // Refresh data
-            const users = await adminApi.getUsers()
-            const found = users.find((u) => u.id === userId)
-            if (found) setUser(found)
-            const curatorsData = await adminApi.getCurators()
-            setCurators(curatorsData)
+            setUser(await adminApi.getUser(userId))
+            setCurators(await adminApi.getCurators())
         } catch {
             toast.error('Не удалось изменить роль')
         } finally {
@@ -79,9 +78,7 @@ export function UserDetail({ userId }: UserDetailProps) {
             await adminApi.assignCurator(user.id, curatorId)
             toast.success('Куратор назначен')
             // Refresh data
-            const users = await adminApi.getUsers()
-            const found = users.find((u) => u.id === userId)
-            if (found) setUser(found)
+            setUser(await adminApi.getUser(userId))
         } catch {
             toast.error('Не удалось назначить куратора')
         } finally {

@@ -91,7 +91,7 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 
 	// Validate password policy
 	if result := s.passwordVal.Validate(password); !result.Valid {
-		return nil, fmt.Errorf("пароль не соответствует требованиям: %v", result.Errors)
+		return nil, fmt.Errorf("пароль не соответствует требованиям: %v: %w", result.Errors, apperrors.ErrPasswordPolicy)
 	}
 
 	// Hash password
@@ -408,11 +408,11 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(newPassword)); err == nil {
-		return fmt.Errorf("новый пароль должен отличаться от текущего")
+		return fmt.Errorf("новый пароль должен отличаться от текущего: %w", apperrors.ErrPasswordUnchanged)
 	}
 
 	if result := s.passwordVal.Validate(newPassword); !result.Valid {
-		return fmt.Errorf("пароль не соответствует требованиям: %v", result.Errors)
+		return fmt.Errorf("пароль не соответствует требованиям: %v: %w", result.Errors, apperrors.ErrPasswordPolicy)
 	}
 
 	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
@@ -429,6 +429,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	if err != nil {
 		return fmt.Errorf("ошибка при обновлении пароля: %w", err)
 	}
+
+	// End every session: a stolen refresh token must not survive the very
+	// action a user takes to recover from the theft.
+	s.revokeAllUserRefreshTokens(ctx, userID)
 
 	return nil
 }

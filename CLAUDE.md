@@ -71,8 +71,9 @@ Uses a **feature-based modular architecture**. Path alias: `@/` → `src/`.
 Follows a **handler/service pattern** organized by domain module.
 
 - `cmd/server/main.go` — Application entry point
-- `internal/modules/` — Domain modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **logs**, **notifications**, **nutrition**, **nutrition-calc**, **users**
+- `internal/modules/` — Domain modules: **admin**, **auth**, **chat**, **content**, **curator**, **dashboard**, **food-tracker**, **logs**, **notifications**, **nutrition-calc**, **users**
   - Each module has: `handler.go` (HTTP handlers), `service.go` (business logic), `*_test.go`
+- `internal/router/` — HTTP route registration, one file per domain. **All routes are registered here, not in `main.go`.**
 - `internal/shared/` — Cross-cutting concerns:
   - `database/` — PostgreSQL connection, migrations
   - `middleware/` — Auth (JWT), error handling, logging, rate limiting
@@ -82,7 +83,7 @@ Follows a **handler/service pattern** organized by domain module.
 - `migrations/` — SQL migration files (numbered up/down pairs)
 
 ### Key Technical Details
-- React Compiler is enabled (`reactCompiler: true` in next.config.ts)
+- React Compiler is enabled (`reactCompiler: true` in `apps/web/next.config.ts` — the only Next.js config; there is no root-level one)
 - Frontend runs on port **3069**, backend on port **4000**
 - Next.js standalone output mode for containerized deployment
 - API proxied through Next.js rewrites in production
@@ -104,3 +105,82 @@ Follows a **handler/service pattern** organized by domain module.
 - State backend: S3 bucket `burcev-terraform-state`
 - Manages: service accounts, S3 access keys, IAM bindings, PostgreSQL users/databases
 - Secrets (credentials, passwords) are in `.claude/CLAUDE.local.md` (local only, not in git)
+
+## Authorization & Data Isolation
+
+Row Level Security was enabled by migration 004 and **disabled** by migration 015.
+There is no database-level isolation: every query must scope by the caller's id,
+and every route addressing someone else's resource must be guarded explicitly.
+
+Two mechanisms keep that honest:
+
+1. **`middleware.RequireClientRelationship`** guards the whole
+   `/api/v1/curator/clients/:id` group, so a route added there is protected even
+   when its handler lives in another module. (This is how the target-history
+   IDOR happened: that one route's handler is in `nutrition-calc`.)
+2. **`internal/router/authorization_matrix_test.go`** holds `protectedRoutes` —
+   a registry of every route carrying a resource id, with the mechanism that
+   protects it (`relationship`, `participant`, `owner`, `role`, `public`).
+   Adding a route with an id parameter and no registry entry **fails the build**.
+
+**When adding a route:** register it in the relevant `internal/router/*.go`, and
+if its path contains an id, add it to `protectedRoutes` with a deliberate choice
+of protection. Then run `go test ./internal/router/`.
+
+Routing changes also update `internal/router/testdata/routes.golden`; regenerate
+with `UPDATE_GOLDEN=1 go test ./internal/router/` and review the diff.
+
+Authorization decisions use `errors.Is` with `internal/shared/apperrors` —
+never string matching on error text.
+
+## Optional Capabilities
+
+`config.Features` derives which capabilities are on from the presence of
+credentials: `email`, `food_recognition`, `weekly_photos`, `profile_avatars`,
+`chat_attachments`, `content_media`. A disabled capability answers `503`
+consistently and is listed in a startup `WARN` and in `GET /health`.
+
+In production, missing required variables are fatal at startup: `config.Load()`
+reports every problem at once rather than failing on the first. See
+`apps/api/.env.example` for the authoritative list.
+
+## Support Bot Knowledge Base
+
+`docs/user-guide/` is not only documentation: the Telegram support bot answers
+strictly from it and refuses anything it does not cover. The files are embedded
+in the API binary (`internal/modules/support/knowledge/`), because `go:embed`
+cannot reach outside the module.
+
+**When product behaviour changes, update `docs/user-guide/` and run
+`make sync-knowledge` in `apps/api`.** `TestKnowledgeMatchesUserGuide` fails the
+build when the embedded copy drifts — a stale copy would have the bot answering
+from documentation nobody is reading any more.
+
+The prefix sent to the model must stay byte-stable: a timestamp, a request id or
+a varying greeting before the cache point turns every question into a cache miss.
+
+## Required Checks
+
+Merging into `main` requires these checks by name, through a repository ruleset:
+`CI Pipeline`, `Performance Analysis`, `Comprehensive Security Scan`,
+`Container Security Scan`.
+
+**The names are a contract.** Renaming a job in `.github/workflows/ci.yml`
+makes its required check unsatisfiable: every pull request then reports
+mergeable and blocked at the same time, with nothing failing and nothing
+saying why. If a job has to be renamed, change the ruleset in the same breath.
+
+## Integrity Checks
+
+Two scripts guard defects the audit found shipping to production. Both run in CI
+and both fail the build:
+
+- `scripts/check-api-contract.mjs` — every `/api/...` path the frontend calls
+  must exist in the backend's route table (`routes.golden`). The password-change
+  feature shipped broken because nothing checked this.
+- `scripts/check-codebase-integrity.mjs` — no unused `NEXT_PUBLIC_*` variables,
+  no secret-shaped names with a public prefix, exactly one `next.config.*`, and
+  no `TODO: Implement` handlers behind registered routes.
+
+Declare a `NEXT_PUBLIC_*` variable together with the code that reads it, not
+ahead of it.

@@ -1,0 +1,132 @@
+name: E2E
+
+# The end-to-end suite exists (33 spec files) but never ran in CI. It is the
+# only layer that would have caught a frontend calling an unregistered route,
+# or a curator analytics screen that can never fill. It blocks the merge.
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    # The suite runs ~14 minutes of tests; retries on failures push it past a
+    # tighter budget, and being cancelled mid-run tells us nothing.
+    timeout-minutes: 40
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: burcev
+          POSTGRES_PASSWORD: burcev
+          POSTGRES_DB: burcev_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://burcev:burcev@localhost:5432/burcev_e2e?sslmode=disable
+      # A 32-byte secret: production config validation rejects anything shorter.
+      JWT_SECRET: e2e-only-secret-value-not-used-anywhere-else
+      PORT: '4000'
+      INTERNAL_API_URL: http://localhost:4000
+      NEXT_PUBLIC_API_URL: ''
+      E2E_CLIENT_EMAIL: e2e-client@burcev.test
+      E2E_CLIENT_PASSWORD: E2e!Client#2026
+      E2E_CURATOR_EMAIL: e2e-curator@burcev.test
+      E2E_CURATOR_PASSWORD: E2e!Curator#2026
+      E2E_ADMIN_EMAIL: e2e-admin@burcev.test
+      E2E_ADMIN_PASSWORD: E2e!Admin#2026
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: apps/api/go.sum
+
+      - run: npm ci
+
+      - name: Build API
+        working-directory: apps/api
+        run: make build
+
+      # Starting the API applies every migration, so the schema comes from the
+      # same code path production uses.
+      - name: Start API
+        working-directory: apps/api
+        # NODE_ENV is set only here. Job-wide it would also reach `next build`,
+        # which requires "production".
+        env:
+          NODE_ENV: development
+        run: |
+          ./bin/server > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4000/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start:"; cat /tmp/api.log; exit 1
+
+      - name: Seed test accounts
+        working-directory: apps/api
+        env:
+          NODE_ENV: development
+        run: go run ./cmd/seed-e2e
+
+      - name: Build and start web
+        run: |
+          npm run build:web
+          npm run start --workspace=apps/web > /tmp/web.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3069 > /dev/null; then
+              echo "Web is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Web failed to start:"; cat /tmp/web.log; exit 1
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        run: npm run test:e2e
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-logs
+          path: |
+            /tmp/api.log
+            /tmp/web.log
+          retention-days: 7

@@ -1,11 +1,14 @@
 package nutritioncalc
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -161,9 +164,13 @@ func (h *Handler) Recalculate(c *gin.Context) {
 // GetClientHistory handles GET /api/v1/curator/clients/:id/targets/history
 // Returns target vs actual nutrition data for a specific client (curator use)
 func (h *Handler) GetClientHistory(c *gin.Context) {
-	// Verify curator is authenticated
-	_, exists := c.Get("user_id")
+	curatorIDValue, exists := c.Get("user_id")
 	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+	curatorID, ok := curatorIDValue.(int64)
+	if !ok {
 		response.Unauthorized(c, "Пользователь не аутентифицирован")
 		return
 	}
@@ -173,6 +180,24 @@ func (h *Handler) GetClientHistory(c *gin.Context) {
 	if err != nil {
 		h.log.Errorw("Invalid client ID", "error", err, "client_id", clientIDStr)
 		response.Error(c, http.StatusBadRequest, "Неверный ID клиента")
+		return
+	}
+
+	// This route lives under /curator/clients/:id but its handler is in a
+	// different module than the rest of that group, so it never inherited the
+	// relationship check the curator service performs everywhere else — any
+	// curator could read any user's target history by id.
+	allowed, err := h.hasActiveRelationship(c.Request.Context(), curatorID, clientID)
+	if err != nil {
+		h.log.Errorw("Failed to verify curator-client relationship", "error", err,
+			"curator_id", curatorID, "client_id", clientID)
+		response.InternalError(c, "Не удалось проверить доступ к клиенту")
+		return
+	}
+	if !allowed {
+		h.log.Warn("Curator requested history of a client they are not assigned to",
+			"curator_id", curatorID, "client_id", clientID)
+		response.Forbidden(c, "Нет доступа к данным этого клиента")
 		return
 	}
 
@@ -193,4 +218,46 @@ func (h *Handler) GetClientHistory(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, HistoryResponse{Days: history})
+}
+
+// hasActiveRelationship reports whether the curator is currently assigned to
+// the client. Mirrors curator.Service.verifyRelationship; kept here so the
+// route is safe on its own rather than relying on its neighbours.
+func (h *Handler) hasActiveRelationship(ctx context.Context, curatorID, clientID int64) (bool, error) {
+	var exists bool
+	err := h.db.QueryRowContext(ctx,
+		`SELECT EXISTS (
+			SELECT 1 FROM curator_client_relationships
+			WHERE curator_id = $1 AND client_id = $2 AND status = 'active'
+		)`, curatorID, clientID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+// CalculateForGuest handles POST /api/v1/public/nutrition/calculate.
+//
+// The wizard's whole premise is that a person sees their own numbers before
+// being asked for anything. Nothing here is stored: the request carries the
+// parameters and the response carries the result.
+func (h *Handler) CalculateForGuest(c *gin.Context) {
+	var in GuestInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.Error(c, http.StatusBadRequest, "Заполните все параметры")
+		return
+	}
+
+	result, err := CalculateForGuest(in)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrValidation) {
+			response.Error(c, http.StatusBadRequest, "Проверьте введённые параметры")
+			return
+		}
+		h.log.Error("Failed to calculate guest targets", "error", err)
+		response.InternalError(c, "Не удалось выполнить расчёт")
+		return
+	}
+
+	response.Success(c, http.StatusOK, result)
 }

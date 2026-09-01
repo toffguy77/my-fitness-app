@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"github.com/burcev/api/internal/shared/upload"
 	"testing"
 
 	"github.com/burcev/api/internal/config"
@@ -53,6 +54,6 @@ func TestService_UploadAvatar_NilS3(t *testing.T) {
 	service := setupTestService()
 	ctx := context.Background()
 
-	_, err := service.UploadAvatar(ctx, int64(123), nil, "image/jpeg", 1024)
+	_, err := service.UploadAvatar(ctx, int64(123), upload.File{Kind: upload.KindJPEG})
 	assert.Error(t, err, "UploadAvatar should fail with nil S3 client")
 }

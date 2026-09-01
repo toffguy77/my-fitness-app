@@ -20,6 +20,7 @@ import type {
     TargetGoals,
 } from '../types';
 import type { FoodTrackerStore } from './types';
+import { EVENTS, track } from '@/shared/analytics';
 import {
     EMPTY_KBZHU,
     EMPTY_ENTRIES,
@@ -79,6 +80,32 @@ const initialEntriesState = {
 // ============================================================================
 // Slice Creator
 // ============================================================================
+
+/**
+ * Whether this browser has already recorded its owner's first food entry.
+ *
+ * Activation — did registering lead to anything — is the one number worth
+ * knowing, and it is only interesting the first time.
+ */
+const FIRST_ENTRY_KEY = 'first_food_entry_logged';
+
+function hasLoggedFirstEntry(): boolean {
+    try {
+        return localStorage.getItem(FIRST_ENTRY_KEY) === '1';
+    } catch {
+        // Storage refused: the event is sent again, and the report counts
+        // distinct users rather than events.
+        return false;
+    }
+}
+
+function markFirstEntryLogged(): void {
+    try {
+        localStorage.setItem(FIRST_ENTRY_KEY, '1');
+    } catch {
+        // Nothing to remember it with; see above.
+    }
+}
 
 export const createEntriesSlice: StateCreator<
     FoodTrackerStore,
@@ -271,6 +298,14 @@ export const createEntriesSlice: StateCreator<
                     dailyTotals,
                 };
             });
+
+            // The meal type is categorical and says which slot people actually
+            // use; nothing about the food itself is sent.
+            track(EVENTS.foodEntryCreated, { meal_type: mealType });
+            if (!hasLoggedFirstEntry()) {
+                markFirstEntryLogged();
+                track(EVENTS.firstFoodEntry, { meal_type: mealType });
+            }
 
             toast.success('Запись добавлена');
             return response;

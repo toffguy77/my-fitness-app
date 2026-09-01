@@ -14,6 +14,8 @@ import { useFormValidation } from '@/features/auth/hooks/useFormValidation';
 import { AuthForm } from './AuthForm';
 import { ConsentSection } from './ConsentSection';
 import { AuthFooter } from './AuthFooter';
+import { ProviderButtons } from './ProviderButtons';
+import { EVENTS, track } from '@/shared/analytics';
 import type { AuthMode, AuthFormData, ConsentState } from '@/features/auth/types';
 
 export function AuthScreen() {
@@ -44,7 +46,12 @@ export function AuthScreen() {
     };
 
     const handlePasswordBlur = () => {
-        if (formData.password) {
+        // Only while registering. On the sign-in form the complexity rules
+        // describe a password the user has already chosen — telling them their
+        // correct password needs a capital letter is both wrong and, because
+        // the message appears on blur, it pushes the button out from under the
+        // click that caused the blur.
+        if (mode === 'register' && formData.password) {
             validatePassword(formData.password);
         }
     };
@@ -143,6 +150,7 @@ export function AuthScreen() {
                             <Button
                                 onClick={() => {
                                     if (mode === 'login') {
+                                        track(EVENTS.registrationOpened, { method: 'password' });
                                         setMode('register');
                                     } else {
                                         handleRegister();
@@ -170,6 +178,8 @@ export function AuthScreen() {
                                 </button>
                             )}
                         </div>
+
+                        <ProviderButtons mode={mode} />
                     </div>
 
                     <AuthFooter />

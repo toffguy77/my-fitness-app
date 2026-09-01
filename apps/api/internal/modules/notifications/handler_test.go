@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -258,7 +259,7 @@ func TestMarkAsRead_NotFound(t *testing.T) {
 	notificationID := uuid.New().String()
 
 	mockService.On("MarkAsRead", mock.Anything, int64(1), notificationID).
-		Return((*time.Time)(nil), fmt.Errorf("notification not found or already read"))
+		Return((*time.Time)(nil), fmt.Errorf("notification not found or already read: %w", apperrors.ErrNotFound))
 
 	router := gin.New()
 	router.POST("/notifications/:id/read", func(c *gin.Context) {

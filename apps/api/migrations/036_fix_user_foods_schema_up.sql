@@ -1,3 +1,7 @@
+-- IF NOT EXISTS added so the chain can be applied to an empty database:
+-- several of these objects are also created by earlier migrations, and a
+-- bare CREATE aborted the run. Idempotent statements are a no-op where the
+-- object already exists, so production is unaffected.
 -- Fix user_foods table to match expected schema
 -- On fresh databases (prod), 028 already creates the correct schema.
 -- On older databases (dev), columns may have old names.
@@ -32,7 +36,7 @@ ALTER TABLE user_foods ADD COLUMN IF NOT EXISTS source_food_id UUID;
 
 -- Recreate FTS index to include brand
 DROP INDEX IF EXISTS idx_user_foods_name_fts;
-CREATE INDEX idx_user_foods_name_fts ON user_foods
+CREATE INDEX IF NOT EXISTS idx_user_foods_name_fts ON user_foods
     USING gin(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')));
 
 -- Drop old indexes

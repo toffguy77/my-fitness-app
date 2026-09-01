@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import { PasswordInput } from '@/shared/components/forms/PasswordInput'
 import { passwordSchema } from '@/features/auth/utils/validation'
+import { messageFor } from '@/shared/errors/apiErrors'
 import { changePassword } from '../api/settings'
 
 const changePasswordSchema = z
@@ -60,8 +61,9 @@ function PasswordForm() {
             setNewPassword('')
             setConfirmPassword('')
         } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Не удалось изменить пароль'
-            setServerError(msg)
+            // messageFor reads the server's code — a wrong current password is
+            // its own code, not a failed sign-in and not an expired session.
+            setServerError(messageFor(err))
         } finally {
             setSaving(false)
         }

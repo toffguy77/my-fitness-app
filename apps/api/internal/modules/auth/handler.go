@@ -1,15 +1,16 @@
 package auth
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,6 +20,53 @@ type Handler struct {
 	log                 *logger.Logger
 	service             *Service
 	verificationService *VerificationService
+	// leads may be nil; registration works without it.
+	leads LeadClaimer
+	// analytics may be nil; nothing depends on it being there.
+	analytics EventRecorder
+}
+
+// EventRecorder records a product fact. Declared here as the narrowest thing
+// auth needs, so the two modules do not depend on each other's types.
+type EventRecorder interface {
+	RecordServerEvent(ctx context.Context, name string, userID int64, properties map[string]any)
+	LinkVisitor(ctx context.Context, visitorID string, userID int64) error
+}
+
+// WithAnalytics attaches the recorder for facts a browser cannot be trusted to
+// report: a client-sent "registered" lies when the connection drops after a
+// successful request, and vanishes behind a blocker.
+func (h *Handler) WithAnalytics(recorder EventRecorder) *Handler {
+	h.analytics = recorder
+	return h
+}
+
+// LeadClaimer carries an onboarding attempt made before registration onto the
+// account it produced. Declared here as the narrowest thing auth needs, so the
+// two modules do not depend on each other's types.
+type LeadClaimer interface {
+	ClaimInto(ctx context.Context, token string, userID int64) error
+}
+
+// WithLeads attaches the claimer used when a registration carries a lead token.
+func (h *Handler) WithLeads(claimer LeadClaimer) *Handler {
+	h.leads = claimer
+	return h
+}
+
+// claimLead carries a guest onboarding attempt onto the new account.
+//
+// Best effort by design: the account already exists, and failing the
+// registration because a lead could not be moved would cost the user the
+// account they just created over data they can re-enter.
+func (h *Handler) claimLead(c *gin.Context, token string, userID int64) {
+	if h.leads == nil {
+		return
+	}
+	if err := h.leads.ClaimInto(c.Request.Context(), token, userID); err != nil {
+		h.log.Errorw("Failed to carry onboarding lead onto new account",
+			"error", err, "user_id", userID)
+	}
 }
 
 // NewHandler creates a new auth handler
@@ -37,6 +85,12 @@ type RegisterRequest struct {
 	Password string         `json:"password" binding:"required,min=8,max=128"`
 	Name     string         `json:"name"`
 	Consents *ConsentsInput `json:"consents"`
+	// LeadToken names an onboarding attempt made before registering. Present,
+	// it carries the answers across so nothing is asked twice.
+	LeadToken string `json:"lead_token"`
+	// VisitorID is this browser's analytics identifier, so what it did before
+	// the account belongs to the same person as what it does after.
+	VisitorID string `json:"visitor_id"`
 }
 
 // ConsentsInput represents user consent flags submitted during registration
@@ -79,6 +133,16 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
+	// Carry across what they entered before registering. Best effort: the
+	// account exists, and failing the registration over a lost lead would cost
+	// them the account they just made.
+	if req.LeadToken != "" {
+		h.claimLead(c, req.LeadToken, result.User.ID)
+	}
+
+	telemetry.Record(telemetry.EventUserRegistered)
+	h.recordSignUp(c, req.VisitorID, result.User.ID)
+
 	// Send verification code (best-effort — registration still succeeds)
 	if h.verificationService != nil {
 		if err := h.verificationService.SendCode(c.Request.Context(), result.User.ID, result.User.Email, c.ClientIP(), c.Request.UserAgent()); err != nil {
@@ -87,6 +151,31 @@ func (h *Handler) Register(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusCreated, result)
+}
+
+// WSTicket handles POST /api/v1/auth/ws-ticket.
+//
+// Browsers cannot set headers on a WebSocket connection, so something has to
+// travel in the URL. This is what travels — instead of the access token, which
+// was good for hours against the whole API and ended up in every proxy log.
+func (h *Handler) WSTicket(c *gin.Context) {
+	userID, ok := c.Get("user_id")
+	if !ok {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	ticket, err := h.service.IssueWSTicket(c.Request.Context(), userID.(int64))
+	if err != nil {
+		h.log.Errorw("Failed to issue websocket ticket", "error", err)
+		response.InternalError(c, "Не удалось подготовить подключение")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{
+		"ticket":     ticket,
+		"expires_in": int(WSTicketTTL.Seconds()),
+	})
 }
 
 // Login handles user login
@@ -100,22 +189,37 @@ func (h *Handler) Login(c *gin.Context) {
 	result, err := h.service.Login(c.Request.Context(), req.Email, req.Password, c.ClientIP(), c.Request.UserAgent(), req.RememberMe)
 	if err != nil {
 		h.log.Errorw("Login failed", "error", err, "email", req.Email)
+		telemetry.Record(telemetry.EventLoginFailed)
 		response.Error(c, http.StatusUnauthorized, "Неверные учетные данные")
 		return
 	}
 
+	telemetry.Record(telemetry.EventLoginSucceeded)
+	if h.analytics != nil {
+		h.analytics.RecordServerEvent(c.Request.Context(), "signed_in", result.User.ID,
+			map[string]any{"method": "password"})
+	}
 	response.Success(c, http.StatusOK, result)
 }
 
 // Refresh handles token refresh
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	// The body is optional: a session started through an external provider has
+	// its refresh token in an HttpOnly cookie, which the page that completes
+	// the sign-in cannot read.
+	_ = c.ShouldBindJSON(&req)
+
+	token := req.RefreshToken
+	if token == "" {
+		token, _ = c.Cookie("refresh_token")
+	}
+	if token == "" {
 		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
 		return
 	}
 
-	result, err := h.service.RefreshTokens(c.Request.Context(), req.RefreshToken, c.ClientIP(), c.Request.UserAgent())
+	result, err := h.service.RefreshTokens(c.Request.Context(), token, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		h.log.Errorw("Token refresh failed", "error", err)
 		response.Error(c, http.StatusUnauthorized, "Invalid or expired refresh token")
@@ -178,10 +282,14 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	if err := h.service.ChangePassword(c.Request.Context(), userID.(int64), req.CurrentPassword, req.NewPassword); err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrInvalidCredentials):
-			response.Error(c, http.StatusUnauthorized, "Неверный текущий пароль")
-		case strings.HasPrefix(err.Error(), "новый пароль должен отличаться"):
+			// Its own code: a wrong confirmation password is not an expired
+			// session and not a failed sign-in, and the client must be able to
+			// tell the three apart.
+			response.ErrorCode(c, http.StatusUnauthorized,
+				apperrors.CodePasswordIncorrect, "Неверный текущий пароль", nil)
+		case errors.Is(err, apperrors.ErrPasswordUnchanged):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
-		case strings.HasPrefix(err.Error(), "пароль не соответствует требованиям"):
+		case errors.Is(err, apperrors.ErrPasswordPolicy):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		default:
 			h.log.Errorw("Password change failed", "error", err, "user_id", userID)
@@ -221,6 +329,13 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 		return
 	}
 
+	// A fact, recorded where it happened: the browser that confirms an address
+	// may never load another screen.
+	if h.analytics != nil {
+		h.analytics.RecordServerEvent(c.Request.Context(), "email_verified", userID.(int64), nil)
+	}
+	telemetry.Record(telemetry.EventUserRegistered)
+
 	response.SuccessWithMessage(c, http.StatusOK, "Email verified", nil)
 }
 
@@ -247,4 +362,23 @@ func (h *Handler) ResendVerification(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, http.StatusOK, "Code sent", nil)
+}
+
+// recordSignUp records the registration and joins this browser's earlier
+// events to the account it just produced.
+//
+// Best effort throughout: analytics must never be the reason a registration
+// fails.
+func (h *Handler) recordSignUp(c *gin.Context, visitorID string, userID int64) {
+	if h.analytics == nil {
+		return
+	}
+
+	ctx := c.Request.Context()
+	if visitorID != "" {
+		if err := h.analytics.LinkVisitor(ctx, visitorID, userID); err != nil {
+			h.log.Errorw("Failed to link visitor to new account", "error", err, "user_id", userID)
+		}
+	}
+	h.analytics.RecordServerEvent(ctx, "registered", userID, map[string]any{"method": "password"})
 }

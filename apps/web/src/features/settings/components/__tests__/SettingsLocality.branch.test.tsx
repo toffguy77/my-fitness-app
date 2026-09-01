@@ -13,6 +13,11 @@ const mockSaveSettings = jest.fn().mockResolvedValue(undefined)
 const mockHandleAvatarUpload = jest.fn().mockResolvedValue('url')
 const mockHandleAvatarDelete = jest.fn().mockResolvedValue(undefined)
 
+const pushMock = jest.fn()
+jest.mock('next/navigation', () => ({
+    useRouter: () => ({ push: pushMock }),
+}))
+
 jest.mock('react-hot-toast', () => ({
     __esModule: true,
     default: Object.assign(jest.fn(), { error: jest.fn(), success: jest.fn() }),
@@ -181,28 +186,25 @@ describe('SettingsLocality - branch coverage', () => {
         expect(mockSaveSettings).not.toHaveBeenCalled()
     })
 
-    // Branch: handleDeleteAccount - window.confirm true (line 115-116)
-    it('shows toast when delete account is confirmed', () => {
-        jest.spyOn(window, 'confirm').mockReturnValue(true)
+    // The button used to open window.confirm and then show a toast reading
+    // "feature in development". Deletion is real now and lives on its own page,
+    // because it needs explanation and confirmation rather than a one-liner.
+    it('navigates to the privacy page where deletion happens', async () => {
         render(<SettingsLocality />)
 
         fireEvent.click(screen.getByText('Удалить аккаунт'))
 
-        expect(window.confirm).toHaveBeenCalledWith('Вы уверены?')
-        expect(toast).toHaveBeenCalledWith('Функция в разработке')
-        ;(window.confirm as jest.Mock).mockRestore()
+        expect(pushMock).toHaveBeenCalledWith('/settings/privacy')
     })
 
-    // Branch: handleDeleteAccount - window.confirm false (line 115)
-    it('does nothing when delete account is cancelled', () => {
-        jest.spyOn(window, 'confirm').mockReturnValue(false)
+    it('does not delete anything directly from this screen', () => {
         render(<SettingsLocality />)
 
         fireEvent.click(screen.getByText('Удалить аккаунт'))
 
-        expect(window.confirm).toHaveBeenCalledWith('Вы уверены?')
-        expect(toast).not.toHaveBeenCalledWith('Функция в разработке')
-        ;(window.confirm as jest.Mock).mockRestore()
+        // Confirmation, the password check and the explanation all live on the
+        // privacy page; this button only takes the user there.
+        expect(toast).not.toHaveBeenCalled()
     })
 
     // Branch: handleSaveHeight when heightChanged is false (early return at line 60)

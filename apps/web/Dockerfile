@@ -2,6 +2,12 @@
 FROM node:20-alpine AS base
 
 # Security: Update packages and install security updates
+# DL3018 asks for pinned apk versions. We deliberately do not pin: the base
+# image tag already fixes the Alpine release, and `apk upgrade` exists to pull
+# security patches — pinning would defeat that and break the build whenever
+# Alpine rotates a package version out of the repository. Recorded in
+# .security-exceptions.yml.
+# hadolint ignore=DL3018
 RUN apk update && apk upgrade && apk add --no-cache \
     libc6-compat \
     dumb-init \
@@ -67,12 +73,15 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-key
 ARG NEXT_PUBLIC_API_URL=
 ARG NEXT_PUBLIC_APP_VERSION=unknown
 ARG NEXT_PUBLIC_YANDEX_METRIKA_ID=
+# Empty means the "ask in Telegram" link is not rendered at all.
+ARG NEXT_PUBLIC_TELEGRAM_BOT=
 
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 ENV NEXT_PUBLIC_YANDEX_METRIKA_ID=$NEXT_PUBLIC_YANDEX_METRIKA_ID
+ENV NEXT_PUBLIC_TELEGRAM_BOT=$NEXT_PUBLIC_TELEGRAM_BOT
 
 # Build the web application
 RUN NODE_OPTIONS="--max-old-space-size=1024" npm run build --workspace=apps/web
@@ -87,6 +96,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Security: Remove unnecessary packages and clean up
 # Remove npm (not needed in production runtime) to eliminate bundled dependency vulnerabilities
+# DL3018 asks for pinned apk versions. We deliberately do not pin: the base
+# image tag already fixes the Alpine release, and `apk upgrade` exists to pull
+# security patches — pinning would defeat that and break the build whenever
+# Alpine rotates a package version out of the repository. Recorded in
+# .security-exceptions.yml.
+# hadolint ignore=DL3018
 RUN apk del libc6-compat && \
     rm -rf /var/cache/apk/* /tmp/* /var/tmp/* \
     /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
