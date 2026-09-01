@@ -195,6 +195,10 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	telemetry.Record(telemetry.EventLoginSucceeded)
+	if h.analytics != nil {
+		h.analytics.RecordServerEvent(c.Request.Context(), "signed_in", result.User.ID,
+			map[string]any{"method": "password"})
+	}
 	response.Success(c, http.StatusOK, result)
 }
 
@@ -324,6 +328,13 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 		}
 		return
 	}
+
+	// A fact, recorded where it happened: the browser that confirms an address
+	// may never load another screen.
+	if h.analytics != nil {
+		h.analytics.RecordServerEvent(c.Request.Context(), "email_verified", userID.(int64), nil)
+	}
+	telemetry.Record(telemetry.EventUserRegistered)
 
 	response.SuccessWithMessage(c, http.StatusOK, "Email verified", nil)
 }

@@ -240,7 +240,10 @@ jobs:
           failure-threshold: warning
 
   security-scan:
-    name: Security Scan
+    # The name is what the repository ruleset requires on main. Renaming it
+    # made the check unsatisfiable and blocked every merge to main, which is
+    # the sort of thing a rename does when a rule elsewhere spells it out.
+    name: Comprehensive Security Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
