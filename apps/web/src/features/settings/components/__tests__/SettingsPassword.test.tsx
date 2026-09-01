@@ -1,6 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { SettingsPassword } from '../SettingsPassword'
+import { ApiError } from '@/shared/errors/apiErrors'
 
 const mockChangePassword = jest.fn()
 
@@ -84,14 +85,28 @@ describe('SettingsPassword', () => {
         expect(screen.queryByRole('button', { name: 'Изменить пароль' })).not.toBeInTheDocument()
     })
 
-    it('shows server error on wrong current password', async () => {
-        mockChangePassword.mockRejectedValue(new Error('неверный текущий пароль'))
+    // The server names the failure; this screen says it in words. A wrong
+    // confirmation password is its own code — not a failed sign-in, and not an
+    // expired session, which is what it used to be treated as.
+    it('shows the server’s reason for refusing', async () => {
+        mockChangePassword.mockRejectedValue(new ApiError(401, { code: 'password_incorrect' }))
 
         fillForm(VALID_CURRENT, VALID_NEW, VALID_NEW)
         fireEvent.click(screen.getByRole('button', { name: 'Изменить пароль' }))
 
         await waitFor(() => {
-            expect(screen.getByText('неверный текущий пароль')).toBeInTheDocument()
+            expect(screen.getByText('Неверный текущий пароль')).toBeInTheDocument()
+        })
+    })
+
+    it('falls back to something readable for an unnamed failure', async () => {
+        mockChangePassword.mockRejectedValue(new Error('boom'))
+
+        fillForm(VALID_CURRENT, VALID_NEW, VALID_NEW)
+        fireEvent.click(screen.getByRole('button', { name: 'Изменить пароль' }))
+
+        await waitFor(() => {
+            expect(screen.getByText(/Что-то пошло не так/)).toBeInTheDocument()
         })
     })
 })

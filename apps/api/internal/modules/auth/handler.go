@@ -278,7 +278,11 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	if err := h.service.ChangePassword(c.Request.Context(), userID.(int64), req.CurrentPassword, req.NewPassword); err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrInvalidCredentials):
-			response.Error(c, http.StatusUnauthorized, "Неверный текущий пароль")
+			// Its own code: a wrong confirmation password is not an expired
+			// session and not a failed sign-in, and the client must be able to
+			// tell the three apart.
+			response.ErrorCode(c, http.StatusUnauthorized,
+				apperrors.CodePasswordIncorrect, "Неверный текущий пароль", nil)
 		case errors.Is(err, apperrors.ErrPasswordUnchanged):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		case errors.Is(err, apperrors.ErrPasswordPolicy):

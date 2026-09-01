@@ -42,6 +42,13 @@ describe('Error codes', () => {
         expect(messageForCode('invalid_credentials')).toBe('Неверный логин или пароль')
     })
 
+    // Two different sentences to the person reading them: one is a failed
+    // sign-in, the other is failing to confirm it is you.
+    it('distinguishes a wrong password from a failed sign-in', () => {
+        expect(messageForCode('password_incorrect')).toBe('Неверный текущий пароль')
+        expect(messageForCode('password_incorrect')).not.toBe(messageForCode('invalid_credentials'))
+    })
+
     // A dictionary that has fallen behind the API must be visible, not silent.
     it('has nothing to say about a code it does not know', () => {
         expect(messageForCode('invented_code')).toBeNull()
@@ -54,7 +61,7 @@ describe('Error codes', () => {
             'token_invalid', 'token_expired', 'code_expired', 'too_many_attempts',
             'rate_limited', 'unsupported_media', 'password_policy', 'password_unchanged',
             'email_unavailable', 'conflict', 'gone', 'validation',
-            'feature_unavailable', 'internal',
+            'feature_unavailable', 'internal', 'password_incorrect',
         ]
 
         expect(knownErrorCodes().sort()).toEqual(apiCodes.sort())

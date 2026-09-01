@@ -103,6 +103,19 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Export archives past their download window. Each holds a copy of a
+	// person's whole account, so it is exactly the thing not to leave in a
+	// bucket indefinitely.
+	registry.MustRegister(jobs.Job{
+		Name:    "cleanup.data-exports",
+		RunAt:   jobs.At(3, 15),
+		Period:  jobs.PeriodDaily,
+		Timeout: 10 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Account.PurgeExpiredExports(ctx)
+		},
+	})
+
 	// Spent and expired socket tickets. They live for thirty seconds; without
 	// this the table keeps every one ever issued.
 	registry.MustRegister(jobs.Job{

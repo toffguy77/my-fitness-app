@@ -346,3 +346,56 @@ const readmeText = `Выгрузка ваших данных из BURCEV
 Если чего-то не хватает, напишите в поддержку — мы обязаны выдать
 все данные, которые о вас храним.
 `
+
+// PurgeExpiredExports removes archives past their download window.
+//
+// The archive holds a copy of everything the person's account contains — food
+// diary, measurements, conversations — so it is exactly the thing not to leave
+// in a bucket indefinitely. The rows go with the objects: a row pointing at a
+// deleted object is a broken download rather than a record.
+func (s *Service) PurgeExpiredExports(ctx context.Context) (int, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id::text, s3_key FROM data_exports
+		 WHERE expires_at IS NOT NULL AND expires_at < NOW()`)
+	if err != nil {
+		return 0, fmt.Errorf("list expired exports: %w", err)
+	}
+	defer rows.Close()
+
+	type expired struct{ id, key string }
+	var stale []expired
+	for rows.Next() {
+		var e expired
+		var key sql.NullString
+		if err := rows.Scan(&e.id, &key); err != nil {
+			return 0, fmt.Errorf("scan expired export: %w", err)
+		}
+		e.key = key.String
+		stale = append(stale, e)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	removed := 0
+	for _, e := range stale {
+		if e.key != "" {
+			if bucket := s.buckets["exports"]; bucket != nil {
+				if err := bucket.DeleteFile(ctx, e.key); err != nil {
+					// The row stays so the next run tries again: a record
+					// without its object is worse than a record kept a day
+					// longer.
+					s.log.Error("Failed to delete expired export object", "error", err, "export_id", e.id)
+					continue
+				}
+			}
+		}
+
+		if _, err := s.db.ExecContext(ctx, `DELETE FROM data_exports WHERE id = $1::uuid`, e.id); err != nil {
+			return removed, fmt.Errorf("delete expired export: %w", err)
+		}
+		removed++
+	}
+
+	return removed, nil
+}

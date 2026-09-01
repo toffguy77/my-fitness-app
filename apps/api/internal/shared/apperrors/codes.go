@@ -20,6 +20,11 @@ const (
 	CodeUnsupportedMedia   = "unsupported_media"
 	CodePasswordPolicy     = "password_policy"
 	CodePasswordUnchanged  = "password_unchanged"
+	// Distinct from invalid_credentials on purpose: "your password is wrong"
+	// and "the password you typed to confirm it is you is wrong" are different
+	// sentences to the person reading them — and the client must be able to
+	// tell an expired session from either.
+	CodePasswordIncorrect  = "password_incorrect"
 	CodeEmailUnavailable   = "email_unavailable"
 	CodeConflict           = "conflict"
 	CodeGone               = "gone"
@@ -67,5 +72,5 @@ func AllCodes() []string {
 	for _, code := range codes {
 		all = append(all, code)
 	}
-	return append(all, CodeFeatureUnavailable, CodeInternal)
+	return append(all, CodeFeatureUnavailable, CodeInternal, CodePasswordIncorrect)
 }
