@@ -108,12 +108,23 @@ var protectedRoutes = map[string]protection{
 	// user's resource. Starting a flow and returning from one are public by
 	// necessity — the user is not signed in yet — and are protected by the PKCE
 	// state check instead. Unlinking is scoped to the caller's own account.
+	// Finishing an attempt the callback could not: the caller is not signed in
+	// yet, and the pending attempt is identified by an HttpOnly cookie the
+	// handler minted, not by anything the caller supplies.
+	"POST /api/v1/auth/oauth/link":              protPublic,
+	"POST /api/v1/auth/oauth/email":             protPublic,
 	"GET /api/v1/auth/oauth/:provider":          protPublic,
 	"GET /api/v1/auth/oauth/:provider/callback": protPublic,
 	"DELETE /api/v1/auth/providers/:provider":   protOwner,
 
 	// Public by design — drives SEO for published articles.
 	"GET /api/v1/public/content/:id": protPublic,
+
+	// The guest onboarding. :id here is a lead — but the only route carrying
+	// one requires the administrative role, and every public route in this
+	// group addresses its lead by a signed token instead, precisely so a
+	// stranger cannot walk the table and read somebody's body measurements.
+	"POST /api/v1/admin/leads/:id/handled": protRole,
 }
 
 // nonResourceParams are path parameters that address a value rather than

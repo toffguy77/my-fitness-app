@@ -14,6 +14,7 @@ import { useFormValidation } from '@/features/auth/hooks/useFormValidation';
 import { AuthForm } from './AuthForm';
 import { ConsentSection } from './ConsentSection';
 import { AuthFooter } from './AuthFooter';
+import { ProviderButtons } from './ProviderButtons';
 import type { AuthMode, AuthFormData, ConsentState } from '@/features/auth/types';
 
 export function AuthScreen() {
@@ -175,6 +176,8 @@ export function AuthScreen() {
                                 </button>
                             )}
                         </div>
+
+                        <ProviderButtons mode={mode} />
                     </div>
 
                     <AuthFooter />

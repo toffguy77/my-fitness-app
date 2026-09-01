@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/config"
@@ -21,6 +22,16 @@ type OAuthHandler struct {
 	log      *logger.Logger
 	service  *Service
 	registry *oauth.Registry
+	// leads may be nil; the flow works without it.
+	leads LeadClaimer
+}
+
+// WithLeads attaches the claimer that carries a guest onboarding attempt onto
+// an account created through a provider — the same treatment a password
+// registration gets.
+func (h *OAuthHandler) WithLeads(claimer LeadClaimer) *OAuthHandler {
+	h.leads = claimer
+	return h
 }
 
 // NewOAuthHandler creates the handler.
@@ -35,6 +46,12 @@ const (
 	stateCookie    = "oauth_state"
 	verifierCookie = "oauth_verifier"
 	providerCookie = "oauth_provider"
+	// Identifies the parked profile of a sign-in that could not finish in the
+	// callback. The profile itself never leaves the server.
+	pendingCookie = "oauth_pending"
+	// Set by the guest wizard before it sends the visitor to a provider. Not
+	// HttpOnly: the wizard itself writes and reads it.
+	leadCookie = "lead_token"
 	// Long enough for a person to sign in at the provider, short enough that a
 	// stale attempt cannot be replayed later.
 	oauthFlowTTL = 10 * time.Minute
@@ -124,17 +141,36 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
+	// A registration through a provider carries the guest's answers across in
+	// the same way a password registration does; without this, one of the two
+	// paths would silently ask everything again.
+	if outcome.Result == OAuthRegistered && h.leads != nil {
+		if token, err := c.Cookie(leadCookie); err == nil && token != "" {
+			if err := h.leads.ClaimInto(c.Request.Context(), token, outcome.User.User.ID); err != nil {
+				h.log.Errorw("Failed to carry onboarding lead onto provider account",
+					"error", err, "user_id", outcome.User.User.ID)
+			}
+			c.SetCookie(leadCookie, "", -1, "/", "", true, false)
+		}
+	}
+
 	switch outcome.Result {
 	case OAuthSignedIn, OAuthRegistered:
 		// The tokens go to the app through a short-lived handoff rather than a
 		// URL fragment, so they never appear in history or a Referer header.
 		h.redirectWithSession(c, outcome)
 	case OAuthNeedsLinkConfirmation:
+		if !h.parkPending(c, name, profile) {
+			return
+		}
 		h.redirectToApp(c, "/auth/link?"+url.Values{
 			"provider": {name},
 			"email":    {outcome.Email},
 		}.Encode())
 	case OAuthNeedsEmail:
+		if !h.parkPending(c, name, profile) {
+			return
+		}
 		h.redirectToApp(c, "/auth/email?"+url.Values{"provider": {name}}.Encode())
 	}
 }
@@ -233,4 +269,115 @@ func (h *OAuthHandler) clearFlowCookies(c *gin.Context) {
 	for _, name := range []string{stateCookie, verifierCookie, providerCookie} {
 		c.SetCookie(name, "", -1, "/api/v1/auth", "", true, true)
 	}
+}
+
+// parkPending stores the profile the user still has to answer for and hands the
+// browser its id. Reports whether the flow can continue.
+func (h *OAuthHandler) parkPending(c *gin.Context, provider string, profile *oauth.Profile) bool {
+	id, err := h.service.storePendingLink(c.Request.Context(), provider, profile)
+	if err != nil {
+		h.log.Error("Failed to park pending external sign-in", "error", err, "provider", provider)
+		h.redirectToApp(c, "/auth?oauth=failed")
+		return false
+	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(pendingCookie, id, int(PendingLinkTTL.Seconds()), "/api/v1/auth", "", true, true)
+	return true
+}
+
+// ConfirmLink handles POST /api/v1/auth/oauth/link.
+//
+// The address the provider reported already has an account here. The password
+// is how its owner proves the account is theirs before the provider is attached
+// to it.
+func (h *OAuthHandler) ConfirmLink(c *gin.Context) {
+	var req struct {
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	pendingID, err := c.Cookie(pendingCookie)
+	if err != nil || pendingID == "" {
+		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
+		return
+	}
+
+	result, err := h.service.ConfirmLinkWithPassword(c.Request.Context(), pendingID,
+		req.Password, c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrInvalidCredentials):
+		response.Error(c, http.StatusUnauthorized, "Неверный пароль")
+		return
+	case errors.Is(err, apperrors.ErrTokenInvalid):
+		h.clearPendingCookie(c)
+		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
+		return
+	case errors.Is(err, apperrors.ErrConflict):
+		response.Error(c, http.StatusConflict,
+			"У этого аккаунта нет пароля. Войдите через сервис, который к нему уже привязан.")
+		return
+	default:
+		h.log.Error("Failed to confirm external link", "error", err)
+		response.InternalError(c, "Не удалось привязать аккаунт")
+		return
+	}
+
+	h.clearPendingCookie(c)
+	response.Success(c, http.StatusOK, result)
+}
+
+// CompleteEmail handles POST /api/v1/auth/oauth/email.
+//
+// Used when the provider returned no address. The address comes from the user,
+// so it is unverified: a new account starts unverified, and an existing one
+// still has to be claimed with its password.
+func (h *OAuthHandler) CompleteEmail(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Укажите корректный адрес почты")
+		return
+	}
+
+	pendingID, err := c.Cookie(pendingCookie)
+	if err != nil || pendingID == "" {
+		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
+		return
+	}
+
+	outcome, err := h.service.CompleteWithEmail(c.Request.Context(), pendingID,
+		strings.ToLower(strings.TrimSpace(req.Email)), c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrTokenInvalid):
+		h.clearPendingCookie(c)
+		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
+		return
+	default:
+		h.log.Error("Failed to complete external sign-in with address", "error", err)
+		response.InternalError(c, "Не удалось завершить вход")
+		return
+	}
+
+	if outcome.Result == OAuthNeedsLinkConfirmation {
+		// The address belongs to somebody already; the pending row stays so the
+		// confirmation step can finish the same attempt.
+		response.Success(c, http.StatusOK, gin.H{
+			"result": string(OAuthNeedsLinkConfirmation),
+			"email":  outcome.Email,
+		})
+		return
+	}
+
+	h.clearPendingCookie(c)
+	response.Success(c, http.StatusOK, outcome.User)
+}
+
+func (h *OAuthHandler) clearPendingCookie(c *gin.Context) {
+	c.SetCookie(pendingCookie, "", -1, "/api/v1/auth", "", true, true)
 }

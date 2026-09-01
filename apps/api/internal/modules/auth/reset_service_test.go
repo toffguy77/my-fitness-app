@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"strings"
 	"testing"
 	"time"
@@ -674,7 +675,10 @@ func TestResetPassword_WeakPassword(t *testing.T) {
 	err := service.ResetPassword(context.Background(), plainToken, weakPassword, ipAddress)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "password does not meet requirements")
+	// Matched by identity, not by message text: the handler distinguishes a
+	// policy failure the user can fix from a server failure they cannot, and
+	// unwrapped this came back as a 500 telling them to try again.
+	assert.ErrorIs(t, err, apperrors.ErrPasswordPolicy)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 

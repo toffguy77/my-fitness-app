@@ -18,4 +18,5 @@ var (
 	ErrEmailUnavailable   = errors.New("email delivery is not configured")
 	ErrConflict           = errors.New("conflicting state")
 	ErrGone               = errors.New("no longer available")
+	ErrValidation         = errors.New("invalid input")
 )

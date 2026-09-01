@@ -2,11 +2,13 @@ package nutritioncalc
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -232,4 +234,30 @@ func (h *Handler) hasActiveRelationship(ctx context.Context, curatorID, clientID
 		return false, err
 	}
 	return exists, nil
+}
+
+// CalculateForGuest handles POST /api/v1/public/nutrition/calculate.
+//
+// The wizard's whole premise is that a person sees their own numbers before
+// being asked for anything. Nothing here is stored: the request carries the
+// parameters and the response carries the result.
+func (h *Handler) CalculateForGuest(c *gin.Context) {
+	var in GuestInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.Error(c, http.StatusBadRequest, "Заполните все параметры")
+		return
+	}
+
+	result, err := CalculateForGuest(in)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrValidation) {
+			response.Error(c, http.StatusBadRequest, "Проверьте введённые параметры")
+			return
+		}
+		h.log.Error("Failed to calculate guest targets", "error", err)
+		response.InternalError(c, "Не удалось выполнить расчёт")
+		return
+	}
+
+	response.Success(c, http.StatusOK, result)
 }

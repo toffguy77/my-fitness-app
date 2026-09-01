@@ -20,6 +20,7 @@ import (
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/dashboard"
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
@@ -244,6 +245,10 @@ func main() {
 		"exports":        dataExportsS3,
 	})
 
+	// Leads outlive the browser session they were created in, so their resume
+	// links are signed with the same secret that signs sessions.
+	leadsService := leads.NewService(db.DB, log, cfg.JWTSecret)
+
 	// Periodic work. Every job takes a PostgreSQL advisory lock, so running
 	// more than one instance does not run the work twice, and every execution
 	// is recorded — which is what makes "are snapshots being collected?"
@@ -262,8 +267,12 @@ func main() {
 	})
 	jobsetup.Register(jobRegistry, jobsetup.Deps{
 		Account:     accountService,
+		Auth:        authService,
 		Content:     contentService,
 		Curator:     curatorService,
+		Leads:       leadsService,
+		Email:       emailService,
+		AppDomain:   cfg.AppDomain,
 		RateLimiter: rateLimiter,
 		Scheduler:   scheduler,
 	})
@@ -275,12 +284,13 @@ func main() {
 		DB:              db,
 		AuthRateLimiter: authRateLimiter,
 
-		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService),
+		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService).WithLeads(leadsService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
-		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry),
+		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
 		Account:       account.NewHandler(accountService, log),
 		Notifications: notifications.NewHandler(cfg, log, db),
+		Leads:         leads.NewHandler(leadsService, log),
 		Logs:          logs.NewHandler(cfg, log),
 		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient),
 		NutritionCalc: nutritioncalc.NewHandler(cfg, log, db),

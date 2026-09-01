@@ -9,11 +9,15 @@ package jobsetup
 
 import (
 	"context"
+	"net/url"
 	"time"
 
 	"github.com/burcev/api/internal/modules/account"
+	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
+	"github.com/burcev/api/internal/modules/leads"
+	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/jobs"
 	"github.com/burcev/api/internal/shared/middleware"
 )
@@ -22,11 +26,20 @@ import (
 // week?", short enough that the table stays small.
 const historyRetention = 30 * 24 * time.Hour
 
+// supportEmail is where a reminder tells people to write back.
+const supportEmail = "support@burcev.team"
+
 // Deps are the services the jobs act on.
 type Deps struct {
-	Account     *account.Service
-	Content     *content.Service
-	Curator     *curator.Service
+	Account *account.Service
+	Auth    *auth.Service
+	Content *content.Service
+	Curator *curator.Service
+	Leads   *leads.Service
+	// Email may be nil: mail is an optional capability, and the reminder job
+	// declares itself unavailable rather than failing every night.
+	Email       *email.Service
+	AppDomain   string
 	RateLimiter *middleware.RateLimiter
 	Scheduler   *jobs.Scheduler
 }
@@ -84,6 +97,44 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// An external sign-in nobody came back to finish leaves a row holding a
+	// provider profile. They expire in minutes; without this the table keeps
+	// them forever.
+	registry.MustRegister(jobs.Job{
+		Name:    "cleanup.oauth-pending-links",
+		RunAt:   jobs.At(2, 15),
+		Period:  jobs.PeriodDaily,
+		Timeout: 2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			deleted, err := d.Auth.PurgeExpiredPendingLinks(ctx)
+			return int(deleted), err
+		},
+	})
+
+	// The single reminder to somebody who worked out their numbers and stopped
+	// at the registration form. Runs hourly rather than daily so the delay is
+	// roughly a day rather than "some time tomorrow".
+	registry.MustRegister(jobs.Job{
+		Name:     "leads.send-reminders",
+		Interval: time.Hour,
+		Timeout:  5 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return sendLeadReminders(ctx, d)
+		},
+	})
+
+	// A contact belonging to somebody who never became a user is not ours to
+	// keep indefinitely.
+	registry.MustRegister(jobs.Job{
+		Name:    "leads.purge-expired",
+		RunAt:   jobs.At(3, 30),
+		Period:  jobs.PeriodDaily,
+		Timeout: 5 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Leads.PurgeExpired(ctx)
+		},
+	})
+
 	// Building an archive with a year of photographs cannot happen inside an
 	// HTTP request, so it happens here.
 	registry.MustRegister(jobs.Job{
@@ -116,4 +167,54 @@ func Register(registry *jobs.Registry, d Deps) {
 			return d.Scheduler.PurgeHistory(ctx, historyRetention)
 		},
 	})
+}
+
+// sendLeadReminders sends each due lead its one reminder.
+//
+// The send is marked only after it succeeds, and a failure is not retried: the
+// lead simply ages out of the window. A dead mailbox costs one message rather
+// than an hourly retry for as long as the row exists.
+func sendLeadReminders(ctx context.Context, d Deps) (int, error) {
+	if d.Email == nil {
+		// Mail is an optional capability. Without it there is nothing to send,
+		// and saying so once a run beats failing once a run.
+		return 0, nil
+	}
+
+	due, err := d.Leads.DueReminders(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	origin := "https://" + d.AppDomain
+	if d.AppDomain == "" {
+		origin = "http://localhost:3069"
+	}
+
+	sent := 0
+	for _, lead := range due {
+		token := d.Leads.ResumeToken(lead.ID)
+
+		data := email.OnboardingReminderData{
+			UserEmail:      lead.Email,
+			Name:           lead.Name,
+			ResumeURL:      origin + "/onboarding?resume=" + url.QueryEscape(token),
+			UnsubscribeURL: origin + "/api/v1/public/leads/unsubscribe?token=" + url.QueryEscape(token),
+			SupportEmail:   supportEmail,
+		}
+		if lead.Result != nil {
+			data.Calories = int(lead.Result.Calories)
+		}
+
+		if err := d.Email.SendOnboardingReminder(ctx, data); err != nil {
+			// One failed address must not stop the rest of the run.
+			continue
+		}
+		if err := d.Leads.MarkReminded(ctx, lead.ID); err != nil {
+			return sent, err
+		}
+		sent++
+	}
+
+	return sent, nil
 }

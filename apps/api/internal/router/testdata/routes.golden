@@ -11,6 +11,7 @@ GET /api/v1/admin/conversations
 GET /api/v1/admin/conversations/:id/messages
 GET /api/v1/admin/curators
 GET /api/v1/admin/jobs
+GET /api/v1/admin/leads
 GET /api/v1/admin/users
 GET /api/v1/admin/users/:id
 GET /api/v1/auth/me
@@ -59,6 +60,8 @@ GET /api/v1/nutrition-calc/history
 GET /api/v1/nutrition-calc/targets
 GET /api/v1/public/content
 GET /api/v1/public/content/:id
+GET /api/v1/public/leads/resume
+GET /api/v1/public/leads/unsubscribe
 GET /api/v1/users/me/deletion
 GET /api/v1/users/me/export
 GET /api/v1/users/me/export/:id
@@ -68,11 +71,14 @@ GET /ready
 GET /ws
 POST /api/v1/admin/assignments
 POST /api/v1/admin/jobs/:name/run
+POST /api/v1/admin/leads/:id/handled
 POST /api/v1/admin/users/:id/role
 POST /api/v1/auth/change-password
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
+POST /api/v1/auth/oauth/email
+POST /api/v1/auth/oauth/link
 POST /api/v1/auth/refresh
 POST /api/v1/auth/register
 POST /api/v1/auth/resend-verification
@@ -108,6 +114,9 @@ POST /api/v1/logs
 POST /api/v1/notifications/:id/read
 POST /api/v1/notifications/mark-all-read
 POST /api/v1/nutrition-calc/recalculate
+POST /api/v1/public/leads
+POST /api/v1/public/leads/step
+POST /api/v1/public/nutrition/calculate
 POST /api/v1/users/avatar
 POST /api/v1/users/me/deletion
 POST /api/v1/users/me/export

@@ -21,6 +21,7 @@ import (
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/dashboard"
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/modules/logs"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
@@ -49,6 +50,7 @@ type Deps struct {
 	Users         *users.Handler
 	Account       *account.Handler
 	Notifications *notifications.Handler
+	Leads         *leads.Handler
 	Logs          *logs.Handler
 	FoodTracker   *foodtracker.Handler
 	NutritionCalc *nutritioncalc.Handler
@@ -111,6 +113,8 @@ func New(d Deps) *gin.Engine {
 	registerCuratorRoutes(v1, d)
 	registerAdminRoutes(v1, d)
 	registerContentRoutes(v1, d)
+	registerLeadRoutes(v1, d)
+	registerAdminLeadRoutes(v1, d)
 
 	// WebSocket upgrade. Authentication happens inside the handler because
 	// browsers cannot set headers on a WebSocket handshake.

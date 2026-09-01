@@ -17,6 +17,7 @@ const menuItems = [
     { label: 'Apple Health', href: '/settings/apple-health' },
     { label: 'Уведомления', href: '/settings/notifications' },
     { label: 'Изменить пароль', href: '/settings/password' },
+    { label: 'Вход через сервисы', href: '/settings/security' },
 ]
 
 export default function ProfilePage() {

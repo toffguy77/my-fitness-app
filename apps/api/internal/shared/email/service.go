@@ -51,6 +51,17 @@ type PasswordChangedEmailData struct {
 	SupportEmail string
 }
 
+// OnboardingReminderData contains data for the single reminder sent to somebody
+// who worked out their numbers and did not finish registering.
+type OnboardingReminderData struct {
+	UserEmail      string
+	Name           string
+	Calories       int
+	ResumeURL      string
+	UnsubscribeURL string
+	SupportEmail   string
+}
+
 // VerificationEmailData contains data for the email verification template
 type VerificationEmailData struct {
 	UserEmail string
@@ -162,6 +173,27 @@ func (s *Service) SendPasswordChangedEmail(ctx context.Context, data PasswordCha
 		"email", data.UserEmail,
 	)
 
+	return nil
+}
+
+// SendOnboardingReminder sends the one reminder a lead ever gets.
+//
+// No retry and no follow-up: a chain of chasing emails turns the product into
+// spam and costs the sender reputation that the transactional mail depends on.
+func (s *Service) SendOnboardingReminder(ctx context.Context, data OnboardingReminderData) error {
+	subject := "Ваш расчёт КБЖУ сохранён — BURCEV"
+
+	body, err := s.renderTemplate("onboarding_reminder", data)
+	if err != nil {
+		s.log.WithError(err).Error("Failed to render onboarding reminder template")
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	if err := s.sendEmail(ctx, data.UserEmail, subject, body); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	s.log.Info("Onboarding reminder sent", "email", data.UserEmail)
 	return nil
 }
 
@@ -325,6 +357,11 @@ func parseTemplates() (*template.Template, error) {
 		return nil, err
 	}
 
+	_, err = tmpl.New("onboarding_reminder").Parse(onboardingReminderTemplate)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = tmpl.New("email_verification").Parse(emailVerificationTemplate)
 	if err != nil {
 		return nil, err
@@ -443,6 +480,45 @@ const emailVerificationTemplate = `
 
         <p style="color: #999; font-size: 12px; margin-top: 30px;">
             Это автоматическое сообщение от BURCEV. Пожалуйста, не отвечайте на это письмо.
+        </p>
+    </div>
+</body>
+</html>
+`
+
+const onboardingReminderTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ваш расчёт сохранён</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+        <h2 style="color: #2c3e50; margin-top: 0;">Ваш расчёт сохранён</h2>
+
+        <p>{{if .Name}}{{.Name}}, здравствуйте!{{else}}Здравствуйте!{{end}}</p>
+
+        <p>
+            Вы рассчитывали свою суточную норму на BURCEV{{if .Calories}} — получилось
+            <strong>{{.Calories}} ккал в день</strong>{{end}}. Расчёт сохранён: чтобы начать вести
+            дневник питания по нему, осталось завести аккаунт — вводить параметры заново не придётся.
+        </p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{.ResumeURL}}" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block; font-weight: bold;">Вернуться к расчёту</a>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #666; font-size: 14px;">
+            Это единственное напоминание — больше писем об этом не будет.
+            <a href="{{.UnsubscribeURL}}" style="color: #666;">Отписаться и удалить мои данные</a>.
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">
+            Вопросы: <a href="mailto:{{.SupportEmail}}" style="color: #999;">{{.SupportEmail}}</a>
         </p>
     </div>
 </body>

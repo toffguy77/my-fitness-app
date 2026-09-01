@@ -11,7 +11,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser, registerUser } from '@/features/auth/api/auth';
 import { apiClient } from '@/shared/utils/api-client';
-import { setRefreshToken, getRefreshToken, clearAuth } from '@/shared/utils/token-storage';
+import { getRefreshToken, clearAuth } from '@/shared/utils/token-storage';
+import { storeSession, destinationFor } from '@/features/auth/utils/session';
 import type { AuthFormData, ConsentState, AuthError } from '@/features/auth/types';
 import toast from 'react-hot-toast';
 
@@ -32,29 +33,10 @@ export function useAuth() {
         try {
             const response = await loginUser(data);
 
-            // Store JWT token
-            apiClient.setToken(response.token);
-
-            // Store refresh token
-            setRefreshToken(response.refresh_token);
-
-            // Store user data in localStorage for quick access
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('user', JSON.stringify(response.user));
-            }
+            storeSession(response);
 
             toast.success('Вход выполнен успешно');
-            if (response.user.role === 'super_admin') {
-                router.push('/admin');
-            } else if (response.user.role === 'coordinator') {
-                router.push('/curator');
-            } else if (!response.user.email_verified) {
-                router.push('/auth/verify-email');
-            } else if (!response.user.onboarding_completed) {
-                router.push('/onboarding');
-            } else {
-                router.push('/dashboard');
-            }
+            router.push(destinationFor(response.user));
         } catch (err) {
             const authError = err as AuthError;
             setError(authError);
@@ -76,16 +58,7 @@ export function useAuth() {
         try {
             const response = await registerUser(data, consents);
 
-            // Store JWT token (auto-login)
-            apiClient.setToken(response.token);
-
-            // Store refresh token
-            setRefreshToken(response.refresh_token);
-
-            // Store user data
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('user', JSON.stringify(response.user));
-            }
+            storeSession(response);
 
             toast.success('Регистрация успешна');
             router.push('/auth/verify-email');

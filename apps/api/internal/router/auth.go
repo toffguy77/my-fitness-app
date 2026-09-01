@@ -28,6 +28,12 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/providers", d.OAuth.Providers)
 	g.GET("/oauth/:provider", d.OAuth.Start)
 	g.GET("/oauth/:provider/callback", d.OAuth.Callback)
+	// Finishing a sign-in the callback could not: proving ownership of an
+	// address that already has an account, or supplying one the provider did
+	// not give us. Both are unauthenticated by necessity and both are guessing
+	// targets, so both are rate limited.
+	g.POST("/oauth/link", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.ConfirmLink)
+	g.POST("/oauth/email", d.AuthRateLimiter.Limit("oauth-link"), d.OAuth.CompleteEmail)
 	g.GET("/providers/linked", middleware.RequireAuth(d.Cfg), d.OAuth.LinkedProviders)
 	g.DELETE("/providers/:provider", middleware.RequireAuth(d.Cfg), d.OAuth.Unlink)
 

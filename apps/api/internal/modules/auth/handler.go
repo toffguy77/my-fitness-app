@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -18,6 +19,36 @@ type Handler struct {
 	log                 *logger.Logger
 	service             *Service
 	verificationService *VerificationService
+	// leads may be nil; registration works without it.
+	leads LeadClaimer
+}
+
+// LeadClaimer carries an onboarding attempt made before registration onto the
+// account it produced. Declared here as the narrowest thing auth needs, so the
+// two modules do not depend on each other's types.
+type LeadClaimer interface {
+	ClaimInto(ctx context.Context, token string, userID int64) error
+}
+
+// WithLeads attaches the claimer used when a registration carries a lead token.
+func (h *Handler) WithLeads(claimer LeadClaimer) *Handler {
+	h.leads = claimer
+	return h
+}
+
+// claimLead carries a guest onboarding attempt onto the new account.
+//
+// Best effort by design: the account already exists, and failing the
+// registration because a lead could not be moved would cost the user the
+// account they just created over data they can re-enter.
+func (h *Handler) claimLead(c *gin.Context, token string, userID int64) {
+	if h.leads == nil {
+		return
+	}
+	if err := h.leads.ClaimInto(c.Request.Context(), token, userID); err != nil {
+		h.log.Errorw("Failed to carry onboarding lead onto new account",
+			"error", err, "user_id", userID)
+	}
 }
 
 // NewHandler creates a new auth handler
@@ -36,6 +67,9 @@ type RegisterRequest struct {
 	Password string         `json:"password" binding:"required,min=8,max=128"`
 	Name     string         `json:"name"`
 	Consents *ConsentsInput `json:"consents"`
+	// LeadToken names an onboarding attempt made before registering. Present,
+	// it carries the answers across so nothing is asked twice.
+	LeadToken string `json:"lead_token"`
 }
 
 // ConsentsInput represents user consent flags submitted during registration
@@ -76,6 +110,13 @@ func (h *Handler) Register(c *gin.Context) {
 		h.log.Errorw("Registration failed", "error", err, "email", req.Email)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	// Carry across what they entered before registering. Best effort: the
+	// account exists, and failing the registration over a lost lead would cost
+	// them the account they just made.
+	if req.LeadToken != "" {
+		h.claimLead(c, req.LeadToken, result.User.ID)
 	}
 
 	// Send verification code (best-effort — registration still succeeds)

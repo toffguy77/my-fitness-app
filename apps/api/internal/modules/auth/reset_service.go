@@ -274,7 +274,12 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 			"user_id", tokenData.UserID,
 			"errors", validationResult.Errors,
 		)
-		return fmt.Errorf("password does not meet requirements: %v", validationResult.Errors)
+		// Wrapped, because the handler distinguishes a policy failure (which the
+		// user can fix) from a server failure (which they cannot) with
+		// errors.Is. Unwrapped, every weak password came back as a 500 saying
+		// "try again" — advice that could not work.
+		return fmt.Errorf("пароль не соответствует требованиям: %v: %w",
+			validationResult.Errors, apperrors.ErrPasswordPolicy)
 	}
 
 	// Hash password with bcrypt

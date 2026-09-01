@@ -17,6 +17,14 @@ type authLimitConfig struct {
 var authLimitConfigs = map[string]authLimitConfig{
 	"login":    {maxRequests: 10, window: 15 * time.Minute},
 	"register": {maxRequests: 5, window: time.Hour},
+	// Finishing an external sign-in: the password step is a guessing target
+	// against a known address, like login itself.
+	"oauth-link": {maxRequests: 10, window: 15 * time.Minute},
+	// The guest wizard: arithmetic anybody can ask for, and a table anybody can
+	// write a row into. Generous enough for a person redoing their numbers,
+	// tight enough that the leads table is not a guestbook.
+	"guest-calculate": {maxRequests: 60, window: 15 * time.Minute},
+	"lead-create":     {maxRequests: 5, window: time.Hour},
 	// Sends an email from our SMTP account, so it is abusable as a mailer.
 	"resend-verification": {maxRequests: 3, window: time.Hour},
 	// Public endpoint that accepts batches of client errors. A page throwing in

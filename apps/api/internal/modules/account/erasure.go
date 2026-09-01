@@ -88,6 +88,10 @@ var strategies = []TableStrategy{
 		"audience rules reference roles, not individuals"},
 	{"coach_client_relationships", "", StrategyKeep,
 		"legacy table renamed to curator_client_relationships in migration 010"},
+	{"leads", "handled_by", StrategyKeep,
+		"an onboarding attempt by somebody else; the deleted curator's name drops to NULL"},
+	{"oauth_pending_links", "", StrategyKeep,
+		"unfinished sign-in attempts, holding no reference to an account"},
 }
 
 // Strategies exposes the table for tests and documentation.
