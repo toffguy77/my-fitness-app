@@ -173,3 +173,23 @@ const (
 func (m *Metrics) RecordEvent(event string) {
 	m.domainEvents.WithLabelValues(event).Inc()
 }
+
+// The default recorder.
+//
+// A package-level value rather than a parameter threaded through every service:
+// counting that something happened is a cross-cutting concern, and passing a
+// metrics handle into a dozen constructors to increment a counter would make
+// the dependency graph worse rather than clearer. It is nil until a process
+// installs one, and every call is a no-op until then — which is what makes the
+// services testable without a registry.
+var defaultMetrics *Metrics
+
+// SetDefault installs the process-wide recorder. Called once, at startup.
+func SetDefault(m *Metrics) { defaultMetrics = m }
+
+// Record counts a domain event on the default recorder, if there is one.
+func Record(event string) {
+	if defaultMetrics != nil {
+		defaultMetrics.RecordEvent(event)
+	}
+}

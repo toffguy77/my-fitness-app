@@ -15,6 +15,7 @@ import (
 	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/gin-gonic/gin"
 )
 
@@ -211,6 +212,7 @@ func (h *Handler) CreateEntry(c *gin.Context) {
 		"meal_type", req.MealType,
 	)
 
+	telemetry.Record(telemetry.EventFoodEntryLogged)
 	response.Success(c, http.StatusCreated, entry)
 }
 
@@ -397,5 +399,6 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 		return
 	}
 
+	telemetry.Record(telemetry.EventFoodRecognized)
 	response.Success(c, http.StatusOK, result)
 }

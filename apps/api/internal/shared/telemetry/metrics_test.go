@@ -114,3 +114,28 @@ func TestRecordEvent_CountsDomainEvents(t *testing.T) {
 	assert.True(t, strings.Contains(body, `event="user_registered"} 2`), body)
 	assert.Contains(t, body, `event="login_failed"} 1`)
 }
+
+// The counters were declared and never incremented: the dashboard would have
+// shown zero registrations forever. Installing the recorder is what connects
+// the services to them.
+func TestRecord_CountsThroughTheDefaultRecorder(t *testing.T) {
+	metrics := New("test_default", nil)
+	SetDefault(metrics)
+	t.Cleanup(func() { SetDefault(nil) })
+
+	Record(EventUserRegistered)
+	Record(EventUserRegistered)
+	Record(EventLoginFailed)
+
+	body := scrape(t, metrics)
+	assert.Contains(t, body, `test_default_domain_events_total{event="user_registered"} 2`)
+	assert.Contains(t, body, `test_default_domain_events_total{event="login_failed"} 1`)
+}
+
+// A service must not need a metrics registry to be usable — in a test, or in a
+// process that never installed one.
+func TestRecord_IsANoOpWithoutARecorder(t *testing.T) {
+	SetDefault(nil)
+
+	assert.NotPanics(t, func() { Record(EventMessageSent) })
+}

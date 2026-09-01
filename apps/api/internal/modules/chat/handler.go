@@ -17,6 +17,7 @@ import (
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -183,6 +184,7 @@ func (h *Handler) SendMessage(c *gin.Context) {
 		}
 	}
 
+	telemetry.Record(telemetry.EventMessageSent)
 	response.Success(c, http.StatusCreated, msg)
 }
 

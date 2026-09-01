@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/telemetry"
 )
 
 // Service handles email sending operations
@@ -236,7 +237,11 @@ func (s *Service) SendVerificationEmail(ctx context.Context, data VerificationEm
 	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
 }
 
-// sendEmail sends an email via SMTP
+// sendEmail sends an email via SMTP.
+//
+// Counted here rather than at each call site: "did the mail actually go out" is
+// one question, not seven — and it is counted on success only, so the number
+// means delivered rather than attempted.
 func (s *Service) sendEmail(ctx context.Context, to, subject, body string) error {
 	// Build email message
 	from := fmt.Sprintf("%s <%s>", s.fromName, s.fromAddress)
@@ -263,11 +268,19 @@ func (s *Service) sendEmail(ctx context.Context, to, subject, body string) error
 
 	// For port 465 (SSL/TLS), use TLS connection
 	if s.smtpPort == 465 {
-		return s.sendEmailTLS(addr, auth, to, []byte(message))
+		if err := s.sendEmailTLS(addr, auth, to, []byte(message)); err != nil {
+			return err
+		}
+		telemetry.Record(telemetry.EventEmailSent)
+		return nil
 	}
 
 	// For port 587 (STARTTLS), use standard SMTP with STARTTLS
-	return smtp.SendMail(addr, auth, s.fromAddress, []string{to}, []byte(message))
+	if err := smtp.SendMail(addr, auth, s.fromAddress, []string{to}, []byte(message)); err != nil {
+		return err
+	}
+	telemetry.Record(telemetry.EventEmailSent)
+	return nil
 }
 
 // sendEmailTLS sends email using TLS connection (for port 465)

@@ -10,6 +10,7 @@ import (
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/gin-gonic/gin"
 )
 
@@ -139,6 +140,7 @@ func (h *Handler) Register(c *gin.Context) {
 		h.claimLead(c, req.LeadToken, result.User.ID)
 	}
 
+	telemetry.Record(telemetry.EventUserRegistered)
 	h.recordSignUp(c, req.VisitorID, result.User.ID)
 
 	// Send verification code (best-effort — registration still succeeds)
@@ -187,10 +189,12 @@ func (h *Handler) Login(c *gin.Context) {
 	result, err := h.service.Login(c.Request.Context(), req.Email, req.Password, c.ClientIP(), c.Request.UserAgent(), req.RememberMe)
 	if err != nil {
 		h.log.Errorw("Login failed", "error", err, "email", req.Email)
+		telemetry.Record(telemetry.EventLoginFailed)
 		response.Error(c, http.StatusUnauthorized, "Неверные учетные данные")
 		return
 	}
 
+	telemetry.Record(telemetry.EventLoginSucceeded)
 	response.Success(c, http.StatusOK, result)
 }
 

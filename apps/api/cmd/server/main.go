@@ -279,6 +279,10 @@ func main() {
 		moscow = time.UTC
 	}
 	metrics := telemetry.New("burcev", db.DB.Stats)
+	// The domain counters were declared and never incremented; installing the
+	// recorder is what lets the services reach them without threading a
+	// metrics handle through every constructor.
+	telemetry.SetDefault(metrics)
 
 	jobRegistry := jobs.NewRegistry()
 	scheduler := jobs.NewScheduler(db.DB, jobRegistry, log, moscow)
