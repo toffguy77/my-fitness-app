@@ -24,6 +24,10 @@ import (
 )
 
 type account struct {
+	// key names this account in the map below. Two accounts share the `client`
+	// role, so the role cannot be the key: it silently overwrote the entry and
+	// gave the curator, the conversation and the water goal to the wrong one.
+	key         string
 	emailVar    string
 	passwordVar string
 	role        string
@@ -31,13 +35,13 @@ type account struct {
 }
 
 var accounts = []account{
-	{"E2E_CLIENT_EMAIL", "E2E_CLIENT_PASSWORD", "client", "E2E Client"},
-	{"E2E_CURATOR_EMAIL", "E2E_CURATOR_PASSWORD", "coordinator", "E2E Curator"},
-	{"E2E_ADMIN_EMAIL", "E2E_ADMIN_PASSWORD", "super_admin", "E2E Admin"},
+	{"client", "E2E_CLIENT_EMAIL", "E2E_CLIENT_PASSWORD", "client", "E2E Client"},
+	{"curator", "E2E_CURATOR_EMAIL", "E2E_CURATOR_PASSWORD", "coordinator", "E2E Curator"},
+	{"admin", "E2E_ADMIN_EMAIL", "E2E_ADMIN_PASSWORD", "super_admin", "E2E Admin"},
 	// Its own account, because changing a password ends every session that
 	// user has: sharing the client account would sign the rest of the suite
 	// out mid-run.
-	{"E2E_PASSWORD_EMAIL", "E2E_PASSWORD_PASSWORD", "client", "E2E Password"},
+	{"password", "E2E_PASSWORD_EMAIL", "E2E_PASSWORD_PASSWORD", "client", "E2E Password"},
 }
 
 func main() {
@@ -59,14 +63,14 @@ func main() {
 	for _, a := range accounts {
 		id, err := upsertUser(ctx, db, a)
 		if err != nil {
-			log.Fatalf("seed %s: %v", a.role, err)
+			log.Fatalf("seed %s: %v", a.key, err)
 		}
-		ids[a.role] = id
-		fmt.Printf("seeded %-13s id=%d\n", a.role, id)
+		ids[a.key] = id
+		fmt.Printf("seeded %-13s id=%d\n", a.key, id)
 	}
 
 	// The curator screens are empty without an assigned client.
-	if err := assign(ctx, db, ids["coordinator"], ids["client"]); err != nil {
+	if err := assign(ctx, db, ids["curator"], ids["client"]); err != nil {
 		log.Fatalf("assign curator: %v", err)
 	}
 	fmt.Println("assigned curator to client")
@@ -74,7 +78,7 @@ func main() {
 	// The chat screens need a conversation. The API creates these at startup
 	// for existing relationships, but seeding happens after the API is already
 	// running, so the conversation has to be created here.
-	if err := ensureConversation(ctx, db, ids["coordinator"], ids["client"]); err != nil {
+	if err := ensureConversation(ctx, db, ids["curator"], ids["client"]); err != nil {
 		log.Fatalf("create conversation: %v", err)
 	}
 	fmt.Println("created curator-client conversation")

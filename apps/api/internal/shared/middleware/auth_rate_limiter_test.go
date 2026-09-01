@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -85,5 +86,29 @@ func TestRegisterRateLimit_BlocksAfterMaxRequests(t *testing.T) {
 	code := fireRequest(router, "172.16.0.1")
 	if code != http.StatusTooManyRequests {
 		t.Fatalf("request 6: expected 429 got %d", code)
+	}
+}
+
+// The scale exists for environments where a whole test suite arrives from one
+// address and would otherwise be throttled as if it were one person guessing
+// passwords. It must never make the limit weaker by accident.
+func TestScaleFromEnv(t *testing.T) {
+	cases := []struct {
+		value string
+		want  int
+	}{
+		{"", 1},
+		{"1", 1},
+		{"10", 10},
+		{"0", 1},
+		{"-5", 1},
+		{"not a number", 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.value, func(t *testing.T) {
+			t.Setenv("AUTH_RATE_LIMIT_SCALE", tc.value)
+			assert.Equal(t, tc.want, scaleFromEnv())
+		})
 	}
 }
