@@ -21,6 +21,23 @@ type Handler struct {
 	verificationService *VerificationService
 	// leads may be nil; registration works without it.
 	leads LeadClaimer
+	// analytics may be nil; nothing depends on it being there.
+	analytics EventRecorder
+}
+
+// EventRecorder records a product fact. Declared here as the narrowest thing
+// auth needs, so the two modules do not depend on each other's types.
+type EventRecorder interface {
+	RecordServerEvent(ctx context.Context, name string, userID int64, properties map[string]any)
+	LinkVisitor(ctx context.Context, visitorID string, userID int64) error
+}
+
+// WithAnalytics attaches the recorder for facts a browser cannot be trusted to
+// report: a client-sent "registered" lies when the connection drops after a
+// successful request, and vanishes behind a blocker.
+func (h *Handler) WithAnalytics(recorder EventRecorder) *Handler {
+	h.analytics = recorder
+	return h
 }
 
 // LeadClaimer carries an onboarding attempt made before registration onto the
@@ -70,6 +87,9 @@ type RegisterRequest struct {
 	// LeadToken names an onboarding attempt made before registering. Present,
 	// it carries the answers across so nothing is asked twice.
 	LeadToken string `json:"lead_token"`
+	// VisitorID is this browser's analytics identifier, so what it did before
+	// the account belongs to the same person as what it does after.
+	VisitorID string `json:"visitor_id"`
 }
 
 // ConsentsInput represents user consent flags submitted during registration
@@ -118,6 +138,8 @@ func (h *Handler) Register(c *gin.Context) {
 	if req.LeadToken != "" {
 		h.claimLead(c, req.LeadToken, result.User.ID)
 	}
+
+	h.recordSignUp(c, req.VisitorID, result.User.ID)
 
 	// Send verification code (best-effort — registration still succeeds)
 	if h.verificationService != nil {
@@ -296,4 +318,23 @@ func (h *Handler) ResendVerification(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, http.StatusOK, "Code sent", nil)
+}
+
+// recordSignUp records the registration and joins this browser's earlier
+// events to the account it just produced.
+//
+// Best effort throughout: analytics must never be the reason a registration
+// fails.
+func (h *Handler) recordSignUp(c *gin.Context, visitorID string, userID int64) {
+	if h.analytics == nil {
+		return
+	}
+
+	ctx := c.Request.Context()
+	if visitorID != "" {
+		if err := h.analytics.LinkVisitor(ctx, visitorID, userID); err != nil {
+			h.log.Errorw("Failed to link visitor to new account", "error", err, "user_id", userID)
+		}
+	}
+	h.analytics.RecordServerEvent(ctx, "registered", userID, map[string]any{"method": "password"})
 }

@@ -14,6 +14,7 @@ import { apiClient } from '@/shared/utils/api-client';
 import { getRefreshToken, clearAuth } from '@/shared/utils/token-storage';
 import { storeSession, destinationFor } from '@/features/auth/utils/session';
 import { forgetLeadToken } from '@/features/onboarding/api/guest';
+import { EVENTS, track, flush } from '@/shared/analytics';
 import type { AuthFormData, ConsentState, AuthError } from '@/features/auth/types';
 import toast from 'react-hot-toast';
 
@@ -63,12 +64,16 @@ export function useAuth() {
             // The lead has been carried onto the account; keeping the claim
             // would let a later registration in this browser take it again.
             forgetLeadToken();
+            // The registration itself is recorded by the server, which is the
+            // only place that knows it actually happened.
+            flush();
 
             toast.success('Регистрация успешна');
             router.push('/auth/verify-email');
         } catch (err) {
             const authError = err as AuthError;
             setError(authError);
+            track(EVENTS.registrationFailed, { reason: authError.code, method: 'password' });
             toast.error(authError.message);
         } finally {
             setIsLoading(false);

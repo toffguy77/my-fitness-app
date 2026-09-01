@@ -15,6 +15,7 @@ import (
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/modules/admin"
+	"github.com/burcev/api/internal/modules/analytics"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/chat"
 	"github.com/burcev/api/internal/modules/content"
@@ -45,6 +46,7 @@ type Deps struct {
 
 	AuthRateLimiter *middleware.AuthRateLimiter
 
+	Analytics     *analytics.Handler
 	Auth          *auth.Handler
 	Reset         *auth.ResetHandler
 	OAuth         *auth.OAuthHandler
@@ -118,6 +120,7 @@ func New(d Deps) *gin.Engine {
 	registerLeadRoutes(v1, d)
 	registerAdminLeadRoutes(v1, d)
 	registerSupportRoutes(v1, d)
+	registerAnalyticsRoutes(v1, d)
 
 	// WebSocket upgrade. Authentication happens inside the handler because
 	// browsers cannot set headers on a WebSocket handshake.

@@ -4,6 +4,7 @@ import { Logo } from '@/shared/components/ui'
 import { JsonLd } from '@/shared/components/JsonLd'
 import { AuthRedirect } from './_components/AuthRedirect'
 import { SupportLink } from '@/shared/components/SupportLink'
+import { TrackView, EVENTS } from '@/shared/analytics'
 
 export const metadata: Metadata = {
     title: 'BURCEV — Трекер питания и фитнеса',
@@ -51,6 +52,7 @@ export default function Home() {
             <JsonLd data={organizationJsonLd} />
             <JsonLd data={webAppJsonLd} />
             <AuthRedirect />
+            <TrackView event={EVENTS.landingViewed} />
             <main className="min-h-screen bg-white">
                 {/* Hero */}
                 <section className="relative overflow-hidden">

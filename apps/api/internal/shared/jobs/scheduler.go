@@ -12,6 +12,16 @@ import (
 // interval in the registry.
 const tickInterval = 30 * time.Second
 
+// maxConcurrent bounds how many jobs run at once.
+//
+// Every running job holds a connection for its advisory lock plus at least one
+// for its own queries. On the first tick after a deploy every daily job is due
+// at the same moment — that is the normal state, not an edge case — and
+// starting eleven of them together drained the pool and left ordinary requests
+// waiting fifteen seconds for a connection. Background work must never be able
+// to take the request path's connections.
+const maxConcurrent = 2
+
 // Logger is the subset of the application logger the scheduler needs.
 type Logger interface {
 	Info(msg string, keysAndValues ...interface{})
@@ -40,6 +50,8 @@ type Scheduler struct {
 
 	// wg tracks in-flight executions so shutdown can wait for them.
 	wg sync.WaitGroup
+	// slots bounds concurrent executions; see maxConcurrent.
+	slots chan struct{}
 }
 
 // NewScheduler creates a scheduler. location interprets RunAt; pass the
@@ -55,6 +67,7 @@ func NewScheduler(db *sql.DB, registry *Registry, log Logger, location *time.Loc
 		log:      log,
 		location: location,
 		running:  make(map[string]bool),
+		slots:    make(chan struct{}, maxConcurrent),
 	}
 }
 
@@ -161,6 +174,17 @@ func (s *Scheduler) start(ctx context.Context, job Job) {
 	go func() {
 		defer s.wg.Done()
 		defer s.setRunningLocally(job.Name, false)
+
+		// Wait for a slot rather than starting immediately. A job that waits a
+		// few seconds is a background job behaving; a job that starts at once
+		// and takes the last connection is an outage.
+		select {
+		case s.slots <- struct{}{}:
+			defer func() { <-s.slots }()
+		case <-ctx.Done():
+			return
+		}
+
 		s.execute(ctx, job)
 	}()
 }

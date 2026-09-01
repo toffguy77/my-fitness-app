@@ -13,6 +13,7 @@ import (
 	"github.com/burcev/api/internal/jobsetup"
 	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/modules/admin"
+	"github.com/burcev/api/internal/modules/analytics"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/auth/oauth"
 	"github.com/burcev/api/internal/modules/chat"
@@ -247,6 +248,8 @@ func main() {
 		"exports":        dataExportsS3,
 	})
 
+	analyticsService := analytics.NewService(db.DB, log)
+
 	// Leads outlive the browser session they were created in, so their resume
 	// links are signed with the same secret that signs sessions.
 	leadsService := leads.NewService(db.DB, log, cfg.JWTSecret)
@@ -287,6 +290,7 @@ func main() {
 		Auth:        authService,
 		Content:     contentService,
 		Curator:     curatorService,
+		Analytics:   analyticsService,
 		Leads:       leadsService,
 		Support:     supportService,
 		Email:       emailService,
@@ -302,7 +306,8 @@ func main() {
 		DB:              db,
 		AuthRateLimiter: authRateLimiter,
 
-		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService).WithLeads(leadsService),
+		Analytics:     analytics.NewHandler(analyticsService, log),
+		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
 		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),

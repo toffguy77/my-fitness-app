@@ -15,6 +15,7 @@ import { AuthForm } from './AuthForm';
 import { ConsentSection } from './ConsentSection';
 import { AuthFooter } from './AuthFooter';
 import { ProviderButtons } from './ProviderButtons';
+import { EVENTS, track } from '@/shared/analytics';
 import type { AuthMode, AuthFormData, ConsentState } from '@/features/auth/types';
 
 export function AuthScreen() {
@@ -149,6 +150,7 @@ export function AuthScreen() {
                             <Button
                                 onClick={() => {
                                     if (mode === 'login') {
+                                        track(EVENTS.registrationOpened, { method: 'password' });
                                         setMode('register');
                                     } else {
                                         handleRegister();

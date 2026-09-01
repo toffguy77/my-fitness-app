@@ -29,6 +29,7 @@ import {
 } from '../store/guestOnboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { SupportLink } from '@/shared/components/SupportLink'
+import { EVENTS, track, TrackView } from '@/shared/analytics'
 
 const goals: { value: FitnessGoal; label: string; hint: string }[] = [
     { value: 'loss', label: 'Снизить вес', hint: 'дефицит калорий' },
@@ -69,6 +70,10 @@ export function GuestOnboarding() {
     }, [resumeToken])
 
     const recordStep = useCallback((step: number) => {
+        // Measured for everybody, saved on the server only for somebody who
+        // left a contact: the funnel needs the anonymous half most of all.
+        track(EVENTS.onboardingStep, { step: GUEST_STEP_NAMES[step] ?? 'unknown' })
+
         const token = leadToken()
         if (!token) return
         // Best effort: the step is a hint for whoever follows up, not the
@@ -86,6 +91,10 @@ export function GuestOnboarding() {
         setCalculating(true)
         try {
             const result = await guestApi.calculate(parameters)
+            track(EVENTS.onboardingResult, {
+                goal: parameters.goal,
+                activity_level: parameters.activity_level,
+            })
             state.setResult(result)
             state.setStep(GUEST_STEPS.result)
             recordStep(GUEST_STEPS.result)
@@ -116,6 +125,7 @@ export function GuestOnboarding() {
 
     return (
         <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-8">
+            <TrackView event={EVENTS.onboardingStarted} />
             <StepIndicator
                 currentStep={Math.min(state.step, stepTitles.length - 1)}
                 totalSteps={stepTitles.length}
@@ -393,6 +403,7 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                 consents: { data_processing: dataConsent, contact: contactConsent },
             })
             rememberLeadToken(token)
+            track(EVENTS.leadSaved, { contact_consent: contactConsent })
             toast.success('Результат сохранён')
             onSaved()
         } catch {

@@ -3,6 +3,8 @@ package jobs
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -193,4 +195,66 @@ func TestExecute_TimeoutCancelsAndReleasesLock(t *testing.T) {
 func TestLockKey_IsStableAndDistinct(t *testing.T) {
 	assert.Equal(t, lockKey("curator.daily-snapshot"), lockKey("curator.daily-snapshot"))
 	assert.NotEqual(t, lockKey("a"), lockKey("b"))
+}
+
+// On the first tick after a deploy every daily job is due at once. Starting all
+// of them together drained the connection pool and left ordinary requests
+// waiting fifteen seconds for a connection — background work must never be able
+// to take the request path's connections.
+func TestScheduler_RunsAtMostTwoJobsAtOnce(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer func() { _ = db.Close() }()
+	mock.MatchExpectationsInOrder(false)
+
+	var concurrent, peak int32
+	var mu sync.Mutex
+
+	registry := NewRegistry()
+	for i := 0; i < 6; i++ {
+		name := fmt.Sprintf("job-%d", i)
+		registry.MustRegister(Job{
+			Name:     name,
+			Interval: time.Minute,
+			Timeout:  time.Minute,
+			Run: func(context.Context) (int, error) {
+				mu.Lock()
+				concurrent++
+				if concurrent > peak {
+					peak = concurrent
+				}
+				mu.Unlock()
+
+				time.Sleep(20 * time.Millisecond)
+
+				mu.Lock()
+				concurrent--
+				mu.Unlock()
+				return 0, nil
+			},
+		})
+	}
+
+	// Every job is due (no previous run), takes its lock, and records a run.
+	for i := 0; i < 6; i++ {
+		mock.ExpectQuery("FROM job_runs").
+			WillReturnRows(sqlmock.NewRows([]string{"max"}).AddRow(nil))
+		mock.ExpectQuery("pg_try_advisory_lock").
+			WillReturnRows(sqlmock.NewRows([]string{"locked"}).AddRow(true))
+		mock.ExpectQuery("INSERT INTO job_runs").
+			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(i + 1)))
+		mock.ExpectExec("UPDATE job_runs").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery("pg_advisory_unlock").
+			WillReturnRows(sqlmock.NewRows([]string{"unlocked"}).AddRow(true))
+	}
+
+	scheduler := NewScheduler(db, registry, logger.New(), time.UTC)
+	scheduler.tick(context.Background())
+	scheduler.wg.Wait()
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.LessOrEqual(t, peak, int32(maxConcurrent),
+		"more jobs ran at once than the pool can afford")
+	assert.Positive(t, peak, "no job ran at all")
 }

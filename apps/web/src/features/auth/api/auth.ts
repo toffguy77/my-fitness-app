@@ -6,6 +6,7 @@
 import { isNetworkError } from '@/shared/errors/apiErrors';
 import { apiClient } from '@/shared/utils/api-client';
 import { leadToken } from '@/features/onboarding/api/guest';
+import { visitorId } from '@/shared/analytics';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '@/features/auth/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
@@ -49,6 +50,9 @@ export async function registerUser(
             // Whatever they worked out before registering. Without it the new
             // account asks the same six questions again.
             lead_token: leadToken() ?? undefined,
+            // Joins what this browser did before the account to what it does
+            // after; without it the funnel breaks at exactly that point.
+            visitor_id: visitorId() || undefined,
         });
 
         return response;

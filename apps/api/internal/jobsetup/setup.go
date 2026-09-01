@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/modules/account"
+	"github.com/burcev/api/internal/modules/analytics"
 	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
@@ -32,11 +33,12 @@ const supportEmail = "support@burcev.team"
 
 // Deps are the services the jobs act on.
 type Deps struct {
-	Account *account.Service
-	Auth    *auth.Service
-	Content *content.Service
-	Curator *curator.Service
-	Leads   *leads.Service
+	Account   *account.Service
+	Auth      *auth.Service
+	Content   *content.Service
+	Curator   *curator.Service
+	Analytics *analytics.Service
+	Leads     *leads.Service
 	// Support is nil when the bot is not configured; its cleanup job then has
 	// nothing to clean.
 	Support *support.Service
@@ -139,6 +141,18 @@ func Register(registry *jobs.Registry, d Deps) {
 				return 0, nil
 			}
 			return d.Support.PurgeOld(ctx)
+		},
+	})
+
+	// Raw events past the retention period. Reports read aggregates; the rows
+	// themselves stop being useful long before they stop taking space.
+	registry.MustRegister(jobs.Job{
+		Name:    "analytics.purge-events",
+		RunAt:   jobs.At(4, 0),
+		Period:  jobs.PeriodDaily,
+		Timeout: 10 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Analytics.PurgeExpired(ctx)
 		},
 	})
 

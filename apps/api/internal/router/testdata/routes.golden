@@ -77,6 +77,7 @@ POST /api/v1/admin/leads/:id/handled
 POST /api/v1/admin/support/conversations/:id/close
 POST /api/v1/admin/support/conversations/:id/reply
 POST /api/v1/admin/users/:id/role
+POST /api/v1/analytics/identify
 POST /api/v1/auth/change-password
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/login
@@ -118,6 +119,7 @@ POST /api/v1/logs
 POST /api/v1/notifications/:id/read
 POST /api/v1/notifications/mark-all-read
 POST /api/v1/nutrition-calc/recalculate
+POST /api/v1/public/analytics/events
 POST /api/v1/public/leads
 POST /api/v1/public/leads/step
 POST /api/v1/public/nutrition/calculate
