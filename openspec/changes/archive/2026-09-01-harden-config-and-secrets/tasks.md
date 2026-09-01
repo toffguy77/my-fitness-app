@@ -26,4 +26,4 @@
 ## 5. Выкатка
 
 - [x] 5.1 Задеплоить на dev, убедиться, что контейнер поднялся и `/health` отдаёт `features`. Проверка: выполнено 2026-09-01, `https://new.burcev.team/ready` отдаёт `{"checks":{"database":"ok"},"features":{...,"support_bot":false},"ready":true}`.
-- [ ] 5.2 Задеплоить на prod, повторить проверку. Проверка: `curl https://burcev.team/health` возвращает `200` и корректный `features`.
+- [x] 5.2 Задеплоить на prod, повторить проверку. Проверка: выполнено 2026-09-01. `https://burcev.team/ready` → `200`, `{"checks":{"database":"ok"},"features":{"chat_attachments":true,"content_media":true,"data_exports":true,"email":true,"food_recognition":true,"profile_avatars":true,"support_bot":false,"weekly_photos":true},"ready":true}`. Отключён только бот поддержки — для него не заданы учётные данные, и об этом сказано в ответе.

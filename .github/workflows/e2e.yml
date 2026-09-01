@@ -47,6 +47,11 @@ jobs:
       E2E_CURATOR_PASSWORD: E2e!Curator#2026
       E2E_ADMIN_EMAIL: e2e-admin@burcev.test
       E2E_ADMIN_PASSWORD: E2e!Admin#2026
+      E2E_PASSWORD_EMAIL: e2e-password@burcev.test
+      E2E_PASSWORD_PASSWORD: E2e!Password#2026
+      # The whole suite signs in from one address; without this the auth
+      # limiter reads it as one person guessing passwords.
+      AUTH_RATE_LIMIT_SCALE: '20'
 
     steps:
       - uses: actions/checkout@v4

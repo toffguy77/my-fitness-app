@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -12,6 +14,22 @@ import (
 type authLimitConfig struct {
 	maxRequests int
 	window      time.Duration
+}
+
+// authLimitScale multiplies every limit below.
+//
+// One knob, read once at startup from AUTH_RATE_LIMIT_SCALE. It exists for
+// environments where the whole test suite arrives from a single address and
+// would otherwise be throttled as if it were one person guessing passwords —
+// not to be turned up in production, where these numbers are the point.
+var authLimitScale = scaleFromEnv()
+
+func scaleFromEnv() int {
+	value, err := strconv.Atoi(os.Getenv("AUTH_RATE_LIMIT_SCALE"))
+	if err != nil || value < 1 {
+		return 1
+	}
+	return value
 }
 
 var authLimitConfigs = map[string]authLimitConfig{
@@ -65,6 +83,7 @@ func (rl *AuthRateLimiter) Limit(endpoint string) gin.HandlerFunc {
 		// Unknown endpoint – pass through without limiting.
 		return func(c *gin.Context) { c.Next() }
 	}
+	cfg.maxRequests *= authLimitScale
 
 	rl.mu.Lock()
 	bucket, exists := rl.buckets[endpoint]

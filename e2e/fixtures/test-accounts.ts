@@ -38,6 +38,9 @@ export const accounts: Record<string, TestAccount> = {
   client: createAccount('E2E_CLIENT_EMAIL', 'E2E_CLIENT_PASSWORD', 'client', '/dashboard'),
   curator: createAccount('E2E_CURATOR_EMAIL', 'E2E_CURATOR_PASSWORD', 'curator', '/curator'),
   admin: createAccount('E2E_ADMIN_EMAIL', 'E2E_ADMIN_PASSWORD', 'admin', '/admin'),
+  // Used only by the password-change test: that flow ends every session the
+  // account has, which would sign the rest of the suite out.
+  password: createAccount('E2E_PASSWORD_EMAIL', 'E2E_PASSWORD_PASSWORD', 'client', '/dashboard'),
 }
 
 export function getAccount(role: string): TestAccount {
