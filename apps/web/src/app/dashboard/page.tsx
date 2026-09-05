@@ -44,7 +44,7 @@ import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeekly
 import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
-import { apiClient } from '@/shared/utils/api-client'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
 interface UserData {
     id: string
@@ -53,28 +53,15 @@ interface UserData {
     role: 'client' | 'coordinator' | 'super_admin'
 }
 
-/** The cached profile, for the first paint. Null on the server and when cold. */
-function readCachedUser(): UserData | null {
-    if (typeof window === 'undefined') return null
-    try {
-        const cached = localStorage.getItem('user')
-        return cached ? (JSON.parse(cached) as UserData) : null
-    } catch {
-        // A corrupt cache is worth no more than an empty one.
-        return null
-    }
-}
-
 export default function DashboardPage() {
-    const cachedUser = readCachedUser()
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightTaskId = searchParams.get('task')
-    // The cached copy is read once, for the first paint, before any effect
-    // runs — reading it in an effect and calling setState renders twice for
-    // something already known.
-    const [userData, setUserData] = useState<UserData | null>(cachedUser)
-    const [isLoading, setIsLoading] = useState(cachedUser === null)
+    // Who is looking at this page. The cache paints the first frame; the
+    // server settles it.
+    const { user: currentUser, state: userState } = useCurrentUser()
+    const userData = currentUser as UserData | null
+    const isLoading = userState === 'loading'
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
     const [kbjuHistory, setKbjuHistory] = useState<TargetVsActual[]>([])
 
@@ -92,44 +79,15 @@ export default function DashboardPage() {
         targetsVersion,
     } = useDashboardStore()
 
-    // Who is looking at this page.
-    //
-    // The copy in localStorage is a cache for the first paint, not a
-    // credential: a session established by cookie alone — after signing in
-    // through an external provider, or on a device where the cache was
-    // cleared — has none. Treating its absence as "not signed in" sent those
-    // people to the sign-in page while they were signed in. The session is the
-    // cookie; the name is fetched.
-    useEffect(() => {
-        let cancelled = false
-
-        apiClient
-            .get<{ user: UserData }>('/api/v1/auth/me')
-            .then(({ user }) => {
-                if (cancelled) return
-                setUserData(user)
-                localStorage.setItem('user', JSON.stringify(user))
-            })
-            .catch(() => {
-                // The api client already signs somebody out whose session has
-                // genuinely ended. A transient failure must not.
-            })
-            .finally(() => {
-                if (!cancelled) setIsLoading(false)
-            })
-
-        return () => {
-            cancelled = true
-        }
-    }, [])
-
-    // Fetch avatar from profile
+    // The profile carries the avatar and the display name; the identity itself
+    // comes from the session above.
+    const [profileName, setProfileName] = useState<string | undefined>(undefined)
     useEffect(() => {
         if (!userData) return
         getProfile()
-            .then(profile => {
+            .then((profile) => {
                 if (profile.avatar_url) setAvatarUrl(profile.avatar_url)
-                if (profile.name) setUserData(prev => prev ? { ...prev, name: profile.name } : prev)
+                if (profile.name) setProfileName(profile.name)
             })
             .catch(() => {})
     }, [userData?.id])
@@ -224,7 +182,7 @@ export default function DashboardPage() {
 
     return (
         <DashboardLayout
-            userName={userData.name || userData.email}
+            userName={profileName || userData.name || userData.email}
             avatarUrl={avatarUrl}
             activeNavItem="dashboard"
             onNavigate={handleNavigate}

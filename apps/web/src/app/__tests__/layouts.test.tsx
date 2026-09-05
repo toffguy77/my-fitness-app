@@ -1,159 +1,132 @@
 /**
- * Tests for admin and curator layout wrappers.
- * These layouts check user roles and redirect accordingly.
+ * The admin and curator sections: who gets in.
  *
- * We test the routing logic directly rather than importing the actual layout
- * files, since their transitive dependency tree (AdminLayout, CuratorLayout)
- * causes Jest worker OOM under next/jest's SWC transform.
+ * This file used to contain a copy of both layouts, with a comment saying the
+ * copies mirrored the originals exactly. They stopped mirroring them the day
+ * the originals changed, and the tests went on passing while the real layouts
+ * sent every curator and administrator to the sign-in page. A copy of the code
+ * under test tests nothing — so these import the real ones.
  */
-import { render, screen } from '@testing-library/react'
-import { useEffect, useState, startTransition } from 'react'
+
+import { render, screen, waitFor } from '@testing-library/react'
+
+import AdminAppLayout from '../admin/layout'
+import CuratorAppLayout from '../curator/layout'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
 const mockPush = jest.fn()
+
 jest.mock('next/navigation', () => ({
-    useRouter: () => ({ push: mockPush, replace: jest.fn() }),
+    useRouter: () => ({ push: mockPush, replace: jest.fn(), prefetch: jest.fn() }),
 }))
 
-// Inline the layout logic to test routing without heavy feature imports.
-// These mirror admin/layout.tsx and curator/layout.tsx exactly.
-type StoredUser = { full_name?: string; avatar_url?: string; role?: string }
+jest.mock('@/shared/hooks/useCurrentUser', () => ({
+    useCurrentUser: jest.fn(),
+}))
 
-function AdminAppLayout({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<StoredUser | null | undefined>(undefined)
+jest.mock('@/features/admin', () => ({
+    AdminLayout: ({ children, userName }: { children: React.ReactNode; userName: string }) => (
+        <div data-testid="admin-layout" data-user={userName}>{children}</div>
+    ),
+}))
 
-    useEffect(() => {
-        let parsed: StoredUser | null = null
-        const stored = localStorage.getItem('user')
-        if (stored) {
-            try { parsed = JSON.parse(stored) } catch { /* ignore */ }
-        }
-        if (!parsed) {
-            mockPush('/auth')
-        } else if (parsed.role !== 'super_admin') {
-            mockPush('/dashboard')
-        }
-        startTransition(() => setUser(parsed))
-    }, [])
+jest.mock('@/features/curator', () => ({
+    CuratorLayout: ({ children, userName }: { children: React.ReactNode; userName: string }) => (
+        <div data-testid="curator-layout" data-user={userName}>{children}</div>
+    ),
+}))
 
-    if (user === undefined) return null
-    if (!user || user.role !== 'super_admin') return null
+const currentUser = useCurrentUser as jest.Mock
 
-    return <div data-testid="admin-layout" data-user={user.full_name}>{children}</div>
-}
+beforeEach(() => jest.clearAllMocks())
 
-function CuratorAppLayout({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<StoredUser | null | undefined>(undefined)
+describe('the administrative section', () => {
+    it('renders for an administrator', () => {
+        currentUser.mockReturnValue({
+            user: { id: '1', email: 'a@b.c', full_name: 'Admin', role: 'super_admin' },
+            state: 'ready',
+        })
 
-    useEffect(() => {
-        let parsed: StoredUser | null = null
-        const stored = localStorage.getItem('user')
-        if (stored) {
-            try { parsed = JSON.parse(stored) } catch { /* ignore */ }
-        }
-        if (!parsed) {
-            mockPush('/auth')
-        } else if (parsed.role !== 'coordinator') {
-            mockPush('/dashboard')
-        }
-        startTransition(() => setUser(parsed))
-    }, [])
+        render(<AdminAppLayout><div>inside</div></AdminAppLayout>)
 
-    if (user === undefined) return null
-    if (!user || user.role !== 'coordinator') return null
-
-    return <div data-testid="curator-layout" data-user={user.full_name}>{children}</div>
-}
-
-describe('App Layouts', () => {
-    beforeEach(() => {
-        jest.clearAllMocks()
-        localStorage.clear()
+        expect(screen.getByTestId('admin-layout')).toHaveAttribute('data-user', 'Admin')
+        expect(screen.getByText('inside')).toBeInTheDocument()
+        expect(mockPush).not.toHaveBeenCalled()
     })
 
-    describe('AdminAppLayout', () => {
-        it('renders AdminLayout for super_admin', () => {
-            localStorage.setItem('user', JSON.stringify({
-                full_name: 'Super Admin',
-                role: 'super_admin',
-            }))
-
-            render(
-                <AdminAppLayout>
-                    <div data-testid="page">Admin Page</div>
-                </AdminAppLayout>
-            )
-
-            expect(screen.getByTestId('admin-layout')).toBeInTheDocument()
-            expect(screen.getByTestId('page')).toBeInTheDocument()
+    it('sends somebody with another role to their own dashboard', async () => {
+        currentUser.mockReturnValue({
+            user: { id: '1', email: 'a@b.c', role: 'client' },
+            state: 'ready',
         })
 
-        it('redirects non-admin users to /dashboard', () => {
-            localStorage.setItem('user', JSON.stringify({
-                full_name: 'Regular User',
-                role: 'client',
-            }))
+        render(<AdminAppLayout><div>inside</div></AdminAppLayout>)
 
-            render(
-                <AdminAppLayout>
-                    <div data-testid="page">Admin Page</div>
-                </AdminAppLayout>
-            )
-
-            expect(mockPush).toHaveBeenCalledWith('/dashboard')
-            expect(screen.queryByTestId('page')).not.toBeInTheDocument()
-        })
-
-        it('redirects to /auth when no user', () => {
-            render(
-                <AdminAppLayout>
-                    <div data-testid="page">Admin Page</div>
-                </AdminAppLayout>
-            )
-
-            expect(mockPush).toHaveBeenCalledWith('/auth')
-        })
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+        expect(screen.queryByText('inside')).not.toBeInTheDocument()
     })
 
-    describe('CuratorAppLayout', () => {
-        it('renders CuratorLayout for coordinator', () => {
-            localStorage.setItem('user', JSON.stringify({
-                full_name: 'Curator Name',
-                role: 'coordinator',
-            }))
+    it('waits rather than redirecting while the session is being established', async () => {
+        // A session established by cookie alone has no cached profile. Treating
+        // that as "not signed in" sent every administrator to the sign-in page.
+        currentUser.mockReturnValue({ user: null, state: 'loading' })
 
-            render(
-                <CuratorAppLayout>
-                    <div data-testid="page">Curator Page</div>
-                </CuratorAppLayout>
-            )
+        render(<AdminAppLayout><div>inside</div></AdminAppLayout>)
 
-            expect(screen.getByTestId('curator-layout')).toBeInTheDocument()
-            expect(screen.getByTestId('page')).toBeInTheDocument()
+        await waitFor(() => expect(mockPush).not.toHaveBeenCalled())
+        expect(screen.queryByText('inside')).not.toBeInTheDocument()
+    })
+
+    it('sends somebody with no session to sign in', async () => {
+        currentUser.mockReturnValue({ user: null, state: 'anonymous' })
+
+        render(<AdminAppLayout><div>inside</div></AdminAppLayout>)
+
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/auth'))
+    })
+})
+
+describe('the curator section', () => {
+    it('renders for a curator', () => {
+        currentUser.mockReturnValue({
+            user: { id: '2', email: 'c@b.c', full_name: 'Curator', role: 'coordinator' },
+            state: 'ready',
         })
 
-        it('redirects non-coordinator to /dashboard', () => {
-            localStorage.setItem('user', JSON.stringify({
-                full_name: 'User',
-                role: 'client',
-            }))
+        render(<CuratorAppLayout><div>inside</div></CuratorAppLayout>)
 
-            render(
-                <CuratorAppLayout>
-                    <div data-testid="page">Curator Page</div>
-                </CuratorAppLayout>
-            )
+        expect(screen.getByTestId('curator-layout')).toHaveAttribute('data-user', 'Curator')
+        expect(mockPush).not.toHaveBeenCalled()
+    })
 
-            expect(mockPush).toHaveBeenCalledWith('/dashboard')
+    it('sends a client to their own dashboard', async () => {
+        currentUser.mockReturnValue({
+            user: { id: '2', email: 'c@b.c', role: 'client' },
+            state: 'ready',
         })
 
-        it('redirects to /auth when no user', () => {
-            render(
-                <CuratorAppLayout>
-                    <div>Page</div>
-                </CuratorAppLayout>
-            )
+        render(<CuratorAppLayout><div>inside</div></CuratorAppLayout>)
 
-            expect(mockPush).toHaveBeenCalledWith('/auth')
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+        expect(screen.queryByText('inside')).not.toBeInTheDocument()
+    })
+
+    it('waits rather than redirecting while the session is being established', async () => {
+        currentUser.mockReturnValue({ user: null, state: 'loading' })
+
+        render(<CuratorAppLayout><div>inside</div></CuratorAppLayout>)
+
+        await waitFor(() => expect(mockPush).not.toHaveBeenCalled())
+    })
+
+    it('falls back to the name when there is no full name', () => {
+        currentUser.mockReturnValue({
+            user: { id: '2', email: 'c@b.c', name: 'Просто Имя', role: 'coordinator' },
+            state: 'ready',
         })
+
+        render(<CuratorAppLayout><div>inside</div></CuratorAppLayout>)
+
+        expect(screen.getByTestId('curator-layout')).toHaveAttribute('data-user', 'Просто Имя')
     })
 })
