@@ -26,6 +26,10 @@ type ServiceInterface interface {
 	GetDeliveryPreferences(ctx context.Context, userID int64) (*DeliveryPreferences, error)
 	UpdateDeliveryPreferences(ctx context.Context, userID int64, req UpdateDeliveryPreferencesRequest) error
 	Unsubscribe(ctx context.Context, token string) error
+	Subscribe(ctx context.Context, userID int64, sub PushSubscription) error
+	UnsubscribePush(ctx context.Context, userID int64, endpoint string) error
+	PushReady() bool
+	PushPublicKey() string
 }
 
 // Handler handles notification requests
@@ -349,4 +353,76 @@ func requireUserID(c *gin.Context, h *Handler) (int64, bool) {
 		return 0, false
 	}
 	return userID, true
+}
+
+// GetPushKey handles GET /api/v1/notifications/push-key.
+//
+// The public half of the VAPID pair is exactly that — public; the browser
+// cannot subscribe without it. A deployment with no keys says so plainly
+// rather than handing back an empty string the frontend has to guess about.
+func (h *Handler) GetPushKey(c *gin.Context) {
+	if !h.service.PushReady() {
+		response.Fail(c, http.StatusServiceUnavailable,
+			apperrors.ErrEmailUnavailable, "Push-уведомления в этой среде выключены")
+		return
+	}
+	response.Success(c, http.StatusOK, map[string]string{"publicKey": h.service.PushPublicKey()})
+}
+
+// SubscribePush handles POST /api/v1/notifications/push
+func (h *Handler) SubscribePush(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	var sub PushSubscription
+	if err := c.ShouldBindJSON(&sub); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные подписки")
+		return
+	}
+	sub.UserAgent = c.Request.UserAgent()
+
+	if err := h.service.Subscribe(c.Request.Context(), userID, sub); err != nil {
+		switch {
+		case errors.Is(err, apperrors.ErrValidation):
+			response.Fail(c, http.StatusBadRequest, err, "Неполные данные подписки")
+		case errors.Is(err, apperrors.ErrEmailUnavailable):
+			response.Fail(c, http.StatusServiceUnavailable, err, "Push-уведомления в этой среде выключены")
+		default:
+			h.log.Errorw("Failed to store push subscription", "error", err, "user_id", userID)
+			response.InternalError(c, "Не удалось сохранить подписку")
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// UnsubscribePush handles DELETE /api/v1/notifications/push
+func (h *Handler) UnsubscribePush(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		Endpoint string `json:"endpoint"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	if err := h.service.UnsubscribePush(c.Request.Context(), userID, req.Endpoint); err != nil {
+		if errors.Is(err, apperrors.ErrValidation) {
+			response.Fail(c, http.StatusBadRequest, err, "Не указан адрес подписки")
+			return
+		}
+		h.log.Errorw("Failed to delete push subscription", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось отписаться от push")
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
 }

@@ -211,6 +211,11 @@ func main() {
 	// Services shared by more than one handler.
 	nutritionCalcSvc := nutritioncalc.NewService(db, log)
 	notificationsSvc := notifications.NewService(db, log)
+	notificationsSvc.WithPush(notifications.PushConfig{
+		PublicKey:  cfg.VAPIDPublicKey,
+		PrivateKey: cfg.VAPIDPrivateKey,
+		Subject:    cfg.VAPIDSubject,
+	})
 	// The digest needs a way to send and a secret to sign unsubscribe links
 	// with. Without SMTP it is simply not wired, and the job says so.
 	if emailService != nil {

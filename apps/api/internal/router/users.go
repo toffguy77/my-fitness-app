@@ -38,6 +38,9 @@ func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.PUT("/preferences", d.Notifications.UpdatePreferences)
 	g.GET("/delivery-preferences", d.Notifications.GetDeliveryPreferences)
 	g.PUT("/delivery-preferences", d.Notifications.UpdateDeliveryPreferences)
+	g.GET("/push-key", d.Notifications.GetPushKey)
+	g.POST("/push", d.Notifications.SubscribePush)
+	g.DELETE("/push", d.Notifications.UnsubscribePush)
 }
 
 // registerUnsubscribeRoute exposes the link at the bottom of a digest.

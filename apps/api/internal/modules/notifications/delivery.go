@@ -19,8 +19,9 @@ const (
 	// ChannelEmail is the digest. One message covering everything that went
 	// unread, not one message per event.
 	ChannelEmail Channel = "email"
-	// ChannelPush is not implemented yet. It is named here so the preference
-	// matrix and the schema do not have to change when it is.
+	// ChannelPush reaches a browser that agreed to be interrupted. It is the
+	// immediate channel: it exists to arrive before somebody opens the
+	// application, so unlike email it does not wait.
 	ChannelPush Channel = "push"
 )
 
@@ -209,9 +210,20 @@ func (s *Service) planDelivery(ctx context.Context, tx *sql.Tx, notification *No
 			continue
 		}
 		if channel == ChannelPush {
-			// Not implemented yet. Recorded as skipped rather than left pending
-			// so the sender's queue does not fill with work nothing can do.
-			plans = append(plans, deliveryPlan{channel: channel, status: StatusSkipped, notBefore: now})
+			if !s.PushReady() {
+				// No key pair in this environment. Recorded as skipped rather
+				// than left pending, so the sender's queue does not fill with
+				// work nothing can do.
+				plans = append(plans, deliveryPlan{channel: channel, status: StatusSkipped, notBefore: now})
+				continue
+			}
+			// Push is the immediate channel — it exists precisely to arrive
+			// before somebody opens the application, so it does not wait.
+			plans = append(plans, deliveryPlan{
+				channel:   channel,
+				status:    StatusPending,
+				notBefore: r.afterQuietHours(now),
+			})
 			continue
 		}
 		plans = append(plans, deliveryPlan{

@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
+import { PushSection } from './PushSection'
 import {
     getDeliveryPreferences,
     updateDeliveryPreferences,
@@ -108,6 +109,8 @@ export function NotificationDeliverySettings() {
 
     return (
         <div className="space-y-6" data-testid="delivery-settings">
+            <PushSection />
+
             <div className="rounded-2xl bg-white p-4 shadow-sm">
                 <p className="mb-1 text-sm font-medium text-gray-500">Письма</p>
                 <div className="flex items-center justify-between py-3">
@@ -184,15 +187,16 @@ export function NotificationDeliverySettings() {
 
             <div className="rounded-2xl bg-white p-4 shadow-sm">
                 <p className="mb-3 text-sm font-medium text-gray-500">О чём сообщать</p>
-                <div className="mb-2 grid grid-cols-[1fr_auto_auto] items-center gap-x-4 text-xs text-gray-400">
+                <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 text-xs text-gray-400">
                     <span />
                     <span className="w-11 text-center">Здесь</span>
                     <span className="w-11 text-center">Письмом</span>
+                    <span className="w-11 text-center">Push</span>
                 </div>
                 {prefs.types.map((setting, index) => (
                     <div
                         key={setting.type}
-                        className={`grid grid-cols-[1fr_auto_auto] items-center gap-x-4 py-3 ${
+                        className={`grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-3 ${
                             index < prefs.types.length - 1 ? 'border-b border-gray-100' : ''
                         }`}
                     >
@@ -210,6 +214,11 @@ export function NotificationDeliverySettings() {
                             disabled={prefs.emailUnsubscribed}
                             label={`${TYPE_LABELS[setting.type] ?? setting.type} письмом`}
                             onChange={(enabled) => setChannel(setting.type, 'email', enabled)}
+                        />
+                        <Toggle
+                            checked={setting.push}
+                            label={`${TYPE_LABELS[setting.type] ?? setting.type} через push`}
+                            onChange={(enabled) => setChannel(setting.type, 'push', enabled)}
                         />
                     </div>
                 ))}

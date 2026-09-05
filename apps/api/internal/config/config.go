@@ -37,6 +37,7 @@ type Features struct {
 	ContentMedia    bool
 	DataExports     bool
 	SupportBot      bool
+	WebPush         bool
 }
 
 // Disabled returns the names of the capabilities that are turned off, in a
@@ -55,6 +56,7 @@ func (f Features) Disabled() []string {
 		{"content_media", f.ContentMedia},
 		{"data_exports", f.DataExports},
 		{"support_bot", f.SupportBot},
+		{"web_push", f.WebPush},
 	} {
 		if !c.on {
 			off = append(off, c.name)
@@ -74,6 +76,7 @@ func (f Features) Map() map[string]bool {
 		"content_media":    f.ContentMedia,
 		"data_exports":     f.DataExports,
 		"support_bot":      f.SupportBot,
+		"web_push":         f.WebPush,
 	}
 }
 
@@ -175,6 +178,13 @@ type Config struct {
 	// Telegram support bot. Absent credentials disable the capability rather
 	// than failing startup: support before registration is optional, and an
 	// instance without a bot must answer 503 on its webhook rather than crash.
+	// VAPID identifies this service to a browser's push service. Both halves
+	// and a contact address are needed; a push sent without them is refused by
+	// every push service.
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
+	VAPIDSubject    string
+
 	TelegramBotToken      string
 	TelegramWebhookSecret string
 	TelegramBotUsername   string
@@ -300,6 +310,9 @@ func Load() (*Config, error) {
 		// OpenRouter (AI food recognition)
 		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterModel:           getEnv("OPENROUTER_MODEL", openrouter.DefaultModel),
+		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:              getEnv("VAPID_SUBJECT", ""),
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
@@ -335,6 +348,9 @@ func deriveFeatures(c *Config) Features {
 		// The bot needs all three: a token to reply with, a secret to tell a
 		// genuine update from anybody's POST, and a model to answer with.
 		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" && c.OpenRouterAPIKey != "",
+		// Both halves of the key pair and a contact address: a push service
+		// refuses a request signed without any of them.
+		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",
 	}
 }
 

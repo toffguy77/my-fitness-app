@@ -33,6 +33,11 @@ const historyRetention = 30 * 24 * time.Hour
 // person told, and how". Beyond that it is only taking up space.
 const deliveryHistoryRetention = 90 * 24 * time.Hour
 
+// deadSubscriptionAge is how long a browser can go without accepting a push
+// before we stop addressing it. Six months: long enough for somebody who uses
+// the product seasonally, short enough that the table is not a graveyard.
+const deadSubscriptionAge = 180 * 24 * time.Hour
+
 // supportEmail is where a reminder tells people to write back.
 const supportEmail = "support@burcev.team"
 
@@ -272,6 +277,32 @@ func Register(registry *jobs.Registry, d Deps) {
 					return 0, nil
 				}
 				return d.Notifications.SendDueDigests(ctx)
+			},
+		})
+
+		// Push. Runs often: it is the channel that exists to arrive before
+		// somebody opens the application, and a push that is ten minutes late
+		// has lost most of its point.
+		registry.MustRegister(jobs.Job{
+			Name:     "notifications.send-pushes",
+			Interval: time.Minute,
+			Timeout:  2 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				if !d.Notifications.PushReady() {
+					return 0, nil
+				}
+				return d.Notifications.SendDuePushes(ctx)
+			},
+		})
+
+		registry.MustRegister(jobs.Job{
+			Name:    "notifications.purge-dead-subscriptions",
+			RunAt:   jobs.At(4, 45),
+			Period:  jobs.PeriodDaily,
+			Timeout: 5 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				purged, err := d.Notifications.PurgeDeadSubscriptions(ctx, deadSubscriptionAge)
+				return int(purged), err
 			},
 		})
 

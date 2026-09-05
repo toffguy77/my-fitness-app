@@ -23,6 +23,10 @@ type Service struct {
 	digest       DigestSender
 	digestSecret string
 	appDomain    string
+
+	// Web push is optional in the same way: without a key pair the channel
+	// says so rather than failing.
+	push PushConfig
 }
 
 // NewService creates a new notifications service

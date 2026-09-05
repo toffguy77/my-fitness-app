@@ -60,3 +60,28 @@ export const TYPE_LABELS: Record<string, string> = {
     system_update: 'Системные сообщения',
     general: 'Прочее',
 }
+
+/** The public half of the VAPID pair; a browser cannot subscribe without it. */
+export async function getPushKey(): Promise<string> {
+    const { publicKey } = await apiClient.get<{ publicKey: string }>(
+        '/api/v1/notifications/push-key'
+    )
+    return publicKey
+}
+
+export interface PushSubscriptionPayload {
+    endpoint: string
+    p256dh: string
+    auth: string
+}
+
+export async function subscribeToPush(sub: PushSubscriptionPayload): Promise<void> {
+    await apiClient.post('/api/v1/notifications/push', sub)
+}
+
+export async function unsubscribeFromPush(endpoint: string): Promise<void> {
+    await apiClient.delete('/api/v1/notifications/push', {
+        body: JSON.stringify({ endpoint }),
+        headers: { 'Content-Type': 'application/json' },
+    })
+}

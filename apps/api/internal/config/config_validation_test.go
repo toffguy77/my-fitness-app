@@ -151,7 +151,7 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	assert.True(t, cfg.Features.DataExports)
 	// The support bot needs a Telegram token and webhook secret on top of the
 	// OpenRouter key, so it stays off here.
-	assert.Equal(t, []string{"support_bot"}, cfg.Features.Disabled())
+	assert.Equal(t, []string{"support_bot", "web_push"}, cfg.Features.Disabled())
 }
 
 func TestFeatures_DisabledWhenCredentialsAbsent(t *testing.T) {
