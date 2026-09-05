@@ -112,6 +112,13 @@ services:
       - FOOD_PHOTOS_S3_REGION=${FOOD_PHOTOS_S3_REGION}
       - FOOD_PHOTOS_S3_ENDPOINT=${FOOD_PHOTOS_S3_ENDPOINT}
       - S3_PATH_PREFIX=${S3_PATH_PREFIX}
+      - CONTENT_S3_PATH_PREFIX=${CONTENT_S3_PATH_PREFIX}
+      # Pool and migration knobs. They have working defaults; being able to
+      # change them without a code change is the point — the connection limit
+      # is what a slow night looks like from the outside.
+      - DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS:-10}
+      - DB_MAX_IDLE_CONNS=${DB_MAX_IDLE_CONNS:-5}
+      - DB_MIGRATION_BASELINE=${DB_MIGRATION_BASELINE:-0}
       - APP_ENV=${APP_ENV}
       - LOG_LEVEL=${LOG_LEVEL}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
@@ -128,6 +135,9 @@ services:
       - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
       - SUPPORT_MODEL=${SUPPORT_MODEL}
       - SUPPORT_DAILY_LIMIT=${SUPPORT_DAILY_LIMIT}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - VAPID_SUBJECT=${VAPID_SUBJECT}
       - APP_VERSION=${APP_VERSION:-dev}
     networks:
       - dokploy-network
