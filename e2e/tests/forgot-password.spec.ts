@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 
 test.describe('Forgot Password', () => {
   test.beforeEach(async ({ page }) => {

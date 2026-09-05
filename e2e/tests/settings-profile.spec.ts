@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { SettingsProfilePage } from '../pages/settings.page'
 
 test.describe('Settings Profile', () => {

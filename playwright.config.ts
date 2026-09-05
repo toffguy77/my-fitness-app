@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
+
+/** Who a project's tests are signed in as. See e2e/fixtures/session.ts. */
+type Options = { role?: 'client' | 'curator' | 'admin' }
 import dotenv from 'dotenv'
 import path from 'path'
 
@@ -13,7 +16,7 @@ dotenv.config({ path: path.resolve(__dirname, 'e2e', '.env') })
 const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3070'
 const isStaging = !!process.env.E2E_BASE_URL
 
-export default defineConfig({
+export default defineConfig<Options>({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -28,25 +31,19 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
   },
   projects: [
-    // --- Setup projects: authenticate once per role ---
-    {
-      name: 'setup:client',
-      testMatch: /auth\.setup\.ts/,
-    },
-    {
-      name: 'setup:curator',
-      testMatch: /auth\.setup\.ts/,
-    },
-    {
-      name: 'setup:admin',
-      testMatch: /auth\.setup\.ts/,
-    },
-
-    // --- Test projects with pre-authenticated sessions ---
+    // Each test signs in for itself, through the API, in the session fixture.
+    //
+    // There used to be a setup project per role that logged in once and saved
+    // `storageState` for the whole run. That stopped working when the session
+    // moved into a cookie: the refresh token rotates on every use, and
+    // replaying one frozen cookie across a hundred tests is precisely the
+    // reuse the server is built to detect. It revoked the family, and every
+    // test after that landed on the sign-in page.
+    //
+    // `role` says who a project is; e2e/fixtures/session.ts does the rest.
     {
       name: 'client-tests',
-      dependencies: ['setup:client'],
-      use: { storageState: 'e2e/.auth/client.json' },
+      use: { role: 'client' },
       testMatch: [
         'tests/dashboard.spec.ts',
         'tests/food-tracker.spec.ts',
@@ -72,8 +69,7 @@ export default defineConfig({
     },
     {
       name: 'curator-tests',
-      dependencies: ['setup:curator'],
-      use: { storageState: 'e2e/.auth/curator.json' },
+      use: { role: 'curator' },
       testMatch: [
         'tests/curator-hub.spec.ts',
         'tests/curator-navigation.spec.ts',
@@ -85,8 +81,7 @@ export default defineConfig({
     },
     {
       name: 'admin-tests',
-      dependencies: ['setup:admin'],
-      use: { storageState: 'e2e/.auth/admin.json' },
+      use: { role: 'admin' },
       testMatch: ['tests/admin-panel.spec.ts', 'tests/admin-navigation.spec.ts'],
     },
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { AdminPanelPage } from '../pages/admin-panel.page'
 
 test.describe('Admin Panel', () => {

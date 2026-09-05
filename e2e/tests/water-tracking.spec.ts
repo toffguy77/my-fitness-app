@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { DashboardPage } from '../pages/dashboard.page'
 
 test.describe('Water Tracking', () => {

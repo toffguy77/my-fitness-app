@@ -70,7 +70,11 @@ function contentSecurityPolicy(nonce: string): string {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
-        "connect-src 'self' https: wss:",
+        // 'self' covers the API and the WebSocket: both are same-origin
+        // behind the same router. Naming schemes instead ("https: wss:") broke
+        // every environment served over plain http — which is all of them
+        // except production.
+        "connect-src 'self' https://mc.yandex.ru wss://mc.yandex.ru",
         "frame-src https://mc.yandex.ru",
         "object-src 'none'",
         "base-uri 'self'",

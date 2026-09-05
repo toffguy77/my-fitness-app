@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 
 test.describe('Legal Pages', () => {
   test('privacy policy page loads', async ({ page }) => {
