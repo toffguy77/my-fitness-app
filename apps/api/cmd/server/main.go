@@ -211,6 +211,31 @@ func main() {
 	// Services shared by more than one handler.
 	nutritionCalcSvc := nutritioncalc.NewService(db, log)
 	notificationsSvc := notifications.NewService(db, log)
+	// The digest needs a way to send and a secret to sign unsubscribe links
+	// with. Without SMTP it is simply not wired, and the job says so.
+	if emailService != nil {
+		notificationsSvc.WithDigest(
+			func(ctx context.Context, to, name string, items []notifications.DigestItem, unsubscribeURL string) error {
+				data := email.DigestEmailData{
+					UserEmail:      to,
+					Name:           name,
+					AppURL:         appOrigin(cfg.AppDomain),
+					UnsubscribeURL: unsubscribeURL,
+				}
+				for _, item := range items {
+					data.Items = append(data.Items, email.DigestItemData{
+						Title:     item.Title,
+						Content:   item.Content,
+						ActionURL: item.ActionURL,
+						CreatedAt: item.CreatedAt,
+					})
+				}
+				return emailService.SendNotificationDigest(ctx, data)
+			},
+			cfg.JWTSecret,
+			appOrigin(cfg.AppDomain),
+		)
+	}
 	verificationService := auth.NewVerificationService(db.DB, log, emailService)
 
 	// Only providers with credentials are registered, so an unconfigured one
@@ -290,17 +315,18 @@ func main() {
 		metrics.ObserveJob(name, string(status), d)
 	})
 	jobsetup.Register(jobRegistry, jobsetup.Deps{
-		Account:     accountService,
-		Auth:        authService,
-		Content:     contentService,
-		Curator:     curatorService,
-		Analytics:   analyticsService,
-		Leads:       leadsService,
-		Support:     supportService,
-		Email:       emailService,
-		AppDomain:   cfg.AppDomain,
-		RateLimiter: rateLimiter,
-		Scheduler:   scheduler,
+		Account:       accountService,
+		Auth:          authService,
+		Content:       contentService,
+		Curator:       curatorService,
+		Analytics:     analyticsService,
+		Leads:         leadsService,
+		Notifications: notificationsSvc,
+		Support:       supportService,
+		Email:         emailService,
+		AppDomain:     cfg.AppDomain,
+		RateLimiter:   rateLimiter,
+		Scheduler:     scheduler,
 	})
 
 	// Routing lives in internal/router, one file per domain.
@@ -395,4 +421,14 @@ func initS3(log *logger.Logger, name string, c *storage.S3Config) *storage.S3Cli
 	}
 	log.Info("S3 client initialized", "client", name, "bucket", c.Bucket)
 	return client
+}
+
+// appOrigin turns the configured domain into the origin links in email point
+// at. Local development has no domain, and a link to nowhere is worse than a
+// link to localhost.
+func appOrigin(domain string) string {
+	if domain == "" {
+		return "http://localhost:3069"
+	}
+	return "https://" + domain
 }

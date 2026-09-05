@@ -18,6 +18,7 @@ import (
 	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/leads"
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/jobs"
@@ -27,6 +28,10 @@ import (
 // Retention of job history. Long enough to answer "has this been failing all
 // week?", short enough that the table stays small.
 const historyRetention = 30 * 24 * time.Hour
+
+// deliveryHistoryRetention is how long a delivery record answers "was this
+// person told, and how". Beyond that it is only taking up space.
+const deliveryHistoryRetention = 90 * 24 * time.Hour
 
 // supportEmail is where a reminder tells people to write back.
 const supportEmail = "support@burcev.team"
@@ -39,6 +44,8 @@ type Deps struct {
 	Curator   *curator.Service
 	Analytics *analytics.Service
 	Leads     *leads.Service
+	// Notifications is nil in a deployment that does not run the digest.
+	Notifications *notifications.Service
 	// Support is nil when the bot is not configured; its cleanup job then has
 	// nothing to clean.
 	Support *support.Service
@@ -249,6 +256,36 @@ func Register(registry *jobs.Registry, d Deps) {
 			return d.Scheduler.PurgeHistory(ctx, historyRetention)
 		},
 	})
+
+	// The digest. Runs often because the wait before an email is what makes it
+	// a digest — the interval only decides how late the last event in a batch
+	// can be, not how many emails a person gets.
+	if d.Notifications != nil {
+		registry.MustRegister(jobs.Job{
+			Name:     "notifications.send-digests",
+			Interval: 10 * time.Minute,
+			Timeout:  5 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				if !d.Notifications.DigestReady() {
+					// Mail is optional. Saying nothing beats failing every ten
+					// minutes in a deployment that has no SMTP.
+					return 0, nil
+				}
+				return d.Notifications.SendDueDigests(ctx)
+			},
+		})
+
+		registry.MustRegister(jobs.Job{
+			Name:    "notifications.purge-deliveries",
+			RunAt:   jobs.At(4, 30),
+			Period:  jobs.PeriodDaily,
+			Timeout: 5 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				purged, err := d.Notifications.PurgeDeliveries(ctx, deliveryHistoryRetention)
+				return int(purged), err
+			},
+		})
+	}
 }
 
 // sendLeadReminders sends each due lead its one reminder.

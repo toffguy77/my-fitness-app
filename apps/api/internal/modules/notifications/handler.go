@@ -23,6 +23,9 @@ type ServiceInterface interface {
 	CreateNotification(ctx context.Context, notification *Notification) error
 	GetPreferences(ctx context.Context, userID int64) (*ContentNotificationPreferences, error)
 	UpdatePreferences(ctx context.Context, userID int64, req UpdatePreferencesRequest) error
+	GetDeliveryPreferences(ctx context.Context, userID int64) (*DeliveryPreferences, error)
+	UpdateDeliveryPreferences(ctx context.Context, userID int64, req UpdateDeliveryPreferencesRequest) error
+	Unsubscribe(ctx context.Context, token string) error
 }
 
 // Handler handles notification requests
@@ -255,4 +258,95 @@ func (h *Handler) UpdatePreferences(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// GetDeliveryPreferences handles GET /api/v1/notifications/delivery-preferences
+func (h *Handler) GetDeliveryPreferences(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	prefs, err := h.service.GetDeliveryPreferences(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Errorw("Failed to get delivery preferences", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось получить настройки доставки")
+		return
+	}
+
+	response.Success(c, http.StatusOK, prefs)
+}
+
+// UpdateDeliveryPreferences handles PUT /api/v1/notifications/delivery-preferences
+func (h *Handler) UpdateDeliveryPreferences(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	var req UpdateDeliveryPreferencesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	if err := h.service.UpdateDeliveryPreferences(c.Request.Context(), userID, req); err != nil {
+		if errors.Is(err, apperrors.ErrValidation) {
+			response.Fail(c, http.StatusBadRequest, err, "Проверьте настройки доставки")
+			return
+		}
+		h.log.Errorw("Failed to update delivery preferences", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось сохранить настройки доставки")
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Unsubscribe handles POST /api/v1/notifications/unsubscribe.
+//
+// Deliberately unauthenticated: the link is at the bottom of an email, and
+// somebody who wants the email to stop should not have to remember a password
+// to make it stop. The token names exactly one account and nothing else.
+func (h *Handler) Unsubscribe(c *gin.Context) {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Token == "" {
+		response.Error(c, http.StatusBadRequest, "Неверная ссылка отписки")
+		return
+	}
+
+	if err := h.service.Unsubscribe(c.Request.Context(), req.Token); err != nil {
+		if errors.Is(err, apperrors.ErrTokenInvalid) || errors.Is(err, apperrors.ErrTokenExpired) {
+			response.Fail(c, http.StatusBadRequest, err, "Ссылка отписки недействительна")
+			return
+		}
+		if errors.Is(err, apperrors.ErrEmailUnavailable) {
+			response.Fail(c, http.StatusServiceUnavailable, err, "Отправка писем сейчас недоступна")
+			return
+		}
+		h.log.Errorw("Failed to unsubscribe", "error", err)
+		response.InternalError(c, "Не удалось отписаться")
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// requireUserID reads the caller's id from the context set by the auth
+// middleware, answering the request itself when it is not there.
+func requireUserID(c *gin.Context, h *Handler) (int64, bool) {
+	value, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return 0, false
+	}
+	userID, ok := value.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", value)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return 0, false
+	}
+	return userID, true
 }

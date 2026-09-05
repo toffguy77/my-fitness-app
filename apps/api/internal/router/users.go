@@ -36,6 +36,18 @@ func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/mark-all-read", d.Notifications.MarkAllAsRead)
 	g.GET("/preferences", d.Notifications.GetPreferences)
 	g.PUT("/preferences", d.Notifications.UpdatePreferences)
+	g.GET("/delivery-preferences", d.Notifications.GetDeliveryPreferences)
+	g.PUT("/delivery-preferences", d.Notifications.UpdateDeliveryPreferences)
+}
+
+// registerUnsubscribeRoute exposes the link at the bottom of a digest.
+//
+// It sits outside the authenticated group on purpose: an unsubscribe that
+// demands a password is not an unsubscribe. The signed token names one account,
+// and the rate limiter keeps the endpoint from being used to guess tokens.
+func registerUnsubscribeRoute(v1 *gin.RouterGroup, d Deps) {
+	v1.POST("/notifications/unsubscribe",
+		d.AuthRateLimiter.Limit("unsubscribe"), d.Notifications.Unsubscribe)
 }
 
 // registerLogRoutes exposes client log ingestion. Submission is public because

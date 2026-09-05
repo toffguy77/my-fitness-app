@@ -366,6 +366,8 @@ func TestCreateNotification(t *testing.T) {
 		// Every notification first asks whether the account is leaving.
 		mock.ExpectQuery(`deletion_requested_at IS NOT NULL`).
 			WillReturnRows(sqlmock.NewRows([]string{"leaving"}).AddRow(false))
+		// The notification and its delivery records go in together.
+		mock.ExpectBegin()
 		mock.ExpectQuery(`INSERT INTO notifications`).
 			WithArgs(
 				sqlmock.AnyArg(), // id (generated UUID)
@@ -381,6 +383,8 @@ func TestCreateNotification(t *testing.T) {
 				notification.ContentCategory,
 			).
 			WillReturnRows(rows)
+		expectDeliveryPlan(mock, notification.UserID, 3)
+		mock.ExpectCommit()
 
 		// Execute
 		err := service.CreateNotification(ctx, notification)

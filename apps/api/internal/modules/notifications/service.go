@@ -17,6 +17,12 @@ import (
 type Service struct {
 	db  *database.DB
 	log *logger.Logger
+
+	// Digest mail is optional. Without a sender the job says so rather than
+	// failing every run.
+	digest       DigestSender
+	digestSecret string
+	appDomain    string
 }
 
 // NewService creates a new notifications service
@@ -296,13 +302,22 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 		notification.CreatedAt = time.Now()
 	}
 
+	// The notification and its delivery records go in together. A notification
+	// with no delivery row would be invisible to the sender — the person would
+	// see it in the application and never hear about it anywhere else.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin notification transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
 	query := `
 		INSERT INTO notifications (id, user_id, category, type, title, content, icon_url, created_at, read_at, action_url, content_category)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, created_at
 	`
 
-	err = s.db.QueryRowContext(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		notification.ID,
@@ -325,6 +340,14 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 			"type":     notification.Type,
 		})
 		return fmt.Errorf("failed to create notification: %w", err)
+	}
+
+	if err := s.planDelivery(ctx, tx, notification); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit notification: %w", err)
 	}
 
 	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{

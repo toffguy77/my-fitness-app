@@ -1,0 +1,268 @@
+package notifications
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+)
+
+// Channel is a way of reaching somebody.
+type Channel string
+
+const (
+	// ChannelApp is the notification list inside the application. It cannot be
+	// turned off: it is the record of what happened, not a way of interrupting
+	// anybody.
+	ChannelApp Channel = "app"
+	// ChannelEmail is the digest. One message covering everything that went
+	// unread, not one message per event.
+	ChannelEmail Channel = "email"
+	// ChannelPush is not implemented yet. It is named here so the preference
+	// matrix and the schema do not have to change when it is.
+	ChannelPush Channel = "push"
+)
+
+// Delivery statuses.
+const (
+	StatusPending = "pending"
+	StatusSent    = "sent"
+	StatusFailed  = "failed"
+	StatusSkipped = "skipped"
+)
+
+// emailDelay is how long a notification is given to be read in the application
+// before it is worth an email. Somebody who is using the app right now has
+// already seen it, and mail they did not need is how a sender loses the
+// reputation its password resets depend on.
+const emailDelay = 30 * time.Minute
+
+// maxAttempts bounds retries of one delivery. A message that has failed three
+// times is failing for a reason that another attempt will not fix.
+const maxAttempts = 3
+
+// defaultChannels says which channels an event type may use when the person has
+// expressed no preference.
+//
+// The rule behind the table: mail is for something that has a deadline or that
+// somebody else is waiting on. Everything else waits until they next open the
+// application, because it can.
+var defaultChannels = map[NotificationType][]Channel{
+	// Somebody is waiting for an answer.
+	TypeTrainerFeedback:  {ChannelApp, ChannelEmail, ChannelPush},
+	TypeFeedbackReceived: {ChannelApp, ChannelEmail, ChannelPush},
+	TypePlanUpdated:      {ChannelApp, ChannelEmail, ChannelPush},
+	TypeTaskAssigned:     {ChannelApp, ChannelEmail, ChannelPush},
+	TypeTaskOverdue:      {ChannelApp, ChannelEmail, ChannelPush},
+	// The archive expires. An unread notice means a wasted build and a person
+	// who has to ask again.
+	TypeExportReady: {ChannelApp, ChannelEmail},
+	// A curator plans around a client; finding out by noticing an absence is
+	// worse than an email.
+	TypeClientLeft: {ChannelApp, ChannelEmail},
+	// Nothing here has a deadline.
+	TypeReminder:     {ChannelApp, ChannelPush},
+	TypeAchievement:  {ChannelApp},
+	TypeSystemUpdate: {ChannelApp},
+	TypeNewFeature:   {ChannelApp},
+	TypeGeneral:      {ChannelApp},
+	TypeNewContent:   {ChannelApp},
+}
+
+// channelsFor returns the default channels for a type, falling back to the
+// application alone. An event type nobody has classified must not start
+// mailing people by accident.
+func channelsFor(notificationType NotificationType) []Channel {
+	if channels, ok := defaultChannels[notificationType]; ok {
+		return channels
+	}
+	return []Channel{ChannelApp}
+}
+
+// deliveryPlan is what the delivery layer decided for one notification.
+type deliveryPlan struct {
+	channel   Channel
+	status    string
+	notBefore time.Time
+}
+
+// recipient is the part of a person's settings that decides delivery.
+type recipient struct {
+	timezone         string
+	quietStart       sql.NullInt16
+	quietEnd         sql.NullInt16
+	emailUnsubscribe sql.NullTime
+	// preferences holds only the deliberate choices: "type:channel" -> enabled.
+	preferences map[string]bool
+}
+
+// loadRecipient reads the settings that decide where a notification goes.
+func (s *Service) loadRecipient(ctx context.Context, tx *sql.Tx, userID int64) (*recipient, error) {
+	r := &recipient{preferences: map[string]bool{}}
+
+	err := tx.QueryRowContext(ctx,
+		`SELECT COALESCE(timezone, 'Europe/Moscow'), quiet_hours_start, quiet_hours_end, email_unsubscribed_at
+		 FROM users WHERE id = $1`, userID).
+		Scan(&r.timezone, &r.quietStart, &r.quietEnd, &r.emailUnsubscribe)
+	if err != nil {
+		return nil, fmt.Errorf("load recipient: %w", err)
+	}
+
+	rows, err := tx.QueryContext(ctx,
+		`SELECT type, channel, enabled FROM notification_preferences WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("load notification preferences: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t, channel string
+		var enabled bool
+		if err := rows.Scan(&t, &channel, &enabled); err != nil {
+			return nil, fmt.Errorf("scan notification preference: %w", err)
+		}
+		r.preferences[t+":"+channel] = enabled
+	}
+	return r, rows.Err()
+}
+
+// allows reports whether this channel may carry this event type.
+func (r *recipient) allows(notificationType NotificationType, channel Channel) bool {
+	// The application list is the record of what happened. Turning it off would
+	// mean events with nowhere to go.
+	if channel == ChannelApp {
+		return true
+	}
+	if channel == ChannelEmail && r.emailUnsubscribe.Valid {
+		return false
+	}
+	if choice, ok := r.preferences[string(notificationType)+":"+string(channel)]; ok {
+		return choice
+	}
+	for _, c := range channelsFor(notificationType) {
+		if c == channel {
+			return true
+		}
+	}
+	return false
+}
+
+// afterQuietHours moves a send past the hours somebody asked not to be
+// disturbed in. It delays; it never drops. A notice that arrives in the morning
+// is late, a notice that never arrives is a bug.
+func (r *recipient) afterQuietHours(at time.Time) time.Time {
+	if !r.quietStart.Valid || !r.quietEnd.Valid {
+		return at
+	}
+	start, end := int(r.quietStart.Int16), int(r.quietEnd.Int16)
+	if start == end {
+		return at
+	}
+
+	location, err := time.LoadLocation(r.timezone)
+	if err != nil {
+		// An unknown timezone is not a reason to hold the message.
+		return at
+	}
+
+	local := at.In(location)
+	hour := local.Hour()
+
+	quiet := start < end && hour >= start && hour < end
+	// Quiet hours that wrap midnight (22:00–08:00).
+	if start > end {
+		quiet = hour >= start || hour < end
+	}
+	if !quiet {
+		return at
+	}
+
+	wake := time.Date(local.Year(), local.Month(), local.Day(), end, 0, 0, 0, location)
+	if !wake.After(local) {
+		wake = wake.AddDate(0, 0, 1)
+	}
+	return wake.UTC()
+}
+
+// planDelivery decides the channels for a notification and records one row per
+// channel, in the caller's transaction.
+//
+// It runs with the notification's own insert so that a notification always has
+// a delivery record. Sending happens later, in a job: a person creating a
+// notification is doing something else, and must not wait for SMTP.
+func (s *Service) planDelivery(ctx context.Context, tx *sql.Tx, notification *Notification) error {
+	r, err := s.loadRecipient(ctx, tx, notification.UserID)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	plans := []deliveryPlan{
+		// The notification row itself is the application delivery; recording it
+		// keeps "was this person told, and how" a single question.
+		{channel: ChannelApp, status: StatusSent, notBefore: now},
+	}
+
+	for _, channel := range []Channel{ChannelEmail, ChannelPush} {
+		if !r.allows(notification.Type, channel) {
+			continue
+		}
+		if channel == ChannelPush {
+			// Not implemented yet. Recorded as skipped rather than left pending
+			// so the sender's queue does not fill with work nothing can do.
+			plans = append(plans, deliveryPlan{channel: channel, status: StatusSkipped, notBefore: now})
+			continue
+		}
+		plans = append(plans, deliveryPlan{
+			channel:   channel,
+			status:    StatusPending,
+			notBefore: r.afterQuietHours(now.Add(emailDelay)),
+		})
+	}
+
+	for _, plan := range plans {
+		_, err := tx.ExecContext(ctx,
+			`INSERT INTO notification_deliveries (notification_id, user_id, channel, status, not_before)
+			 VALUES ($1, $2, $3, $4, $5)
+			 ON CONFLICT (notification_id, channel) DO NOTHING`,
+			notification.ID, notification.UserID, plan.channel, plan.status, plan.notBefore)
+		if err != nil {
+			return fmt.Errorf("record delivery on %s: %w", plan.channel, err)
+		}
+	}
+
+	return nil
+}
+
+// DeliveryStatus is one channel's outcome, for a curator looking at whether a
+// client was actually told.
+type DeliveryStatus struct {
+	Channel string     `json:"channel"`
+	Status  string     `json:"status"`
+	SentAt  *time.Time `json:"sentAt,omitempty"`
+}
+
+// DeliveriesFor returns how one notification was delivered.
+func (s *Service) DeliveriesFor(ctx context.Context, notificationID string) ([]DeliveryStatus, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT channel, status, CASE WHEN status = 'sent' THEN updated_at END
+		 FROM notification_deliveries WHERE notification_id = $1 ORDER BY channel`, notificationID)
+	if err != nil {
+		return nil, fmt.Errorf("load deliveries: %w", err)
+	}
+	defer rows.Close()
+
+	statuses := make([]DeliveryStatus, 0, 3)
+	for rows.Next() {
+		var d DeliveryStatus
+		if err := rows.Scan(&d.Channel, &d.Status, &d.SentAt); err != nil {
+			return nil, fmt.Errorf("scan delivery: %w", err)
+		}
+		statuses = append(statuses, d)
+	}
+	return statuses, rows.Err()
+}
+
+// errNoRecipient marks a delivery whose user has since gone.
+var errNoRecipient = errors.New("recipient no longer exists")

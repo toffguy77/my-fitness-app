@@ -63,6 +63,30 @@ type OnboardingReminderData struct {
 	SupportEmail   string
 }
 
+// DigestItemData is one event, as it appears in the digest.
+type DigestItemData struct {
+	Title     string
+	Content   string
+	ActionURL string
+	CreatedAt time.Time
+}
+
+// At is how the time reads in the message.
+func (d DigestItemData) At() string {
+	return d.CreatedAt.Format("02.01.2006 15:04")
+}
+
+// DigestEmailData contains data for the notification digest: everything that
+// went unread, in one message rather than one message per event.
+type DigestEmailData struct {
+	UserEmail      string
+	Name           string
+	Items          []DigestItemData
+	AppURL         string
+	UnsubscribeURL string
+	SupportEmail   string
+}
+
 // VerificationEmailData contains data for the email verification template
 type VerificationEmailData struct {
 	UserEmail string
@@ -196,6 +220,53 @@ func (s *Service) SendOnboardingReminder(ctx context.Context, data OnboardingRem
 
 	s.log.Info("Onboarding reminder sent", "email", data.UserEmail)
 	return nil
+}
+
+// SendNotificationDigest sends one message covering everything that was not
+// read in the application.
+//
+// The signature is the one internal/modules/notifications declares: it names
+// what it needs and does not depend on this package's types.
+func (s *Service) SendNotificationDigest(ctx context.Context, data DigestEmailData) error {
+	items := data.Items
+	if len(items) == 0 {
+		return nil
+	}
+	if data.SupportEmail == "" {
+		data.SupportEmail = s.fromAddress
+	}
+
+	// "1 новое событие" / "3 новых события" — a subject line that does not
+	// agree with its own number reads as machine-made.
+	subject := fmt.Sprintf("%s в BURCEV", pluralEvents(len(items)))
+
+	body, err := s.renderTemplate("notification_digest", data)
+	if err != nil {
+		s.log.WithError(err).Error("Failed to render notification digest template")
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	if err := s.sendEmail(ctx, data.UserEmail, subject, body); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	s.log.Info("Notification digest sent", "email", data.UserEmail, "events", len(items))
+	return nil
+}
+
+// pluralEvents agrees the noun with the number, in Russian.
+func pluralEvents(n int) string {
+	mod100, mod10 := n%100, n%10
+	switch {
+	case mod100 >= 11 && mod100 <= 14:
+		return fmt.Sprintf("%d новых событий", n)
+	case mod10 == 1:
+		return fmt.Sprintf("%d новое событие", n)
+	case mod10 >= 2 && mod10 <= 4:
+		return fmt.Sprintf("%d новых события", n)
+	default:
+		return fmt.Sprintf("%d новых событий", n)
+	}
 }
 
 // SendVerificationEmail sends a verification code email with retry logic
@@ -380,6 +451,11 @@ func parseTemplates() (*template.Template, error) {
 		return nil, err
 	}
 
+	_, err = tmpl.New("notification_digest").Parse(notificationDigestTemplate)
+	if err != nil {
+		return nil, err
+	}
+
 	return tmpl, nil
 }
 
@@ -528,6 +604,52 @@ const onboardingReminderTemplate = `
         <p style="color: #666; font-size: 14px;">
             Это единственное напоминание — больше писем об этом не будет.
             <a href="{{.UnsubscribeURL}}" style="color: #666;">Отписаться и удалить мои данные</a>.
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">
+            Вопросы: <a href="mailto:{{.SupportEmail}}" style="color: #999;">{{.SupportEmail}}</a>
+        </p>
+    </div>
+</body>
+</html>
+`
+
+const notificationDigestTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новые события в BURCEV</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+        <h2 style="color: #2c3e50; margin-top: 0;">Пока вас не было</h2>
+
+        <p>{{if .Name}}{{.Name}}, здравствуйте!{{else}}Здравствуйте!{{end}}</p>
+
+        <p>Вот что произошло в вашем аккаунте:</p>
+
+        {{range .Items}}
+        <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+            <p style="margin: 0 0 4px 0; font-weight: bold; color: #111827;">{{.Title}}</p>
+            <p style="margin: 0 0 8px 0; color: #4b5563;">{{.Content}}</p>
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">{{.At}}</p>
+            {{if .ActionURL}}
+            <p style="margin: 8px 0 0 0;">
+                <a href="{{.ActionURL}}" style="color: #2563eb;">Открыть</a>
+            </p>
+            {{end}}
+        </div>
+        {{end}}
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #666; font-size: 14px;">
+            Письмо приходит только о том, что вы не прочитали в приложении.
+            Настроить, о чём писать, можно в
+            <a href="{{.AppURL}}/settings/notifications" style="color: #666;">настройках уведомлений</a>,
+            а <a href="{{.UnsubscribeURL}}" style="color: #666;">здесь</a> — отписаться от писем совсем.
         </p>
 
         <p style="color: #999; font-size: 12px; margin-top: 30px;">
