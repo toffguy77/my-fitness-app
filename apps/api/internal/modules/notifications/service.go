@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"net/http"
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
@@ -27,6 +28,9 @@ type Service struct {
 	// Web push is optional in the same way: without a key pair the channel
 	// says so rather than failing.
 	push PushConfig
+	// pushClient refuses to connect to anything inside the network, whatever
+	// the endpoint resolves to at the moment of connection.
+	pushClient *http.Client
 }
 
 // NewService creates a new notifications service

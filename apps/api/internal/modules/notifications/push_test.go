@@ -194,3 +194,57 @@ func TestPushIsPlannedWithoutTheEmailDelay(t *testing.T) {
 	require.NoError(t, tx.Commit())
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestPushEndpointRefusesTheInternalNetwork(t *testing.T) {
+	// The endpoint is a URL the client chose and the server later makes
+	// requests to. Without this, subscribing with an internal address turns
+	// every notification into a POST from inside the network.
+	refused := []string{
+		"http://fcm.googleapis.com/fcm/send/abc",       // not https
+		"https://127.0.0.1/push",                       // loopback
+		"https://[::1]/push",                           // loopback, v6
+		"https://169.254.169.254/latest/meta-data/",    // link-local metadata
+		"https://10.0.0.5/push",                        // private
+		"https://192.168.1.10/push",                    // private
+		"https://172.16.0.1/push",                      // private
+		"https://100.64.0.1/push",                      // carrier-grade NAT
+		"https://[::ffff:127.0.0.1]/push",              // v4-mapped loopback
+		"https://fcm.googleapis.com:4000/fcm/send/abc", // a service on our own host
+		"https://0.0.0.0/push",
+		"not a url at all",
+		"https:///push",
+	}
+	for _, endpoint := range refused {
+		assert.ErrorIs(t, validatePushEndpoint(endpoint), apperrors.ErrValidation,
+			"should have refused %s", endpoint)
+	}
+}
+
+func TestPushEndpointAcceptsRealPushServices(t *testing.T) {
+	for _, endpoint := range []string{
+		"https://fcm.googleapis.com/fcm/send/abcdef",
+		"https://updates.push.services.mozilla.com/wpush/v2/abcdef",
+		"https://web.push.apple.com/QW1hem9u",
+		"https://xyz.notify.windows.com/w/?token=abc",
+		"https://fcm.googleapis.com:443/fcm/send/abcdef",
+	} {
+		assert.NoError(t, validatePushEndpoint(endpoint), "should have accepted %s", endpoint)
+	}
+}
+
+func TestSubscribeRefusesAnInternalEndpoint(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+	service.WithPush(testPush())
+
+	err := service.Subscribe(context.Background(), 7, PushSubscription{
+		Endpoint: "https://169.254.169.254/latest/meta-data/",
+		P256dh:   "key",
+		Auth:     "auth",
+	})
+
+	assert.ErrorIs(t, err, apperrors.ErrValidation)
+	// Nothing was stored: the check happens before the insert, so a rejected
+	// endpoint never becomes a scheduled outbound request.
+	assert.NoError(t, mock.ExpectationsWereMet())
+}

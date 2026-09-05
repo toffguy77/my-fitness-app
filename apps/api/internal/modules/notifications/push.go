@@ -46,6 +46,7 @@ type PushSubscription struct {
 // unavailable rather than failing silently.
 func (s *Service) WithPush(cfg PushConfig) *Service {
 	s.push = cfg
+	s.pushClient = outboundPushClient()
 	return s
 }
 
@@ -70,6 +71,11 @@ func (s *Service) Subscribe(ctx context.Context, userID int64, sub PushSubscript
 	}
 	if sub.Endpoint == "" || sub.P256dh == "" || sub.Auth == "" {
 		return fmt.Errorf("incomplete push subscription: %w", apperrors.ErrValidation)
+	}
+	// The endpoint is a URL the client chose and the server will later make
+	// requests to. See push_endpoint.go for why that needs two guards.
+	if err := validatePushEndpoint(sub.Endpoint); err != nil {
+		return err
 	}
 
 	_, err := s.db.ExecContext(ctx,
@@ -252,6 +258,7 @@ func (s *Service) sendOnePush(ctx context.Context, sub PushSubscription, payload
 		Endpoint: sub.Endpoint,
 		Keys:     webpush.Keys{P256dh: sub.P256dh, Auth: sub.Auth},
 	}, &webpush.Options{
+		HTTPClient:      s.pushClient,
 		Subscriber:      s.push.Subject,
 		VAPIDPublicKey:  s.push.PublicKey,
 		VAPIDPrivateKey: s.push.PrivateKey,
