@@ -5,6 +5,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -122,4 +126,41 @@ func TestRefreshPrefersTheCookieOverTheBody(t *testing.T) {
 
 	fromCookie, _ := c.Cookie(refreshCookieName)
 	assert.Equal(t, "from-the-cookie", fromCookie)
+}
+
+// The helper being right is not the same as the handlers calling it. Every
+// endpoint that establishes a session has to set the cookie, or the browser
+// gets a token in the response body and nothing that survives a reload.
+func TestLoginSetsTheSessionCookie(t *testing.T) {
+	handler, mock, cleanup := setupTestHandler(t)
+	defer cleanup()
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte("Password123!"), bcrypt.MinCost)
+	require.NoError(t, err)
+
+	mock.ExpectQuery("SELECT id, email").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "password", "role", "email_verified",
+			"onboarding_completed", "created_at", "deletion_requested_at", "token_version",
+		}).AddRow(1, "user@example.com", "User", string(hashed), "client", true, true,
+			time.Now(), nil, 0))
+	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.POST("/login", handler.Login)
+
+	request := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(
+		`{"email":"user@example.com","password":"Password123!"}`))
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
+
+	headers := strings.Join(recorder.Header().Values("Set-Cookie"), "\n")
+	assert.Contains(t, headers, refreshCookieName+"=",
+		"a login that sets no cookie leaves a session that cannot survive a reload")
+	assert.Contains(t, headers, sessionMarkerName+"=",
+		"without the marker the edge sends the signed-in person back to the sign-in page")
 }

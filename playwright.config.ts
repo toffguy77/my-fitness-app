@@ -4,7 +4,13 @@ import path from 'path'
 
 dotenv.config({ path: path.resolve(__dirname, 'e2e', '.env') })
 
-const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3069'
+// The suite talks to the routing proxy, not to Next directly.
+//
+// In production Traefik sends /api/v1 straight to the API; locally Next used to
+// proxy it through its `rewrites`, and a Next rewrite does not forward
+// Set-Cookie. With the session in a cookie that difference is the difference
+// between a suite that tests the product and one that tests a fiction.
+const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3070'
 const isStaging = !!process.env.E2E_BASE_URL
 
 export default defineConfig({

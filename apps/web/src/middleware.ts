@@ -28,7 +28,9 @@ const PROTECTED = [
     '/notifications',
     '/curator',
     '/admin',
-    '/onboarding',
+    // '/onboarding' is deliberately absent: the same path serves the guest
+    // calculator, which is the product's front door and needs no account. The
+    // page itself decides which of the two audiences it is looking at.
 ]
 
 function needsAnAccount(pathname: string): boolean {

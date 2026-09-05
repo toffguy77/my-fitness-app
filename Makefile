@@ -45,12 +45,16 @@ setup-env: ## Setup environment variables
 # Development
 # =============================================================================
 
-dev: ## Start development servers (frontend + backend)
+dev: ## Start development servers (frontend + backend + routing proxy)
 	@echo "$(BLUE)Starting development servers...$(RESET)"
-	@echo "$(YELLOW)→ Frontend: http://localhost:3069$(RESET)"
-	@echo "$(YELLOW)→ Backend: http://localhost:4000$(RESET)"
+	@echo "$(YELLOW)→ Open http://localhost:3070 — this is the one to use$(RESET)"
+	@echo "$(YELLOW)  It routes like production: /api/v1, /ws, /health, /ready to the API,$(RESET)"
+	@echo "$(YELLOW)  the rest to Next. Going to :3069 directly means no session:$(RESET)"
+	@echo "$(YELLOW)  a Next rewrite does not forward Set-Cookie.$(RESET)"
+	@echo "$(YELLOW)→ Frontend: http://localhost:3069  Backend: http://localhost:4000$(RESET)"
 	@trap 'kill 0' EXIT; \
 	(cd apps/web && NODE_OPTIONS='--max-old-space-size=4096' npm run dev) & \
+	(node scripts/dev-proxy.mjs) & \
 	(cd apps/api && $(AIR) -c .air.toml)
 
 dev-web: ## Start frontend development server only

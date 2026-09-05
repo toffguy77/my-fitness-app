@@ -70,17 +70,22 @@ describe('what the check covers', () => {
         '/notifications',
         '/curator/clients/7',
         '/admin/users',
-        '/onboarding',
     ])('sends a signed-out visitor away from %s', (path) => {
         expect(middleware(requestTo(path)).status).toBe(307)
     })
 
-    it.each(['/', '/auth', '/content', '/onboarding-guest', '/unsubscribe'])(
+    it.each(['/', '/auth', '/content', '/unsubscribe'])(
         'lets a signed-out visitor reach %s',
         (path) => {
             expect(middleware(requestTo(path)).status).toBe(200)
         }
     )
+
+    it('lets a visitor reach the onboarding without an account', () => {
+        // The same path serves the guest calculator — the product's front
+        // door. Guarding it would send away exactly the people it exists for.
+        expect(middleware(requestTo('/onboarding')).status).toBe(200)
+    })
 
     it('does not run on static assets', () => {
         // They carry no markup and no policy to violate, and running on them

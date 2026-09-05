@@ -159,6 +159,20 @@ from documentation nobody is reading any more.
 The prefix sent to the model must stay byte-stable: a timestamp, a request id or
 a varying greeting before the cache point turns every question into a cache miss.
 
+## Routing: локально и в тестах через прокси
+
+В проде Traefik раздаёт по путям: `/api/v1`, `/ws`, `/health`, `/ready` идут
+прямо в API, остальное — в Next. Локально и в E2E Traefik'а нет, и браузер
+раньше ходил в API через `rewrites` в Next.
+
+**Rewrite в Next не пробрасывает `Set-Cookie`** — проверено, не пропадает ни
+одна форма cookie. Пока сессия жила в localStorage, это было незаметно; с
+переездом в cookie это означало бы, что вход работает на проде и нигде больше,
+включая E2E, который для того и существует.
+
+Поэтому `make dev` и E2E поднимают `scripts/dev-proxy.mjs` на **3070** и ходят
+через него. Открывать `:3069` напрямую — значит остаться без сессии.
+
 ## Required Checks
 
 Merging into `main` requires these checks by name, through a repository ruleset:
