@@ -12,6 +12,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Camera, Image, Upload, AlertCircle, X, Search } from 'lucide-react';
 import type { FoodItem, RecognizedFood } from '../types';
+import { EVENTS, track } from '@/shared/analytics';
 
 // ============================================================================
 // Types
@@ -109,14 +110,18 @@ export function AIPhotoTab({
         try {
             if (onRecognize) {
                 const recognitionResults = await onRecognize(file);
+                // Nothing about the photograph or the food is sent — only that
+                // recognition was used and how it went.
+                track(EVENTS.foodRecognition, { outcome: 'recognized' });
                 setResults(recognitionResults);
                 setStatus('results');
             } else {
-                // Mock response for demo
+                track(EVENTS.foodRecognition, { outcome: 'unavailable' });
                 setError('Сервис распознавания недоступен');
                 setStatus('error');
             }
         } catch {
+            track(EVENTS.foodRecognition, { outcome: 'failed' });
             setError('Ошибка при распознавании фото');
             setStatus('error');
         }

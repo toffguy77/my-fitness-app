@@ -15,6 +15,7 @@ import { AuthForm } from './AuthForm';
 import { ConsentSection } from './ConsentSection';
 import { AuthFooter } from './AuthFooter';
 import { ProviderButtons } from './ProviderButtons';
+import { AccountRecoveryScreen } from './AccountRecoveryScreen';
 import { EVENTS, track } from '@/shared/analytics';
 import type { AuthMode, AuthFormData, ConsentState } from '@/features/auth/types';
 
@@ -31,7 +32,7 @@ export function AuthScreen() {
         marketing: false,
     });
 
-    const { login, register, isLoading } = useAuth();
+    const { login, register, isLoading, pendingDeletion, clearPendingDeletion } = useAuth();
     const { errors, validateEmail, validatePassword, validateLogin, validateRegister } =
         useFormValidation();
 
@@ -78,6 +79,17 @@ export function AuthScreen() {
         consents.terms_of_service &&
         consents.privacy_policy &&
         consents.data_processing;
+
+    // The way back takes over the screen: it is the only thing worth doing
+    // until they answer it.
+    if (pendingDeletion) {
+        return (
+            <AccountRecoveryScreen
+                scheduledFor={pendingDeletion}
+                onDismiss={clearPendingDeletion}
+            />
+        );
+    }
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">

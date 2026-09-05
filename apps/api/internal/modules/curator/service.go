@@ -127,6 +127,9 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 		LEFT JOIN daily_calculated_targets dct ON dct.user_id = u.id
 		    AND dct.date = CURRENT_DATE
 		WHERE ccr.curator_id = $1 AND ccr.status = 'active'
+		  -- A client in the deletion window is gone as far as the curator is
+		  -- concerned; see getActiveClientIDs.
+		  AND u.deletion_requested_at IS NULL AND u.deleted_at IS NULL
 		GROUP BY u.id, u.name, u.avatar_url,
 		         wp.calories_goal, wp.protein_goal, wp.fat_goal, wp.carbs_goal,
 		         dct.calories, dct.protein, dct.fat, dct.carbs
@@ -1742,7 +1745,15 @@ func (s *Service) GetWeeklyReports(ctx context.Context, curatorID, clientID int6
 
 // getActiveClientIDs returns all active client IDs for a curator
 func (s *Service) getActiveClientIDs(ctx context.Context, curatorID int64) ([]int64, error) {
-	query := `SELECT client_id FROM curator_client_relationships WHERE curator_id = $1 AND status = 'active'`
+	// A client in the deletion window is gone as far as the curator is
+	// concerned: their screens must not keep suggesting work on somebody who
+	// has asked to leave, and their name must not reappear in a list after
+	// they stopped using the product.
+	query := `SELECT ccr.client_id
+	          FROM curator_client_relationships ccr
+	          JOIN users u ON u.id = ccr.client_id
+	          WHERE ccr.curator_id = $1 AND ccr.status = 'active'
+	            AND u.deletion_requested_at IS NULL AND u.deleted_at IS NULL`
 	rows, err := s.db.QueryContext(ctx, query, curatorID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query active clients: %w", err)

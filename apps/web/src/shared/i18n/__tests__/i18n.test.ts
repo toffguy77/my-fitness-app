@@ -1,4 +1,4 @@
-import { messageForCode, knownErrorCodes, plural, formatDate, formatNumber } from '../index'
+import { messageForCode, knownErrorCodes, plural, formatDate, formatNumber, currentLanguage } from '../index'
 import { pluralRu, pluralEn } from '../plural'
 import { messageFor } from '@/shared/errors/apiErrors'
 import { ApiError, NetworkError } from '@/shared/errors/apiErrors'
@@ -106,5 +106,30 @@ describe('Formatting for a reader', () => {
         // compared rather than the whitespace.
         expect(formatNumber(1234.5, 'ru').replace(/\s/g, ' ')).toBe('1 234,5')
         expect(formatNumber(1234.5, 'en')).toBe('1,234.5')
+    })
+
+    // While `en` resolves to the Russian dictionary, honouring the browser's
+    // language would give a Russian sentence an English date. The user's own
+    // setting is the only thing that decides.
+    it('ignores the browser language until there is a second dictionary', () => {
+        localStorage.clear()
+
+        expect(currentLanguage()).toBe('ru')
+    })
+
+    it('honours the language stored in the profile', () => {
+        localStorage.setItem('user', JSON.stringify({ settings: { language: 'en' } }))
+
+        expect(currentLanguage()).toBe('en')
+
+        localStorage.clear()
+    })
+
+    it('falls back when the stored profile is unreadable', () => {
+        localStorage.setItem('user', 'not json')
+
+        expect(currentLanguage()).toBe('ru')
+
+        localStorage.clear()
     })
 })

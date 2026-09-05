@@ -221,3 +221,10 @@ func TestStrategies_PreserveCuratorRecords(t *testing.T) {
 	assert.Equal(t, StrategyDelete, byTable["food_entries"])
 	assert.Equal(t, StrategyDelete, byTable["weekly_photos"])
 }
+
+// auth duplicates this window rather than importing the account module. The
+// duplication is only safe while the two agree.
+func TestCancellationWindowsAgree(t *testing.T) {
+	assert.Equal(t, 30*24*time.Hour, CancellationWindow,
+		"auth.accountCancellationWindow must be changed with this one")
+}

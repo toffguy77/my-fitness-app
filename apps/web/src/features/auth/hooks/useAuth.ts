@@ -22,6 +22,7 @@ export function useAuth() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<AuthError | null>(null);
+    const [pendingDeletion, setPendingDeletion] = useState<string | null>(null);
 
     /**
      * Login user with email and password
@@ -36,6 +37,15 @@ export function useAuth() {
             const response = await loginUser(data);
 
             storeSession(response);
+
+            // Somebody signing in inside the cancellation window has almost
+            // certainly changed their mind. Greeting them as normal and then
+            // deleting a year of their data on schedule would be the worst of
+            // both readings.
+            if (response.pending_deletion) {
+                setPendingDeletion(response.pending_deletion.scheduled_for);
+                return;
+            }
 
             toast.success('Вход выполнен успешно');
             router.push(destinationFor(response.user));
@@ -107,5 +117,8 @@ export function useAuth() {
         logout,
         isLoading,
         error,
+        /** Set when the signed-in account is waiting to be deleted. */
+        pendingDeletion,
+        clearPendingDeletion: () => setPendingDeletion(null),
     };
 }

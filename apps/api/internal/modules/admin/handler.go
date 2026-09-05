@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"errors"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
@@ -18,6 +19,20 @@ type Handler struct {
 	cfg     *config.Config
 	log     *logger.Logger
 	service ServiceInterface
+	// analytics may be nil; nothing depends on it being there.
+	analytics EventRecorder
+}
+
+// EventRecorder records a product fact. Declared here as the narrowest thing
+// this module needs, so it does not depend on the analytics module's types.
+type EventRecorder interface {
+	RecordServerEvent(ctx context.Context, name string, userID int64, properties map[string]any)
+}
+
+// WithAnalytics attaches the recorder for facts only the server sees.
+func (h *Handler) WithAnalytics(recorder EventRecorder) *Handler {
+	h.analytics = recorder
+	return h
 }
 
 // NewHandler creates a new admin handler
@@ -131,6 +146,10 @@ func (h *Handler) AssignCurator(c *gin.Context) {
 			response.InternalError(c, "Не удалось назначить куратора")
 		}
 		return
+	}
+
+	if h.analytics != nil {
+		h.analytics.RecordServerEvent(c.Request.Context(), "curator_assigned", req.ClientID, nil)
 	}
 
 	response.SuccessWithMessage(c, http.StatusOK, "Куратор успешно назначен", nil)

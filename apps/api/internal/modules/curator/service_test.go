@@ -1283,7 +1283,7 @@ func TestGetAnalytics(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 
 		// Active client IDs
-		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
 				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
@@ -1368,7 +1368,7 @@ func TestGetAttentionList(t *testing.T) {
 		curatorID := int64(100)
 
 		// Active client IDs
-		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
 				AddRow(int64(1)).AddRow(int64(2)))
@@ -1442,7 +1442,7 @@ func TestGetAttentionList(t *testing.T) {
 
 		curatorID := int64(100)
 
-		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
 
@@ -1637,7 +1637,7 @@ func TestCollectDailySnapshot(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
 
 		// Active client IDs (for GetAnalytics)
-		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
 				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
@@ -1674,7 +1674,7 @@ func TestCollectDailySnapshot(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(10))
 
 		// Active client IDs for streaks
-		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
 				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
@@ -1707,7 +1707,7 @@ func TestCollectDailySnapshot(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
 		// Active client IDs (for streaks) - empty
-		mock.ExpectQuery(`SELECT client_id FROM curator_client_relationships`).
+		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
 
@@ -1725,3 +1725,25 @@ func TestCollectDailySnapshot(t *testing.T) {
 
 // Ensure sql package is used (for sql.NullFloat64 in service)
 var _ = sql.ErrNoRows
+
+// A client who has asked to be deleted is gone as far as the curator is
+// concerned: their screens must not keep suggesting work on somebody who is
+// leaving, and the name must not reappear in a list after they stopped using
+// the product.
+func TestGetActiveClientIDs_LeavesOutClientsInTheDeletionWindow(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery(`FROM curator_client_relationships ccr`).
+		WithArgs(int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"client_id"}).AddRow(int64(100)))
+
+	ids, err := service.getActiveClientIDs(context.Background(), 10)
+
+	require.NoError(t, err)
+	assert.Equal(t, []int64{100}, ids)
+
+	// The exclusion is in the query, not in Go: filtering after the fact would
+	// still count them in every aggregate that joins on this list.
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
