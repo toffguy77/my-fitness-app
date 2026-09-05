@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -77,9 +78,20 @@ func changePasswordFixture(t *testing.T, currentPassword string) (*Service, sqlm
 	return service, mock, cleanup
 }
 
+// fakeSessionCache stands in for the middleware's token-version cache.
+type fakeSessionCache struct{ bumped []int64 }
+
+func (f *fakeSessionCache) BumpVersion(ctx context.Context, tx *sql.Tx, userID int64) error {
+	f.bumped = append(f.bumped, userID)
+	_, err := tx.ExecContext(ctx, `UPDATE users SET token_version = token_version + 1 WHERE id = $1`, userID)
+	return err
+}
+
 func TestChangePassword_Success(t *testing.T) {
 	service, mock, cleanup := changePasswordFixture(t, "0ld!Passw0rd")
 	defer cleanup()
+	sessions := &fakeSessionCache{}
+	service.WithSessionCache(sessions)
 
 	mock.ExpectExec("UPDATE users SET password").WillReturnResult(sqlmock.NewResult(0, 1))
 	// Changing the password must end every other session: refresh tokens
@@ -106,6 +118,26 @@ func TestChangePassword_Success(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet(), "all sessions must be revoked on password change")
 	assert.NotEmpty(t, replacement.Token, "the caller keeps a working session")
 	assert.NotEmpty(t, replacement.RefreshToken)
+	// Bumping the version without dropping the cached one leaves the middleware
+	// refusing correct tokens for the length of its TTL.
+	assert.Equal(t, []int64{1}, sessions.bumped)
+}
+
+func TestChangePassword_RefusesWithoutASessionCache(t *testing.T) {
+	// A revocation that revokes refresh tokens and leaves access tokens
+	// working is not a revocation. Better to fail than to half-succeed.
+	service, mock, cleanup := changePasswordFixture(t, "0ld!Passw0rd")
+	defer cleanup()
+
+	mock.ExpectExec("UPDATE users SET password").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectRollback()
+
+	err := service.ChangePassword(context.Background(), 1, "0ld!Passw0rd", validPassword, &LoginResult{})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "token-version cache")
 }
 
 func TestChangePassword_WrongCurrentPassword(t *testing.T) {

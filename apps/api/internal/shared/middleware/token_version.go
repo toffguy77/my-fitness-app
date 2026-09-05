@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -71,8 +72,24 @@ func (t *TokenVersions) Current(ctx context.Context, userID int64) (int, error) 
 	return version, nil
 }
 
+// BumpVersion invalidates every access token issued so far for this account.
+//
+// Writing the new version and forgetting the cached one happen here, together,
+// because they are one act. Splitting them is how the cache went on answering
+// with the old version for half a minute after a password change — during
+// which every request, including those carrying a token minted seconds ago,
+// was refused. The tokens were right; the cache was stale.
+func (t *TokenVersions) BumpVersion(ctx context.Context, tx *sql.Tx, userID int64) error {
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE users SET token_version = token_version + 1 WHERE id = $1`, userID); err != nil {
+		return fmt.Errorf("bump token version: %w", err)
+	}
+	t.Forget(userID)
+	return nil
+}
+
 // Forget drops one account from the cache, so the next request reads the
-// database. Called by whatever just bumped the version.
+// database.
 func (t *TokenVersions) Forget(userID int64) {
 	t.mu.Lock()
 	delete(t.cached, userID)

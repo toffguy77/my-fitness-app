@@ -63,8 +63,13 @@ type Service struct {
 // SessionCache is the narrow part of middleware.TokenVersions this service
 // needs, declared here so the auth module does not depend on the middleware
 // package for one method.
+//
+// Bumping the version and dropping the cached one are one call, not two: when
+// they were separate the cache kept answering with the old version for half a
+// minute after a password change, and every request in that window — including
+// ones carrying a token minted a second earlier — was refused.
 type SessionCache interface {
-	Forget(userID int64)
+	BumpVersion(ctx context.Context, tx *sql.Tx, userID int64) error
 }
 
 // WithSessionCache supplies the cache to invalidate on a revocation.
@@ -535,18 +540,17 @@ func (s *Service) endAllSessions(ctx context.Context, userID int64) error {
 		userID); err != nil {
 		return fmt.Errorf("revoke refresh tokens: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx,
-		`UPDATE users SET token_version = token_version + 1 WHERE id = $1`, userID); err != nil {
-		return fmt.Errorf("bump token version: %w", err)
+	// Loud rather than silent: without this the refresh tokens are revoked and
+	// the access tokens are not, which is a revocation that does not revoke.
+	if s.sessions == nil {
+		return fmt.Errorf("session invalidation needs a token-version cache: %w", apperrors.ErrValidation)
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit session invalidation: %w", err)
+	if err := s.sessions.BumpVersion(ctx, tx, userID); err != nil {
+		return err
 	}
 
-	// The middleware caches versions for half a minute; this makes the
-	// revocation immediate on this instance rather than merely eventual.
-	if s.sessions != nil {
-		s.sessions.Forget(userID)
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit session invalidation: %w", err)
 	}
 	return nil
 }

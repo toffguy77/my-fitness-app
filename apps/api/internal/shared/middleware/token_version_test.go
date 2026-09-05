@@ -175,3 +175,40 @@ func TestTokenVersionsCache(t *testing.T) {
 		assert.Equal(t, 5, after, "a revocation elsewhere must be seen within the TTL")
 	})
 }
+
+func TestBumpVersionInvalidatesTheCachedOne(t *testing.T) {
+	// Writing the new version and forgetting the cached one are one act. When
+	// they were two, the cache went on answering with the old version for the
+	// length of its TTL — and every request in that window was refused,
+	// including ones carrying a token minted a second earlier. The tokens were
+	// right; the cache was stale.
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT token_version FROM users`).
+		WillReturnRows(sqlmock.NewRows([]string{"token_version"}).AddRow(0))
+	mock.ExpectBegin()
+	mock.ExpectExec(`UPDATE users SET token_version`).
+		WithArgs(int64(7)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	mock.ExpectQuery(`SELECT token_version FROM users`).
+		WillReturnRows(sqlmock.NewRows([]string{"token_version"}).AddRow(1))
+
+	versions := NewTokenVersions(db)
+
+	before, err := versions.Current(context.Background(), 7)
+	require.NoError(t, err)
+	require.Equal(t, 0, before)
+
+	tx, err := db.BeginTx(context.Background(), nil)
+	require.NoError(t, err)
+	require.NoError(t, versions.BumpVersion(context.Background(), tx, 7))
+	require.NoError(t, tx.Commit())
+
+	after, err := versions.Current(context.Background(), 7)
+	require.NoError(t, err)
+	assert.Equal(t, 1, after, "the cache answered with the version it had before the bump")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
