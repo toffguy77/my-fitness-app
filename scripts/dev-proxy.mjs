@@ -39,7 +39,21 @@ function target(path) {
     return new URL(goesToTheApi(path) ? API : WEB)
 }
 
+/**
+ * A connection going away is ordinary — a browser cancels a pending request on
+ * every navigation. Without a listener Node turns that into an unhandled
+ * 'error' event and takes the process down, which is what happened: the proxy
+ * died mid-run and every remaining test failed with a connection refused that
+ * said nothing about why.
+ */
+function ignoreDisconnects(...streams) {
+    for (const stream of streams) {
+        stream?.on?.('error', () => {})
+    }
+}
+
 const server = http.createServer((clientRequest, clientResponse) => {
+    ignoreDisconnects(clientRequest, clientResponse)
     const upstream = target(clientRequest.url)
 
     const proxied = http.request(
@@ -59,6 +73,10 @@ const server = http.createServer((clientRequest, clientResponse) => {
     )
 
     proxied.on('error', (error) => {
+        if (clientResponse.headersSent || clientResponse.destroyed) {
+            clientResponse.destroy()
+            return
+        }
         clientResponse.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' })
         clientResponse.end(`proxy could not reach ${upstream.origin}: ${error.message}`)
     })
@@ -68,6 +86,7 @@ const server = http.createServer((clientRequest, clientResponse) => {
 
 // WebSockets: the chat connects to /ws, which Traefik also sends to the API.
 server.on('upgrade', (request, socket, head) => {
+    ignoreDisconnects(request, socket)
     const upstream = target(request.url)
 
     const proxied = http.request({
@@ -79,6 +98,7 @@ server.on('upgrade', (request, socket, head) => {
     })
 
     proxied.on('upgrade', (upstreamResponse, upstreamSocket, upstreamHead) => {
+        ignoreDisconnects(upstreamSocket)
         const headers = Object.entries(upstreamResponse.headers)
             .map(([name, value]) => `${name}: ${value}\r\n`)
             .join('')
@@ -91,6 +111,18 @@ server.on('upgrade', (request, socket, head) => {
     proxied.on('error', () => socket.destroy())
     if (head?.length) proxied.write(head)
     proxied.end()
+})
+
+// A malformed or reset connection that never becomes a request reaches here
+// rather than the request handler.
+server.on('clientError', (error, socket) => {
+    if (!socket.destroyed) socket.destroy()
+})
+
+// Last line of defence. The proxy holding the whole suite up must not be the
+// thing that ends it; anything unexpected is reported and survived.
+process.on('uncaughtException', (error) => {
+    console.error('proxy survived an unexpected error:', error)
 })
 
 server.listen(PORT, () => {

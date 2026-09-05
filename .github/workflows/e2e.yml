@@ -110,6 +110,11 @@ jobs:
           done
           echo "Web failed to start:"; cat /tmp/web.log; exit 1
 
+      # The proxy holds the whole suite up; when it died mid-run, every
+      # remaining test failed with a connection refused that explained nothing.
+      - name: Test the routing proxy
+        run: node --test scripts/__tests__/dev-proxy.test.mjs
+
       # One origin in front of both, the way production has one. Without it the
       # browser reaches the API through Next's rewrites, which drop Set-Cookie
       # — so no sign-in establishes a session and the suite tests a fiction.
