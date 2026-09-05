@@ -351,7 +351,7 @@ func main() {
 		AuthRateLimiter: authRateLimiter,
 
 		Analytics:     analytics.NewHandler(analyticsService, log),
-		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
+		Auth:          auth.NewHandler(authService, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
 		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),

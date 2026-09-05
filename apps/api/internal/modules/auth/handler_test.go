@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -19,6 +20,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// noSessionCache is enough for handlers that never invalidate a session.
+type noSessionCache struct{}
+
+func (noSessionCache) BumpVersion(ctx context.Context, tx *sql.Tx, userID int64) error {
+	_, err := tx.ExecContext(ctx, `UPDATE users SET token_version = token_version + 1 WHERE id = $1`, userID)
+	return err
+}
+
 func setupTestHandler(t *testing.T) (*Handler, sqlmock.Sqlmock, func()) {
 	gin.SetMode(gin.TestMode)
 	db, mock, err := sqlmock.New()
@@ -28,7 +37,7 @@ func setupTestHandler(t *testing.T) (*Handler, sqlmock.Sqlmock, func()) {
 		JWTSecret: "test-secret",
 	}
 	log := logger.New()
-	handler := NewHandler(db, cfg, log, nil)
+	handler := NewHandler(NewService(db, cfg, log).WithSessionCache(&noSessionCache{}), cfg, log, nil)
 
 	cleanup := func() {
 		db.Close()

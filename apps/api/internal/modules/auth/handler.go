@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"net/http"
 	"time"
@@ -71,11 +70,18 @@ func (h *Handler) claimLead(c *gin.Context, token string, userID int64) {
 }
 
 // NewHandler creates a new auth handler
-func NewHandler(db *sql.DB, cfg *config.Config, log *logger.Logger, vs *VerificationService) *Handler {
+// NewHandler takes the service rather than building one.
+//
+// It used to call NewService itself, which meant the process ran two of them:
+// the one wired up at startup and the one the handler quietly made for itself.
+// Configuration applied to the first — the token-version cache, in the case
+// that cost an afternoon — was invisible to the second, and the endpoints went
+// on using a service nobody had finished configuring.
+func NewHandler(service *Service, cfg *config.Config, log *logger.Logger, vs *VerificationService) *Handler {
 	return &Handler{
 		cfg:                 cfg,
 		log:                 log,
-		service:             NewService(db, cfg, log),
+		service:             service,
 		verificationService: vs,
 	}
 }
