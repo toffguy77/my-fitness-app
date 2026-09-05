@@ -103,6 +103,19 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Objects that survived an erasure because a bucket was unreachable at the
+	// time. Without this pass, "best effort" would mean "once, and never
+	// again", and somebody's photographs would stay in a bucket forever.
+	registry.MustRegister(jobs.Job{
+		Name:    "account.purge-files",
+		RunAt:   jobs.At(5, 30),
+		Period:  jobs.PeriodDaily,
+		Timeout: 15 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Account.PurgeLeftoverFiles(ctx)
+		},
+	})
+
 	// Export archives past their download window. Each holds a copy of a
 	// person's whole account, so it is exactly the thing not to leave in a
 	// bucket indefinitely.

@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"time"
@@ -272,6 +273,19 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 		return fmt.Errorf("validation failed: %w", err)
 	}
 
+	// Somebody who asked to be deleted should not be accumulating notices to
+	// read. Checked here rather than at each of the dozen call sites, because
+	// one forgotten call site is a person being written to after they left.
+	leaving, err := s.isLeaving(ctx, notification.UserID)
+	if err != nil {
+		return err
+	}
+	if leaving {
+		s.log.Info("Skipped notification for an account pending deletion",
+			"user_id", notification.UserID, "type", notification.Type)
+		return nil
+	}
+
 	// Generate UUID if not provided
 	if notification.ID == "" {
 		notification.ID = uuid.New().String()
@@ -288,7 +302,7 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 		RETURNING id, created_at
 	`
 
-	err := s.db.QueryRowContext(
+	err = s.db.QueryRowContext(
 		ctx,
 		query,
 		notification.ID,
@@ -328,4 +342,39 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 	})
 
 	return nil
+}
+
+// isLeaving reports whether the account has asked to be deleted or already has
+// been.
+func (s *Service) isLeaving(ctx context.Context, userID int64) (bool, error) {
+	var leaving bool
+	err := s.db.QueryRowContext(ctx,
+		`SELECT deletion_requested_at IS NOT NULL OR deleted_at IS NOT NULL
+		 FROM users WHERE id = $1`, userID).Scan(&leaving)
+	if errors.Is(err, sql.ErrNoRows) {
+		// No such account: nothing to notify, and not an error worth failing
+		// the caller's own work over.
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("check deletion state: %w", err)
+	}
+	return leaving, nil
+}
+
+// Notify creates one notification from the narrow interface other modules
+// declare, so they do not have to build a Notification value or import this
+// package's types.
+func (s *Service) Notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string) error {
+	notification := &Notification{
+		UserID:   userID,
+		Category: CategoryMain,
+		Type:     NotificationType(notificationType),
+		Title:    title,
+		Content:  content,
+	}
+	if actionURL != "" {
+		notification.ActionURL = &actionURL
+	}
+	return s.CreateNotification(ctx, notification)
 }

@@ -246,7 +246,7 @@ func main() {
 		"chat":           chatS3,
 		"food-photos":    foodPhotosS3,
 		"exports":        dataExportsS3,
-	})
+	}).WithNotifier(notificationsSvc)
 
 	analyticsService := analytics.NewService(db.DB, log)
 

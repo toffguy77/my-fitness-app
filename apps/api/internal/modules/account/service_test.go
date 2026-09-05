@@ -2,6 +2,8 @@ package account
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"testing"
 	"time"
 
@@ -227,4 +229,92 @@ func TestStrategies_PreserveCuratorRecords(t *testing.T) {
 func TestCancellationWindowsAgree(t *testing.T) {
 	assert.Equal(t, 30*24*time.Hour, CancellationWindow,
 		"auth.accountCancellationWindow must be changed with this one")
+}
+
+// "Best effort" without a record means the leftovers are never retried and
+// somebody's photographs stay in a bucket forever.
+func TestPurgeLeftoverFiles_MarksOnlyWhatItActuallyCleared(t *testing.T) {
+	service, mock := fixture(t)
+
+	// No buckets configured, so deleteFiles trivially succeeds for both — the
+	// point here is that each cleared account is marked, one by one.
+	mock.ExpectQuery("FROM users").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(7)).AddRow(int64(9)))
+	mock.ExpectExec("UPDATE users SET files_purged_at").
+		WithArgs(int64(7)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("UPDATE users SET files_purged_at").
+		WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	purged, err := service.PurgeLeftoverFiles(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, purged)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPurgeLeftoverFiles_NothingOwed(t *testing.T) {
+	service, mock := fixture(t)
+
+	mock.ExpectQuery("FROM users").WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+	purged, err := service.PurgeLeftoverFiles(context.Background())
+
+	require.NoError(t, err)
+	assert.Zero(t, purged)
+}
+
+type recordingNotifier struct {
+	sent []string
+	err  error
+}
+
+func (r *recordingNotifier) Notify(_ context.Context, userID int64, notificationType, _, _, _ string) error {
+	r.sent = append(r.sent, fmt.Sprintf("%d:%s", userID, notificationType))
+	return r.err
+}
+
+// The curator planned around this person and would otherwise find out by
+// noticing an absence.
+func TestRequestDeletion_TellsTheCurator(t *testing.T) {
+	service, mock := fixture(t)
+	notifier := &recordingNotifier{}
+	service.WithNotifier(notifier)
+
+	mock.ExpectQuery("SELECT password, deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).
+			AddRow(hash(t, "Password123!"), nil))
+	mock.ExpectQuery("UPDATE users SET deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"deletion_requested_at"}).AddRow(time.Now()))
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("SELECT curator_id FROM curator_client_relationships").
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"curator_id"}).AddRow(int64(10)))
+
+	_, err := service.RequestDeletion(context.Background(), 1, "Password123!")
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"10:client_left"}, notifier.sent)
+}
+
+// A client without a curator simply has nobody to tell, which is not a failure.
+func TestRequestDeletion_SucceedsWithoutACurator(t *testing.T) {
+	service, mock := fixture(t)
+	notifier := &recordingNotifier{}
+	service.WithNotifier(notifier)
+
+	mock.ExpectQuery("SELECT password, deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).
+			AddRow(hash(t, "Password123!"), nil))
+	mock.ExpectQuery("UPDATE users SET deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"deletion_requested_at"}).AddRow(time.Now()))
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("SELECT curator_id FROM curator_client_relationships").
+		WillReturnError(sql.ErrNoRows)
+
+	_, err := service.RequestDeletion(context.Background(), 1, "Password123!")
+
+	require.NoError(t, err)
+	assert.Empty(t, notifier.sent)
 }
