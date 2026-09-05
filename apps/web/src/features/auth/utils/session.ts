@@ -7,12 +7,12 @@
  */
 
 import { apiClient } from '@/shared/utils/api-client'
-import { setRefreshToken } from '@/shared/utils/token-storage'
 import type { AuthResponse } from '@/features/auth/types'
 
 export function storeSession(response: AuthResponse): void {
     apiClient.setToken(response.token)
-    setRefreshToken(response.refresh_token)
+    // The refresh token is not stored: the server set it as an HttpOnly cookie
+    // in the same response, where no script can read it.
     if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(response.user))
     }

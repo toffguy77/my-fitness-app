@@ -62,13 +62,8 @@ export function OnboardingWizard() {
         setAppleHealth,
     } = useOnboardingStore()
 
-    // Auth guard
-    useEffect(() => {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-            router.push('/auth')
-        }
-    }, [router])
+    // Signed-out visitors never reach this page: middleware.ts redirects
+    // them before it renders.
 
     // Pre-populate store from existing profile on mount
     useEffect(() => {

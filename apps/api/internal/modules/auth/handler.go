@@ -126,6 +126,17 @@ type LogoutRequest struct {
 // changes.
 const refreshCookieName = "refresh_token"
 
+// sessionMarkerName says only "this browser has a session", and is readable
+// where the refresh token deliberately is not.
+//
+// The refresh token's Path is scoped to the auth endpoints so it does not
+// travel with every request to every route. That scoping is also why the
+// frontend's edge middleware cannot see it — and something has to tell the
+// edge whether to render a signed-in page or redirect. This marker does, and
+// it grants nothing: it is a flag, not a credential, and every endpoint still
+// demands a real token.
+const sessionMarkerName = "session_present"
+
 // rememberMeLifetime and sessionLifetime are how long the cookie lives. Without
 // "remember me" it is a session cookie: closing the browser ends the session,
 // which is what somebody signing in on a shared machine expects.
@@ -155,12 +166,14 @@ func (h *Handler) setRefreshCookie(c *gin.Context, token string, rememberMe bool
 	// of sending session cookies in the clear that follows the code to
 	// production.
 	c.SetCookie(refreshCookieName, token, maxAge, "/api/v1/auth", "", true, true)
+	c.SetCookie(sessionMarkerName, "1", maxAge, "/", "", true, true)
 }
 
 // clearRefreshCookie ends the session in the browser as well as on the server.
 func (h *Handler) clearRefreshCookie(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(refreshCookieName, "", -1, "/api/v1/auth", "", true, true)
+	c.SetCookie(sessionMarkerName, "", -1, "/", "", true, true)
 }
 
 // Register handles user registration

@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { useSession } from '@/shared/hooks/useSession'
 
 // Dynamically import NotificationsPage component for code splitting (Requirement 9.1)
 const NotificationsPageComponent = dynamic(
@@ -31,33 +32,13 @@ const NotificationsPageComponent = dynamic(
 )
 
 export default function NotificationsPage() {
-    const router = useRouter()
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
-    const [isLoading, setIsLoading] = useState(true)
+    // Signed-out visitors are redirected by middleware.ts before this page
+    // renders. What is left is the wait while the session is minted from the
+    // cookie — a real state, and showing the sign-in screen during it would
+    // flash it at somebody who is signed in.
+    const session = useSession()
 
-    useEffect(() => {
-        // Check authentication (Requirement 10.1)
-        const checkAuth = () => {
-            // Check if token exists
-            const token = typeof window !== 'undefined'
-                ? localStorage.getItem('auth_token')
-                : null
-
-            // Redirect to login if not authenticated (Requirement 10.2)
-            if (!token) {
-                router.push('/auth')
-                return
-            }
-
-            setIsAuthenticated(true)
-            setIsLoading(false)
-        }
-
-        checkAuth()
-    }, [router])
-
-    // Show loading state while checking authentication
-    if (isLoading) {
+    if (session === 'restoring') {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
@@ -68,8 +49,7 @@ export default function NotificationsPage() {
         )
     }
 
-    // Don't render if not authenticated (will redirect)
-    if (!isAuthenticated) {
+    if (session !== 'authenticated') {
         return null
     }
 

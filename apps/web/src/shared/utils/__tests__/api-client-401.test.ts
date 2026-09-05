@@ -1,4 +1,5 @@
 import { apiClient } from '../api-client'
+import { getToken } from '../token-storage'
 
 /**
  * Which 401 means "your session ended" and which means "that credential is
@@ -42,7 +43,7 @@ describe('A 401 from a credential-checking endpoint', () => {
 
         // One request: no refresh attempt, no retry, no sign-out.
         expect(fetchMock).toHaveBeenCalledTimes(1)
-        expect(localStorage.getItem('auth_token')).not.toBeNull()
+        expect(getToken()).not.toBeNull()
     })
 
     // An ordinary endpoint answering 401 does mean the session ended, and the

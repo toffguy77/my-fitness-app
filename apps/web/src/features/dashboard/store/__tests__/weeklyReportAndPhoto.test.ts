@@ -7,6 +7,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDashboardStore } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
+import { setToken } from '@/shared/utils/token-storage';
 
 // Mock API client
 jest.mock('@/shared/utils/api-client', () => ({
@@ -288,7 +289,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const file = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' });
             const weekIdentifier = '2024-W01';
 
-            localStorageMock.setItem('auth_token', 'test-token');
+            setToken('test-token');
 
             (global.fetch as unknown as jest.Mock).mockResolvedValue({
                 ok: true,

@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser, registerUser } from '@/features/auth/api/auth';
 import { apiClient } from '@/shared/utils/api-client';
-import { getRefreshToken, clearAuth } from '@/shared/utils/token-storage';
+import { clearAuth } from '@/shared/utils/token-storage';
 import { storeSession, destinationFor } from '@/features/auth/utils/session';
 import { forgetLeadToken } from '@/features/onboarding/api/guest';
 import { EVENTS, track, flush } from '@/shared/analytics';
@@ -96,15 +96,14 @@ export function useAuth() {
      * Revokes refresh token on backend, clears local auth data, redirects to auth page
      */
     const logout = async () => {
-        const refreshToken = getRefreshToken();
-
-        // Best-effort backend revocation
-        if (refreshToken) {
-            try {
-                await apiClient.post('/api/v1/auth/logout', { refresh_token: refreshToken });
-            } catch {
-                // Ignore errors — local cleanup proceeds regardless
-            }
+        // The refresh token is in a cookie the browser attaches by itself, so
+        // there is nothing to send and nothing to check first. The server
+        // revokes it and clears the cookie; this is best-effort, and the local
+        // cleanup below happens either way.
+        try {
+            await apiClient.post('/api/v1/auth/logout', {});
+        } catch {
+            // Ignore errors — local cleanup proceeds regardless
         }
 
         clearAuth();

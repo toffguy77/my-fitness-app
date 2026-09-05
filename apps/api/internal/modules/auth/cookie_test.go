@@ -11,14 +11,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setCookie runs the helper and returns the Set-Cookie header it produced.
-func setCookie(t *testing.T, token string, rememberMe bool) string {
+// setCookies runs the helper and returns every Set-Cookie header it produced.
+func setCookies(t *testing.T, token string, rememberMe bool) []string {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	(&Handler{}).setRefreshCookie(c, token, rememberMe)
-	return recorder.Header().Get("Set-Cookie")
+	return recorder.Header().Values("Set-Cookie")
+}
+
+// setCookie returns the refresh cookie's header.
+func setCookie(t *testing.T, token string, rememberMe bool) string {
+	t.Helper()
+	for _, header := range setCookies(t, token, rememberMe) {
+		if strings.HasPrefix(header, refreshCookieName+"=") {
+			return header
+		}
+	}
+	return ""
+}
+
+func TestSessionMarkerIsReadableWhereTheTokenIsNot(t *testing.T) {
+	var marker string
+	for _, header := range setCookies(t, "a-refresh-token", true) {
+		if strings.HasPrefix(header, sessionMarkerName+"=") {
+			marker = header
+		}
+	}
+	require.NotEmpty(t, marker, "the edge needs something it can see")
+
+	// Path=/ so the frontend middleware sees it on every route — which is
+	// exactly why it must carry nothing: a flag, not a credential.
+	assert.Contains(t, marker, "Path=/")
+	assert.NotContains(t, marker, "Path=/api/v1/auth")
+	assert.Contains(t, marker, "HttpOnly")
+	assert.Contains(t, marker, "Secure")
+	assert.Contains(t, marker, sessionMarkerName+"=1")
+}
+
+func TestClearingTheSessionClearsBothCookies(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	(&Handler{}).clearRefreshCookie(c)
+
+	headers := strings.Join(recorder.Header().Values("Set-Cookie"), "\n")
+	// A marker left behind would send the browser to a signed-in page that
+	// then bounces it straight back out.
+	assert.Contains(t, headers, sessionMarkerName+"=")
+	assert.Contains(t, headers, refreshCookieName+"=")
 }
 
 func TestRefreshCookieAttributes(t *testing.T) {

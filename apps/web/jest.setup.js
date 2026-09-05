@@ -1,8 +1,12 @@
 import '@testing-library/jest-dom'
 import 'whatwg-fetch'
 
-// Mock scrollIntoView (not available in jsdom)
-Element.prototype.scrollIntoView = jest.fn();
+// Mock scrollIntoView (not available in jsdom).
+// Guarded: a test that runs in the node environment — the edge middleware, for
+// one — has no DOM at all, and this file is loaded for every environment.
+if (typeof Element !== 'undefined') {
+    Element.prototype.scrollIntoView = jest.fn();
+}
 
 // Suppress React act() warnings and expected test errors
 const originalError = console.error;

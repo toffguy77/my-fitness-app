@@ -27,11 +27,6 @@ export default function ChatPage() {
     }, [])
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && !localStorage.getItem('auth_token')) {
-            router.push('/auth')
-            return
-        }
-
         chatApi
             .getConversations()
             .then((convs) => {

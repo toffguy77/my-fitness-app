@@ -81,13 +81,16 @@ describe('NutrientDetailPageClient', () => {
     });
 
     describe('Authentication', () => {
-        it('redirects to /auth when no token is present', async () => {
+        // The redirect for a signed-out visitor moved to middleware.ts, which
+        // runs before this page renders. A guard re-added here would send away
+        // somebody whose session is still being minted from the cookie.
+        it('does not send anybody to sign in on its own', async () => {
             setAuthToken(null);
 
             render(<NutrientDetailPageClient nutrientId="vitamin-d" />);
 
             await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith('/auth');
+                expect(mockPush).not.toHaveBeenCalledWith('/auth');
             });
         });
 
@@ -99,16 +102,6 @@ describe('NutrientDetailPageClient', () => {
             await waitFor(() => {
                 expect(mockPush).not.toHaveBeenCalled();
             });
-        });
-    });
-
-    describe('Loading State', () => {
-        it('shows loading spinner initially', () => {
-            setAuthToken(null);
-
-            render(<NutrientDetailPageClient nutrientId="vitamin-d" />);
-
-            expect(screen.getByText('Загрузка...')).toBeInTheDocument();
         });
     });
 

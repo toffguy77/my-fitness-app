@@ -63,10 +63,10 @@ describe('OnboardingWizard', () => {
         expect(screen.queryByTestId('photo-uploader')).not.toBeInTheDocument()
     })
 
-    it('redirects to /auth if no auth_token in localStorage', () => {
-        localStorage.removeItem('auth_token')
+    // The guard moved to middleware.ts, which runs before this renders.
+    it('does not send anybody to sign in on its own', () => {
         render(<OnboardingWizard />)
-        expect(mockPush).toHaveBeenCalledWith('/auth')
+        expect(mockPush).not.toHaveBeenCalledWith('/auth')
     })
 
     it('shows "Далее" on non-last steps', () => {

@@ -30,7 +30,11 @@ describe('Establishing a session', () => {
         storeSession(session)
 
         expect(apiClient.setToken).toHaveBeenCalledWith('access')
-        expect(localStorage.getItem('refresh_token')).toBe('refresh')
+        // The refresh token is deliberately not stored: the server set it as
+        // an HttpOnly cookie in the same response, where no script can read
+        // it — and a refresh token script can read is a session that outlives
+        // every password the victim changes.
+        expect(localStorage.getItem('refresh_token')).toBeNull()
         expect(JSON.parse(localStorage.getItem('user') ?? '{}')).toMatchObject({
             email: 'user@example.com',
         })

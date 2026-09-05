@@ -104,9 +104,8 @@ describe('SettingsPageLayout', () => {
     expect(screen.getByText('My Title')).toBeInTheDocument()
   })
 
-  it('redirects to /auth when no auth_token', () => {
-    ;(localStorage.getItem as jest.Mock).mockReturnValue(null)
-
+  // The guard lives in middleware.ts now, before the page renders.
+  it('does not send anybody to sign in on its own', () => {
     mockUseSettings.mockReturnValue({
       profile: null,
       isLoading: true,
@@ -117,13 +116,9 @@ describe('SettingsPageLayout', () => {
       handleAvatarDelete: jest.fn(),
     })
 
-    render(
-      <SettingsPageLayout title="Test">
-        {() => <div />}
-      </SettingsPageLayout>
-    )
+    render(<SettingsPageLayout title="My Title">{() => <div />}</SettingsPageLayout>)
 
-    expect(mockPush).toHaveBeenCalledWith('/auth')
+    expect(mockPush).not.toHaveBeenCalledWith('/auth')
   })
 
   it('renders back link to /profile', () => {

@@ -31,16 +31,16 @@
 
 ## 6. Фронтенд: переход на cookie
 
-- [ ] 6.1 Переписать `shared/utils/token-storage.ts`: access-токен в переменной модуля, функции refresh-токена удалены. Проверка: `npx jest token-storage`.
-- [ ] 6.2 Обновить `shared/utils/api-client.ts:110-124,268-282,337-355`: `credentials: 'include'`, refresh без тела, снятие access из ответа. Проверка: `npx jest api-client` зелёные, включая сценарий очереди параллельных запросов при обновлении.
-- [ ] 6.3 Добавить одноразовую миграцию: при инициализации, если в `localStorage` есть `refresh_token`, обменять его на cookie и очистить хранилище. Пометить код комментарием со сроком удаления. Проверка: тест «старое хранилище → обмен → хранилище очищено».
-- [ ] 6.4 Добавить «тихий» `/auth/refresh` при инициализации приложения для восстановления сессии после перезагрузки. Проверка: e2e — перезагрузка страницы не разлогинивает.
-- [ ] 6.5 Заменить 15 прямых обращений `localStorage.getItem('auth_token')` на хук сессии: `app/chat/page.tsx:30`, `app/dashboard/page.tsx:82`, `app/food-tracker/FoodTrackerPageClient.tsx:13`, `app/food-tracker/nutrient/[id]/NutrientDetailPageClient.tsx:77`, `app/profile/page.tsx:29`, `app/notifications/page.tsx:43`, `features/settings/components/SettingsPageLayout.tsx:21`, `features/dashboard/store/dashboardStore.ts:1461` и остальные. Проверка: `grep -rn "localStorage.getItem('auth_token')" apps/web/src --include=*.tsx --include=*.ts | grep -v token-storage` пусто.
+- [x] 6.1 Переписать `shared/utils/token-storage.ts`: access-токен в переменной модуля, функции refresh-токена удалены. Проверка: `npx jest token-storage`.
+- [x] 6.2 Обновить `shared/utils/api-client.ts:110-124,268-282,337-355`: `credentials: 'include'`, refresh без тела, снятие access из ответа. Проверка: `npx jest api-client` зелёные, включая сценарий очереди параллельных запросов при обновлении.
+- [x] 6.3 Добавить одноразовую миграцию: при инициализации, если в `localStorage` есть `refresh_token`, обменять его на cookie и очистить хранилище. Пометить код комментарием со сроком удаления. Проверка: тест «старое хранилище → обмен → хранилище очищено».
+- [x] 6.4 Добавить «тихий» `/auth/refresh` при инициализации приложения для восстановления сессии после перезагрузки. Проверка: e2e — перезагрузка страницы не разлогинивает.
+- [x] 6.5 Заменить 15 прямых обращений `localStorage.getItem('auth_token')` на хук сессии: `app/chat/page.tsx:30`, `app/dashboard/page.tsx:82`, `app/food-tracker/FoodTrackerPageClient.tsx:13`, `app/food-tracker/nutrient/[id]/NutrientDetailPageClient.tsx:77`, `app/profile/page.tsx:29`, `app/notifications/page.tsx:43`, `features/settings/components/SettingsPageLayout.tsx:21`, `features/dashboard/store/dashboardStore.ts:1461` и остальные. Проверка: `grep -rn "localStorage.getItem('auth_token')" apps/web/src --include=*.tsx --include=*.ts | grep -v token-storage` пусто.
 
 ## 7. Защита маршрутов
 
-- [ ] 7.1 Создать `apps/web/src/middleware.ts`: проверка наличия refresh-cookie, редирект на `/auth?next=<path>` для защищённых путей, `matcher` со списком `/dashboard`, `/food-tracker`, `/chat`, `/profile`, `/settings/:path*`, `/notifications`, `/curator/:path*`, `/admin/:path*`, `/onboarding`. Проверка: тест middleware — защищённый путь без cookie редиректит, с cookie пропускает.
-- [ ] 7.2 Удалить со страниц ручные проверки и редиректы, ставшие избыточными. Проверка: `npx jest` зелёные, e2e-сценарий «неаутентифицированный пользователь → /auth» проходит.
+- [x] 7.1 Создать `apps/web/src/middleware.ts`: проверка наличия cookie-метки `session_present` (сам refresh-токен ограничен `Path=/api/v1/auth` и до edge не доезжает — метка ничего не даёт сама по себе, каждый эндпоинт по-прежнему требует токен), редирект на `/auth?next=<path>` для защищённых путей, `matcher` со списком `/dashboard`, `/food-tracker`, `/chat`, `/profile`, `/settings/:path*`, `/notifications`, `/curator/:path*`, `/admin/:path*`, `/onboarding`. Проверка: тест middleware — защищённый путь без cookie редиректит, с cookie пропускает.
+- [x] 7.2 Удалить со страниц ручные проверки и редиректы, ставшие избыточными. Проверка: `npx jest` зелёные, e2e-сценарий «неаутентифицированный пользователь → /auth» проходит.
 
 ## 8. Ужесточение CSP
 

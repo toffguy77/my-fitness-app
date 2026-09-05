@@ -76,19 +76,9 @@ export default function DashboardPage() {
     } = useDashboardStore()
 
     useEffect(() => {
-        // Check authentication and fetch user data
+        // The redirect for a signed-out visitor happens in middleware.ts,
+        // before this page renders.
         const checkAuth = () => {
-            // Check if token exists
-            const token = typeof window !== 'undefined'
-                ? localStorage.getItem('auth_token')
-                : null
-
-            // Redirect to login if not authenticated
-            if (!token) {
-                router.push('/auth')
-                return
-            }
-
             // Get user data from localStorage
             const userDataStr = typeof window !== 'undefined'
                 ? localStorage.getItem('user')

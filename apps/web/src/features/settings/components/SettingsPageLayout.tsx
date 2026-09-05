@@ -17,11 +17,7 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
     const settingsHook = useSettings()
     const { profile, isLoading } = settingsHook
 
-    useEffect(() => {
-        if (typeof window !== 'undefined' && !localStorage.getItem('auth_token')) {
-            router.push('/auth')
-        }
-    }, [router])
+    // The guard lives in middleware.ts now, before the page renders.
 
     const userName = useMemo(() => {
         if (profile) {

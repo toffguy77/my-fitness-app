@@ -26,19 +26,12 @@ jest.mock('next/dynamic', () => {
 
 import NotificationsPage from '../notifications/page'
 
+jest.mock('@/shared/hooks/useSession', () => ({
+    useSession: () => 'authenticated',
+}))
+
 describe('NotificationsPage', () => {
-    beforeEach(() => {
-        Storage.prototype.getItem = jest.fn((key: string) => {
-            if (key === 'auth_token') return 'mock-token'
-            return null
-        })
-    })
-
-    afterEach(() => {
-        jest.restoreAllMocks()
-    })
-
-    it('renders the notifications component when authenticated', () => {
+    it('renders the notifications component when the session is established', () => {
         render(<NotificationsPage />)
         expect(screen.getByTestId('notifications-page-component')).toBeInTheDocument()
     })

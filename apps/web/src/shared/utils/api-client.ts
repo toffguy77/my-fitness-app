@@ -4,7 +4,13 @@
  * Includes automatic token refresh on 401 responses
  */
 
-import { getRefreshToken, setToken, setRefreshToken, clearAuth } from './token-storage';
+import {
+    getToken as readToken,
+    setToken,
+    clearToken,
+    clearAuth,
+    legacyStorage,
+} from './token-storage';
 import { ApiError, NetworkError } from '../errors/apiErrors';
 
 /**
@@ -25,7 +31,10 @@ async function toApiError(response: Response): Promise<ApiError> {
  */
 async function request(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     try {
-        return await fetch(input, init);
+        // The session travels in an HttpOnly cookie, so every request has to
+        // be allowed to carry cookies. Without this the browser sends none and
+        // every refresh looks like a signed-out user.
+        return await fetch(input, { credentials: 'include', ...init });
     } catch (cause) {
         throw new NetworkError(cause);
     }
@@ -36,6 +45,21 @@ interface RequestOptions extends RequestInit {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+
+/**
+ * The body a refresh sends.
+ *
+ * Normally empty: the cookie carries the session. It is only non-empty for a
+ * browser that still holds a token from the previous scheme — one request,
+ * after which the server sets the cookie and the old storage is cleared.
+ *
+ * REMOVE AFTER 2026-11-01, together with legacyStorage.
+ */
+function legacyBody(): Record<string, string> {
+    const leftover = legacyStorage.refreshToken();
+    if (!leftover) return {};
+    return { refresh_token: leftover };
+}
 
 type RefreshSubscriber = (token: string) => void;
 
@@ -122,21 +146,13 @@ class ApiClient {
         }
 
         isRefreshing = true;
-        const refreshToken = getRefreshToken();
 
-        if (!refreshToken) {
-            isRefreshing = false;
-            clearAuth();
-            if (typeof window !== 'undefined') {
-                window.location.href = '/auth';
-            }
-            return Promise.reject(new Error('No refresh token'));
-        }
-
-        return this.refreshWithRetry(refreshToken, 3, 1000)
-            .then((data: { token: string; refresh_token: string }) => {
+        // No token is read here any more: the refresh token is in a cookie the
+        // browser attaches by itself, and script cannot see whether it exists.
+        // The only way to find out is to ask, so we ask.
+        return this.refreshWithRetry(3, 1000)
+            .then((data: { token: string }) => {
                 setToken(data.token);
-                setRefreshToken(data.refresh_token);
                 isRefreshing = false;
                 onTokenRefreshed(data.token);
                 return retryFetch(data.token);
@@ -156,16 +172,18 @@ class ApiClient {
      * Attempt to refresh the token with retries for transient failures (network, redeploy)
      */
     private async refreshWithRetry(
-        refreshToken: string,
         retries: number,
         delayMs: number,
-    ): Promise<{ token: string; refresh_token: string }> {
+    ): Promise<{ token: string }> {
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
                 const res = await request(`${API_BASE}/api/v1/auth/refresh`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refresh_token: refreshToken }),
+                    // A token left over from the previous scheme is sent once,
+                    // so somebody who was signed in before this release is
+                    // migrated instead of signed out. See legacyStorage.
+                    body: JSON.stringify(legacyBody()),
                     cache: 'no-store',
                 });
 
@@ -178,6 +196,9 @@ class ApiClient {
                 }
 
                 const json = await res.json();
+                // The exchange worked, so whatever the old scheme left behind
+                // has done its job and should not be sent again.
+                legacyStorage.clear();
                 return json.data !== undefined ? json.data : json;
             } catch (err) {
                 const isRejected = err instanceof Error && err.message === 'Refresh rejected';
@@ -281,21 +302,13 @@ class ApiClient {
         }
 
         isRefreshing = true;
-        const refreshToken = getRefreshToken();
 
-        if (!refreshToken) {
-            isRefreshing = false;
-            clearAuth();
-            if (typeof window !== 'undefined') {
-                window.location.href = '/auth';
-            }
-            return Promise.reject(new Error('No refresh token'));
-        }
-
-        return this.refreshWithRetry(refreshToken, 3, 1000)
-            .then((data: { token: string; refresh_token: string }) => {
+        // No token is read here any more: the refresh token is in a cookie the
+        // browser attaches by itself, and script cannot see whether it exists.
+        // The only way to find out is to ask, so we ask.
+        return this.refreshWithRetry(3, 1000)
+            .then((data: { token: string }) => {
                 setToken(data.token);
-                setRefreshToken(data.refresh_token);
                 isRefreshing = false;
                 onTokenRefreshed(data.token);
                 return retryFetch(data.token);
@@ -351,24 +364,47 @@ class ApiClient {
      * Get JWT token from localStorage
      */
     private getToken(): string | null {
-        if (typeof window === 'undefined') return null;
-        return localStorage.getItem('auth_token');
+        return readToken();
     }
 
-    /**
-     * Store JWT token in localStorage
-     */
+    /** Store the access token for this tab. */
     setToken(token: string): void {
-        if (typeof window === 'undefined') return;
-        localStorage.setItem('auth_token', token);
+        setToken(token);
+    }
+
+    /** Forget the access token. */
+    clearToken(): void {
+        clearToken();
     }
 
     /**
-     * Remove JWT token from localStorage
+     * Mints an access token from whatever the browser holds, without retrying
+     * and without redirecting.
+     *
+     * Used once per page load to work out whether there is a session at all.
+     * A failure here is an ordinary answer — most visitors to the sign-in page
+     * have no session — so unlike the refresh inside a failed request, it must
+     * not send anybody anywhere.
      */
-    clearToken(): void {
-        if (typeof window === 'undefined') return;
-        localStorage.removeItem('auth_token');
+    async refreshSession(): Promise<string> {
+        const res = await request(`${API_BASE}/api/v1/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(legacyBody()),
+            cache: 'no-store',
+        });
+
+        if (!res.ok) {
+            throw new Error(`No session (${res.status})`);
+        }
+
+        legacyStorage.clear();
+        const json = await res.json();
+        const data = json.data !== undefined ? json.data : json;
+        if (!data?.token) {
+            throw new Error('Refresh returned no token');
+        }
+        return data.token as string;
     }
 }
 

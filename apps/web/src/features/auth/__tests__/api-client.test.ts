@@ -7,10 +7,11 @@ import { apiClient } from '@/shared/utils/api-client';
 
 // We need to mock token-storage before importing api-client
 jest.mock('@/shared/utils/token-storage', () => ({
-    getRefreshToken: jest.fn(),
+    getToken: jest.fn(),
     setToken: jest.fn(),
-    setRefreshToken: jest.fn(),
+    clearToken: jest.fn(),
     clearAuth: jest.fn(),
+    legacyStorage: { refreshToken: jest.fn(() => null), clear: jest.fn() },
 }));
 
 import * as tokenStorage from '@/shared/utils/token-storage';
@@ -23,27 +24,25 @@ describe('API Client', () => {
     });
 
     describe('Token Management', () => {
-        it('should store token in localStorage', () => {
-            const token = 'test-jwt-token';
-            apiClient.setToken(token);
+        it('hands the access token to the store rather than to localStorage', () => {
+            apiClient.setToken('test-jwt-token');
 
-            expect(localStorage.getItem('auth_token')).toBe(token);
+            expect(tokenStorage.setToken).toHaveBeenCalledWith('test-jwt-token');
+            // Nothing that runs on the page can read it out of storage,
+            // because it is never put there.
+            expect(localStorage.getItem('auth_token')).toBeNull();
         });
 
-        it('should retrieve token from localStorage', () => {
-            const token = 'test-jwt-token';
-            localStorage.setItem('auth_token', token);
+        it('reads the access token from the store', () => {
+            (tokenStorage.getToken as jest.Mock).mockReturnValue('test-jwt-token');
 
-            // Access private method through instance
-            const storedToken = localStorage.getItem('auth_token');
-            expect(storedToken).toBe(token);
+            expect(tokenStorage.getToken()).toBe('test-jwt-token');
         });
 
-        it('should clear token from localStorage', () => {
-            localStorage.setItem('auth_token', 'test-token');
+        it('clears through the store', () => {
             apiClient.clearToken();
 
-            expect(localStorage.getItem('auth_token')).toBeNull();
+            expect(tokenStorage.clearToken).toHaveBeenCalled();
         });
     });
 
@@ -148,8 +147,6 @@ describe('API Client', () => {
         });
 
         it('should refresh token on 401 and retry original request', async () => {
-            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue('old-refresh-token');
-
             // First call: original request → 401
             // Second call: refresh endpoint → success
             // Third call: retry original request → success
@@ -163,10 +160,7 @@ describe('API Client', () => {
                     ok: true,
                     status: 200,
                     json: async () => ({
-                        data: {
-                            token: 'new-access-token',
-                            refresh_token: 'new-refresh-token',
-                        },
+                        data: { token: 'new-access-token' },
                     }),
                 })
                 .mockResolvedValueOnce({
@@ -185,30 +179,79 @@ describe('API Client', () => {
             expect(global.fetch).toHaveBeenCalledTimes(3);
             expect((global.fetch as jest.Mock).mock.calls[1][0]).toContain('/auth/refresh');
 
-            // Verify tokens were stored
+            // The access token is stored; the refresh token is not, because
+            // it never reaches script — the server set it as a cookie.
             expect(tokenStorage.setToken).toHaveBeenCalledWith('new-access-token');
-            expect(tokenStorage.setRefreshToken).toHaveBeenCalledWith('new-refresh-token');
         });
 
-        it('should redirect to /auth when no refresh token available', async () => {
-            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue(null);
-
+        it('sends the session cookie with every request', async () => {
             (global.fetch as jest.Mock).mockResolvedValueOnce({
-                ok: false,
-                status: 401,
-                json: async () => ({ message: 'Unauthorized' }),
+                ok: true,
+                status: 200,
+                json: async () => ({ data: {} }),
             });
+
+            await apiClient.get('http://localhost:4000/api/dashboard');
+
+            // Without this the browser attaches no cookie and every refresh
+            // looks like a signed-out user.
+            expect((global.fetch as jest.Mock).mock.calls[0][1]).toMatchObject({
+                credentials: 'include',
+            });
+        });
+
+        it('asks the server rather than checking storage for a refresh token', async () => {
+            (global.fetch as jest.Mock)
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 401,
+                    json: async () => ({ message: 'Unauthorized' }),
+                })
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 401,
+                    json: async () => ({ message: 'No session' }),
+                });
 
             await expect(
                 apiClient.get('http://localhost:4000/api/dashboard')
-            ).rejects.toThrow('No refresh token');
+            ).rejects.toThrow();
 
+            // Script cannot see the cookie, so the only way to find out
+            // whether there is a session is to try.
+            expect((global.fetch as jest.Mock).mock.calls[1][0]).toContain('/auth/refresh');
             expect(tokenStorage.clearAuth).toHaveBeenCalled();
         });
 
-        it('should redirect to /auth when refresh fails', async () => {
-            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue('old-refresh-token');
+        it('sends a token left over from the previous scheme exactly once', async () => {
+            (tokenStorage.legacyStorage.refreshToken as jest.Mock).mockReturnValue('an-old-token');
 
+            (global.fetch as jest.Mock)
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 401,
+                    json: async () => ({ message: 'Unauthorized' }),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ data: { token: 'new-access-token' } }),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ data: {} }),
+                });
+
+            await apiClient.get('http://localhost:4000/api/dashboard');
+
+            // Somebody signed in before this release is migrated rather than
+            // signed out in the middle of their day.
+            expect((global.fetch as jest.Mock).mock.calls[1][1].body).toContain('an-old-token');
+            expect(tokenStorage.legacyStorage.clear).toHaveBeenCalled();
+        });
+
+        it('should redirect to /auth when refresh fails', async () => {
             (global.fetch as jest.Mock)
                 .mockResolvedValueOnce({
                     ok: false,
