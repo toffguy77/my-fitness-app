@@ -335,8 +335,12 @@ func main() {
 	})
 
 	// Routing lives in internal/router, one file per domain.
+	// Access tokens carry the account's token version; this is what checks it.
+	tokenVersions := middleware.NewTokenVersions(db.DB)
+
 	router := router.New(router.Deps{
 		Cfg:             cfg,
+		TokenVersions:   tokenVersions,
 		Log:             log,
 		DB:              db,
 		AuthRateLimiter: authRateLimiter,

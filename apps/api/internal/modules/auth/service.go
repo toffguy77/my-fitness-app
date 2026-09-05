@@ -54,6 +54,23 @@ type Service struct {
 	log         *logger.Logger
 	tokens      *TokenGenerator
 	passwordVal *PasswordValidator
+	// sessions lets a revocation take effect at once rather than within the
+	// middleware's cache TTL. Optional: without it the revocation is still
+	// correct, just up to half a minute late.
+	sessions SessionCache
+}
+
+// SessionCache is the narrow part of middleware.TokenVersions this service
+// needs, declared here so the auth module does not depend on the middleware
+// package for one method.
+type SessionCache interface {
+	Forget(userID int64)
+}
+
+// WithSessionCache supplies the cache to invalidate on a revocation.
+func (s *Service) WithSessionCache(cache SessionCache) *Service {
+	s.sessions = cache
+	return s
 }
 
 // NewService creates a new auth service
@@ -76,6 +93,10 @@ type User struct {
 	EmailVerified       bool      `json:"email_verified"`
 	OnboardingCompleted bool      `json:"onboarding_completed"`
 	CreatedAt           time.Time `json:"created_at"`
+	// TokenVersion is not sent to the client; it travels inside the access
+	// token so the server can tell a token issued before a password change
+	// from one issued after.
+	TokenVersion int `json:"-"`
 }
 
 // LoginResult represents login response
@@ -196,7 +217,7 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 
 	// Look up user by email
 	query := `
-		SELECT id, email, COALESCE(name, ''), password, role, email_verified, COALESCE(onboarding_completed, false), created_at, deletion_requested_at
+		SELECT id, email, COALESCE(name, ''), password, role, email_verified, COALESCE(onboarding_completed, false), created_at, deletion_requested_at, token_version
 		FROM users
 		WHERE email = $1
 	`
@@ -206,7 +227,7 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 	var deletionRequestedAt sql.NullTime
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &deletionRequestedAt,
+		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &deletionRequestedAt, &user.TokenVersion,
 	)
 	s.log.LogDatabaseQuery("Login.LookupUser", time.Since(startTime), err, map[string]any{"email": email})
 	if err != nil {
@@ -366,9 +387,9 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	// Look up user for JWT claims
 	var user User
 	err = s.db.QueryRowContext(dbCtx,
-		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at
+		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at, token_version
 		 FROM users WHERE id = $1`, userID,
-	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt)
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &user.TokenVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to look up user: %w", err)
 	}
@@ -399,9 +420,9 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 	// Look up user for JWT claims
 	var user User
 	err = s.db.QueryRowContext(ctx,
-		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at
+		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at, token_version
 		 FROM users WHERE id = $1`, userID,
-	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt)
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &user.TokenVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to look up user: %w", err)
 	}
@@ -421,7 +442,11 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 // ChangePassword allows an authenticated user to update their password.
 // It verifies the current password, validates the new one against policy,
 // and updates the stored bcrypt hash.
-func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string) error {
+// ChangePassword changes the password and ends every other session.
+//
+// `replacement` is filled with a fresh token pair for the caller's own session:
+// see endAllSessions for why every other one is destroyed and this one is not.
+func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string, replacement *LoginResult) error {
 	var storedHash string
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
@@ -461,9 +486,68 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	}
 
 	// End every session: a stolen refresh token must not survive the very
-	// action a user takes to recover from the theft.
-	s.revokeAllUserRefreshTokens(ctx, userID)
+	// action a user takes to recover from the theft. Bumping the version does
+	// the same for access tokens already issued, which otherwise keep working
+	// for their full fifteen minutes.
+	if err := s.endAllSessions(ctx, userID); err != nil {
+		return err
+	}
 
+	// ...except this one. Signing somebody out of the device they are standing
+	// at, as a reward for changing their password, teaches them not to.
+	var user User
+	err = s.db.QueryRowContext(ctx,
+		`SELECT id, email, COALESCE(name, ''), role, email_verified, COALESCE(onboarding_completed, false), created_at, token_version
+		 FROM users WHERE id = $1`, userID,
+	).Scan(&user.ID, &user.Email, &user.Name, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &user.TokenVersion)
+	if err != nil {
+		return fmt.Errorf("failed to look up user after password change: %w", err)
+	}
+
+	accessToken, err := s.generateToken(&user)
+	if err != nil {
+		return fmt.Errorf("failed to issue a replacement access token: %w", err)
+	}
+	refreshToken, err := s.createRefreshToken(ctx, userID, "", "", false)
+	if err != nil {
+		return fmt.Errorf("failed to issue a replacement refresh token: %w", err)
+	}
+
+	*replacement = LoginResult{User: &user, Token: accessToken, RefreshToken: refreshToken}
+	return nil
+}
+
+// endAllSessions revokes every refresh token and invalidates every access token
+// already issued, in one transaction.
+//
+// Two mechanisms because they cover different halves of the problem: revoking
+// refresh tokens stops new access tokens being minted, and the version bump
+// stops the ones already minted from being accepted.
+func (s *Service) endAllSessions(ctx context.Context, userID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin session invalidation: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
+		userID); err != nil {
+		return fmt.Errorf("revoke refresh tokens: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE users SET token_version = token_version + 1 WHERE id = $1`, userID); err != nil {
+		return fmt.Errorf("bump token version: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit session invalidation: %w", err)
+	}
+
+	// The middleware caches versions for half a minute; this makes the
+	// revocation immediate on this instance rather than merely eventual.
+	if s.sessions != nil {
+		s.sessions.Forget(userID)
+	}
 	return nil
 }
 
@@ -569,8 +653,14 @@ func (s *Service) generateToken(user *User) (string, error) {
 		"user_id": user.ID,
 		"email":   user.Email,
 		"role":    user.Role,
-		"exp":     time.Now().Add(15 * time.Minute).Unix(),
-		"iat":     time.Now().Unix(),
+		// The version the account had when this token was issued. Revoking a
+		// refresh token closes the future; without this, an access token
+		// already in an attacker's hands keeps working for its full fifteen
+		// minutes — exactly the fifteen minutes the password change was meant
+		// to take away.
+		"tv":  user.TokenVersion,
+		"exp": time.Now().Add(15 * time.Minute).Unix(),
+		"iat": time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

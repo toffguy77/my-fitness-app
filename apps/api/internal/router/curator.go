@@ -15,7 +15,7 @@ import (
 // performing by hand.
 func registerCuratorRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/curator")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 	g.Use(middleware.RequireRole("coordinator"))
 
 	// Aggregates over the curator's own clients — no client id in the path.
@@ -53,7 +53,7 @@ func registerCuratorRoutes(v1 *gin.RouterGroup, d Deps) {
 
 func registerAdminRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/admin")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 	g.Use(middleware.RequireRole("super_admin"))
 
 	g.GET("/users", d.Admin.GetUsers)

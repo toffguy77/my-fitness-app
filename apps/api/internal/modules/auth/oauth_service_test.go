@@ -66,8 +66,8 @@ func TestSignInWithProvider_KnownIdentitySignsIn(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectQuery("SELECT id, email").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at",
-		}).AddRow(int64(42), "changed@example.com", "User", "client", true, true, nowUTC()))
+			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version",
+		}).AddRow(int64(42), "changed@example.com", "User", "client", true, true, nowUTC(), 0))
 	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	outcome, err := service.SignInWithProvider(context.Background(), "yandex", profile(), "127.0.0.1", "agent")
@@ -158,8 +158,8 @@ func TestConfirmLinkWithPassword_LinksOnlyOnTheRightPassword(t *testing.T) {
 		mock.ExpectExec("DELETE FROM oauth_pending_links").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectQuery("SELECT id, email").
 			WillReturnRows(sqlmock.NewRows([]string{
-				"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at",
-			}).AddRow(int64(7), "user@example.com", "User", "client", true, true, nowUTC()))
+				"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version",
+			}).AddRow(int64(7), "user@example.com", "User", "client", true, true, nowUTC(), 0))
 		mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
 
 		result, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "correct horse", "ip", "ua")
@@ -232,8 +232,8 @@ func TestCompleteWithEmail_NewAddressCreatesAnUnverifiedAccount(t *testing.T) {
 	mock.ExpectCommit()
 	mock.ExpectQuery("SELECT id, email").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at",
-		}).AddRow(int64(11), "new@example.com", "User", "client", false, false, nowUTC()))
+			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version",
+		}).AddRow(int64(11), "new@example.com", "User", "client", false, false, nowUTC(), 0))
 	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec("DELETE FROM oauth_pending_links").WillReturnResult(sqlmock.NewResult(0, 1))
 

@@ -26,7 +26,7 @@ func registerLeadRoutes(v1 *gin.RouterGroup, d Deps) {
 // registerAdminLeadRoutes wires the administrative view of leads.
 func registerAdminLeadRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/admin/leads")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 	g.Use(middleware.RequireRole("super_admin"))
 
 	g.GET("", d.Leads.List)

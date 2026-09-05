@@ -7,7 +7,7 @@ import (
 
 func registerFoodTrackerRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/food-tracker")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
 	// Diary entries
 	g.GET("/entries", d.FoodTracker.GetEntries)
@@ -46,7 +46,7 @@ func registerFoodTrackerRoutes(v1 *gin.RouterGroup, d Deps) {
 
 func registerNutritionCalcRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/nutrition-calc")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
 	g.GET("/targets", d.NutritionCalc.GetTargets)
 	g.GET("/history", d.NutritionCalc.GetHistory)
@@ -55,7 +55,7 @@ func registerNutritionCalcRoutes(v1 *gin.RouterGroup, d Deps) {
 
 func registerDashboardRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/dashboard")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
 	g.GET("/daily/:date", d.Dashboard.GetDailyMetrics)
 	g.POST("/daily", d.Dashboard.SaveMetric)

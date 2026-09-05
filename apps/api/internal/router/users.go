@@ -7,7 +7,7 @@ import (
 
 func registerUserRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/users")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
 	g.GET("/profile", d.Users.GetProfile)
 	g.PUT("/profile", d.Users.UpdateProfile)
@@ -28,7 +28,7 @@ func registerUserRoutes(v1 *gin.RouterGroup, d Deps) {
 
 func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/notifications")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
 	g.GET("", d.Notifications.GetNotifications)
 	g.POST("/:id/read", d.Notifications.MarkAsRead)
@@ -60,5 +60,5 @@ func registerLogRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/logs")
 
 	g.POST("", d.AuthRateLimiter.Limit("client-logs"), d.Logs.ReceiveLogs)
-	g.GET("/stats", middleware.RequireAuth(d.Cfg), middleware.RequireRole("super_admin"), d.Logs.GetLogStats)
+	g.GET("/stats", middleware.RequireAuth(d.Cfg, d.TokenVersions), middleware.RequireRole("super_admin"), d.Logs.GetLogStats)
 }

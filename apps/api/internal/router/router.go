@@ -41,8 +41,11 @@ import (
 // database, S3 or SMTP.
 type Deps struct {
 	Cfg *config.Config
-	Log *logger.Logger
-	DB  *database.DB
+	// TokenVersions lets the auth middleware refuse an access token that was
+	// issued before a password change. May be nil in tests.
+	TokenVersions *middleware.TokenVersions
+	Log           *logger.Logger
+	DB            *database.DB
 
 	AuthRateLimiter *middleware.AuthRateLimiter
 

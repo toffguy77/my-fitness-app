@@ -1,22 +1,22 @@
 ## 1. Схема данных
 
-- [~] 1.1 Создать миграцию с таблицей тикетов и колонкой версии токена. *Сделана таблица `ws_tickets` (миграция `054`, номер 045 занят). Колонка `users.token_version` не добавлена: она нужна только вместе с задачами 2.3–2.4.* Исходная формулировка: миграция `045_add_token_version_and_ws_tickets_{up,down}.sql`: колонка `users.token_version INTEGER NOT NULL DEFAULT 0`; таблица `ws_tickets(token_hash TEXT PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ)` с индексом по `expires_at`. Проверка: `make db-migrate` на локальной БД, `\d users` показывает колонку, down-миграция откатывает чисто.
+- [x] 1.1 Создать миграцию с таблицей тикетов и колонкой версии токена. *`ws_tickets` — миграция `054`; `users.token_version` — миграция `059`.* Исходная формулировка: миграция `045_add_token_version_and_ws_tickets_{up,down}.sql`: колонка `users.token_version INTEGER NOT NULL DEFAULT 0`; таблица `ws_tickets(token_hash TEXT PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ)` с индексом по `expires_at`. Проверка: `make db-migrate` на локальной БД, `\d users` показывает колонку, down-миграция откатывает чисто.
 
 ## 2. Отзыв сессий
 
 - [x] 2.1 Реализовать `revokeAllUserRefreshTokens` как экспортируемый метод и вызвать его из `reset_service.go:ResetPassword` и из `service.go:ChangePassword`. Проверка: тест «после сброса все токены пользователя имеют `revoked_at`».
 - [x] 2.2 Заменить заглушку `InvalidateUserSessions` (`reset_service.go:378-392`) реальной реализацией: отзыв refresh-токенов + инкремент `users.token_version` в одной транзакции. Проверка: тест сценария «Проверка реализации отзыва».
-- [ ] 2.3 *(вместе с 1.1 и 2.4)* Добавить поле `tv` в `middleware.UserClaims` и заполнять его при выпуске access-токена. Проверка: декодирование выпущенного токена содержит `tv`.
-- [ ] 2.4 В `middleware/auth.go` сверять `tv` из claims с текущей версией пользователя; реализовать кэш `user_id → token_version` в памяти с TTL 30 секунд и инвалидацией при инкременте. Проверка: тесты «токен со старой версией → 401», «токен с актуальной версией → 200», «задержка не более 30 секунд».
-- [ ] 2.5 Убедиться, что сессия инициатора смены пароля продолжает работать: выдать ей новую пару токенов в ответе. Проверка: e2e-сценарий смены пароля не выкидывает пользователя из приложения.
+- [x] 2.3 *(вместе с 1.1 и 2.4)* Добавить поле `tv` в `middleware.UserClaims` и заполнять его при выпуске access-токена. Проверка: декодирование выпущенного токена содержит `tv`.
+- [x] 2.4 В `middleware/auth.go` сверять `tv` из claims с текущей версией пользователя; реализовать кэш `user_id → token_version` в памяти с TTL 30 секунд и инвалидацией при инкременте. Проверка: тесты «токен со старой версией → 401», «токен с актуальной версией → 200», «задержка не более 30 секунд».
+- [x] 2.5 Убедиться, что сессия инициатора смены пароля продолжает работать: выдать ей новую пару токенов в ответе. Проверка: e2e-сценарий смены пароля не выкидывает пользователя из приложения.
 
 ## 3. Refresh-токен в cookie (бэкенд, совместимый этап)
 
-*Не сделано в этом проходе.* `POST /auth/refresh` уже принимает токен из cookie — это понадобилось для входа через провайдера, — но перенос всей сессии из localStorage в cookie меняет механизм аутентификации целиком (задачи 3, 6, 7, 8) и делается отдельным выпуском, а не перед выкаткой остального.
+Совместимый этап: cookie ставится и читается, тело ответа пока продолжает возвращать `refresh_token` — старый клиент не ломается. Убирается в 9.3.
 
-- [ ] 3.1 Добавить в `auth/handler.go` установку cookie `refresh_token` с `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth` в ответах `login`, `register`, `refresh`; `Max-Age` по `remember_me`. На этом этапе продолжать возвращать `refresh_token` и в теле. Проверка: тест проверяет наличие и атрибуты `Set-Cookie`.
-- [ ] 3.2 Научить `refresh` и `logout` читать токен из cookie, с падением обратно на тело запроса. Проверка: тесты на оба источника.
-- [ ] 3.3 В `logout` очищать cookie. Проверка: тест на `Set-Cookie` с истёкшим `Max-Age`.
+- [x] 3.1 Добавить в `auth/handler.go` установку cookie `refresh_token` с `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth` в ответах `login`, `register`, `refresh`; `Max-Age` по `remember_me`. На этом этапе продолжать возвращать `refresh_token` и в теле. Проверка: тест проверяет наличие и атрибуты `Set-Cookie`.
+- [x] 3.2 Научить `refresh` и `logout` читать токен из cookie, с падением обратно на тело запроса. Проверка: тесты на оба источника.
+- [x] 3.3 В `logout` очищать cookie. Проверка: тест на `Set-Cookie` с истёкшим `Max-Age`.
 
 ## 4. WebSocket ticket
 

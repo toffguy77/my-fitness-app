@@ -14,5 +14,5 @@ func registerAnalyticsRoutes(v1 *gin.RouterGroup, d Deps) {
 		d.AuthRateLimiter.Limit("analytics"), d.Analytics.Collect)
 
 	// Joining a browser to the account it produced needs the account.
-	v1.POST("/analytics/identify", middleware.RequireAuth(d.Cfg), d.Analytics.Link)
+	v1.POST("/analytics/identify", middleware.RequireAuth(d.Cfg, d.TokenVersions), d.Analytics.Link)
 }

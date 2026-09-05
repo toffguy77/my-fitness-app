@@ -131,8 +131,8 @@ func TestLogin(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at", "token_version"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
@@ -188,8 +188,8 @@ func TestLogin(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at", "token_version"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -215,8 +215,8 @@ func TestLoginWithRememberMe(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at", "token_version"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), true).
@@ -253,8 +253,8 @@ func TestLoginWithRememberMe(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at", "token_version"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).

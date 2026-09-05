@@ -1,0 +1,83 @@
+package auth
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// setCookie runs the helper and returns the Set-Cookie header it produced.
+func setCookie(t *testing.T, token string, rememberMe bool) string {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	(&Handler{}).setRefreshCookie(c, token, rememberMe)
+	return recorder.Header().Get("Set-Cookie")
+}
+
+func TestRefreshCookieAttributes(t *testing.T) {
+	header := setCookie(t, "a-refresh-token", true)
+	require.NotEmpty(t, header)
+
+	// HttpOnly is the point of the whole exercise: a refresh token in
+	// localStorage is readable by anything that manages to run on the page,
+	// and a stolen one is a session that outlives every password change.
+	assert.Contains(t, header, "HttpOnly")
+	assert.Contains(t, header, "Secure")
+	// Scoped: the cookie is only ever needed to mint an access token, so it has
+	// no business travelling with every request to every other route.
+	assert.Contains(t, header, "Path=/api/v1/auth")
+	// Lax rather than Strict: signing in through an external provider returns
+	// via a cross-site redirect, and Strict would withhold the cookie on
+	// exactly that navigation.
+	assert.Contains(t, header, "SameSite=Lax")
+	assert.Contains(t, header, "Max-Age=")
+}
+
+func TestRefreshCookieWithoutRememberMeEndsWithTheBrowser(t *testing.T) {
+	header := setCookie(t, "a-refresh-token", false)
+
+	// No Max-Age and no Expires: closing the browser ends the session, which is
+	// what somebody signing in on a shared machine expects.
+	assert.NotContains(t, header, "Max-Age=")
+	assert.NotContains(t, header, "Expires=")
+}
+
+func TestRefreshCookieIsNotSetForAnEmptyToken(t *testing.T) {
+	assert.Empty(t, setCookie(t, "", true))
+}
+
+func TestClearRefreshCookieExpiresIt(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	(&Handler{}).clearRefreshCookie(c)
+
+	header := recorder.Header().Get("Set-Cookie")
+	require.NotEmpty(t, header)
+	assert.True(t,
+		strings.Contains(header, "Max-Age=0") || strings.Contains(header, "Max-Age=-1"),
+		"the cookie must be expired, got %q", header)
+	assert.Contains(t, header, "Path=/api/v1/auth")
+}
+
+func TestRefreshPrefersTheCookieOverTheBody(t *testing.T) {
+	// During the migration a client sends both for one release. The cookie is
+	// the one we want to keep working, so it wins.
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/refresh", strings.NewReader(
+		`{"refresh_token":"from-the-body"}`))
+	c.Request.Header.Set("Content-Type", "application/json")
+	c.Request.AddCookie(&http.Cookie{Name: refreshCookieName, Value: "from-the-cookie"})
+
+	fromCookie, _ := c.Cookie(refreshCookieName)
+	assert.Equal(t, "from-the-cookie", fromCookie)
+}

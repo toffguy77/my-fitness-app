@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -81,20 +82,37 @@ func TestChangePassword_Success(t *testing.T) {
 	defer cleanup()
 
 	mock.ExpectExec("UPDATE users SET password").WillReturnResult(sqlmock.NewResult(0, 1))
-	// Changing the password must end every other session.
+	// Changing the password must end every other session: refresh tokens
+	// revoked so no new access token can be minted, and the version bumped so
+	// the ones already minted stop being accepted. Both, or the fifteen
+	// minutes an access token lives are fifteen minutes of stolen session.
+	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").WillReturnResult(sqlmock.NewResult(0, 3))
+	mock.ExpectExec("UPDATE users SET token_version").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+	// ...except the session that asked for the change: signing somebody out of
+	// the device they are standing at, as a reward for changing their password,
+	// teaches them not to.
+	mock.ExpectQuery("SELECT id, email").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version",
+		}).AddRow(1, "user@example.com", "User", "client", true, true, time.Now(), 1))
+	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err := service.ChangePassword(context.Background(), 1, "0ld!Passw0rd", validPassword)
+	var replacement LoginResult
+	err := service.ChangePassword(context.Background(), 1, "0ld!Passw0rd", validPassword, &replacement)
 
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet(), "all sessions must be revoked on password change")
+	assert.NotEmpty(t, replacement.Token, "the caller keeps a working session")
+	assert.NotEmpty(t, replacement.RefreshToken)
 }
 
 func TestChangePassword_WrongCurrentPassword(t *testing.T) {
 	service, _, cleanup := changePasswordFixture(t, "0ld!Passw0rd")
 	defer cleanup()
 
-	err := service.ChangePassword(context.Background(), 1, "wrong-password", validPassword)
+	err := service.ChangePassword(context.Background(), 1, "wrong-password", validPassword, &LoginResult{})
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrInvalidCredentials)
@@ -104,7 +122,7 @@ func TestChangePassword_WeakNewPassword(t *testing.T) {
 	service, _, cleanup := changePasswordFixture(t, "0ld!Passw0rd")
 	defer cleanup()
 
-	err := service.ChangePassword(context.Background(), 1, "0ld!Passw0rd", "weak")
+	err := service.ChangePassword(context.Background(), 1, "0ld!Passw0rd", "weak", &LoginResult{})
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrPasswordPolicy)
@@ -114,7 +132,7 @@ func TestChangePassword_SamePassword(t *testing.T) {
 	service, _, cleanup := changePasswordFixture(t, validPassword)
 	defer cleanup()
 
-	err := service.ChangePassword(context.Background(), 1, validPassword, validPassword)
+	err := service.ChangePassword(context.Background(), 1, validPassword, validPassword, &LoginResult{})
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrPasswordUnchanged)
