@@ -7,11 +7,20 @@ FROM node:20-alpine AS base
 # security patches — pinning would defeat that and break the build whenever
 # Alpine rotates a package version out of the repository. Recorded in
 # .security-exceptions.yml.
+# Retried, because the build otherwise depends on the Alpine mirror answering
+# every request at that exact moment. A single "DNS: transient error" on one
+# package failed the whole deployment while every other package upgraded fine —
+# a network blip on the build host, not a problem with the image. Three
+# attempts, then a real failure is still a failure.
 # hadolint ignore=DL3018
-RUN apk update && apk upgrade && apk add --no-cache \
-    libc6-compat \
-    dumb-init \
-    && rm -rf /var/cache/apk/*
+RUN ok=0; \
+    for attempt in 1 2 3; do \
+        if apk update && apk upgrade && apk add --no-cache libc6-compat dumb-init; then ok=1; break; fi; \
+        echo "apk failed on attempt ${attempt}; retrying in 5s"; \
+        sleep 5; \
+    done; \
+    [ "$ok" = 1 ] || { echo "apk still failing after three attempts"; exit 1; }; \
+    rm -rf /var/cache/apk/*
 
 # Security: Create non-root user early
 RUN addgroup --system --gid 1001 nodejs && \
