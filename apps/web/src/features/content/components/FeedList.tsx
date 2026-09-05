@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { contentApi, publicContentApi } from '@/features/content/api/contentApi'
-import { isAuthenticated } from '@/shared/utils/token-storage'
+import { useSession } from '@/shared/hooks/useSession'
 import { CategoryFilter } from './CategoryFilter'
 import { FeedCard } from './FeedCard'
 import type { ArticleCard } from '@/features/content/types'
@@ -16,12 +16,18 @@ export function FeedList() {
     const [loadingMore, setLoadingMore] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [category, setCategory] = useState<string | null>(null)
+    // Which endpoint to read from: the signed-in feed knows what has been read,
+    // the public one does not. Waiting for the session to settle avoids asking
+    // the public endpoint for somebody who has an account.
+    const session = useSession()
 
-    const fetchArticles = useCallback(async (cat: string | null, offset = 0) => {
-        const api = isAuthenticated() ? contentApi : publicContentApi
-        const res = await api.getFeed(cat ?? undefined, PAGE_SIZE, offset)
-        return res
-    }, [])
+    const fetchArticles = useCallback(
+        async (cat: string | null, offset = 0) => {
+            const api = session === 'authenticated' ? contentApi : publicContentApi
+            return api.getFeed(cat ?? undefined, PAGE_SIZE, offset)
+        },
+        [session]
+    )
 
     useEffect(() => {
         let cancelled = false

@@ -44,6 +44,7 @@ import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeekly
 import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
+import { apiClient } from '@/shared/utils/api-client'
 
 interface UserData {
     id: string
@@ -52,12 +53,28 @@ interface UserData {
     role: 'client' | 'coordinator' | 'super_admin'
 }
 
+/** The cached profile, for the first paint. Null on the server and when cold. */
+function readCachedUser(): UserData | null {
+    if (typeof window === 'undefined') return null
+    try {
+        const cached = localStorage.getItem('user')
+        return cached ? (JSON.parse(cached) as UserData) : null
+    } catch {
+        // A corrupt cache is worth no more than an empty one.
+        return null
+    }
+}
+
 export default function DashboardPage() {
+    const cachedUser = readCachedUser()
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightTaskId = searchParams.get('task')
-    const [userData, setUserData] = useState<UserData | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+    // The cached copy is read once, for the first paint, before any effect
+    // runs — reading it in an effect and calling setState renders twice for
+    // something already known.
+    const [userData, setUserData] = useState<UserData | null>(cachedUser)
+    const [isLoading, setIsLoading] = useState(cachedUser === null)
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
     const [kbjuHistory, setKbjuHistory] = useState<TargetVsActual[]>([])
 
@@ -75,34 +92,36 @@ export default function DashboardPage() {
         targetsVersion,
     } = useDashboardStore()
 
+    // Who is looking at this page.
+    //
+    // The copy in localStorage is a cache for the first paint, not a
+    // credential: a session established by cookie alone — after signing in
+    // through an external provider, or on a device where the cache was
+    // cleared — has none. Treating its absence as "not signed in" sent those
+    // people to the sign-in page while they were signed in. The session is the
+    // cookie; the name is fetched.
     useEffect(() => {
-        // The redirect for a signed-out visitor happens in middleware.ts,
-        // before this page renders.
-        const checkAuth = () => {
-            // Get user data from localStorage
-            const userDataStr = typeof window !== 'undefined'
-                ? localStorage.getItem('user')
-                : null
+        let cancelled = false
 
-            if (userDataStr) {
-                try {
-                    const user = JSON.parse(userDataStr) as UserData
-                    setUserData(user)
-                } catch (error) {
-                    console.error('Failed to parse user data:', error)
-                    router.push('/auth')
-                    return
-                }
-            } else {
-                router.push('/auth')
-                return
-            }
+        apiClient
+            .get<{ user: UserData }>('/api/v1/auth/me')
+            .then(({ user }) => {
+                if (cancelled) return
+                setUserData(user)
+                localStorage.setItem('user', JSON.stringify(user))
+            })
+            .catch(() => {
+                // The api client already signs somebody out whose session has
+                // genuinely ended. A transient failure must not.
+            })
+            .finally(() => {
+                if (!cancelled) setIsLoading(false)
+            })
 
-            setIsLoading(false)
+        return () => {
+            cancelled = true
         }
-
-        checkAuth()
-    }, [router])
+    }, [])
 
     // Fetch avatar from profile
     useEffect(() => {

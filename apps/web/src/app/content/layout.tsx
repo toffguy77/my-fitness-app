@@ -1,24 +1,28 @@
 'use client'
 
 import { useMemo } from 'react'
-import { isAuthenticated } from '@/shared/utils/token-storage'
+
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
+import { useSession } from '@/shared/hooks/useSession'
 
 export default function ContentLayout({ children }: { children: React.ReactNode }) {
-    const isAuthed = useMemo(() => {
-        if (typeof window === 'undefined') return false
-        return isAuthenticated()
-    }, [])
+    // Content is readable without an account; the difference is only whether it
+    // is wrapped in the signed-in chrome. While the session is still being
+    // restored the bare page is the safe answer — it is what a visitor sees,
+    // and it does not flash navigation at somebody who has none.
+    const session = useSession()
 
     const userName = useMemo(() => {
         if (typeof window === 'undefined') return ''
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}')
             return user.name || user.email || ''
-        } catch { return '' }
+        } catch {
+            return ''
+        }
     }, [])
 
-    if (!isAuthed) {
+    if (session !== 'authenticated') {
         return <>{children}</>
     }
 

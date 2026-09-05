@@ -25,8 +25,8 @@ jest.mock('@/shared/components/AuthGuard', () => ({
     ),
 }))
 
-jest.mock('@/shared/utils/token-storage', () => ({
-    isAuthenticated: jest.fn(() => false),
+jest.mock('@/shared/hooks/useSession', () => ({
+    useSession: jest.fn(() => 'anonymous'),
 }))
 
 jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
@@ -41,14 +41,14 @@ jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
     ),
 }))
 
-import { isAuthenticated } from '@/shared/utils/token-storage'
+import { useSession } from '@/shared/hooks/useSession'
 import DashboardLayout from '../dashboard/layout'
 import FoodTrackerLayout from '../food-tracker/layout'
 import ContentLayout from '../content/layout'
 import NotificationsLayout from '../notifications/layout'
 import LegalLayout from '../legal/layout'
 
-const mockIsAuthenticated = isAuthenticated as jest.MockedFunction<typeof isAuthenticated>
+const mockSession = useSession as jest.Mock
 
 describe('Light Layouts', () => {
     beforeEach(() => {
@@ -107,7 +107,7 @@ describe('Light Layouts', () => {
 
     describe('ContentLayout', () => {
         it('renders children without DashboardLayout when not authenticated', () => {
-            mockIsAuthenticated.mockReturnValue(false)
+            mockSession.mockReturnValue('anonymous')
 
             render(
                 <ContentLayout>
@@ -120,7 +120,7 @@ describe('Light Layouts', () => {
         })
 
         it('renders with DashboardLayout when authenticated', () => {
-            mockIsAuthenticated.mockReturnValue(true)
+            mockSession.mockReturnValue('authenticated')
             localStorage.setItem('user', JSON.stringify({ name: 'Author' }))
 
             render(

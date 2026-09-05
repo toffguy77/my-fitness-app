@@ -1,5 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+
 import { AuthGuard } from '../AuthGuard'
+import { useSession } from '@/shared/hooks/useSession'
 
 const mockReplace = jest.fn()
 
@@ -14,66 +16,43 @@ jest.mock('next/navigation', () => ({
     }),
 }))
 
-jest.mock('@/shared/utils/token-storage', () => ({
-    isAuthenticated: jest.fn(),
+jest.mock('@/shared/hooks/useSession', () => ({
+    useSession: jest.fn(),
 }))
 
-import { isAuthenticated } from '@/shared/utils/token-storage'
+const session = useSession as jest.Mock
 
-const mockedIsAuthenticated = isAuthenticated as jest.MockedFunction<typeof isAuthenticated>
+beforeEach(() => jest.clearAllMocks())
 
 describe('AuthGuard', () => {
-    beforeEach(() => {
-        jest.clearAllMocks()
-    })
+    it('renders children once the session is established', () => {
+        session.mockReturnValue('authenticated')
 
-    it('renders children when authenticated', () => {
-        mockedIsAuthenticated.mockReturnValue(true)
+        render(<AuthGuard><div>protected</div></AuthGuard>)
 
-        render(
-            <AuthGuard>
-                <div>Protected content</div>
-            </AuthGuard>
-        )
-
-        expect(screen.getByText('Protected content')).toBeInTheDocument()
+        expect(screen.getByText('protected')).toBeInTheDocument()
         expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('redirects to /auth when not authenticated', () => {
-        mockedIsAuthenticated.mockReturnValue(false)
+    it('waits rather than redirecting while the session is being restored', () => {
+        // The access token does not survive a reload; it is minted from the
+        // cookie a moment later. Treating that moment as "signed out" bounced
+        // every signed-in person off every page they reloaded.
+        session.mockReturnValue('restoring')
 
-        render(
-            <AuthGuard>
-                <div>Protected content</div>
-            </AuthGuard>
-        )
+        render(<AuthGuard><div>protected</div></AuthGuard>)
 
-        expect(mockReplace).toHaveBeenCalledWith('/auth')
-        expect(screen.queryByText('Protected content')).not.toBeInTheDocument()
+        expect(screen.queryByText('protected')).not.toBeInTheDocument()
+        expect(screen.getByText('Загрузка...')).toBeInTheDocument()
+        expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('shows loading spinner when not authenticated', () => {
-        mockedIsAuthenticated.mockReturnValue(false)
+    it('sends somebody with no session to sign in', async () => {
+        session.mockReturnValue('anonymous')
 
-        render(
-            <AuthGuard>
-                <div>Protected content</div>
-            </AuthGuard>
-        )
+        render(<AuthGuard><div>protected</div></AuthGuard>)
 
-        expect(screen.getByText(/Загрузка/)).toBeInTheDocument()
-    })
-
-    it('does not show loading spinner when authenticated', () => {
-        mockedIsAuthenticated.mockReturnValue(true)
-
-        render(
-            <AuthGuard>
-                <div>Protected content</div>
-            </AuthGuard>
-        )
-
-        expect(screen.queryByText(/Загрузка/)).not.toBeInTheDocument()
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/auth'))
+        expect(screen.queryByText('protected')).not.toBeInTheDocument()
     })
 })
