@@ -26,7 +26,10 @@ export default defineConfig<SessionOptions>({
   reporter: 'html',
   use: {
     baseURL,
-    trace: 'on-first-retry',
+    // Kept for the attempt that failed, not only for its retries: a retry of a
+    // stateful test often fails for a second reason, and its trace explains
+    // that one instead of the original.
+    trace: 'retain-on-failure',
     ...devices['Desktop Chrome'],
   },
   projects: [

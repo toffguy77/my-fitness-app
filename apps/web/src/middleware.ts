@@ -66,7 +66,7 @@ function makeNonce(): string {
 function contentSecurityPolicy(nonce: string): string {
     return [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://mc.yandex.ru`,
+        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://mc.yandex.ru https://mc.yandex.com`,
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data:",
@@ -74,8 +74,10 @@ function contentSecurityPolicy(nonce: string): string {
         // behind the same router. Naming schemes instead ("https: wss:") broke
         // every environment served over plain http — which is all of them
         // except production.
-        "connect-src 'self' https://mc.yandex.ru wss://mc.yandex.ru",
-        "frame-src https://mc.yandex.ru",
+        // Metrika talks to both domains, and to a socket on each. Naming only
+        // the .ru one left the console full of blocked requests.
+        "connect-src 'self' https://mc.yandex.ru wss://mc.yandex.ru https://mc.yandex.com wss://mc.yandex.com",
+        "frame-src https://mc.yandex.ru https://mc.yandex.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
