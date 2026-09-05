@@ -60,6 +60,7 @@ type ServiceInterface interface {
 	UpdateTask(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
 	DeleteTask(ctx context.Context, curatorID, clientID int64, taskID string) error
 	GetTasks(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
+	GetClientNotices(ctx context.Context, curatorID, clientID int64) ([]notifications.ClientNotice, error)
 	SubmitFeedback(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
 	GetWeeklyReports(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
 	GetAnalytics(ctx context.Context, curatorID int64) (*AnalyticsSummary, error)
@@ -2439,4 +2440,17 @@ func (s *Service) sendFeedbackReceivedNotification(ctx context.Context, clientID
 	if err := s.notificationsSvc.CreateNotification(ctx, notification); err != nil {
 		s.log.Error("Failed to send feedback_received notification", "error", err, "client_id", clientID, "report_id", reportID)
 	}
+}
+
+// GetClientNotices returns what a client has been told lately, and how it
+// reached them.
+//
+// It answers a question a curator otherwise has to guess at: whether silence
+// means "they saw it and did not reply" or "they were never told". Those look
+// identical from the outside and call for opposite responses.
+func (s *Service) GetClientNotices(ctx context.Context, curatorID, clientID int64) ([]notifications.ClientNotice, error) {
+	if s.notificationsSvc == nil {
+		return []notifications.ClientNotice{}, nil
+	}
+	return s.notificationsSvc.RecentNotices(ctx, clientID, 20)
 }

@@ -17,13 +17,12 @@ type State = 'working' | 'done' | 'failed'
 
 function Unsubscribe() {
     const token = useSearchParams().get('token')
-    const [state, setState] = useState<State>('working')
+    // A link with no token has already failed; that is known at the first
+    // render, not after one.
+    const [state, setState] = useState<State>(token ? 'working' : 'failed')
 
     useEffect(() => {
-        if (!token) {
-            setState('failed')
-            return
-        }
+        if (!token) return
         unsubscribeFromEmail(token)
             .then(() => setState('done'))
             .catch(() => setState('failed'))

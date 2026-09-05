@@ -266,3 +266,77 @@ func (s *Service) DeliveriesFor(ctx context.Context, notificationID string) ([]D
 
 // errNoRecipient marks a delivery whose user has since gone.
 var errNoRecipient = errors.New("recipient no longer exists")
+
+// ClientNotice is one thing a client was told, and how it reached them.
+type ClientNotice struct {
+	ID         string           `json:"id"`
+	Type       NotificationType `json:"type"`
+	Title      string           `json:"title"`
+	CreatedAt  time.Time        `json:"createdAt"`
+	ReadAt     *time.Time       `json:"readAt,omitempty"`
+	Deliveries []DeliveryStatus `json:"deliveries"`
+}
+
+// RecentNotices returns what a client has been told lately.
+//
+// It exists so a curator can tell "they have not answered" apart from "they
+// were never told" — two situations that look identical from the outside and
+// call for opposite responses.
+func (s *Service) RecentNotices(ctx context.Context, userID int64, limit int) ([]ClientNotice, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 20
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT n.id, n.type, n.title, n.created_at, n.read_at,
+		        COALESCE(d.channel, ''), COALESCE(d.status, ''),
+		        CASE WHEN d.status = 'sent' THEN d.updated_at END
+		 FROM (
+		     SELECT id, type, title, created_at, read_at
+		     FROM notifications
+		     WHERE user_id = $1
+		     ORDER BY created_at DESC
+		     LIMIT $2
+		 ) n
+		 LEFT JOIN notification_deliveries d ON d.notification_id = n.id
+		 ORDER BY n.created_at DESC, d.channel`, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("load recent notices: %w", err)
+	}
+	defer rows.Close()
+
+	notices := make([]ClientNotice, 0, limit)
+	index := map[string]int{}
+
+	for rows.Next() {
+		var (
+			id, title  string
+			noticeType NotificationType
+			createdAt  time.Time
+			readAt     *time.Time
+			delivery   DeliveryStatus
+		)
+		if err := rows.Scan(&id, &noticeType, &title, &createdAt, &readAt,
+			&delivery.Channel, &delivery.Status, &delivery.SentAt); err != nil {
+			return nil, fmt.Errorf("scan recent notice: %w", err)
+		}
+
+		position, seen := index[id]
+		if !seen {
+			notices = append(notices, ClientNotice{
+				ID: id, Type: noticeType, Title: title,
+				CreatedAt: createdAt, ReadAt: readAt,
+				Deliveries: []DeliveryStatus{},
+			})
+			position = len(notices) - 1
+			index[id] = position
+		}
+		// A notification created before the delivery layer existed has no
+		// delivery rows; the left join gives an empty channel for it.
+		if delivery.Channel != "" {
+			notices[position].Deliveries = append(notices[position].Deliveries, delivery)
+		}
+	}
+
+	return notices, rows.Err()
+}

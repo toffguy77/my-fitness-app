@@ -35,6 +35,7 @@ GET /api/v1/curator/analytics/history
 GET /api/v1/curator/attention
 GET /api/v1/curator/clients
 GET /api/v1/curator/clients/:id
+GET /api/v1/curator/clients/:id/notices
 GET /api/v1/curator/clients/:id/targets/history
 GET /api/v1/curator/clients/:id/tasks
 GET /api/v1/curator/clients/:id/weekly-plans

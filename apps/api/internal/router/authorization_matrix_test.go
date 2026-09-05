@@ -50,6 +50,7 @@ var protectedRoutes = map[string]protection{
 	// Curator workspace — RequireClientRelationship on /curator/clients/:id.
 	"GET /api/v1/curator/clients/:id":                                   protRelationship,
 	"GET /api/v1/curator/clients/:id/targets/history":                   protRelationship,
+	"GET /api/v1/curator/clients/:id/notices":                           protRelationship,
 	"GET /api/v1/curator/clients/:id/tasks":                             protRelationship,
 	"GET /api/v1/curator/clients/:id/weekly-plans":                      protRelationship,
 	"GET /api/v1/curator/clients/:id/weekly-reports":                    protRelationship,

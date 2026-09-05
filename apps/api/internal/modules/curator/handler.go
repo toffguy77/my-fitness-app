@@ -444,6 +444,33 @@ func (h *Handler) GetTasks(c *gin.Context) {
 	response.Success(c, http.StatusOK, tasks)
 }
 
+// GetClientNotices handles GET /api/v1/curator/clients/:id/notices
+func (h *Handler) GetClientNotices(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	notices, err := h.service.GetClientNotices(c.Request.Context(), userID, clientID)
+	if err != nil {
+		if errors.Is(err, apperrors.ErrForbidden) {
+			response.Forbidden(c, "Нет активной связи с данным клиентом")
+			return
+		}
+		h.log.Error("Failed to get client notices", "error", err, "curator_id", userID, "client_id", clientID)
+		response.InternalError(c, "Не удалось загрузить историю оповещений")
+		return
+	}
+
+	response.Success(c, http.StatusOK, notices)
+}
+
 // SubmitFeedback handles PUT /api/v1/curator/clients/:id/weekly-reports/:reportId/feedback
 func (h *Handler) SubmitFeedback(c *gin.Context) {
 	userID, ok := h.getUserID(c)
