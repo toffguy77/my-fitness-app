@@ -56,28 +56,110 @@ describe('the edge session check', () => {
 })
 
 describe('what the check covers', () => {
-    it('guards every screen that needs an account', () => {
-        // A screen missing from this list renders for a signed-out visitor and
-        // then fails one request at a time, which reads as a broken product
-        // rather than as "please sign in".
-        for (const path of [
-            '/dashboard/:path*',
-            '/food-tracker/:path*',
-            '/chat/:path*',
-            '/profile/:path*',
-            '/settings/:path*',
-            '/notifications/:path*',
-            '/curator/:path*',
-            '/admin/:path*',
-            '/onboarding/:path*',
-        ]) {
-            expect(config.matcher).toContain(path)
-        }
+    // A screen missing from this list renders for a signed-out visitor and
+    // then fails one request at a time, which reads as a broken product rather
+    // than as "please sign in".
+    it.each([
+        '/dashboard',
+        '/dashboard/weekly',
+        '/food-tracker',
+        '/food-tracker/nutrient/vitamin-d',
+        '/chat',
+        '/profile',
+        '/settings/notifications',
+        '/notifications',
+        '/curator/clients/7',
+        '/admin/users',
+        '/onboarding',
+    ])('sends a signed-out visitor away from %s', (path) => {
+        expect(middleware(requestTo(path)).status).toBe(307)
     })
 
-    it('leaves the public entrances alone', () => {
-        for (const path of ['/', '/auth', '/content', '/onboarding-guest']) {
-            expect(config.matcher).not.toContain(path)
+    it.each(['/', '/auth', '/content', '/onboarding-guest', '/unsubscribe'])(
+        'lets a signed-out visitor reach %s',
+        (path) => {
+            expect(middleware(requestTo(path)).status).toBe(200)
         }
+    )
+
+    it('does not run on static assets', () => {
+        // They carry no markup and no policy to violate, and running on them
+        // would put a nonce in a cached response.
+        const source = (config.matcher[0] as { source: string }).source
+        expect(source).toContain('_next/static')
+        expect(source).toContain('sw.js')
+    })
+})
+
+describe('the content security policy', () => {
+    // Production was serving no policy at all: the nginx files in deploy/
+    // carried one, but nothing serves through nginx — the traffic goes through
+    // Traefik — so the header existed only in the repository.
+    function policyFor(path: string): string {
+        const response = middleware(requestTo(path, { session_present: '1' }))
+        return response.headers.get('content-security-policy') ?? ''
+    }
+
+    it('is sent on a page a visitor can reach without an account', () => {
+        expect(middleware(requestTo('/auth')).headers.get('content-security-policy'))
+            .toContain("default-src 'self'")
+    })
+
+    it('is sent on the redirect too', () => {
+        const response = middleware(requestTo('/dashboard'))
+
+        expect(response.status).toBe(307)
+        expect(response.headers.get('content-security-policy')).toContain("default-src 'self'")
+    })
+
+    it('names one nonce instead of allowing every inline script', () => {
+        const policy = policyFor('/dashboard')
+
+        expect(policy).toMatch(/script-src [^;]*'nonce-[A-Za-z0-9+/=]+'/)
+        expect(policy).not.toContain("script-src 'self' 'unsafe-inline'")
+    })
+
+    it('uses a different nonce every time', () => {
+        // A nonce reused across responses is a nonce an attacker can copy out
+        // of one page and paste into an injection on the next.
+        const first = policyFor('/dashboard').match(/'nonce-([^']+)'/)?.[1]
+        const second = policyFor('/dashboard').match(/'nonce-([^']+)'/)?.[1]
+
+        expect(first).toBeTruthy()
+        expect(first).not.toBe(second)
+    })
+
+    it('does not allow eval', () => {
+        expect(policyFor('/dashboard')).not.toContain('unsafe-eval')
+    })
+
+    it('allows the analytics script we actually load', () => {
+        expect(policyFor('/dashboard')).toContain('https://mc.yandex.ru')
+    })
+
+    it('forbids being framed and forbids plugins', () => {
+        const policy = policyFor('/dashboard')
+
+        expect(policy).toContain("frame-ancestors 'none'")
+        expect(policy).toContain("object-src 'none'")
+    })
+
+    it('hands the nonce to the page through a request header', () => {
+        // Next reads it to stamp its own script tags; the layout puts it on
+        // ours. Without it the inline script is refused and the page does not
+        // register its service worker.
+        const response = middleware(requestTo('/dashboard', { session_present: '1' }))
+        const policyNonce = response.headers.get('content-security-policy')?.match(/'nonce-([^']+)'/)?.[1]
+
+        expect(policyNonce).toBeTruthy()
+    })
+
+    it('sends the other headers nginx was supposed to be sending', () => {
+        const response = middleware(requestTo('/dashboard', { session_present: '1' }))
+
+        expect(response.headers.get('x-content-type-options')).toBe('nosniff')
+        expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin')
+        expect(response.headers.get('x-frame-options')).toBe('DENY')
+        expect(response.headers.get('permissions-policy')).toContain('camera=()')
     })
 })

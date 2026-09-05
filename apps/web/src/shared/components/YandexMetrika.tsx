@@ -4,7 +4,7 @@ import Script from 'next/script'
 
 const METRIKA_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
 
-export function YandexMetrika() {
+export function YandexMetrika({ nonce }: { nonce?: string }) {
     if (!METRIKA_ID) return null
 
     return (
@@ -12,6 +12,7 @@ export function YandexMetrika() {
             <Script
                 id="yandex-metrika"
                 strategy="afterInteractive"
+                nonce={nonce}
             >
                 {`
                     (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
