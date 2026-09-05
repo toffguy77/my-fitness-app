@@ -53,7 +53,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
  * browser that still holds a token from the previous scheme — one request,
  * after which the server sets the cookie and the old storage is cleared.
  *
- * REMOVE AFTER 2026-11-01, together with legacyStorage.
+ * REMOVE AFTER 2026-11-01 (issue #88), together with legacyStorage.
  */
 function legacyBody(): Record<string, string> {
     const leftover = legacyStorage.refreshToken();

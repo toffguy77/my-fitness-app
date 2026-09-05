@@ -108,7 +108,7 @@ export function clearAuth(): void {
  * is the difference between a silent migration and signing out every user in
  * the middle of their day.
  *
- * REMOVE AFTER 2026-11-01 (two releases). By then every session that predates
+ * REMOVE AFTER 2026-11-01 (issue #88). By then every session that predates
  * the change has expired on its own — refresh tokens live thirty days.
  */
 export const legacyStorage = {
