@@ -51,14 +51,18 @@ export async function signIn(
     ).toContain('session_present')
 }
 
+/** Who the test is signed in as. Undefined means "signed out". */
+export type SessionOptions = { role?: 'client' | 'curator' | 'admin' }
+
 /**
- * `test` with a session already established, chosen by the project's `role`
- * option. A project without one gets no session, which is what the tests for
- * signed-out visitors want.
+ * `test` with a session already established, chosen by the `role` option — set
+ * per project, and overridable per file with `test.use({ role: undefined })`
+ * for the tests that need to start signed out and sign in themselves.
  */
-export const test = base.extend<Record<string, never>, Record<string, never>>({
-    context: async ({ context, baseURL }, use, testInfo) => {
-        const role = (testInfo.project.use as { role?: string }).role
+export const test = base.extend<SessionOptions>({
+    role: [undefined, { option: true }],
+
+    context: async ({ context, baseURL, role }, use) => {
         if (role && baseURL) {
             await signIn(context, baseURL, role)
         }

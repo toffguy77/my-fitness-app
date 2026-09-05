@@ -68,7 +68,11 @@ test.describe('Change password', () => {
  * stored state.
  */
 test.describe('Change password, end to end', () => {
-  test.use({ storageState: { cookies: [], origins: [] } })
+  // This one starts signed out on purpose: it signs in, changes the password,
+  // and checks that the old one stops working. A session handed to it by the
+  // fixture would take it straight to the dashboard instead of the sign-in
+  // form it needs.
+  test.use({ role: undefined })
 
   const account = getAccount('password')
   const NEW_PASSWORD = 'Rotated!Password#2026'

@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-/** Who a project's tests are signed in as. See e2e/fixtures/session.ts. */
-type Options = { role?: 'client' | 'curator' | 'admin' }
+import type { SessionOptions } from './e2e/fixtures/session'
 import dotenv from 'dotenv'
 import path from 'path'
 
@@ -16,7 +15,7 @@ dotenv.config({ path: path.resolve(__dirname, 'e2e', '.env') })
 const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3070'
 const isStaging = !!process.env.E2E_BASE_URL
 
-export default defineConfig<Options>({
+export default defineConfig<SessionOptions>({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
