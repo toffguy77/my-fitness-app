@@ -160,9 +160,14 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 	}
 
 	// Best effort by design: the database is already consistent, and a storage
-	// outage must not undo an erasure the user asked for. Leftovers are picked
-	// up by the next run of the job.
-	s.deleteFiles(ctx, userID)
+	// outage must not undo an erasure the user asked for. What fails here is
+	// recorded by omission — files_purged_at stays NULL — and retried by
+	// account.purge-files.
+	if s.deleteFiles(ctx, userID) {
+		if err := s.markFilesPurged(ctx, userID); err != nil {
+			s.log.Error("Failed to record file purge", "user_id", userID, "error", err)
+		}
+	}
 
 	return nil
 }

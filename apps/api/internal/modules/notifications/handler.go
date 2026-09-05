@@ -23,6 +23,13 @@ type ServiceInterface interface {
 	CreateNotification(ctx context.Context, notification *Notification) error
 	GetPreferences(ctx context.Context, userID int64) (*ContentNotificationPreferences, error)
 	UpdatePreferences(ctx context.Context, userID int64, req UpdatePreferencesRequest) error
+	GetDeliveryPreferences(ctx context.Context, userID int64) (*DeliveryPreferences, error)
+	UpdateDeliveryPreferences(ctx context.Context, userID int64, req UpdateDeliveryPreferencesRequest) error
+	Unsubscribe(ctx context.Context, token string) error
+	Subscribe(ctx context.Context, userID int64, sub PushSubscription) error
+	UnsubscribePush(ctx context.Context, userID int64, endpoint string) error
+	PushReady() bool
+	PushPublicKey() string
 }
 
 // Handler handles notification requests
@@ -251,6 +258,169 @@ func (h *Handler) UpdatePreferences(c *gin.Context) {
 	if err := h.service.UpdatePreferences(c.Request.Context(), userID, req); err != nil {
 		h.log.Errorw("Failed to update preferences", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось сохранить настройки уведомлений")
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// GetDeliveryPreferences handles GET /api/v1/notifications/delivery-preferences
+func (h *Handler) GetDeliveryPreferences(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	prefs, err := h.service.GetDeliveryPreferences(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Errorw("Failed to get delivery preferences", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось получить настройки доставки")
+		return
+	}
+
+	response.Success(c, http.StatusOK, prefs)
+}
+
+// UpdateDeliveryPreferences handles PUT /api/v1/notifications/delivery-preferences
+func (h *Handler) UpdateDeliveryPreferences(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	var req UpdateDeliveryPreferencesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	if err := h.service.UpdateDeliveryPreferences(c.Request.Context(), userID, req); err != nil {
+		if errors.Is(err, apperrors.ErrValidation) {
+			response.Fail(c, http.StatusBadRequest, err, "Проверьте настройки доставки")
+			return
+		}
+		h.log.Errorw("Failed to update delivery preferences", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось сохранить настройки доставки")
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Unsubscribe handles POST /api/v1/notifications/unsubscribe.
+//
+// Deliberately unauthenticated: the link is at the bottom of an email, and
+// somebody who wants the email to stop should not have to remember a password
+// to make it stop. The token names exactly one account and nothing else.
+func (h *Handler) Unsubscribe(c *gin.Context) {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Token == "" {
+		response.Error(c, http.StatusBadRequest, "Неверная ссылка отписки")
+		return
+	}
+
+	if err := h.service.Unsubscribe(c.Request.Context(), req.Token); err != nil {
+		if errors.Is(err, apperrors.ErrTokenInvalid) || errors.Is(err, apperrors.ErrTokenExpired) {
+			response.Fail(c, http.StatusBadRequest, err, "Ссылка отписки недействительна")
+			return
+		}
+		if errors.Is(err, apperrors.ErrEmailUnavailable) {
+			response.Fail(c, http.StatusServiceUnavailable, err, "Отправка писем сейчас недоступна")
+			return
+		}
+		h.log.Errorw("Failed to unsubscribe", "error", err)
+		response.InternalError(c, "Не удалось отписаться")
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// requireUserID reads the caller's id from the context set by the auth
+// middleware, answering the request itself when it is not there.
+func requireUserID(c *gin.Context, h *Handler) (int64, bool) {
+	value, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return 0, false
+	}
+	userID, ok := value.(int64)
+	if !ok {
+		h.log.Error("Invalid user ID type", "user_id", value)
+		response.Error(c, http.StatusBadRequest, "Неверный ID пользователя")
+		return 0, false
+	}
+	return userID, true
+}
+
+// GetPushKey handles GET /api/v1/notifications/push-key.
+//
+// The public half of the VAPID pair is exactly that — public; the browser
+// cannot subscribe without it. A deployment with no keys says so plainly
+// rather than handing back an empty string the frontend has to guess about.
+func (h *Handler) GetPushKey(c *gin.Context) {
+	if !h.service.PushReady() {
+		response.Fail(c, http.StatusServiceUnavailable,
+			apperrors.ErrEmailUnavailable, "Push-уведомления в этой среде выключены")
+		return
+	}
+	response.Success(c, http.StatusOK, map[string]string{"publicKey": h.service.PushPublicKey()})
+}
+
+// SubscribePush handles POST /api/v1/notifications/push
+func (h *Handler) SubscribePush(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	var sub PushSubscription
+	if err := c.ShouldBindJSON(&sub); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные подписки")
+		return
+	}
+	sub.UserAgent = c.Request.UserAgent()
+
+	if err := h.service.Subscribe(c.Request.Context(), userID, sub); err != nil {
+		switch {
+		case errors.Is(err, apperrors.ErrValidation):
+			response.Fail(c, http.StatusBadRequest, err, "Неполные данные подписки")
+		case errors.Is(err, apperrors.ErrEmailUnavailable):
+			response.Fail(c, http.StatusServiceUnavailable, err, "Push-уведомления в этой среде выключены")
+		default:
+			h.log.Errorw("Failed to store push subscription", "error", err, "user_id", userID)
+			response.InternalError(c, "Не удалось сохранить подписку")
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// UnsubscribePush handles DELETE /api/v1/notifications/push
+func (h *Handler) UnsubscribePush(c *gin.Context) {
+	userID, ok := requireUserID(c, h)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		Endpoint string `json:"endpoint"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	if err := h.service.UnsubscribePush(c.Request.Context(), userID, req.Endpoint); err != nil {
+		if errors.Is(err, apperrors.ErrValidation) {
+			response.Fail(c, http.StatusBadRequest, err, "Не указан адрес подписки")
+			return
+		}
+		h.log.Errorw("Failed to delete push subscription", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось отписаться от push")
 		return
 	}
 

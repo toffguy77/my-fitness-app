@@ -21,6 +21,7 @@ import { WorkoutsSection } from '@/features/curator/components/WorkoutsSection'
 import { PhotosSection } from '@/features/curator/components/PhotosSection'
 import { ClientInfoPanel } from '@/features/curator/components/ClientInfoPanel'
 import { ClientDetailTabs } from '@/features/curator/components/ClientDetailTabs'
+import { ClientNoticesSection } from '@/features/curator/components/ClientNoticesSection'
 import { PlanTab } from '@/features/curator/components/PlanTab'
 import { TasksTab } from '@/features/curator/components/TasksTab'
 import { ReportsTab } from '@/features/curator/components/ReportsTab'
@@ -597,6 +598,9 @@ export default function ClientDetailPage() {
 
                             {/* Photos section */}
                             <PhotosSection photos={detail.photos} />
+
+                            {/* What the client was told, and how it reached them */}
+                            <ClientNoticesSection clientId={clientId} />
                         </div>
                     )}
 

@@ -14,22 +14,19 @@ import { completeOnboarding } from '../api/onboarding'
 import { useOnboardingStore } from '../store/onboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { cn } from '@/shared/utils/cn'
+import { t } from '@/shared/i18n'
 
 // What actually has to happen before the first useful screen. The photo,
 // social accounts and Apple Health used to stand between a new user and their
 // dashboard; they are optional, they live in settings, and asking for a
 // portrait first put the most personal step in front of the least value.
-const stepTitles = [
-    'Настройки',
-    'Тело и цели',
-]
+// Read at render, not at import: a module-level constant would fix the
+// language to whatever it was when the bundle first evaluated.
+const stepTitles = () => [t('onboarding.stepSettings'), t('onboarding.stepBodyGoals')]
 
-const activityLevelOptions = [
-    { value: 'sedentary', label: 'Сидячий образ жизни' },
-    { value: 'light', label: 'Лёгкая активность' },
-    { value: 'moderate', label: 'Умеренная активность' },
-    { value: 'active', label: 'Высокая активность' },
-] as const
+const activityLevels = ['sedentary', 'light', 'moderate', 'active'] as const
+
+const goals = ['loss', 'maintain', 'gain'] as const
 
 export function OnboardingWizard() {
     const router = useRouter()
@@ -146,12 +143,12 @@ export function OnboardingWizard() {
                     // Body & goals, then straight to the dashboard.
                     await updateSettings({ ...buildSettingsPayload(), ...buildBodyPayload() })
                     await completeOnboarding()
-                    toast('Добро пожаловать!')
+                    toast(t('onboarding.welcome'))
                     router.push('/dashboard')
                     break
             }
         } catch {
-            toast.error('Не удалось сохранить. Попробуйте ещё раз.')
+            toast.error(t('onboarding.saveFailed'))
         } finally {
             setSaving(false)
         }
@@ -165,7 +162,7 @@ export function OnboardingWizard() {
                 await completeOnboarding()
                 router.push('/dashboard')
             } catch {
-                toast.error('Не удалось завершить. Попробуйте ещё раз.')
+                toast.error(t('onboarding.finishFailed'))
             } finally {
                 setSaving(false)
             }
@@ -186,7 +183,7 @@ export function OnboardingWizard() {
 
                 {/* Step title */}
                 <h2 className="mb-6 text-center text-xl font-bold text-gray-900">
-                    {stepTitles[currentStep]}
+                    {stepTitles()[currentStep]}
                 </h2>
 
                 {/* Step content */}
@@ -210,10 +207,10 @@ export function OnboardingWizard() {
 
                     {currentStep === 1 && (
                         <div className="flex flex-col gap-6">
-                            {/* Дата рождения */}
+                            {/* Birth date */}
                             <div>
                                 <label htmlFor="birth-date" className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Дата рождения
+                                    {t('onboarding.birthDate')}
                                 </label>
                                 <input
                                     id="birth-date"
@@ -224,10 +221,10 @@ export function OnboardingWizard() {
                                 />
                             </div>
 
-                            {/* Пол */}
+                            {/* Sex */}
                             <fieldset>
                                 <legend className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Пол
+                                    {t('onboarding.sex')}
                                 </legend>
                                 <div className="flex gap-3">
                                     <label
@@ -246,7 +243,7 @@ export function OnboardingWizard() {
                                             onChange={() => setBiologicalSex('male')}
                                             className="sr-only"
                                         />
-                                        Мужской
+                                        {t('onboarding.male')}
                                     </label>
                                     <label
                                         className={cn(
@@ -264,15 +261,17 @@ export function OnboardingWizard() {
                                             onChange={() => setBiologicalSex('female')}
                                             className="sr-only"
                                         />
-                                        Женский
+                                        {t('onboarding.female')}
                                     </label>
                                 </div>
                             </fieldset>
 
-                            {/* Текущий вес */}
+                            {/* Current weight */}
                             <div>
                                 <label htmlFor="current-weight" className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Текущий вес ({units === 'metric' ? 'кг' : 'lbs'})
+                                    {t('onboarding.currentWeight', {
+                                        unit: units === 'metric' ? t('onboarding.unitKg') : t('onboarding.unitLbs'),
+                                    })}
                                 </label>
                                 <input
                                     id="current-weight"
@@ -287,10 +286,12 @@ export function OnboardingWizard() {
                                 />
                             </div>
 
-                            {/* Рост */}
+                            {/* Height */}
                             <div>
                                 <label htmlFor="height-input" className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Рост ({units === 'metric' ? 'см' : 'in'})
+                                    {t('onboarding.height', {
+                                        unit: units === 'metric' ? t('onboarding.unitCm') : t('onboarding.unitIn'),
+                                    })}
                                 </label>
                                 <input
                                     id="height-input"
@@ -305,10 +306,10 @@ export function OnboardingWizard() {
                                 />
                             </div>
 
-                            {/* Уровень активности */}
+                            {/* Activity level */}
                             <div>
                                 <label htmlFor="activity-level" className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Уровень активности
+                                    {t('onboarding.activityLevel')}
                                 </label>
                                 <select
                                     id="activity-level"
@@ -316,30 +317,26 @@ export function OnboardingWizard() {
                                     onChange={(e) => setActivityLevel(e.target.value as typeof activityLevel)}
                                     className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 >
-                                    {activityLevelOptions.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
+                                    {activityLevels.map((level) => (
+                                        <option key={level} value={level}>
+                                            {t(`onboarding.activity.${level}`)}
                                         </option>
                                     ))}
                                 </select>
                             </div>
 
-                            {/* Цель */}
+                            {/* Goal */}
                             <fieldset>
                                 <legend className="mb-1.5 block text-sm font-medium text-gray-700">
-                                    Цель
+                                    {t('onboarding.goalLabel')}
                                 </legend>
                                 <div className="flex gap-3">
-                                    {([
-                                        { value: 'loss', label: 'Снижение' },
-                                        { value: 'maintain', label: 'Поддержание' },
-                                        { value: 'gain', label: 'Набор' },
-                                    ] as const).map((opt) => (
+                                    {goals.map((goal) => (
                                         <label
-                                            key={opt.value}
+                                            key={goal}
                                             className={cn(
                                                 'flex flex-1 cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium transition-colors',
-                                                fitnessGoal === opt.value
+                                                fitnessGoal === goal
                                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                                                     : 'border-gray-300 text-gray-700 hover:border-gray-400'
                                             )}
@@ -347,19 +344,19 @@ export function OnboardingWizard() {
                                             <input
                                                 type="radio"
                                                 name="fitness-goal"
-                                                value={opt.value}
-                                                checked={fitnessGoal === opt.value}
-                                                onChange={() => setFitnessGoal(opt.value)}
+                                                value={goal}
+                                                checked={fitnessGoal === goal}
+                                                onChange={() => setFitnessGoal(goal)}
                                                 className="sr-only"
                                             />
-                                            {opt.label}
+                                            {t(`onboarding.goal.${goal}`)}
                                         </label>
                                     ))}
                                 </div>
                             </fieldset>
 
                             <p className="text-center text-xs text-gray-400">
-                                Все поля необязательны — вы сможете заполнить их позже в настройках
+                                {t('onboarding.allOptional')}
                             </p>
                         </div>
                     )}
@@ -401,10 +398,10 @@ export function OnboardingWizard() {
                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                                     />
                                 </svg>
-                                Сохранение...
+                                {t('onboarding.saving')}
                             </span>
                         ) : (
-                            isLastStep ? 'Завершить' : 'Далее'
+                            isLastStep ? t('onboarding.finish') : t('onboarding.next')
                         )}
                     </button>
 
@@ -414,7 +411,7 @@ export function OnboardingWizard() {
                         onClick={handleSkip}
                         className="py-2 text-center text-sm text-gray-500 transition-colors hover:text-gray-700 disabled:pointer-events-none disabled:opacity-50"
                     >
-                        Пропустить
+                        {t('onboarding.skip')}
                     </button>
                 </div>
             </div>

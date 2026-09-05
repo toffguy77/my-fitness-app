@@ -276,6 +276,12 @@ func (s *Service) buildExport(ctx context.Context, exportID string, userID int64
 		return fmt.Errorf("mark ready: %w", err)
 	}
 
+	// The archive expires. Telling them is the difference between a download
+	// and a build nobody collected.
+	s.notify(ctx, userID, "export_ready", "Выгрузка данных готова",
+		"Архив с вашими данными собран. Ссылка действует ограниченное время.",
+		"/settings/privacy")
+
 	s.log.Info("Data export ready", "user_id", userID, "export_id", exportID, "bytes", buf.Len())
 	return nil
 }

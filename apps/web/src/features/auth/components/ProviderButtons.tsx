@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { providersApi, providerLabel } from '@/features/auth/api/providers'
+import { t } from '@/shared/i18n'
 
 export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
     const [providers, setProviders] = useState<string[]>([])
@@ -24,7 +25,7 @@ export function ProviderButtons({ mode }: { mode: 'login' | 'register' }) {
             <div className="flex items-center gap-3" aria-hidden="true">
                 <span className="h-px flex-1 bg-gray-200" />
                 <span className="text-xs text-gray-500">
-                    {mode === 'register' ? 'или зарегистрируйтесь через' : 'или войдите через'}
+                    {mode === 'register' ? t('auth.orRegisterWith') : t('auth.orSignInWith')}
                 </span>
                 <span className="h-px flex-1 bg-gray-200" />
             </div>

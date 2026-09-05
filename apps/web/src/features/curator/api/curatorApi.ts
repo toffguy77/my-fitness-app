@@ -47,6 +47,10 @@ export const curatorApi = {
     deleteTask: (clientId: number, taskId: string) =>
         apiClient.delete(`${BASE}/clients/${clientId}/tasks/${taskId}`),
 
+    // What the client has been told, and how it reached them.
+    getClientNotices: (clientId: number) =>
+        apiClient.get<ClientNotice[]>(`${BASE}/clients/${clientId}/notices`),
+
     // Weekly reports & feedback
     getWeeklyReports: (clientId: number) =>
         apiClient.get<WeeklyReportView[]>(`${BASE}/clients/${clientId}/weekly-reports`),
@@ -60,4 +64,21 @@ export const curatorApi = {
         apiClient.get<DailySnapshot[] | WeeklySnapshot[]>(`${BASE}/analytics/history?period=${period}&${period === 'daily' ? 'days' : 'weeks'}=${count}`),
     getBenchmark: (weeks: number) =>
         apiClient.get<BenchmarkData>(`${BASE}/analytics/benchmark?weeks=${weeks}`),
+}
+
+/** One channel's outcome for a notification. */
+export interface NoticeDelivery {
+    channel: string
+    status: string
+    sentAt?: string
+}
+
+/** One thing a client was told. */
+export interface ClientNotice {
+    id: string
+    type: string
+    title: string
+    createdAt: string
+    readAt?: string
+    deliveries: NoticeDelivery[]
 }

@@ -27,6 +27,33 @@ type Service struct {
 	log *logger.Logger
 	// buckets are every store holding user files; erasure must clear them all.
 	buckets map[string]*storage.S3Client
+	// notifier may be nil; nothing here depends on it existing.
+	notifier Notifier
+}
+
+// Notifier tells somebody that something happened. Declared here as the
+// narrowest thing this module needs, so account does not depend on the
+// notifications module's types.
+type Notifier interface {
+	Notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string) error
+}
+
+// WithNotifier attaches the notifier used for export readiness and for telling
+// a curator that a client has left.
+func (s *Service) WithNotifier(notifier Notifier) *Service {
+	s.notifier = notifier
+	return s
+}
+
+// notify is best effort: an archive that was built and a client who left are
+// both facts already, and a failure to announce them must not undo either.
+func (s *Service) notify(ctx context.Context, userID int64, notificationType, title, content, actionURL string) {
+	if s.notifier == nil {
+		return
+	}
+	if err := s.notifier.Notify(ctx, userID, notificationType, title, content, actionURL); err != nil {
+		s.log.Error("Failed to send notification", "error", err, "user_id", userID, "type", notificationType)
+	}
 }
 
 // NewService creates the service. buckets maps a name used in logs to a client.
@@ -83,6 +110,10 @@ func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPass
 		s.log.Error("Failed to revoke sessions on deletion request", "error", err, "user_id", userID)
 	}
 
+	// The curator planned around this person and would otherwise find out by
+	// noticing an absence.
+	s.notifyCurator(ctx, userID)
+
 	s.log.Info("Account deletion requested", "user_id", userID)
 
 	scheduled := requestedAt.Add(CancellationWindow)
@@ -120,8 +151,15 @@ func (s *Service) Status(ctx context.Context, userID int64) (*DeletionStatus, er
 }
 
 // deleteFiles removes the user's objects from every bucket.
-func (s *Service) deleteFiles(ctx context.Context, userID int64) {
+//
+// Reports whether every bucket confirmed. A partial failure is not an error the
+// caller should act on — the database is already consistent and the erasure
+// stands — but it must be remembered, or the person's photographs stay in a
+// bucket forever.
+func (s *Service) deleteFiles(ctx context.Context, userID int64) (complete bool) {
 	prefix := fmt.Sprintf("%d/", userID)
+	complete = true
+
 	for name, client := range s.buckets {
 		if client == nil {
 			continue
@@ -129,10 +167,61 @@ func (s *Service) deleteFiles(ctx context.Context, userID int64) {
 		removed, err := client.DeleteByPrefix(ctx, prefix)
 		if err != nil {
 			s.log.Error("Failed to delete user files", "bucket", name, "user_id", userID, "error", err)
+			complete = false
 			continue
 		}
 		s.log.Info("Deleted user files", "bucket", name, "user_id", userID, "objects", removed)
 	}
+
+	return complete
+}
+
+// PurgeLeftoverFiles retries the buckets that failed during an erasure.
+//
+// Without it, "best effort" would mean "once, and never again".
+func (s *Service) PurgeLeftoverFiles(ctx context.Context) (int, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id FROM users
+		WHERE deleted_at IS NOT NULL AND files_purged_at IS NULL
+		ORDER BY deleted_at`)
+	if err != nil {
+		return 0, fmt.Errorf("list accounts with leftover files: %w", err)
+	}
+	defer rows.Close()
+
+	var pending []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return 0, fmt.Errorf("scan account id: %w", err)
+		}
+		pending = append(pending, id)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	purged := 0
+	for _, id := range pending {
+		if !s.deleteFiles(ctx, id) {
+			// Still failing: leave the mark unset so the next run tries again.
+			continue
+		}
+		if err := s.markFilesPurged(ctx, id); err != nil {
+			return purged, err
+		}
+		purged++
+	}
+
+	return purged, nil
+}
+
+func (s *Service) markFilesPurged(ctx context.Context, userID int64) error {
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE users SET files_purged_at = NOW() WHERE id = $1`, userID); err != nil {
+		return fmt.Errorf("record file purge: %w", err)
+	}
+	return nil
 }
 
 // ExecuteDueDeletions erases every account whose window has closed.
@@ -153,4 +242,31 @@ func (s *Service) ExecuteDueDeletions(ctx context.Context) (int, error) {
 		erased++
 	}
 	return erased, nil
+}
+
+// notifyCurator tells the client's curator that they are leaving.
+//
+// The client's own name is deliberately not in the text: the curator can see
+// who it is from their own list, and a notification is not the place to repeat
+// somebody's identity as they leave.
+func (s *Service) notifyCurator(ctx context.Context, clientID int64) {
+	if s.notifier == nil {
+		return
+	}
+
+	var curatorID int64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT curator_id FROM curator_client_relationships
+		 WHERE client_id = $1 AND status = 'active'`, clientID).Scan(&curatorID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return
+	}
+	if err != nil {
+		s.log.Error("Failed to find curator for departing client", "error", err, "client_id", clientID)
+		return
+	}
+
+	s.notify(ctx, curatorID, "client_left", "Клиент уходит",
+		"Один из ваших клиентов запросил удаление аккаунта и больше не появится в списках.",
+		"/curator")
 }

@@ -119,8 +119,8 @@ func TestLoginService(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false).
@@ -144,8 +144,8 @@ func TestLoginService(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
 
 		result, err := service.Login(ctx, "test@example.com", "wrongpassword", "", "", false)
 		assert.Error(t, err)
@@ -332,8 +332,8 @@ func TestLoginRememberMe(t *testing.T) {
 
 			mock.ExpectQuery("SELECT id, email").
 				WithArgs("test@example.com").
-				WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at"}).
-					AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now()))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
+					AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
 
 			mock.ExpectExec("INSERT INTO refresh_tokens").
 				WithArgs(int64(1), sqlmock.AnyArg(), expiresAtMatcher{tc.expectedTTL}, "127.0.0.1", "TestAgent", tc.rememberMe).
@@ -422,4 +422,53 @@ func TestGenerateDefaultIdentity(t *testing.T) {
 		assert.True(t, strings.HasPrefix(avatar, "/avatars/default/"))
 		assert.True(t, strings.HasSuffix(avatar, ".svg"))
 	})
+}
+
+// Somebody signing in during the cancellation window has almost certainly
+// changed their mind. The app can only offer them the way back if the sign-in
+// tells it there is something to come back from.
+func TestLogin_ReportsAPendingDeletion(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	hashedPw, err := bcrypt.GenerateFromPassword([]byte("Password123!"), bcrypt.MinCost)
+	require.NoError(t, err)
+	requestedAt := time.Now().Add(-3 * 24 * time.Hour)
+
+	mock.ExpectQuery("SELECT id, email").
+		WithArgs("leaving@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "password", "role", "email_verified",
+			"onboarding_completed", "created_at", "deletion_requested_at",
+		}).AddRow(1, "leaving@example.com", "Leaving", string(hashedPw), "client", true, true,
+			time.Now(), requestedAt))
+	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	result, err := service.Login(context.Background(), "leaving@example.com", "Password123!", "ip", "ua", false)
+
+	require.NoError(t, err)
+	require.NotNil(t, result.PendingDeletion)
+	assert.Equal(t, requestedAt.Add(accountCancellationWindow), result.PendingDeletion.ScheduledFor)
+}
+
+// An ordinary account says nothing about deletion, so a screen has nothing to
+// react to.
+func TestLogin_SaysNothingWhenNothingIsPending(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	hashedPw, err := bcrypt.GenerateFromPassword([]byte("Password123!"), bcrypt.MinCost)
+	require.NoError(t, err)
+
+	mock.ExpectQuery("SELECT id, email").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "password", "role", "email_verified",
+			"onboarding_completed", "created_at", "deletion_requested_at",
+		}).AddRow(1, "user@example.com", "User", string(hashedPw), "client", true, true, time.Now(), nil))
+	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	result, err := service.Login(context.Background(), "user@example.com", "Password123!", "ip", "ua", false)
+
+	require.NoError(t, err)
+	assert.Nil(t, result.PendingDeletion)
 }

@@ -37,13 +37,20 @@ const (
 	TypeTaskAssigned     NotificationType = "task_assigned"
 	TypeTaskOverdue      NotificationType = "task_overdue"
 	TypeFeedbackReceived NotificationType = "feedback_received"
+	// The archive a person asked for is ready. It expires, so telling them is
+	// the difference between a download and a wasted build.
+	TypeExportReady NotificationType = "export_ready"
+	// A client left. The curator planned around them and would otherwise find
+	// out by noticing an absence.
+	TypeClientLeft NotificationType = "client_left"
 )
 
 // IsValid checks if the notification type is valid
 func (t NotificationType) IsValid() bool {
 	switch t {
 	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral, TypeNewContent,
-		TypePlanUpdated, TypeTaskAssigned, TypeTaskOverdue, TypeFeedbackReceived:
+		TypePlanUpdated, TypeTaskAssigned, TypeTaskOverdue, TypeFeedbackReceived,
+		TypeExportReady, TypeClientLeft:
 		return true
 	}
 	return false

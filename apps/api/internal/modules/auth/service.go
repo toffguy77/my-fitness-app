@@ -83,6 +83,17 @@ type LoginResult struct {
 	User         *User  `json:"user"`
 	Token        string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
+	// PendingDeletion is set when this account is inside its cancellation
+	// window. Somebody who signs in during those thirty days has almost
+	// certainly changed their mind, and the app has to be able to say so
+	// instead of behaving as though nothing is about to happen.
+	PendingDeletion *PendingDeletion `json:"pending_deletion,omitempty"`
+}
+
+// PendingDeletion describes an account waiting to be erased.
+type PendingDeletion struct {
+	RequestedAt  time.Time `json:"requested_at"`
+	ScheduledFor time.Time `json:"scheduled_for"`
 }
 
 // Register registers a new user and returns login result with tokens
@@ -185,16 +196,17 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 
 	// Look up user by email
 	query := `
-		SELECT id, email, COALESCE(name, ''), password, role, email_verified, COALESCE(onboarding_completed, false), created_at
+		SELECT id, email, COALESCE(name, ''), password, role, email_verified, COALESCE(onboarding_completed, false), created_at, deletion_requested_at
 		FROM users
 		WHERE email = $1
 	`
 
 	var user User
 	var hashedPassword string
+	var deletionRequestedAt sql.NullTime
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt,
+		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &deletionRequestedAt,
 	)
 	s.log.LogDatabaseQuery("Login.LookupUser", time.Since(startTime), err, map[string]any{"email": email})
 	if err != nil {
@@ -234,12 +246,30 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 		return nil, fmt.Errorf("failed to create refresh token: %w", err)
 	}
 
-	return &LoginResult{
+	result := &LoginResult{
 		User:         &user,
 		Token:        token,
 		RefreshToken: refreshToken,
-	}, nil
+	}
+
+	// Signing in during the cancellation window is almost always somebody
+	// changing their mind. The app can only offer them the way back if it is
+	// told there is something to come back from.
+	if deletionRequestedAt.Valid {
+		result.PendingDeletion = &PendingDeletion{
+			RequestedAt:  deletionRequestedAt.Time,
+			ScheduledFor: deletionRequestedAt.Time.Add(accountCancellationWindow),
+		}
+	}
+
+	return result, nil
 }
+
+// accountCancellationWindow mirrors account.CancellationWindow. Duplicated
+// rather than imported: auth must not depend on the account module to answer
+// "when does this disappear", and the two are checked against each other by
+// TestCancellationWindowsAgree.
+const accountCancellationWindow = 30 * 24 * time.Hour
 
 // RefreshTokens validates a refresh token, rotates it, and returns new tokens
 func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) (*LoginResult, error) {

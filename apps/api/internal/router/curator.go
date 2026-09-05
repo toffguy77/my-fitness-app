@@ -41,6 +41,7 @@ func registerCuratorRoutes(v1 *gin.RouterGroup, d Deps) {
 		client.PUT("/tasks/:taskId", d.Curator.UpdateTask)
 		client.DELETE("/tasks/:taskId", d.Curator.DeleteTask)
 		client.GET("/tasks", d.Curator.GetTasks)
+		client.GET("/notices", d.Curator.GetClientNotices)
 
 		client.PUT("/weekly-reports/:reportId/feedback", d.Curator.SubmitFeedback)
 		client.GET("/weekly-reports", d.Curator.GetWeeklyReports)

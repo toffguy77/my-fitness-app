@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +32,7 @@ type mockCuratorService struct {
 	createTaskFunc           func(ctx context.Context, curatorID, clientID int64, req CreateTaskRequest) (*TaskView, error)
 	updateTaskFunc           func(ctx context.Context, curatorID, clientID int64, taskID string, req UpdateTaskRequest) (*TaskView, error)
 	deleteTaskFunc           func(ctx context.Context, curatorID, clientID int64, taskID string) error
+	getClientNoticesFunc     func(ctx context.Context, curatorID, clientID int64) ([]notifications.ClientNotice, error)
 	getTasksFunc             func(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error)
 	submitFeedbackFunc       func(ctx context.Context, curatorID, clientID int64, reportID string, req SubmitFeedbackRequest) error
 	getWeeklyReportsFunc     func(ctx context.Context, curatorID, clientID int64) ([]WeeklyReportView, error)
@@ -116,6 +118,13 @@ func (m *mockCuratorService) DeleteTask(ctx context.Context, curatorID, clientID
 		return m.deleteTaskFunc(ctx, curatorID, clientID, taskID)
 	}
 	return nil
+}
+
+func (m *mockCuratorService) GetClientNotices(ctx context.Context, curatorID, clientID int64) ([]notifications.ClientNotice, error) {
+	if m.getClientNoticesFunc != nil {
+		return m.getClientNoticesFunc(ctx, curatorID, clientID)
+	}
+	return []notifications.ClientNotice{}, nil
 }
 
 func (m *mockCuratorService) GetTasks(ctx context.Context, curatorID, clientID int64, status string) ([]TaskView, error) {

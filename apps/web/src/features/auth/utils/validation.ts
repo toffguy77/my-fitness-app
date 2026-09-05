@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { t } from '@/shared/i18n';
 
 /**
  * Email validation schema
@@ -16,20 +17,20 @@ export const emailSchema = z
 
 export const passwordSchema = z
     .string()
-    .min(8, 'Пароль должен содержать минимум 8 символов')
-    .max(128, 'Пароль не должен превышать 128 символов')
+    .min(8, t('auth.validation.passwordMin'))
+    .max(128, t('auth.validation.passwordMax'))
     .superRefine((val, ctx) => {
         if (!/[A-Z]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы одну заглавную букву' });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordUpper') });
         }
         if (!/[a-z]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы одну строчную букву' });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordLower') });
         }
         if (!/[0-9]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы одну цифру' });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordDigit') });
         }
         if (!/[^A-Za-z0-9]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Пароль должен содержать хотя бы один специальный символ' });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordSpecial') });
         }
     });
 
@@ -58,7 +59,7 @@ export const consentSchema = z.object({
  * would tell a visitor which rules our passwords follow before they have
  * proved anything.
  */
-const loginPasswordSchema = z.string().min(1, 'Введите пароль');
+const loginPasswordSchema = z.string().min(1, t('auth.validation.enterPassword'));
 
 /**
  * Login validation schema

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { chatApi } from '../api/chatApi'
 import { useWebSocket } from './useWebSocket'
 import type { Message, WebSocketEvent } from '../types'
+import { EVENTS, track } from '@/shared/analytics'
 
 /**
  * Custom hook for managing a single conversation's messages and interactions.
@@ -87,6 +88,12 @@ export function useChat(conversationId: string | null) {
                 type: 'text',
                 content,
             })
+            // Whether somebody ever writes to their curator at all is the
+            // question; the text of the message is none of analytics' business.
+            if (!hasWrittenToCurator()) {
+                markWrittenToCurator()
+                track(EVENTS.firstMessage)
+            }
             setMessages((prev) => [...prev, msg])
         },
         [conversationId]
@@ -125,5 +132,30 @@ export function useChat(conversationId: string | null) {
         sendFile,
         sendTyping,
         lastEvent: lastEvent as WebSocketEvent | null,
+    }
+}
+
+/**
+ * Whether this browser has already recorded its owner's first message to a
+ * curator. The interesting number is how many people ever start that
+ * conversation, and that is only interesting once.
+ */
+const FIRST_MESSAGE_KEY = 'first_curator_message_logged'
+
+function hasWrittenToCurator(): boolean {
+    try {
+        return localStorage.getItem(FIRST_MESSAGE_KEY) === '1'
+    } catch {
+        // Storage refused: the event is sent again, and the report counts
+        // distinct users rather than events.
+        return false
+    }
+}
+
+function markWrittenToCurator(): void {
+    try {
+        localStorage.setItem(FIRST_MESSAGE_KEY, '1')
+    } catch {
+        // Nothing to remember it with; see above.
     }
 }

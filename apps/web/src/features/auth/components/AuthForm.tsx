@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { Input } from '@/shared/components/ui';
 import { PasswordInput } from '@/shared/components/forms/PasswordInput';
 import type { AuthFormData, AuthMode, ValidationErrors } from '@/features/auth/types';
+import { t } from '@/shared/i18n'
 
 export interface AuthFormProps {
     formData: AuthFormData;
@@ -44,8 +45,8 @@ export function AuthForm({
             />
 
             <PasswordInput
-                label="Пароль"
-                placeholder="Минимум 8 символов"
+                label={t('auth.password')}
+                placeholder={t('auth.passwordPlaceholder')}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 onBlur={onPasswordBlur}
@@ -60,7 +61,7 @@ export function AuthForm({
                     href="/forgot-password"
                     className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
                 >
-                    Забыл пароль?
+                    {t('auth.forgotPassword')}
                 </Link>
             </div>
         </div>

@@ -110,6 +110,7 @@ func New(d Deps) *gin.Engine {
 	registerAuthRoutes(v1, d)
 	registerUserRoutes(v1, d)
 	registerNotificationRoutes(v1, d)
+	registerUnsubscribeRoute(v1, d)
 	registerLogRoutes(v1, d)
 	registerFoodTrackerRoutes(v1, d)
 	registerNutritionCalcRoutes(v1, d)

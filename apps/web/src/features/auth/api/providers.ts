@@ -12,8 +12,9 @@ import type { AuthResponse } from '@/features/auth/types'
 export type ProviderName = 'yandex' | 'vk' | 'max'
 
 /** Display names, so a screen never shows a bare slug. */
+// i18n-exempt: brand names, the same in every language.
 export const providerLabels: Record<string, string> = {
-    yandex: 'Яндекс ID',
+    yandex: 'Яндекс ID', // i18n-exempt: brand name
     vk: 'VK ID',
     max: 'MAX',
 }

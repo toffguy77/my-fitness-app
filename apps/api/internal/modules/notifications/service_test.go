@@ -363,6 +363,11 @@ func TestCreateNotification(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"id", "created_at"}).
 			AddRow(uuid.New().String(), time.Now())
 
+		// Every notification first asks whether the account is leaving.
+		mock.ExpectQuery(`deletion_requested_at IS NOT NULL`).
+			WillReturnRows(sqlmock.NewRows([]string{"leaving"}).AddRow(false))
+		// The notification and its delivery records go in together.
+		mock.ExpectBegin()
 		mock.ExpectQuery(`INSERT INTO notifications`).
 			WithArgs(
 				sqlmock.AnyArg(), // id (generated UUID)
@@ -378,6 +383,8 @@ func TestCreateNotification(t *testing.T) {
 				notification.ContentCategory,
 			).
 			WillReturnRows(rows)
+		expectDeliveryPlan(mock, notification.UserID, 3)
+		mock.ExpectCommit()
 
 		// Execute
 		err := service.CreateNotification(ctx, notification)
@@ -788,4 +795,46 @@ func TestGetNotificationsPaginationMaxLimit(t *testing.T) {
 	))
 
 	properties.TestingRun(t)
+}
+
+// Somebody who asked to be deleted should not be accumulating notices to read.
+// Checked in one place rather than at each of the dozen call sites, because
+// one forgotten call site is a person being written to after they left.
+func TestCreateNotification_SkipsAccountsThatAreLeaving(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery(`deletion_requested_at IS NOT NULL`).
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"leaving"}).AddRow(true))
+
+	err := service.CreateNotification(context.Background(), &Notification{
+		UserID:   1,
+		Category: CategoryMain,
+		Type:     TypeTrainerFeedback,
+		Title:    "Обратная связь куратора",
+		Content:  "Посмотрите отчёт",
+	})
+
+	// Not an error: the caller's own work succeeded, there was simply nobody
+	// to tell. Nothing was written — reaching the insert would fail the mock.
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// An account that no longer exists is the same answer, and not a failure worth
+// breaking the caller's work over.
+func TestCreateNotification_SkipsAnAccountThatIsGone(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery(`deletion_requested_at IS NOT NULL`).
+		WillReturnError(sql.ErrNoRows)
+
+	err := service.CreateNotification(context.Background(), &Notification{
+		UserID: 999, Category: CategoryMain, Type: TypeTrainerFeedback,
+		Title: "Обратная связь куратора", Content: "Посмотрите отчёт",
+	})
+
+	require.NoError(t, err)
 }

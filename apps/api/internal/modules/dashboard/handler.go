@@ -49,6 +49,20 @@ type Handler struct {
 	db               *database.DB
 	service          ServiceInterface
 	nutritionCalcSvc *nutritioncalc.Service
+	// analytics may be nil; nothing depends on it being there.
+	analytics EventRecorder
+}
+
+// EventRecorder records a product fact — declared here as the narrowest thing
+// this module needs from analytics.
+type EventRecorder interface {
+	RecordServerEvent(ctx context.Context, name string, userID int64, properties map[string]any)
+}
+
+// WithAnalytics attaches the recorder.
+func (h *Handler) WithAnalytics(recorder EventRecorder) *Handler {
+	h.analytics = recorder
+	return h
 }
 
 // NewHandler creates a new dashboard handler
@@ -543,6 +557,10 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 	}
 
 	// TODO: Trigger curator notification
+
+	if h.analytics != nil {
+		h.analytics.RecordServerEvent(c.Request.Context(), "weekly_report_submitted", userID, nil)
+	}
 
 	response.Success(c, http.StatusCreated, report)
 }

@@ -15,8 +15,10 @@ import { AuthForm } from './AuthForm';
 import { ConsentSection } from './ConsentSection';
 import { AuthFooter } from './AuthFooter';
 import { ProviderButtons } from './ProviderButtons';
+import { AccountRecoveryScreen } from './AccountRecoveryScreen';
 import { EVENTS, track } from '@/shared/analytics';
 import type { AuthMode, AuthFormData, ConsentState } from '@/features/auth/types';
+import { t } from '@/shared/i18n'
 
 export function AuthScreen() {
     const [mode, setMode] = useState<AuthMode>('login');
@@ -31,7 +33,7 @@ export function AuthScreen() {
         marketing: false,
     });
 
-    const { login, register, isLoading } = useAuth();
+    const { login, register, isLoading, pendingDeletion, clearPendingDeletion } = useAuth();
     const { errors, validateEmail, validatePassword, validateLogin, validateRegister } =
         useFormValidation();
 
@@ -79,6 +81,17 @@ export function AuthScreen() {
         consents.privacy_policy &&
         consents.data_processing;
 
+    // The way back takes over the screen: it is the only thing worth doing
+    // until they answer it.
+    if (pendingDeletion) {
+        return (
+            <AccountRecoveryScreen
+                scheduledFor={pendingDeletion}
+                onDismiss={clearPendingDeletion}
+            />
+        );
+    }
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
             {/* Header */}
@@ -88,7 +101,7 @@ export function AuthScreen() {
                         <Logo width={160} height={48} className="text-gray-900" />
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
-                        Ваш персональный дневник питания
+                        {t('auth.tagline')}
                     </p>
                 </div>
             </header>
@@ -119,7 +132,7 @@ export function AuthScreen() {
                                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                     />
                                     <span className="text-sm text-gray-600">
-                                        Запомнить меня на 30 дней
+                                        {t('auth.rememberMe')}
                                     </span>
                                 </label>
                             </div>
@@ -144,7 +157,7 @@ export function AuthScreen() {
                                 className="w-full"
                                 aria-label="Log in to your account"
                             >
-                                {isLoading && mode === 'login' ? 'Вход...' : 'Войти'}
+                                {isLoading && mode === 'login' ? t('auth.signingIn') : t('auth.signIn')}
                             </Button>
 
                             <Button
@@ -164,9 +177,9 @@ export function AuthScreen() {
                             >
                                 {mode === 'register'
                                     ? isLoading
-                                        ? 'Регистрация...'
-                                        : 'Зарегистрироваться'
-                                    : 'Создать аккаунт'}
+                                        ? t('auth.registering')
+                                        : t('auth.register')
+                                    : t('auth.createAccount')}
                             </Button>
 
                             {mode === 'register' && (
@@ -174,7 +187,7 @@ export function AuthScreen() {
                                     onClick={() => setMode('login')}
                                     className="w-full text-sm text-gray-600 hover:text-gray-900"
                                 >
-                                    Уже есть аккаунт? Войти
+                                    {t('auth.haveAccountSignIn')}
                                 </button>
                             )}
                         </div>

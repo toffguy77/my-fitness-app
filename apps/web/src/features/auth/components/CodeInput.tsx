@@ -2,6 +2,7 @@
 
 import { useRef, KeyboardEvent, ClipboardEvent } from 'react'
 import { cn } from '@/shared/utils/cn'
+import { t } from '@/shared/i18n'
 
 interface CodeInputProps {
     value: string[]
@@ -64,7 +65,7 @@ export function CodeInput({ value, onChange, disabled, error }: CodeInputProps) 
                             ? 'border-red-300 bg-red-50'
                             : 'border-gray-300 bg-white'
                     )}
-                    aria-label={`Цифра ${i + 1}`}
+                    aria-label={t('auth.codeDigit', { position: i + 1 })}
                 />
             ))}
         </div>

@@ -32,6 +32,16 @@ export interface AuthResponse {
     };
     token: string; // JWT access token
     refresh_token: string; // Opaque refresh token
+    /**
+     * Present when the account is inside its cancellation window. Somebody
+     * signing in during those thirty days has almost certainly changed their
+     * mind, and the app has to be able to say so rather than behave as though
+     * nothing is about to happen.
+     */
+    pending_deletion?: {
+        requested_at: string;
+        scheduled_for: string;
+    };
 }
 
 export interface AuthError {

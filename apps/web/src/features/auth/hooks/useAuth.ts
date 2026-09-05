@@ -17,11 +17,13 @@ import { forgetLeadToken } from '@/features/onboarding/api/guest';
 import { EVENTS, track, flush } from '@/shared/analytics';
 import type { AuthFormData, ConsentState, AuthError } from '@/features/auth/types';
 import toast from 'react-hot-toast';
+import { t } from '@/shared/i18n';
 
 export function useAuth() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<AuthError | null>(null);
+    const [pendingDeletion, setPendingDeletion] = useState<string | null>(null);
 
     /**
      * Login user with email and password
@@ -37,7 +39,16 @@ export function useAuth() {
 
             storeSession(response);
 
-            toast.success('Вход выполнен успешно');
+            // Somebody signing in inside the cancellation window has almost
+            // certainly changed their mind. Greeting them as normal and then
+            // deleting a year of their data on schedule would be the worst of
+            // both readings.
+            if (response.pending_deletion) {
+                setPendingDeletion(response.pending_deletion.scheduled_for);
+                return;
+            }
+
+            toast.success(t('auth.signedIn'));
             router.push(destinationFor(response.user));
         } catch (err) {
             const authError = err as AuthError;
@@ -68,7 +79,7 @@ export function useAuth() {
             // only place that knows it actually happened.
             flush();
 
-            toast.success('Регистрация успешна');
+            toast.success(t('auth.registered'));
             router.push('/auth/verify-email');
         } catch (err) {
             const authError = err as AuthError;
@@ -107,5 +118,8 @@ export function useAuth() {
         logout,
         isLoading,
         error,
+        /** Set when the signed-in account is waiting to be deleted. */
+        pendingDeletion,
+        clearPendingDeletion: () => setPendingDeletion(null),
     };
 }

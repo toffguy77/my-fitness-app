@@ -72,6 +72,42 @@ func (m *MockService) UpdatePreferences(ctx context.Context, userID int64, req U
 	return args.Error(0)
 }
 
+func (m *MockService) GetDeliveryPreferences(ctx context.Context, userID int64) (*DeliveryPreferences, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*DeliveryPreferences), args.Error(1)
+}
+
+func (m *MockService) UpdateDeliveryPreferences(ctx context.Context, userID int64, req UpdateDeliveryPreferencesRequest) error {
+	args := m.Called(ctx, userID, req)
+	return args.Error(0)
+}
+
+func (m *MockService) Unsubscribe(ctx context.Context, token string) error {
+	args := m.Called(ctx, token)
+	return args.Error(0)
+}
+
+func (m *MockService) Subscribe(ctx context.Context, userID int64, sub PushSubscription) error {
+	args := m.Called(ctx, userID, sub)
+	return args.Error(0)
+}
+
+func (m *MockService) UnsubscribePush(ctx context.Context, userID int64, endpoint string) error {
+	args := m.Called(ctx, userID, endpoint)
+	return args.Error(0)
+}
+
+func (m *MockService) PushReady() bool {
+	return m.Called().Bool(0)
+}
+
+func (m *MockService) PushPublicKey() string {
+	return m.Called().String(0)
+}
+
 func setupTestHandlerWithMock() (*Handler, *MockService) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{
