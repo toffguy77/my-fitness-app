@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { CuratorContentPage } from '../pages/content.page'
 
 test.describe('Curator Content Management', () => {

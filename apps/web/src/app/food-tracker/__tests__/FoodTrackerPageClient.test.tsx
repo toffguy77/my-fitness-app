@@ -1,86 +1,54 @@
 /**
- * Unit tests for FoodTrackerPageClient
+ * The page no longer decides whether somebody is signed in — middleware.ts
+ * does that before this renders. What is left is telling "still working it
+ * out" apart from "no session", which are different screens.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { useRouter } from 'next/navigation';
+
 import { FoodTrackerPageClient } from '../FoodTrackerPageClient';
+import { useSession } from '@/shared/hooks/useSession';
 
-// Mock next/navigation
-jest.mock('next/navigation', () => ({
-    useRouter: jest.fn(),
-}));
-
-// Mock FoodTrackerPage component
 jest.mock('@/features/food-tracker/components/FoodTrackerPage', () => ({
     FoodTrackerPage: () => <div data-testid="food-tracker-page">Food Tracker Page</div>,
 }));
 
-// Mock localStorage
-const mockLocalStorage = (() => {
-    let store: Record<string, string> = {};
-    return {
-        getItem: jest.fn((key: string) => store[key] || null),
-        setItem: jest.fn((key: string, value: string) => {
-            store[key] = value;
-        }),
-        removeItem: jest.fn((key: string) => {
-            delete store[key];
-        }),
-        clear: jest.fn(() => {
-            store = {};
-        }),
-    };
-})();
+jest.mock('@/shared/hooks/useSession', () => ({
+    useSession: jest.fn(),
+}));
 
-Object.defineProperty(window, 'localStorage', {
-    value: mockLocalStorage,
-});
+const session = useSession as jest.Mock;
+
+beforeEach(() => jest.clearAllMocks());
 
 describe('FoodTrackerPageClient', () => {
-    const mockPush = jest.fn();
+    it('renders the tracker once the session is established', async () => {
+        session.mockReturnValue('authenticated');
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-        mockLocalStorage.clear();
-        (useRouter as jest.Mock).mockReturnValue({
-            push: mockPush,
+        render(<FoodTrackerPageClient />);
+
+        await waitFor(() => {
+            expect(screen.getByTestId('food-tracker-page')).toBeInTheDocument();
         });
     });
 
-    describe('authentication', () => {
-        it('redirects to /auth when no token', async () => {
-            mockLocalStorage.getItem.mockReturnValue(null);
+    it('waits rather than showing the page while the session is being restored', () => {
+        // The access token lives in memory and does not survive a reload; it
+        // is minted from the cookie a moment later. Rendering "signed out"
+        // during that moment would flash at somebody who is signed in.
+        session.mockReturnValue('restoring');
 
-            render(<FoodTrackerPageClient />);
+        const { container } = render(<FoodTrackerPageClient />);
 
-            await waitFor(() => {
-                expect(mockPush).toHaveBeenCalledWith('/auth');
-            });
-        });
-
-        it('renders FoodTrackerPage when authenticated', async () => {
-            mockLocalStorage.getItem.mockImplementation((key: string) => {
-                if (key === 'auth_token') return 'valid-token';
-                if (key === 'user') return JSON.stringify({ id: '1', email: 'test@example.com', name: 'Test User' });
-                return null;
-            });
-
-            render(<FoodTrackerPageClient />);
-
-            await waitFor(() => {
-                expect(screen.getByTestId('food-tracker-page')).toBeInTheDocument();
-            });
-        });
+        expect(container.querySelector('.animate-spin')).toBeInTheDocument();
+        expect(screen.queryByTestId('food-tracker-page')).not.toBeInTheDocument();
     });
 
-    describe('loading state', () => {
-        it('shows loading spinner while checking auth', () => {
-            mockLocalStorage.getItem.mockReturnValue(null);
+    it('renders nothing useful for a session that turned out not to exist', () => {
+        session.mockReturnValue('anonymous');
 
-            const { container } = render(<FoodTrackerPageClient />);
+        render(<FoodTrackerPageClient />);
 
-            expect(container.querySelector('.animate-spin')).toBeInTheDocument();
-        });
+        expect(screen.queryByTestId('food-tracker-page')).not.toBeInTheDocument();
     });
 });

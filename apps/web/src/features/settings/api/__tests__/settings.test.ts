@@ -1,11 +1,13 @@
-import { getProfile, updateProfile, updateSettings, uploadAvatar, deleteAvatar } from '../settings'
+import { getProfile, updateProfile, updateSettings, uploadAvatar, deleteAvatar, changePassword } from '../settings'
 
 jest.mock('@/shared/utils/api-client', () => ({
   apiClient: {
     get: jest.fn(),
     put: jest.fn(),
+    post: jest.fn(),
     delete: jest.fn(),
     postFormData: jest.fn(),
+    setToken: jest.fn(),
   },
 }))
 
@@ -96,4 +98,31 @@ describe('Settings API', () => {
       expect(mockApiClient.delete).toHaveBeenCalledWith('/api/v1/users/avatar')
     })
   })
+})
+
+describe('changing a password', () => {
+    it('installs the replacement token the server hands back', async () => {
+        // The change ends every session, including this one. Without taking
+        // the replacement, the token in memory is a version behind: every
+        // request afterwards costs a 401 and a refresh, and several at once
+        // race until one loses and the app decides nobody is signed in.
+        mockApiClient.post.mockResolvedValue({ token: 'a-fresh-token', refresh_token: 'r' })
+
+        await changePassword('0ld!Passw0rd', 'New!Passw0rd')
+
+        expect(mockApiClient.post).toHaveBeenCalledWith('/api/v1/auth/change-password', {
+            current_password: '0ld!Passw0rd',
+            new_password: 'New!Passw0rd',
+        })
+        expect(mockApiClient.setToken).toHaveBeenCalledWith('a-fresh-token')
+    })
+
+    it('does not fall over when the response carries no replacement', async () => {
+        // An older server, or a deployment mid-rollout.
+        mockApiClient.post.mockResolvedValue(undefined)
+        mockApiClient.setToken.mockClear()
+
+        await expect(changePassword('a', 'b')).resolves.toBeUndefined()
+        expect(mockApiClient.setToken).not.toHaveBeenCalled()
+    })
 })

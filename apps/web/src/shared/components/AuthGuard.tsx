@@ -1,23 +1,33 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+/**
+ * Renders its children only for somebody with a session.
+ *
+ * It used to ask `isAuthenticated()` once, in an effect, and send anybody
+ * without a token to the sign-in page. That was right while the token lived in
+ * localStorage and was there the instant the page loaded. It is wrong now: the
+ * access token lives in memory, does not survive a reload, and is minted from
+ * the cookie a moment later — so the honest first answer is "not yet known",
+ * and treating it as "not signed in" bounced every signed-in person off every
+ * page they reloaded.
+ */
+
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { isAuthenticated } from '@/shared/utils/token-storage'
+
+import { useSession } from '@/shared/hooks/useSession'
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter()
-    const [checked, setChecked] = useState(false)
+    const session = useSession()
 
     useEffect(() => {
-        const authed = isAuthenticated()
-        if (!authed) {
+        if (session === 'anonymous') {
             router.replace('/auth')
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setChecked(authed)
-    }, [router])
+    }, [session, router])
 
-    if (!checked) {
+    if (session !== 'authenticated') {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">

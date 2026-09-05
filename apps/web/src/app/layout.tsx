@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
 import { Toaster } from 'react-hot-toast'
 import { YandexMetrika } from '@/shared/components/YandexMetrika'
 import { ServiceWorkerCleanup } from '@/shared/components/ServiceWorkerCleanup'
@@ -50,20 +51,24 @@ export const metadata: Metadata = {
     },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
+    // Set by middleware.ts for this response. The content policy names this
+    // one nonce instead of allowing every inline script on the page.
+    const nonce = (await headers()).get('x-nonce') ?? undefined
+
     return (
         <html lang="ru">
             <head>
                 {/* Registers controllerchange before React hydration so skipWaiting SW
                     activations that race ahead of useEffect still trigger a reload. */}
-                <script dangerouslySetInnerHTML={{ __html: `(function(){if(!('serviceWorker'in navigator))return;var c=navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',function(){if(c)window.location.reload();});})();` }} />
+                <script nonce={nonce} dangerouslySetInnerHTML={{ __html: `(function(){if(!('serviceWorker'in navigator))return;var c=navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',function(){if(c)window.location.reload();});})();` }} />
             </head>
             <body>
-                <YandexMetrika />
+                <YandexMetrika nonce={nonce} />
                 <ServiceWorkerCleanup />
                 <GlobalErrorHandlers />
                 <ErrorBoundary>{children}</ErrorBoundary>

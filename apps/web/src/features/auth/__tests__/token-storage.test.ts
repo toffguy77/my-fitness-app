@@ -1,6 +1,5 @@
 /**
- * Token storage utility tests
- * Verifies token and user data management in localStorage
+ * What the browser holds about a session, and what it deliberately does not.
  */
 
 import {
@@ -8,141 +7,119 @@ import {
     getToken,
     clearToken,
     isAuthenticated,
-    setRefreshToken,
-    getRefreshToken,
-    clearRefreshToken,
+    onSessionChange,
     setUser,
     getUser,
     clearUser,
     clearAuth,
+    legacyStorage,
 } from '@/shared/utils/token-storage';
 
-describe('Token Storage', () => {
-    beforeEach(() => {
-        localStorage.clear();
+beforeEach(() => {
+    localStorage.clear();
+    clearToken();
+});
+
+describe('the access token', () => {
+    it('is held in memory, not in storage', () => {
+        setToken('an-access-token');
+
+        expect(getToken()).toBe('an-access-token');
+        // The whole point: nothing that runs on the page can read it out of
+        // storage, because it is not there.
+        expect(localStorage.getItem('auth_token')).toBeNull();
     });
 
-    describe('Token Management', () => {
-        it('should store token', () => {
-            const token = 'test-jwt-token';
-            setToken(token);
-
-            expect(localStorage.getItem('auth_token')).toBe(token);
-        });
-
-        it('should retrieve token', () => {
-            const token = 'test-jwt-token';
-            localStorage.setItem('auth_token', token);
-
-            expect(getToken()).toBe(token);
-        });
-
-        it('should return null when no token exists', () => {
-            expect(getToken()).toBeNull();
-        });
-
-        it('should clear token', () => {
-            localStorage.setItem('auth_token', 'test-token');
-            clearToken();
-
-            expect(getToken()).toBeNull();
-        });
-
-        it('should check authentication status based on refresh token', () => {
-            expect(isAuthenticated()).toBe(false);
-
-            setRefreshToken('test-refresh-token');
-            expect(isAuthenticated()).toBe(true);
-
-            clearRefreshToken();
-            expect(isAuthenticated()).toBe(false);
-        });
+    it('does not survive a fresh module state', () => {
+        // A reload starts with nothing and asks the server, which it can do
+        // because the refresh cookie survives.
+        expect(getToken()).toBeNull();
     });
 
-    describe('Refresh Token Management', () => {
-        it('should store refresh token', () => {
-            const token = 'test-refresh-token';
-            setRefreshToken(token);
+    it('is forgotten on clear', () => {
+        setToken('an-access-token');
+        clearToken();
 
-            expect(localStorage.getItem('refresh_token')).toBe(token);
-        });
+        expect(getToken()).toBeNull();
+        expect(isAuthenticated()).toBe(false);
+    });
+});
 
-        it('should retrieve refresh token', () => {
-            const token = 'test-refresh-token';
-            localStorage.setItem('refresh_token', token);
+describe('the refresh token', () => {
+    it('is never written to storage by this module', () => {
+        setToken('an-access-token');
+        setUser({ id: 1 });
 
-            expect(getRefreshToken()).toBe(token);
-        });
+        // A refresh token in localStorage is readable by anything that manages
+        // to run on the page, and a stolen one is a session that outlives every
+        // password the victim changes. It lives in an HttpOnly cookie instead.
+        expect(localStorage.getItem('refresh_token')).toBeNull();
+    });
+});
 
-        it('should return null when no refresh token exists', () => {
-            expect(getRefreshToken()).toBeNull();
-        });
+describe('session listeners', () => {
+    it('are told when a session starts and ends', () => {
+        const seen: boolean[] = [];
+        const stop = onSessionChange((authenticated) => seen.push(authenticated));
 
-        it('should clear refresh token', () => {
-            localStorage.setItem('refresh_token', 'test-token');
-            clearRefreshToken();
+        setToken('an-access-token');
+        clearToken();
+        stop();
+        setToken('another-token');
 
-            expect(getRefreshToken()).toBeNull();
-        });
+        expect(seen).toEqual([true, false]);
+    });
+});
+
+describe('user data', () => {
+    it('is stored, read back and cleared', () => {
+        setUser({ id: 1, email: 'user@example.com' });
+
+        expect(getUser()).toEqual({ id: 1, email: 'user@example.com' });
+
+        clearUser();
+        expect(getUser()).toBeNull();
     });
 
-    describe('User Data Management', () => {
-        it('should store user data', () => {
-            const user = {
-                id: '123',
-                email: 'test@example.com',
-                role: 'client',
-            };
+    it('survives unreadable storage without throwing', () => {
+        localStorage.setItem('user', 'not json');
 
-            setUser(user);
+        expect(getUser()).toBeNull();
+    });
+});
 
-            const stored = localStorage.getItem('user');
-            expect(stored).toBe(JSON.stringify(user));
-        });
+describe('the storage left over from the previous scheme', () => {
+    it('is readable once, so nobody is signed out by the migration', () => {
+        localStorage.setItem('refresh_token', 'an-old-token');
 
-        it('should retrieve user data', () => {
-            const user = {
-                id: '123',
-                email: 'test@example.com',
-                role: 'client',
-            };
-
-            localStorage.setItem('user', JSON.stringify(user));
-
-            expect(getUser()).toEqual(user);
-        });
-
-        it('should return null when no user data exists', () => {
-            expect(getUser()).toBeNull();
-        });
-
-        it('should return null for invalid JSON', () => {
-            localStorage.setItem('user', 'invalid-json');
-
-            expect(getUser()).toBeNull();
-        });
-
-        it('should clear user data', () => {
-            const user = { id: '123', email: 'test@example.com' };
-            setUser(user);
-
-            clearUser();
-
-            expect(getUser()).toBeNull();
-        });
+        expect(legacyStorage.refreshToken()).toBe('an-old-token');
     });
 
-    describe('Clear All Auth Data', () => {
-        it('should clear token, refresh token, and user data', () => {
-            setToken('test-token');
-            setRefreshToken('test-refresh-token');
-            setUser({ id: '123', email: 'test@example.com' });
+    it('is cleared once it has done its job', () => {
+        localStorage.setItem('refresh_token', 'an-old-token');
+        localStorage.setItem('auth_token', 'an-old-access-token');
 
-            clearAuth();
+        legacyStorage.clear();
 
-            expect(getToken()).toBeNull();
-            expect(getRefreshToken()).toBeNull();
-            expect(getUser()).toBeNull();
-        });
+        expect(localStorage.getItem('refresh_token')).toBeNull();
+        expect(localStorage.getItem('auth_token')).toBeNull();
+    });
+
+    it('reports nothing when there is nothing', () => {
+        expect(legacyStorage.refreshToken()).toBeNull();
+    });
+});
+
+describe('clearAuth', () => {
+    it('leaves nothing about the session behind', () => {
+        setToken('an-access-token');
+        setUser({ id: 1 });
+        localStorage.setItem('refresh_token', 'an-old-token');
+
+        clearAuth();
+
+        expect(getToken()).toBeNull();
+        expect(getUser()).toBeNull();
+        expect(localStorage.getItem('refresh_token')).toBeNull();
     });
 });

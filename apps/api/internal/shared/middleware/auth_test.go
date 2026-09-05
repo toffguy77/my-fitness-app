@@ -92,7 +92,7 @@ func TestAuthMiddleware(t *testing.T) {
 			_, r := gin.CreateTestContext(w)
 
 			// Setup middleware
-			r.Use(RequireAuth(cfg))
+			r.Use(RequireAuth(cfg, nil))
 			r.GET("/test", func(c *gin.Context) {
 				if tt.checkContext != nil {
 					tt.checkContext(t, c)

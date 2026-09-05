@@ -52,5 +52,20 @@ export async function deleteAvatar(): Promise<void> {
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await apiClient.post('/api/v1/auth/change-password', { current_password: currentPassword, new_password: newPassword })
+    // Changing a password ends every session, including this one — a stolen
+    // refresh token must not survive the very action taken to stop it. The
+    // response carries a replacement pair for the device that asked, and
+    // installing it is what keeps that person signed in.
+    //
+    // Without this the access token in memory is a version behind: every
+    // request after the change costs a 401 and a refresh, and several of them
+    // at once race until one loses and the app decides nobody is signed in.
+    const replacement = await apiClient.post<{ token?: string }>(
+        '/api/v1/auth/change-password',
+        { current_password: currentPassword, new_password: newPassword }
+    )
+
+    if (replacement?.token) {
+        apiClient.setToken(replacement.token)
+    }
 }

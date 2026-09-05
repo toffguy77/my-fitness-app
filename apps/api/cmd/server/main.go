@@ -335,14 +335,23 @@ func main() {
 	})
 
 	// Routing lives in internal/router, one file per domain.
+	// Access tokens carry the account's token version; this is what checks it.
+	tokenVersions := middleware.NewTokenVersions(db.DB)
+	// Without this a password change revokes refresh tokens and leaves the
+	// access tokens working, and the cache answers with the old version for
+	// half a minute — during which the person who just changed their password
+	// cannot use the application at all.
+	authService.WithSessionCache(tokenVersions)
+
 	router := router.New(router.Deps{
 		Cfg:             cfg,
+		TokenVersions:   tokenVersions,
 		Log:             log,
 		DB:              db,
 		AuthRateLimiter: authRateLimiter,
 
 		Analytics:     analytics.NewHandler(analyticsService, log),
-		Auth:          auth.NewHandler(db.DB, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
+		Auth:          auth.NewHandler(authService, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
 		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),

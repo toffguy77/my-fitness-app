@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { CuratorHubPage } from '../pages/curator-hub.page'
 
 test.describe('Curator Hub', () => {

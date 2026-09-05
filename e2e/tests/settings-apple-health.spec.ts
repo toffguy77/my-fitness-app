@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 
 test.describe('Settings Apple Health', () => {
   test.beforeEach(async ({ page }) => {

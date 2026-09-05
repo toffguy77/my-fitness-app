@@ -22,6 +22,7 @@ import type {
     PhotoData,
     WeeklyReport,
 } from '../types';
+import { getToken } from '@/shared/utils/token-storage';
 import {
     addToQueue,
     removeFromQueue,
@@ -1458,7 +1459,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             const url = getApiUrl('/dashboard/photo-upload');
 
             // Note: For FormData, we need to use fetch directly
-            const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+            const token = getToken();
             const headers: Record<string, string> = {};
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;

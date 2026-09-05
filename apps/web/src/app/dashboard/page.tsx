@@ -44,6 +44,7 @@ import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeekly
 import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
 interface UserData {
     id: string
@@ -56,8 +57,11 @@ export default function DashboardPage() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const highlightTaskId = searchParams.get('task')
-    const [userData, setUserData] = useState<UserData | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+    // Who is looking at this page. The cache paints the first frame; the
+    // server settles it.
+    const { user: currentUser, state: userState } = useCurrentUser()
+    const userData = currentUser as UserData | null
+    const isLoading = userState === 'loading'
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
     const [kbjuHistory, setKbjuHistory] = useState<TargetVsActual[]>([])
 
@@ -75,52 +79,15 @@ export default function DashboardPage() {
         targetsVersion,
     } = useDashboardStore()
 
-    useEffect(() => {
-        // Check authentication and fetch user data
-        const checkAuth = () => {
-            // Check if token exists
-            const token = typeof window !== 'undefined'
-                ? localStorage.getItem('auth_token')
-                : null
-
-            // Redirect to login if not authenticated
-            if (!token) {
-                router.push('/auth')
-                return
-            }
-
-            // Get user data from localStorage
-            const userDataStr = typeof window !== 'undefined'
-                ? localStorage.getItem('user')
-                : null
-
-            if (userDataStr) {
-                try {
-                    const user = JSON.parse(userDataStr) as UserData
-                    setUserData(user)
-                } catch (error) {
-                    console.error('Failed to parse user data:', error)
-                    router.push('/auth')
-                    return
-                }
-            } else {
-                router.push('/auth')
-                return
-            }
-
-            setIsLoading(false)
-        }
-
-        checkAuth()
-    }, [router])
-
-    // Fetch avatar from profile
+    // The profile carries the avatar and the display name; the identity itself
+    // comes from the session above.
+    const [profileName, setProfileName] = useState<string | undefined>(undefined)
     useEffect(() => {
         if (!userData) return
         getProfile()
-            .then(profile => {
+            .then((profile) => {
                 if (profile.avatar_url) setAvatarUrl(profile.avatar_url)
-                if (profile.name) setUserData(prev => prev ? { ...prev, name: profile.name } : prev)
+                if (profile.name) setProfileName(profile.name)
             })
             .catch(() => {})
     }, [userData?.id])
@@ -215,7 +182,7 @@ export default function DashboardPage() {
 
     return (
         <DashboardLayout
-            userName={userData.name || userData.email}
+            userName={profileName || userData.name || userData.email}
             avatarUrl={avatarUrl}
             activeNavItem="dashboard"
             onNavigate={handleNavigate}

@@ -71,17 +71,9 @@ export function NutrientDetailPageClient({ nutrientId }: NutrientDetailPageClien
     const [currentIntake, setCurrentIntake] = useState(0);
 
     useEffect(() => {
-        // Check authentication
+        // Signed-out visitors never reach this page: middleware.ts sends
+        // them to sign in before it renders.
         const checkAuth = () => {
-            const token = typeof window !== 'undefined'
-                ? localStorage.getItem('auth_token')
-                : null;
-
-            if (!token) {
-                router.push('/auth');
-                return;
-            }
-
             setIsAuthenticated(true);
 
             // Load nutrient data (mock for now)

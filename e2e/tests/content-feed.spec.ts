@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { ContentFeedPage } from '../pages/content.page'
 
 test.describe('Content Feed', () => {

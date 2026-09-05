@@ -1,120 +1,68 @@
 /**
- * Tests for Notifications Page
+ * Who gets to see the notifications page.
  *
- * Validates: Requirements 10.1, 10.2
+ * The redirect for a signed-out visitor moved to middleware.ts, which runs
+ * before the page is rendered at all. What the page still has to get right is
+ * the wait while the session is minted from the cookie: showing nothing during
+ * it is correct, showing the sign-in screen is not.
  */
 
 import { render, screen, waitFor } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
+
 import NotificationsPage from '../page'
+import { useSession } from '@/shared/hooks/useSession'
 
-// Mock Next.js router
-jest.mock('next/navigation', () => ({
-    useRouter: jest.fn(),
-}))
-
-// Mock NotificationsPage component
 jest.mock('@/features/notifications/components/NotificationsPage', () => ({
     NotificationsPage: () => (
-        <div data-testid="notifications-page-component">
-            Notifications Content
-        </div>
+        <div data-testid="notifications-page-component">Notifications Content</div>
     ),
 }))
 
+jest.mock('@/shared/hooks/useSession', () => ({
+    useSession: jest.fn(),
+}))
+
+const session = useSession as jest.Mock
+
+beforeEach(() => jest.clearAllMocks())
+
 describe('NotificationsPage', () => {
-    const mockPush = jest.fn()
-    const mockRouter = {
-        push: mockPush,
-        back: jest.fn(),
-        forward: jest.fn(),
-        refresh: jest.fn(),
-        replace: jest.fn(),
-        prefetch: jest.fn(),
-    }
+    it('renders the notifications once the session is established', async () => {
+        session.mockReturnValue('authenticated')
 
-    beforeEach(() => {
-        jest.clearAllMocks()
-            ; (useRouter as jest.Mock).mockReturnValue(mockRouter)
+        render(<NotificationsPage />)
 
-        // Clear localStorage
-        localStorage.clear()
-    })
-
-    describe('Authentication Check (Requirement 10.1, 10.2)', () => {
-        it('should redirect to /auth when no token exists', () => {
-            render(<NotificationsPage />)
-
-            expect(mockPush).toHaveBeenCalledWith('/auth')
-        })
-
-        it('should not render notifications page when not authenticated', () => {
-            render(<NotificationsPage />)
-
-            expect(screen.queryByTestId('notifications-page-component')).not.toBeInTheDocument()
-        })
-
-        it('should render notifications page when authenticated', async () => {
-            localStorage.setItem('auth_token', 'fake-token')
-
-            render(<NotificationsPage />)
-
-            await waitFor(() => {
-                expect(screen.getByTestId('notifications-page-component')).toBeInTheDocument()
-            })
-
-            expect(mockPush).not.toHaveBeenCalled()
-        })
-
-        it('should not redirect when valid token exists', async () => {
-            localStorage.setItem('auth_token', 'valid-token-123')
-
-            render(<NotificationsPage />)
-
-            await waitFor(() => {
-                expect(screen.getByTestId('notifications-page-component')).toBeInTheDocument()
-            })
-
-            expect(mockPush).not.toHaveBeenCalledWith('/auth')
+        await waitFor(() => {
+            expect(screen.getByTestId('notifications-page-component')).toBeInTheDocument()
         })
     })
 
-    describe('Loading State', () => {
-        it('should show loading spinner while checking authentication', () => {
-            localStorage.setItem('auth_token', 'fake-token')
+    it('shows the loading state while the session is being restored', () => {
+        session.mockReturnValue('restoring')
 
-            const { container } = render(<NotificationsPage />)
+        render(<NotificationsPage />)
 
-            // Check for loading spinner elements
-            const spinner = container.querySelector('.animate-spin')
-            const loadingText = screen.queryByText('Загрузка...')
-
-            // In test environment, useEffect runs synchronously, so loading state may not be visible
-            // But we verify the component eventually renders
-            expect(mockPush).not.toHaveBeenCalled()
-        })
-
-        it('should hide loading state after authentication check completes', async () => {
-            localStorage.setItem('auth_token', 'fake-token')
-
-            render(<NotificationsPage />)
-
-            await waitFor(() => {
-                expect(screen.getByTestId('notifications-page-component')).toBeInTheDocument()
-            })
-
-            // Loading spinner should not be visible after authentication check
-            expect(screen.queryByText('Загрузка...')).not.toBeInTheDocument()
-        })
+        expect(screen.getByText('Загрузка...')).toBeInTheDocument()
+        expect(screen.queryByTestId('notifications-page-component')).not.toBeInTheDocument()
     })
 
-    describe('Unauthenticated State', () => {
-        it('should return null when not authenticated', () => {
-            const { container } = render(<NotificationsPage />)
+    it('renders nothing when there turns out to be no session', () => {
+        session.mockReturnValue('anonymous')
 
-            // After redirect, component should not render anything
-            expect(mockPush).toHaveBeenCalledWith('/auth')
-            expect(screen.queryByTestId('notifications-page-component')).not.toBeInTheDocument()
+        render(<NotificationsPage />)
+
+        expect(screen.queryByTestId('notifications-page-component')).not.toBeInTheDocument()
+        expect(screen.queryByText('Загрузка...')).not.toBeInTheDocument()
+    })
+
+    it('stops showing the loading state once the session is established', async () => {
+        session.mockReturnValue('authenticated')
+
+        render(<NotificationsPage />)
+
+        await waitFor(() => {
+            expect(screen.getByTestId('notifications-page-component')).toBeInTheDocument()
         })
+        expect(screen.queryByText('Загрузка...')).not.toBeInTheDocument()
     })
 })

@@ -290,10 +290,10 @@ func (s *Service) issueTokensForUser(ctx context.Context, userID int64, ip, ua s
 	var user User
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, email, COALESCE(name, ''), role,
-		       COALESCE(email_verified, false), COALESCE(onboarding_completed, false), created_at
+		       COALESCE(email_verified, false), COALESCE(onboarding_completed, false), created_at, token_version
 		FROM users WHERE id = $1`, userID).
 		Scan(&user.ID, &user.Email, &user.Name, &user.Role,
-			&user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt)
+			&user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &user.TokenVersion)
 	if err != nil {
 		return nil, fmt.Errorf("load user: %w", err)
 	}

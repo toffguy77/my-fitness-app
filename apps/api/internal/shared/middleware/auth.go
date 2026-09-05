@@ -15,11 +15,20 @@ type UserClaims struct {
 	UserID int64  `json:"user_id"`
 	Email  string `json:"email"`
 	Role   string `json:"role"`
+	// TokenVersion is the version the account had when this token was issued.
+	// A token minted before a password change carries an older number and is
+	// refused. Tokens issued before this field existed decode as 0, which is
+	// also the version every account starts at — so the change does not sign
+	// everybody out on deploy.
+	TokenVersion int `json:"tv"`
 	jwt.RegisteredClaims
 }
 
-// RequireAuth middleware validates JWT token
-func RequireAuth(cfg *config.Config) gin.HandlerFunc {
+// RequireAuth middleware validates JWT token.
+//
+// `versions` may be nil, which skips the version check — useful in tests that
+// have no database and nothing to revoke.
+func RequireAuth(cfg *config.Config, versions *TokenVersions) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get token from Authorization header
 		authHeader := c.GetHeader("Authorization")
@@ -52,6 +61,25 @@ func RequireAuth(cfg *config.Config) gin.HandlerFunc {
 
 		// Extract claims
 		if claims, ok := token.Claims.(*UserClaims); ok {
+			if versions != nil {
+				current, err := versions.Current(c.Request.Context(), claims.UserID)
+				if err != nil {
+					// Either the account is gone or the database is
+					// unreachable. Neither is a request we should let through
+					// on the strength of a signature alone.
+					response.Error(c, http.StatusUnauthorized, "Сессия недействительна")
+					c.Abort()
+					return
+				}
+				if claims.TokenVersion != current {
+					// Issued before a password change or an explicit sign-out
+					// of every device.
+					response.Error(c, http.StatusUnauthorized, "Сессия завершена, войдите заново")
+					c.Abort()
+					return
+				}
+			}
+
 			c.Set("user_id", claims.UserID)
 			c.Set("user_email", claims.Email)
 			c.Set("user_role", claims.Role)

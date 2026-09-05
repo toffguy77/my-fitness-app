@@ -15,7 +15,7 @@ func registerSupportRoutes(v1 *gin.RouterGroup, d Deps) {
 	v1.POST("/public/support/telegram", d.Support.Webhook)
 
 	g := v1.Group("/admin/support")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 	g.Use(middleware.RequireRole("super_admin"))
 
 	g.GET("/conversations", d.Support.List)

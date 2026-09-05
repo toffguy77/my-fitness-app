@@ -19,9 +19,9 @@ jest.mock('@/features/content/api/contentApi', () => ({
     },
 }))
 
-// Mock token-storage — default to unauthenticated
-jest.mock('@/shared/utils/token-storage', () => ({
-    isAuthenticated: jest.fn(() => false),
+// The session is the server's answer now, not a look in storage.
+jest.mock('@/shared/hooks/useSession', () => ({
+    useSession: jest.fn(() => 'anonymous'),
 }))
 
 // Mock sub-components to simplify testing

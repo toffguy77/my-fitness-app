@@ -1,48 +1,47 @@
-import { render } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
+
 import { AuthRedirect } from '../_components/AuthRedirect'
+import { useSession } from '@/shared/hooks/useSession'
 
 const mockReplace = jest.fn()
+
 jest.mock('next/navigation', () => ({
-    useRouter: () => ({
-        replace: mockReplace,
-        push: jest.fn(),
-    }),
+    useRouter: () => ({ replace: mockReplace, push: jest.fn() }),
 }))
 
-jest.mock('@/shared/utils/token-storage', () => ({
-    isAuthenticated: jest.fn(),
+jest.mock('@/shared/hooks/useSession', () => ({
+    useSession: jest.fn(),
 }))
 
-import { isAuthenticated } from '@/shared/utils/token-storage'
+const session = useSession as jest.Mock
 
-const mockIsAuthenticated = isAuthenticated as jest.MockedFunction<typeof isAuthenticated>
+beforeEach(() => jest.clearAllMocks())
 
 describe('AuthRedirect', () => {
-    beforeEach(() => {
-        jest.clearAllMocks()
-    })
-
-    it('redirects to /dashboard when authenticated', () => {
-        mockIsAuthenticated.mockReturnValue(true)
+    it('sends a signed-in visitor to their dashboard', async () => {
+        session.mockReturnValue('authenticated')
 
         render(<AuthRedirect />)
 
-        expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/dashboard'))
     })
 
-    it('does not redirect when not authenticated', () => {
-        mockIsAuthenticated.mockReturnValue(false)
+    it('leaves a visitor with no session where they are', async () => {
+        session.mockReturnValue('anonymous')
 
         render(<AuthRedirect />)
 
-        expect(mockReplace).not.toHaveBeenCalled()
+        await waitFor(() => expect(mockReplace).not.toHaveBeenCalled())
     })
 
-    it('renders nothing', () => {
-        mockIsAuthenticated.mockReturnValue(false)
+    it('waits rather than acting while the session is being restored', async () => {
+        // Redirecting here would take somebody off the sign-in page they
+        // opened deliberately; not redirecting would leave a signed-in person
+        // looking at a form they do not need. Neither, until it is known.
+        session.mockReturnValue('restoring')
 
-        const { container } = render(<AuthRedirect />)
+        render(<AuthRedirect />)
 
-        expect(container.firstChild).toBeNull()
+        await waitFor(() => expect(mockReplace).not.toHaveBeenCalled())
     })
 })

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { FoodTrackerPage } from '../pages/food-tracker.page'
 
 test.describe('Food Tracker - Client', () => {

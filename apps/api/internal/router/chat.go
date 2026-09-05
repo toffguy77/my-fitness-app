@@ -12,7 +12,7 @@ import (
 // ValidateParticipant. That is recorded in the authorization matrix.
 func registerChatRoutes(v1 *gin.RouterGroup, d Deps) {
 	g := v1.Group("/conversations")
-	g.Use(middleware.RequireAuth(d.Cfg))
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 
 	g.GET("", d.Chat.GetConversations)
 	g.GET("/unread", d.Chat.GetUnreadCount)

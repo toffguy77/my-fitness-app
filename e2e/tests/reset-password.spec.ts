@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 
 test.describe('Reset Password', () => {
   test('page without token shows invalid link', async ({ page }) => {

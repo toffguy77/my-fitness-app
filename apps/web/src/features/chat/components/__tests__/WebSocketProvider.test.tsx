@@ -1,6 +1,7 @@
 import { render, screen, act } from '@testing-library/react'
 import { WebSocketProvider, useWebSocketContext } from '../WebSocketProvider'
 import { apiClient } from '@/shared/utils/api-client'
+import { setToken, clearToken } from '@/shared/utils/token-storage'
 
 // The socket authenticates with a single-use ticket rather than the access
 // token: a URL reaches proxy logs, server logs, browser history and Referer
@@ -65,7 +66,7 @@ describe('WebSocketProvider', () => {
     beforeEach(() => {
         MockWebSocket.instances = []
         ;(global as Record<string, unknown>).WebSocket = MockWebSocket
-        localStorage.setItem('auth_token', 'test-token')
+        setToken('test-token')
         ticketRequest.mockReset()
         ticketRequest.mockResolvedValue({ ticket: 'test-ticket' })
     })
@@ -73,6 +74,7 @@ describe('WebSocketProvider', () => {
     afterEach(() => {
         ;(global as Record<string, unknown>).WebSocket = originalWebSocket
         localStorage.clear()
+        clearToken()
         jest.restoreAllMocks()
     })
 
@@ -91,7 +93,7 @@ describe('WebSocketProvider', () => {
     })
 
     it('does not connect when no auth token', async () => {
-        localStorage.removeItem('auth_token')
+        clearToken()
         await renderProvider()
 
         expect(MockWebSocket.instances).toHaveLength(0)
@@ -189,7 +191,7 @@ describe('WebSocketProvider reconnect guards', () => {
     beforeEach(() => {
         MockWebSocket.instances = []
         ;(global as Record<string, unknown>).WebSocket = MockWebSocket
-        localStorage.setItem('auth_token', 'test-token')
+        setToken('test-token')
         ticketRequest.mockReset()
         ticketRequest.mockResolvedValue({ ticket: 'test-ticket' })
         jest.useFakeTimers()
@@ -202,6 +204,7 @@ describe('WebSocketProvider reconnect guards', () => {
     afterEach(() => {
         ;(global as Record<string, unknown>).WebSocket = originalWebSocket
         localStorage.clear()
+        clearToken()
         jest.useRealTimers()
         jest.restoreAllMocks()
     })

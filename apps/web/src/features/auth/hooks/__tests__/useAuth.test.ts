@@ -37,8 +37,6 @@ jest.mock('@/shared/utils/api-client', () => ({
 }));
 
 jest.mock('@/shared/utils/token-storage', () => ({
-    setRefreshToken: jest.fn(),
-    getRefreshToken: jest.fn(),
     clearAuth: jest.fn(),
 }));
 
@@ -120,7 +118,6 @@ describe('useAuth', () => {
             expect(apiClient.setToken).toHaveBeenCalledWith('mock-jwt-token');
 
             // Verify refresh token was stored
-            expect(tokenStorage.setRefreshToken).toHaveBeenCalledWith('mock-refresh-token');
 
             // Verify user data was stored
             expect(mockSetItem).toHaveBeenCalledWith(
@@ -252,7 +249,6 @@ describe('useAuth', () => {
             expect(apiClient.setToken).toHaveBeenCalledWith('new-user-jwt-token');
 
             // Verify refresh token was stored
-            expect(tokenStorage.setRefreshToken).toHaveBeenCalledWith('new-user-refresh-token');
 
             // Verify user data was stored
             expect(mockSetItem).toHaveBeenCalledWith(
@@ -529,19 +525,18 @@ describe('useAuth', () => {
     });
 
     describe('Logout Flow', () => {
-        it('should revoke refresh token, clear auth, and redirect to auth page', async () => {
-            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue('stored-refresh-token');
-
+        it('asks the server to end the session, clears up and redirects', async () => {
             const { result } = renderHook(() => useAuth());
 
             await act(async () => {
                 await result.current.logout();
             });
 
-            // Verify backend revocation was attempted
+            // Nothing to send: the refresh token is in a cookie the browser
+            // attaches by itself, and the server clears it.
             expect(apiClient.post).toHaveBeenCalledWith(
                 expect.stringContaining('/auth/logout'),
-                { refresh_token: 'stored-refresh-token' }
+                {}
             );
 
             // Verify local auth was cleared
@@ -553,7 +548,6 @@ describe('useAuth', () => {
         });
 
         it('should still clear auth and redirect even if backend revocation fails', async () => {
-            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue('stored-refresh-token');
             (apiClient.post as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
 
             const { result } = renderHook(() => useAuth());
@@ -568,19 +562,17 @@ describe('useAuth', () => {
             expect(mockPush).toHaveBeenCalledWith('/auth');
         });
 
-        it('should skip backend call if no refresh token exists', async () => {
-            (tokenStorage.getRefreshToken as jest.Mock).mockReturnValue(null);
-
+        it('signs out even when this browser holds nothing to send', async () => {
+            // Script cannot see the cookie, so there is nothing to check
+            // first — asking is the only way, and the local cleanup happens
+            // either way.
             const { result } = renderHook(() => useAuth());
 
             await act(async () => {
                 await result.current.logout();
             });
 
-            // Verify no backend call was made
-            expect(apiClient.post).not.toHaveBeenCalled();
-
-            // Verify local auth was cleared
+            expect(apiClient.post).toHaveBeenCalled();
             expect(tokenStorage.clearAuth).toHaveBeenCalled();
             expect(mockPush).toHaveBeenCalledWith('/auth');
         });

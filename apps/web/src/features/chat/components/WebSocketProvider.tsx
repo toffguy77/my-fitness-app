@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import type { ReactNode } from 'react'
 import type { WebSocketEvent } from '../types'
 import { apiClient } from '@/shared/utils/api-client'
+import { getToken } from '@/shared/utils/token-storage'
 
 interface WebSocketContextValue {
     sendEvent: (event: WebSocketEvent) => void
@@ -37,7 +38,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         const connect = async () => {
             if (!isMounted.current) return
 
-            const token = localStorage.getItem('auth_token')
+            const token = getToken()
             if (!token) return
 
             // A single-use ticket rather than the access token. Browsers cannot
@@ -88,7 +89,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                 if (e.code === 1006 && reconnectDelay.current > 8000) return
 
                 // Only reconnect if tab is visible and token exists
-                const currentToken = localStorage.getItem('auth_token')
+                const currentToken = getToken()
                 if (currentToken && document.visibilityState === 'visible') {
                     clearReconnectTimer()
                     // A reconnection mints a fresh ticket; the previous one is

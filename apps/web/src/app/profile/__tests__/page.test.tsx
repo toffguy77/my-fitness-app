@@ -64,11 +64,12 @@ describe('ProfilePage', () => {
         localStorage.clear()
     })
 
-    // Branch: no auth token -> redirect to /auth (line 29-31)
-    it('redirects to /auth when no auth_token', () => {
-        localStorage.removeItem('auth_token')
+    // The redirect for a signed-out visitor moved to middleware.ts, which
+    // runs before this page renders. A guard re-added here would send away
+    // somebody whose session is still being minted from the cookie.
+    it('does not send anybody to sign in on its own', () => {
         render(<ProfilePage />)
-        expect(mockPush).toHaveBeenCalledWith('/auth')
+        expect(mockPush).not.toHaveBeenCalledWith('/auth')
     })
 
     // Branch: loading state (line 59)

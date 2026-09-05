@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
 import { DashboardPage } from '../pages/dashboard.page'
 
 // Workout logging on the client dashboard does not exist. The product tracks

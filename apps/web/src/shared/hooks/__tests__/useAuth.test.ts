@@ -8,9 +8,18 @@ jest.mock('@/shared/utils/api-client', () => ({
     },
 }))
 
+jest.mock('@/shared/hooks/useSession', () => ({
+    restoreSession: jest.fn(),
+}))
+
 import { apiClient } from '@/shared/utils/api-client'
+import { restoreSession } from '@/shared/hooks/useSession'
 
 const mockApiClient = apiClient as jest.Mocked<typeof apiClient>
+// Whether there is a session is now the server's answer, not a look in
+// storage: the access token lives in memory and the refresh token in a cookie
+// script cannot read.
+const mockRestore = restoreSession as jest.Mock
 
 // Mock localStorage
 const mockLocalStorage = (() => {
@@ -47,8 +56,8 @@ describe('useAuth', () => {
     })
 
     describe('loadUser on mount', () => {
-        it('should set isLoading to false and not fetch when no token exists', async () => {
-            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
+        it('should set isLoading to false and not fetch when there is no session', async () => {
+            mockRestore.mockResolvedValue(false)
 
             const { result } = renderHook(() => useAuth())
 
@@ -60,8 +69,8 @@ describe('useAuth', () => {
             expect(mockApiClient.get).not.toHaveBeenCalled()
         })
 
-        it('should load user when a valid token exists', async () => {
-            mockLocalStorage.getItem.mockReturnValue('valid-token')
+        it('should load the user once the session is restored', async () => {
+            mockRestore.mockResolvedValue(true)
             mockApiClient.get.mockResolvedValueOnce({ user: mockUser })
 
             const { result } = renderHook(() => useAuth())
@@ -75,7 +84,7 @@ describe('useAuth', () => {
         })
 
         it('should not set user when API returns error', async () => {
-            mockLocalStorage.getItem.mockReturnValue('expired-token')
+            mockRestore.mockResolvedValue(true)
             mockApiClient.get.mockRejectedValueOnce(new Error('API request failed'))
 
             const { result } = renderHook(() => useAuth())
@@ -88,7 +97,7 @@ describe('useAuth', () => {
         })
 
         it('should handle fetch errors gracefully', async () => {
-            mockLocalStorage.getItem.mockReturnValue('some-token')
+            mockRestore.mockResolvedValue(true)
             mockApiClient.get.mockRejectedValueOnce(new Error('Network failure'))
 
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
@@ -112,7 +121,7 @@ describe('useAuth', () => {
     describe('login', () => {
         beforeEach(() => {
             // Prevent loadUser from running on mount
-            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
+            mockRestore.mockResolvedValue(false)
         })
 
         it('should log in successfully and store token', async () => {
@@ -183,7 +192,7 @@ describe('useAuth', () => {
     describe('logout', () => {
         it('should clear auth_token and user on logout', async () => {
             // Start with a logged-in user
-            mockLocalStorage.getItem.mockReturnValue('valid-token')
+            mockRestore.mockResolvedValue(true)
             mockApiClient.get.mockResolvedValueOnce({ user: mockUser })
 
             const { result } = renderHook(() => useAuth())
@@ -201,7 +210,7 @@ describe('useAuth', () => {
         })
 
         it('should work even when no user is logged in', async () => {
-            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
+            mockRestore.mockResolvedValue(false)
 
             const { result } = renderHook(() => useAuth())
 
@@ -220,7 +229,7 @@ describe('useAuth', () => {
 
     describe('return value shape', () => {
         it('should return the expected AuthState interface', async () => {
-            mockLocalStorage.getItem.mockReturnValue(null as unknown as string)
+            mockRestore.mockResolvedValue(false)
 
             const { result } = renderHook(() => useAuth())
 

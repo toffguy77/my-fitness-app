@@ -119,8 +119,8 @@ func TestLoginService(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at", "token_version"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), "127.0.0.1", "TestAgent", false).
@@ -144,8 +144,8 @@ func TestLoginService(t *testing.T) {
 
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs("test@example.com").
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
-				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at", "token_version"}).
+				AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 		result, err := service.Login(ctx, "test@example.com", "wrongpassword", "", "", false)
 		assert.Error(t, err)
@@ -188,8 +188,8 @@ func TestRefreshTokens(t *testing.T) {
 		// Look up user
 		mock.ExpectQuery("SELECT id, email").
 			WithArgs(int64(42)).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at"}).
-				AddRow(42, "user@example.com", "User", "client", true, true, time.Now()))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version"}).
+				AddRow(42, "user@example.com", "User", "client", true, true, time.Now(), 0))
 
 		result, err := service.RefreshTokens(ctx, plainToken, "127.0.0.1", "TestAgent")
 		assert.NoError(t, err)
@@ -332,8 +332,8 @@ func TestLoginRememberMe(t *testing.T) {
 
 			mock.ExpectQuery("SELECT id, email").
 				WithArgs("test@example.com").
-				WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at"}).
-					AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "email_verified", "onboarding_completed", "created_at", "deletion_requested_at", "token_version"}).
+					AddRow(1, "test@example.com", "Test User", string(hashedPw), "client", false, false, time.Now(), nil, 0))
 
 			mock.ExpectExec("INSERT INTO refresh_tokens").
 				WithArgs(int64(1), sqlmock.AnyArg(), expiresAtMatcher{tc.expectedTTL}, "127.0.0.1", "TestAgent", tc.rememberMe).
@@ -385,8 +385,8 @@ func TestRefreshTokensInheritsRememberMe(t *testing.T) {
 
 			mock.ExpectQuery("SELECT id, email").
 				WithArgs(int64(42)).
-				WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at"}).
-					AddRow(42, "user@example.com", "User", "client", true, true, time.Now()))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version"}).
+					AddRow(42, "user@example.com", "User", "client", true, true, time.Now(), 0))
 
 			result, err := service.RefreshTokens(ctx, plainToken, "127.0.0.1", "TestAgent")
 			assert.NoError(t, err)
@@ -439,9 +439,9 @@ func TestLogin_ReportsAPendingDeletion(t *testing.T) {
 		WithArgs("leaving@example.com").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "email", "name", "password", "role", "email_verified",
-			"onboarding_completed", "created_at", "deletion_requested_at",
+			"onboarding_completed", "created_at", "deletion_requested_at", "token_version",
 		}).AddRow(1, "leaving@example.com", "Leaving", string(hashedPw), "client", true, true,
-			time.Now(), requestedAt))
+			time.Now(), requestedAt, 0))
 	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	result, err := service.Login(context.Background(), "leaving@example.com", "Password123!", "ip", "ua", false)
@@ -463,8 +463,8 @@ func TestLogin_SaysNothingWhenNothingIsPending(t *testing.T) {
 	mock.ExpectQuery("SELECT id, email").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "email", "name", "password", "role", "email_verified",
-			"onboarding_completed", "created_at", "deletion_requested_at",
-		}).AddRow(1, "user@example.com", "User", string(hashedPw), "client", true, true, time.Now(), nil))
+			"onboarding_completed", "created_at", "deletion_requested_at", "token_version",
+		}).AddRow(1, "user@example.com", "User", string(hashedPw), "client", true, true, time.Now(), nil, 0))
 	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	result, err := service.Login(context.Background(), "user@example.com", "Password123!", "ip", "ua", false)

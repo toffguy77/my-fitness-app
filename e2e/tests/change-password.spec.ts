@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '../fixtures/session'
+import { type Page } from '@playwright/test'
 import { getAccount } from '../fixtures/test-accounts'
 
 /**
@@ -67,7 +68,11 @@ test.describe('Change password', () => {
  * stored state.
  */
 test.describe('Change password, end to end', () => {
-  test.use({ storageState: { cookies: [], origins: [] } })
+  // This one starts signed out on purpose: it signs in, changes the password,
+  // and checks that the old one stops working. A session handed to it by the
+  // fixture would take it straight to the dashboard instead of the sign-in
+  // form it needs.
+  test.use({ role: undefined })
 
   const account = getAccount('password')
   const NEW_PASSWORD = 'Rotated!Password#2026'
@@ -88,6 +93,37 @@ test.describe('Change password, end to end', () => {
     await page.getByRole('button', { name: 'Изменить пароль' }).click()
     await expect(page.getByText(/Пароль успешно изменён/)).toBeVisible({ timeout: 15000 })
   }
+
+  // Whatever happens, the account goes back to the password the seed gave it.
+  //
+  // Without this the test poisons itself: a failure anywhere after the change
+  // leaves the account rotated, and both retries then fail at the sign-in for
+  // a completely different reason — which hides the original failure behind
+  // two misleading ones.
+  test.afterEach(async ({ browser, baseURL }) => {
+    const context = await browser.newContext()
+    try {
+      const asSeeded = await context.request.post(`${baseURL}/api/v1/auth/login`, {
+        data: { email: account.email, password: account.password },
+      })
+      if (asSeeded.ok()) return
+
+      const asRotated = await context.request.post(`${baseURL}/api/v1/auth/login`, {
+        data: { email: account.email, password: NEW_PASSWORD },
+      })
+      if (!asRotated.ok()) return
+
+      // Changing a password is authenticated by the access token, not the
+      // cookie — the endpoint deliberately re-checks who is asking.
+      const { data } = await asRotated.json()
+      await context.request.post(`${baseURL}/api/v1/auth/change-password`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+        data: { current_password: NEW_PASSWORD, new_password: account.password },
+      })
+    } finally {
+      await context.close()
+    }
+  })
 
   test('the new password works and the old one does not', async ({ page }) => {
     await signIn(page, account.email, account.password)

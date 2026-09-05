@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/shared/utils/api-client'
+import { restoreSession } from '@/shared/hooks/useSession'
 
 interface User {
     id: string
@@ -22,8 +23,10 @@ export function useAuth(): AuthState {
     useEffect(() => {
         const loadUser = async () => {
             try {
-                const token = localStorage.getItem('auth_token')
-                if (!token) {
+                // The session may still be being minted from the cookie;
+                // waiting for that is the difference between loading the
+                // profile and deciding there is nobody here.
+                if (!(await restoreSession())) {
                     setIsLoading(false)
                     return
                 }

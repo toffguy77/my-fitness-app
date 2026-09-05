@@ -16,7 +16,7 @@ func registerContentRoutes(v1 *gin.RouterGroup, d Deps) {
 	}
 
 	manage := v1.Group("/content/articles")
-	manage.Use(middleware.RequireAuth(d.Cfg))
+	manage.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 	manage.Use(middleware.RequireRole("coordinator", "super_admin"))
 	{
 		manage.POST("", d.Content.CreateArticle)
@@ -33,7 +33,7 @@ func registerContentRoutes(v1 *gin.RouterGroup, d Deps) {
 	}
 
 	feed := v1.Group("/content/feed")
-	feed.Use(middleware.RequireAuth(d.Cfg))
+	feed.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
 	{
 		feed.GET("", d.Content.GetFeed)
 		feed.GET("/:id", d.Content.GetFeedArticle)

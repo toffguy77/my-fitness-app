@@ -27,12 +27,6 @@ export default function ProfilePage() {
     const [userRole, setUserRole] = useState<string>('client')
 
     useEffect(() => {
-        const token = localStorage.getItem('auth_token')
-        if (!token) {
-            router.push('/auth')
-            return
-        }
-
         let role = 'client'
         try {
             const parsed = JSON.parse(localStorage.getItem('user') || '{}').role

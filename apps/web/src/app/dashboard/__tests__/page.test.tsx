@@ -7,11 +7,22 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import DashboardPage from '../page'
+import { apiClient } from '@/shared/utils/api-client'
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
     useRouter: jest.fn(),
     useSearchParams: jest.fn(() => new URLSearchParams()),
+}))
+
+// The page asks the server who is looking at it; the cached copy is only the
+// first paint.
+jest.mock('@/shared/utils/api-client', () => ({
+    apiClient: {
+        get: jest.fn().mockResolvedValue({
+            user: { id: '123', email: 'test@example.com', name: 'Test User', role: 'client' },
+        }),
+    },
 }))
 
 // Mock DashboardLayout component
@@ -96,6 +107,8 @@ jest.mock('@/features/dashboard/store/dashboardStore', () => ({
     }),
 }))
 
+const mockApiClient = apiClient as jest.Mocked<typeof apiClient>
+
 describe('DashboardPage', () => {
     const mockPush = jest.fn()
     const mockRouter = {
@@ -116,27 +129,32 @@ describe('DashboardPage', () => {
     })
 
     describe('Authentication Check (Requirement 1.1)', () => {
-        it('should redirect to /auth when no token exists', () => {
+        // The redirect for a signed-out visitor happens in middleware.ts,
+        // before this page renders. What is left here is not mistaking a cold
+        // cache for a missing session.
+        it('does not send anybody to sign in over an empty profile cache', async () => {
+            // A session established by cookie alone — after signing in through
+            // an external provider, or on a device whose storage was cleared —
+            // has no cached profile. It is still a session.
             render(<DashboardPage />)
 
-            expect(mockPush).toHaveBeenCalledWith('/auth')
+            await waitFor(() => expect(mockPush).not.toHaveBeenCalledWith('/auth'))
         })
 
-        it('should redirect to /auth when token exists but no user data', () => {
-            localStorage.setItem('auth_token', 'fake-token')
-
+        it('fetches the profile when the cache is cold', async () => {
             render(<DashboardPage />)
 
-            expect(mockPush).toHaveBeenCalledWith('/auth')
+            await waitFor(() =>
+                expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/auth/me')
+            )
         })
 
-        it('should redirect to /auth when user data is corrupted', () => {
-            localStorage.setItem('auth_token', 'fake-token')
+        it('does not send anybody to sign in over a corrupt cache', async () => {
             localStorage.setItem('user', 'invalid-json')
 
             render(<DashboardPage />)
 
-            expect(mockPush).toHaveBeenCalledWith('/auth')
+            await waitFor(() => expect(mockPush).not.toHaveBeenCalledWith('/auth'))
         })
 
         it('should render dashboard when authenticated with valid user data', async () => {
@@ -147,7 +165,6 @@ describe('DashboardPage', () => {
                 role: 'client' as const,
             }
 
-            localStorage.setItem('auth_token', 'fake-token')
             localStorage.setItem('user', JSON.stringify(userData))
 
             render(<DashboardPage />)
@@ -169,7 +186,6 @@ describe('DashboardPage', () => {
                 role: 'client' as const,
             }
 
-            localStorage.setItem('auth_token', 'fake-token')
             localStorage.setItem('user', JSON.stringify(userData))
 
             render(<DashboardPage />)
@@ -186,7 +202,6 @@ describe('DashboardPage', () => {
                 role: 'client' as const,
             }
 
-            localStorage.setItem('auth_token', 'fake-token')
             localStorage.setItem('user', JSON.stringify(userData))
 
             render(<DashboardPage />)
@@ -226,7 +241,6 @@ describe('DashboardPage', () => {
                 role: 'client' as const,
             }
 
-            localStorage.setItem('auth_token', 'fake-token')
             localStorage.setItem('user', JSON.stringify(userData))
         })
 
@@ -294,7 +308,6 @@ describe('DashboardPage', () => {
                 role: 'client' as const,
             }
 
-            localStorage.setItem('auth_token', 'fake-token')
             localStorage.setItem('user', JSON.stringify(userData))
         })
 
@@ -360,7 +373,6 @@ describe('DashboardPage', () => {
                 role: 'client' as const,
             }
 
-            localStorage.setItem('auth_token', 'fake-token')
             localStorage.setItem('user', JSON.stringify(userData))
         })
 

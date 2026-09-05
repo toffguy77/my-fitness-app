@@ -2,9 +2,9 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -70,11 +70,18 @@ func (h *Handler) claimLead(c *gin.Context, token string, userID int64) {
 }
 
 // NewHandler creates a new auth handler
-func NewHandler(db *sql.DB, cfg *config.Config, log *logger.Logger, vs *VerificationService) *Handler {
+// NewHandler takes the service rather than building one.
+//
+// It used to call NewService itself, which meant the process ran two of them:
+// the one wired up at startup and the one the handler quietly made for itself.
+// Configuration applied to the first — the token-version cache, in the case
+// that cost an afternoon — was invisible to the second, and the endpoints went
+// on using a service nobody had finished configuring.
+func NewHandler(service *Service, cfg *config.Config, log *logger.Logger, vs *VerificationService) *Handler {
 	return &Handler{
 		cfg:                 cfg,
 		log:                 log,
-		service:             NewService(db, cfg, log),
+		service:             service,
 		verificationService: vs,
 	}
 }
@@ -118,6 +125,63 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// refreshCookieName is the one cookie a session needs. It is HttpOnly, so no
+// script can read it — which is the whole point: a refresh token in
+// localStorage is readable by anything that manages to run on the page, and a
+// stolen refresh token is a session that outlives every password the victim
+// changes.
+const refreshCookieName = "refresh_token"
+
+// sessionMarkerName says only "this browser has a session", and is readable
+// where the refresh token deliberately is not.
+//
+// The refresh token's Path is scoped to the auth endpoints so it does not
+// travel with every request to every route. That scoping is also why the
+// frontend's edge middleware cannot see it — and something has to tell the
+// edge whether to render a signed-in page or redirect. This marker does, and
+// it grants nothing: it is a flag, not a credential, and every endpoint still
+// demands a real token.
+const sessionMarkerName = "session_present"
+
+// rememberMeLifetime and sessionLifetime are how long the cookie lives. Without
+// "remember me" it is a session cookie: closing the browser ends the session,
+// which is what somebody signing in on a shared machine expects.
+const rememberMeLifetime = 30 * 24 * time.Hour
+
+// setRefreshCookie stores the refresh token where script cannot reach it.
+//
+// Path is scoped to the auth endpoints: the cookie is only ever needed to mint
+// a new access token, so it has no business travelling with every request to
+// every other route.
+//
+// SameSite=Lax rather than Strict: the sign-in flow through an external
+// provider returns to the application via a cross-site redirect, and Strict
+// would withhold the cookie on exactly that navigation, leaving the person
+// signed out immediately after signing in.
+func (h *Handler) setRefreshCookie(c *gin.Context, token string, rememberMe bool) {
+	if token == "" {
+		return
+	}
+	maxAge := 0 // a session cookie
+	if rememberMe {
+		maxAge = int(rememberMeLifetime.Seconds())
+	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	// Secure is unconditional. In development the app is served over http and
+	// the browser will drop it — which is correct: the alternative is a habit
+	// of sending session cookies in the clear that follows the code to
+	// production.
+	c.SetCookie(refreshCookieName, token, maxAge, "/api/v1/auth", "", true, true)
+	c.SetCookie(sessionMarkerName, "1", maxAge, "/", "", true, true)
+}
+
+// clearRefreshCookie ends the session in the browser as well as on the server.
+func (h *Handler) clearRefreshCookie(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(refreshCookieName, "", -1, "/api/v1/auth", "", true, true)
+	c.SetCookie(sessionMarkerName, "", -1, "/", "", true, true)
+}
+
 // Register handles user registration
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterRequest
@@ -150,6 +214,7 @@ func (h *Handler) Register(c *gin.Context) {
 		}
 	}
 
+	h.setRefreshCookie(c, result.RefreshToken, false)
 	response.Success(c, http.StatusCreated, result)
 }
 
@@ -199,6 +264,7 @@ func (h *Handler) Login(c *gin.Context) {
 		h.analytics.RecordServerEvent(c.Request.Context(), "signed_in", result.User.ID,
 			map[string]any{"method": "password"})
 	}
+	h.setRefreshCookie(c, result.RefreshToken, req.RememberMe)
 	response.Success(c, http.StatusOK, result)
 }
 
@@ -210,9 +276,14 @@ func (h *Handler) Refresh(c *gin.Context) {
 	// the sign-in cannot read.
 	_ = c.ShouldBindJSON(&req)
 
-	token := req.RefreshToken
-	if token == "" {
-		token, _ = c.Cookie("refresh_token")
+	// The cookie is preferred over the body: a client that has migrated sends
+	// both for one release, and the cookie is the one we want to keep working.
+	fromCookie := false
+	token, _ := c.Cookie(refreshCookieName)
+	if token != "" {
+		fromCookie = true
+	} else {
+		token = req.RefreshToken
 	}
 	if token == "" {
 		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
@@ -222,10 +293,17 @@ func (h *Handler) Refresh(c *gin.Context) {
 	result, err := h.service.RefreshTokens(c.Request.Context(), token, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		h.log.Errorw("Token refresh failed", "error", err)
+		// The cookie is cleared too: leaving a refresh token the server has
+		// rejected in the browser means every page load retries it.
+		h.clearRefreshCookie(c)
 		response.Error(c, http.StatusUnauthorized, "Invalid or expired refresh token")
 		return
 	}
 
+	// Rotation: the new token replaces the old one in the browser as well.
+	// The cookie keeps whatever lifetime it had — a refresh is not the moment
+	// to decide whether somebody wanted to be remembered.
+	h.setRefreshCookie(c, result.RefreshToken, fromCookie)
 	response.Success(c, http.StatusOK, result)
 }
 
@@ -235,12 +313,18 @@ func (h *Handler) Logout(c *gin.Context) {
 	// Best-effort parse — body may be empty for legacy clients
 	_ = c.ShouldBindJSON(&req)
 
-	if req.RefreshToken != "" {
-		if err := h.service.RevokeRefreshToken(c.Request.Context(), req.RefreshToken); err != nil {
+	token := req.RefreshToken
+	if token == "" {
+		token, _ = c.Cookie(refreshCookieName)
+	}
+	if token != "" {
+		if err := h.service.RevokeRefreshToken(c.Request.Context(), token); err != nil {
 			h.log.Errorw("Failed to revoke refresh token on logout", "error", err)
 		}
 	}
 
+	// Whether or not the revocation worked, the browser stops holding it.
+	h.clearRefreshCookie(c)
 	response.SuccessWithMessage(c, http.StatusOK, "Logged out successfully", nil)
 }
 
@@ -279,7 +363,11 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.ChangePassword(c.Request.Context(), userID.(int64), req.CurrentPassword, req.NewPassword); err != nil {
+	// The change ends every session, including this one. A replacement pair
+	// comes back so the person who just changed their password is not signed
+	// out of the device they are standing at.
+	var replacement LoginResult
+	if err := h.service.ChangePassword(c.Request.Context(), userID.(int64), req.CurrentPassword, req.NewPassword, &replacement); err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrInvalidCredentials):
 			// Its own code: a wrong confirmation password is not an expired
@@ -298,7 +386,11 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	response.SuccessWithMessage(c, http.StatusOK, "Пароль успешно изменён", nil)
+	h.setRefreshCookie(c, replacement.RefreshToken, false)
+	response.SuccessWithMessage(c, http.StatusOK, "Пароль успешно изменён", gin.H{
+		"token":         replacement.Token,
+		"refresh_token": replacement.RefreshToken,
+	})
 }
 
 // VerifyEmailRequest represents email verification request
