@@ -45,6 +45,35 @@ export function currentLanguage(): Language {
     return DEFAULT_LANGUAGE
 }
 
+/**
+ * The text for a key, with any values it interpolates.
+ *
+ * A missing key returns the key itself and complains: a blank space where a
+ * sentence should be is the one outcome that helps nobody — not the reader,
+ * not the person who forgot to add it.
+ */
+export function t(
+    key: string,
+    params?: Record<string, string | number>,
+    language: Language = currentLanguage()
+): string {
+    const value = key.split('.').reduce<unknown>(
+        (node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined),
+        dictionaries[language]
+    )
+
+    if (typeof value !== 'string') {
+        console.warn(`[i18n] missing key "${key}"`)
+        return key
+    }
+
+    if (!params) return value
+
+    return value.replace(/\{(\w+)\}/g, (whole, name: string) =>
+        name in params ? String(params[name]) : whole
+    )
+}
+
 /** The message for an error code the API returned. */
 export function messageForCode(code: string, language: Language = currentLanguage()): string | null {
     const errors = dictionaries[language].errors as Record<string, string>
