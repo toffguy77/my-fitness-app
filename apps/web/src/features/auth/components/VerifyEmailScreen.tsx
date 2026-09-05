@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { verifyEmail, resendVerificationCode } from '@/features/auth/api/verification'
 import { CodeInput } from './CodeInput'
+import { t } from '@/shared/i18n'
 
 export function VerifyEmailScreen() {
     const router = useRouter()
@@ -39,7 +40,7 @@ export function VerifyEmailScreen() {
 
         try {
             await verifyEmail(codeStr)
-            toast.success('Email подтверждён')
+            toast.success(t('auth.verify.confirmed'))
 
             // Update user in localStorage
             const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -53,7 +54,7 @@ export function VerifyEmailScreen() {
                 router.push('/dashboard')
             }
         } catch (err: any) {
-            const msg = err?.response?.data?.message || err?.message || 'Ошибка проверки кода'
+            const msg = err?.response?.data?.message || err?.message || t('auth.verify.checkFailed')
             setError(msg)
             setAttempts((a) => a + 1)
             setCode(Array(6).fill(''))
@@ -79,10 +80,10 @@ export function VerifyEmailScreen() {
         setAttempts(0)
         try {
             await resendVerificationCode()
-            toast.success('Код отправлен повторно')
+            toast.success(t('auth.verify.resent'))
             setResendCooldown(60)
         } catch (err: any) {
-            const msg = err?.response?.data?.message || 'Не удалось отправить код'
+            const msg = err?.response?.data?.message || t('auth.verify.resendFailed')
             toast.error(msg)
         }
     }
@@ -93,10 +94,10 @@ export function VerifyEmailScreen() {
         <div className="min-h-screen bg-gray-50">
             <div className="mx-auto max-w-md px-4 pb-8 pt-24">
                 <h2 className="mb-2 text-center text-xl font-bold text-gray-900">
-                    Подтверждение email
+                    {t('auth.verify.title')}
                 </h2>
                 <p className="mb-8 text-center text-sm text-gray-500">
-                    Мы отправили код на {userEmail}
+                    {t('auth.verify.sentTo', { email: userEmail })}
                 </p>
 
                 <div className="mb-6">
@@ -114,7 +115,7 @@ export function VerifyEmailScreen() {
 
                 {isBlocked && (
                     <p className="mb-4 text-center text-sm text-gray-600">
-                        Слишком много попыток. Запросите новый код.
+                        {t('auth.verify.tooManyAttempts')}
                     </p>
                 )}
 
@@ -126,8 +127,8 @@ export function VerifyEmailScreen() {
                         className="text-sm text-blue-600 transition-colors hover:text-blue-700 disabled:text-gray-400"
                     >
                         {resendCooldown > 0
-                            ? `Отправить повторно (${resendCooldown}с)`
-                            : 'Отправить повторно'}
+                            ? t('auth.verify.resendIn', { seconds: resendCooldown })
+                            : t('auth.verify.resend')}
                     </button>
                 </div>
             </div>

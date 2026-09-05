@@ -30,21 +30,17 @@ import {
 import { StepIndicator } from './StepIndicator'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { EVENTS, track, TrackView } from '@/shared/analytics'
+import { t } from '@/shared/i18n'
 
-const goals: { value: FitnessGoal; label: string; hint: string }[] = [
-    { value: 'loss', label: 'Снизить вес', hint: 'дефицит калорий' },
-    { value: 'maintain', label: 'Удержать вес', hint: 'норма поддержания' },
-    { value: 'gain', label: 'Набрать массу', hint: 'профицит калорий' },
-]
+const goals: FitnessGoal[] = ['loss', 'maintain', 'gain']
 
-const activityLevels: { value: ActivityLevel; label: string; hint: string }[] = [
-    { value: 'sedentary', label: 'Сидячий образ жизни', hint: 'офис, мало ходьбы' },
-    { value: 'light', label: 'Лёгкая активность', hint: '1–2 тренировки в неделю' },
-    { value: 'moderate', label: 'Умеренная активность', hint: '3–4 тренировки в неделю' },
-    { value: 'active', label: 'Высокая активность', hint: '5+ тренировок в неделю' },
-]
+const activityLevels: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active']
 
-const stepTitles = ['Цель', 'Параметры', 'Активность', 'Результат', 'Сохранить']
+const sexes: Sex[] = ['female', 'male']
+
+// Only its length is read during render; the titles themselves come from the
+// dictionary at the point of use.
+const stepCount = 5
 
 export function GuestOnboarding() {
     const router = useRouter()
@@ -64,7 +60,7 @@ export function GuestOnboarding() {
                 rememberLeadToken(resumeToken)
                 state.load(lead.parameters, lead.result)
             })
-            .catch(() => toast.error('Ссылка устарела — параметры можно ввести заново'))
+            .catch(() => toast.error(t('onboarding.guest.linkExpired')))
         // Runs once for the token in the URL.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resumeToken])
@@ -84,7 +80,7 @@ export function GuestOnboarding() {
     const handleCalculate = async () => {
         const parameters = parametersOf(state)
         if (!parameters) {
-            toast.error('Заполните все параметры')
+            toast.error(t('onboarding.guest.fillAll'))
             return
         }
 
@@ -99,7 +95,7 @@ export function GuestOnboarding() {
             state.setStep(GUEST_STEPS.result)
             recordStep(GUEST_STEPS.result)
         } catch {
-            toast.error('Не удалось выполнить расчёт. Проверьте параметры.')
+            toast.error(t('onboarding.guest.calcFailed'))
         } finally {
             setCalculating(false)
         }
@@ -127,33 +123,35 @@ export function GuestOnboarding() {
         <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-8">
             <TrackView event={EVENTS.onboardingStarted} />
             <StepIndicator
-                currentStep={Math.min(state.step, stepTitles.length - 1)}
-                totalSteps={stepTitles.length}
+                currentStep={Math.min(state.step, stepCount - 1)}
+                totalSteps={stepCount}
             />
 
             <div className="mt-8 flex-1">
                 {state.step === GUEST_STEPS.goal && (
                     <section>
-                        <h1 className="text-xl font-bold text-gray-900">Какая у вас цель?</h1>
+                        <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.goalTitle')}</h1>
                         <p className="mt-2 text-sm text-gray-600">
-                            От неё зависит норма калорий — расчёт займёт минуту и не потребует аккаунта.
+                            {t('onboarding.guest.goalHint')}
                         </p>
                         <div className="mt-6 space-y-3">
                             {goals.map((goal) => (
                                 <button
-                                    key={goal.value}
-                                    onClick={() => state.setGoal(goal.value)}
-                                    aria-pressed={state.goal === goal.value}
+                                    key={goal}
+                                    onClick={() => state.setGoal(goal)}
+                                    aria-pressed={state.goal === goal}
                                     className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
-                                        state.goal === goal.value
+                                        state.goal === goal
                                             ? 'border-blue-600 bg-blue-50'
                                             : 'border-gray-300 bg-white hover:bg-gray-50'
                                     }`}
                                 >
                                     <span className="block text-sm font-medium text-gray-900">
-                                        {goal.label}
+                                        {t(`onboarding.guestGoal.${goal}`)}
                                     </span>
-                                    <span className="block text-xs text-gray-500">{goal.hint}</span>
+                                    <span className="block text-xs text-gray-500">
+                                        {t(`onboarding.guestGoalHint.${goal}`)}
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -162,31 +160,26 @@ export function GuestOnboarding() {
 
                 {state.step === GUEST_STEPS.body && (
                     <section>
-                        <h1 className="text-xl font-bold text-gray-900">Ваши параметры</h1>
+                        <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.bodyTitle')}</h1>
                         <p className="mt-2 text-sm text-gray-600">
-                            Нужны для расчёта. Пока вы не сохраните результат, они остаются в этом браузере.
+                            {t('onboarding.guest.bodyHint')}
                         </p>
 
                         <fieldset className="mt-6">
-                            <legend className="text-sm font-medium text-gray-900">Пол</legend>
+                            <legend className="text-sm font-medium text-gray-900">{t('onboarding.sex')}</legend>
                             <div className="mt-2 grid grid-cols-2 gap-3">
-                                {(
-                                    [
-                                        { value: 'female', label: 'Женский' },
-                                        { value: 'male', label: 'Мужской' },
-                                    ] as { value: Sex; label: string }[]
-                                ).map((option) => (
+                                {sexes.map((sex) => (
                                     <button
-                                        key={option.value}
-                                        onClick={() => state.setSex(option.value)}
-                                        aria-pressed={state.sex === option.value}
+                                        key={sex}
+                                        onClick={() => state.setSex(sex)}
+                                        aria-pressed={state.sex === sex}
                                         className={`rounded-lg border py-3 text-sm transition-colors ${
-                                            state.sex === option.value
+                                            state.sex === sex
                                                 ? 'border-blue-600 bg-blue-50 text-gray-900'
                                                 : 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50'
                                         }`}
                                     >
-                                        {option.label}
+                                        {sex === 'female' ? t('onboarding.female') : t('onboarding.male')}
                                     </button>
                                 ))}
                             </div>
@@ -195,7 +188,7 @@ export function GuestOnboarding() {
                         <div className="mt-6 space-y-4">
                             <div>
                                 <label htmlFor="guest-birth" className="block text-sm font-medium text-gray-900">
-                                    Дата рождения
+                                    {t('onboarding.birthDate')}
                                 </label>
                                 <input
                                     id="guest-birth"
@@ -207,7 +200,7 @@ export function GuestOnboarding() {
                             </div>
                             <div>
                                 <label htmlFor="guest-height" className="block text-sm font-medium text-gray-900">
-                                    Рост, см
+                                    {t('onboarding.guest.heightCm')}
                                 </label>
                                 <input
                                     id="guest-height"
@@ -221,7 +214,7 @@ export function GuestOnboarding() {
                             </div>
                             <div>
                                 <label htmlFor="guest-weight" className="block text-sm font-medium text-gray-900">
-                                    Вес, кг
+                                    {t('onboarding.guest.weightKg')}
                                 </label>
                                 <input
                                     id="guest-weight"
@@ -239,24 +232,26 @@ export function GuestOnboarding() {
 
                 {state.step === GUEST_STEPS.activity && (
                     <section>
-                        <h1 className="text-xl font-bold text-gray-900">Насколько вы активны?</h1>
-                        <p className="mt-2 text-sm text-gray-600">Последний вопрос перед расчётом.</p>
+                        <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.activityTitle')}</h1>
+                        <p className="mt-2 text-sm text-gray-600">{t('onboarding.guest.activityHint')}</p>
                         <div className="mt-6 space-y-3">
                             {activityLevels.map((level) => (
                                 <button
-                                    key={level.value}
-                                    onClick={() => state.setActivityLevel(level.value)}
-                                    aria-pressed={state.activityLevel === level.value}
+                                    key={level}
+                                    onClick={() => state.setActivityLevel(level)}
+                                    aria-pressed={state.activityLevel === level}
                                     className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
-                                        state.activityLevel === level.value
+                                        state.activityLevel === level
                                             ? 'border-blue-600 bg-blue-50'
                                             : 'border-gray-300 bg-white hover:bg-gray-50'
                                     }`}
                                 >
                                     <span className="block text-sm font-medium text-gray-900">
-                                        {level.label}
+                                        {t(`onboarding.activity.${level}`)}
                                     </span>
-                                    <span className="block text-xs text-gray-500">{level.hint}</span>
+                                    <span className="block text-xs text-gray-500">
+                                        {t(`onboarding.activityHint.${level}`)}
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -296,7 +291,9 @@ export function GuestOnboarding() {
                         className="flex w-full items-center justify-center rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                     >
                         {calculating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {state.step === GUEST_STEPS.activity ? 'Показать мою норму' : 'Далее'}
+                        {state.step === GUEST_STEPS.activity
+                            ? t('onboarding.guest.showMyNorm')
+                            : t('onboarding.guest.next')}
                     </button>
 
                     {state.step > GUEST_STEPS.goal && (
@@ -304,16 +301,16 @@ export function GuestOnboarding() {
                             onClick={state.back}
                             className="w-full text-sm text-gray-600 hover:text-gray-900"
                         >
-                            Назад
+                            {t('onboarding.guest.back')}
                         </button>
                     )}
                 </div>
             )}
 
             <p className="mt-8 text-center text-sm text-gray-600">
-                Уже есть аккаунт?{' '}
+                {t('onboarding.guest.haveAccount')}{' '}
                 <a href="/auth" className="text-blue-600 hover:underline">
-                    Войти
+                    {t('onboarding.guest.signIn')}
                 </a>
             </p>
 
@@ -333,24 +330,24 @@ function GuestResultView({
     onSave: () => void
 }) {
     const macros = [
-        { label: 'Белки', value: Math.round(result.protein), unit: 'г' },
-        { label: 'Жиры', value: Math.round(result.fat), unit: 'г' },
-        { label: 'Углеводы', value: Math.round(result.carbs), unit: 'г' },
+        { label: t('onboarding.guest.protein'), value: Math.round(result.protein) },
+        { label: t('onboarding.guest.fat'), value: Math.round(result.fat) },
+        { label: t('onboarding.guest.carbs'), value: Math.round(result.carbs) },
     ]
 
     return (
         <section>
-            <h1 className="text-xl font-bold text-gray-900">Ваша дневная норма</h1>
+            <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.resultTitle')}</h1>
             <p className="mt-2 text-sm text-gray-600">
-                Рассчитано по вашим параметрам — это то, с чем работает дневник питания.
+                {t('onboarding.guest.resultHint')}
             </p>
 
             <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 text-center">
-                <p className="text-sm text-gray-600">Калории</p>
+                <p className="text-sm text-gray-600">{t('onboarding.guest.calories')}</p>
                 <p className="text-4xl font-bold text-gray-900" data-testid="guest-calories">
                     {Math.round(result.calories)}
                 </p>
-                <p className="text-sm text-gray-600">ккал в день</p>
+                <p className="text-sm text-gray-600">{t('onboarding.guest.kcalPerDay')}</p>
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-3">
@@ -359,21 +356,24 @@ function GuestResultView({
                         <p className="text-xs text-gray-600">{macro.label}</p>
                         <p className="text-lg font-semibold text-gray-900">
                             {macro.value}
-                            <span className="text-xs font-normal text-gray-500"> {macro.unit}</span>
+                            <span className="text-xs font-normal text-gray-500">
+                                {' '}
+                                {t('onboarding.guest.gram')}
+                            </span>
                         </p>
                     </div>
                 ))}
             </div>
 
             <p className="mt-4 text-sm text-gray-600">
-                Вода: {result.water_glasses} стаканов по 250 мл в день.
+                {t('onboarding.guest.water', { glasses: result.water_glasses })}
             </p>
 
             <button
                 onClick={onSave}
                 className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
             >
-                Сохранить результат
+                {t('onboarding.guest.saveResult')}
             </button>
         </section>
     )
@@ -404,10 +404,10 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
             })
             rememberLeadToken(token)
             track(EVENTS.leadSaved, { contact_consent: contactConsent })
-            toast.success('Результат сохранён')
+            toast.success(t('onboarding.guest.saved'))
             onSaved()
         } catch {
-            toast.error('Не удалось сохранить результат')
+            toast.error(t('onboarding.guest.saveFailed'))
         } finally {
             setSaving(false)
         }
@@ -415,10 +415,9 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
 
     return (
         <section>
-            <h1 className="text-xl font-bold text-gray-900">Куда прислать результат?</h1>
+            <h1 className="text-xl font-bold text-gray-900">{t('onboarding.guest.saveTitle')}</h1>
             <p className="mt-2 text-sm text-gray-600">
-                Сохраним расчёт, чтобы вы могли вернуться к нему с любого устройства и не вводить
-                параметры заново.
+                {t('onboarding.guest.saveHint')}
             </p>
 
             <div className="mt-6 space-y-4">
@@ -438,7 +437,7 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                 </div>
                 <div>
                     <label htmlFor="guest-name" className="block text-sm font-medium text-gray-900">
-                        Имя (необязательно)
+                        {t('onboarding.guest.nameOptional')}
                     </label>
                     <input
                         id="guest-name"
@@ -462,7 +461,7 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                         className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
                     />
                     <span className="text-sm text-gray-600">
-                        Согласен на обработку персональных данных, включая указанные параметры тела
+                        {t('onboarding.guest.consent')}
                     </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-3">
@@ -473,7 +472,7 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                         className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
                     />
                     <span className="text-sm text-gray-600">
-                        Можно напомнить мне о сохранённом расчёте письмом — один раз
+                        {t('onboarding.guest.reminder')}
                     </span>
                 </label>
             </div>
@@ -483,11 +482,11 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                 disabled={!email || !dataConsent || saving}
                 className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
-                {saving ? 'Сохраняем...' : 'Сохранить и продолжить'}
+                {saving ? t('onboarding.guest.saving') : t('onboarding.guest.saveAndContinue')}
             </button>
 
             <button onClick={onSkip} className="mt-3 w-full text-sm text-gray-600 hover:text-gray-900">
-                Продолжить без сохранения
+                {t('onboarding.guest.continueWithoutSaving')}
             </button>
         </section>
     )

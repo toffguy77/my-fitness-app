@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
+import { t } from '@/shared/i18n'
 
 interface LoginFormProps {
     onSubmit?: (data: { email: string; password: string }) => void | Promise<void>
@@ -25,13 +26,13 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
         const newErrors: { email?: string; password?: string } = {}
 
         if (!email) {
-            newErrors.email = 'Обязательное поле'
+            newErrors.email = t('auth.validation.required')
         } else if (!validateEmail(email)) {
-            newErrors.email = 'Некорректный email'
+            newErrors.email = t('auth.validation.invalidEmail')
         }
 
         if (!password) {
-            newErrors.password = 'Обязательное поле'
+            newErrors.password = t('auth.validation.required')
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -88,7 +89,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
             </div>
 
             <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? 'Загрузка...' : 'Войти'}
+                {isLoading ? t('auth.loading') : t('auth.signIn')}
             </Button>
         </form>
     )

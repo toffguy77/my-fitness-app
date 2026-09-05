@@ -8,6 +8,7 @@
 'use client';
 
 import { SupportLink } from '@/shared/components/SupportLink';
+import { t } from '@/shared/i18n'
 
 export function AuthFooter() {
     const supportEmail = 'support@burcev.team';
@@ -15,12 +16,12 @@ export function AuthFooter() {
     return (
         <footer className="mt-8 border-t border-gray-200 pt-6 text-center">
             <p className="text-sm text-gray-600">
-                Нужна помощь?{' '}
+                {t('auth.needHelp')}{' '}
                 <a
                     href={`mailto:${supportEmail}`}
                     className="text-blue-600 hover:text-blue-700 hover:underline"
                 >
-                    Связаться с нами
+                    {t('auth.contactUs')}
                 </a>
             </p>
             {/* Faster than email, and available before there is an account. */}

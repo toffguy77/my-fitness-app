@@ -15,6 +15,7 @@ import toast from 'react-hot-toast'
 import { providersApi, providerLabel, needsLinkConfirmation } from '@/features/auth/api/providers'
 import { storeSession, destinationFor } from '@/features/auth/utils/session'
 import { isApiError } from '@/shared/errors/apiErrors'
+import { t } from '@/shared/i18n'
 
 export function OAuthEmailScreen() {
     const router = useRouter()
@@ -45,10 +46,10 @@ export function OAuthEmailScreen() {
             router.replace(destinationFor(result.user))
         } catch (error) {
             if (isApiError(error) && error.status === 400) {
-                toast.error('Попытка входа истекла. Начните заново.')
+                toast.error(t('auth.oauth.expired'))
                 router.replace('/auth')
             } else {
-                toast.error('Не удалось завершить вход')
+                toast.error(t('auth.oauth.completeFailed'))
             }
         } finally {
             setIsSubmitting(false)
@@ -58,10 +59,9 @@ export function OAuthEmailScreen() {
     return (
         <main className="flex min-h-screen flex-col justify-center bg-gray-50 px-6">
             <div className="mx-auto w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <h1 className="text-lg font-semibold text-gray-900">Укажите почту</h1>
+                <h1 className="text-lg font-semibold text-gray-900">{t('auth.oauth.emailTitle')}</h1>
                 <p className="mt-2 text-sm text-gray-600">
-                    {providerLabel(provider)} не сообщил ваш адрес. Он нужен, чтобы вы могли
-                    восстановить доступ и получать письма о вашем прогрессе.
+                    {t('auth.oauth.emailHint', { provider: providerLabel(provider) })}
                 </p>
 
                 <form onSubmit={handleSubmit} className="mt-6">
@@ -83,7 +83,7 @@ export function OAuthEmailScreen() {
                         disabled={!email || isSubmitting}
                         className="mt-4 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                     >
-                        {isSubmitting ? 'Продолжаем...' : 'Продолжить'}
+                        {isSubmitting ? t('auth.oauth.continuing') : t('auth.oauth.continueAction')}
                     </button>
                 </form>
             </div>

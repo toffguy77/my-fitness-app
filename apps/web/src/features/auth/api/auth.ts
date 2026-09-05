@@ -8,6 +8,7 @@ import { apiClient } from '@/shared/utils/api-client';
 import { leadToken } from '@/features/onboarding/api/guest';
 import { visitorId } from '@/shared/analytics';
 import type { AuthFormData, ConsentState, AuthResponse, AuthError } from '@/features/auth/types';
+import { t } from '@/shared/i18n';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -84,14 +85,14 @@ export function mapApiError(error: any): AuthError {
     if (message?.toLowerCase().includes('already exists')) {
         return {
             code: 'user_exists',
-            message: 'Пользователь уже существует',
+            message: t('auth.userExists'),
         };
     }
 
     if (message?.toLowerCase().includes('invalid credentials')) {
         return {
             code: 'invalid_credentials',
-            message: 'Неверный логин или пароль',
+            message: t('auth.invalidCredentials'),
         };
     }
 
@@ -99,14 +100,14 @@ export function mapApiError(error: any): AuthError {
     if (status === 401) {
         return {
             code: 'invalid_credentials',
-            message: 'Неверный логин или пароль',
+            message: t('auth.invalidCredentials'),
         };
     }
 
     if (status === 409) {
         return {
             code: 'user_exists',
-            message: 'Пользователь уже существует',
+            message: t('auth.userExists'),
         };
     }
 
@@ -120,12 +121,12 @@ export function mapApiError(error: any): AuthError {
     if (status >= 500) {
         return {
             code: 'server_error',
-            message: 'Сервис временно недоступен',
+            message: t('auth.serviceUnavailable'),
         };
     }
 
     return {
         code: 'server_error',
-        message: 'Сервис временно недоступен',
+        message: t('auth.serviceUnavailable'),
     };
 }

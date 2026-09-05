@@ -1,4 +1,4 @@
-import { messageForCode, knownErrorCodes, plural, formatDate, formatNumber, currentLanguage } from '../index'
+import { messageForCode, knownErrorCodes, plural, formatDate, formatNumber, currentLanguage, t } from '../index'
 import { pluralRu, pluralEn } from '../plural'
 import { messageFor } from '@/shared/errors/apiErrors'
 import { ApiError, NetworkError } from '@/shared/errors/apiErrors'
@@ -131,5 +131,36 @@ describe('Formatting for a reader', () => {
         expect(currentLanguage()).toBe('ru')
 
         localStorage.clear()
+    })
+})
+
+describe('t', () => {
+    it('returns the text for a nested key', () => {
+        expect(t('auth.signIn')).toBe('Войти')
+    })
+
+    it('substitutes named parameters', () => {
+        expect(t('auth.codeDigit', { position: 3 })).toBe('Цифра 3')
+    })
+
+    it('leaves a placeholder alone when no value was given for it', () => {
+        expect(t('auth.verify.sentTo', {})).toBe('Мы отправили код на {email}')
+    })
+
+    it('shows the key and complains when the dictionary has no entry', () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+        expect(t('auth.nothingLikeThis')).toBe('auth.nothingLikeThis')
+        expect(warn).toHaveBeenCalled()
+
+        warn.mockRestore()
+    })
+
+    it('does not mistake a group for a string', () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+        expect(t('auth.consent')).toBe('auth.consent')
+
+        warn.mockRestore()
     })
 })

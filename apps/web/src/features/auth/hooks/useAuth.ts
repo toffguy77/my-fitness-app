@@ -17,6 +17,7 @@ import { forgetLeadToken } from '@/features/onboarding/api/guest';
 import { EVENTS, track, flush } from '@/shared/analytics';
 import type { AuthFormData, ConsentState, AuthError } from '@/features/auth/types';
 import toast from 'react-hot-toast';
+import { t } from '@/shared/i18n';
 
 export function useAuth() {
     const router = useRouter();
@@ -47,7 +48,7 @@ export function useAuth() {
                 return;
             }
 
-            toast.success('Вход выполнен успешно');
+            toast.success(t('auth.signedIn'));
             router.push(destinationFor(response.user));
         } catch (err) {
             const authError = err as AuthError;
@@ -78,7 +79,7 @@ export function useAuth() {
             // only place that knows it actually happened.
             flush();
 
-            toast.success('Регистрация успешна');
+            toast.success(t('auth.registered'));
             router.push('/auth/verify-email');
         } catch (err) {
             const authError = err as AuthError;

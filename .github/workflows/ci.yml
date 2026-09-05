@@ -42,6 +42,11 @@ jobs:
       - name: Check codebase integrity
         run: node scripts/check-codebase-integrity.mjs
 
+      # Catches a Russian sentence written inline in a section that has been
+      # translated, and a t() key the dictionary does not have.
+      - name: Check translations
+        run: node scripts/check-i18n.mjs
+
       - name: TypeScript
         run: npm run type-check
 
