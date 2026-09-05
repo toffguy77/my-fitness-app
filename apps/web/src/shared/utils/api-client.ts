@@ -61,6 +61,30 @@ function legacyBody(): Record<string, string> {
     return { refresh_token: leftover };
 }
 
+/**
+ * The one refresh in flight, if any.
+ *
+ * Every path that mints an access token goes through this: the silent one on
+ * page load and the one a 401 triggers. Two refreshes at once present the same
+ * cookie, and the refresh token rotates on use — so the second one arrives with
+ * a token that has just been replaced. Inside the server's grace window that is
+ * forgiven; outside it, it looks exactly like a stolen token being replayed and
+ * the whole family is revoked. A page that fires several requests at once, or
+ * two tabs opened together, could end their own session that way.
+ */
+let refreshInFlight: Promise<string> | null = null;
+
+/** Mints an access token, joining a refresh already under way. */
+function refreshOnce(perform: () => Promise<string>): Promise<string> {
+    if (refreshInFlight) return refreshInFlight;
+
+    refreshInFlight = perform().finally(() => {
+        refreshInFlight = null;
+    });
+
+    return refreshInFlight;
+}
+
 type RefreshSubscriber = (token: string) => void;
 
 let isRefreshing = false;
@@ -149,13 +173,16 @@ class ApiClient {
 
         // No token is read here any more: the refresh token is in a cookie the
         // browser attaches by itself, and script cannot see whether it exists.
-        // The only way to find out is to ask, so we ask.
-        return this.refreshWithRetry(3, 1000)
-            .then((data: { token: string }) => {
-                setToken(data.token);
+        // The only way to find out is to ask, so we ask — through the same
+        // single flight the silent refresh on page load uses, because two
+        // refreshes with one rotating cookie end the session they were trying
+        // to keep.
+        return refreshOnce(() => this.refreshWithRetry(3, 1000).then((data) => data.token))
+            .then((token: string) => {
+                setToken(token);
                 isRefreshing = false;
-                onTokenRefreshed(data.token);
-                return retryFetch(data.token);
+                onTokenRefreshed(token);
+                return retryFetch(token);
             })
             .catch((err) => {
                 isRefreshing = false;
@@ -305,13 +332,16 @@ class ApiClient {
 
         // No token is read here any more: the refresh token is in a cookie the
         // browser attaches by itself, and script cannot see whether it exists.
-        // The only way to find out is to ask, so we ask.
-        return this.refreshWithRetry(3, 1000)
-            .then((data: { token: string }) => {
-                setToken(data.token);
+        // The only way to find out is to ask, so we ask — through the same
+        // single flight the silent refresh on page load uses, because two
+        // refreshes with one rotating cookie end the session they were trying
+        // to keep.
+        return refreshOnce(() => this.refreshWithRetry(3, 1000).then((data) => data.token))
+            .then((token: string) => {
+                setToken(token);
                 isRefreshing = false;
-                onTokenRefreshed(data.token);
-                return retryFetch(data.token);
+                onTokenRefreshed(token);
+                return retryFetch(token);
             })
             .catch((err) => {
                 isRefreshing = false;
@@ -387,24 +417,31 @@ class ApiClient {
      * not send anybody anywhere.
      */
     async refreshSession(): Promise<string> {
-        const res = await request(`${API_BASE}/api/v1/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(legacyBody()),
-            cache: 'no-store',
+        return refreshOnce(async () => {
+            const res = await request(`${API_BASE}/api/v1/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(legacyBody()),
+                cache: 'no-store',
+            });
+
+            if (!res.ok) {
+                throw new Error(`No session (${res.status})`);
+            }
+
+            legacyStorage.clear();
+            const json = await res.json();
+            const data = json.data !== undefined ? json.data : json;
+            if (!data?.token) {
+                throw new Error('Refresh returned no token');
+            }
+
+            // Whoever asked for this token is not the only one who needs it:
+            // a request that 401'd while this was in flight is waiting.
+            setToken(data.token as string);
+            onTokenRefreshed(data.token as string);
+            return data.token as string;
         });
-
-        if (!res.ok) {
-            throw new Error(`No session (${res.status})`);
-        }
-
-        legacyStorage.clear();
-        const json = await res.json();
-        const data = json.data !== undefined ? json.data : json;
-        if (!data?.token) {
-            throw new Error('Refresh returned no token');
-        }
-        return data.token as string;
     }
 }
 

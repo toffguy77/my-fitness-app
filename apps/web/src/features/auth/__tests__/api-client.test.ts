@@ -290,3 +290,55 @@ describe('API Client', () => {
         });
     });
 });
+
+describe('concurrent refreshes', () => {
+    beforeEach(() => {
+        global.fetch = jest.fn()
+    })
+
+    afterEach(() => {
+        jest.restoreAllMocks()
+    })
+
+    it('makes one refresh serve every request that needed it', async () => {
+        // The refresh token rotates on use. Two refreshes at once present the
+        // same cookie, and the second arrives with one that has just been
+        // replaced — which, outside the server's grace window, looks exactly
+        // like a stolen token being replayed and revokes the whole family. A
+        // page that fires several requests at once could end its own session.
+        let refreshes = 0
+        ;(global.fetch as jest.Mock).mockImplementation(async (url: string) => {
+            if (String(url).includes('/auth/refresh')) {
+                refreshes += 1
+                await new Promise((resolve) => setTimeout(resolve, 20))
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ data: { token: 'a-fresh-token' } }),
+                }
+            }
+            return { ok: true, status: 200, json: async () => ({ data: {} }) }
+        })
+
+        await Promise.all([
+            apiClient.refreshSession(),
+            apiClient.refreshSession(),
+            apiClient.refreshSession(),
+        ])
+
+        expect(refreshes).toBe(1)
+    })
+
+    it('starts a new refresh once the previous one has finished', async () => {
+        let refreshes = 0
+        ;(global.fetch as jest.Mock).mockImplementation(async () => {
+            refreshes += 1
+            return { ok: true, status: 200, json: async () => ({ data: { token: 't' } }) }
+        })
+
+        await apiClient.refreshSession()
+        await apiClient.refreshSession()
+
+        expect(refreshes).toBe(2)
+    })
+})

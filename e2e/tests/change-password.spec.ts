@@ -94,6 +94,37 @@ test.describe('Change password, end to end', () => {
     await expect(page.getByText(/Пароль успешно изменён/)).toBeVisible({ timeout: 15000 })
   }
 
+  // Whatever happens, the account goes back to the password the seed gave it.
+  //
+  // Without this the test poisons itself: a failure anywhere after the change
+  // leaves the account rotated, and both retries then fail at the sign-in for
+  // a completely different reason — which hides the original failure behind
+  // two misleading ones.
+  test.afterEach(async ({ browser, baseURL }) => {
+    const context = await browser.newContext()
+    try {
+      const asSeeded = await context.request.post(`${baseURL}/api/v1/auth/login`, {
+        data: { email: account.email, password: account.password },
+      })
+      if (asSeeded.ok()) return
+
+      const asRotated = await context.request.post(`${baseURL}/api/v1/auth/login`, {
+        data: { email: account.email, password: NEW_PASSWORD },
+      })
+      if (!asRotated.ok()) return
+
+      // Changing a password is authenticated by the access token, not the
+      // cookie — the endpoint deliberately re-checks who is asking.
+      const { data } = await asRotated.json()
+      await context.request.post(`${baseURL}/api/v1/auth/change-password`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+        data: { current_password: NEW_PASSWORD, new_password: account.password },
+      })
+    } finally {
+      await context.close()
+    }
+  })
+
   test('the new password works and the old one does not', async ({ page }) => {
     await signIn(page, account.email, account.password)
     await change(page, account.password, NEW_PASSWORD)
