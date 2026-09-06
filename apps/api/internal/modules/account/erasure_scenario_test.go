@@ -6,61 +6,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/migrations"
+	"github.com/burcev/api/internal/testsupport"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// A schema of its own per run, so the scenario can write freely and leave
-// nothing behind.
-func erasureSchema(t *testing.T) *database.DB {
-	t.Helper()
-
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL is not set; skipping integration test")
-	}
-
-	admin, err := sql.Open("pgx", dsn)
-	require.NoError(t, err)
-	defer func() { _ = admin.Close() }()
-	require.NoError(t, admin.Ping())
-
-	schema := fmt.Sprintf("erasure_test_%d", os.Getpid())
-	_, err = admin.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
-	require.NoError(t, err)
-	_, err = admin.Exec(fmt.Sprintf("CREATE SCHEMA %s", schema))
-	require.NoError(t, err)
-
-	separator := "?"
-	if strings.Contains(dsn, "?") {
-		separator = "&"
-	}
-	scoped, err := sql.Open("pgx", fmt.Sprintf("%s%ssearch_path=%s,public", dsn, separator, schema))
-	require.NoError(t, err)
-	require.NoError(t, scoped.Ping())
-
-	t.Cleanup(func() {
-		_ = scoped.Close()
-		if cleanup, err := sql.Open("pgx", dsn); err == nil {
-			_, _ = cleanup.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
-			_ = cleanup.Close()
-		}
-	})
-
-	db := &database.DB{DB: scoped}
-	require.NoError(t, database.NewMigrator(db, migrations.FS, logger.New()).
-		Run(context.Background(), 0))
-	return db
-}
 
 func account_(t *testing.T, db *database.DB, email, role string) int64 {
 	t.Helper()
@@ -93,7 +48,7 @@ func message(t *testing.T, db *database.DB, conversationID string, senderID int6
 // conversation is the curator's record too: it stays readable, and loses its
 // author rather than its text.
 func TestErasureKeepsTheCuratorsConversationAnonymised(t *testing.T) {
-	db := erasureSchema(t)
+	db := testsupport.SchemaWithMigrations(t, "erasure")
 	ctx := context.Background()
 	service := account.NewService(db, logger.New(), nil)
 
@@ -156,7 +111,7 @@ func TestErasureKeepsTheCuratorsConversationAnonymised(t *testing.T) {
 // therefore collides with the first — and an erasure that fails is an erasure
 // that never happens, because the job gives up on the whole account.
 func TestErasureOfASecondClientOfTheSameCurator(t *testing.T) {
-	db := erasureSchema(t)
+	db := testsupport.SchemaWithMigrations(t, "erasure")
 	ctx := context.Background()
 	service := account.NewService(db, logger.New(), nil)
 

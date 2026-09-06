@@ -305,13 +305,15 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	var id, userID int64
 	var expiresAt time.Time
 	var revokedAt sql.NullTime
+	var replacedBy sql.NullString
 	var rememberMe bool
 
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens WHERE token_hash = $1`,
+		`SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me
+		 FROM refresh_tokens WHERE token_hash = $1`,
 		tokenHash,
-	).Scan(&id, &userID, &expiresAt, &revokedAt, &rememberMe)
+	).Scan(&id, &userID, &expiresAt, &revokedAt, &replacedBy, &rememberMe)
 	s.log.LogDatabaseQuery("Refresh.LookupToken", time.Since(startTime), err, nil)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -324,7 +326,16 @@ func (s *Service) RefreshTokens(ctx context.Context, plainToken, ip, ua string) 
 	// rotation (grace period for concurrent requests from multiple tabs).
 	if revokedAt.Valid {
 		gracePeriod := 30 * time.Second
-		if time.Since(revokedAt.Time) < gracePeriod {
+		// Only a rotation earns the grace period, and a rotation is what set
+		// replaced_by_hash. A revocation made for safety — a password change,
+		// a reset, reuse detection itself — leaves it empty.
+		//
+		// Without that distinction the grace period undid the thing it sat
+		// next to: for thirty seconds after somebody changed their password,
+		// the old refresh token still bought a working session, which is
+		// exactly the token they changed their password to defeat.
+		rotated := replacedBy.Valid && replacedBy.String != ""
+		if rotated && time.Since(revokedAt.Time) < gracePeriod {
 			// Recent revocation — likely a race condition from multiple tabs.
 			// Look up the replacement token's result instead of revoking everything.
 			s.log.Infow("Refresh token reuse within grace period, looking up replacement",
