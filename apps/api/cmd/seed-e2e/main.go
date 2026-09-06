@@ -42,6 +42,11 @@ var accounts = []account{
 	// user has: sharing the client account would sign the rest of the suite
 	// out mid-run.
 	{"password", "E2E_PASSWORD_EMAIL", "E2E_PASSWORD_PASSWORD", "client", "E2E Password"},
+	// A second curator with no clients of their own, so the suite can ask the
+	// question that matters: what happens when a curator addresses somebody
+	// else's client. Row-level security was turned off by migration 015, so
+	// nothing but an explicit check stands between them.
+	{"other-curator", "E2E_OTHER_CURATOR_EMAIL", "E2E_OTHER_CURATOR_PASSWORD", "coordinator", "E2E Other Curator"},
 }
 
 func main() {
