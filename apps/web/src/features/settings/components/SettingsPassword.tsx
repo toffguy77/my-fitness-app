@@ -7,25 +7,26 @@ import { PasswordInput } from '@/shared/components/forms/PasswordInput'
 import { passwordSchema } from '@/features/auth/utils/validation'
 import { messageFor } from '@/shared/errors/apiErrors'
 import { changePassword } from '../api/settings'
+import { t } from '@/shared/i18n'
 
 const changePasswordSchema = z
     .object({
-        currentPassword: z.string().min(1, 'Введите текущий пароль'),
+        currentPassword: z.string().min(1, t('settings.password.enterCurrent')),
         newPassword: passwordSchema,
-        confirmPassword: z.string().min(1, 'Подтвердите новый пароль'),
+        confirmPassword: z.string().min(1, t('settings.password.confirmNew')),
     })
     .superRefine((data, ctx) => {
         if (data.newPassword === data.confirmPassword) return
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['confirmPassword'],
-            message: 'Пароли не совпадают',
+            message: t('settings.password.mismatch'),
         })
     })
 
 export function SettingsPassword() {
     return (
-        <SettingsPageLayout title="Изменить пароль">
+        <SettingsPageLayout title={t('settings.titles.password')}>
             {() => <PasswordForm />}
         </SettingsPageLayout>
     )
@@ -72,12 +73,12 @@ function PasswordForm() {
     if (success) {
         return (
             <div className="rounded-lg bg-green-50 p-4 text-green-800">
-                <p className="font-medium">Пароль успешно изменён</p>
+                <p className="font-medium">{t('settings.password.changed')}</p>
                 <button
                     onClick={() => setSuccess(false)}
                     className="mt-3 text-sm text-green-700 underline"
                 >
-                    Изменить ещё раз
+                    {t('settings.password.changeAgain')}
                 </button>
             </div>
         )
@@ -86,16 +87,16 @@ function PasswordForm() {
     return (
         <div className="space-y-5">
             <PasswordInput
-                label="Текущий пароль"
-                placeholder="Введите текущий пароль"
+                label={t('settings.password.current')}
+                placeholder={t('settings.password.enterCurrent')}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 error={errors.currentPassword}
             />
 
             <PasswordInput
-                label="Новый пароль"
-                placeholder="Минимум 8 символов"
+                label={t('settings.password.new')}
+                placeholder={t('settings.password.newPlaceholder')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 error={errors.newPassword}
@@ -103,8 +104,8 @@ function PasswordForm() {
             />
 
             <PasswordInput
-                label="Подтвердите новый пароль"
-                placeholder="Повторите новый пароль"
+                label={t('settings.password.confirmNew')}
+                placeholder={t('settings.password.repeat')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 error={errors.confirmPassword}
@@ -119,7 +120,7 @@ function PasswordForm() {
                 disabled={saving}
                 className="mt-3 w-full rounded-lg bg-blue-600 py-3 text-white font-medium transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
-                {saving ? 'Сохранение...' : 'Изменить пароль'}
+                {saving ? t('settings.saving') : t('settings.password.submit')}
             </button>
         </div>
     )

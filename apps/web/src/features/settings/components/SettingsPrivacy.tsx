@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { accountApi, type DataExport, type DeletionStatus } from '../api/account'
 import { isApiError, messageFor } from '@/shared/errors/apiErrors'
+import { t } from '@/shared/i18n'
 
+// i18n-exempt: the word a person types to confirm; it belongs with the
+// sentence that asks for it, which is in the dictionary.
 const CONFIRM_PHRASE = 'УДАЛИТЬ'
 
 /**
@@ -42,7 +45,7 @@ export function SettingsPrivacy() {
             try {
                 await refresh()
             } catch {
-                toast.error('Не удалось загрузить состояние аккаунта')
+                toast.error(t('settings.privacy.stateLoadFailed'))
             } finally {
                 setLoading(false)
             }
@@ -54,10 +57,10 @@ export function SettingsPrivacy() {
         setBusy(true)
         try {
             await accountApi.requestExport()
-            toast.success('Готовим выгрузку. Мы пришлём уведомление, когда она будет готова.')
+            toast.success(t('settings.privacy.exportRequested'))
             await refresh()
         } catch (err) {
-            toast.error(isApiError(err) ? messageFor(err) : 'Не удалось запросить выгрузку')
+            toast.error(isApiError(err) ? messageFor(err) : t('settings.privacy.exportFailed'))
         } finally {
             setBusy(false)
         }
@@ -70,12 +73,12 @@ export function SettingsPrivacy() {
             setShowDeleteForm(false)
             setPassword('')
             setConfirmation('')
-            toast.success('Удаление запрошено')
+            toast.success(t('settings.privacy.deletionRequested'))
             await refresh()
         } catch (err) {
             toast.error(isApiError(err) && err.status === 401
-                ? 'Неверный пароль'
-                : 'Не удалось запросить удаление')
+                ? t('settings.privacy.wrongPassword')
+                : t('settings.privacy.deletionFailed'))
         } finally {
             setBusy(false)
         }
@@ -85,17 +88,17 @@ export function SettingsPrivacy() {
         setBusy(true)
         try {
             await accountApi.cancelDeletion()
-            toast.success('Удаление отменено')
+            toast.success(t('settings.privacy.deletionCancelled'))
             await refresh()
         } catch {
-            toast.error('Не удалось отменить удаление')
+            toast.error(t('settings.privacy.cancelFailed'))
         } finally {
             setBusy(false)
         }
     }
 
     if (loading) {
-        return <p className="py-8 text-center text-sm text-gray-500">Загружаем…</p>
+        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.privacy.loading')}</p>
     }
 
     const deletionDate = status?.scheduled_for
@@ -105,11 +108,9 @@ export function SettingsPrivacy() {
     return (
         <div className="space-y-10">
             <section>
-                <h2 className="text-lg font-semibold text-gray-900">Скачать мои данные</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{t('settings.privacy.downloadHeading')}</h2>
                 <p className="mt-2 text-sm text-gray-600">
-                    Мы соберём архив со всем, что храним о вас: профиль, дневник питания, вес и
-                    замеры, задачи, отчёты и переписку с куратором. Ссылка действует сутки и
-                    работает один раз.
+                    {t('settings.privacy.downloadExplanation')}
                 </p>
 
                 <button
@@ -118,7 +119,7 @@ export function SettingsPrivacy() {
                     disabled={busy}
                     className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                    Запросить выгрузку
+                    {t('settings.privacy.requestExport')}
                 </button>
 
                 {exports.length > 0 && (
@@ -129,18 +130,18 @@ export function SettingsPrivacy() {
                                     {new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' })
                                         .format(new Date(item.requested_at))}
                                     {' — '}
-                                    {item.status === 'ready' && !item.downloaded && 'готова'}
-                                    {item.status === 'ready' && item.downloaded && 'уже скачана'}
-                                    {item.status === 'pending' && 'в очереди'}
-                                    {item.status === 'building' && 'готовится'}
-                                    {item.status === 'failed' && 'не удалось собрать'}
+                                    {item.status === 'ready' && !item.downloaded && t('settings.privacy.exportReady')}
+                                    {item.status === 'ready' && item.downloaded && t('settings.privacy.exportDownloaded')}
+                                    {item.status === 'pending' && t('settings.privacy.exportPending')}
+                                    {item.status === 'building' && t('settings.privacy.exportBuilding')}
+                                    {item.status === 'failed' && t('settings.privacy.exportFailedStatus')}
                                 </span>
                                 {item.status === 'ready' && !item.downloaded && (
                                     <a
                                         href={accountApi.downloadExportUrl(item.id)}
                                         className="text-blue-600 hover:underline"
                                     >
-                                        Скачать
+                                        {t('settings.privacy.download')}
                                     </a>
                                 )}
                             </li>
@@ -150,13 +151,12 @@ export function SettingsPrivacy() {
             </section>
 
             <section>
-                <h2 className="text-lg font-semibold text-gray-900">Удалить аккаунт</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{t('settings.privacy.deleteHeading')}</h2>
 
                 {status?.requested ? (
                     <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-4">
                         <p className="text-sm text-amber-900">
-                            Аккаунт будет удалён безвозвратно {deletionDate}. До этого момента вы
-                            можете передумать.
+                            {t('settings.privacy.scheduledFor', { date: deletionDate ?? '' })}
                         </p>
                         <button
                             type="button"
@@ -164,19 +164,16 @@ export function SettingsPrivacy() {
                             disabled={busy}
                             className="mt-3 rounded-md bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700 disabled:opacity-50"
                         >
-                            Отменить удаление
+                            {t('settings.privacy.cancelDeletion')}
                         </button>
                     </div>
                 ) : (
                     <>
                         <p className="mt-2 text-sm text-gray-600">
-                            Будут удалены дневник питания, вес и замеры, фотографии прогресса,
-                            задачи и планы. Переписка с куратором сохранится у него, но перестанет
-                            быть связана с вами.
+                            {t('settings.privacy.whatGoes')}
                         </p>
                         <p className="mt-2 text-sm text-gray-600">
-                            У вас будет 30 дней, чтобы передумать. После этого восстановить данные
-                            будет невозможно.
+                            {t('settings.privacy.gracePeriod')}
                         </p>
 
                         {!showDeleteForm ? (
@@ -185,12 +182,12 @@ export function SettingsPrivacy() {
                                 onClick={() => setShowDeleteForm(true)}
                                 className="mt-4 rounded-md border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                             >
-                                Удалить аккаунт
+                                {t('settings.privacy.deleteAccount')}
                             </button>
                         ) : (
                             <div className="mt-4 space-y-3 rounded-md border border-red-300 p-4">
                                 <label className="block text-sm">
-                                    Текущий пароль
+                                    {t('settings.privacy.currentPassword')}
                                     <input
                                         type="password"
                                         value={password}
@@ -200,7 +197,7 @@ export function SettingsPrivacy() {
                                     />
                                 </label>
                                 <label className="block text-sm">
-                                    Введите «{CONFIRM_PHRASE}», чтобы подтвердить
+                                    {t('settings.privacy.confirmPhrase', { phrase: CONFIRM_PHRASE })}
                                     <input
                                         type="text"
                                         value={confirmation}
@@ -215,14 +212,14 @@ export function SettingsPrivacy() {
                                         disabled={busy || !password || confirmation !== CONFIRM_PHRASE}
                                         className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
                                     >
-                                        Удалить аккаунт
+                                        {t('settings.privacy.deleteAccount')}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setShowDeleteForm(false)}
                                         className="text-sm text-gray-600 hover:underline"
                                     >
-                                        Отмена
+                                        {t('settings.privacy.cancel')}
                                     </button>
                                 </div>
                             </div>

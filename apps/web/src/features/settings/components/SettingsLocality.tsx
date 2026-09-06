@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation'
 import { LanguageSelector, UnitSelector, TimezoneSelector, PhotoUploader } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
 
 export function SettingsLocality() {
     return (
-        <SettingsPageLayout title="Настройки профиля">
+        <SettingsPageLayout title={t('settings.titles.profile')}>
             {({ profile, saveName, saveSettings, handleAvatarUpload, handleAvatarDelete }) => (
                 <ProfileSettingsForm
                     profile={profile}
@@ -62,7 +63,7 @@ function ProfileSettingsForm({
         if (!heightChanged || !profile) return
         const parsed = height === '' ? null : parseFloat(height)
         if (parsed !== null && (isNaN(parsed) || parsed < 50 || parsed > 300)) {
-            toast.error('Рост должен быть от 50 до 300 см')
+            toast.error(t('settings.heightRange'))
             return
         }
         onSaveSettings({
@@ -129,13 +130,13 @@ function ProfileSettingsForm({
 
             {/* Name */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">Имя</h3>
+                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.locality.name')}</h3>
                 <div className="flex gap-2">
                     <input
                         type="text"
                         value={name}
                         onChange={(e) => handleNameChange(e.target.value)}
-                        placeholder="Ваше имя"
+                        placeholder={t('settings.locality.namePlaceholder')}
                         className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
                     />
                     {nameChanged && (
@@ -143,7 +144,7 @@ function ProfileSettingsForm({
                             onClick={handleSaveName}
                             className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
                         >
-                            Сохранить
+                            {t('settings.save')}
                         </button>
                     )}
                 </div>
@@ -151,7 +152,7 @@ function ProfileSettingsForm({
 
             {/* Height */}
             <div className="mb-8">
-                <h3 className="mb-3 text-sm font-bold text-gray-900">Рост (см)</h3>
+                <h3 className="mb-3 text-sm font-bold text-gray-900">{t('settings.locality.height')}</h3>
                 <div className="flex gap-2">
                     <input
                         type="number"
@@ -168,7 +169,7 @@ function ProfileSettingsForm({
                             onClick={handleSaveHeight}
                             className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
                         >
-                            Сохранить
+                            {t('settings.save')}
                         </button>
                     )}
                 </div>
@@ -197,7 +198,7 @@ function ProfileSettingsForm({
                     onClick={() => router.push('/settings/privacy')}
                     className="w-full rounded-lg border border-red-200 py-3 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
                 >
-                    Удалить аккаунт
+                    {t('settings.locality.deleteAccount')}
                 </button>
             </div>
         </>

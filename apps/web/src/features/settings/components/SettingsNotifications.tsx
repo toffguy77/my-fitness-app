@@ -7,6 +7,7 @@ import {
     updateNotificationPreferences,
 } from '@/features/notifications/api/preferencesApi'
 import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
 
 function Toggle({
     checked,
@@ -54,7 +55,7 @@ export function SettingsNotifications() {
                 setMutedCategories(new Set(prefs.mutedCategories))
             })
             .catch(() => {
-                toast.error('Не удалось загрузить настройки')
+                toast.error(t('settings.notifications.loadFailed'))
             })
             .finally(() => setLoading(false))
     }, [])
@@ -67,7 +68,7 @@ export function SettingsNotifications() {
                     mutedCategories: Array.from(newMutedCategories),
                 })
             } catch {
-                toast.error('Не удалось сохранить настройки')
+                toast.error(t('settings.notifications.saveFailed'))
             }
         },
         []
@@ -113,18 +114,18 @@ export function SettingsNotifications() {
             <div className="bg-white rounded-2xl shadow-sm p-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-gray-900 font-medium">Не беспокоить</p>
+                        <p className="text-gray-900 font-medium">{t('settings.notifications.doNotDisturb')}</p>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            Отключить все уведомления о контенте
+                            {t('settings.notifications.doNotDisturbHint')}
                         </p>
                     </div>
-                    <Toggle checked={muted} label="Не беспокоить" onChange={handleMutedToggle} />
+                    <Toggle checked={muted} label={t('settings.notifications.doNotDisturb')} onChange={handleMutedToggle} />
                 </div>
             </div>
 
             {/* Category toggles */}
             <div className="bg-white rounded-2xl shadow-sm p-4">
-                <p className="text-sm font-medium text-gray-500 mb-3">Категории</p>
+                <p className="text-sm font-medium text-gray-500 mb-3">{t('settings.notifications.categories')}</p>
                 <div className="space-y-0">
                     {categories.map(([key, label], index) => (
                         <div
@@ -139,7 +140,7 @@ export function SettingsNotifications() {
                             <Toggle
                                 checked={!mutedCategories.has(key)}
                                 disabled={muted}
-                                label={`Уведомления о материалах: ${label}`}
+                                label={t('settings.notifications.categorySwitch', { category: label })}
                                 onChange={(enabled) => handleCategoryToggle(key, enabled)}
                             />
                         </div>

@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { SocialAccountsForm } from '@/shared/components/settings'
 import { SettingsPageLayout } from './SettingsPageLayout'
+import { t } from '@/shared/i18n'
 
 export function SettingsSocial() {
     return (
-        <SettingsPageLayout title="Аккаунты социальных сетей">
+        <SettingsPageLayout title={t('settings.titles.social')}>
             {({ profile, saveSettings }) => (
                 <SocialForm profile={profile} onSave={saveSettings} />
             )}
@@ -50,7 +51,7 @@ function SocialForm({ profile, onSave }: {
                 disabled={saving}
                 className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-white font-medium transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
-                {saving ? 'Проверяем...' : 'Сохранить'}
+                {saving ? t('settings.checking') : t('settings.save')}
             </button>
         </>
     )

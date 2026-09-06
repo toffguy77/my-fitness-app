@@ -18,7 +18,12 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, extname, relative } from 'node:path'
 
-const TRANSLATED = ['apps/web/src/features/auth', 'apps/web/src/features/onboarding']
+const TRANSLATED = [
+    'apps/web/src/features/auth',
+    'apps/web/src/features/onboarding',
+    'apps/web/src/features/settings',
+    'apps/web/src/app/settings',
+]
 
 const DICTIONARY = 'apps/web/src/shared/i18n/dictionaries/ru.ts'
 
