@@ -1,10 +1,20 @@
 /**
- * Push handling, imported into the generated service worker.
+ * The service worker that receives push messages.
  *
- * It lives in its own file because next-pwa builds sw.js from workbox on every
- * build; anything written into that file would be overwritten. `importScripts`
- * in next.config.ts pulls this in.
+ * Deliberately its own worker, registered by the application rather than
+ * generated: next-pwa produces no worker at all under this version of Next, and
+ * the application removes stale ones it finds. Push needs a worker to exist, so
+ * this is that worker — and nothing else.
+ *
+ * It caches nothing and intercepts no requests. That is the point: a worker
+ * that only listens for push cannot serve a stale bundle, which is what the
+ * previous one was removed for.
  */
+
+// Take over as soon as it is installed, so the first push after somebody
+// subscribes has somewhere to arrive.
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
 self.addEventListener('push', (event) => {
     if (!event.data) return

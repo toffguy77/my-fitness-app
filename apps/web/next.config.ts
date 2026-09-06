@@ -50,9 +50,6 @@ if (!isTest) {
     skipWaiting: true,
     disable: process.env.NODE_ENV === 'development',
     buildExcludes: [/\/api\/v1\//],
-    // Push handling lives in its own file: next-pwa rebuilds sw.js from
-    // workbox on every build and would overwrite anything written into it.
-    importScripts: ['/push-sw.js'],
     runtimeCaching: [
       {
         urlPattern: /\/api\/v1\/.*/i,
