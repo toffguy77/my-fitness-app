@@ -59,7 +59,7 @@ COMMENT ON COLUMN user_settings.apple_health_enabled IS 'Whether Apple Health in
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_settings') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'user_settings') THEN
         EXECUTE 'GRANT ALL ON TABLE user_settings TO PUBLIC';
         RAISE NOTICE 'Granted permissions on user_settings table';
     END IF;

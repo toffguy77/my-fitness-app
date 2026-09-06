@@ -163,3 +163,38 @@ func migrationVersions(t *testing.T, suffix string) []int {
 	sort.Ints(out)
 	return out
 }
+
+// Migrations must not be steered by tables belonging to another schema.
+//
+// This reproduces the CI failure that found the problem: several packages run
+// their integration tests against the same database at once, each in its own
+// schema. One of them had a user_foods with a brand column, and migration 028's
+// guard — which read information_schema without naming a schema — concluded
+// that this schema's user_foods had one too, then failed creating an index on
+// a column that was not there.
+func TestMigrationsIgnoreTablesInOtherSchemas(t *testing.T) {
+	dsn := testDSN(t)
+
+	admin, err := sql.Open("pgx", dsn)
+	require.NoError(t, err)
+	defer func() { _ = admin.Close() }()
+
+	decoy := fmt.Sprintf("decoy_%d_%d", os.Getpid(), testCounter())
+	_, err = admin.Exec(fmt.Sprintf("CREATE SCHEMA %s", decoy))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = admin.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", decoy))
+	})
+
+	// The shapes the guards ask about, in a schema the migration is not for.
+	_, err = admin.Exec(fmt.Sprintf(`
+		CREATE TABLE %s.user_foods (id BIGINT, name TEXT, brand TEXT, calories NUMERIC);
+		CREATE TABLE %s.reset_tokens (id BIGINT);
+		CREATE TABLE %s.email_verification_codes (id BIGINT);`, decoy, decoy, decoy))
+	require.NoError(t, err)
+
+	db := freshDatabase(t)
+	require.NoError(t,
+		database.NewMigrator(db, migrations.FS, logger.New()).Run(context.Background(), 0),
+		"a table in an unrelated schema must not change what a migration does here")
+}

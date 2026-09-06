@@ -3,7 +3,7 @@
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_verification_codes') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'email_verification_codes') THEN
         EXECUTE 'GRANT ALL ON TABLE email_verification_codes TO PUBLIC';
         RAISE NOTICE 'Granted permissions on email_verification_codes table';
     END IF;

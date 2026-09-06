@@ -16,7 +16,7 @@ DO $$
 BEGIN
     IF EXISTS (
         SELECT FROM information_schema.columns
-        WHERE table_name = 'users' AND column_name = 'password_changed_at'
+        WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'password_changed_at'
     ) THEN
         ALTER TABLE users DROP COLUMN password_changed_at;
     END IF;
