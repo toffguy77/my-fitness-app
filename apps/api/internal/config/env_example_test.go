@@ -11,7 +11,12 @@ import (
 
 // envReadPattern matches every environment variable name that config.go reads
 // through its getEnv* helpers.
-var envReadPattern = regexp.MustCompile(`getEnv(?:AsInt|WithFallback)?\("([A-Z0-9_]+)"(?:,\s*"([A-Z0-9_]+)")?`)
+//
+// The suffix is matched loosely on purpose. It used to list the helpers by
+// name, so adding getEnvAsDuration quietly took its variables out of every
+// check here — a variable nobody documents and nothing forwards is exactly
+// what these tests exist to catch.
+var envReadPattern = regexp.MustCompile(`getEnv(?:[A-Za-z]+)?\("([A-Z0-9_]+)"(?:,\s*"([A-Z0-9_]+)")?`)
 
 // A variable that config.go reads but .env.example never mentions is invisible
 // to whoever provisions an environment — which is how a service ends up

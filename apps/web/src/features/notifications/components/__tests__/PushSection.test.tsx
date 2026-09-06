@@ -36,8 +36,15 @@ function setUpBrowser({
     getSubscription.mockResolvedValue(existing)
 
     if (supported) {
+        const registration = { pushManager: { getSubscription, subscribe } }
         Object.defineProperty(window.navigator, 'serviceWorker', {
-            value: { ready: Promise.resolve({ pushManager: { getSubscription, subscribe } }) },
+            value: {
+                // The application registers its own worker: nothing else in it
+                // produces one, and `ready` never resolves without one.
+                getRegistration: jest.fn().mockResolvedValue({ ...registration, active: {} }),
+                register: jest.fn().mockResolvedValue(registration),
+                ready: Promise.resolve(registration),
+            },
             configurable: true,
         })
         ;(window as unknown as { PushManager: unknown }).PushManager = function () {}

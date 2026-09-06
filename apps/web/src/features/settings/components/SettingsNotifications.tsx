@@ -11,10 +11,14 @@ import toast from 'react-hot-toast'
 function Toggle({
     checked,
     disabled,
+    label,
     onChange,
 }: {
     checked: boolean
     disabled?: boolean
+    /** What this switch is. A switch with no name is unusable by anyone
+     *  reading the page with a screen reader — and unaddressable in a test. */
+    label: string
     onChange: (value: boolean) => void
 }) {
     return (
@@ -22,6 +26,7 @@ function Toggle({
             type="button"
             role="switch"
             aria-checked={checked}
+            aria-label={label}
             disabled={disabled}
             onClick={() => onChange(!checked)}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
@@ -113,7 +118,7 @@ export function SettingsNotifications() {
                             Отключить все уведомления о контенте
                         </p>
                     </div>
-                    <Toggle checked={muted} onChange={handleMutedToggle} />
+                    <Toggle checked={muted} label="Не беспокоить" onChange={handleMutedToggle} />
                 </div>
             </div>
 
@@ -134,6 +139,7 @@ export function SettingsNotifications() {
                             <Toggle
                                 checked={!mutedCategories.has(key)}
                                 disabled={muted}
+                                label={`Уведомления о материалах: ${label}`}
                                 onChange={(enabled) => handleCategoryToggle(key, enabled)}
                             />
                         </div>

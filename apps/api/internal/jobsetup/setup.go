@@ -266,9 +266,20 @@ func Register(registry *jobs.Registry, d Deps) {
 	// a digest — the interval only decides how late the last event in a batch
 	// can be, not how many emails a person gets.
 	if d.Notifications != nil {
+		// Checked at least as often as the wait itself, and at most every ten
+		// minutes: a digest that waits two seconds and is looked for once every
+		// ten minutes waits ten minutes.
+		digestInterval := d.Notifications.EmailDelay()
+		if digestInterval > 10*time.Minute {
+			digestInterval = 10 * time.Minute
+		}
+		if digestInterval < time.Second {
+			digestInterval = time.Second
+		}
+
 		registry.MustRegister(jobs.Job{
 			Name:     "notifications.send-digests",
-			Interval: 10 * time.Minute,
+			Interval: digestInterval,
 			Timeout:  5 * time.Minute,
 			Run: func(ctx context.Context) (int, error) {
 				if !d.Notifications.DigestReady() {

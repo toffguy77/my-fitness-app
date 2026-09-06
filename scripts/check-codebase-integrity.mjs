@@ -9,7 +9,7 @@
  * spuriously gets disabled.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
-import { join, extname, basename } from 'node:path'
+import { join, extname, basename, relative } from 'node:path'
 
 const problems = []
 
@@ -80,6 +80,42 @@ for (const file of goServices) {
                 `  Implement it, or remove the module and its routes.`,
         )
     }
+}
+
+// --- Rule: a configurable service must not be built by its own handler -----
+//
+// `NewHandler(db, ...)` calling `NewService(db, ...)` inside itself means the
+// process runs two services: the one wired up at startup and the one the
+// handler quietly made for itself. That is harmless while nothing configures
+// the service — and a silent trap the moment something does, because the
+// configuration lands on the instance the endpoints do not use.
+//
+// So the rule fires on exactly that combination: a service with `With…`
+// methods, built inside its own handler. It shipped twice. In auth it meant a
+// password change left every access token working for half a minute; in
+// notifications it meant every digest carried an unsubscribe link the endpoint
+// answered 503 to. Neither failed loudly.
+const handlerFiles = walk('apps/api/internal/modules', (f) => basename(f) === 'handler.go')
+for (const file of handlerFiles) {
+    const source = readFileSync(file, 'utf8')
+    const constructor = source.match(/func New[A-Za-z]*Handler\([^)]*\)[^{]*\{[\s\S]*?\n\}/)
+    if (!constructor || !/\bNew[A-Za-z]*Service\(/.test(constructor[0])) continue
+
+    // Does this module's service carry configuration applied after it is built?
+    const moduleDir = join(file, '..')
+    const goFiles = walk(moduleDir, (f) => extname(f) === '.go' && !f.endsWith('_test.go'))
+    const configurable = goFiles.some((f) =>
+        /func \(s \*Service\) With[A-Za-z]+\(/.test(readFileSync(f, 'utf8')),
+    )
+    if (!configurable) continue
+
+    problems.push(
+        `Handler builds its own service, and that service is configurable: ${relative(process.cwd(), file)}\n` +
+            `  The service configured at startup and the one this constructor makes\n` +
+            `  are different objects, so whatever is applied to the first — a cache,\n` +
+            `  a secret, a sender — the endpoints will not have.\n` +
+            `  Take the service as a parameter instead.`,
+    )
 }
 
 if (problems.length > 0) {

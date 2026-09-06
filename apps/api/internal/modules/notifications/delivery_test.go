@@ -18,7 +18,7 @@ import (
 // recipient's settings, reading their stored choices, and one insert per
 // channel the event may use.
 func expectDeliveryPlan(mock sqlmock.Sqlmock, userID int64, inserts int) {
-	mock.ExpectQuery(`FROM users WHERE id = \$1`).
+	mock.ExpectQuery(`FROM users u\s+LEFT JOIN user_settings`).
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at"}).
 			AddRow("Europe/Moscow", nil, nil, nil))
@@ -163,7 +163,7 @@ func TestPlanDeliverySkipsChannelsTheRecipientClosed(t *testing.T) {
 	defer cleanup()
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`FROM users WHERE id = \$1`).
+	mock.ExpectQuery(`FROM users u\s+LEFT JOIN user_settings`).
 		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at"}).
 			AddRow("Europe/Moscow", nil, nil, time.Now()))
 	mock.ExpectQuery(`FROM notification_preferences WHERE user_id = \$1`).

@@ -25,6 +25,10 @@ type Service struct {
 	digestSecret string
 	appDomain    string
 
+	// emailDelay is how long a notification waits to be read before it is
+	// worth an email. Zero means the default.
+	emailDelay time.Duration
+
 	// Web push is optional in the same way: without a key pair the channel
 	// says so rather than failing.
 	push PushConfig

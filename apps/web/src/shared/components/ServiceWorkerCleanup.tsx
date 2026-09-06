@@ -32,6 +32,13 @@ export function ServiceWorkerCleanup() {
 
                 const registrations = await navigator.serviceWorker.getRegistrations()
                 for (const reg of registrations) {
+                    // Not the push worker: it caches nothing and intercepts
+                    // nothing, so it cannot serve a stale bundle — and removing
+                    // it would silently end every push subscription on this
+                    // device.
+                    const script = reg.active?.scriptURL ?? reg.installing?.scriptURL ?? ''
+                    if (script.endsWith('/push-sw.js')) continue
+
                     await reg.unregister()
                     didWork = true
                 }

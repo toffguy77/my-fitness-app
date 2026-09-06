@@ -33,11 +33,29 @@ const (
 	StatusSkipped = "skipped"
 )
 
-// emailDelay is how long a notification is given to be read in the application
-// before it is worth an email. Somebody who is using the app right now has
-// already seen it, and mail they did not need is how a sender loses the
+// defaultEmailDelay is how long a notification is given to be read in the
+// application before it is worth an email. Somebody who is using the app right
+// now has already seen it, and mail they did not need is how a sender loses the
 // reputation its password resets depend on.
-const emailDelay = 30 * time.Minute
+//
+// Adjustable, because the right wait depends on how people use the product —
+// and because a test cannot spend half an hour finding out whether the mail
+// ever leaves.
+const defaultEmailDelay = 30 * time.Minute
+
+// EmailDelay is the wait this service uses.
+func (s *Service) EmailDelay() time.Duration {
+	if s.emailDelay <= 0 {
+		return defaultEmailDelay
+	}
+	return s.emailDelay
+}
+
+// WithEmailDelay overrides how long a notification waits before it is mailed.
+func (s *Service) WithEmailDelay(delay time.Duration) *Service {
+	s.emailDelay = delay
+	return s
+}
 
 // maxAttempts bounds retries of one delivery. A message that has failed three
 // times is failing for a reason that another attempt will not fix.
@@ -102,9 +120,18 @@ type recipient struct {
 func (s *Service) loadRecipient(ctx context.Context, tx *sql.Tx, userID int64) (*recipient, error) {
 	r := &recipient{preferences: map[string]bool{}}
 
+	// The timezone lives on user_settings, the rest on users. Reading it from
+	// the wrong table cost every notification: loadRecipient failed, so
+	// planDelivery failed, so CreateNotification rolled back — and nobody was
+	// told anything at all, silently, because every caller logs and carries on.
+	//
+	// LEFT JOIN because an account can exist before its settings row does.
 	err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(timezone, 'Europe/Moscow'), quiet_hours_start, quiet_hours_end, email_unsubscribed_at
-		 FROM users WHERE id = $1`, userID).
+		`SELECT COALESCE(s.timezone, 'Europe/Moscow'),
+		        u.quiet_hours_start, u.quiet_hours_end, u.email_unsubscribed_at
+		 FROM users u
+		 LEFT JOIN user_settings s ON s.user_id = u.id
+		 WHERE u.id = $1`, userID).
 		Scan(&r.timezone, &r.quietStart, &r.quietEnd, &r.emailUnsubscribe)
 	if err != nil {
 		return nil, fmt.Errorf("load recipient: %w", err)
@@ -229,7 +256,7 @@ func (s *Service) planDelivery(ctx context.Context, tx *sql.Tx, notification *No
 		plans = append(plans, deliveryPlan{
 			channel:   channel,
 			status:    StatusPending,
-			notBefore: r.afterQuietHours(now.Add(emailDelay)),
+			notBefore: r.afterQuietHours(now.Add(s.EmailDelay())),
 		})
 	}
 

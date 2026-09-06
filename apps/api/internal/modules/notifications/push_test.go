@@ -163,7 +163,7 @@ func TestPushIsPlannedWithoutTheEmailDelay(t *testing.T) {
 	service.WithPush(testPush())
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`FROM users WHERE id = \$1`).
+	mock.ExpectQuery(`FROM users u\s+LEFT JOIN user_settings`).
 		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at"}).
 			AddRow("Europe/Moscow", nil, nil, nil))
 	mock.ExpectQuery(`FROM notification_preferences WHERE user_id = \$1`).
@@ -176,7 +176,7 @@ func TestPushIsPlannedWithoutTheEmailDelay(t *testing.T) {
 	// Email waits, so that somebody already in the application is not written
 	// to about something they have just read.
 	mock.ExpectExec(`INSERT INTO notification_deliveries`).
-		WithArgs(notificationID, int64(7), ChannelEmail, StatusPending, dueWithin{emailDelay + time.Minute}).
+		WithArgs(notificationID, int64(7), ChannelEmail, StatusPending, dueWithin{defaultEmailDelay + time.Minute}).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 	// Push does not: arriving before they open it is the whole point.
 	mock.ExpectExec(`INSERT INTO notification_deliveries`).

@@ -124,7 +124,14 @@ export class SettingsNotificationsPage {
   }
 
   get doNotDisturbSwitch() {
-    return this.switches.first()
+    // By name, not by position: it used to be "the first switch on the page",
+    // which quietly became a different switch when a section was added above.
+    return this.page.getByRole('switch', { name: 'Не беспокоить' })
+  }
+
+  /** The switches for individual content categories. */
+  get categorySwitches() {
+    return this.page.getByRole('switch', { name: /^Уведомления о материалах/ })
   }
 
   async goto() {

@@ -211,6 +211,9 @@ func main() {
 	// Services shared by more than one handler.
 	nutritionCalcSvc := nutritioncalc.NewService(db, log)
 	notificationsSvc := notifications.NewService(db, log)
+	if cfg.NotificationEmailDelay > 0 {
+		notificationsSvc.WithEmailDelay(cfg.NotificationEmailDelay)
+	}
 	notificationsSvc.WithPush(notifications.PushConfig{
 		PublicKey:  cfg.VAPIDPublicKey,
 		PrivateKey: cfg.VAPIDPrivateKey,
@@ -356,7 +359,7 @@ func main() {
 		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
 		Account:       account.NewHandler(accountService, log),
-		Notifications: notifications.NewHandler(cfg, log, db),
+		Notifications: notifications.NewHandler(notificationsSvc, cfg, log),
 		Leads:         leads.NewHandler(leadsService, log),
 		Logs:          logs.NewHandler(cfg, log),
 		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient),

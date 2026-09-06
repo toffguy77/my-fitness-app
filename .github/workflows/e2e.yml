@@ -21,6 +21,16 @@ jobs:
     timeout-minutes: 40
 
     services:
+      # Somewhere for the digest to actually arrive. Without it the only proof
+      # that mail leaves the service is that no error was logged, which is not
+      # proof of anything: a broken template or a wrong link looks the same.
+      mailpit:
+        image: axllent/mailpit:latest
+        ports: ['1025:1025', '8025:8025']
+        env:
+          MP_SMTP_AUTH_ACCEPT_ANY: '1'
+          MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+
       postgres:
         image: postgres:16-alpine
         env:
@@ -52,6 +62,17 @@ jobs:
       # The whole suite signs in from one address; without this the auth
       # limiter reads it as one person guessing passwords.
       AUTH_RATE_LIMIT_SCALE: '20'
+      # Mail goes to the catcher above, so the digest can be read back.
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      SMTP_USERNAME: e2e@burcev.test
+      SMTP_PASSWORD: e2e
+      SMTP_FROM_ADDRESS: e2e@burcev.test
+      SMTP_FROM_NAME: BURCEV
+      # A notification normally waits half an hour to be read before it is
+      # worth an email. The suite cannot.
+      NOTIFICATION_EMAIL_DELAY: 2s
+      MAILPIT_URL: http://localhost:8025
 
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +88,17 @@ jobs:
           cache-dependency-path: apps/api/go.sum
 
       - run: npm ci
+
+      # Without a key pair the push endpoints answer 503, and the tests that
+      # exercise subscribing have nothing to talk to. Generated here rather
+      # than stored: a private key in a repository is a private key in a
+      # repository, however disposable.
+      - name: Generate a VAPID key pair for this run
+        working-directory: apps/api
+        run: |
+          go run ./cmd/vapid-keys | while read -r line; do
+            echo "$line" >> "$GITHUB_ENV"
+          done
 
       - name: Build API
         working-directory: apps/api

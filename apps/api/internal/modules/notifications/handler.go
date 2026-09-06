@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
-	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
@@ -40,11 +39,18 @@ type Handler struct {
 }
 
 // NewHandler creates a new notifications handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handler {
+// NewHandler takes the service rather than building one.
+//
+// It used to call NewService itself, so the process ran two: the one configured
+// at startup — with the secret that signs unsubscribe links and the sender that
+// delivers digests — and the one the handler quietly made for itself, which had
+// neither. The digest went out with a link the endpoint then answered 503 to.
+// The same shape of mistake had already cost an afternoon in the auth module.
+func NewHandler(service *Service, cfg *config.Config, log *logger.Logger) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(db, log),
+		service: service,
 	}
 }
 

@@ -21,9 +21,7 @@ test.describe('Settings Notifications', () => {
       timeout: 10000,
     })
 
-    // Should have at least 2 switches: "do not disturb" + at least 1 category
-    const count = await notifications.switches.count()
-    expect(count).toBeGreaterThanOrEqual(2)
+    expect(await notifications.categorySwitches.count()).toBeGreaterThanOrEqual(1)
   })
 
   test('toggling do not disturb disables category switches', async () => {
@@ -36,9 +34,9 @@ test.describe('Settings Notifications', () => {
       await expect(dndSwitch).toHaveAttribute('aria-checked', 'true')
 
       // Category switches should be disabled
-      const categorySwitches = notifications.switches
+      const categorySwitches = notifications.categorySwitches
       const count = await categorySwitches.count()
-      for (let i = 1; i < count; i++) {
+      for (let i = 0; i < count; i++) {
         await expect(categorySwitches.nth(i)).toBeDisabled()
       }
 
@@ -51,9 +49,9 @@ test.describe('Settings Notifications', () => {
       await expect(dndSwitch).toHaveAttribute('aria-checked', 'false')
 
       // Category switches should now be enabled
-      const categorySwitches = notifications.switches
+      const categorySwitches = notifications.categorySwitches
       const count = await categorySwitches.count()
-      for (let i = 1; i < count; i++) {
+      for (let i = 0; i < count; i++) {
         await expect(categorySwitches.nth(i)).toBeEnabled()
       }
 

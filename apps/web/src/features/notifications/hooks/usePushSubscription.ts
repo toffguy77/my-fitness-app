@@ -47,6 +47,22 @@ function bytesToKey(buffer: ArrayBuffer | null): string {
     return btoa(String.fromCharCode(...new Uint8Array(buffer)))
 }
 
+/**
+ * The worker that receives pushes.
+ *
+ * Registered here rather than waited for: nothing else in this application
+ * produces one. `navigator.serviceWorker.ready` never resolves when no worker
+ * has been registered, which is why the push section used to render nothing at
+ * all — the state stayed "not yet known" forever.
+ */
+const PUSH_WORKER = '/push-sw.js'
+
+async function pushWorker(): Promise<ServiceWorkerRegistration> {
+    const existing = await navigator.serviceWorker.getRegistration(PUSH_WORKER)
+    if (existing?.active) return existing
+    return navigator.serviceWorker.register(PUSH_WORKER)
+}
+
 /** Whether this is an iOS browser outside an installed app. */
 function needsHomeScreenInstall(): boolean {
     if (typeof navigator === 'undefined') return false
@@ -83,7 +99,7 @@ export function usePushSubscription() {
             }
 
             try {
-                const registration = await navigator.serviceWorker.ready
+                const registration = await pushWorker()
                 const existing = await registration.pushManager.getSubscription()
                 if (cancelled) return
                 setState(existing ? 'subscribed' : 'available')
@@ -109,7 +125,7 @@ export function usePushSubscription() {
             }
 
             const publicKey = await getPushKey()
-            const registration = await navigator.serviceWorker.ready
+            const registration = await pushWorker()
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: keyToBytes(publicKey),
@@ -134,7 +150,7 @@ export function usePushSubscription() {
     const disable = useCallback(async (): Promise<void> => {
         setBusy(true)
         try {
-            const registration = await navigator.serviceWorker.ready
+            const registration = await pushWorker()
             const subscription = await registration.pushManager.getSubscription()
             if (subscription) {
                 // The server first: a browser that has forgotten its
