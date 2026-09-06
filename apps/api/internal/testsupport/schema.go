@@ -39,6 +39,14 @@ func SchemaWithMigrations(t *testing.T, prefix string) *database.DB {
 	defer func() { _ = admin.Close() }()
 	require.NoError(t, admin.Ping())
 
+	// Extensions belong to one schema for the whole database. Installed from a
+	// migration running inside a test schema, the first package to get there
+	// owns it and every other package's search_path cannot see it. Putting it
+	// in public first makes the migration's IF NOT EXISTS a no-op and keeps
+	// gin_trgm_ops reachable from everywhere.
+	_, err = admin.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")
+	require.NoError(t, err)
+
 	schema := fmt.Sprintf("%s_test_%d", prefix, os.Getpid())
 	_, err = admin.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
 	require.NoError(t, err)

@@ -51,6 +51,11 @@ func freshDatabase(t *testing.T) *database.DB {
 	defer func() { _ = admin.Close() }()
 	require.NoError(t, admin.Ping())
 
+	// See testsupport.SchemaWithMigrations: an extension belongs to one schema
+	// for the whole database, so it goes in public before anything else runs.
+	_, err = admin.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")
+	require.NoError(t, err)
+
 	schema := fmt.Sprintf("mig_test_%d_%d", os.Getpid(), testCounter())
 	_, err = admin.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
 	require.NoError(t, err)
@@ -190,7 +195,8 @@ func TestMigrationsIgnoreTablesInOtherSchemas(t *testing.T) {
 	_, err = admin.Exec(fmt.Sprintf(`
 		CREATE TABLE %s.user_foods (id BIGINT, name TEXT, brand TEXT, calories NUMERIC);
 		CREATE TABLE %s.reset_tokens (id BIGINT);
-		CREATE TABLE %s.email_verification_codes (id BIGINT);`, decoy, decoy, decoy))
+		CREATE TABLE %s.email_verification_codes (id BIGINT);
+		CREATE TABLE %s.coach_client_relationships (id BIGINT);`, decoy, decoy, decoy, decoy))
 	require.NoError(t, err)
 
 	db := freshDatabase(t)

@@ -20,7 +20,13 @@ import (
 // that followed failed against this schema's table — in CI, where several test
 // schemas exist at once, and nowhere else.
 func TestMigrationGuardsNameTheirSchema(t *testing.T) {
-	predicate := regexp.MustCompile(`(?is)FROM\s+information_schema\.\w+\s+WHERE\s+(.*?)(?:\)|\bTHEN\b)`)
+	// information_schema names the schema column table_schema; the pg_ catalog
+	// views name it schemaname.
+	predicates := []*regexp.Regexp{
+		regexp.MustCompile(`(?is)FROM\s+information_schema\.\w+\s+WHERE\s+(.*?)(?:\)|\bTHEN\b)`),
+		regexp.MustCompile(`(?is)FROM\s+(?:pg_tables|pg_indexes|pg_policies|pg_matviews)\s+WHERE\s+(.*?)(?:\)|\bTHEN\b)`),
+	}
+	column := map[int]string{0: "table_schema", 1: "schemaname"}
 
 	root := filepath.Join("..", "..", "..", "migrations")
 	entries, err := os.ReadDir(root)
@@ -34,14 +40,16 @@ func TestMigrationGuardsNameTheirSchema(t *testing.T) {
 		source, err := os.ReadFile(filepath.Join(root, entry.Name()))
 		require.NoError(t, err)
 
-		for _, match := range predicate.FindAllStringSubmatch(string(source), -1) {
-			if !strings.Contains(match[1], "table_schema") {
-				offenders = append(offenders, entry.Name()+": "+strings.Join(strings.Fields(match[1]), " "))
+		for i, predicate := range predicates {
+			for _, match := range predicate.FindAllStringSubmatch(string(source), -1) {
+				if !strings.Contains(match[1], column[i]) {
+					offenders = append(offenders, entry.Name()+": "+strings.Join(strings.Fields(match[1]), " "))
+				}
 			}
 		}
 	}
 
 	assert.Empty(t, offenders,
-		"add `table_schema = current_schema()` to each: a guard that reads the whole "+
-			"database decides on tables it is not about: %v", offenders)
+		"name the schema in each (table_schema or schemaname = current_schema()): a guard "+
+			"that reads the whole database decides on tables it is not about: %v", offenders)
 }
