@@ -57,6 +57,11 @@ const stubPushService = `
     })
 `
 
+// One account, one preferences object, and every save sends the whole of it.
+// In parallel these tests overwrite each other's changes with their own stale
+// copy — which looks exactly like the server failing to store anything.
+test.describe.configure({ mode: 'serial' })
+
 test.describe('Delivery settings', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/settings/notifications')
@@ -173,7 +178,14 @@ test.describe('Push', () => {
         await page.addInitScript(stubPushService)
 
         await page.goto('/settings/notifications')
-        await expect(page.getByTestId('push-section')).toBeVisible({ timeout: 15000 })
+        const section = page.getByTestId('push-section')
+        await expect(section).toBeVisible({ timeout: 15000 })
+
+        // The previous test may have left this browser subscribed.
+        if (await section.getByRole('button', { name: 'Выключить' }).count()) {
+            await section.getByRole('button', { name: 'Выключить' }).click()
+            await expect(page.getByRole('button', { name: 'Включить push' })).toBeVisible()
+        }
 
         const stored = page.waitForResponse(
             (response) =>
