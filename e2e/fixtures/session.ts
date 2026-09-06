@@ -23,12 +23,19 @@ import { getAccount } from './test-accounts'
  * context has a token family of its own and nothing is ever replayed.
  */
 
-/** Signs the context in, leaving the cookies the server set on it. */
+/**
+ * Signs the context in, leaving the cookies the server set on it, and returns
+ * the access token.
+ *
+ * The token is returned because the API authenticates by `Authorization`
+ * header, not by the session cookie — the cookie exists so a page can mint a
+ * token, and a test calling the API directly has to carry one itself.
+ */
 export async function signIn(
     context: BrowserContext,
     baseURL: string,
     role: string
-): Promise<void> {
+): Promise<string> {
     const account = getAccount(role)
 
     const response = await context.request.post(`${baseURL}/api/v1/auth/login`, {
@@ -49,6 +56,16 @@ export async function signIn(
         cookies.map((cookie) => cookie.name),
         'the sign-in set no session cookie'
     ).toContain('session_present')
+
+    const body = await response.json()
+    const token = body?.data?.token
+    expect(token, 'the sign-in returned no access token').toBeTruthy()
+    return token as string
+}
+
+/** The headers an API call needs to be recognised as this person. */
+export function asUser(token: string): Record<string, string> {
+    return { Authorization: `Bearer ${token}` }
 }
 
 /** Who the test is signed in as. Undefined means "signed out". */

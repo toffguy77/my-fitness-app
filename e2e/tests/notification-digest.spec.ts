@@ -1,4 +1,4 @@
-import { test, expect, signIn } from '../fixtures/session'
+import { test, expect, signIn, asUser } from '../fixtures/session'
 import { getAccount } from '../fixtures/test-accounts'
 
 /**
@@ -49,9 +49,11 @@ test.describe('Notification digest', () => {
         // A curator assigning a task is an event whose default channels include
         // email — chosen because somebody is waiting on the answer.
         const curatorContext = await browser.newContext()
-        await signIn(curatorContext, baseURL!, 'curator')
+        const curatorToken = await signIn(curatorContext, baseURL!, 'curator')
 
-        const clients = await curatorContext.request.get(`${baseURL}/api/v1/curator/clients`)
+        const clients = await curatorContext.request.get(`${baseURL}/api/v1/curator/clients`, {
+            headers: asUser(curatorToken),
+        })
         expect(clients.ok(), await clients.text()).toBeTruthy()
         const roster = (await clients.json()).data ?? []
         const target = roster.find((c: { email?: string }) => c.email === client.email) ?? roster[0]
@@ -60,6 +62,7 @@ test.describe('Notification digest', () => {
         const created = await curatorContext.request.post(
             `${baseURL}/api/v1/curator/clients/${target.id}/tasks`,
             {
+                headers: asUser(curatorToken),
                 data: {
                     title: 'Проверка дайджеста',
                     description: 'Задача, созданная сквозным тестом',
@@ -111,15 +114,17 @@ test.describe('Notification digest', () => {
         // And it took effect: the setting now reads as unsubscribed.
         const clientContext = await browser.newContext()
         try {
-            await signIn(clientContext, baseURL!, 'client')
+            const clientToken = await signIn(clientContext, baseURL!, 'client')
             const prefs = await clientContext.request.get(
-                `${baseURL}/api/v1/notifications/delivery-preferences`
+                `${baseURL}/api/v1/notifications/delivery-preferences`,
+                { headers: asUser(clientToken) }
             )
-            expect((await prefs.json()).data.emailUnsubscribed).toBe(true)
+            const current = (await prefs.json()).data
+            expect(current.emailUnsubscribed).toBe(true)
 
             // Put it back, so the rest of the suite starts where the seed left it.
-            const current = (await prefs.json()).data
             await clientContext.request.put(`${baseURL}/api/v1/notifications/delivery-preferences`, {
+                headers: asUser(clientToken),
                 data: { ...current, emailUnsubscribed: false },
             })
         } finally {
@@ -134,12 +139,15 @@ test.describe('Notification digest', () => {
         const before = (await inboxOf(request, client.email)).length
 
         const curatorContext = await browser.newContext()
-        await signIn(curatorContext, baseURL!, 'curator')
-        const clients = await curatorContext.request.get(`${baseURL}/api/v1/curator/clients`)
+        const curatorToken = await signIn(curatorContext, baseURL!, 'curator')
+        const clients = await curatorContext.request.get(`${baseURL}/api/v1/curator/clients`, {
+            headers: asUser(curatorToken),
+        })
         const roster = (await clients.json()).data ?? []
         const target = roster.find((c: { email?: string }) => c.email === client.email) ?? roster[0]
 
         await curatorContext.request.post(`${baseURL}/api/v1/curator/clients/${target.id}/tasks`, {
+            headers: asUser(curatorToken),
             data: {
                 title: 'Прочитанная вовремя',
                 description: 'Эту задачу клиент увидит сразу',
@@ -151,8 +159,9 @@ test.describe('Notification digest', () => {
         // Read everything at once, before the wait expires.
         const clientContext = await browser.newContext()
         try {
-            await signIn(clientContext, baseURL!, 'client')
+            const clientToken = await signIn(clientContext, baseURL!, 'client')
             await clientContext.request.post(`${baseURL}/api/v1/notifications/mark-all-read`, {
+                headers: asUser(clientToken),
                 data: { category: 'main' },
             })
         } finally {

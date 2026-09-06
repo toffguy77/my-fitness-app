@@ -68,8 +68,14 @@ test.describe('Delivery settings', () => {
     })
 
     test('quiet hours are stored with both ends, never one', async ({ page }) => {
+        const stored = page.waitForResponse(
+            (response) =>
+                response.url().includes('/delivery-preferences') &&
+                response.request().method() === 'PUT'
+        )
         await page.getByLabel('Начало тихого времени').selectOption('23')
         await page.getByLabel('Конец тихого времени').selectOption('7')
+        await stored
 
         await page.reload()
         await expect(page.getByTestId('delivery-settings')).toBeVisible({ timeout: 15000 })
@@ -77,7 +83,14 @@ test.describe('Delivery settings', () => {
         await expect(page.getByLabel('Начало тихого времени')).toHaveValue('23')
         await expect(page.getByLabel('Конец тихого времени')).toHaveValue('7')
 
+        const cleared = page.waitForResponse(
+            (response) =>
+                response.url().includes('/delivery-preferences') &&
+                response.request().method() === 'PUT'
+        )
         await page.getByText('Выключить').click()
+        await cleared
+
         await page.reload()
         await expect(page.getByTestId('delivery-settings')).toBeVisible({ timeout: 15000 })
         // Off means off: the defaults are shown, not a stored interval.
@@ -98,9 +111,16 @@ test.describe('Delivery settings', () => {
 })
 
 test.describe('Push', () => {
+    // Headless Chromium refuses notifications by default. That is not the
+    // state a first-time visitor is in, so it is granted up front; what the
+    // first test then checks is that our code asks the browser nothing until
+    // somebody presses the button.
+    test.beforeEach(async ({ context }) => {
+        await context.grantPermissions(['notifications'])
+    })
+
     test('is offered with an explanation, and asks nothing before it is pressed', async ({
         page,
-        context,
     }) => {
         // A prompt shown before somebody knows what the product does is the
         // fastest route to a permanent "no": the browser remembers a refusal.
@@ -124,7 +144,6 @@ test.describe('Push', () => {
 
         expect(asked, 'the browser was asked before anybody pressed anything').toBe(false)
 
-        await context.grantPermissions(['notifications'])
         await page.getByRole('button', { name: 'Включить push' }).click()
 
         await expect(page.getByText(/Push включён на этом устройстве/)).toBeVisible({
@@ -132,8 +151,7 @@ test.describe('Push', () => {
         })
     })
 
-    test('a subscription reaches the server and can be withdrawn', async ({ page, context }) => {
-        await context.grantPermissions(['notifications'])
+    test('a subscription reaches the server and can be withdrawn', async ({ page }) => {
         await page.addInitScript(stubPushService)
 
         await page.goto('/settings/notifications')
