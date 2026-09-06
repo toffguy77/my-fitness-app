@@ -65,8 +65,10 @@ test.describe('Notification digest', () => {
                 headers: asUser(curatorToken),
                 data: {
                     title: 'Проверка дайджеста',
+                    type: 'habit',
                     description: 'Задача, созданная сквозным тестом',
                     deadline: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+                    recurrence: 'once',
                 },
             }
         )
@@ -150,8 +152,10 @@ test.describe('Notification digest', () => {
             headers: asUser(curatorToken),
             data: {
                 title: 'Прочитанная вовремя',
+                type: 'habit',
                 description: 'Эту задачу клиент увидит сразу',
                 deadline: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+                recurrence: 'once',
             },
         })
         await curatorContext.close()

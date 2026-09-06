@@ -11,6 +11,30 @@ import { test, expect, signIn } from '../fixtures/session'
  */
 
 /**
+ * Stands in for the browser's permission prompt.
+ *
+ * The headless browser CI runs refuses notifications outright, which is not a
+ * state a person is ever in — it has no prompt to show. What this file is for
+ * is our flow: that permission is asked at the moment somebody presses the
+ * button and never before, and that the answer is acted on. The prompt itself
+ * belongs to the browser.
+ */
+const stubPermissionPrompt = `
+    let state = 'default'
+    Object.defineProperty(window, 'Notification', {
+        configurable: true,
+        value: {
+            get permission() { return state },
+            requestPermission: async () => {
+                window.__permissionAsked?.()
+                state = 'granted'
+                return state
+            },
+        },
+    })
+`
+
+/**
  * Stands in for the browser's push service.
  *
  * `pushManager.subscribe` talks to Google, which a CI runner cannot reach and
@@ -111,14 +135,6 @@ test.describe('Delivery settings', () => {
 })
 
 test.describe('Push', () => {
-    // Headless Chromium refuses notifications by default. That is not the
-    // state a first-time visitor is in, so it is granted up front; what the
-    // first test then checks is that our code asks the browser nothing until
-    // somebody presses the button.
-    test.beforeEach(async ({ context }) => {
-        await context.grantPermissions(['notifications'])
-    })
-
     test('is offered with an explanation, and asks nothing before it is pressed', async ({
         page,
     }) => {
@@ -128,13 +144,7 @@ test.describe('Push', () => {
         await page.exposeFunction('__permissionAsked', () => {
             asked = true
         })
-        await page.addInitScript(`
-            const original = Notification.requestPermission.bind(Notification)
-            Notification.requestPermission = (...args) => {
-                window.__permissionAsked?.()
-                return original(...args)
-            }
-        `)
+        await page.addInitScript(stubPermissionPrompt)
         await page.addInitScript(stubPushService)
 
         await page.goto('/settings/notifications')
@@ -152,6 +162,7 @@ test.describe('Push', () => {
     })
 
     test('a subscription reaches the server and can be withdrawn', async ({ page }) => {
+        await page.addInitScript(stubPermissionPrompt)
         await page.addInitScript(stubPushService)
 
         await page.goto('/settings/notifications')
