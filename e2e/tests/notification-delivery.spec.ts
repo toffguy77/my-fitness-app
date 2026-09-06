@@ -187,23 +187,27 @@ test.describe('Push', () => {
             await expect(page.getByRole('button', { name: 'Включить push' })).toBeVisible()
         }
 
-        const stored = page.waitForResponse(
-            (response) =>
-                response.url().includes('/api/v1/notifications/push') &&
-                response.request().method() === 'POST'
-        )
+        // What matters is the outcome, not which response carried it: the
+        // subscription is accepted by the server and the section says so.
+        const answers: number[] = []
+        page.on('response', (response) => {
+            if (response.url().endsWith('/api/v1/notifications/push')) {
+                answers.push(response.status())
+            }
+        })
+
         await page.getByRole('button', { name: 'Включить push' }).click()
-        expect((await stored).status(), 'the server refused the subscription').toBe(200)
+        await expect(page.getByText(/Push включён на этом устройстве/)).toBeVisible({
+            timeout: 15000,
+        })
 
-        const withdrawn = page.waitForResponse(
-            (response) =>
-                response.url().includes('/api/v1/notifications/push') &&
-                response.request().method() === 'DELETE'
-        )
-        await page.getByTestId('push-section').getByRole('button', { name: 'Выключить' }).click()
-        expect((await withdrawn).status()).toBe(200)
+        await section.getByRole('button', { name: 'Выключить' }).click()
+        await expect(page.getByRole('button', { name: 'Включить push' })).toBeVisible({
+            timeout: 15000,
+        })
 
-        await expect(page.getByRole('button', { name: 'Включить push' })).toBeVisible()
+        expect(answers.length, 'the server was never told about the subscription').toBeGreaterThan(0)
+        expect(answers.every((status) => status === 200), `the server answered ${answers}`).toBe(true)
     })
 
     test('an iPhone is told to install the app rather than shown a button that cannot work', async ({

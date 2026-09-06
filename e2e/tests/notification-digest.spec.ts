@@ -23,6 +23,18 @@ interface Message {
     To: { Address: string }[]
 }
 
+/** Notes a created task so it can be removed when the test is done. */
+function rememberTask(
+    body: { data?: { id?: string } },
+    clientId: string,
+    token: string
+): void {
+    const taskId = body?.data?.id
+    if (taskId) createdTasks.push({ clientId, taskId, token })
+}
+
+const createdTasks: { clientId: string; taskId: string; token: string }[] = []
+
 /** Everything the catcher has for one address, newest first. */
 async function inboxOf(request: import('@playwright/test').APIRequestContext, address: string) {
     const response = await request.get(`${MAILPIT}/api/v1/search?query=${encodeURIComponent('to:' + address)}`)
@@ -46,6 +58,22 @@ test.describe('Notification digest', () => {
     // and restoring would leave the account unsubscribed, and every retry
     // would then fail for a different reason — no email could arrive at all.
     test.afterEach(async ({ browser, baseURL }) => {
+        // The curator tests read the same client's task list. A list this file
+        // keeps adding to is a list whose buttons move under them.
+        if (createdTasks.length > 0) {
+            const cleanup = await browser.newContext()
+            try {
+                for (const task of createdTasks.splice(0)) {
+                    await cleanup.request.delete(
+                        `${baseURL}/api/v1/curator/clients/${task.clientId}/tasks/${task.taskId}`,
+                        { headers: asUser(task.token) }
+                    )
+                }
+            } finally {
+                await cleanup.close()
+            }
+        }
+
         const context = await browser.newContext()
         try {
             const token = await signIn(context, baseURL!, 'client')
@@ -101,6 +129,7 @@ test.describe('Notification digest', () => {
             }
         )
         expect(created.ok(), await created.text()).toBeTruthy()
+        rememberTask(await created.json(), String(target.id), curatorToken)
         await curatorContext.close()
 
         // The notification is unread, so after the wait the digest job mails it.
@@ -176,7 +205,7 @@ test.describe('Notification digest', () => {
         const roster = (await clients.json()).data ?? []
         const target = roster.find((c: { email?: string }) => c.email === client.email) ?? roster[0]
 
-        await curatorContext.request.post(`${baseURL}/api/v1/curator/clients/${target.id}/tasks`, {
+        const secondTask = await curatorContext.request.post(`${baseURL}/api/v1/curator/clients/${target.id}/tasks`, {
             headers: asUser(curatorToken),
             data: {
                 title: 'Прочитанная вовремя',
@@ -186,6 +215,7 @@ test.describe('Notification digest', () => {
                 recurrence: 'once',
             },
         })
+        rememberTask(await secondTask.json(), String(target.id), curatorToken)
         await curatorContext.close()
 
         // Read everything at once, before the wait expires.
