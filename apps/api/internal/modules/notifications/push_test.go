@@ -163,7 +163,7 @@ func TestPushIsPlannedWithoutTheEmailDelay(t *testing.T) {
 	service.WithPush(testPush())
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`FROM users WHERE id = \$1`).
+	mock.ExpectQuery(`FROM users u\s+LEFT JOIN user_settings`).
 		WillReturnRows(sqlmock.NewRows([]string{"timezone", "quiet_hours_start", "quiet_hours_end", "email_unsubscribed_at"}).
 			AddRow("Europe/Moscow", nil, nil, nil))
 	mock.ExpectQuery(`FROM notification_preferences WHERE user_id = \$1`).

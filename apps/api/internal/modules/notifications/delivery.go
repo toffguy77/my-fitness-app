@@ -120,9 +120,18 @@ type recipient struct {
 func (s *Service) loadRecipient(ctx context.Context, tx *sql.Tx, userID int64) (*recipient, error) {
 	r := &recipient{preferences: map[string]bool{}}
 
+	// The timezone lives on user_settings, the rest on users. Reading it from
+	// the wrong table cost every notification: loadRecipient failed, so
+	// planDelivery failed, so CreateNotification rolled back — and nobody was
+	// told anything at all, silently, because every caller logs and carries on.
+	//
+	// LEFT JOIN because an account can exist before its settings row does.
 	err := tx.QueryRowContext(ctx,
-		`SELECT COALESCE(timezone, 'Europe/Moscow'), quiet_hours_start, quiet_hours_end, email_unsubscribed_at
-		 FROM users WHERE id = $1`, userID).
+		`SELECT COALESCE(s.timezone, 'Europe/Moscow'),
+		        u.quiet_hours_start, u.quiet_hours_end, u.email_unsubscribed_at
+		 FROM users u
+		 LEFT JOIN user_settings s ON s.user_id = u.id
+		 WHERE u.id = $1`, userID).
 		Scan(&r.timezone, &r.quietStart, &r.quietEnd, &r.emailUnsubscribe)
 	if err != nil {
 		return nil, fmt.Errorf("load recipient: %w", err)
