@@ -31,6 +31,12 @@ type TableStrategy struct {
 	// Reason is recorded because "why is this kept?" is the question an audit
 	// asks, and the answer must not live only in someone's memory.
 	Reason string
+	// AlsoSet is appended to the SET clause of an anonymising update, for a
+	// table that has to record that it was anonymised rather than merely
+	// repointed. conversations needs it: its uniqueness rule applies to live
+	// conversations only, and the row has to leave that index in the same
+	// statement that rewrites its client.
+	AlsoSet string
 }
 
 // strategies covers every table that references users(id).
@@ -42,60 +48,47 @@ type TableStrategy struct {
 // that is exactly how personal data gets forgotten.
 var strategies = []TableStrategy{
 	// Belongs to the user alone.
-	{"food_entries", "user_id", StrategyDelete, "the person's food diary"},
-	{"water_logs", "user_id", StrategyDelete, "the person's water log"},
-	{"daily_metrics", "user_id", StrategyDelete, "weight and measurements"},
-	{"daily_calculated_targets", "user_id", StrategyDelete, "derived from their body profile"},
-	{"weekly_photos", "user_id", StrategyDelete, "progress photographs"},
-	{"user_foods", "user_id", StrategyDelete, "foods they authored"},
-	{"user_favorite_foods", "user_id", StrategyDelete, "their favourites"},
-	{"user_nutrient_preferences", "user_id", StrategyDelete, "their preferences"},
-	{"user_custom_recommendations", "user_id", StrategyDelete, "recommendations for them"},
-	{"meal_templates", "user_id", StrategyDelete, "their templates"},
-	{"user_settings", "user_id", StrategyDelete, "their settings"},
-	{"notifications", "user_id", StrategyDelete, "notifications addressed to them"},
-	{"content_notification_preferences", "user_id", StrategyDelete, "their subscription choices"},
-	{"content_notification_mute", "user_id", StrategyDelete, "their mute choices"},
-	{"refresh_tokens", "user_id", StrategyDelete, "their sessions"},
-	{"reset_tokens", "user_id", StrategyDelete, "password recovery tokens"},
-	{"email_verification_codes", "user_id", StrategyDelete, "verification codes"},
-	{"food_recognition_usage", "user_id", StrategyDelete, "their daily quota counters"},
-	{"data_exports", "user_id", StrategyDelete, "archives of their own data"},
-	{"message_read_status", "user_id", StrategyDelete, "read receipts they produced"},
-	{"tasks", "user_id", StrategyDelete, "tasks assigned to them"},
-	{"weekly_plans", "user_id", StrategyDelete, "plans written for them"},
-	{"curator_client_relationships", "client_id", StrategyDelete, "their assignment to a curator"},
-	{"user_consents", "user_id", StrategyDelete, "consent records for a person who no longer exists"},
+	{Table: "food_entries", Column: "user_id", Strategy: StrategyDelete, Reason: "the person's food diary"},
+	{Table: "water_logs", Column: "user_id", Strategy: StrategyDelete, Reason: "the person's water log"},
+	{Table: "daily_metrics", Column: "user_id", Strategy: StrategyDelete, Reason: "weight and measurements"},
+	{Table: "daily_calculated_targets", Column: "user_id", Strategy: StrategyDelete, Reason: "derived from their body profile"},
+	{Table: "weekly_photos", Column: "user_id", Strategy: StrategyDelete, Reason: "progress photographs"},
+	{Table: "user_foods", Column: "user_id", Strategy: StrategyDelete, Reason: "foods they authored"},
+	{Table: "user_favorite_foods", Column: "user_id", Strategy: StrategyDelete, Reason: "their favourites"},
+	{Table: "user_nutrient_preferences", Column: "user_id", Strategy: StrategyDelete, Reason: "their preferences"},
+	{Table: "user_custom_recommendations", Column: "user_id", Strategy: StrategyDelete, Reason: "recommendations for them"},
+	{Table: "meal_templates", Column: "user_id", Strategy: StrategyDelete, Reason: "their templates"},
+	{Table: "user_settings", Column: "user_id", Strategy: StrategyDelete, Reason: "their settings"},
+	{Table: "notifications", Column: "user_id", Strategy: StrategyDelete, Reason: "notifications addressed to them"},
+	{Table: "content_notification_preferences", Column: "user_id", Strategy: StrategyDelete, Reason: "their subscription choices"},
+	{Table: "content_notification_mute", Column: "user_id", Strategy: StrategyDelete, Reason: "their mute choices"},
+	{Table: "refresh_tokens", Column: "user_id", Strategy: StrategyDelete, Reason: "their sessions"},
+	{Table: "reset_tokens", Column: "user_id", Strategy: StrategyDelete, Reason: "password recovery tokens"},
+	{Table: "email_verification_codes", Column: "user_id", Strategy: StrategyDelete, Reason: "verification codes"},
+	{Table: "food_recognition_usage", Column: "user_id", Strategy: StrategyDelete, Reason: "their daily quota counters"},
+	{Table: "data_exports", Column: "user_id", Strategy: StrategyDelete, Reason: "archives of their own data"},
+	{Table: "message_read_status", Column: "user_id", Strategy: StrategyDelete, Reason: "read receipts they produced"},
+	{Table: "tasks", Column: "user_id", Strategy: StrategyDelete, Reason: "tasks assigned to them"},
+	{Table: "weekly_plans", Column: "user_id", Strategy: StrategyDelete, Reason: "plans written for them"},
+	{Table: "curator_client_relationships", Column: "client_id", Strategy: StrategyDelete, Reason: "their assignment to a curator"},
+	{Table: "user_consents", Column: "user_id", Strategy: StrategyDelete, Reason: "consent records for a person who no longer exists"},
 
 	// Part of a curator's working record.
-	{"messages", "sender_id", StrategyAnonymize,
-		"the curator's conversation must stay readable; the text loses its author"},
-	{"conversations", "client_id", StrategyAnonymize,
-		"the conversation belongs to the curator too"},
-	{"weekly_reports", "user_id", StrategyAnonymize,
-		"reports carry the curator's own feedback"},
-	{"articles", "author_id", StrategyAnonymize,
-		"published articles outlive their author's account"},
+	{Table: "messages", Column: "sender_id", Strategy: StrategyAnonymize, Reason: "the curator's conversation must stay readable; the text loses its author"},
+	{Table: "conversations", Column: "client_id", Strategy: StrategyAnonymize, Reason: "the conversation belongs to the curator too", AlsoSet: "anonymized_at = NOW()"},
+	{Table: "weekly_reports", Column: "user_id", Strategy: StrategyAnonymize, Reason: "reports carry the curator's own feedback"},
+	{Table: "articles", Column: "author_id", Strategy: StrategyAnonymize, Reason: "published articles outlive their author's account"},
 
 	// Already anonymous aggregates.
-	{"curator_daily_snapshots", "curator_id", StrategyKeep,
-		"per-curator counts, no personal data of the deleted user"},
-	{"curator_weekly_snapshots", "curator_id", StrategyKeep,
-		"per-curator counts, no personal data of the deleted user"},
-	{"message_attachments", "", StrategyKeep,
-		"reached through messages, which are anonymised rather than deleted"},
-	{"article_audience", "", StrategyKeep,
-		"audience rules reference roles, not individuals"},
-	{"coach_client_relationships", "", StrategyKeep,
-		"legacy table renamed to curator_client_relationships in migration 010"},
-	{"support_conversations", "user_id", StrategyDelete,
-		"support chats belong to the person who wrote them"},
-	{"support_messages", "operator_id", StrategyKeep,
-		"reached through the conversation, which is deleted with the account"},
-	{"leads", "handled_by", StrategyKeep,
-		"an onboarding attempt by somebody else; the deleted curator's name drops to NULL"},
-	{"oauth_pending_links", "", StrategyKeep,
-		"unfinished sign-in attempts, holding no reference to an account"},
+	{Table: "curator_daily_snapshots", Column: "curator_id", Strategy: StrategyKeep, Reason: "per-curator counts, no personal data of the deleted user"},
+	{Table: "curator_weekly_snapshots", Column: "curator_id", Strategy: StrategyKeep, Reason: "per-curator counts, no personal data of the deleted user"},
+	{Table: "message_attachments", Column: "", Strategy: StrategyKeep, Reason: "reached through messages, which are anonymised rather than deleted"},
+	{Table: "article_audience", Column: "", Strategy: StrategyKeep, Reason: "audience rules reference roles, not individuals"},
+	{Table: "coach_client_relationships", Column: "", Strategy: StrategyKeep, Reason: "legacy table renamed to curator_client_relationships in migration 010"},
+	{Table: "support_conversations", Column: "user_id", Strategy: StrategyDelete, Reason: "support chats belong to the person who wrote them"},
+	{Table: "support_messages", Column: "operator_id", Strategy: StrategyKeep, Reason: "reached through the conversation, which is deleted with the account"},
+	{Table: "leads", Column: "handled_by", Strategy: StrategyKeep, Reason: "an onboarding attempt by somebody else; the deleted curator's name drops to NULL"},
+	{Table: "oauth_pending_links", Column: "", Strategy: StrategyKeep, Reason: "unfinished sign-in attempts, holding no reference to an account"},
 }
 
 // Strategies exposes the table for tests and documentation.
@@ -132,7 +125,11 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 			stmt = fmt.Sprintf("DELETE FROM %s WHERE %s = $1", ts.Table, ts.Column)
 			args = []any{userID}
 		case StrategyAnonymize:
-			stmt = fmt.Sprintf("UPDATE %s SET %s = $1 WHERE %s = $2", ts.Table, ts.Column, ts.Column)
+			set := fmt.Sprintf("%s = $1", ts.Column)
+			if ts.AlsoSet != "" {
+				set += ", " + ts.AlsoSet
+			}
+			stmt = fmt.Sprintf("UPDATE %s SET %s WHERE %s = $2", ts.Table, set, ts.Column)
 			args = []any{systemUserID, userID}
 		}
 

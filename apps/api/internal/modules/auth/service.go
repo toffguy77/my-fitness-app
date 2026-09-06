@@ -641,7 +641,7 @@ func (s *Service) assignCurator(ctx context.Context, clientID int64) {
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO conversations (client_id, curator_id)
 		VALUES ($1, $2)
-		ON CONFLICT (client_id, curator_id) DO NOTHING
+		ON CONFLICT (client_id, curator_id) WHERE anonymized_at IS NULL DO NOTHING
 	`, clientID, curatorID)
 	if err != nil {
 		s.log.Errorw("Failed to create conversation", "curator_id", curatorID, "client_id", clientID, "error", err)
