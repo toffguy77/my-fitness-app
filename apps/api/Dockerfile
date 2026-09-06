@@ -7,8 +7,17 @@ FROM golang:1.26-alpine AS builder
 # security patches — pinning would defeat that and break the build whenever
 # Alpine rotates a package version out of the repository. Recorded in
 # .security-exceptions.yml.
+# Retried for the same reason as every other apk step here: the build depends
+# on the Alpine mirror answering, and a network blip on the build host is not a
+# reason to fail a deployment.
 # hadolint ignore=DL3018
-RUN apk add --no-cache git
+RUN ok=0; \
+    for attempt in 1 2 3; do \
+        if apk add --no-cache git; then ok=1; break; fi; \
+        echo "apk failed on attempt ${attempt}; retrying in 5s"; \
+        sleep 5; \
+    done; \
+    [ "$ok" = 1 ] || { echo "apk still failing after three attempts"; exit 1; }
 
 WORKDIR /app
 
@@ -30,8 +39,17 @@ FROM golang:1.26-alpine AS development
 # security patches — pinning would defeat that and break the build whenever
 # Alpine rotates a package version out of the repository. Recorded in
 # .security-exceptions.yml.
+# Retried for the same reason as every other apk step here: the build depends
+# on the Alpine mirror answering, and a network blip on the build host is not a
+# reason to fail a deployment.
 # hadolint ignore=DL3018
-RUN apk add --no-cache git
+RUN ok=0; \
+    for attempt in 1 2 3; do \
+        if apk add --no-cache git; then ok=1; break; fi; \
+        echo "apk failed on attempt ${attempt}; retrying in 5s"; \
+        sleep 5; \
+    done; \
+    [ "$ok" = 1 ] || { echo "apk still failing after three attempts"; exit 1; }
 
 # Install air for hot reload
 RUN go install github.com/air-verse/air@v1.61.7
@@ -58,8 +76,17 @@ FROM alpine:3.19 AS production
 # security patches — pinning would defeat that and break the build whenever
 # Alpine rotates a package version out of the repository. Recorded in
 # .security-exceptions.yml.
+# Retried for the same reason as every other apk step here: the build depends
+# on the Alpine mirror answering, and a network blip on the build host is not a
+# reason to fail a deployment.
 # hadolint ignore=DL3018
-RUN apk add --no-cache ca-certificates tzdata \
+RUN ok=0; \
+    for attempt in 1 2 3; do \
+        if apk add --no-cache ca-certificates tzdata; then ok=1; break; fi; \
+        echo "apk failed on attempt ${attempt}; retrying in 5s"; \
+        sleep 5; \
+    done; \
+    [ "$ok" = 1 ] || { echo "apk still failing after three attempts"; exit 1; } \
     && adduser -S -D -H -u 10001 appuser \
     && update-ca-certificates
 
