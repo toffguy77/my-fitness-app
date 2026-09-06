@@ -112,13 +112,19 @@ test.describe('Delivery settings', () => {
                 response.url().includes('/delivery-preferences') &&
                 response.request().method() === 'PUT'
         )
-        await page.getByText('Выключить').click()
+        // Scoped to the quiet-hours block: the push section has a button of
+        // the same name for turning push off.
+        const quietHours = page.getByTestId('delivery-settings').locator('div', {
+            hasText: 'Тихое время',
+        })
+        await quietHours.getByText('Выключить').first().click()
         await cleared
 
         await page.reload()
         await expect(page.getByTestId('delivery-settings')).toBeVisible({ timeout: 15000 })
         // Off means off: the defaults are shown, not a stored interval.
-        await expect(page.getByText('Выключить')).toHaveCount(0)
+        await expect(page.getByLabel('Начало тихого времени')).toHaveValue('22')
+        await expect(page.getByLabel('Конец тихого времени')).toHaveValue('8')
     })
 
     test('unsubscribing from email closes the whole column', async ({ page }) => {
