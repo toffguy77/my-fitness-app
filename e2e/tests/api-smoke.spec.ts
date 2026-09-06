@@ -72,11 +72,18 @@ test.describe('Every readable endpoint answers', () => {
                     headers: asUser(tokens[route.caller]),
                     failOnStatusCode: false,
                 })
-                if (response.status() >= 500) {
+                // A capability that is switched off in this environment
+                // answers 503 by design — the whole point of the feature flags
+                // is that a missing credential is a consistent refusal, not a
+                // crash. Anything else at or above 500 is a handler that could
+                // not run.
+                const body = await response.text()
+                const disabledOnPurpose =
+                    response.status() === 503 && body.includes('feature_unavailable')
+
+                if (response.status() >= 500 && !disabledOnPurpose) {
                     broken.push(
-                        `${route.path} (as ${route.caller}) → ${response.status()}: ${(
-                            await response.text()
-                        ).slice(0, 160)}`
+                        `${route.path} (as ${route.caller}) → ${response.status()}: ${body.slice(0, 160)}`
                     )
                 }
             }

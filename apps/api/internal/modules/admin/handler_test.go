@@ -378,7 +378,7 @@ func TestHandlerGetConversations(t *testing.T) {
 		now := time.Now()
 		mock.getConversationsFunc = func(ctx context.Context) ([]AdminConversation, error) {
 			return []AdminConversation{
-				{ID: "conv-1", ClientID: 100, ClientName: "Client", CuratorID: 10, CuratorName: "Curator", MessageCount: 5, UpdatedAt: now},
+				{ID: "8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90", ClientID: 100, ClientName: "Client", CuratorID: 10, CuratorName: "Curator", MessageCount: 5, UpdatedAt: now},
 			}, nil
 		}
 
@@ -426,7 +426,7 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 		now := time.Now()
 		content := "Hello"
 		mock.getConversationMsgsFunc = func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error) {
-			assert.Equal(t, "conv-1", conversationID)
+			assert.Equal(t, "8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90", conversationID)
 			assert.Equal(t, "", cursor)
 			assert.Equal(t, 50, limit)
 			return []AdminMessage{
@@ -436,8 +436,8 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/conv-1/messages", nil)
-		c.Params = gin.Params{{Key: "id", Value: "conv-1"}}
+		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90/messages", nil)
+		c.Params = gin.Params{{Key: "id", Value: "8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90"}}
 
 		handler.GetConversationMessages(c)
 
@@ -453,7 +453,7 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
 		mock.getConversationMsgsFunc = func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error) {
-			assert.Equal(t, "conv-1", conversationID)
+			assert.Equal(t, "8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90", conversationID)
 			assert.Equal(t, "cursor-123", cursor)
 			assert.Equal(t, 25, limit)
 			return []AdminMessage{}, nil
@@ -461,8 +461,8 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/conv-1/messages?cursor=cursor-123&limit=25", nil)
-		c.Params = gin.Params{{Key: "id", Value: "conv-1"}}
+		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90/messages?cursor=cursor-123&limit=25", nil)
+		c.Params = gin.Params{{Key: "id", Value: "8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90"}}
 
 		handler.GetConversationMessages(c)
 
@@ -478,8 +478,8 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/nonexistent/messages", nil)
-		c.Params = gin.Params{{Key: "id", Value: "nonexistent"}}
+		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d91/messages", nil)
+		c.Params = gin.Params{{Key: "id", Value: "8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d91"}}
 
 		handler.GetConversationMessages(c)
 
@@ -495,8 +495,8 @@ func TestHandlerGetConversationMessages(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/conv-1/messages", nil)
-		c.Params = gin.Params{{Key: "id", Value: "conv-1"}}
+		c.Request = httptest.NewRequest(http.MethodGet, "/admin/conversations/8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90/messages", nil)
+		c.Params = gin.Params{{Key: "id", Value: "8f14e45f-ea0b-4a1e-9f2c-3d5b6a7c8d90"}}
 
 		handler.GetConversationMessages(c)
 

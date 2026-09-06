@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/google/uuid"
 	"net/http"
 	"strconv"
 
@@ -172,6 +173,13 @@ func (h *Handler) GetConversations(c *gin.Context) {
 // GetConversationMessages handles GET /api/v1/admin/conversations/:id/messages
 func (h *Handler) GetConversationMessages(c *gin.Context) {
 	conversationID := c.Param("id")
+	// An identifier of the wrong shape is a request for something that does
+	// not exist, not a server fault. Passing it straight to Postgres turned a
+	// mistyped URL into a 500 and an error in the log.
+	if _, err := uuid.Parse(conversationID); err != nil {
+		response.NotFound(c, "Чат не найден")
+		return
+	}
 	cursor := c.Query("cursor")
 
 	limit := 50
