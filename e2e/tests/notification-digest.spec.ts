@@ -31,10 +31,38 @@ async function inboxOf(request: import('@playwright/test').APIRequestContext, ad
     return (body.messages ?? []) as Message[]
 }
 
+// One account, one inbox, one set of unread notifications: run in order.
+// In parallel the second test marks everything read — including the
+// notification the first one is waiting to be mailed about.
+test.describe.configure({ mode: 'serial' })
+
 test.describe('Notification digest', () => {
     test.beforeAll(async ({ request }) => {
         // Start from an empty inbox so "the newest message" means this test's.
         await request.delete(`${MAILPIT}/api/v1/messages`).catch(() => {})
+    })
+
+    // Whatever happens, email goes back on. A failure between unsubscribing
+    // and restoring would leave the account unsubscribed, and every retry
+    // would then fail for a different reason — no email could arrive at all.
+    test.afterEach(async ({ browser, baseURL }) => {
+        const context = await browser.newContext()
+        try {
+            const token = await signIn(context, baseURL!, 'client')
+            const prefs = await context.request.get(
+                `${baseURL}/api/v1/notifications/delivery-preferences`,
+                { headers: asUser(token) }
+            )
+            const current = (await prefs.json()).data
+            if (current?.emailUnsubscribed) {
+                await context.request.put(`${baseURL}/api/v1/notifications/delivery-preferences`, {
+                    headers: asUser(token),
+                    data: { ...current, emailUnsubscribed: false },
+                })
+            }
+        } finally {
+            await context.close()
+        }
     })
 
     test('an unread notification becomes an email whose link turns email off', async ({

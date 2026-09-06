@@ -110,7 +110,8 @@ test.describe('Delivery settings', () => {
         const cleared = page.waitForResponse(
             (response) =>
                 response.url().includes('/delivery-preferences') &&
-                response.request().method() === 'PUT'
+                response.request().method() === 'PUT' &&
+                (response.request().postData() ?? '').includes('"quietHoursStart":null')
         )
         // Scoped to the quiet-hours block: the push section has a button of
         // the same name for turning push off.
@@ -187,7 +188,7 @@ test.describe('Push', () => {
                 response.url().includes('/api/v1/notifications/push') &&
                 response.request().method() === 'DELETE'
         )
-        await page.getByRole('button', { name: 'Выключить' }).click()
+        await page.getByTestId('push-section').getByRole('button', { name: 'Выключить' }).click()
         expect((await withdrawn).status()).toBe(200)
 
         await expect(page.getByRole('button', { name: 'Включить push' })).toBeVisible()
