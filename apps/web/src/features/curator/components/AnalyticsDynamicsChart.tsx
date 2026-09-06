@@ -63,7 +63,21 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
         })
     }, [ownSnapshots, benchmarks, weeks])
 
-    if (ownSnapshots.length === 0) return null
+    // A curator whose snapshots have not been collected yet used to see no
+    // section at all, and could not tell an empty week from a broken screen.
+    // The figures arrive from a nightly job, so "not yet" is a normal state and
+    // has to look like one.
+    if (ownSnapshots.length === 0) {
+        return (
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 px-4 py-5">
+                <p className="text-sm font-semibold text-gray-900">Динамика</p>
+                <p className="mt-2 text-sm text-gray-500">
+                    Здесь появятся ваши недельные показатели в сравнении со средними по
+                    платформе. Первые данные — после завершения недели работы с клиентами.
+                </p>
+            </div>
+        )
+    }
 
     return (
         <div className="rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
@@ -99,6 +113,12 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                             </button>
                         ))}
                     </div>
+
+                    {benchmarks.length === 0 && (
+                        <p className="mb-3 text-xs text-gray-500">
+                            Средние по платформе пока не рассчитаны — показана только ваша динамика.
+                        </p>
+                    )}
 
                     <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                         <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
