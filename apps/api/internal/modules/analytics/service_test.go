@@ -66,10 +66,23 @@ func TestValidate_RefusesUndeclaredAndMissingProperties(t *testing.T) {
 // successful request, and disappears entirely behind a blocker. The fact comes
 // from where it happened.
 func TestValidate_RefusesServerFactsFromABrowser(t *testing.T) {
-	fromClient := Validate(Event{Name: EventRegistered}, true)
+	registered := Event{Name: EventRegistered, Properties: map[string]any{"method": "password"}}
+
+	fromClient := Validate(registered, true)
 	assert.ErrorIs(t, fromClient, apperrors.ErrValidation)
 
-	assert.NoError(t, Validate(Event{Name: EventRegistered}, false))
+	assert.NoError(t, Validate(registered, false))
+}
+
+// The funnel exists to compare ways of arriving, so an account that does not
+// say how it arrived is not a usable record of one.
+func TestValidate_RequiresTheSignUpMethod(t *testing.T) {
+	for _, name := range []string{EventRegistered, EventSignedIn} {
+		assert.ErrorIs(t, Validate(Event{Name: name}, false), apperrors.ErrValidation,
+			"%s without a method leaves the funnel unable to tell providers from passwords", name)
+		assert.NoError(t, Validate(
+			Event{Name: name, Properties: map[string]any{"method": "yandex"}}, false))
+	}
 }
 
 // Every declared property must itself be sendable, or the dictionary invites

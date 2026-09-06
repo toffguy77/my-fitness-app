@@ -43,7 +43,8 @@ func setupResetHandlerTest(t *testing.T) (*ResetHandler, sqlmock.Sqlmock, *gin.E
 	require.NoError(t, err)
 
 	rateLimiter := middleware.NewRateLimiter(db, log)
-	resetService := NewResetService(db, cfg, log, emailService, rateLimiter)
+	resetService := NewResetService(db, cfg, log, emailService, rateLimiter).
+		WithSessionCache(&fakeSessionCache{})
 	handler := NewResetHandler(cfg, log, resetService)
 
 	router := gin.New()
@@ -196,6 +197,12 @@ func TestResetPasswordHandler_Success(t *testing.T) {
 	// Mark token as used
 	mock.ExpectExec("UPDATE reset_tokens").
 		WithArgs(1).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	// Ending every session is part of the same transaction as the change.
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("UPDATE users SET token_version").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	// Commit transaction

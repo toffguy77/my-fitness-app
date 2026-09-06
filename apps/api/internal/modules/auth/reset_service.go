@@ -23,6 +23,15 @@ type ResetService struct {
 	rateLimiter  *middleware.RateLimiter
 	tokenGen     *TokenGenerator
 	passwordVal  *PasswordValidator
+	sessions     SessionCache
+}
+
+// WithSessionCache supplies the cache to invalidate when a reset ends every
+// session. Separate from the constructor for the same reason as on Service:
+// the cache is built after the services are.
+func (rs *ResetService) WithSessionCache(cache SessionCache) *ResetService {
+	rs.sessions = cache
+	return rs
 }
 
 // ResetTokenData represents a reset token record
@@ -337,6 +346,33 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 		return fmt.Errorf("failed to mark token as used")
 	}
 
+	// End every session, in the same transaction that changes the password.
+	//
+	// This used to be a log line saying sessions "should be invalidated",
+	// written when there was no mechanism to invalidate them. There is one now,
+	// and reset is the flow that needs it most: a person resets their password
+	// precisely when someone else has their account, and until this ran, that
+	// someone else kept a working access token and a working refresh token.
+	//
+	// Revoking refresh tokens stops new access tokens being minted; the version
+	// bump stops the ones already minted from being accepted. Neither alone is
+	// a revocation.
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
+		tokenData.UserID); err != nil {
+		rs.log.WithError(err).Error("Failed to revoke refresh tokens", "user_id", tokenData.UserID)
+		return fmt.Errorf("failed to revoke sessions")
+	}
+	// Loud rather than silent: a reset that leaves access tokens valid is worse
+	// than a reset that fails, because the person believes they are safe.
+	if rs.sessions == nil {
+		return fmt.Errorf("password reset needs a token-version cache: %w", apperrors.ErrValidation)
+	}
+	if err := rs.sessions.BumpVersion(ctx, tx, tokenData.UserID); err != nil {
+		rs.log.WithError(err).Error("Failed to bump token version", "user_id", tokenData.UserID)
+		return fmt.Errorf("failed to revoke sessions")
+	}
+
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
 		rs.log.WithError(err).Error("Failed to commit transaction",
@@ -344,13 +380,6 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 		)
 		return fmt.Errorf("failed to commit transaction")
 	}
-
-	// Invalidate all user sessions (JWT tokens)
-	// Note: This would require a session store or token blacklist
-	// For now, we'll just log it
-	rs.log.Info("Password reset successful - sessions should be invalidated",
-		"user_id", tokenData.UserID,
-	)
 
 	// Get user email for confirmation
 	var userEmail string
@@ -382,47 +411,11 @@ func (rs *ResetService) ResetPassword(ctx context.Context, plainToken string, ne
 		}
 	}
 
-	// End every session before reporting success: whoever triggered the reset
-	// may be recovering from a compromise.
-	if err := rs.InvalidateUserSessions(ctx, tokenData.UserID); err != nil {
-		rs.log.Errorw("Failed to invalidate sessions after password reset",
-			"error", err, "user_id", tokenData.UserID)
-		return fmt.Errorf("failed to invalidate sessions after password reset: %w", err)
-	}
-
 	rs.log.LogSecurityEvent("password_reset_completed", "info", map[string]any{
 		"user_id":    tokenData.UserID,
 		"ip_address": ipAddress,
 	})
 
-	return nil
-}
-
-// InvalidateUserSessions revokes every refresh token issued to the user.
-//
-// This used to be a stub that logged "User sessions invalidated" and did
-// nothing, and nothing called it. A password reset therefore left an attacker's
-// stolen refresh token working — the token survived the very action the victim
-// took to stop it.
-//
-// Access tokens already issued still work until they expire; closing that
-// window needs a token version on the user record and is handled by the
-// secure-token-lifecycle change.
-func (rs *ResetService) InvalidateUserSessions(ctx context.Context, userID int64) error {
-	startTime := time.Now()
-	result, err := rs.db.ExecContext(ctx,
-		`UPDATE refresh_tokens SET revoked_at = NOW()
-		 WHERE user_id = $1 AND revoked_at IS NULL`,
-		userID,
-	)
-	rs.log.LogDatabaseQuery("InvalidateUserSessions", time.Since(startTime), err,
-		map[string]any{"user_id": userID})
-	if err != nil {
-		return fmt.Errorf("failed to revoke refresh tokens: %w", err)
-	}
-
-	revoked, _ := result.RowsAffected()
-	rs.log.Info("User sessions invalidated", "user_id", userID, "revoked_tokens", revoked)
 	return nil
 }
 

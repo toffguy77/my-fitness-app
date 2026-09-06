@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import { PasswordInput } from '@/shared/components/forms/PasswordInput'
 import { passwordSchema } from '@/features/auth/utils/validation'
 import { messageFor } from '@/shared/errors/apiErrors'
 import { changePassword } from '../api/settings'
+import { providersApi } from '@/features/auth/api/providers'
+import { requestPasswordReset } from '@/features/auth/api/passwordReset'
 import { t } from '@/shared/i18n'
 
 const changePasswordSchema = z
@@ -27,8 +29,88 @@ const changePasswordSchema = z
 export function SettingsPassword() {
     return (
         <SettingsPageLayout title={t('settings.titles.password')}>
-            {() => <PasswordForm />}
+            {({ profile }) => <PasswordSection email={profile?.email ?? ''} />}
         </SettingsPageLayout>
+    )
+}
+
+/**
+ * An account created through a provider has no password, so the change form —
+ * which starts by asking for the current one — cannot be filled in. Such a
+ * person could set a password only by guessing that "forgot password" applies
+ * to a password they never had.
+ *
+ * The reset flow is the mechanism either way; this only makes it reachable.
+ */
+function PasswordSection({ email }: { email: string }) {
+    const [hasPassword, setHasPassword] = useState<boolean | null>(null)
+
+    useEffect(() => {
+        let cancelled = false
+        providersApi
+            .linked()
+            .then((state) => {
+                if (!cancelled) setHasPassword(state.has_password)
+            })
+            // Falling back to the change form is the safe direction: it is
+            // wrong only for a passwordless account, and it says so plainly
+            // when the server rejects the empty current password.
+            .catch(() => {
+                if (!cancelled) setHasPassword(true)
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    if (hasPassword === null) {
+        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.password.loading')}</p>
+    }
+
+    return hasPassword ? <PasswordForm /> : <SetPasswordPanel email={email} />
+}
+
+function SetPasswordPanel({ email }: { email: string }) {
+    const [sending, setSending] = useState(false)
+    const [sent, setSent] = useState(false)
+    const [error, setError] = useState('')
+
+    async function handleSend() {
+        setError('')
+        setSending(true)
+        try {
+            await requestPasswordReset(email)
+            setSent(true)
+        } catch (err) {
+            setError(messageFor(err))
+        } finally {
+            setSending(false)
+        }
+    }
+
+    if (sent) {
+        return (
+            <div className="rounded-lg bg-green-50 p-4 text-green-800">
+                <p className="font-medium">{t('settings.password.linkSent', { email })}</p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-gray-600">{t('settings.password.noneYet')}</p>
+            <p className="text-sm text-gray-600">{t('settings.password.setExplanation')}</p>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <button
+                onClick={handleSend}
+                disabled={sending || !email}
+                className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            >
+                {sending ? t('settings.password.sending') : t('settings.password.sendSetLink')}
+            </button>
+        </div>
     )
 }
 

@@ -43,6 +43,21 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
+	// The same token as a cookie, because the two ways of registering read it
+	// from different places: registering with a password sends it in the
+	// request body, while registering through an external provider never
+	// reaches our JavaScript again — the browser leaves for the provider and
+	// comes back to the callback, which can only see cookies.
+	//
+	// Without this the provider path silently dropped everything the visitor
+	// entered before signing up, and asked for it a second time.
+	//
+	// SameSite=Lax for that same return trip: Strict withholds the cookie on
+	// the cross-site redirect back from the provider, which is precisely the
+	// request that needs it. HttpOnly because script keeps its own copy.
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(LeadCookieName, token, int(ResumeTTL.Seconds()), "/", "", true, true)
+
 	response.Success(c, http.StatusCreated, gin.H{
 		// The token is what the browser keeps: it is the only thing that opens
 		// this lead again, and it cannot be guessed from a neighbouring one.

@@ -1,6 +1,7 @@
 package leads
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -155,4 +156,47 @@ func TestMarkHandled_MissingLeadIsNotFound(t *testing.T) {
 	w := post(r, "/admin/leads/lead-1/handled", "")
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// Registering through an external provider never returns to our JavaScript, so
+// the lead token has to travel as a cookie. The backend read one and nobody
+// set it: everything a visitor entered before signing up through a provider
+// was dropped, and they were asked for it again.
+func TestCreate_SetsTheCookieTheProviderCallbackReads(t *testing.T) {
+	r, _, mock := setupHandler(t)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO leads").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("lead-1", time.Now(), time.Now()))
+	mock.ExpectExec("INSERT INTO user_consents").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO user_consents").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	w := post(r, "/leads", validBody)
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	var lead *http.Cookie
+	for _, c := range w.Result().Cookies() {
+		if c.Name == LeadCookieName {
+			lead = c
+		}
+	}
+	require.NotNil(t, lead, "the provider sign-up path can only see cookies")
+
+	var body struct {
+		Data struct {
+			Token string `json:"token"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, body.Data.Token, lead.Value,
+		"the cookie and the body must carry the same claim on the lead")
+
+	// Lax, not Strict: the callback arrives as a cross-site redirect from the
+	// provider, and Strict withholds the cookie on exactly that request.
+	assert.Equal(t, http.SameSiteLaxMode, lead.SameSite)
+	assert.True(t, lead.HttpOnly, "script keeps its own copy; this one is for the server")
+	assert.True(t, lead.Secure)
+	assert.Equal(t, "/", lead.Path)
 }

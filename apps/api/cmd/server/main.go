@@ -345,6 +345,9 @@ func main() {
 	// half a minute — during which the person who just changed their password
 	// cannot use the application at all.
 	authService.WithSessionCache(tokenVersions)
+	// The same for password reset: it ends every session too, and it is the
+	// flow where a session that outlives the password matters most.
+	resetService.WithSessionCache(tokenVersions)
 
 	router := router.New(router.Deps{
 		Cfg:             cfg,
@@ -356,7 +359,7 @@ func main() {
 		Analytics:     analytics.NewHandler(analyticsService, log),
 		Auth:          auth.NewHandler(authService, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
-		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService),
+		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
 		Account:       account.NewHandler(accountService, log),
 		Notifications: notifications.NewHandler(notificationsSvc, cfg, log),

@@ -10,6 +10,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth/oauth"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
@@ -24,6 +25,19 @@ type OAuthHandler struct {
 	registry *oauth.Registry
 	// leads may be nil; the flow works without it.
 	leads LeadClaimer
+	// analytics may be nil; nothing depends on it being there.
+	analytics EventRecorder
+}
+
+// WithAnalytics attaches the recorder for facts a browser cannot report.
+//
+// Without it the funnel showed every account arriving by password, because the
+// provider path recorded nothing at all — so the question this whole change
+// exists to answer, whether people prefer signing in with a provider, had no
+// data behind it.
+func (h *OAuthHandler) WithAnalytics(recorder EventRecorder) *OAuthHandler {
+	h.analytics = recorder
+	return h
 }
 
 // WithLeads attaches the claimer that carries a guest onboarding attempt onto
@@ -49,9 +63,11 @@ const (
 	// Identifies the parked profile of a sign-in that could not finish in the
 	// callback. The profile itself never leaves the server.
 	pendingCookie = "oauth_pending"
-	// Set by the guest wizard before it sends the visitor to a provider. Not
-	// HttpOnly: the wizard itself writes and reads it.
-	leadCookie = "lead_token"
+	// Set by the leads module when a guest saves their onboarding attempt, so
+	// that a sign-up finishing at a provider can still find it. The name comes
+	// from the package that issues it: written out twice, one copy was a name
+	// nobody set, and the carry-over quietly did nothing.
+	leadCookie = leads.LeadCookieName
 	// Long enough for a person to sign in at the provider, short enough that a
 	// stale attempt cannot be replayed later.
 	oauthFlowTTL = 10 * time.Minute
@@ -150,7 +166,26 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 				h.log.Errorw("Failed to carry onboarding lead onto provider account",
 					"error", err, "user_id", outcome.User.User.ID)
 			}
-			c.SetCookie(leadCookie, "", -1, "/", "", true, false)
+			c.SetCookie(leadCookie, "", -1, "/", "", true, true)
+		}
+	}
+
+	// The method is the provider's own name, so the funnel separates "signed up
+	// with Yandex" from "signed up with a password" rather than counting both
+	// as one.
+	//
+	// The browser's visitor identifier cannot be linked here the way a password
+	// registration links it: the callback arrives as a redirect from the
+	// provider and carries no request body. What happened before the sign-up
+	// therefore stays anonymous on this path.
+	if h.analytics != nil {
+		switch outcome.Result {
+		case OAuthRegistered:
+			h.analytics.RecordServerEvent(c.Request.Context(), "registered",
+				outcome.User.User.ID, map[string]any{"method": provider})
+		case OAuthSignedIn:
+			h.analytics.RecordServerEvent(c.Request.Context(), "signed_in",
+				outcome.User.User.ID, map[string]any{"method": provider})
 		}
 	}
 
