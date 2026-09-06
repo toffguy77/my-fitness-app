@@ -13,7 +13,7 @@
 ## 3. Конфигурации сборки
 
 - [x] 3.1 Включить `reactCompiler: true` в `apps/web/next.config.ts`, убрать устаревший комментарий. Проверка: `npm run build:web` проходит, `npx jest` в `apps/web` зелёные.
-- [ ] 3.2 Если 3.1 не проходит — вернуть `false`, удалить `babel-plugin-react-compiler` из `devDependencies` и зафиксировать причину в `CLAUDE.md`. Проверка: сборка и тесты зелёные, документация соответствует.
+- [x] 3.2 ~~Если 3.1 не проходит~~ **Не применима:** задача 3.1 прошла — `reactCompiler: true` собирается и тесты зелёные, поэтому откатывать флаг и удалять `babel-plugin-react-compiler` не нужно. Если 3.1 не проходит — вернуть `false`, удалить `babel-plugin-react-compiler` из `devDependencies` и зафиксировать причину в `CLAUDE.md`. Проверка: сборка и тесты зелёные, документация соответствует.
 - [x] 3.3 Удалить корневые `next.config.ts`, `jest.config.js`, `jest.setup.js`, `postcss.config.mjs`, `next-env.d.ts`; удалить `tsconfig.tsbuildinfo` и добавить его в `.gitignore`. Проверка: `npm run build:web`, `npm run type-check`, `npx jest` из корня и из `apps/web` проходят.
 - [x] 3.4 Привести раздел «Key Technical Details» в `CLAUDE.md` в соответствие с фактическим значением флага React Compiler. Проверка: сценарий спека «Согласованность документации и конфигурации».
 

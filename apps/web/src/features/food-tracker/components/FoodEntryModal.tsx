@@ -27,6 +27,7 @@ import { useFoodSearch } from '../hooks/useFoodSearch';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -58,11 +59,11 @@ type ModalStep = 'select-food' | 'select-portion' | 'manual-entry';
 // ============================================================================
 
 const TABS: TabConfig[] = [
-    { id: 'search', label: 'Поиск', icon: Search },
-    { id: 'barcode', label: 'Штрих-код', icon: Barcode },
-    { id: 'manual', label: 'Ручной ввод', icon: Edit3 },
-    { id: 'photo', label: 'Фото еды', icon: Camera },
-    { id: 'chat', label: 'Чат', icon: MessageCircle },
+    { id: 'search', label: t('foodTracker.tabs.search'), icon: Search },
+    { id: 'barcode', label: t('foodTracker.tabs.barcode'), icon: Barcode },
+    { id: 'manual', label: t('foodTracker.tabs.manual'), icon: Edit3 },
+    { id: 'photo', label: t('foodTracker.tabs.photo'), icon: Camera },
+    { id: 'chat', label: t('foodTracker.tabs.chat'), icon: MessageCircle },
 ];
 
 const DEFAULT_TAB: EntryMethodTab = 'search';
@@ -106,7 +107,7 @@ export function FoodEntryModal({
                   name: editingEntry.foodName,
                   nutritionPer100: per100Of(editingEntry),
                   servingSize: editingEntry.portionAmount,
-                  servingUnit: editingEntry.portionType === 'milliliters' ? 'мл' : 'г',
+                  servingUnit: editingEntry.portionType === 'milliliters' ? t('units.milliliter') : t('units.gram'),
               } as FoodItem)
             : null
     );
@@ -263,10 +264,10 @@ export function FoodEntryModal({
             };
             const url = getApiUrl('/food-tracker/user-foods/clone');
             await apiClient.post<UserFood>(url, payload);
-            toast.success('Продукт сохранён');
+            toast.success(t('foodTracker.entryModal.savedAsOwn'));
         } catch (error) {
             console.error('Failed to clone food:', error);
-            toast.error('Не удалось сохранить продукт');
+            toast.error(t('foodTracker.entryModal.saveAsOwnFailed'));
         }
     }, []);
 
@@ -377,7 +378,7 @@ export function FoodEntryModal({
                             type="button"
                             onClick={step === 'manual-entry' ? handleManualEntryCancel : handleBackToFoodSelection}
                             className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
-                            aria-label="Назад"
+                            aria-label={t('common.back')}
                         >
                             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
@@ -389,19 +390,19 @@ export function FoodEntryModal({
                         className="text-base font-semibold text-gray-900 sm:text-lg"
                     >
                         {step === 'select-food'
-                            ? 'Добавить запись'
+                            ? t('foodTracker.entryModal.addEntry')
                             : step === 'manual-entry'
-                                ? 'Ввести вручную'
+                                ? t('foodTracker.entryModal.enterManually')
                                 : editingEntry
-                                    ? 'Редактировать'
-                                    : selectedFood?.name || 'Выбор порции'}
+                                    ? t('common.edit')
+                                    : selectedFood?.name || t('foodTracker.entryModal.choosePortion')}
                     </h2>
                     <button
                         ref={firstFocusableRef}
                         type="button"
                         onClick={onClose}
                         className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
-                        aria-label="Закрыть"
+                        aria-label={t('common.close')}
                     >
                         <X className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -414,7 +415,7 @@ export function FoodEntryModal({
                         <div
                             className="flex border-b border-gray-200"
                             role="tablist"
-                            aria-label="Способы добавления"
+                            aria-label={t('foodTracker.tabs.label')}
                         >
                             {TABS.map((tab, index) => {
                                 const Icon = tab.icon;
@@ -498,14 +499,14 @@ export function FoodEntryModal({
                                 {batchFoods.length > 1 && (
                                     <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg">
                                         <p className="text-sm text-blue-700">
-                                            Добавляем {batchIndex + 1} из {batchFoods.length}
+                                            {t('foodTracker.entryModal.batchProgress', { current: batchIndex + 1, total: batchFoods.length })}
                                         </p>
                                         <button
                                             type="button"
                                             onClick={handleSkipBatchItem}
                                             className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                                         >
-                                            Пропустить
+                                            {t('common.skip')}
                                         </button>
                                     </div>
                                 )}
@@ -515,7 +516,7 @@ export function FoodEntryModal({
                                     {isEditingDetails ? (
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="block text-xs text-gray-500 mb-1">Название</label>
+                                                <label className="block text-xs text-gray-500 mb-1">{t('foodTracker.entryModal.name')}</label>
                                                 <input
                                                     type="text"
                                                     value={editedName}
@@ -523,10 +524,10 @@ export function FoodEntryModal({
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                 />
                                             </div>
-                                            <p className="text-xs text-gray-500 font-medium">КБЖУ на 100г</p>
+                                            <p className="text-xs text-gray-500 font-medium">{t('foodTracker.entryModal.macrosPer100')}</p>
                                             <div className="grid grid-cols-4 gap-2">
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Ккал</label>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.calories')}</label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.calories || ''}
@@ -537,7 +538,7 @@ export function FoodEntryModal({
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Белки</label>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.protein')}</label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.protein || ''}
@@ -548,7 +549,7 @@ export function FoodEntryModal({
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Жиры</label>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.fat')}</label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.fat || ''}
@@ -559,7 +560,7 @@ export function FoodEntryModal({
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">Углеводы</label>
+                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.carbs')}</label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.carbs || ''}
@@ -575,7 +576,7 @@ export function FoodEntryModal({
                                                 onClick={() => setIsEditingDetails(false)}
                                                 className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                                             >
-                                                Готово
+                                                {t('common.done')}
                                             </button>
                                         </div>
                                     ) : (
@@ -586,10 +587,10 @@ export function FoodEntryModal({
                                                     <p className="text-sm text-gray-500">{selectedFood.brand}</p>
                                                 )}
                                                 <p className="text-xs text-gray-400 mt-1">
-                                                    На 100г: {Math.round(editedNutritionPer100.calories)} ккал
-                                                    · Б {Math.round(editedNutritionPer100.protein)}
-                                                    · Ж {Math.round(editedNutritionPer100.fat)}
-                                                    · У {Math.round(editedNutritionPer100.carbs)}
+                                                    {t('foodTracker.entryModal.per100Summary', { calories: Math.round(editedNutritionPer100.calories) })}
+                                                    {' · '}{t('macros.proteinShort')} {Math.round(editedNutritionPer100.protein)}
+                                                    {' · '}{t('macros.fatShort')} {Math.round(editedNutritionPer100.fat)}
+                                                    {' · '}{t('macros.carbsShort')} {Math.round(editedNutritionPer100.carbs)}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-1">
@@ -598,8 +599,8 @@ export function FoodEntryModal({
                                                         type="button"
                                                         onClick={() => handleCloneFood(selectedFood)}
                                                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                        aria-label="Сохранить как свой"
-                                                        title="Сохранить как свой"
+                                                        aria-label={t('foodTracker.entryModal.saveAsOwn')}
+                                                        title={t('foodTracker.entryModal.saveAsOwn')}
                                                     >
                                                         <Bookmark className="w-4 h-4" />
                                                     </button>
@@ -608,7 +609,7 @@ export function FoodEntryModal({
                                                     type="button"
                                                     onClick={() => setIsEditingDetails(true)}
                                                     className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    aria-label="Редактировать"
+                                                    aria-label={t('common.edit')}
                                                 >
                                                     <Pencil className="w-4 h-4" />
                                                 </button>
@@ -628,7 +629,7 @@ export function FoodEntryModal({
                                 {/* Meal Type Info */}
                                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                                     <p className="text-sm text-blue-700">
-                                        Приём пищи: <span className="font-medium">{getMealTypeLabel(mealType)}</span>
+                                        {t('foodTracker.entryModal.mealLabel')} <span className="font-medium">{getMealTypeLabel(mealType)}</span>
                                     </p>
                                 </div>
 
@@ -643,17 +644,17 @@ export function FoodEntryModal({
                                         {isSaving ? (
                                             <>
                                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                <span>Сохранение...</span>
+                                                <span>{t('common.saving')}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <Check className="w-5 h-5" />
                                                 <span>
                                                     {editingEntry
-                                                        ? 'Сохранить'
+                                                        ? t('common.save')
                                                         : batchFoods.length > 0 && batchIndex + 1 < batchFoods.length
-                                                            ? 'Добавить и далее'
-                                                            : 'Добавить'}
+                                                            ? t('foodTracker.entryModal.addAndNext')
+                                                            : t('common.add')}
                                                 </span>
                                             </>
                                         )}
@@ -674,10 +675,10 @@ export function FoodEntryModal({
 
 function getMealTypeLabel(mealType: MealType): string {
     const labels: Record<MealType, string> = {
-        breakfast: 'Завтрак',
-        lunch: 'Обед',
-        dinner: 'Ужин',
-        snack: 'Перекус',
+        breakfast: t('meals.breakfast'),
+        lunch: t('meals.lunch'),
+        dinner: t('meals.dinner'),
+        snack: t('meals.snack'),
     };
     return labels[mealType];
 }

@@ -16,6 +16,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { CustomRecommendationUnit, CustomRecommendation } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -41,13 +42,17 @@ interface FormErrors {
 // Constants
 // ============================================================================
 
+// i18n-exempt: these are stored values, not labels — user_nutrient_preferences
+// keeps the unit as written here, so a translated copy would not match the rows
+// already in the database. What a person reads is UNIT_LABELS below.
 const UNITS: CustomRecommendationUnit[] = ['г', 'мг', 'мкг', 'МЕ'];
 
 const UNIT_LABELS: Record<CustomRecommendationUnit, string> = {
-    'г': 'Граммы (г)',
-    'мг': 'Миллиграммы (мг)',
-    'мкг': 'Микрограммы (мкг)',
-    'МЕ': 'Международные единицы (МЕ)',
+    // i18n-exempt: keys, matching the stored values above.
+    'г': t('foodTracker.customRecommendation.unitGrams'),
+    'мг': t('foodTracker.customRecommendation.unitMilligrams'),
+    'мкг': t('foodTracker.customRecommendation.unitMicrograms'),
+    'МЕ': t('foodTracker.customRecommendation.unitIU'),
 };
 
 // ============================================================================
@@ -57,31 +62,31 @@ const UNIT_LABELS: Record<CustomRecommendationUnit, string> = {
 function validateName(name: string): string | undefined {
     const trimmed = name.trim();
     if (!trimmed) {
-        return 'Название обязательно для заполнения';
+        return t('foodTracker.customRecommendation.nameRequired');
     }
     if (trimmed.length < 2) {
-        return 'Название должно содержать минимум 2 символа';
+        return t('foodTracker.customRecommendation.nameTooShort');
     }
     if (trimmed.length > 50) {
-        return 'Название не должно превышать 50 символов';
+        return t('foodTracker.customRecommendation.nameTooLong');
     }
     return undefined;
 }
 
 function validateDailyTarget(value: string): string | undefined {
     if (!value.trim()) {
-        return 'Дневная норма обязательна для заполнения';
+        return t('foodTracker.customRecommendation.targetRequired');
     }
 
     const num = parseFloat(value);
     if (isNaN(num)) {
-        return 'Введите корректное число';
+        return t('foodTracker.customRecommendation.targetNotANumber');
     }
     if (num <= 0) {
-        return 'Дневная норма должна быть положительным числом';
+        return t('foodTracker.customRecommendation.targetNotPositive');
     }
     if (num > 1000000) {
-        return 'Дневная норма слишком большая';
+        return t('foodTracker.customRecommendation.targetTooLarge');
     }
 
     return undefined;
@@ -100,7 +105,7 @@ export function AddCustomRecommendationForm({
     // Form state
     const [name, setName] = useState('');
     const [dailyTarget, setDailyTarget] = useState('');
-    const [unit, setUnit] = useState<CustomRecommendationUnit>('мг');
+    const [unit, setUnit] = useState<CustomRecommendationUnit>('мг' /* i18n-exempt: stored value */);
     const [errors, setErrors] = useState<FormErrors>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -114,7 +119,7 @@ export function AddCustomRecommendationForm({
             setTimeout(() => {
                 setName('');
                 setDailyTarget('');
-                setUnit('мг');
+                setUnit('мг'); // i18n-exempt: stored value
                 setErrors({});
                 setTouched({});
             }, 0);
@@ -240,13 +245,13 @@ export function AddCustomRecommendationForm({
                         id="add-recommendation-title"
                         className="text-lg font-semibold text-gray-900"
                     >
-                        Добавить рекомендацию
+                        {t('foodTracker.customRecommendation.title')}
                     </h2>
                     <button
                         type="button"
                         onClick={onClose}
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        aria-label="Закрыть"
+                        aria-label={t('common.close')}
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -260,7 +265,7 @@ export function AddCustomRecommendationForm({
                             htmlFor="recommendation-name"
                             className="block text-sm font-medium text-gray-700 mb-1"
                         >
-                            Название <span className="text-red-500">*</span>
+                            {t('foodTracker.customRecommendation.name')} <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
@@ -268,7 +273,7 @@ export function AddCustomRecommendationForm({
                             value={name}
                             onChange={handleNameChange}
                             onBlur={() => handleBlur('name')}
-                            placeholder="Например: Омега-3"
+                            placeholder={t('foodTracker.customRecommendation.namePlaceholder')}
                             className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name && touched.name
                                 ? 'border-red-500 bg-red-50'
                                 : 'border-gray-300 hover:border-gray-400'
@@ -293,7 +298,7 @@ export function AddCustomRecommendationForm({
                             htmlFor="recommendation-target"
                             className="block text-sm font-medium text-gray-700 mb-1"
                         >
-                            Дневная норма <span className="text-red-500">*</span>
+                            {t('foodTracker.customRecommendation.dailyTarget')} <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="text"
@@ -302,7 +307,7 @@ export function AddCustomRecommendationForm({
                             value={dailyTarget}
                             onChange={handleDailyTargetChange}
                             onBlur={() => handleBlur('dailyTarget')}
-                            placeholder="Например: 1000"
+                            placeholder={t('foodTracker.customRecommendation.targetPlaceholder')}
                             className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.dailyTarget && touched.dailyTarget
                                 ? 'border-red-500 bg-red-50'
                                 : 'border-gray-300 hover:border-gray-400'
@@ -327,7 +332,7 @@ export function AddCustomRecommendationForm({
                             htmlFor="recommendation-unit"
                             className="block text-sm font-medium text-gray-700 mb-1"
                         >
-                            Единица измерения
+                            {t('foodTracker.customRecommendation.unit')}
                         </label>
                         <select
                             id="recommendation-unit"
@@ -350,7 +355,7 @@ export function AddCustomRecommendationForm({
                             onClick={onClose}
                             className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
-                            Отмена
+                            {t('common.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -358,7 +363,7 @@ export function AddCustomRecommendationForm({
                             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                         >
                             <Plus className="w-4 h-4" />
-                            Добавить
+                            {t('common.add')}
                         </button>
                     </div>
                 </form>

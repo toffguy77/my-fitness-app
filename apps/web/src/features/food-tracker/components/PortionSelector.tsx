@@ -12,6 +12,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { FoodItem, PortionType, KBZHU } from '../types';
 import { calculateKBZHU, validatePortionAmount } from '../utils/kbzhuCalculator';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -37,15 +38,15 @@ export interface PortionSelectorProps {
 // ============================================================================
 
 const PORTION_TYPE_LABELS: Record<PortionType, string> = {
-    grams: 'Граммы',
-    milliliters: 'Миллилитры',
-    portion: 'Порция',
+    grams: t('foodTracker.portion.typeGrams'),
+    milliliters: t('foodTracker.portion.typeMilliliters'),
+    portion: t('foodTracker.portion.typePortion'),
 };
 
 const PORTION_TYPE_UNITS: Record<PortionType, string> = {
-    grams: 'г',
-    milliliters: 'мл',
-    portion: 'шт',
+    grams: t('units.gram'),
+    milliliters: t('units.milliliter'),
+    portion: t('units.piece'),
 };
 
 const QUICK_PORTIONS: Record<PortionType, number[]> = {
@@ -106,12 +107,12 @@ export function PortionSelector({
         const validation = validatePortionAmount(newAmount);
 
         if (!validation.isValid) {
-            setError(validation.error || 'Неверное значение');
+            setError(validation.error || t('common.invalidValue'));
             return;
         }
 
         if (newAmount > maxValue) {
-            setError(`Максимальное значение: ${maxValue} ${PORTION_TYPE_UNITS[portionType]}`);
+            setError(t('foodTracker.portion.maxValue', { max: maxValue, unit: PORTION_TYPE_UNITS[portionType] }));
             return;
         }
 
@@ -126,14 +127,14 @@ export function PortionSelector({
 
         // Allow empty input while typing
         if (value === '') {
-            setError('Введите значение порции');
+            setError(t('foodTracker.portion.required'));
             return;
         }
 
         const numValue = parseFloat(value.replace(',', '.'));
 
         if (isNaN(numValue)) {
-            setError('Порция должна быть числом');
+            setError(t('foodTracker.portion.notANumber'));
             return;
         }
 
@@ -184,7 +185,7 @@ export function PortionSelector({
     return (
         <div className={`space-y-4 ${className}`}>
             {/* Portion Type Toggle */}
-            <div className="flex gap-1 p-1 bg-gray-100 rounded-lg" role="tablist" aria-label="Тип порции">
+            <div className="flex gap-1 p-1 bg-gray-100 rounded-lg" role="tablist" aria-label={t('foodTracker.portion.typeAria')}>
                 {(Object.keys(PORTION_TYPE_LABELS) as PortionType[]).map((type) => (
                     <button
                         key={type}
@@ -218,7 +219,7 @@ export function PortionSelector({
                     {/* Numeric Input with Unit */}
                     <div className="flex items-center gap-2">
                         <label htmlFor="portion-input" className="sr-only">
-                            Количество порции
+                            {t('foodTracker.portion.amount')}
                         </label>
                         <input
                             id="portion-input"
@@ -251,7 +252,7 @@ export function PortionSelector({
                     {/* Slider */}
                     <div className="px-1">
                         <label htmlFor="portion-slider" className="sr-only">
-                            Ползунок порции
+                            {t('foodTracker.portion.slider')}
                         </label>
                         <input
                             id="portion-slider"
@@ -325,29 +326,29 @@ export function PortionSelector({
             {/* КБЖУ Display */}
             <div className="p-4 bg-gray-50 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
-                    Пищевая ценность
+                    {t('foodTracker.portion.nutrition')}
                 </h4>
                 <div className="grid grid-cols-4 gap-3">
                     <NutrientDisplay
-                        label="Ккал"
+                        label={t('macros.calories')}
                         value={calculatedNutrition.calories}
                         unit=""
                         highlight
                     />
                     <NutrientDisplay
-                        label="Белки"
+                        label={t('macros.protein')}
                         value={calculatedNutrition.protein}
-                        unit="г"
+                        unit={t('units.gram')}
                     />
                     <NutrientDisplay
-                        label="Жиры"
+                        label={t('macros.fat')}
                         value={calculatedNutrition.fat}
-                        unit="г"
+                        unit={t('units.gram')}
                     />
                     <NutrientDisplay
-                        label="Углеводы"
+                        label={t('macros.carbs')}
                         value={calculatedNutrition.carbs}
-                        unit="г"
+                        unit={t('units.gram')}
                     />
                 </div>
             </div>

@@ -13,6 +13,7 @@ import { useState, useCallback, useRef } from 'react';
 import { Camera, Image, Upload, AlertCircle, X, Search } from 'lucide-react';
 import type { FoodItem, RecognizedFood } from '../types';
 import { EVENTS, track } from '@/shared/analytics';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -90,7 +91,7 @@ export function AIPhotoTab({
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            setError('Выберите изображение');
+            setError(t('foodTracker.photo.pickImage'));
             return;
         }
 
@@ -117,12 +118,12 @@ export function AIPhotoTab({
                 setStatus('results');
             } else {
                 track(EVENTS.foodRecognition, { outcome: 'unavailable' });
-                setError('Сервис распознавания недоступен');
+                setError(t('foodTracker.photo.serviceUnavailable'));
                 setStatus('error');
             }
         } catch {
             track(EVENTS.foodRecognition, { outcome: 'failed' });
-            setError('Ошибка при распознавании фото');
+            setError(t('foodTracker.photo.failed'));
             setStatus('error');
         }
 
@@ -158,9 +159,9 @@ export function AIPhotoTab({
 
     // Get confidence label
     const getConfidenceLabel = (confidence: number): string => {
-        if (confidence >= 0.9) return 'Высокая';
-        if (confidence >= 0.7) return 'Средняя';
-        return 'Низкая';
+        if (confidence >= 0.9) return t('foodTracker.photo.confidenceHigh');
+        if (confidence >= 0.7) return t('foodTracker.photo.confidenceMedium');
+        return t('foodTracker.photo.confidenceLow');
     };
 
     // Get confidence color
@@ -177,7 +178,7 @@ export function AIPhotoTab({
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
                     <Image className="w-16 h-16 text-gray-400 mb-4" />
                     <p className="text-gray-600 text-center mb-6">
-                        Сфотографируйте еду или выберите фото из галереи
+                        {t('foodTracker.photo.prompt')}
                     </p>
                     <div className="flex gap-4">
                         <button
@@ -186,7 +187,7 @@ export function AIPhotoTab({
                             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             <Camera className="w-5 h-5" />
-                            <span>Камера</span>
+                            <span>{t('foodTracker.photo.camera')}</span>
                         </button>
                         <button
                             type="button"
@@ -194,7 +195,7 @@ export function AIPhotoTab({
                             className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
                         >
                             <Upload className="w-5 h-5" />
-                            <span>Галерея</span>
+                            <span>{t('foodTracker.photo.gallery')}</span>
                         </button>
                     </div>
                 </div>
@@ -207,13 +208,13 @@ export function AIPhotoTab({
                         <div className="w-48 h-48 rounded-xl overflow-hidden mb-6">
                             <img
                                 src={photoPreview}
-                                alt="Загруженное фото"
+                                alt={t('foodTracker.photo.uploaded')}
                                 className="w-full h-full object-cover"
                             />
                         </div>
                     )}
                     <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-                    <p className="text-gray-600">Распознаем продукты...</p>
+                    <p className="text-gray-600">{t('foodTracker.photo.recognising')}</p>
                 </div>
             )}
 
@@ -225,14 +226,14 @@ export function AIPhotoTab({
                         <div className="relative h-40 bg-gray-100 mb-4">
                             <img
                                 src={photoPreview}
-                                alt="Загруженное фото"
+                                alt={t('foodTracker.photo.uploaded')}
                                 className="w-full h-full object-contain"
                             />
                             <button
                                 type="button"
                                 onClick={handleReset}
                                 className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                                aria-label="Сделать новое фото"
+                                aria-label={t('foodTracker.photo.retake')}
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -244,7 +245,7 @@ export function AIPhotoTab({
                         {results.length === 0 ? (
                             <div className="text-center py-8">
                                 <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                <p className="text-gray-500">Продукты не распознаны</p>
+                                <p className="text-gray-500">{t('foodTracker.photo.nothingFound')}</p>
                             </div>
                         ) : (
                             <div>
@@ -256,9 +257,9 @@ export function AIPhotoTab({
                                                 {results[0].food.name}
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                {Math.round(results[0].food.servingSize)} г
+                                                {Math.round(results[0].food.servingSize)} {t('units.gram')}
                                                 {' \u2022 '}
-                                                {Math.round(results[0].food.nutritionPer100.calories)} ккал на 100г
+                                                {t('foodTracker.photo.per100Calories', { calories: Math.round(results[0].food.nutritionPer100.calories) })}
                                             </p>
                                         </div>
                                         <div className="text-right">
@@ -276,19 +277,19 @@ export function AIPhotoTab({
                                 {results[0].composition && results[0].composition.length > 0 && (
                                     <div className="mb-3">
                                         <h4 className="text-sm font-medium text-gray-500 mb-2">
-                                            Состав
+                                            {t('foodTracker.photo.composition')}
                                         </h4>
-                                        <ul className="space-y-1" aria-label="Состав блюда">
+                                        <ul className="space-y-1" aria-label={t('foodTracker.photo.compositionAria')}>
                                             {results[0].composition.map((item, idx) => (
                                                 <li
                                                     key={idx}
                                                     className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
                                                 >
                                                     <span className="text-gray-700">
-                                                        {item.name} — {Math.round(item.estimatedWeight ?? item.estimated_weight ?? 0)} г
+                                                        {t('foodTracker.photo.itemWeight', { name: item.name, weight: Math.round(item.estimatedWeight ?? item.estimated_weight ?? 0) })}
                                                     </span>
                                                     <span className="text-gray-400">
-                                                        {Math.round(item.nutrition.calories)} ккал/100г
+                                                        {t('foodTracker.photo.itemCalories', { calories: Math.round(item.nutrition.calories) })}
                                                     </span>
                                                 </li>
                                             ))}
@@ -303,8 +304,7 @@ export function AIPhotoTab({
                                             <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
                                             <div>
                                                 <p className="text-sm text-yellow-700">
-                                                    Низкая уверенность в распознавании.
-                                                    Проверьте результат или найдите вручную.
+                                                    {t('foodTracker.photo.lowConfidence')}
                                                 </p>
                                                 {onManualSearch && (
                                                     <button
@@ -313,7 +313,7 @@ export function AIPhotoTab({
                                                         className="mt-2 flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
                                                     >
                                                         <Search className="w-4 h-4" />
-                                                        <span>Найти вручную</span>
+                                                        <span>{t('foodTracker.photo.searchManually')}</span>
                                                     </button>
                                                 )}
                                             </div>
@@ -332,7 +332,7 @@ export function AIPhotoTab({
                             disabled={results.length === 0}
                             className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
-                            Добавить
+                            {t('common.add')}
                         </button>
                     </div>
                 </div>
@@ -345,7 +345,7 @@ export function AIPhotoTab({
                         <div className="w-48 h-48 rounded-xl overflow-hidden mb-6 opacity-50">
                             <img
                                 src={photoPreview}
-                                alt="Загруженное фото"
+                                alt={t('foodTracker.photo.uploaded')}
                                 className="w-full h-full object-cover"
                             />
                         </div>
@@ -358,7 +358,7 @@ export function AIPhotoTab({
                             onClick={handleReset}
                             className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
-                            Попробовать снова
+                            {t('foodTracker.photo.tryAgain')}
                         </button>
                         {onManualSearch && (
                             <button
@@ -367,7 +367,7 @@ export function AIPhotoTab({
                                 className="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
                             >
                                 <Search className="w-5 h-5" />
-                                <span>Найти вручную</span>
+                                <span>{t('foodTracker.photo.searchManually')}</span>
                             </button>
                         )}
                     </div>
@@ -381,7 +381,7 @@ export function AIPhotoTab({
                 accept="image/*"
                 onChange={handleFileChange}
                 className="hidden"
-                aria-label="Выбрать фото из галереи"
+                aria-label={t('foodTracker.photo.pickFromGallery')}
             />
             <input
                 ref={cameraInputRef}
@@ -390,7 +390,7 @@ export function AIPhotoTab({
                 capture="environment"
                 onChange={handleFileChange}
                 className="hidden"
-                aria-label="Сделать фото"
+                aria-label={t('foodTracker.photo.takePhoto')}
             />
         </div>
     );

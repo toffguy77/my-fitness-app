@@ -17,6 +17,7 @@ import { getApiUrl } from '@/config/api';
 import type { FoodItem } from '../types';
 import type { CreateUserFoodRequest, UserFood } from '../types';
 import { userFoodToFoodItem } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -100,32 +101,32 @@ export function ManualEntryForm({
         const newErrors: FormErrors = {};
 
         if (!formData.name.trim()) {
-            newErrors.name = 'Введите название продукта';
+            newErrors.name = t('foodTracker.manualEntry.nameRequired');
         }
 
         const calories = parseFloat(formData.calories.replace(',', '.'));
         if (isNaN(calories) || calories < 0) {
-            newErrors.calories = 'Введите корректное значение калорий';
+            newErrors.calories = t('foodTracker.manualEntry.caloriesInvalid');
         }
 
         const protein = parseFloat(formData.protein.replace(',', '.'));
         if (formData.protein && (isNaN(protein) || protein < 0)) {
-            newErrors.protein = 'Введите корректное значение белков';
+            newErrors.protein = t('foodTracker.manualEntry.proteinInvalid');
         }
 
         const fat = parseFloat(formData.fat.replace(',', '.'));
         if (formData.fat && (isNaN(fat) || fat < 0)) {
-            newErrors.fat = 'Введите корректное значение жиров';
+            newErrors.fat = t('foodTracker.manualEntry.fatInvalid');
         }
 
         const carbs = parseFloat(formData.carbs.replace(',', '.'));
         if (formData.carbs && (isNaN(carbs) || carbs < 0)) {
-            newErrors.carbs = 'Введите корректное значение углеводов';
+            newErrors.carbs = t('foodTracker.manualEntry.carbsInvalid');
         }
 
         const servingSize = parseFloat(formData.servingSize.replace(',', '.'));
         if (isNaN(servingSize) || servingSize <= 0) {
-            newErrors.servingSize = 'Введите корректный размер порции';
+            newErrors.servingSize = t('foodTracker.manualEntry.servingInvalid');
         }
 
         setErrors(newErrors);
@@ -151,7 +152,10 @@ export function ManualEntryForm({
                 fat_per_100: parseFloat(formData.fat.replace(',', '.')) || 0,
                 carbs_per_100: parseFloat(formData.carbs.replace(',', '.')) || 0,
                 serving_size: parseFloat(formData.servingSize.replace(',', '.')) || 100,
-                serving_unit: 'г',
+                // i18n-exempt: stored in user_foods.serving_unit, not shown as a
+            // label. Translating it would write 'g' into rows that everything
+            // else reads as 'г'.
+            serving_unit: 'г',
             };
 
             const url = getApiUrl('/food-tracker/user-foods');
@@ -161,7 +165,7 @@ export function ManualEntryForm({
             onSubmit(food);
         } catch (error) {
             console.error('Failed to create user food:', error);
-            toast.error('Не удалось создать продукт. Попробуйте ещё раз.');
+            toast.error(t('foodTracker.manualEntry.createFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -170,20 +174,20 @@ export function ManualEntryForm({
     return (
         <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Ввести продукт вручную
+                {t('foodTracker.manualEntry.title')}
             </h3>
 
             {/* Name */}
             <div>
                 <label htmlFor="manual-name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Название продукта *
+                    {t('foodTracker.manualEntry.productName')}
                 </label>
                 <input
                     id="manual-name"
                     type="text"
                     value={formData.name}
                     onChange={handleChange('name')}
-                    placeholder="Например: Овсяная каша"
+                    placeholder={t('foodTracker.manualEntry.namePlaceholder')}
                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : 'border-gray-300'
                         }`}
                     aria-invalid={!!errors.name}
@@ -197,14 +201,14 @@ export function ManualEntryForm({
             {/* Brand (optional) */}
             <div>
                 <label htmlFor="manual-brand" className="block text-sm font-medium text-gray-700 mb-1">
-                    Бренд (необязательно)
+                    {t('foodTracker.manualEntry.brand')}
                 </label>
                 <input
                     id="manual-brand"
                     type="text"
                     value={formData.brand}
                     onChange={handleChange('brand')}
-                    placeholder="Например: Myllyn Paras"
+                    placeholder={t('foodTracker.manualEntry.brandPlaceholder')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </div>
@@ -212,14 +216,14 @@ export function ManualEntryForm({
             {/* Nutrition per 100g */}
             <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-sm font-medium text-gray-700 mb-3">
-                    Пищевая ценность на 100г
+                    {t('foodTracker.manualEntry.per100Heading')}
                 </p>
 
                 <div className="grid grid-cols-2 gap-3">
                     {/* Calories */}
                     <div>
                         <label htmlFor="manual-calories" className="block text-xs text-gray-500 mb-1">
-                            Калории (ккал) *
+                            {t('foodTracker.manualEntry.caloriesField')}
                         </label>
                         <input
                             id="manual-calories"
@@ -242,7 +246,7 @@ export function ManualEntryForm({
                     {/* Protein */}
                     <div>
                         <label htmlFor="manual-protein" className="block text-xs text-gray-500 mb-1">
-                            Белки (г)
+                            {t('foodTracker.manualEntry.proteinField')}
                         </label>
                         <input
                             id="manual-protein"
@@ -265,7 +269,7 @@ export function ManualEntryForm({
                     {/* Fat */}
                     <div>
                         <label htmlFor="manual-fat" className="block text-xs text-gray-500 mb-1">
-                            Жиры (г)
+                            {t('foodTracker.manualEntry.fatField')}
                         </label>
                         <input
                             id="manual-fat"
@@ -288,7 +292,7 @@ export function ManualEntryForm({
                     {/* Carbs */}
                     <div>
                         <label htmlFor="manual-carbs" className="block text-xs text-gray-500 mb-1">
-                            Углеводы (г)
+                            {t('foodTracker.manualEntry.carbsField')}
                         </label>
                         <input
                             id="manual-carbs"
@@ -313,7 +317,7 @@ export function ManualEntryForm({
             {/* Serving Size */}
             <div>
                 <label htmlFor="manual-serving" className="block text-sm font-medium text-gray-700 mb-1">
-                    Размер порции (г) *
+                    {t('foodTracker.manualEntry.servingField')}
                 </label>
                 <input
                     id="manual-serving"
@@ -341,7 +345,7 @@ export function ManualEntryForm({
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
                 >
                     <X className="w-5 h-5" />
-                    <span>Отмена</span>
+                    <span>{t('common.cancel')}</span>
                 </button>
                 <button
                     type="submit"
@@ -351,12 +355,12 @@ export function ManualEntryForm({
                     {isSubmitting ? (
                         <>
                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            <span>Сохранение...</span>
+                            <span>{t('common.saving')}</span>
                         </>
                     ) : (
                         <>
                             <Save className="w-5 h-5" />
-                            <span>Сохранить</span>
+                            <span>{t('common.save')}</span>
                         </>
                     )}
                 </button>
