@@ -211,6 +211,9 @@ func main() {
 	// Services shared by more than one handler.
 	nutritionCalcSvc := nutritioncalc.NewService(db, log)
 	notificationsSvc := notifications.NewService(db, log)
+	if cfg.NotificationEmailDelay > 0 {
+		notificationsSvc.WithEmailDelay(cfg.NotificationEmailDelay)
+	}
 	notificationsSvc.WithPush(notifications.PushConfig{
 		PublicKey:  cfg.VAPIDPublicKey,
 		PrivateKey: cfg.VAPIDPrivateKey,

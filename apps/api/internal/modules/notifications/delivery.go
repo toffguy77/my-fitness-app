@@ -33,11 +33,29 @@ const (
 	StatusSkipped = "skipped"
 )
 
-// emailDelay is how long a notification is given to be read in the application
-// before it is worth an email. Somebody who is using the app right now has
-// already seen it, and mail they did not need is how a sender loses the
+// defaultEmailDelay is how long a notification is given to be read in the
+// application before it is worth an email. Somebody who is using the app right
+// now has already seen it, and mail they did not need is how a sender loses the
 // reputation its password resets depend on.
-const emailDelay = 30 * time.Minute
+//
+// Adjustable, because the right wait depends on how people use the product —
+// and because a test cannot spend half an hour finding out whether the mail
+// ever leaves.
+const defaultEmailDelay = 30 * time.Minute
+
+// EmailDelay is the wait this service uses.
+func (s *Service) EmailDelay() time.Duration {
+	if s.emailDelay <= 0 {
+		return defaultEmailDelay
+	}
+	return s.emailDelay
+}
+
+// WithEmailDelay overrides how long a notification waits before it is mailed.
+func (s *Service) WithEmailDelay(delay time.Duration) *Service {
+	s.emailDelay = delay
+	return s
+}
 
 // maxAttempts bounds retries of one delivery. A message that has failed three
 // times is failing for a reason that another attempt will not fix.
@@ -229,7 +247,7 @@ func (s *Service) planDelivery(ctx context.Context, tx *sql.Tx, notification *No
 		plans = append(plans, deliveryPlan{
 			channel:   channel,
 			status:    StatusPending,
-			notBefore: r.afterQuietHours(now.Add(emailDelay)),
+			notBefore: r.afterQuietHours(now.Add(s.EmailDelay())),
 		})
 	}
 

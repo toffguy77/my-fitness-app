@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/joho/godotenv"
@@ -191,6 +192,10 @@ type Config struct {
 	SupportModel          string
 	SupportDailyLimit     int
 
+	// NotificationEmailDelay is how long a notification is given to be read in
+	// the application before it is worth an email. Zero uses the default.
+	NotificationEmailDelay time.Duration
+
 	// AppDomain is the public domain; drives ResetPasswordURL and email links.
 	AppDomain string
 
@@ -318,6 +323,7 @@ func Load() (*Config, error) {
 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
 		SupportModel:              getEnv("SUPPORT_MODEL", openrouter.DefaultSupportModel),
 		SupportDailyLimit:         getEnvAsInt("SUPPORT_DAILY_LIMIT", 500),
+		NotificationEmailDelay:    getEnvAsDuration("NOTIFICATION_EMAIL_DELAY", 0),
 		FoodRecognitionDailyLimit: getEnvAsInt("FOOD_RECOGNITION_DAILY_LIMIT", 3),
 
 		MigrationBaseline: getEnvAsInt("DB_MIGRATION_BASELINE", 0),
@@ -439,6 +445,16 @@ func getResetPasswordURL() string {
 		return "https://" + domain + "/reset-password"
 	}
 	return "http://localhost:3069/reset-password"
+}
+
+// getEnvAsDuration reads a Go duration such as "30m" or "2s". An unreadable
+// value falls back rather than failing the boot: a mistyped tuning knob should
+// not take the service down.
+func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
+	if value, err := time.ParseDuration(getEnv(key, "")); err == nil {
+		return value
+	}
+	return defaultValue
 }
 
 func getEnvAsInt(key string, defaultValue int) int {

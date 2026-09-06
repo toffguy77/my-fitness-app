@@ -176,7 +176,7 @@ func TestPushIsPlannedWithoutTheEmailDelay(t *testing.T) {
 	// Email waits, so that somebody already in the application is not written
 	// to about something they have just read.
 	mock.ExpectExec(`INSERT INTO notification_deliveries`).
-		WithArgs(notificationID, int64(7), ChannelEmail, StatusPending, dueWithin{emailDelay + time.Minute}).
+		WithArgs(notificationID, int64(7), ChannelEmail, StatusPending, dueWithin{defaultEmailDelay + time.Minute}).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 	// Push does not: arriving before they open it is the whole point.
 	mock.ExpectExec(`INSERT INTO notification_deliveries`).
