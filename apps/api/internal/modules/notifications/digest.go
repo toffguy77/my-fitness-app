@@ -31,7 +31,11 @@ type DigestItem struct {
 // A function rather than an interface: the mail package's own signature speaks
 // in its own types, and a small adapter at the wiring point is honest about
 // the conversion. It also means a test needs no mail server, only a closure.
-type DigestSender func(ctx context.Context, to, name string, items []DigestItem, unsubscribeURL string) error
+//
+// language is the recipient's own, so the letter is written the way they read
+// the rest of the product rather than the way the templates happened to be
+// written.
+type DigestSender func(ctx context.Context, to, name, language string, items []DigestItem, unsubscribeURL string) error
 
 // WithDigest supplies what the digest job needs. Without it the job reports
 // itself unavailable rather than failing every run: mail is optional, and a
@@ -53,6 +57,7 @@ type pendingDigest struct {
 	userID      int64
 	email       string
 	name        string
+	language    string
 	deliveryIDs []int64
 	skippedIDs  []int64
 	items       []DigestItem
@@ -92,7 +97,7 @@ func (s *Service) SendDueDigests(ctx context.Context) (int, error) {
 		}
 		unsubscribeURL := fmt.Sprintf("%s/unsubscribe?token=%s", s.appDomain, token)
 
-		if err := s.digest(ctx, batch.email, batch.name, batch.items, unsubscribeURL); err != nil {
+		if err := s.digest(ctx, batch.email, batch.name, batch.language, batch.items, unsubscribeURL); err != nil {
 			// Recorded against the delivery, not swallowed: "we tried and the
 			// server said no" is the answer to "why did nobody hear from us".
 			if markErr := s.markDeliveries(ctx, batch.deliveryIDs, "", err.Error()); markErr != nil {
@@ -115,11 +120,14 @@ func (s *Service) SendDueDigests(ctx context.Context) (int, error) {
 func (s *Service) dueDigests(ctx context.Context) ([]pendingDigest, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT d.id, d.user_id, u.email, COALESCE(u.name, ''),
+		        COALESCE(st.language, 'ru'),
 		        n.title, n.content, COALESCE(n.action_url, ''), n.created_at,
 		        n.read_at IS NOT NULL AS already_read
 		 FROM notification_deliveries d
 		 JOIN notifications n ON n.id = d.notification_id
 		 JOIN users u ON u.id = d.user_id
+		 -- LEFT JOIN: an account can exist before its settings row does.
+		 LEFT JOIN user_settings st ON st.user_id = u.id
 		 WHERE d.channel = $1
 		   AND d.status = $2
 		   AND d.not_before <= NOW()
@@ -143,17 +151,18 @@ func (s *Service) dueDigests(ctx context.Context) ([]pendingDigest, error) {
 			userID      int64
 			userEmail   string
 			name        string
+			language    string
 			item        DigestItem
 			alreadyRead bool
 		)
-		if err := rows.Scan(&deliveryID, &userID, &userEmail, &name,
+		if err := rows.Scan(&deliveryID, &userID, &userEmail, &name, &language,
 			&item.Title, &item.Content, &item.ActionURL, &item.CreatedAt, &alreadyRead); err != nil {
 			return nil, fmt.Errorf("scan due digest: %w", err)
 		}
 
 		batch, ok := byUser[userID]
 		if !ok {
-			batch = &pendingDigest{userID: userID, email: userEmail, name: name}
+			batch = &pendingDigest{userID: userID, email: userEmail, name: name, language: language}
 			byUser[userID] = batch
 			order = append(order, userID)
 		}

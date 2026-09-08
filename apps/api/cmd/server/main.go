@@ -223,10 +223,11 @@ func main() {
 	// with. Without SMTP it is simply not wired, and the job says so.
 	if emailService != nil {
 		notificationsSvc.WithDigest(
-			func(ctx context.Context, to, name string, items []notifications.DigestItem, unsubscribeURL string) error {
+			func(ctx context.Context, to, name, language string, items []notifications.DigestItem, unsubscribeURL string) error {
 				data := email.DigestEmailData{
 					UserEmail:      to,
 					Name:           name,
+					Language:       language,
 					AppURL:         appOrigin(cfg.AppDomain),
 					UnsubscribeURL: unsubscribeURL,
 				}
