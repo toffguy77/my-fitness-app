@@ -6,10 +6,11 @@ import { cn } from '@/shared/utils/cn'
 import { curatorApi } from '../api/curatorApi'
 import type { RatingLevel, CategoryRating } from '../types'
 
+import { t } from '@/shared/i18n'
 const RATING_OPTIONS: { value: RatingLevel; label: string; color: string; selectedBg: string }[] = [
-    { value: 'excellent', label: 'Отлично', color: 'border-green-500 text-green-700', selectedBg: 'bg-green-500 text-white border-green-500' },
-    { value: 'good', label: 'Хорошо', color: 'border-yellow-500 text-yellow-700', selectedBg: 'bg-yellow-500 text-white border-yellow-500' },
-    { value: 'needs_improvement', label: 'Нужно улучшить', color: 'border-red-500 text-red-700', selectedBg: 'bg-red-500 text-white border-red-500' },
+    { value: 'excellent', label: t('curator.feedback.excellent'), color: 'border-green-500 text-green-700', selectedBg: 'bg-green-500 text-white border-green-500' },
+    { value: 'good', label: t('curator.feedback.good'), color: 'border-yellow-500 text-yellow-700', selectedBg: 'bg-yellow-500 text-white border-yellow-500' },
+    { value: 'needs_improvement', label: t('curator.feedback.needsImprovement'), color: 'border-red-500 text-red-700', selectedBg: 'bg-red-500 text-white border-red-500' },
 ]
 
 interface CategoryRatingInputProps {
@@ -42,7 +43,7 @@ function CategoryRatingInput({ label, value, onChange }: CategoryRatingInputProp
                 onChange={(e) => onChange({ rating: value?.rating ?? 'good', comment: e.target.value })}
                 rows={1}
                 className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                placeholder="Комментарий (необязательно)"
+                placeholder={t('curator.feedback.commentPlaceholder')}
             />
         </div>
     )
@@ -70,7 +71,7 @@ export function FeedbackForm({ clientId, reportId, onClose, onSaved }: FeedbackF
         setError(null)
 
         if (!summary.trim()) {
-            setError('Заполните итог')
+            setError(t('curator.feedback.summaryRequired'))
             return
         }
 
@@ -86,7 +87,7 @@ export function FeedbackForm({ clientId, reportId, onClose, onSaved }: FeedbackF
             })
             onSaved()
         } catch {
-            setError('Не удалось сохранить обратную связь')
+            setError(t('curator.feedback.saveFailed'))
         } finally {
             setSaving(false)
         }
@@ -96,16 +97,16 @@ export function FeedbackForm({ clientId, reportId, onClose, onSaved }: FeedbackF
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40">
             <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-gray-900">Обратная связь</h2>
+                    <h2 className="text-base font-semibold text-gray-900">{t('curator.feedback.heading')}</h2>
                     <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <CategoryRatingInput label="Питание" value={nutrition} onChange={setNutrition} />
-                    <CategoryRatingInput label="Активность" value={activity} onChange={setActivity} />
-                    <CategoryRatingInput label="Вода" value={water} onChange={setWater} />
+                    <CategoryRatingInput label={t('curator.feedback.nutrition')} value={nutrition} onChange={setNutrition} />
+                    <CategoryRatingInput label={t('curator.feedback.activity')} value={activity} onChange={setActivity} />
+                    <CategoryRatingInput label={t('curator.feedback.water')} value={water} onChange={setWater} />
 
                     <label className="flex items-center gap-2 text-xs text-gray-600">
                         <input
@@ -114,29 +115,29 @@ export function FeedbackForm({ clientId, reportId, onClose, onSaved }: FeedbackF
                             onChange={(e) => setPhotoUploaded(e.target.checked)}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
-                        Фото загружено
+                        {t('curator.feedback.photoUploaded')}
                     </label>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Итог</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.feedback.summary')}</label>
                         <textarea
                             value={summary}
                             onChange={(e) => setSummary(e.target.value)}
                             rows={3}
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             required
-                            placeholder="Общий итог по неделе"
+                            placeholder={t('curator.feedback.summaryPlaceholder')}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Рекомендации</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.feedback.recommendations')}</label>
                         <textarea
                             value={recommendations}
                             onChange={(e) => setRecommendations(e.target.value)}
                             rows={2}
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            placeholder="Необязательно"
+                            placeholder={t('curator.feedback.optional')}
                         />
                     </div>
 
@@ -148,7 +149,7 @@ export function FeedbackForm({ clientId, reportId, onClose, onSaved }: FeedbackF
                         className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                     >
                         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                        Отправить обратную связь
+                        {t('curator.feedback.submit')}
                     </button>
                 </form>
             </div>

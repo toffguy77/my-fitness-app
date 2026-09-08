@@ -12,16 +12,17 @@ import { useEffect, useState } from 'react'
 
 import { curatorApi, type ClientNotice } from '../api/curatorApi'
 
+import { t } from '@/shared/i18n'
 const TYPE_LABELS: Record<string, string> = {
-    trainer_feedback: 'Ответ куратора',
-    feedback_received: 'Отзыв на отчёт',
-    plan_updated: 'Изменение плана',
-    task_assigned: 'Новая задача',
-    task_overdue: 'Просроченная задача',
-    achievement: 'Достижение',
-    reminder: 'Напоминание',
-    new_content: 'Новый материал',
-    general: 'Сообщение',
+    trainer_feedback: t('curator.notices.trainer_feedback'),
+    feedback_received: t('curator.notices.feedback_received'),
+    plan_updated: t('curator.notices.plan_updated'),
+    task_assigned: t('curator.notices.task_assigned'),
+    task_overdue: t('curator.notices.task_overdue'),
+    achievement: t('curator.notices.achievement'),
+    reminder: t('curator.notices.reminder'),
+    new_content: t('curator.notices.new_content'),
+    general: t('curator.notices.general'),
 }
 
 /** How one channel's outcome reads. */
@@ -30,13 +31,13 @@ function deliveryLabel(channel: string, status: string): string | null {
     if (channel !== 'email') return null
     switch (status) {
         case 'sent':
-            return 'письмо отправлено'
+            return t('curator.notices.emailSent')
         case 'pending':
-            return 'письмо ждёт отправки'
+            return t('curator.notices.emailPending')
         case 'failed':
-            return 'письмо не дошло'
+            return t('curator.notices.emailFailed')
         case 'skipped':
-            return 'письмо не понадобилось'
+            return t('curator.notices.emailSkipped')
         default:
             return null
     }
@@ -65,7 +66,7 @@ export function ClientNoticesSection({ clientId }: { clientId: number }) {
     if (failed) {
         return (
             <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-                <p className="text-sm text-gray-500">Не удалось загрузить историю оповещений.</p>
+                <p className="text-sm text-gray-500">{t('curator.notices.loadFailed')}</p>
             </div>
         )
     }
@@ -74,10 +75,10 @@ export function ClientNoticesSection({ clientId }: { clientId: number }) {
 
     return (
         <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm" data-testid="client-notices">
-            <p className="mb-3 text-sm font-medium text-gray-500">Оповещения</p>
+            <p className="mb-3 text-sm font-medium text-gray-500">{t('curator.notices.heading')}</p>
 
             {notices.length === 0 ? (
-                <p className="text-sm text-gray-500">Клиента пока ни о чём не оповещали.</p>
+                <p className="text-sm text-gray-500">{t('curator.notices.empty')}</p>
             ) : (
                 <div className="space-y-0">
                     {notices.map((notice, index) => {
@@ -101,7 +102,7 @@ export function ClientNoticesSection({ clientId }: { clientId: number }) {
                                 <p className="mt-0.5 text-xs text-gray-500">
                                     {TYPE_LABELS[notice.type] ?? notice.type}
                                     {' · '}
-                                    {notice.readAt ? 'прочитано' : 'не прочитано'}
+                                    {notice.readAt ? t('curator.notices.read') : t('curator.notices.unread')}
                                     {marks.length > 0 && ` · ${marks.join(', ')}`}
                                 </p>
                             </div>

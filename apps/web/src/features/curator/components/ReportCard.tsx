@@ -6,6 +6,7 @@ import { cn } from '@/shared/utils/cn'
 import type { WeeklyReportView, RatingLevel } from '../types'
 import { FeedbackForm } from './FeedbackForm'
 
+import { t } from '@/shared/i18n'
 function formatDateRu(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00')
     if (isNaN(d.getTime())) return dateStr
@@ -13,9 +14,9 @@ function formatDateRu(dateStr: string): string {
 }
 
 const RATING_LABELS: Record<RatingLevel, string> = {
-    excellent: 'Отлично',
-    good: 'Хорошо',
-    needs_improvement: 'Нужно улучшить',
+    excellent: t('curator.feedback.excellent'),
+    good: t('curator.feedback.good'),
+    needs_improvement: t('curator.feedback.needsImprovement'),
 }
 
 const RATING_COLORS: Record<RatingLevel, string> = {
@@ -56,7 +57,7 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                                     : 'bg-yellow-100 text-yellow-800',
                             )}
                         >
-                            {report.has_feedback ? 'Обратная связь дана' : 'Ожидает обратной связи'}
+                            {report.has_feedback ? t('curator.feedback.given') : t('curator.feedback.awaiting')}
                         </span>
                         <ChevronDown
                             className={cn(
@@ -66,7 +67,7 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                         />
                     </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Неделя {report.week_number}</p>
+                <p className="text-xs text-gray-500 mt-1">{t('curator.feedback.week', { week: report.week_number })}</p>
             </button>
 
             {expanded && (
@@ -86,10 +87,10 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                     {/* Feedback display */}
                     {feedback ? (
                         <div className="space-y-2 rounded-lg bg-gray-50 p-3">
-                            <h4 className="text-xs font-semibold text-gray-700">Обратная связь</h4>
+                            <h4 className="text-xs font-semibold text-gray-700">{t('curator.feedback.heading')}</h4>
                             {feedback.nutrition && (
                                 <div className="text-xs">
-                                    <span className="text-gray-500">Питание: </span>
+                                    <span className="text-gray-500">{t('curator.feedback.nutritionLabel')}</span>
                                     <span className={RATING_COLORS[feedback.nutrition.rating]}>
                                         {RATING_LABELS[feedback.nutrition.rating]}
                                     </span>
@@ -100,7 +101,7 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                             )}
                             {feedback.activity && (
                                 <div className="text-xs">
-                                    <span className="text-gray-500">Активность: </span>
+                                    <span className="text-gray-500">{t('curator.feedback.activityLabel')}</span>
                                     <span className={RATING_COLORS[feedback.activity.rating]}>
                                         {RATING_LABELS[feedback.activity.rating]}
                                     </span>
@@ -111,7 +112,7 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                             )}
                             {feedback.water && (
                                 <div className="text-xs">
-                                    <span className="text-gray-500">Вода: </span>
+                                    <span className="text-gray-500">{t('curator.feedback.waterLabel')}</span>
                                     <span className={RATING_COLORS[feedback.water.rating]}>
                                         {RATING_LABELS[feedback.water.rating]}
                                     </span>
@@ -132,7 +133,7 @@ export function ReportCard({ report, clientId, onFeedbackSaved }: ReportCardProp
                             className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
                         >
                             <MessageSquare className="h-4 w-4" />
-                            Дать обратную связь
+                            {t('curator.feedback.give')}
                         </button>
                     )}
                 </div>

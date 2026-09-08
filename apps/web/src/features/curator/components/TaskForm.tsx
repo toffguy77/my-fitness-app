@@ -6,27 +6,28 @@ import { cn } from '@/shared/utils/cn'
 import { curatorApi } from '../api/curatorApi'
 import type { TaskView, TaskType, TaskRecurrence } from '../types'
 
+import { t } from '@/shared/i18n'
 const TYPE_OPTIONS: { value: TaskType; label: string }[] = [
-    { value: 'nutrition', label: 'Питание' },
-    { value: 'workout', label: 'Тренировка' },
-    { value: 'habit', label: 'Привычка' },
-    { value: 'measurement', label: 'Замеры' },
+    { value: 'nutrition', label: t('curator.task.typeNutrition') },
+    { value: 'workout', label: t('curator.task.typeWorkout') },
+    { value: 'habit', label: t('curator.task.typeHabit') },
+    { value: 'measurement', label: t('curator.task.typeMeasurement') },
 ]
 
 const RECURRENCE_OPTIONS: { value: TaskRecurrence; label: string }[] = [
-    { value: 'once', label: 'Однократно' },
-    { value: 'daily', label: 'Ежедневно' },
-    { value: 'weekly', label: 'Еженедельно' },
+    { value: 'once', label: t('curator.task.once') },
+    { value: 'daily', label: t('curator.task.daily') },
+    { value: 'weekly', label: t('curator.task.weekly') },
 ]
 
 const WEEKDAYS = [
-    { value: 1, label: 'Пн' },
-    { value: 2, label: 'Вт' },
-    { value: 3, label: 'Ср' },
-    { value: 4, label: 'Чт' },
-    { value: 5, label: 'Пт' },
-    { value: 6, label: 'Сб' },
-    { value: 0, label: 'Вс' },
+    { value: 1, label: t('weekdays.short.mon') },
+    { value: 2, label: t('weekdays.short.tue') },
+    { value: 3, label: t('weekdays.short.wed') },
+    { value: 4, label: t('weekdays.short.thu') },
+    { value: 5, label: t('weekdays.short.fri') },
+    { value: 6, label: t('weekdays.short.sat') },
+    { value: 0, label: t('weekdays.short.sun') },
 ]
 
 interface TaskFormProps {
@@ -58,11 +59,11 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
         setError(null)
 
         if (!title.trim()) {
-            setError('Укажите название задачи')
+            setError(t('curator.task.titleRequired'))
             return
         }
         if (!deadline) {
-            setError('Укажите дедлайн')
+            setError(t('curator.task.deadlineRequired'))
             return
         }
 
@@ -87,7 +88,7 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
             }
             onSaved(task)
         } catch {
-            setError(isEdit ? 'Не удалось обновить задачу' : 'Не удалось создать задачу')
+            setError(isEdit ? t('curator.task.updateFailed') : t('curator.task.createFailed'))
         } finally {
             setSaving(false)
         }
@@ -97,7 +98,7 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40">
             <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-gray-900">{isEdit ? 'Редактировать задачу' : 'Новая задача'}</h2>
+                    <h2 className="text-base font-semibold text-gray-900">{isEdit ? t('curator.task.editHeading') : t('curator.task.newHeading')}</h2>
                     <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
                         <X className="h-5 w-5" />
                     </button>
@@ -105,20 +106,20 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
 
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Название</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.name')}</label>
                         <input
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             required
-                            placeholder="Что нужно сделать?"
+                            placeholder={t('curator.task.namePlaceholder')}
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Тип</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.type')}</label>
                             <select
                                 value={type}
                                 onChange={(e) => setType(e.target.value as TaskType)}
@@ -133,7 +134,7 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Дедлайн</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.deadline')}</label>
                             <input
                                 type="date"
                                 value={deadline}
@@ -145,18 +146,18 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Описание</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.description')}</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={2}
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            placeholder="Необязательно"
+                            placeholder={t('curator.task.descriptionPlaceholder')}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Повторение</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.recurrence')}</label>
                         <select
                             value={recurrence}
                             onChange={(e) => setRecurrence(e.target.value as TaskRecurrence)}
@@ -173,7 +174,7 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
 
                     {recurrence === 'weekly' && (
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Дни недели</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.task.weekdays')}</label>
                             <div className="flex gap-1.5">
                                 {WEEKDAYS.map((day) => (
                                     <button
@@ -202,7 +203,7 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
                         className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                     >
                         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {isEdit ? 'Сохранить' : 'Создать задачу'}
+                        {isEdit ? t('common.save') : t('curator.task.create')}
                     </button>
                 </form>
             </div>

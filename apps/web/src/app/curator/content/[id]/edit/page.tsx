@@ -3,6 +3,7 @@
 import { use } from 'react'
 import { ArticleEditor } from '@/features/content/components/ArticleEditor'
 
+import { t } from '@/shared/i18n'
 export default function EditArticlePage({
     params,
 }: {
@@ -13,7 +14,7 @@ export default function EditArticlePage({
     return (
         <div className="px-4 py-6 pb-20">
             <h1 className="text-xl font-semibold text-gray-900 mb-4">
-                Редактирование статьи
+                {t('curator.navigation.editArticle')}
             </h1>
             <ArticleEditor articleId={id} />
         </div>

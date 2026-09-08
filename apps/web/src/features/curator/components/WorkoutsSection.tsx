@@ -5,6 +5,7 @@ import { Dumbbell, Check, Minus } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import type { DayDetail } from '../types'
 
+import { t } from '@/shared/i18n'
 interface WorkoutsSectionProps {
     days: DayDetail[]
 }
@@ -33,11 +34,11 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     <Dumbbell className="h-4 w-4 text-orange-500" />
-                    <h2 className="text-sm font-semibold text-gray-900">Тренировки</h2>
+                    <h2 className="text-sm font-semibold text-gray-900">{t('curator.workouts.heading')}</h2>
                 </div>
                 <span className="text-xs text-gray-500">
-                    {totalWorkouts} из {workoutData.length} дней
-                    {totalDuration > 0 && ` · ${totalDuration} мин`}
+                    {t('curator.workouts.countOfDays', { done: totalWorkouts, total: workoutData.length })}
+                    {totalDuration > 0 && t('curator.workouts.totalDuration', { minutes: totalDuration })}
                 </span>
             </div>
 
@@ -69,8 +70,8 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
                     <div key={d.date} className="flex items-center justify-between text-xs">
                         <span className="text-gray-600">{d.label}</span>
                         <span className="text-gray-900 font-medium">
-                            {d.workout!.type || 'Тренировка'}
-                            {d.workout!.duration > 0 && ` · ${d.workout!.duration} мин`}
+                            {d.workout!.type || t('curator.workouts.fallbackType')}
+                            {d.workout!.duration > 0 && t('curator.workouts.duration', { minutes: d.workout!.duration })}
                         </span>
                     </div>
                 ))}

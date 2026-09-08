@@ -19,6 +19,7 @@ import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
 import { FoodEntryForm } from '@/features/chat/components/FoodEntryForm'
 import type { Conversation, Message } from '@/features/chat/types'
 
+import { t } from '@/shared/i18n'
 export default function CuratorChatPage() {
     const router = useRouter()
     const params = useParams()
@@ -71,12 +72,12 @@ export default function CuratorChatPage() {
                     type="button"
                     onClick={() => router.push('/curator/chat')}
                     className="p-1 text-gray-600 hover:text-gray-900 transition-colors"
-                    aria-label="Назад к списку чатов"
+                    aria-label={t('curator.navigation.backToChats')}
                 >
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <h2 className="text-lg font-medium text-gray-900">
-                    {conversation?.participant.name ?? 'Загрузка...'}
+                    {conversation?.participant.name ?? t('common.loading')}
                 </h2>
             </div>
 

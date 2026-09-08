@@ -14,6 +14,7 @@ import type {
     BenchmarkData,
 } from '@/features/curator/types'
 
+import { t } from '@/shared/i18n'
 export default function CuratorHubPage() {
     const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null)
     const [attentionItems, setAttentionItems] = useState<AttentionItem[]>([])
@@ -33,7 +34,7 @@ export default function CuratorHubPage() {
                 setAttentionItems(attention)
                 setClients(clientsData)
             })
-            .catch(() => setError('Не удалось загрузить данные'))
+            .catch(() => setError(t('curator.list.loadDataFailed')))
             .finally(() => setLoading(false))
 
         // Fetch benchmark data separately (non-blocking)
@@ -61,7 +62,7 @@ export default function CuratorHubPage() {
             {attentionItems.length > 0 && (
                 <section>
                     <h2 className="text-sm font-semibold text-red-600 mb-2">
-                        Требуют внимания
+                        {t('curator.list.needAttention')}
                     </h2>
                     <AttentionList items={attentionItems} />
                 </section>
@@ -76,7 +77,7 @@ export default function CuratorHubPage() {
 
             <section>
                 <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-semibold text-gray-900">Все клиенты</h2>
+                    <h2 className="text-sm font-semibold text-gray-900">{t('curator.list.allClients')}</h2>
                 </div>
                 <ClientList
                     clients={clients}

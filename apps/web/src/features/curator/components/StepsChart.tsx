@@ -9,6 +9,7 @@ import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import type { DayDetail } from '../types'
 
+import { t } from '@/shared/i18n'
 const CHART_HEIGHT = 160
 const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
 const GRID_STROKE = '#f0f0f0'
@@ -33,7 +34,7 @@ function StepsTooltip({ active, payload, label }: {
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
                     />
-                    Шаги: <span className="font-medium">{(Number(entry.value) ?? 0).toLocaleString('ru-RU')}</span>
+                    {t('curator.charts.steps', { value: (Number(entry.value) ?? 0).toLocaleString('ru-RU') })}
                 </p>
             ))}
         </div>
@@ -59,7 +60,7 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
         <Card variant="bordered">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">Динамика шагов</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-gray-900">{t('curator.charts.stepsHeading')}</CardTitle>
                     <span className="text-sm font-semibold text-gray-900">
                         {latestSteps.toLocaleString('ru-RU')}
                     </span>
@@ -90,7 +91,7 @@ export function StepsChart({ days, stepsGoal }: StepsChartProps) {
                                 strokeDasharray="6 3"
                                 strokeWidth={1}
                                 label={{
-                                    value: `Цель ${(stepsGoal / 1000).toFixed(0)}k`,
+                                    value: t('curator.charts.stepsGoal', { value: (stepsGoal / 1000).toFixed(0) }),
                                     position: 'right',
                                     fill: '#22c55e',
                                     fontSize: 11,

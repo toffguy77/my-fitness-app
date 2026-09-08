@@ -31,6 +31,8 @@ const TRANSLATED = [
     'apps/web/src/app/chat',
     'apps/web/src/features/notifications',
     'apps/web/src/app/notifications',
+    'apps/web/src/features/curator',
+    'apps/web/src/app/curator',
 ]
 
 const DICTIONARY = 'apps/web/src/shared/i18n/dictionaries/ru.ts'

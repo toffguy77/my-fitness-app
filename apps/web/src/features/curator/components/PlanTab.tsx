@@ -7,6 +7,7 @@ import { curatorApi } from '../api/curatorApi'
 import type { WeeklyPlanView } from '../types'
 import { PlanForm } from './PlanForm'
 
+import { t } from '@/shared/i18n'
 function formatDateRu(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00')
     if (isNaN(d.getTime())) return dateStr
@@ -39,7 +40,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
             })
             .catch(() => {
                 if (!cancelled) {
-                    setError('Не удалось загрузить планы')
+                    setError(t('curator.plan.loadFailed'))
                     setLoading(false)
                 }
             })
@@ -92,10 +93,10 @@ export function PlanTab({ clientId }: PlanTabProps) {
             {activePlan ? (
                 <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-gray-900">Текущий план</h3>
+                        <h3 className="text-sm font-semibold text-gray-900">{t('curator.plan.current')}</h3>
                         <div className="flex items-center gap-2 shrink-0">
                             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
-                                Активный
+                                {t('curator.plan.active')}
                             </span>
                             <button
                                 type="button"
@@ -104,19 +105,19 @@ export function PlanTab({ clientId }: PlanTabProps) {
                                     setShowForm(true)
                                 }}
                                 className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                                aria-label="Редактировать план"
+                                aria-label={t('curator.plan.editAria')}
                             >
                                 <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => {
-                                    if (window.confirm('Удалить активный план?')) {
+                                    if (window.confirm(t('curator.plan.deleteConfirm'))) {
                                         handleDelete(activePlan.id)
                                     }
                                 }}
                                 className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                aria-label="Удалить план"
+                                aria-label={t('curator.plan.deleteAria')}
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -124,24 +125,24 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-center text-xs mt-3">
                         <div>
-                            <p className="text-gray-500">Ккал</p>
+                            <p className="text-gray-500">{t('macros.calories')}</p>
                             <p className="font-semibold text-gray-900">{Math.round(activePlan.calories)}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500">Белки</p>
+                            <p className="text-gray-500">{t('macros.protein')}</p>
                             <p className="font-semibold text-gray-900">{Math.round(activePlan.protein)}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500">Жиры</p>
+                            <p className="text-gray-500">{t('macros.fat')}</p>
                             <p className="font-semibold text-gray-900">{Math.round(activePlan.fat)}</p>
                         </div>
                         <div>
-                            <p className="text-gray-500">Углеводы</p>
+                            <p className="text-gray-500">{t('macros.carbs')}</p>
                             <p className="font-semibold text-gray-900">{Math.round(activePlan.carbs)}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-gray-400">Период</span>
+                        <span className="text-xs text-gray-400">{t('curator.plan.period')}</span>
                         <span className="text-xs text-gray-500">
                             {formatDateRu(activePlan.start_date)} — {formatDateRu(activePlan.end_date)}
                         </span>
@@ -152,7 +153,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                 </div>
             ) : (
                 <div className="rounded-xl border-2 border-dashed border-gray-200 py-6 text-center sm:py-8">
-                    <p className="text-sm text-gray-400">Активный план не задан</p>
+                    <p className="text-sm text-gray-400">{t('curator.plan.none')}</p>
                     <button
                         type="button"
                         onClick={() => {
@@ -161,7 +162,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                         }}
                         className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
                     >
-                        Создать план
+                        {t('curator.plan.create')}
                     </button>
                 </div>
             )}
@@ -174,7 +175,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     setShowForm(true)
                 }}
                 className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
-                aria-label="Создать план"
+                aria-label={t('curator.plan.createAria')}
             >
                 <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
@@ -189,7 +190,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                         <ChevronDown
                             className={cn('h-4 w-4 transition-transform', showHistory && 'rotate-180')}
                         />
-                        История планов ({pastPlans.length})
+                        {t('curator.plan.history', { count: pastPlans.length })}
                     </button>
                     {showHistory && (
                         <div className="mt-2 space-y-2">
@@ -204,8 +205,12 @@ export function PlanTab({ clientId }: PlanTabProps) {
                                         </span>
                                     </div>
                                     <p className="text-gray-900">
-                                        {Math.round(plan.calories)} ккал | Б {Math.round(plan.protein)} | Ж{' '}
-                                        {Math.round(plan.fat)} | У {Math.round(plan.carbs)}
+                                        {t('curator.plan.macrosInline', {
+                                            calories: Math.round(plan.calories),
+                                            protein: Math.round(plan.protein),
+                                            fat: Math.round(plan.fat),
+                                            carbs: Math.round(plan.carbs),
+                                        })}
                                     </p>
                                     {plan.comment && (
                                         <p className="mt-1 text-gray-500 italic">{plan.comment}</p>

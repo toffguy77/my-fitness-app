@@ -6,17 +6,18 @@ import Image from 'next/image'
 import { cn } from '@/shared/utils/cn'
 import type { AttentionItem } from '../types'
 
+import { t } from '@/shared/i18n'
 interface AttentionListProps {
     items: AttentionItem[]
 }
 
 const reasonLabels: Record<AttentionItem['reason'], string> = {
-    red_alert: 'Алерт КБЖУ',
-    overdue_task: 'Просроченная задача',
-    inactive: 'Нет активности',
-    unread_message: 'Сообщение',
-    awaiting_feedback: 'Ожидает отзыв',
-    incomplete_profile: 'Неполный профиль',
+    red_alert: t('curator.attention.red_alert'),
+    overdue_task: t('curator.attention.overdue_task'),
+    inactive: t('curator.attention.inactive'),
+    unread_message: t('curator.attention.unread_message'),
+    awaiting_feedback: t('curator.attention.awaiting_feedback'),
+    incomplete_profile: t('curator.attention.incomplete_profile'),
 }
 
 function getPriorityBadgeClass(priority: number): string {

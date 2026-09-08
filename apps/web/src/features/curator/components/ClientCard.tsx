@@ -8,6 +8,7 @@ import { KBZHUProgress } from './KBZHUProgress'
 import { AlertBadge } from './AlertBadge'
 import type { ClientCard as ClientCardType } from '../types'
 
+import { t } from '@/shared/i18n'
 export interface ClientCardProps {
     client: ClientCardType
 }
@@ -67,24 +68,24 @@ export function ClientCard({ client }: ClientCardProps) {
 
             {hasPlan && kbzhu ? (
                 <div className="space-y-1.5">
-                    <KBZHUProgress label="Ккал" value={kbzhu.calories} target={client.plan!.calories} compact />
-                    <KBZHUProgress label="Белки" value={kbzhu.protein} target={client.plan!.protein} compact />
-                    <KBZHUProgress label="Жиры" value={kbzhu.fat} target={client.plan!.fat} compact />
-                    <KBZHUProgress label="Углеводы" value={kbzhu.carbs} target={client.plan!.carbs} compact />
+                    <KBZHUProgress label={t('macros.calories')} value={kbzhu.calories} target={client.plan!.calories} compact />
+                    <KBZHUProgress label={t('macros.protein')} value={kbzhu.protein} target={client.plan!.protein} compact />
+                    <KBZHUProgress label={t('macros.fat')} value={kbzhu.fat} target={client.plan!.fat} compact />
+                    <KBZHUProgress label={t('macros.carbs')} value={kbzhu.carbs} target={client.plan!.carbs} compact />
                 </div>
             ) : kbzhu ? (
                 <div className="text-xs text-gray-500 space-y-0.5">
-                    <p>Ккал: {Math.round(kbzhu.calories)} | Б: {Math.round(kbzhu.protein)} | Ж: {Math.round(kbzhu.fat)} | У: {Math.round(kbzhu.carbs)}</p>
-                    <p className="text-gray-400">План не задан</p>
+                    <p>{t('curator.card.macrosInline', { calories: Math.round(kbzhu.calories), protein: Math.round(kbzhu.protein), fat: Math.round(kbzhu.fat), carbs: Math.round(kbzhu.carbs) })}</p>
+                    <p className="text-gray-400">{t('curator.card.noPlan')}</p>
                 </div>
             ) : (
-                <p className="text-xs text-gray-400">Нет данных за сегодня</p>
+                <p className="text-xs text-gray-400">{t('curator.card.noDataToday')}</p>
             )}
 
             {client.last_weight != null && (
                 <div className="mt-2 flex items-center gap-2 text-xs">
-                    <span className="text-gray-500">Вес:</span>
-                    <span className="font-semibold text-gray-900">{client.last_weight} кг</span>
+                    <span className="text-gray-500">{t('curator.card.weightLabel')}</span>
+                    <span className="font-semibold text-gray-900">{t('curator.card.kilograms', { value: client.last_weight })}</span>
                     {client.weight_trend === 'down' && (
                         <TrendingDown className="h-3.5 w-3.5 text-green-500" />
                     )}
@@ -96,7 +97,7 @@ export function ClientCard({ client }: ClientCardProps) {
                     )}
                     {client.target_weight != null && (
                         <span className="ml-auto text-gray-400">
-                            Цель: {client.target_weight} кг
+                            {t('curator.card.targetWeight', { weight: client.target_weight })}
                         </span>
                     )}
                 </div>
@@ -106,7 +107,7 @@ export function ClientCard({ client }: ClientCardProps) {
                 <div className="mt-2 flex items-center gap-2 text-xs">
                     <Droplets className="h-3.5 w-3.5 text-blue-500" />
                     <span className={client.today_water.glasses >= client.today_water.goal ? 'font-semibold text-green-600' : 'text-gray-600'}>
-                        {client.today_water.glasses}/{client.today_water.goal} стаканов
+                        {t('curator.card.glasses', { glasses: client.today_water.glasses, goal: client.today_water.goal })}
                     </span>
                 </div>
             )}

@@ -5,6 +5,7 @@ import { X, Loader2 } from 'lucide-react'
 import { curatorApi } from '../api/curatorApi'
 import type { WeeklyPlanView } from '../types'
 
+import { t } from '@/shared/i18n'
 function getMonday(d: Date): string {
     const date = new Date(d)
     const day = date.getDay()
@@ -52,7 +53,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
         const carb = parseFloat(carbs)
 
         if ([cal, prot, f, carb].some((v) => isNaN(v) || v < 0)) {
-            setError('Заполните все поля КБЖУ корректно')
+            setError(t('curator.plan.invalid'))
             return
         }
 
@@ -80,7 +81,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
             }
             onSaved(plan)
         } catch {
-            setError('Не удалось сохранить план')
+            setError(t('curator.plan.saveFailed'))
         } finally {
             setSaving(false)
         }
@@ -91,7 +92,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
             <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-20 shadow-xl animate-in slide-in-from-bottom">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-semibold text-gray-900">
-                        {isEdit ? 'Обновить план' : 'Создать план'}
+                        {isEdit ? t('curator.plan.update') : t('curator.plan.create')}
                     </h2>
                     <button type="button" onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
                         <X className="h-5 w-5" />
@@ -101,7 +102,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Калории</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.calories')}</label>
                             <input
                                 type="number"
                                 value={calories}
@@ -112,7 +113,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Белки (г)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.proteinGrams')}</label>
                             <input
                                 type="number"
                                 value={protein}
@@ -123,7 +124,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Жиры (г)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.fatGrams')}</label>
                             <input
                                 type="number"
                                 value={fat}
@@ -134,7 +135,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Углеводы (г)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.carbsGrams')}</label>
                             <input
                                 type="number"
                                 value={carbs}
@@ -149,7 +150,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                     {!isEdit && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Дата начала</label>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.startDate')}</label>
                                 <input
                                     type="date"
                                     value={startDate}
@@ -159,7 +160,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Дата окончания</label>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.endDate')}</label>
                                 <input
                                     type="date"
                                     value={endDate}
@@ -172,13 +173,13 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                     )}
 
                     <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Комментарий</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">{t('curator.plan.comment')}</label>
                         <textarea
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             rows={2}
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            placeholder="Необязательно"
+                            placeholder={t('curator.plan.optional')}
                         />
                     </div>
 
@@ -190,7 +191,7 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                         className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                     >
                         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {isEdit ? 'Обновить план' : 'Создать план'}
+                        {isEdit ? t('curator.plan.update') : t('curator.plan.create')}
                     </button>
                 </form>
             </div>
