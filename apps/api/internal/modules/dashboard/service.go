@@ -1987,12 +1987,19 @@ func (s *Service) sendPlanUpdateNotification(ctx context.Context, clientID int64
 		return nil
 	}
 
+	title, content := notifications.Text(
+		s.notificationsSvc.LanguageOf(ctx, clientID),
+		notifications.TextPlanUpdated,
+		map[string]string{
+			"calories": strconv.Itoa(plan.CaloriesGoal),
+			"protein":  strconv.Itoa(plan.ProteinGoal),
+		})
 	notification := &notifications.Notification{
 		UserID:   clientID,
 		Category: notifications.CategoryMain,
 		Type:     notifications.TypePlanUpdated,
-		Title:    "Обновлен план питания",
-		Content:  fmt.Sprintf("Ваш куратор обновил план питания на эту неделю: %d ккал, %d г белка в день", plan.CaloriesGoal, plan.ProteinGoal),
+		Title:    title,
+		Content:  content,
 		IconURL:  nil,
 	}
 
@@ -2025,12 +2032,16 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 		return nil
 	}
 
+	title, content := notifications.Text(
+		s.notificationsSvc.LanguageOf(ctx, clientID),
+		notifications.TextTaskAssigned,
+		map[string]string{"title": task.Title})
 	notification := &notifications.Notification{
 		UserID:   clientID,
 		Category: notifications.CategoryMain,
 		Type:     notifications.TypeTaskAssigned,
-		Title:    "Новая задача",
-		Content:  fmt.Sprintf("Новая задача: %s", task.Title),
+		Title:    title,
+		Content:  content,
 		IconURL:  nil,
 	}
 
@@ -2071,12 +2082,19 @@ func (s *Service) sendWeeklyReportNotification(ctx context.Context, curatorID in
 		clientName = fmt.Sprintf("Клиент #%d", report.UserID)
 	}
 
+	title, content := notifications.Text(
+		s.notificationsSvc.LanguageOf(ctx, curatorID),
+		notifications.TextReportReceived,
+		map[string]string{
+			"name": clientName,
+			"week": strconv.Itoa(report.WeekNumber),
+		})
 	notification := &notifications.Notification{
 		UserID:   curatorID,
 		Category: notifications.CategoryMain,
 		Type:     notifications.TypeTrainerFeedback,
-		Title:    "Получен недельный отчет",
-		Content:  fmt.Sprintf("%s отправил недельный отчет за неделю %d", clientName, report.WeekNumber),
+		Title:    title,
+		Content:  content,
 		IconURL:  nil,
 	}
 
