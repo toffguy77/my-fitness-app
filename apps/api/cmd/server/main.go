@@ -312,6 +312,17 @@ func main() {
 		log.Warn("Failed to load Europe/Moscow; scheduling jobs in UTC", "error", err)
 		moscow = time.UTC
 	}
+	// Error reporting, if there is somewhere to report to.
+	reportingOn, err := telemetry.StartErrorReporting(cfg.Version, cfg.Env)
+	if err != nil {
+		log.Warn("Error reporting could not be started; continuing without it", "error", err)
+	} else if reportingOn {
+		log.Info("Error reporting enabled", "release", cfg.Version)
+		defer telemetry.FlushErrors()
+	} else {
+		log.Warn("Error reporting is off — SENTRY_DSN is not set")
+	}
+
 	// Tracing, if there is a collector to send it to. Absent, the application
 	// runs exactly as before and says so once — the same rule as every other
 	// optional capability here.
