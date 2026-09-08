@@ -3,6 +3,7 @@
 import { cn } from '@/shared/utils/cn'
 import type { CuratorLoad } from '../types'
 
+import { t } from '@/shared/i18n'
 export interface CuratorLoadCardProps {
     curator: CuratorLoad
 }
@@ -41,7 +42,7 @@ export function CuratorLoadCard({ curator }: CuratorLoadCardProps) {
                 </div>
                 <div className="text-right">
                     <p className="text-lg font-bold text-blue-600">{curator.client_count}</p>
-                    <p className="text-xs text-gray-500">клиентов</p>
+                    <p className="text-xs text-gray-500">{t('admin.dashboard.clientsWord')}</p>
                 </div>
             </div>
         </div>

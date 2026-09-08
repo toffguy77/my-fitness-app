@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { ReadOnlyMessageList } from '@/features/admin/components/ReadOnlyMessageList'
 
+import { t } from '@/shared/i18n'
 export default function AdminChatDetailPage() {
     const router = useRouter()
     const params = useParams()
@@ -17,12 +18,12 @@ export default function AdminChatDetailPage() {
                     type="button"
                     onClick={() => router.push('/admin/chats')}
                     className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                    aria-label="Назад"
+                    aria-label={t('common.back')}
                 >
                     <ArrowLeft className="h-5 w-5 text-gray-700" />
                 </button>
-                <h1 className="text-sm font-semibold text-gray-900">Просмотр чата</h1>
-                <span className="ml-auto text-xs text-gray-400">Только чтение</span>
+                <h1 className="text-sm font-semibold text-gray-900">{t('admin.chats.viewHeading')}</h1>
+                <span className="ml-auto text-xs text-gray-400">{t('admin.chats.readOnly')}</span>
             </div>
 
             {/* Messages */}

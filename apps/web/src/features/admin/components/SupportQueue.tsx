@@ -9,6 +9,7 @@ import {
     type SupportThread,
 } from '../api/adminApi'
 
+import { t } from '@/shared/i18n'
 /**
  * Questions the bot could not answer.
  *
@@ -17,18 +18,18 @@ import {
  */
 
 const statusLabels: Record<SupportConversation['status'], string> = {
-    escalated: 'Ждёт ответа',
-    open: 'Отвечает бот',
-    closed: 'Закрыто',
+    escalated: t('admin.support.escalated'),
+    open: t('admin.support.open'),
+    closed: t('admin.support.closed'),
 }
 
 const stepLabels: Record<string, string> = {
-    goal: 'выбор цели',
-    body: 'параметры',
-    activity: 'активность',
-    result: 'увидел расчёт',
-    contact: 'оставил контакт',
-    registration: 'форма регистрации',
+    goal: t('admin.leadSteps.goal'),
+    body: t('admin.leadSteps.body'),
+    activity: t('admin.leadSteps.activity'),
+    result: t('admin.leadSteps.result'),
+    contact: t('admin.leadSteps.contact'),
+    registration: t('admin.leadSteps.registration'),
 }
 
 export function SupportQueue() {
@@ -48,7 +49,7 @@ export function SupportQueue() {
             try {
                 await load()
             } catch {
-                toast.error('Не удалось загрузить обращения')
+                toast.error(t('admin.support.loadFailed'))
             } finally {
                 setLoading(false)
             }
@@ -60,7 +61,7 @@ export function SupportQueue() {
         try {
             setSelected(await adminApi.getSupportThread(conversation.id))
         } catch {
-            toast.error('Не удалось открыть обращение')
+            toast.error(t('admin.support.openFailed'))
         }
     }
 
@@ -73,7 +74,7 @@ export function SupportQueue() {
             setReply('')
             setSelected(await adminApi.getSupportThread(selected.conversation.id))
         } catch {
-            toast.error('Не удалось отправить ответ')
+            toast.error(t('admin.support.sendFailed'))
         } finally {
             setSending(false)
         }
@@ -86,7 +87,7 @@ export function SupportQueue() {
             setSelected(null)
             await load()
         } catch {
-            toast.error('Не удалось закрыть обращение')
+            toast.error(t('admin.support.closeFailed'))
         }
     }
 
@@ -105,7 +106,7 @@ export function SupportQueue() {
                     onClick={() => setSelected(null)}
                     className="text-sm text-gray-600 hover:text-gray-900"
                 >
-                    ← К списку
+                    {t('admin.support.backToList')}
                 </button>
 
                 {/* What they were doing when they got stuck, so nobody has to
@@ -114,7 +115,7 @@ export function SupportQueue() {
                     <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <p className="text-sm font-medium text-gray-900">{selected.lead.email}</p>
                         <p className="text-xs text-gray-600">
-                            Остановился: {stepLabels[selected.lead.last_step] ?? selected.lead.last_step}
+                            {t('admin.leads.stoppedAt', { step: stepLabels[selected.lead.last_step] ?? selected.lead.last_step })}
                             {selected.lead.summary && ` · ${selected.lead.summary}`}
                         </p>
                     </div>
@@ -134,10 +135,10 @@ export function SupportQueue() {
                         >
                             <p className="mb-1 text-xs text-gray-500">
                                 {message.author === 'user'
-                                    ? 'Пользователь'
+                                    ? t('admin.support.authorUser')
                                     : message.author === 'operator'
-                                      ? 'Оператор'
-                                      : 'Бот'}
+                                      ? t('admin.support.authorOperator')
+                                      : t('admin.support.authorBot')}
                             </p>
                             {message.text}
                         </li>
@@ -146,7 +147,7 @@ export function SupportQueue() {
 
                 <div className="mt-4">
                     <label htmlFor="support-reply" className="block text-sm font-medium text-gray-900">
-                        Ответ
+                        {t('admin.support.reply')}
                     </label>
                     <textarea
                         id="support-reply"
@@ -161,13 +162,13 @@ export function SupportQueue() {
                             disabled={!reply.trim() || sending}
                             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {sending ? 'Отправляем...' : 'Отправить в Telegram'}
+                            {sending ? t('admin.support.sending') : t('admin.support.sendToTelegram')}
                         </button>
                         <button
                             onClick={handleClose}
                             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
                         >
-                            Закрыть обращение
+                            {t('admin.support.close')}
                         </button>
                     </div>
                 </div>
@@ -176,7 +177,7 @@ export function SupportQueue() {
     }
 
     if (conversations.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">Обращений пока нет</p>
+        return <p className="py-8 text-center text-sm text-gray-500">{t('admin.support.empty')}</p>
     }
 
     return (
@@ -190,7 +191,7 @@ export function SupportQueue() {
                     >
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-semibold text-gray-900">
-                                {conversation.telegram_name || conversation.telegram_username || 'Без имени'}
+                                {conversation.telegram_name || conversation.telegram_username || t('admin.support.noName')}
                             </span>
                             <span
                                 className={`text-xs ${
@@ -204,7 +205,7 @@ export function SupportQueue() {
                         </div>
                         {conversation.escalation_reason && (
                             <p className="mt-1 text-xs text-gray-600">
-                                Причина: {conversation.escalation_reason}
+                                {t('admin.support.reason', { reason: conversation.escalation_reason })}
                             </p>
                         )}
                     </button>

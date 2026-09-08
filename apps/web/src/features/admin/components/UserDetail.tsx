@@ -9,10 +9,11 @@ import { adminApi } from '../api/adminApi'
 import type { AdminUser, CuratorLoad } from '../types'
 import toast from 'react-hot-toast'
 
+import { t } from '@/shared/i18n'
 const ROLE_LABELS: Record<string, string> = {
-    client: 'Клиент',
-    coordinator: 'Куратор',
-    super_admin: 'Админ',
+    client: t('admin.roles.client'),
+    coordinator: t('admin.roles.coordinator'),
+    super_admin: t('admin.roles.super_admin'),
 }
 
 export interface UserDetailProps {
@@ -40,8 +41,8 @@ export function UserDetail({ userId }: UserDetailProps) {
                 // A missing user is a different situation from a failed load,
                 // and the operator needs to be able to tell them apart.
                 setError(isApiError(err) && err.status === 404
-                    ? 'Пользователь не найден'
-                    : 'Не удалось загрузить данные')
+                    ? t('admin.user.notFound')
+                    : t('admin.user.loadFailed'))
             })
             .finally(() => setLoading(false))
     }, [userId])
@@ -51,20 +52,20 @@ export function UserDetail({ userId }: UserDetailProps) {
         if (user.role === newRole) return
 
         const confirmMsg = newRole === 'client'
-            ? 'Снять роль куратора? Все клиенты будут перераспределены.'
-            : 'Назначить пользователя куратором?'
+            ? t('admin.user.demoteConfirm')
+            : t('admin.user.promoteConfirm')
 
         if (!confirm(confirmMsg)) return
 
         setActionLoading(true)
         try {
             await adminApi.changeRole(user.id, newRole)
-            toast.success('Роль изменена')
+            toast.success(t('admin.user.roleChanged'))
             // Refresh data
             setUser(await adminApi.getUser(userId))
             setCurators(await adminApi.getCurators())
         } catch {
-            toast.error('Не удалось изменить роль')
+            toast.error(t('admin.user.roleChangeFailed'))
         } finally {
             setActionLoading(false)
         }
@@ -76,11 +77,11 @@ export function UserDetail({ userId }: UserDetailProps) {
         setActionLoading(true)
         try {
             await adminApi.assignCurator(user.id, curatorId)
-            toast.success('Куратор назначен')
+            toast.success(t('admin.user.curatorAssigned'))
             // Refresh data
             setUser(await adminApi.getUser(userId))
         } catch {
-            toast.error('Не удалось назначить куратора')
+            toast.error(t('admin.user.curatorAssignFailed'))
         } finally {
             setActionLoading(false)
         }
@@ -95,7 +96,7 @@ export function UserDetail({ userId }: UserDetailProps) {
     }
 
     if (error || !user) {
-        return <p className="py-8 text-center text-sm text-red-500">{error || 'Пользователь не найден'}</p>
+        return <p className="py-8 text-center text-sm text-red-500">{error || t('admin.user.notFound')}</p>
     }
 
     const initials = user.name
@@ -113,7 +114,7 @@ export function UserDetail({ userId }: UserDetailProps) {
                     type="button"
                     onClick={() => router.push('/admin/users')}
                     className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-                    aria-label="Назад"
+                    aria-label={t('common.back')}
                 >
                     <ArrowLeft className="h-5 w-5 text-gray-700" />
                 </button>
@@ -137,28 +138,28 @@ export function UserDetail({ userId }: UserDetailProps) {
             {/* Info card */}
             <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 space-y-3">
                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Роль</span>
+                    <span className="text-gray-500">{t('admin.user.role')}</span>
                     <span className="font-medium">{ROLE_LABELS[user.role] || user.role}</span>
                 </div>
                 {user.curator_name && (
                     <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Куратор</span>
+                        <span className="text-gray-500">{t('admin.user.curator')}</span>
                         <span className="font-medium">{user.curator_name}</span>
                     </div>
                 )}
                 {user.role === 'coordinator' && (
                     <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Клиентов</span>
+                        <span className="text-gray-500">{t('admin.user.clientCount')}</span>
                         <span className="font-medium">{user.client_count}</span>
                     </div>
                 )}
                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Регистрация</span>
+                    <span className="text-gray-500">{t('admin.user.registered')}</span>
                     <span className="font-medium">{new Date(user.created_at).toLocaleDateString('ru-RU')}</span>
                 </div>
                 {user.last_login_at && (
                     <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Последний вход</span>
+                        <span className="text-gray-500">{t('admin.user.lastLogin')}</span>
                         <span className="font-medium">{new Date(user.last_login_at).toLocaleDateString('ru-RU')}</span>
                     </div>
                 )}
@@ -167,7 +168,7 @@ export function UserDetail({ userId }: UserDetailProps) {
             {/* Role management (not for super_admin) */}
             {user.role !== 'super_admin' && (
                 <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 space-y-3">
-                    <h3 className="text-sm font-semibold text-gray-900">Управление ролью</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">{t('admin.user.roleManagement')}</h3>
                     <div className="flex gap-2">
                         <button
                             type="button"
@@ -180,7 +181,7 @@ export function UserDetail({ userId }: UserDetailProps) {
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             )}
                         >
-                            Клиент
+                            {t('admin.roles.client')}
                         </button>
                         <button
                             type="button"
@@ -193,7 +194,7 @@ export function UserDetail({ userId }: UserDetailProps) {
                                     : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                             )}
                         >
-                            Куратор
+                            {t('admin.roles.coordinator')}
                         </button>
                     </div>
                 </div>
@@ -202,9 +203,9 @@ export function UserDetail({ userId }: UserDetailProps) {
             {/* Curator assignment (only for clients) */}
             {user.role === 'client' && (
                 <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 space-y-3">
-                    <h3 className="text-sm font-semibold text-gray-900">Назначить куратора</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">{t('admin.user.assignCurator')}</h3>
                     {curators.length === 0 ? (
-                        <p className="text-sm text-gray-500">Нет доступных кураторов</p>
+                        <p className="text-sm text-gray-500">{t('admin.user.noCurators')}</p>
                     ) : (
                         <div className="space-y-2">
                             {curators.map((curator) => (
@@ -222,10 +223,10 @@ export function UserDetail({ userId }: UserDetailProps) {
                                 >
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-gray-900 truncate">{curator.name}</p>
-                                        <p className="text-xs text-gray-500">{curator.client_count} клиентов</p>
+                                        <p className="text-xs text-gray-500">{t('admin.user.clientsOf', { count: curator.client_count })}</p>
                                     </div>
                                     {curator.id === user.curator_id && (
-                                        <span className="text-xs font-medium text-blue-600">Текущий</span>
+                                        <span className="text-xs font-medium text-blue-600">{t('admin.user.current')}</span>
                                     )}
                                 </button>
                             ))}

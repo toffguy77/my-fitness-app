@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { adminApi, CuratorLoadCard } from '@/features/admin'
 import type { CuratorLoad, AdminUser } from '@/features/admin'
 
+import { t } from '@/shared/i18n'
 export default function AdminDashboardPage() {
     const [curators, setCurators] = useState<CuratorLoad[]>([])
     const [users, setUsers] = useState<AdminUser[]>([])
@@ -39,29 +40,29 @@ export default function AdminDashboardPage() {
 
     return (
         <div className="px-4 py-6 space-y-6">
-            <h1 className="text-xl font-semibold text-gray-900">Панель администратора</h1>
+            <h1 className="text-xl font-semibold text-gray-900">{t('admin.dashboard.heading')}</h1>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 text-center">
                     <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
-                    <p className="text-xs text-gray-500">Пользователей</p>
+                    <p className="text-xs text-gray-500">{t('admin.dashboard.users')}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 text-center">
                     <p className="text-2xl font-bold text-blue-600">{totalCurators}</p>
-                    <p className="text-xs text-gray-500">Кураторов</p>
+                    <p className="text-xs text-gray-500">{t('admin.dashboard.curators')}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 text-center">
                     <p className="text-2xl font-bold text-green-600">{totalClients}</p>
-                    <p className="text-xs text-gray-500">Клиентов</p>
+                    <p className="text-xs text-gray-500">{t('admin.dashboard.clients')}</p>
                 </div>
             </div>
 
             {/* Curator load */}
             <section>
-                <h2 className="text-sm font-semibold text-gray-900 mb-3">Нагрузка кураторов</h2>
+                <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('admin.dashboard.curatorLoad')}</h2>
                 {curators.length === 0 ? (
-                    <p className="text-sm text-gray-500">Нет кураторов</p>
+                    <p className="text-sm text-gray-500">{t('admin.dashboard.noCurators')}</p>
                 ) : (
                     <div className="space-y-2">
                         {curators.map((curator) => (
