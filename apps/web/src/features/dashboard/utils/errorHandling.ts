@@ -4,6 +4,7 @@
  */
 
 import toast from 'react-hot-toast';
+import { t } from '@/shared/i18n'
 
 /**
  * Error codes for dashboard operations
@@ -65,7 +66,7 @@ export function mapApiError(error: any): DashboardError {
     if (!isOnline()) {
         return {
             code: DashboardErrorCode.NETWORK_ERROR,
-            message: 'Нет подключения к интернету',
+            message: t('dashboard.errors.offline'),
             retryable: true,
         };
     }
@@ -79,28 +80,28 @@ export function mapApiError(error: any): DashboardError {
         case 401:
             return {
                 code: DashboardErrorCode.UNAUTHORIZED,
-                message: 'Требуется авторизация',
+                message: t('dashboard.errors.unauthorized'),
                 retryable: false,
             };
 
         case 403:
             return {
                 code: DashboardErrorCode.FORBIDDEN,
-                message: 'Доступ запрещен',
+                message: t('dashboard.errors.forbidden'),
                 retryable: false,
             };
 
         case 404:
             return {
                 code: DashboardErrorCode.NOT_FOUND,
-                message: 'Данные не найдены',
+                message: t('dashboard.errors.notFound'),
                 retryable: false,
             };
 
         case 400:
             return {
                 code: DashboardErrorCode.VALIDATION_ERROR,
-                message: message || 'Неверные данные',
+                message: message || t('dashboard.errors.badRequest'),
                 details,
                 retryable: false,
             };
@@ -108,14 +109,14 @@ export function mapApiError(error: any): DashboardError {
         case 408:
             return {
                 code: DashboardErrorCode.TIMEOUT_ERROR,
-                message: 'Превышено время ожидания',
+                message: t('dashboard.errors.timeout'),
                 retryable: true,
             };
 
         case 429:
             return {
                 code: DashboardErrorCode.RATE_LIMIT_ERROR,
-                message: 'Слишком много запросов. Попробуйте позже',
+                message: t('dashboard.errors.tooManyRequests'),
                 retryable: true,
             };
 
@@ -125,7 +126,7 @@ export function mapApiError(error: any): DashboardError {
         case 504:
             return {
                 code: DashboardErrorCode.SERVER_ERROR,
-                message: 'Сервис временно недоступен',
+                message: t('dashboard.errors.unavailable'),
                 retryable: true,
             };
     }
@@ -138,7 +139,7 @@ export function mapApiError(error: any): DashboardError {
     ) {
         return {
             code: DashboardErrorCode.NETWORK_ERROR,
-            message: 'Проверьте подключение к интернету',
+            message: t('dashboard.errors.network'),
             retryable: true,
         };
     }
@@ -146,7 +147,7 @@ export function mapApiError(error: any): DashboardError {
     // Unknown error
     return {
         code: DashboardErrorCode.UNKNOWN_ERROR,
-        message: 'Произошла ошибка',
+        message: t('dashboard.errors.unknown'),
         retryable: true,
     };
 }
@@ -239,7 +240,7 @@ export function showValidationErrors(errors: string[]): void {
             icon: '⚠️',
         });
     } else {
-        const message = `Исправьте ошибки:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`;
+        const message = `${t('dashboard.errors.fixThese')}\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`;
         toast.error(message, {
             duration: 6000,
             icon: '⚠️',
@@ -287,7 +288,7 @@ export function createErrorHandler(componentName: string) {
         }
 
         // Show user-friendly error message
-        toast.error('Произошла ошибка. Попробуйте обновить страницу', {
+        toast.error(t('dashboard.errors.reloadHint'), {
             duration: 5000,
             icon: '❌',
         });

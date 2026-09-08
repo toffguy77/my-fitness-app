@@ -19,23 +19,32 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useRovingTabIndex } from '../hooks/useKeyboardNavigation';
 import { formatLocalDate } from '@/shared/utils/format';
+import { t } from '@/shared/i18n'
 
 /**
  * Day names in Russian (short form)
  */
-const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const DAY_NAMES = [
+    t('weekdays.short.mon'),
+    t('weekdays.short.tue'),
+    t('weekdays.short.wed'),
+    t('weekdays.short.thu'),
+    t('weekdays.short.fri'),
+    t('weekdays.short.sat'),
+    t('weekdays.short.sun'),
+];
 
 /**
  * Day names in Russian (full form) for accessibility
  */
 const DAY_NAMES_FULL = [
-    'Понедельник',
-    'Вторник',
-    'Среда',
-    'Четверг',
-    'Пятница',
-    'Суббота',
-    'Воскресенье',
+    t('dashboard.calendar.monday'),
+    t('dashboard.calendar.tuesday'),
+    t('dashboard.calendar.wednesday'),
+    t('dashboard.calendar.thursday'),
+    t('dashboard.calendar.friday'),
+    t('dashboard.calendar.saturday'),
+    t('dashboard.calendar.sunday'),
 ];
 
 /**
@@ -183,11 +192,11 @@ const DayButton = memo(function DayButton({
 
     let completionSummary: string;
     if (completedCount === 0) {
-        completionSummary = 'нет выполненных целей';
+        completionSummary = t('dashboard.calendar.noneDone');
     } else if (completedCount === 3) {
-        completionSummary = 'все цели выполнены';
+        completionSummary = t('dashboard.calendar.allDone');
     } else {
-        completionSummary = `выполнено ${completedCount} из 3 целей`;
+        completionSummary = t('dashboard.calendar.someDone', { count: completedCount });
     }
 
     return (
@@ -313,7 +322,7 @@ export const CalendarNavigator = memo(function CalendarNavigator({
                 <button
                     onClick={handlePrevWeek}
                     className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label="Предыдущая неделя"
+                    aria-label={t('dashboard.calendar.previousWeek')}
                 >
                     <ChevronLeft className="w-5 h-5 text-gray-600" />
                 </button>
@@ -325,7 +334,7 @@ export const CalendarNavigator = memo(function CalendarNavigator({
                 <button
                     onClick={handleNextWeek}
                     className="p-2 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label="Следующая неделя"
+                    aria-label={t('dashboard.calendar.nextWeek')}
                 >
                     <ChevronRight className="w-5 h-5 text-gray-600" />
                 </button>
@@ -336,7 +345,7 @@ export const CalendarNavigator = memo(function CalendarNavigator({
                 ref={daysContainerRef}
                 className="grid grid-cols-7 gap-2"
                 role="radiogroup"
-                aria-label="Выбор дня недели"
+                aria-label={t('dashboard.calendar.pickDayAria')}
             >
                 {weekDays.map((date) => {
                     const isTodayDate = isSameDay(date, today);
@@ -364,9 +373,9 @@ export const CalendarNavigator = memo(function CalendarNavigator({
                     <button
                         onClick={handleSubmitReport}
                         className="w-full py-3 px-4 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 animate-pulse"
-                        aria-label="Отправить недельный отчет"
+                        aria-label={t('dashboard.calendar.sendReportAria')}
                     >
-                        Отправить недельный отчет
+                        {t('dashboard.calendar.sendReport')}
                     </button>
                 </div>
             )}

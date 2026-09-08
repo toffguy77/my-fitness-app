@@ -29,14 +29,23 @@ import { WORKOUT_TYPES } from './WorkoutBlock'
 import { cn } from '@/shared/utils/cn'
 import { formatLocalDate } from '@/shared/utils/format'
 import type { ClientTaskView, ClientTaskType } from '../types'
+import { t } from '@/shared/i18n'
 
-const DAY_LABELS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+const DAY_LABELS = [
+    t('weekdays.short.sun'),
+    t('weekdays.short.mon'),
+    t('weekdays.short.tue'),
+    t('weekdays.short.wed'),
+    t('weekdays.short.thu'),
+    t('weekdays.short.fri'),
+    t('weekdays.short.sat'),
+]
 
 const TYPE_LABELS: Record<ClientTaskType, string> = {
-    nutrition: 'Питание',
-    workout: 'Тренировка',
-    habit: 'Привычка',
-    measurement: 'Замеры',
+    nutrition: t('dashboard.tasks.typeNutrition'),
+    workout: t('dashboard.tasks.typeWorkout'),
+    habit: t('dashboard.tasks.typeHabit'),
+    measurement: t('dashboard.tasks.typeMeasurement'),
 }
 
 export interface ClientTasksSectionProps {
@@ -275,10 +284,10 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                 id="client-tasks-heading"
                 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4"
             >
-                Задачи от куратора
+                {t('dashboard.tasks.fromCurator')}
             </h2>
 
-            <div className="space-y-2 sm:space-y-3" role="list" aria-label="Список задач от куратора">
+            <div className="space-y-2 sm:space-y-3" role="list" aria-label={t('dashboard.tasks.fromCuratorAria')}>
                 {tasks.map((task) => {
                     const Icon = getTaskTypeIcon(task.type)
                     const isCompleted = isCompletedToday(task)
@@ -300,13 +309,15 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                       ? 'border-green-200 bg-green-50'
                                       : 'border-gray-100 bg-white shadow-sm'
                             }`}
-                            aria-label={`${TYPE_LABELS[task.type]}: ${task.title}. ${
-                                isCompleted
-                                    ? 'Выполнена'
+                            aria-label={t('dashboard.tasks.clientTaskAria', {
+                                type: TYPE_LABELS[task.type],
+                                title: task.title,
+                                status: isCompleted
+                                    ? t('dashboard.tasks.statusDone')
                                     : isOverdue
-                                      ? 'Просрочена'
-                                      : 'Активна'
-                            }`}
+                                      ? t('dashboard.tasks.statusOverdue')
+                                      : t('dashboard.tasks.statusActive'),
+                            })}
                         >
                             {/* Completion checkbox */}
                             <button
@@ -320,8 +331,8 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 }`}
                                 aria-label={
                                     isCompleted
-                                        ? 'Задача выполнена'
-                                        : 'Отметить как выполненную'
+                                        ? t('dashboard.tasks.doneAria')
+                                        : t('dashboard.tasks.markDoneAria')
                                 }
                             >
                                 {isCompleted && (
@@ -370,7 +381,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                         {TYPE_LABELS[task.type]}
                                     </span>
                                     <span className={`text-xs ${getDeadlineColor(task.deadline)}`}>
-                                        до {formatDeadline(task.deadline)}
+                                        {t('dashboard.tasks.deadline', { date: formatDeadline(task.deadline) })}
                                     </span>
                                 </div>
 
@@ -404,7 +415,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 font-semibold text-gray-900">
                                 <Dumbbell className="h-5 w-5" />
-                                Тренировка
+                                {t('dashboard.tasks.typeWorkout')}
                             </div>
                             <button type="button" onClick={handleWorkoutCancel} className="text-gray-400 hover:text-gray-600">
                                 <X className="h-5 w-5" />
@@ -412,7 +423,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                         </div>
 
                         <div className="space-y-2">
-                            <span className="text-sm font-medium text-gray-700">Тип тренировки</span>
+                            <span className="text-sm font-medium text-gray-700">{t('dashboard.tasks.workoutType')}</span>
                             <div className="grid grid-cols-2 gap-2">
                                 {WORKOUT_TYPES.map((type) => (
                                     <button
@@ -435,7 +446,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                         <div className="space-y-1">
                             <span className="text-sm font-medium text-gray-700 flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5" />
-                                Длительность (мин, необязательно)
+                                {t('dashboard.tasks.durationLabel')}
                             </span>
                             <input
                                 type="number"
@@ -456,7 +467,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 <Check className="h-4 w-4" />
-                                Сохранить
+                                {t('common.save')}
                             </button>
                             <button
                                 type="button"
@@ -464,7 +475,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                 disabled={workoutSaving}
                                 className="px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
                             >
-                                Отмена
+                                {t('common.cancel')}
                             </button>
                         </div>
                     </div>

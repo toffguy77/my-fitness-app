@@ -1,3 +1,8 @@
+// i18n-exempt-file: formatRelativeTime already branches on the locale and
+// carries real English text. Routing it through the dictionary would turn that
+// English back into Russian, because there is no English dictionary yet — it
+// falls back to the Russian one. It moves across when there is something to
+// move to.
 /**
  * Calculation utilities for dashboard metrics
  */

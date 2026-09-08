@@ -3,6 +3,8 @@
  * Uses fast-check library for generating test data
  */
 
+// i18n-exempt-file: fixtures for property tests, never rendered to anybody.
+// Their wording only has to be plausible.
 import fc from 'fast-check';
 import type {
     DailyMetrics,

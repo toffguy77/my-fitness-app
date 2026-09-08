@@ -45,6 +45,7 @@ import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/Pr
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
+import { t } from '@/shared/i18n'
 
 interface UserData {
     id: string
@@ -169,7 +170,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Загрузка...</p>
+                    <p className="text-gray-600">{t('common.loading')}</p>
                 </div>
             </div>
         )

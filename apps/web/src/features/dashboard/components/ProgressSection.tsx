@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { cn } from '@/shared/utils/cn'
 import { apiClient } from '@/shared/utils/api-client'
 import type { ProgressData } from '../types'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for ProgressSection component
@@ -41,16 +42,16 @@ const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, classN
     }
 
     const getLabel = (pct: number) => {
-        if (pct >= 90) return 'Отлично'
-        if (pct >= 70) return 'Хорошо'
-        return 'Требует внимания'
+        if (pct >= 90) return t('dashboard.progress.excellent')
+        if (pct >= 70) return t('dashboard.progress.good')
+        return t('dashboard.progress.needsAttention')
     }
 
     return (
         <div className={cn('space-y-2', className)}>
             <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">
-                    Соблюдение плана питания
+                    {t('dashboard.progress.adherence')}
                 </span>
                 <span className={cn(
                     'text-sm font-semibold px-2 py-1 rounded-full border',
@@ -72,7 +73,7 @@ const AdherenceIndicator = memo(function AdherenceIndicator({ percentage, classN
                     aria-valuenow={percentage}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label={`Соблюдение плана питания: ${percentage}%`}
+                    aria-label={t('dashboard.progress.adherenceAria', { percentage })}
                 />
             </div>
             <div className="text-xs text-gray-500 text-right">
@@ -116,9 +117,9 @@ const InsufficientDataPlaceholder = memo(function InsufficientDataPlaceholder() 
     return (
         <div className="flex flex-col items-center justify-center py-8 text-center" role="status">
             <Activity className="h-12 w-12 text-gray-300 mb-3" aria-hidden="true" />
-            <h4 className="text-sm font-semibold text-gray-700 mb-1">Недостаточно данных</h4>
+            <h4 className="text-sm font-semibold text-gray-700 mb-1">{t('dashboard.progress.notEnoughData')}</h4>
             <p className="text-sm text-gray-500 max-w-xs">
-                Продолжайте отслеживать свой прогресс, чтобы увидеть статистику
+                {t('dashboard.progress.notEnoughDataHint')}
             </p>
         </div>
     )
@@ -172,7 +173,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
         <Card className={cn('h-full', className)} variant="bordered">
             <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-semibold text-gray-900">
-                    Прогресс
+                    {t('dashboard.progress.title')}
                 </CardTitle>
             </CardHeader>
 
@@ -180,7 +181,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                 {isLoading ? (
                     <div className="flex items-center justify-center py-8" role="status">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" aria-hidden="true" />
-                        <span className="sr-only">Загрузка...</span>
+                        <span className="sr-only">{t('common.loading')}</span>
                     </div>
                 ) : !hasSufficientData || !progressData ? (
                     <InsufficientDataPlaceholder />
@@ -188,7 +189,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                     <>
                         {/* Nutrition adherence */}
                         {progressData.nutritionAdherence > 0 && (
-                            <div role="region" aria-label="Соблюдение плана питания">
+                            <div role="region" aria-label={t('dashboard.progress.adherence')}>
                                 <AdherenceIndicator percentage={progressData.nutritionAdherence} />
                             </div>
                         )}
@@ -197,7 +198,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                         {progressData.achievements.length > 0 && (
                             <div className="space-y-3" role="region">
                                 <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                                    Недавние достижения
+                                    {t('dashboard.progress.achievements')}
                                 </h4>
                                 <div className="space-y-2" role="list">
                                     {progressData.achievements.slice(0, 3).map((achievement) => (

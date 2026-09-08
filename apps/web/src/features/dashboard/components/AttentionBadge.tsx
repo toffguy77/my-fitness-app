@@ -13,6 +13,7 @@
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { useEffect, useRef } from 'react';
+import { t } from '@/shared/i18n'
 
 /**
  * Urgency levels for attention indicators
@@ -75,10 +76,17 @@ export function AttentionBadge({
 
     // Generate default ARIA label if not provided
     const defaultAriaLabel = count
-        ? `${count} ${urgency === 'critical' ? 'срочных' : urgency === 'high' ? 'важных' : ''} элементов требуют внимания`
+        ? t('dashboard.attention.countAria', {
+            count,
+            urgency: urgency === 'critical'
+                ? t('dashboard.attention.critical')
+                : urgency === 'high'
+                    ? t('dashboard.attention.high')
+                    : '',
+        })
         : label
-            ? `${label} требует внимания`
-            : 'Требует внимания';
+            ? t('dashboard.attention.labelled', { label })
+            : t('dashboard.attention.plain');
 
     const finalAriaLabel = ariaLabel || defaultAriaLabel;
 
@@ -152,7 +160,7 @@ export function AttentionDot({
     urgency = 'normal',
     pulse = false,
     className = '',
-    ariaLabel = 'Требует внимания',
+    ariaLabel = t('dashboard.attention.plain'),
     announceChanges = false,
     indicatesId,
 }: AttentionDotProps) {
@@ -206,7 +214,7 @@ export function AttentionIcon({
     size = 'md',
     pulse = false,
     className = '',
-    ariaLabel = 'Требует внимания',
+    ariaLabel = t('dashboard.attention.plain'),
     announceChanges = false,
     indicatesId,
 }: AttentionIconProps) {

@@ -25,6 +25,8 @@ const TRANSLATED = [
     'apps/web/src/app/settings',
     'apps/web/src/features/food-tracker',
     'apps/web/src/app/food-tracker',
+    'apps/web/src/features/dashboard',
+    'apps/web/src/app/dashboard',
 ]
 
 const DICTIONARY = 'apps/web/src/shared/i18n/dictionaries/ru.ts'
@@ -32,6 +34,12 @@ const DICTIONARY = 'apps/web/src/shared/i18n/dictionaries/ru.ts'
 // Cyrillic anywhere in a line is not the rule: comments are written for the
 // people maintaining this and stay in whichever language they were written in.
 const EXEMPT = /i18n-exempt/
+
+// A whole file can be exempt when every string in it is of the same kind —
+// fixtures nobody reads, or a function that already handles languages itself.
+// The marker goes in the first lines, with the reason next to it; per-line
+// markers would be a dozen copies of one sentence.
+const EXEMPT_FILE = /i18n-exempt-file/
 
 const problems = []
 
@@ -62,6 +70,7 @@ const files = TRANSLATED.flatMap((dir) => walk(dir))
 for (const file of files) {
     const source = readFileSync(file, 'utf8')
     const original = source.split('\n')
+    if (original.slice(0, 20).some((l) => EXEMPT_FILE.test(l))) continue
     const lines = stripComments(source).split('\n')
     lines.forEach((line, i) => {
         if (!/[А-Яа-яЁё]/.test(line)) return

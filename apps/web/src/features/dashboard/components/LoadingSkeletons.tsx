@@ -8,6 +8,7 @@
  */
 
 import { cn } from '@/shared/utils/cn'
+import { t } from '@/shared/i18n'
 
 /**
  * Base skeleton component with pulse animation
@@ -37,7 +38,7 @@ export function ProgressSectionSkeleton({ className }: { className?: string }) {
         <div
             className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
-            aria-label="Загрузка раздела прогресса..."
+            aria-label={t('dashboard.skeletons.progress')}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -68,7 +69,7 @@ export function ProgressSectionSkeleton({ className }: { className?: string }) {
                 <Skeleton className="h-16 w-full rounded-lg" />
             </div>
 
-            <span className="sr-only">Загрузка...</span>
+            <span className="sr-only">{t('common.loading')}</span>
         </div>
     )
 }
@@ -82,7 +83,7 @@ export function PhotoUploadSectionSkeleton({ className }: { className?: string }
         <div
             className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
-            aria-label="Загрузка раздела фото..."
+            aria-label={t('dashboard.skeletons.photos')}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -99,7 +100,7 @@ export function PhotoUploadSectionSkeleton({ className }: { className?: string }
                 <Skeleton className="h-3 w-40" />
             </div>
 
-            <span className="sr-only">Загрузка...</span>
+            <span className="sr-only">{t('common.loading')}</span>
         </div>
     )
 }
@@ -113,7 +114,7 @@ export function WeeklyPlanSectionSkeleton({ className }: { className?: string })
         <div
             className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
-            aria-label="Загрузка недельной планки..."
+            aria-label={t('dashboard.skeletons.weeklyPlan')}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -138,7 +139,7 @@ export function WeeklyPlanSectionSkeleton({ className }: { className?: string })
                 <Skeleton className="h-16 w-full rounded-lg" />
             </div>
 
-            <span className="sr-only">Загрузка...</span>
+            <span className="sr-only">{t('common.loading')}</span>
         </div>
     )
 }
@@ -152,7 +153,7 @@ export function TasksSectionSkeleton({ className }: { className?: string }) {
         <div
             className={cn('bg-white rounded-lg shadow-sm p-4 sm:p-5 md:p-6', className)}
             role="status"
-            aria-label="Загрузка раздела задач..."
+            aria-label={t('dashboard.skeletons.tasks')}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -180,7 +181,7 @@ export function TasksSectionSkeleton({ className }: { className?: string }) {
                 ))}
             </div>
 
-            <span className="sr-only">Загрузка...</span>
+            <span className="sr-only">{t('common.loading')}</span>
         </div>
     )
 }

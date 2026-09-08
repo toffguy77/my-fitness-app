@@ -6,6 +6,7 @@ import { NavigationItem } from './NavigationItem'
 import { NAVIGATION_ITEMS } from '../utils/navigationConfig'
 import { useUnreadCount } from '@/features/chat/hooks/useUnreadCount'
 import type { NavigationItemId } from '../types'
+import { t } from '@/shared/i18n'
 
 export interface FooterNavigationProps {
     activeItem?: NavigationItemId
@@ -56,7 +57,7 @@ export function FooterNavigation({
             className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-gray-200 bg-white px-2"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="footer-navigation"
-            aria-label="Основная навигация"
+            aria-label={t('dashboard.navigation.aria')}
         >
             {NAVIGATION_ITEMS.map((item) => (
                 <NavigationItem

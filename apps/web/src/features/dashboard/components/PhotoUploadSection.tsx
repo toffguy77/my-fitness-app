@@ -24,6 +24,7 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { validatePhoto } from '../utils/validation'
 import type { PhotoData } from '../types'
 import { AttentionIcon } from './AttentionBadge'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for PhotoUploadSection component
@@ -119,7 +120,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
         // Validate file
         const validation = validatePhoto(file)
         if (!validation.isValid) {
-            setValidationError(validation.error || 'Неверный файл')
+            setValidationError(validation.error || t('dashboard.photo.invalidFile'))
             return
         }
 
@@ -157,14 +158,14 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                     id="photo-upload-heading"
                     className="text-base sm:text-lg font-semibold text-gray-900"
                 >
-                    Фото прогресса
+                    {t('dashboard.photo.title')}
                 </h2>
                 {showAttentionIndicator && (
                     <AttentionIcon
                         urgency="high"
                         size="md"
                         pulse
-                        ariaLabel="Не забудьте загрузить фото прогресса на выходных"
+                        ariaLabel={t('dashboard.photo.reminderAria')}
                         announceChanges={true}
                         indicatesId="photo-upload-content"
                     />
@@ -180,13 +181,13 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                         <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
                             <img
                                 src={previewUrl}
-                                alt="Фото прогресса за неделю"
+                                alt={t('dashboard.photo.alt')}
                                 className="w-full h-full object-cover"
                             />
                             {isUploaded && (
                                 <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1">
                                     <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
-                                    <span className="sr-only">Загружено</span>
+                                    <span className="sr-only">{t('dashboard.photo.uploadedBadge')}</span>
                                 </div>
                             )}
                         </div>
@@ -195,7 +196,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                         {photoData && (
                             <div className="text-xs sm:text-sm text-gray-600">
                                 <p>
-                                    Загружено: {formatDate(new Date(photoData.uploadedAt))}
+                                    {t('dashboard.photo.uploadedAt', { date: formatDate(new Date(photoData.uploadedAt)) })}
                                 </p>
                             </div>
                         )}
@@ -206,26 +207,26 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                             onClick={handleUploadClick}
                             disabled={isLoading}
                             className="w-full flex items-center justify-center gap-2 px-3 py-2 sm:px-4 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                            aria-label="Загрузить другое фото"
+                            aria-label={t('dashboard.photo.replaceAria')}
                         >
                             <Upload className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
-                            <span>Загрузить другое фото</span>
+                            <span>{t('dashboard.photo.replace')}</span>
                         </button>
                     </div>
                 ) : (
                     <div className="text-center py-2 space-y-2">
                         <Camera className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">Не записано</p>
+                        <p className="text-sm text-gray-500">{t('dashboard.photo.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleUploadClick}
                             disabled={isLoading}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Загрузить фото прогресса"
+                            aria-label={t('dashboard.photo.uploadAria')}
                         >
                             <Camera className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Загрузить фото
+                            {t('dashboard.photo.upload')}
                         </Button>
                     </div>
                 )}
@@ -237,7 +238,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                     accept="image/jpeg,image/png,image/webp"
                     onChange={handleFileSelect}
                     className="sr-only"
-                    aria-label="Выбрать файл фото"
+                    aria-label={t('dashboard.photo.pickFileAria')}
                 />
 
                 {/* Validation error */}
@@ -257,10 +258,10 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
 
                 {/* File requirements */}
                 <div className="text-xs text-gray-500 space-y-1">
-                    <p>Требования к фото:</p>
+                    <p>{t('dashboard.photo.requirements')}</p>
                     <ul className="list-disc list-inside space-y-0.5 ml-2">
-                        <li>Формат: JPEG, PNG или WebP</li>
-                        <li>Максимальный размер: 10 МБ</li>
+                        <li>{t('dashboard.photo.requirementFormat')}</li>
+                        <li>{t('dashboard.photo.requirementSize')}</li>
                     </ul>
                 </div>
             </div>

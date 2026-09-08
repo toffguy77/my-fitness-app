@@ -1,3 +1,5 @@
+// i18n-exempt-file: fixtures for property tests; the unit strings here are the
+// stored values, not labels.
 /**
  * Property-based test generators for food tracker
  * Uses fast-check to generate random test data

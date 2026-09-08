@@ -22,6 +22,7 @@ import { formatLocalDate } from '@/shared/utils/format'
 import { AttentionBadge } from './AttentionBadge'
 import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { CalculatedTargets } from '@/features/nutrition-calc/types'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for NutritionBlock component
@@ -79,7 +80,7 @@ const SegmentedRing = memo(function SegmentedRing({
         <div
             className={cn('relative inline-flex items-center justify-center', className)}
             role="img"
-            aria-label="Прогресс макронутриентов"
+            aria-label={t('dashboard.nutrition.macrosAria')}
         >
             <svg
                 width={size}
@@ -147,7 +148,7 @@ const MacroProgressBar = memo(function MacroProgressBar({
     label,
     current,
     goal,
-    unit = 'г',
+    unit = t('units.gram'),
     color,
     className,
 }: MacroProgressBarProps) {
@@ -183,7 +184,7 @@ const MacroProgressBar = memo(function MacroProgressBar({
                     aria-valuenow={current}
                     aria-valuemin={0}
                     aria-valuemax={goal}
-                    aria-label={`${label}: ${current} из ${goal} ${unit}`}
+                    aria-label={t('dashboard.nutrition.valueAria', { label, current, goal, unit })}
                 />
             </div>
             <div className="text-xs text-gray-500 text-right">
@@ -266,12 +267,12 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                            Питание
+                            {t('dashboard.nutrition.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
                             <AttentionBadge
                                 urgency="normal"
-                                ariaLabel="Питание не записано сегодня"
+                                ariaLabel={t('dashboard.nutrition.noneToday')}
                             />
                         )}
                     </div>
@@ -281,7 +282,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                         onClick={handleQuickAdd}
                         isLoading={isNavigating}
                         className="h-8 w-8 p-0"
-                        aria-label="Добавить еду"
+                        aria-label={t('dashboard.nutrition.addFood')}
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
@@ -304,7 +305,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                                 {nutrition.calories}
                             </div>
                             <div className="text-xs text-gray-500 leading-tight">
-                                из {goals.caloriesGoal} ккал
+                                {t('dashboard.nutrition.ofCalories', { calories: goals.caloriesGoal })}
                             </div>
                             <div className={cn(
                                 'text-xs font-medium',
@@ -325,7 +326,7 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                     >
                         <AlertTriangle className="h-3.5 w-3.5 text-orange-600 flex-shrink-0" aria-hidden="true" />
                         <p className="text-xs text-orange-800">
-                            Превышена дневная норма калорий
+                            {t('dashboard.nutrition.overGoal')}
                         </p>
                     </div>
                 )}
@@ -333,26 +334,26 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                 {/* Macro breakdown - compact */}
                 <div className="space-y-2">
                     <MacroProgressBar
-                        label="Белки"
+                        label={t('macros.protein')}
                         current={nutrition.protein}
                         goal={goals.proteinGoal}
-                        unit="г"
+                        unit={t('units.gram')}
                         color={MACRO_COLORS.protein}
                     />
 
                     <MacroProgressBar
-                        label="Жиры"
+                        label={t('macros.fat')}
                         current={nutrition.fat}
                         goal={goals.fatGoal}
-                        unit="г"
+                        unit={t('units.gram')}
                         color={MACRO_COLORS.fat}
                     />
 
                     <MacroProgressBar
-                        label="Углеводы"
+                        label={t('macros.carbs')}
                         current={nutrition.carbs}
                         goal={goals.carbsGoal}
-                        unit="г"
+                        unit={t('units.gram')}
                         color={MACRO_COLORS.carbs}
                     />
                 </div>
@@ -361,17 +362,17 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                 {nutrition.calories === 0 && (
                     <div className="text-center py-2 space-y-2">
                         <UtensilsCrossed className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">Не записано</p>
+                        <p className="text-sm text-gray-500">{t('dashboard.nutrition.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleQuickAdd}
                             isLoading={isNavigating}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Добавить еду в дневник питания"
+                            aria-label={t('dashboard.nutrition.addToDiaryAria')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Добавить
+                            {t('dashboard.nutrition.add')}
                         </Button>
                     </div>
                 )}
