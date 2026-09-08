@@ -52,7 +52,7 @@ const UNIT_LABELS: Record<CustomRecommendationUnit, string> = {
     'г': t('foodTracker.customRecommendation.unitGrams'),
     'мг': t('foodTracker.customRecommendation.unitMilligrams'),
     'мкг': t('foodTracker.customRecommendation.unitMicrograms'),
-    'МЕ': t('foodTracker.customRecommendation.unitIU'),
+    'МЕ': t('foodTracker.customRecommendation.unitIU'), // i18n-exempt: key, matching the stored value
 };
 
 // ============================================================================

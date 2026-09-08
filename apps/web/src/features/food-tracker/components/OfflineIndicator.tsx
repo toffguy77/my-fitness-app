@@ -12,6 +12,7 @@
 import React from 'react';
 import { WifiOff, RefreshCw, Check } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { t, plural } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -63,11 +64,11 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                         />
                         <span className="text-xs text-yellow-800 sm:text-sm truncate">
                             {isOffline ? (
-                                'Нет подключения к интернету'
+                                t('common.offline')
                             ) : pendingOperationsCount > 0 ? (
-                                `${pendingOperationsCount} ${getPendingText(pendingOperationsCount)} ожидают синхронизации`
+                                t('foodTracker.offline.pending', { count: pendingOperationsCount, noun: getPendingText(pendingOperationsCount) })
                             ) : (
-                                'Данные могут быть устаревшими'
+                                t('foodTracker.offline.stale')
                             )}
                         </span>
                     </div>
@@ -79,17 +80,17 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                             onClick={handleSync}
                             disabled={isSyncing}
                             className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-200 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-sm touch-manipulation"
-                            aria-label="Синхронизировать данные"
+                            aria-label={t('foodTracker.offline.syncAria')}
                         >
                             {isSyncing ? (
                                 <>
                                     <RefreshCw className="w-3 h-3 animate-spin sm:w-4 sm:h-4" aria-hidden="true" />
-                                    <span className="hidden sm:inline">Синхронизация...</span>
+                                    <span className="hidden sm:inline">{t('foodTracker.offline.syncing')}</span>
                                 </>
                             ) : (
                                 <>
                                     <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" aria-hidden="true" />
-                                    <span className="hidden sm:inline">Синхронизировать</span>
+                                    <span className="hidden sm:inline">{t('foodTracker.offline.sync')}</span>
                                 </>
                             )}
                         </button>
@@ -99,7 +100,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                     {isOnline && pendingOperationsCount === 0 && !isOffline && (
                         <div className="flex items-center gap-1 text-green-600">
                             <Check className="w-3 h-3 sm:w-4 sm:h-4" aria-hidden="true" />
-                            <span className="text-xs sm:text-sm">Синхронизировано</span>
+                            <span className="text-xs sm:text-sm">{t('foodTracker.offline.synced')}</span>
                         </div>
                     )}
                 </div>
@@ -116,22 +117,13 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
  * Get Russian plural form for "операция"
  */
 function getPendingText(count: number): string {
-    const lastDigit = count % 10;
-    const lastTwoDigits = count % 100;
-
-    if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
-        return 'операций';
-    }
-
-    if (lastDigit === 1) {
-        return 'операция';
-    }
-
-    if (lastDigit >= 2 && lastDigit <= 4) {
-        return 'операции';
-    }
-
-    return 'операций';
+    // The plural rule lives in the i18n module: written out here it was one
+    // more copy to keep in step with every other count on the screen.
+    return plural(count, {
+        one: t('foodTracker.offline.pendingOne'),
+        few: t('foodTracker.offline.pendingFew'),
+        many: t('foodTracker.offline.pendingMany'),
+    });
 }
 
 export default OfflineIndicator;

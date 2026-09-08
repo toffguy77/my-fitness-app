@@ -13,6 +13,7 @@ import { useId, useMemo, useCallback } from 'react';
 import { Plus, Check } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import type { WaterLog } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -139,12 +140,12 @@ export function WaterTracker({
 
     // Format display text
     const displayText = useMemo(() => {
-        return `${glasses} / ${goal} стаканов`;
+        return t('foodTracker.water.count', { glasses, goal });
     }, [glasses, goal]);
 
     // Format glass size text
     const glassSizeText = useMemo(() => {
-        return `${glassSize} мл`;
+        return t('foodTracker.water.glassSize', { size: glassSize });
     }, [glassSize]);
 
     // Handle add glass click
@@ -157,11 +158,11 @@ export function WaterTracker({
     return (
         <section
             className={`bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 ${className}`}
-            aria-label="Отслеживание воды"
+            aria-label={t('foodTracker.water.aria')}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-900">Вода</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{t('foodTracker.water.title')}</h3>
                 <span className="text-[10px] text-gray-400">{glassSizeText}</span>
             </div>
 
@@ -172,7 +173,7 @@ export function WaterTracker({
                 aria-valuenow={percentage}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label={`Прогресс воды: ${percentage}%`}
+                aria-label={t('foodTracker.water.progressAria', { percentage })}
             >
                 {/* Droplet indicator */}
                 <WaterDroplet
@@ -190,14 +191,14 @@ export function WaterTracker({
                                 'text-base font-bold sm:text-lg',
                                 isGoalReached ? 'text-green-600' : 'text-gray-900'
                             )}
-                            aria-label={`Выпито ${glasses} из ${goal} стаканов`}
+                            aria-label={t('foodTracker.water.countAria', { glasses, goal })}
                         >
                             {displayText}
                         </span>
                         {isGoalReached && (
                             <div className="flex items-center gap-0.5 text-green-600">
                                 <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                                <span className="text-[10px] font-medium">Цель достигнута</span>
+                                <span className="text-[10px] font-medium">{t('foodTracker.water.goalReached')}</span>
                             </div>
                         )}
                     </div>
@@ -214,10 +215,10 @@ export function WaterTracker({
                                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                 : 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-[0.98]'
                         )}
-                        aria-label="Добавить стакан воды"
+                        aria-label={t('foodTracker.water.addGlassAria')}
                     >
                         <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Добавить стакан</span>
+                        <span>{t('foodTracker.water.addGlass')}</span>
                     </button>
                 </div>
             </div>

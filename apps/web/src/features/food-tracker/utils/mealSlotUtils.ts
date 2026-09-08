@@ -9,6 +9,7 @@
 
 import type { MealType, FoodEntry, KBZHU, EntriesByMealType } from '../types';
 import { EMPTY_KBZHU, roundToOneDecimal } from './kbzhuCalculator';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Constants
@@ -18,10 +19,10 @@ import { EMPTY_KBZHU, roundToOneDecimal } from './kbzhuCalculator';
  * Russian labels for meal types
  */
 export const MEAL_LABELS: Record<MealType, string> = {
-    breakfast: 'Завтрак',
-    lunch: 'Обед',
-    dinner: 'Ужин',
-    snack: 'Перекус',
+    breakfast: t('meals.breakfast'),
+    lunch: t('meals.lunch'),
+    dinner: t('meals.dinner'),
+    snack: t('meals.snack'),
 } as const;
 
 /**
@@ -109,7 +110,7 @@ export function getMealSlotByTime(time: string | Date): MealType {
  * @returns Russian label (Завтрак, Обед, Ужин, Перекус)
  */
 export function getMealSlotLabel(mealType: MealType): string {
-    return MEAL_LABELS[mealType] || 'Перекус';
+    return MEAL_LABELS[mealType] || t('meals.snack');
 }
 
 /**

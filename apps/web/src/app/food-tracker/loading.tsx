@@ -1,5 +1,6 @@
 import { SegmentLoading } from '@/shared/components/SegmentLoading'
+import { t } from '@/shared/i18n'
 
 export default function Loading() {
-    return <SegmentLoading label="Загружаем трекер..." />
+    return <SegmentLoading label={t('foodTracker.page.loading')} />
 }

@@ -11,6 +11,7 @@ import type {
     FoodTrackerError,
     EntriesByMealType,
 } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Constants
@@ -84,6 +85,7 @@ export function loadCachedEntries(date: string): EntriesByMealType | null {
         const data = JSON.parse(cached);
         return data as EntriesByMealType;
     } catch (error) {
+        // i18n-exempt: console output for developers, never shown in the interface.
         console.error('Не удалось загрузить кэшированные записи:', error);
         return null;
     }
@@ -100,6 +102,7 @@ export function saveCachedEntries(date: string, entries: EntriesByMealType): voi
         localStorage.setItem(key, JSON.stringify(entries));
         localStorage.setItem(CACHE_KEYS.LAST_SYNC, new Date().toISOString());
     } catch (error) {
+        // i18n-exempt: console output for developers.
         console.error('Не удалось сохранить записи в кэш:', error);
     }
 }
@@ -118,6 +121,7 @@ export function loadCachedWaterLog(date: string): WaterLog | null {
 
         return JSON.parse(cached) as WaterLog;
     } catch (error) {
+        // i18n-exempt: console output for developers.
         console.error('Не удалось загрузить кэшированные данные о воде:', error);
         return null;
     }
@@ -133,6 +137,7 @@ export function saveCachedWaterLog(date: string, waterLog: WaterLog): void {
         const key = getCacheKey(CACHE_KEYS.WATER_LOG, date);
         localStorage.setItem(key, JSON.stringify(waterLog));
     } catch (error) {
+        // i18n-exempt: console output for developers.
         console.error('Не удалось сохранить данные о воде в кэш:', error);
     }
 }
@@ -156,7 +161,7 @@ export function mapError(error: any): FoodTrackerError {
     if (!isOnline()) {
         return {
             code: 'NETWORK_ERROR',
-            message: 'Нет подключения к интернету',
+            message: t('foodTracker.storeErrors.offline'),
         };
     }
 
@@ -166,28 +171,28 @@ export function mapError(error: any): FoodTrackerError {
     if (status === 401) {
         return {
             code: 'UNAUTHORIZED',
-            message: 'Требуется авторизация',
+            message: t('foodTracker.storeErrors.unauthorized'),
         };
     }
 
     if (status === 404) {
         return {
             code: 'NOT_FOUND',
-            message: 'Запись не найдена',
+            message: t('foodTracker.storeErrors.notFound'),
         };
     }
 
     if (status === 400) {
         return {
             code: 'VALIDATION_ERROR',
-            message: message || 'Неверный формат данных',
+            message: message || t('foodTracker.storeErrors.badFormat'),
         };
     }
 
     if (status === 500) {
         return {
             code: 'SERVER_ERROR',
-            message: 'Сервис временно недоступен',
+            message: t('foodTracker.storeErrors.unavailable'),
         };
     }
 
@@ -197,13 +202,13 @@ export function mapError(error: any): FoodTrackerError {
     if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
         return {
             code: 'NETWORK_ERROR',
-            message: 'Проверьте подключение к интернету',
+            message: t('foodTracker.storeErrors.network'),
         };
     }
 
     return {
         code: 'SERVER_ERROR',
-        message: 'Произошла ошибка',
+        message: t('foodTracker.storeErrors.unknown'),
     };
 }
 

@@ -13,6 +13,7 @@ import { useCallback } from 'react';
 import { List } from 'react-window';
 import type { CSSProperties } from 'react';
 import type { FoodItem } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -81,7 +82,7 @@ function FoodRow({
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
                 className="flex items-center justify-between px-3 py-3 mx-1 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-                aria-label={`${food.name}, ${servingInfo}, ${Math.round(food.nutritionPer100.calories)} ккал`}
+                aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
             >
                 <div className="flex-1 min-w-0">
                     <p className="text-gray-900 font-medium truncate">{food.name}</p>
@@ -89,9 +90,9 @@ function FoodRow({
                 </div>
                 <div className="ml-4 text-right">
                     <p className="text-gray-900 font-medium">
-                        {Math.round(food.nutritionPer100.calories)} ккал
+                        {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                     </p>
-                    <p className="text-xs text-gray-500">на 100г</p>
+                    <p className="text-xs text-gray-500">{t('foodTracker.search.per100')}</p>
                 </div>
             </div>
         </div>
@@ -115,7 +116,7 @@ export function VirtualizedFoodList({
             <ul
                 className={`space-y-1 ${className}`}
                 role="listbox"
-                aria-label="Список продуктов"
+                aria-label={t('foodTracker.search.listAria')}
             >
                 {foods.map((food) => (
                     <FoodListItem key={food.id} food={food} onSelect={onSelect} />
@@ -126,7 +127,7 @@ export function VirtualizedFoodList({
 
     // For large lists, use virtualization
     return (
-        <div className={className} role="listbox" aria-label="Список продуктов">
+        <div className={className} role="listbox" aria-label={t('foodTracker.search.listAria')}>
             <List<RowProps>
                 defaultHeight={height}
                 rowComponent={FoodRow}
@@ -171,7 +172,7 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
             onClick={handleClick}
             onKeyDown={handleKeyDown}
             className="flex items-center justify-between px-3 py-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-            aria-label={`${food.name}, ${servingInfo}, ${Math.round(food.nutritionPer100.calories)} ккал`}
+            aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
         >
             <div className="flex-1 min-w-0">
                 <p className="text-gray-900 font-medium truncate">{food.name}</p>
@@ -179,9 +180,9 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
             </div>
             <div className="ml-4 text-right">
                 <p className="text-gray-900 font-medium">
-                    {Math.round(food.nutritionPer100.calories)} ккал
+                    {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                 </p>
-                <p className="text-xs text-gray-500">на 100г</p>
+                <p className="text-xs text-gray-500">{t('foodTracker.search.per100')}</p>
             </div>
         </li>
     );

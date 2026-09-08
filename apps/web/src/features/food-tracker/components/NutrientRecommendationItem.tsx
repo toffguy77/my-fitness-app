@@ -13,6 +13,7 @@ import React, { useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { NutrientRecommendation, ProgressColor } from '../types';
 import { getProgressColor, getPercentage } from '../utils/kbzhuCalculator';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -92,7 +93,13 @@ export function NutrientRecommendationItem({
     const progressText = `${formatNumber(currentIntake)} / ${formatNumber(dailyTarget)} ${unit}`;
 
     // Accessibility label
-    const ariaLabel = `${name}: ${formatNumber(currentIntake)} из ${formatNumber(dailyTarget)} ${unit}, ${Math.round(percentage)}% от нормы`;
+    const ariaLabel = t('foodTracker.nutrientItem.aria', {
+        name,
+        current: formatNumber(currentIntake),
+        target: formatNumber(dailyTarget),
+        unit,
+        percentage: Math.round(percentage),
+    });
 
     return (
         <button
@@ -108,7 +115,7 @@ export function NutrientRecommendationItem({
                     <span className="text-xs font-medium text-gray-900 truncate sm:text-sm">
                         {name}
                         {isWeekly && (
-                            <span className="ml-1 text-[10px] text-gray-500 sm:text-xs">(неделя)</span>
+                            <span className="ml-1 text-[10px] text-gray-500 sm:text-xs">{t('foodTracker.nutrientItem.weekly')}</span>
                         )}
                     </span>
                     <span
@@ -126,7 +133,7 @@ export function NutrientRecommendationItem({
                     aria-valuenow={Math.round(percentage)}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label={`${name} прогресс: ${Math.round(percentage)}%`}
+                    aria-label={t('foodTracker.nutrientItem.progressAria', { name, percentage: Math.round(percentage) })}
                 >
                     <div
                         className={`h-full rounded-full transition-all duration-300 ${getProgressColorClass(progressColor)}`}

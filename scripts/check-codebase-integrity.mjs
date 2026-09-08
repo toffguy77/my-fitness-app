@@ -118,6 +118,28 @@ for (const file of handlerFiles) {
     )
 }
 
+// A page that ships invented data.
+//
+// /food-tracker/nutrient/[id] served two hard-coded vitamins, including a
+// "sources in your diet" section listing salmon and eggs the person had never
+// entered. No API stood behind it and nothing in the interface linked to it, so
+// it went unnoticed — but the URL answered, and what it answered with looked
+// like the reader's own data.
+const appPages = walk('apps/web/src/app', (f) => ['.ts', '.tsx'].includes(extname(f)))
+for (const file of appPages) {
+    if (file.includes('__tests__') || file.includes('.test.')) continue
+    const source = readFileSync(file, 'utf8')
+    const mock = source.match(/\b(?:const|let)\s+(MOCK_[A-Z0-9_]+|[A-Za-z]*_MOCK)\b/)
+    if (!mock) continue
+
+    problems.push(
+        `Page renders fixture data: ${relative(process.cwd(), file)} defines ${mock[1]}\n` +
+            `  A route that answers with invented content shows it to whoever opens\n` +
+            `  the URL, and personal-looking fixtures read as the reader's own data.\n` +
+            `  Fetch it, or do not register the route.`,
+    )
+}
+
 if (problems.length > 0) {
     console.error('Codebase integrity check failed:\n')
     for (const p of problems) console.error(p + '\n')
@@ -126,5 +148,6 @@ if (problems.length > 0) {
 
 console.log(
     `Codebase integrity OK — ${declared.size} public env vars all used, ` +
-        `${configs.length} Next.js config, no unimplemented shipped handlers.`,
+        `${configs.length} Next.js config, no unimplemented shipped handlers, ` +
+        `${appPages.length} app files free of fixture data.`,
 )

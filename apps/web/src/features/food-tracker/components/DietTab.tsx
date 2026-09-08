@@ -17,6 +17,7 @@ import { WaterTracker } from './WaterTracker';
 import { FoodEntryModal } from './FoodEntryModal';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import type { MealType, FoodEntry, WaterLog } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -180,7 +181,7 @@ export function DietTab({
                 // behind it: visible in a screenshot, but every tap landed on
                 // the nav instead.
                 className="fixed bottom-20 right-4 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex items-center justify-center z-50 sm:bottom-24 sm:right-6 sm:w-14 sm:h-14 touch-manipulation"
-                aria-label="Добавить еду"
+                aria-label={t('foodTracker.page.addFoodAria')}
                 data-testid="fab-add-food"
             >
                 <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -207,7 +208,7 @@ export function DietTab({
                 >
                     <div className="flex flex-col items-center gap-2">
                         <div className="w-6 h-6 border-3 border-blue-600 border-t-transparent rounded-full animate-spin sm:w-8 sm:h-8 sm:border-4" />
-                        <span className="text-xs text-gray-600 sm:text-sm">Загрузка...</span>
+                        <span className="text-xs text-gray-600 sm:text-sm">{t('common.loading')}</span>
                     </div>
                 </div>
             )}

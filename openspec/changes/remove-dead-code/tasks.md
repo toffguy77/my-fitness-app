@@ -17,6 +17,8 @@
 - [x] 3.3 Удалить корневые `next.config.ts`, `jest.config.js`, `jest.setup.js`, `postcss.config.mjs`, `next-env.d.ts`; удалить `tsconfig.tsbuildinfo` и добавить его в `.gitignore`. Проверка: `npm run build:web`, `npm run type-check`, `npx jest` из корня и из `apps/web` проходят.
 - [x] 3.4 Привести раздел «Key Technical Details» в `CLAUDE.md` в соответствие с фактическим значением флага React Compiler. Проверка: сценарий спека «Согласованность документации и конфигурации».
 
+- [x] 3.5 Удалить страницу `/food-tracker/nutrient/[id]` и компонент `NutrientDetailPage`. Причина: страница отдавала захардкоженные данные о двух витаминах, включая раздел «Источники в вашем рационе» с продуктами, которых пользователь не вводил; API нутриентов не существует, и из интерфейса на страницу ничего не вело — `RecommendationsTab` рендерится без `onRecommendationClick`. Когда появится настоящий источник данных, компонент восстанавливается из истории. Проверка: `npx jest` зелёные, `check-codebase-integrity.mjs` не находит фикстур в `app/`.
+
 ## 4. Сведение WebSocket-клиента
 
 - [x] 4.1 Определить всех потребителей `useWebSocket` и `WebSocketProvider`. Проверка: список приложен к PR.

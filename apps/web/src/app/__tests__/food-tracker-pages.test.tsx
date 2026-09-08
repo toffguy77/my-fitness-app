@@ -22,12 +22,6 @@ jest.mock('../food-tracker/FoodTrackerPageClient', () => ({
     ),
 }))
 
-jest.mock('../food-tracker/nutrient/[id]/NutrientDetailPageClient', () => ({
-    NutrientDetailPageClient: ({ nutrientId }: { nutrientId: string }) => (
-        <div data-testid="nutrient-detail-page-client">NutrientDetail {nutrientId}</div>
-    ),
-}))
-
 import FoodTrackerPage from '../food-tracker/page'
 
 describe('Food Tracker Pages', () => {

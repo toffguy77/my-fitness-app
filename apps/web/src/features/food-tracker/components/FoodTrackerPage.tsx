@@ -18,6 +18,7 @@ import { RecommendationsTab } from './RecommendationsTab';
 import { useFoodTracker } from '../hooks/useFoodTracker';
 import { formatLocalDate } from '@/shared/utils/format';
 import type { FoodTrackerTab } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -76,7 +77,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                     aria-live="polite"
                 >
                     <span className="text-xs text-yellow-800 sm:text-sm">
-                        📡 Нет подключения к интернету. Данные могут быть устаревшими.
+                        {t('foodTracker.page.offlineBanner')}
                     </span>
                 </div>
             )}
@@ -136,7 +137,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                                 type="button"
                                 onClick={clearError}
                                 className="text-red-500 hover:text-red-700 p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
-                                aria-label="Закрыть сообщение об ошибке"
+                                aria-label={t('foodTracker.page.dismissError')}
                             >
                                 ✕
                             </button>

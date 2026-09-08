@@ -33,6 +33,7 @@ import {
     retryWithBackoff,
     isOnline,
 } from './storeUtils';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Slice Interface
@@ -268,7 +269,7 @@ export const createEntriesSlice: StateCreator<
                     { type: 'add', data: { mealType, entryData } },
                 ],
             }));
-            toast.success('Запись добавлена (будет синхронизирована при подключении)');
+            toast.success(t('foodTracker.entries.addedOffline'));
             return tempEntry;
         }
 
@@ -307,7 +308,7 @@ export const createEntriesSlice: StateCreator<
                 track(EVENTS.firstFoodEntry, { meal_type: mealType });
             }
 
-            toast.success('Запись добавлена');
+            toast.success(t('foodTracker.entries.added'));
             return response;
         } catch (error: any) {
             // Rollback optimistic update
@@ -327,7 +328,7 @@ export const createEntriesSlice: StateCreator<
             });
 
             const mappedError = mapError(error);
-            toast.error(mappedError.message || 'Не удалось добавить запись');
+            toast.error(mappedError.message || t('foodTracker.entries.addFailed'));
             return null;
         }
     },
@@ -352,7 +353,7 @@ export const createEntriesSlice: StateCreator<
         }
 
         if (!originalEntry || !entryMealType) {
-            toast.error('Запись не найдена');
+            toast.error(t('foodTracker.entries.notFound'));
             return null;
         }
 
@@ -405,7 +406,7 @@ export const createEntriesSlice: StateCreator<
                     { type: 'update', data: { id, updates } },
                 ],
             }));
-            toast.success('Запись обновлена (будет синхронизирована при подключении)');
+            toast.success(t('foodTracker.entries.updatedOffline'));
             return { ...originalEntry, ...updates } as FoodEntry;
         }
 
@@ -445,7 +446,7 @@ export const createEntriesSlice: StateCreator<
                 };
             });
 
-            toast.success('Запись обновлена');
+            toast.success(t('foodTracker.entries.updated'));
             return response;
         } catch (error: any) {
             // Rollback optimistic update
@@ -473,7 +474,7 @@ export const createEntriesSlice: StateCreator<
             });
 
             const mappedError = mapError(error);
-            toast.error(mappedError.message || 'Не удалось обновить запись');
+            toast.error(mappedError.message || t('foodTracker.entries.updateFailed'));
             return null;
         }
     },
@@ -487,7 +488,7 @@ export const createEntriesSlice: StateCreator<
         // Find the entry to delete
         const entryToDelete = state.entries[mealType].find((e) => e.id === id);
         if (!entryToDelete) {
-            toast.error('Запись не найдена');
+            toast.error(t('foodTracker.entries.notFound'));
             return false;
         }
 
@@ -513,7 +514,7 @@ export const createEntriesSlice: StateCreator<
                     { type: 'delete', data: { id, mealType } },
                 ],
             }));
-            toast.success('Запись удалена (будет синхронизирована при подключении)');
+            toast.success(t('foodTracker.entries.deletedOffline'));
             return true;
         }
 
@@ -525,7 +526,7 @@ export const createEntriesSlice: StateCreator<
             const currentState = get();
             saveCachedEntries(currentState.selectedDate, currentState.entries);
 
-            toast.success('Запись удалена');
+            toast.success(t('foodTracker.entries.deleted'));
             return true;
         } catch (error: any) {
             // Rollback optimistic update
@@ -546,7 +547,7 @@ export const createEntriesSlice: StateCreator<
             });
 
             const mappedError = mapError(error);
-            toast.error(mappedError.message || 'Не удалось удалить запись');
+            toast.error(mappedError.message || t('foodTracker.entries.deleteFailed'));
             return false;
         }
     },

@@ -12,6 +12,7 @@
 import { useMemo } from 'react';
 import type { KBZHU, ProgressColor } from '../types';
 import { getPercentage, getProgressColor } from '../utils/kbzhuCalculator';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -51,10 +52,10 @@ interface MacroItemProps {
  * Macro configuration with Russian labels
  */
 const MACRO_CONFIG = [
-    { key: 'calories' as const, label: 'Ккал', unit: '', colorClass: 'bg-orange-500' },
-    { key: 'protein' as const, label: 'Белки', unit: 'г', colorClass: 'bg-blue-500' },
-    { key: 'fat' as const, label: 'Жиры', unit: 'г', colorClass: 'bg-yellow-500' },
-    { key: 'carbs' as const, label: 'Углеводы', unit: 'г', colorClass: 'bg-green-500' },
+    { key: 'calories' as const, label: t('macros.calories'), unit: '', colorClass: 'bg-orange-500' },
+    { key: 'protein' as const, label: t('macros.protein'), unit: t('units.gram'), colorClass: 'bg-blue-500' },
+    { key: 'fat' as const, label: t('macros.fat'), unit: t('units.gram'), colorClass: 'bg-yellow-500' },
+    { key: 'carbs' as const, label: t('macros.carbs'), unit: t('units.gram'), colorClass: 'bg-green-500' },
 ] as const;
 
 /**
@@ -91,11 +92,11 @@ function MacroItem({ label, current, target, unit, color }: MacroItemProps) {
                 <span className="text-xs font-medium text-gray-700 sm:text-sm">{label}</span>
                 <span
                     className={`text-xs font-semibold sm:text-sm ${isExceeding ? 'text-red-600' : 'text-gray-900'}`}
-                    aria-label={`${label}: ${currentDisplay} из ${targetDisplay}${unit ? ` ${unit}` : ''}`}
+                    aria-label={t('foodTracker.summary.valueAria', { label, current: currentDisplay, target: targetDisplay, unit: unit ? ` ${unit}` : '' })}
                 >
                     {displayText}
                     {isExceeding && (
-                        <span className="ml-1 text-red-500" aria-label="Превышение нормы">
+                        <span className="ml-1 text-red-500" aria-label={t('foodTracker.summary.over')}>
                             ↑
                         </span>
                     )}
@@ -109,7 +110,7 @@ function MacroItem({ label, current, target, unit, color }: MacroItemProps) {
                 aria-valuenow={hasTarget ? Math.min(percentage, 100) : 0}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label={`${label} прогресс: ${percentage}%`}
+                aria-label={t('foodTracker.summary.progressAria', { label, percentage })}
             >
                 {hasTarget ? (
                     <div
@@ -163,11 +164,11 @@ export function KBZHUSummary({
     return (
         <section
             className={`bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 ${className}`}
-            aria-label="Сводка КБЖУ за день"
+            aria-label={t('foodTracker.summary.aria')}
         >
             {/* Header */}
             <h2 className="text-sm font-semibold text-gray-900 mb-3 sm:text-base sm:mb-4">
-                Дневная норма
+                {t('foodTracker.summary.dailyTarget')}
             </h2>
 
             {/* Macro grid - responsive: 2 cols on mobile, 4 cols on tablet+ */}
@@ -187,8 +188,8 @@ export function KBZHUSummary({
             {/* Source label */}
             {source && (
                 <p className="mt-2 text-xs text-gray-400">
-                    {source === 'calculated' ? 'Рассчитано автоматически' : 'План куратора'}
-                    {workoutBonus ? ` · +${Math.round(workoutBonus)} ккал за тренировку` : ''}
+                    {source === 'calculated' ? t('foodTracker.summary.calculated') : t('foodTracker.summary.curatorPlan')}
+                    {workoutBonus ? t('foodTracker.summary.workoutBonus', { calories: Math.round(workoutBonus) }) : ''}
                 </p>
             )}
         </section>

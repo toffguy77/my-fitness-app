@@ -8,6 +8,7 @@
  */
 
 import type { KBZHU, FoodItem, FoodEntry, ProgressColor } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Constants
@@ -192,13 +193,13 @@ export function calculateMacroGoals(calorieGoal: number): Omit<KBZHU, 'calories'
  */
 export function validatePortionAmount(portionAmount: number): { isValid: boolean; error?: string } {
     if (typeof portionAmount !== 'number' || Number.isNaN(portionAmount)) {
-        return { isValid: false, error: 'Порция должна быть числом' };
+        return { isValid: false, error: t('foodTracker.portionValidation.notANumber') };
     }
     if (!Number.isFinite(portionAmount)) {
-        return { isValid: false, error: 'Порция должна быть конечным числом' };
+        return { isValid: false, error: t('foodTracker.portionValidation.notFinite') };
     }
     if (portionAmount <= 0) {
-        return { isValid: false, error: 'Порция должна быть положительным числом' };
+        return { isValid: false, error: t('foodTracker.portionValidation.notPositive') };
     }
     return { isValid: true };
 }

@@ -13,6 +13,7 @@ import {
     loadCachedWaterLog,
     isOnline,
 } from './storeUtils';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Slice Interface
@@ -56,7 +57,7 @@ export const createOfflineSlice: StateCreator<
 
         // Show toast when going offline
         if (isOffline && !wasOffline) {
-            toast.error('Нет подключения к интернету', {
+            toast.error(t('common.offline'), {
                 duration: 4000,
                 icon: '📡',
             });
@@ -64,7 +65,7 @@ export const createOfflineSlice: StateCreator<
 
         // Show toast when coming back online
         if (!isOffline && wasOffline) {
-            toast.success('Подключение восстановлено', {
+            toast.success(t('foodTracker.entries.reconnected'), {
                 duration: 3000,
                 icon: '✅',
             });
@@ -129,6 +130,7 @@ export const createOfflineSlice: StateCreator<
                         break;
                 }
             } catch (error) {
+                // i18n-exempt: console output for developers.
                 console.error('Не удалось синхронизировать операцию:', error);
             }
         }

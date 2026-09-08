@@ -13,6 +13,7 @@ import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import { logger } from '@/shared/utils/logger';
 import type { FoodItem } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Logger helpers (context-aware, sent to container via /api/client-logs)
@@ -237,11 +238,11 @@ export function useBarcodeScanner(): UseBarcodeScanner {
                 log('lookupBarcode: product found', { barcode, product: result.food.name });
             } else {
                 log('lookupBarcode: product not found', { barcode });
-                setLookupError(result.message || 'Продукт не найден');
+                setLookupError(result.message || t('foodTracker.scanner.productNotFound'));
             }
         } catch (error) {
             logError('lookupBarcode: API error', error, { barcode });
-            setLookupError('Ошибка при поиске продукта');
+            setLookupError(t('foodTracker.scanner.lookupFailed'));
         } finally {
             setIsLookingUp(false);
         }
@@ -272,11 +273,11 @@ export function useBarcodeScanner(): UseBarcodeScanner {
                 log('doLookup: product found', { barcode, product: result.food.name });
             } else {
                 log('doLookup: product not found', { barcode });
-                setLookupError(result.message || 'Продукт не найден');
+                setLookupError(result.message || t('foodTracker.scanner.productNotFound'));
             }
         }).catch((error) => {
             logError('doLookup: API error', error, { barcode });
-            setLookupError('Ошибка при поиске продукта');
+            setLookupError(t('foodTracker.scanner.lookupFailed'));
         }).finally(() => {
             setIsLookingUp(false);
         });
@@ -344,17 +345,17 @@ export function useBarcodeScanner(): UseBarcodeScanner {
 
             if (error instanceof DOMException && error.name === 'NotAllowedError') {
                 setScannerStatus('error');
-                setLookupError('Доступ к камере запрещен. Разрешите доступ в настройках браузера.');
+                setLookupError(t('foodTracker.scanner.permissionDenied'));
             } else if (error instanceof DOMException && error.name === 'NotFoundError') {
                 setScannerStatus('error');
-                setLookupError('Камера не найдена на устройстве.');
+                setLookupError(t('foodTracker.scanner.noCamera'));
             } else if (error instanceof DOMException && error.name === 'NotReadableError') {
                 setScannerStatus('error');
-                setLookupError('Камера занята другим приложением.');
+                setLookupError(t('foodTracker.scanner.cameraBusy'));
             } else {
                 setScannerStatus('error');
                 const msg = error instanceof Error ? error.message : String(error);
-                setLookupError(`Не удалось запустить камеру: ${msg}`);
+                setLookupError(t('foodTracker.scanner.startFailed', { reason: msg }));
             }
         }
     }, [doLookup]);
@@ -398,9 +399,9 @@ export function useBarcodeScanner(): UseBarcodeScanner {
             logError('scanFromFile: FAILED', error);
             const msg = error instanceof Error ? error.message : String(error);
             if (msg.includes('No barcode') || msg.includes('No QR code') || msg.includes('NotFoundException')) {
-                setLookupError('Штрих-код не найден на фото. Попробуйте другое фото или введите код вручную.');
+                setLookupError(t('foodTracker.scanner.notOnPhoto'));
             } else {
-                setLookupError(`Ошибка сканирования фото: ${msg}`);
+                setLookupError(t('foodTracker.scanner.photoScanFailed', { reason: msg }));
             }
         }
     }, [lookupBarcode]);

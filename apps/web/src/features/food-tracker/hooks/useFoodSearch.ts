@@ -11,6 +11,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import type { FoodItem, SearchFoodsResponse } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -195,7 +196,7 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
                     return;
                 }
 
-                setError('Ошибка при поиске продуктов');
+                setError(t('foodTracker.scanner.searchFailed'));
                 setResults([]);
                 setTotalResults(0);
                 setHasMore(false);

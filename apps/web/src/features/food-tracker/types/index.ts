@@ -238,6 +238,9 @@ export interface MealTemplate {
 /**
  * Unit type for custom recommendations
  */
+// i18n-exempt: the values kept in user_nutrient_preferences.unit. A second
+// language reads them through UNIT_LABELS; translating the type itself would
+// stop matching the rows already stored.
 export type CustomRecommendationUnit = 'г' | 'мг' | 'мкг' | 'МЕ';
 
 /**
