@@ -7,6 +7,8 @@
 
 'use client'
 
+import { t } from '@/shared/i18n'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -30,10 +32,10 @@ interface FoodEntryCardProps {
 // ============================================================================
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
-    breakfast: 'Завтрак',
-    lunch: 'Обед',
-    dinner: 'Ужин',
-    snack: 'Перекус',
+    breakfast: t('meals.breakfast'),
+    lunch: t('meals.lunch'),
+    dinner: t('meals.dinner'),
+    snack: t('meals.snack'),
 }
 
 function getMealLabel(mealType?: string): string {
@@ -54,7 +56,7 @@ export function FoodEntryCard({ metadata }: FoodEntryCardProps) {
         <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 min-w-[200px] max-w-[280px]">
             <div className="flex items-center justify-between mb-1.5">
                 <span className="text-sm font-semibold text-emerald-900">
-                    {data.food_name ?? 'Продукт'}
+                    {data.food_name ?? t('chat.product')}
                 </span>
                 {data.meal_type && (
                     <span className="text-xs text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">
@@ -64,7 +66,7 @@ export function FoodEntryCard({ metadata }: FoodEntryCardProps) {
             </div>
 
             {data.weight != null && (
-                <p className="text-xs text-emerald-700 mb-2">{data.weight} г</p>
+                <p className="text-xs text-emerald-700 mb-2">{t('chat.weightGrams', { weight: data.weight })}</p>
             )}
 
             <div className="flex items-center gap-3 text-xs">
@@ -72,25 +74,25 @@ export function FoodEntryCard({ metadata }: FoodEntryCardProps) {
                     <span className="block font-medium text-gray-900">
                         {data.calories ?? 0}
                     </span>
-                    <span className="text-gray-500">ккал</span>
+                    <span className="text-gray-500">{t('units.kcal')}</span>
                 </div>
                 <div className="text-center">
                     <span className="block font-medium text-gray-900">
                         {data.protein ?? 0}
                     </span>
-                    <span className="text-gray-500">Б</span>
+                    <span className="text-gray-500">{t('macros.proteinShort')}</span>
                 </div>
                 <div className="text-center">
                     <span className="block font-medium text-gray-900">
                         {data.fat ?? 0}
                     </span>
-                    <span className="text-gray-500">Ж</span>
+                    <span className="text-gray-500">{t('macros.fatShort')}</span>
                 </div>
                 <div className="text-center">
                     <span className="block font-medium text-gray-900">
                         {data.carbs ?? 0}
                     </span>
-                    <span className="text-gray-500">У</span>
+                    <span className="text-gray-500">{t('macros.carbsShort')}</span>
                 </div>
             </div>
         </div>

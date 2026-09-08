@@ -17,6 +17,7 @@ import type {
     NotificationError,
 } from '../types';
 
+import { t } from '@/shared/i18n'
 /**
  * LocalStorage keys for caching
  */
@@ -153,7 +154,7 @@ function mapError(error: any): NotificationError {
     if (!isOnline()) {
         return {
             code: 'NETWORK_ERROR',
-            message: 'Нет подключения к интернету',
+            message: t('notifications.storeErrors.offline'),
         };
     }
 
@@ -163,28 +164,28 @@ function mapError(error: any): NotificationError {
     if (status === 401) {
         return {
             code: 'UNAUTHORIZED',
-            message: 'Требуется авторизация',
+            message: t('notifications.storeErrors.unauthorized'),
         };
     }
 
     if (status === 404) {
         return {
             code: 'NOT_FOUND',
-            message: 'Уведомление не найдено',
+            message: t('notifications.storeErrors.notFound'),
         };
     }
 
     if (status === 400) {
         return {
             code: 'VALIDATION_ERROR',
-            message: message || 'Неверные данные',
+            message: message || t('notifications.storeErrors.badFormat'),
         };
     }
 
     if (status === 500) {
         return {
             code: 'SERVER_ERROR',
-            message: 'Сервис временно недоступен',
+            message: t('notifications.storeErrors.unavailable'),
         };
     }
 
@@ -192,13 +193,13 @@ function mapError(error: any): NotificationError {
     if (error instanceof TypeError || error.message?.includes('fetch') || error.message?.includes('network')) {
         return {
             code: 'NETWORK_ERROR',
-            message: 'Проверьте подключение к интернету',
+            message: t('notifications.storeErrors.network'),
         };
     }
 
     return {
         code: 'SERVER_ERROR',
-        message: 'Произошла ошибка',
+        message: t('notifications.storeErrors.unknown'),
     };
 }
 
@@ -444,7 +445,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
             // Show toast notification for failure
             const mappedError = mapError(error);
-            toast.error(mappedError.message || 'Не удалось отметить уведомление как прочитанное');
+            toast.error(mappedError.message || t('notifications.markReadFailed'));
 
             throw error;
         }
@@ -507,7 +508,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
             // Show toast notification for failure
             const mappedError = mapError(error);
-            toast.error(mappedError.message || 'Не удалось отметить все уведомления как прочитанные');
+            toast.error(mappedError.message || t('notifications.markAllReadFailed'));
         }
     },
 
@@ -680,7 +681,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
         // Show toast when going offline
         if (isOffline && !wasOffline) {
-            toast.error('Нет подключения к интернету', {
+            toast.error(t('notifications.storeErrors.offline'), {
                 duration: 4000,
                 icon: '📡',
             });
@@ -688,7 +689,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
         // Show toast when coming back online
         if (!isOffline && wasOffline) {
-            toast.success('Подключение восстановлено', {
+            toast.success(t('notifications.reconnected'), {
                 duration: 3000,
                 icon: '✅',
             });

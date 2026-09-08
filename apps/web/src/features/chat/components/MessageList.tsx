@@ -11,6 +11,7 @@ import { useRef, useEffect, useCallback, useMemo } from 'react'
 import type { Message } from '../types'
 import { MessageBubble } from './MessageBubble'
 import { DateSeparator } from './DateSeparator'
+import { t } from '@/shared/i18n'
 
 // ============================================================================
 // Types
@@ -106,7 +107,7 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageA
                         disabled={isLoading}
                         className="text-sm text-blue-500 hover:text-blue-600 disabled:text-gray-300 transition-colors"
                     >
-                        {isLoading ? 'Загрузка...' : 'Загрузить ещё'}
+                        {isLoading ? t('common.loading') : t('chat.loadMore')}
                     </button>
                 </div>
             )}
@@ -114,14 +115,14 @@ export function MessageList({ messages, isLoading, hasMore, onLoadMore, onImageA
             {/* Loading state */}
             {isLoading && messages.length === 0 && (
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm">Загрузка сообщений...</p>
+                    <p className="text-gray-400 text-sm">{t('chat.loadingMessages')}</p>
                 </div>
             )}
 
             {/* Empty state */}
             {!isLoading && messages.length === 0 && (
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-gray-400 text-sm">Нет сообщений</p>
+                    <p className="text-gray-400 text-sm">{t('chat.noMessages')}</p>
                 </div>
             )}
 

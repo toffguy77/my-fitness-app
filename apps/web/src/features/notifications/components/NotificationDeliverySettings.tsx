@@ -20,6 +20,7 @@ import {
     type TypeSetting,
 } from '../api/deliveryApi'
 
+import { t } from '@/shared/i18n'
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
 function hourLabel(hour: number): string {
@@ -65,7 +66,7 @@ export function NotificationDeliverySettings() {
     useEffect(() => {
         getDeliveryPreferences()
             .then(setPrefs)
-            .catch(() => toast.error('Не удалось загрузить настройки доставки'))
+            .catch(() => toast.error(t('notifications.delivery.loadFailed')))
             .finally(() => setLoading(false))
     }, [])
 
@@ -79,7 +80,7 @@ export function NotificationDeliverySettings() {
                 emailUnsubscribed: next.emailUnsubscribed,
             })
         } catch {
-            toast.error('Не удалось сохранить настройки доставки')
+            toast.error(t('notifications.delivery.saveFailed'))
         }
     }, [])
 
@@ -112,18 +113,17 @@ export function NotificationDeliverySettings() {
             <PushSection />
 
             <div className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="mb-1 text-sm font-medium text-gray-500">Письма</p>
+                <p className="mb-1 text-sm font-medium text-gray-500">{t('notifications.delivery.emailsHeading')}</p>
                 <div className="flex items-center justify-between py-3">
                     <div className="pr-4">
-                        <p className="font-medium text-gray-900">Получать письма</p>
+                        <p className="font-medium text-gray-900">{t('notifications.delivery.receiveEmails')}</p>
                         <p className="mt-0.5 text-sm text-gray-500">
-                            Одно письмо обо всём, что вы не прочитали в приложении, — не по письму
-                            на событие.
+                            {t('notifications.delivery.emailsExplanation')}
                         </p>
                     </div>
                     <Toggle
                         checked={!prefs.emailUnsubscribed}
-                        label="Получать письма"
+                        label={t('notifications.delivery.receiveEmails')}
                         onChange={(enabled) => void save({ ...prefs, emailUnsubscribed: !enabled })}
                     />
                 </div>
@@ -131,24 +131,23 @@ export function NotificationDeliverySettings() {
 
             <div className="rounded-2xl bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-500">Тихое время</p>
+                    <p className="text-sm font-medium text-gray-500">{t('notifications.delivery.quietHeading')}</p>
                     {prefs.quietHoursStart !== null && (
                         <button
                             type="button"
                             onClick={() => setQuietHours(null, null)}
                             className="text-sm text-gray-500 hover:text-gray-900"
                         >
-                            Выключить
+                            {t('notifications.delivery.disable')}
                         </button>
                     )}
                 </div>
                 <p className="mb-3 text-sm text-gray-500">
-                    В эти часы письма не уходят — они ждут утра, а не пропадают. Время вашего
-                    часового пояса ({prefs.timezone}).
+                    {t('notifications.delivery.quietExplanation', { timezone: prefs.timezone })}
                 </p>
                 <div className="flex items-center gap-3">
                     <label htmlFor="quiet-start" className="sr-only">
-                        Начало тихого времени
+                        {t('notifications.delivery.quietStart')}
                     </label>
                     <select
                         id="quiet-start"
@@ -164,9 +163,9 @@ export function NotificationDeliverySettings() {
                             </option>
                         ))}
                     </select>
-                    <span className="text-sm text-gray-500">до</span>
+                    <span className="text-sm text-gray-500">{t('notifications.delivery.until')}</span>
                     <label htmlFor="quiet-end" className="sr-only">
-                        Конец тихого времени
+                        {t('notifications.delivery.quietEnd')}
                     </label>
                     <select
                         id="quiet-end"
@@ -186,11 +185,11 @@ export function NotificationDeliverySettings() {
             </div>
 
             <div className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="mb-3 text-sm font-medium text-gray-500">О чём сообщать</p>
+                <p className="mb-3 text-sm font-medium text-gray-500">{t('notifications.delivery.whatHeading')}</p>
                 <div className="mb-2 grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 text-xs text-gray-400">
                     <span />
-                    <span className="w-11 text-center">Здесь</span>
-                    <span className="w-11 text-center">Письмом</span>
+                    <span className="w-11 text-center">{t('notifications.delivery.columnHere')}</span>
+                    <span className="w-11 text-center">{t('notifications.delivery.columnEmail')}</span>
                     <span className="w-11 text-center">Push</span>
                 </div>
                 {prefs.types.map((setting, index) => (
@@ -206,24 +205,24 @@ export function NotificationDeliverySettings() {
                         <Toggle
                             checked
                             disabled
-                            label={`${TYPE_LABELS[setting.type] ?? setting.type} в приложении`}
+                            label={t('notifications.delivery.inAppLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
                             onChange={() => {}}
                         />
                         <Toggle
                             checked={setting.email && !prefs.emailUnsubscribed}
                             disabled={prefs.emailUnsubscribed}
-                            label={`${TYPE_LABELS[setting.type] ?? setting.type} письмом`}
+                            label={t('notifications.delivery.emailLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
                             onChange={(enabled) => setChannel(setting.type, 'email', enabled)}
                         />
                         <Toggle
                             checked={setting.push}
-                            label={`${TYPE_LABELS[setting.type] ?? setting.type} через push`}
+                            label={t('notifications.delivery.pushLabel', { type: TYPE_LABELS[setting.type] ?? setting.type })}
                             onChange={(enabled) => setChannel(setting.type, 'push', enabled)}
                         />
                     </div>
                 ))}
                 <p className="mt-3 text-xs text-gray-400">
-                    В приложении уведомление остаётся всегда — это список того, что произошло.
+                    {t('notifications.delivery.inAppNote')}
                 </p>
             </div>
         </div>

@@ -27,6 +27,10 @@ const TRANSLATED = [
     'apps/web/src/app/food-tracker',
     'apps/web/src/features/dashboard',
     'apps/web/src/app/dashboard',
+    'apps/web/src/features/chat',
+    'apps/web/src/app/chat',
+    'apps/web/src/features/notifications',
+    'apps/web/src/app/notifications',
 ]
 
 const DICTIONARY = 'apps/web/src/shared/i18n/dictionaries/ru.ts'

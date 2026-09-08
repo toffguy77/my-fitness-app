@@ -10,6 +10,7 @@
  */
 
 import { usePushSubscription } from '../hooks/usePushSubscription'
+import { t } from '@/shared/i18n'
 
 export function PushSection() {
     const { state, busy, enable, disable } = usePushSubscription()
@@ -18,36 +19,30 @@ export function PushSection() {
 
     return (
         <div className="rounded-2xl bg-white p-4 shadow-sm" data-testid="push-section">
-            <p className="mb-1 text-sm font-medium text-gray-500">Push на это устройство</p>
+            <p className="mb-1 text-sm font-medium text-gray-500">{t('notifications.push.heading')}</p>
 
             {state === 'unsupported' && (
                 <p className="py-2 text-sm text-gray-500">
-                    Этот браузер не умеет присылать push. Уведомления остаются в приложении, а о
-                    важном придёт письмо.
+                    {t('notifications.push.unsupported')}
                 </p>
             )}
 
             {state === 'needs-install' && (
                 <p className="py-2 text-sm text-gray-500">
-                    На iPhone и iPad push приходит только тем, кто добавил приложение на домашний
-                    экран: «Поделиться» → «На экран „Домой“». После этого вернитесь сюда и включите
-                    push.
+                    {t('notifications.push.iosHint')}
                 </p>
             )}
 
             {state === 'denied' && (
                 <p className="py-2 text-sm text-gray-500">
-                    Вы запретили уведомления в этом браузере, и повторно спросить он не даст —
-                    разрешение возвращается в его настройках сайта. Письма это не затрагивает.
+                    {t('notifications.push.denied')}
                 </p>
             )}
 
             {state === 'available' && (
                 <div className="py-2">
                     <p className="text-sm text-gray-500">
-                        Push приходит сразу — ответ куратора или просроченная задача не будут ждать,
-                        пока вы откроете приложение. Браузер спросит разрешение, когда вы нажмёте
-                        кнопку.
+                        {t('notifications.push.offer')}
                     </p>
                     <button
                         type="button"
@@ -55,7 +50,7 @@ export function PushSection() {
                         onClick={() => void enable()}
                         className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
                     >
-                        {busy ? 'Включаем...' : 'Включить push'}
+                        {busy ? t('notifications.push.enabling') : t('notifications.push.enable')}
                     </button>
                 </div>
             )}
@@ -63,8 +58,7 @@ export function PushSection() {
             {state === 'subscribed' && (
                 <div className="flex items-center justify-between py-2">
                     <p className="pr-4 text-sm text-gray-500">
-                        Push включён на этом устройстве. На других устройствах его нужно включить
-                        отдельно.
+                        {t('notifications.push.enabled')}
                     </p>
                     <button
                         type="button"
@@ -72,7 +66,7 @@ export function PushSection() {
                         onClick={() => void disable()}
                         className="shrink-0 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
                     >
-                        {busy ? 'Выключаем...' : 'Выключить'}
+                        {busy ? t('notifications.push.disabling') : t('notifications.push.disable')}
                     </button>
                 </div>
             )}

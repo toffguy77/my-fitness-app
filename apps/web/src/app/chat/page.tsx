@@ -11,6 +11,7 @@ import { ChatInput } from '@/features/chat/components/ChatInput'
 import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
 import type { Conversation } from '@/features/chat/types'
 
+import { t } from '@/shared/i18n'
 export default function ChatPage() {
     const router = useRouter()
     const [conversation, setConversation] = useState<Conversation | null>(null)
@@ -69,7 +70,7 @@ export default function ChatPage() {
 
     const content = noConversation ? (
         <div className="flex flex-col items-center justify-center px-4 py-20">
-            <p className="text-gray-500">Куратор пока не назначен</p>
+            <p className="text-gray-500">{t('chat.noCurator')}</p>
         </div>
     ) : (
         <div className="flex flex-col" style={{ height: 'calc(100dvh - 8rem - env(safe-area-inset-bottom, 0px))' }}>

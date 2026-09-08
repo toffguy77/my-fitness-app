@@ -1,4 +1,5 @@
 import { apiClient } from '@/shared/utils/api-client'
+import { t } from '@/shared/i18n'
 
 const BASE = '/api/v1/notifications/delivery-preferences'
 
@@ -46,19 +47,19 @@ export async function unsubscribeFromEmail(token: string): Promise<void> {
 
 /** What each event type is called on the settings screen. */
 export const TYPE_LABELS: Record<string, string> = {
-    trainer_feedback: 'Ответ куратора',
-    feedback_received: 'Отзыв на отчёт',
-    plan_updated: 'Изменение плана',
-    task_assigned: 'Новая задача',
-    task_overdue: 'Просроченная задача',
-    export_ready: 'Архив с данными готов',
-    client_left: 'Клиент уходит',
-    reminder: 'Напоминания',
-    achievement: 'Достижения',
-    new_content: 'Новые материалы',
-    new_feature: 'Новые возможности',
-    system_update: 'Системные сообщения',
-    general: 'Прочее',
+    trainer_feedback: t('notifications.types.trainer_feedback'),
+    feedback_received: t('notifications.types.feedback_received'),
+    plan_updated: t('notifications.types.plan_updated'),
+    task_assigned: t('notifications.types.task_assigned'),
+    task_overdue: t('notifications.types.task_overdue'),
+    export_ready: t('notifications.types.export_ready'),
+    client_left: t('notifications.types.client_left'),
+    reminder: t('notifications.types.reminder'),
+    achievement: t('notifications.types.achievement'),
+    new_content: t('notifications.types.new_content'),
+    new_feature: t('notifications.types.new_feature'),
+    system_update: t('notifications.types.system_update'),
+    general: t('notifications.types.general'),
 }
 
 /** The public half of the VAPID pair; a browser cannot subscribe without it. */

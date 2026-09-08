@@ -11,6 +11,7 @@ import { useMemo } from 'react'
 import type { Message } from '../types'
 import { FoodEntryCard } from './FoodEntryCard'
 import { FileAttachment } from './FileAttachment'
+import { t } from '@/shared/i18n'
 
 // ============================================================================
 // Types
@@ -69,7 +70,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src={imageUrl}
-                                    alt="Изображение"
+                                    alt={t('chat.image')}
                                     className="rounded-2xl max-w-full max-h-[300px] object-cover"
                                     loading="lazy"
                                 />
@@ -81,7 +82,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                                 onClick={() => onImageAction(message)}
                                 className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                             >
-                                Ввести КБЖУ
+                                {t('chat.enterMacros')}
                             </button>
                         )}
                     </div>
@@ -101,7 +102,7 @@ export function MessageBubble({ message, isOwn, onImageAction }: MessageBubblePr
                                 rel="noopener noreferrer"
                                 className="text-sm underline text-blue-600"
                             >
-                                Скачать файл
+                                {t('chat.downloadFile')}
                             </a>
                         )}
                     </div>

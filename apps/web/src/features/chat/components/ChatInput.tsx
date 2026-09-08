@@ -9,6 +9,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Paperclip, ArrowUp, X } from 'lucide-react'
+import { t } from '@/shared/i18n'
 
 // ============================================================================
 // Types
@@ -135,7 +136,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                         type="button"
                         onClick={handleCancelFile}
                         className="p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
-                        aria-label="Отменить выбор файла"
+                        aria-label={t('chat.cancelFile')}
                     >
                         <X className="w-4 h-4" />
                     </button>
@@ -149,7 +150,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                     type="button"
                     onClick={handleAttachClick}
                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
-                    aria-label="Прикрепить файл"
+                    aria-label={t('chat.attachFile')}
                 >
                     <Paperclip className="w-5 h-5" />
                 </button>
@@ -169,7 +170,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                     value={text}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
-                    placeholder="Сообщение..."
+                    placeholder={t('chat.messagePlaceholder')}
                     disabled={isSending}
                     className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 disabled:opacity-50"
                 />
@@ -180,7 +181,7 @@ export function ChatInput({ onSendMessage, onSendFile, onTyping }: ChatInputProp
                     onClick={handleSend}
                     disabled={!canSend || isSending}
                     className="p-2 rounded-full bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                    aria-label="Отправить"
+                    aria-label={t('chat.send')}
                 >
                     <ArrowUp className="w-5 h-5" />
                 </button>
