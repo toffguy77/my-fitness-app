@@ -314,6 +314,7 @@ describe('ForgotPasswordPage', () => {
             ; (global.fetch as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 429,
+                headers: new Headers(),
                 json: async () => ({ error: 'Too many requests' }),
             })
 
@@ -334,6 +335,7 @@ describe('ForgotPasswordPage', () => {
             ; (global.fetch as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 500,
+                headers: new Headers(),
                 json: async () => ({ error: 'Internal server error' }),
             })
 
@@ -369,6 +371,7 @@ describe('ForgotPasswordPage', () => {
             ; (global.fetch as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 400,
+                headers: new Headers(),
                 json: async () => ({}),
             })
 
@@ -388,6 +391,7 @@ describe('ForgotPasswordPage', () => {
             ; (global.fetch as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 500,
+                headers: new Headers(),
                 json: async () => ({ error: 'Server error' }),
             })
 

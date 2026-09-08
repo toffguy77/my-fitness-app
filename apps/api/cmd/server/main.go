@@ -312,6 +312,26 @@ func main() {
 		log.Warn("Failed to load Europe/Moscow; scheduling jobs in UTC", "error", err)
 		moscow = time.UTC
 	}
+	// Tracing, if there is a collector to send it to. Absent, the application
+	// runs exactly as before and says so once — the same rule as every other
+	// optional capability here.
+	tracingOn, stopTracing, err := telemetry.StartTracing(
+		context.Background(), "burcev-api", cfg.Version, cfg.Env)
+	if err != nil {
+		log.Warn("Tracing could not be started; continuing without it", "error", err)
+	} else if tracingOn {
+		log.Info("Tracing enabled",
+			"endpoint", os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+			"success_sample_ratio", telemetry.DefaultSuccessRatio)
+		defer func() {
+			if err := stopTracing(context.Background()); err != nil {
+				log.Warn("Failed to flush traces on shutdown", "error", err)
+			}
+		}()
+	} else {
+		log.Warn("Tracing is off — OTEL_EXPORTER_OTLP_ENDPOINT is not set")
+	}
+
 	metrics := telemetry.New("burcev", db.DB.Stats)
 	// The domain counters were declared and never incremented; installing the
 	// recorder is what lets the services reach them without threading a

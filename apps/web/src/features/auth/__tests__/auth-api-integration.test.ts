@@ -50,6 +50,7 @@ describe('Authentication API Integration', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 401,
+                headers: new Headers(),
                 json: async () => ({
                     status: 'error',
                     message: 'Invalid credentials',
@@ -71,6 +72,7 @@ describe('Authentication API Integration', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 500,
+                headers: new Headers(),
                 json: async () => ({}),
             });
 
@@ -138,6 +140,7 @@ describe('Authentication API Integration', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 409,
+                headers: new Headers(),
                 json: async () => ({
                     message: 'User already exists',
                 }),
@@ -165,6 +168,7 @@ describe('Authentication API Integration', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 400,
+                headers: new Headers(),
                 json: async () => ({
                     message: 'Email is required',
                 }),

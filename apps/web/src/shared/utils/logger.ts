@@ -129,6 +129,15 @@ class Logger {
             }
         }
 
+        // A failed request carries the server's identifier for it. Recording it
+        // here is what makes a client-side report findable in the server's own
+        // logs and traces, instead of two accounts of one event that cannot be
+        // lined up.
+        const traceId = (error as { traceId?: string } | undefined)?.traceId
+        if (traceId) {
+            entry.requestId = traceId
+        }
+
         if (error && this.config.includeStackTrace) {
             entry.stack = error.stack
         }
