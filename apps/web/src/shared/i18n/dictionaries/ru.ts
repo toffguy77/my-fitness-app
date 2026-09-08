@@ -1270,6 +1270,19 @@ export const ru = {
             contentHeading: 'Контент',
         },
     },
+    // One set for every failed request, whichever screen made it.
+    apiErrors: {
+        offline: 'Нет подключения к интернету',
+        unauthorized: 'Требуется авторизация',
+        forbidden: 'Доступ запрещен',
+        notFound: 'Данные не найдены',
+        badRequest: 'Неверные данные',
+        timeout: 'Превышено время ожидания',
+        tooManyRequests: 'Слишком много запросов. Попробуйте позже',
+        unavailable: 'Сервис временно недоступен',
+        network: 'Проверьте подключение к интернету',
+        unknown: 'Произошла ошибка',
+    },
     errors: {
         not_found: 'Не найдено',
         unauthorized: 'Нужно войти в аккаунт',

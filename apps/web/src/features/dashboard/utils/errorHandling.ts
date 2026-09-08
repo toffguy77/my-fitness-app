@@ -5,6 +5,7 @@
 
 import toast from 'react-hot-toast';
 import { t } from '@/shared/i18n'
+import { mapApiError as mapSharedApiError, type ApiErrorCode } from '@/shared/errors/mapApiError'
 
 /**
  * Error codes for dashboard operations
@@ -61,95 +62,30 @@ export function isOnline(): boolean {
 /**
  * Map API error to DashboardError
  */
-export function mapApiError(error: any): DashboardError {
-    // Network error (offline)
-    if (!isOnline()) {
-        return {
-            code: DashboardErrorCode.NETWORK_ERROR,
-            message: t('dashboard.errors.offline'),
-            retryable: true,
-        };
-    }
+const CODES: Record<ApiErrorCode, DashboardErrorCode> = {
+    UNAUTHORIZED: DashboardErrorCode.UNAUTHORIZED,
+    FORBIDDEN: DashboardErrorCode.FORBIDDEN,
+    NOT_FOUND: DashboardErrorCode.NOT_FOUND,
+    VALIDATION_ERROR: DashboardErrorCode.VALIDATION_ERROR,
+    TIMEOUT: DashboardErrorCode.TIMEOUT_ERROR,
+    RATE_LIMITED: DashboardErrorCode.RATE_LIMIT_ERROR,
+    NETWORK_ERROR: DashboardErrorCode.NETWORK_ERROR,
+    SERVER_ERROR: DashboardErrorCode.SERVER_ERROR,
+    UNKNOWN: DashboardErrorCode.UNKNOWN_ERROR,
+}
 
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
-    const details = error.response?.data?.details;
-
-    // HTTP status code errors
-    switch (status) {
-        case 401:
-            return {
-                code: DashboardErrorCode.UNAUTHORIZED,
-                message: t('dashboard.errors.unauthorized'),
-                retryable: false,
-            };
-
-        case 403:
-            return {
-                code: DashboardErrorCode.FORBIDDEN,
-                message: t('dashboard.errors.forbidden'),
-                retryable: false,
-            };
-
-        case 404:
-            return {
-                code: DashboardErrorCode.NOT_FOUND,
-                message: t('dashboard.errors.notFound'),
-                retryable: false,
-            };
-
-        case 400:
-            return {
-                code: DashboardErrorCode.VALIDATION_ERROR,
-                message: message || t('dashboard.errors.badRequest'),
-                details,
-                retryable: false,
-            };
-
-        case 408:
-            return {
-                code: DashboardErrorCode.TIMEOUT_ERROR,
-                message: t('dashboard.errors.timeout'),
-                retryable: true,
-            };
-
-        case 429:
-            return {
-                code: DashboardErrorCode.RATE_LIMIT_ERROR,
-                message: t('dashboard.errors.tooManyRequests'),
-                retryable: true,
-            };
-
-        case 500:
-        case 502:
-        case 503:
-        case 504:
-            return {
-                code: DashboardErrorCode.SERVER_ERROR,
-                message: t('dashboard.errors.unavailable'),
-                retryable: true,
-            };
-    }
-
-    // Network/fetch errors
-    if (
-        error instanceof TypeError ||
-        error.message?.includes('fetch') ||
-        error.message?.includes('network')
-    ) {
-        return {
-            code: DashboardErrorCode.NETWORK_ERROR,
-            message: t('dashboard.errors.network'),
-            retryable: true,
-        };
-    }
-
-    // Unknown error
+export function mapApiError(error: unknown): DashboardError {
+    // The statuses and their wording are shared with every other screen; this
+    // keeps the dashboard's own error shape around them.
+    const mapped = mapSharedApiError(error)
+    const details = (error as { response?: { data?: { details?: Record<string, unknown> } } })
+        ?.response?.data?.details
     return {
-        code: DashboardErrorCode.UNKNOWN_ERROR,
-        message: t('dashboard.errors.unknown'),
-        retryable: true,
-    };
+        code: CODES[mapped.code],
+        message: mapped.message,
+        retryable: mapped.retryable,
+        ...(details ? { details } : {}),
+    }
 }
 
 /**

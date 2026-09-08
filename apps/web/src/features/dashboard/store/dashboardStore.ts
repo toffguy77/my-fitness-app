@@ -35,6 +35,7 @@ import {
 } from '../utils/offlineQueue';
 
 import { t, plural } from '@/shared/i18n'
+import { mapApiError } from '@/shared/errors/mapApiError'
 
 /**
  * "1 изменение", "2 изменения", "5 изменений". The previous version said
@@ -440,56 +441,10 @@ function isOnline(): boolean {
 /**
  * Helper: Map API errors to DashboardError
  */
-function mapError(error: any): DashboardError {
-    if (!isOnline()) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: t('dashboard.storeErrors.offline'),
-        };
-    }
-
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
-
-    if (status === 401) {
-        return {
-            code: 'UNAUTHORIZED',
-            message: t('dashboard.storeErrors.unauthorized'),
-        };
-    }
-
-    if (status === 404) {
-        return {
-            code: 'NOT_FOUND',
-            message: t('dashboard.storeErrors.notFound'),
-        };
-    }
-
-    if (status === 400) {
-        return {
-            code: 'VALIDATION_ERROR',
-            message: message || t('dashboard.storeErrors.badFormat'),
-        };
-    }
-
-    if (status === 500) {
-        return {
-            code: 'SERVER_ERROR',
-            message: t('dashboard.storeErrors.unavailable'),
-        };
-    }
-
-    if (error instanceof TypeError || error.message?.includes('fetch') || error.message?.includes('network')) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: t('dashboard.storeErrors.network'),
-        };
-    }
-
-    return {
-        code: 'SERVER_ERROR',
-        message: t('dashboard.storeErrors.unknown'),
-    };
+function mapError(error: unknown): DashboardError {
+    // The mapping is shared; only the noun for a missing thing is ours.
+    const mapped = mapApiError(error, { notFound: t('dashboard.storeErrors.notFound') });
+    return { code: mapped.code, message: mapped.message };
 }
 
 /**

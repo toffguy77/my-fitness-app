@@ -18,6 +18,7 @@ import type {
 } from '../types';
 
 import { t } from '@/shared/i18n'
+import { mapApiError } from '@/shared/errors/mapApiError'
 /**
  * LocalStorage keys for caching
  */
@@ -149,57 +150,15 @@ function isOnline(): boolean {
 /**
  * Map API errors to NotificationError with offline detection
  */
-function mapError(error: any): NotificationError {
-    // Check if offline first
-    if (!isOnline()) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: t('notifications.storeErrors.offline'),
-        };
-    }
-
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
-
-    if (status === 401) {
-        return {
-            code: 'UNAUTHORIZED',
-            message: t('notifications.storeErrors.unauthorized'),
-        };
-    }
-
-    if (status === 404) {
-        return {
-            code: 'NOT_FOUND',
-            message: t('notifications.storeErrors.notFound'),
-        };
-    }
-
-    if (status === 400) {
-        return {
-            code: 'VALIDATION_ERROR',
-            message: message || t('notifications.storeErrors.badFormat'),
-        };
-    }
-
-    if (status === 500) {
-        return {
-            code: 'SERVER_ERROR',
-            message: t('notifications.storeErrors.unavailable'),
-        };
-    }
-
-    // Network errors (fetch failed, timeout, etc.)
-    if (error instanceof TypeError || error.message?.includes('fetch') || error.message?.includes('network')) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: t('notifications.storeErrors.network'),
-        };
-    }
-
+function mapError(error: unknown): NotificationError {
+    // The mapping is shared; only the noun for a missing thing is ours.
+    const mapped = mapApiError(error, { notFound: t('notifications.storeErrors.notFound') });
     return {
-        code: 'SERVER_ERROR',
-        message: t('notifications.storeErrors.unknown'),
+        code: mapped.code === 'FORBIDDEN' || mapped.code === 'TIMEOUT' ||
+            mapped.code === 'RATE_LIMITED' || mapped.code === 'UNKNOWN'
+            ? 'SERVER_ERROR'
+            : mapped.code,
+        message: mapped.message,
     };
 }
 
