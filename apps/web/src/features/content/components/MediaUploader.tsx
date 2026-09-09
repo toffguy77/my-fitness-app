@@ -99,7 +99,7 @@ export function MediaUploader({ articleId, onUpload }: MediaUploaderProps) {
             <input
                 ref={inputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={handleFileChange}
                 className="hidden"
             />

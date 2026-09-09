@@ -118,9 +118,12 @@ describe('MediaUploader', () => {
         })
     })
 
-    it('accepts only image files', () => {
+    // Not image/*: on iOS that lets the Files app hand over a HEIC photograph,
+    // which the server cannot read. Naming the types makes the same picker
+    // filter it out, and the photo library transcodes to JPEG on the way.
+    it('offers only the image types the server accepts', () => {
         render(<MediaUploader articleId="article-1" onUpload={onUpload} />)
         const input = document.querySelector('input[type="file"]')!
-        expect(input).toHaveAttribute('accept', 'image/*')
+        expect(input).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp,image/gif')
     })
 })

@@ -392,7 +392,7 @@ export function BarcodeTab({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileChange}
                 className="hidden"
                 aria-label={t('foodTracker.barcode.pickFromGallery')}
@@ -400,7 +400,7 @@ export function BarcodeTab({
             <input
                 ref={cameraInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 capture="environment"
                 onChange={handleFileChange}
                 className="hidden"

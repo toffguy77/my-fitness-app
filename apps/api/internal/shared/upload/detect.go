@@ -7,6 +7,8 @@
 package upload
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -86,6 +88,47 @@ func (a Allowed) contains(k Kind) bool {
 // sniffLength is how much of the file http.DetectContentType needs.
 const sniffLength = 512
 
+// heicBrands are the ISO-BMFF brands an iPhone photograph carries.
+//
+// Go's sniffer does not know any of them: a HEIC file comes back as
+// application/octet-stream, indistinguishable from a corrupted upload or an
+// executable. Recognising it changes nothing about what is accepted — it is
+// still refused — but it changes what the person is told. "Unsupported file
+// type" about a photograph they just took is not something anybody can act on.
+var heicBrands = [][]byte{
+	[]byte("heic"), []byte("heix"), []byte("heim"), []byte("heis"),
+	[]byte("hevc"), []byte("hevx"), []byte("mif1"), []byte("msf1"),
+}
+
+// isHEIC reports whether the bytes are an ISO base media file carrying one of
+// the brands Apple writes for photographs.
+//
+// The layout: four bytes of box size, then "ftyp", then the major brand, then
+// a version, then the compatible brands. The brand can appear in either place,
+// so the whole header is searched rather than one fixed offset.
+func isHEIC(data []byte) bool {
+	if len(data) < 12 || !bytes.Equal(data[4:8], []byte("ftyp")) {
+		return false
+	}
+	head := data
+	if len(head) > 64 {
+		head = head[:64]
+	}
+	for _, brand := range heicBrands {
+		if bytes.Contains(head[8:], brand) {
+			return true
+		}
+	}
+	return false
+}
+
+// ErrHEIC is returned for a photograph in Apple's format. It is a refusal, but
+// one the person can do something about.
+var ErrHEIC = errors.New(
+	"фото в формате HEIC не принимается. Это обычный формат съёмки на iPhone. " +
+		"Выберите фото из галереи — тогда телефон сам сохранит его как JPEG, " +
+		"либо в «Настройки → Камера → Форматы» включите «Наиболее совместимый»")
+
 // Detect determines a file's kind from its bytes.
 //
 // The client's Content-Type header is not consulted at all: it is attacker
@@ -103,6 +146,10 @@ func Detect(data []byte) (Kind, error) {
 
 	// DetectContentType appends charset parameters for text types; take the
 	// media type only.
+	if isHEIC(head) {
+		return "", ErrHEIC
+	}
+
 	detected := http.DetectContentType(head)
 	if idx := strings.IndexByte(detected, ';'); idx >= 0 {
 		detected = detected[:idx]
@@ -119,6 +166,11 @@ func Detect(data []byte) (Kind, error) {
 func Check(data []byte, allowed Allowed) (Kind, error) {
 	kind, err := Detect(data)
 	if err != nil {
+		// The HEIC refusal already says what happened and what to do about it;
+		// appending the list of accepted formats to it only buries that.
+		if errors.Is(err, ErrHEIC) {
+			return "", err
+		}
 		return "", fmt.Errorf("%w: допустимые форматы — %s", err, allowed.Describe())
 	}
 	if !allowed.contains(kind) {

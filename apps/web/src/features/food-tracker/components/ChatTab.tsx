@@ -278,7 +278,7 @@ export function ChatTab({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileChange}
                 className="hidden"
                 aria-label="Выбрать фото"
