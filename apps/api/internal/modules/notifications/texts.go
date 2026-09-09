@@ -25,10 +25,11 @@ import (
 type TextCode string
 
 const (
-	TextPlanUpdated     TextCode = "plan_updated"
-	TextTaskAssigned    TextCode = "task_assigned"
-	TextReportReceived  TextCode = "report_received"
-	TextCuratorFeedback TextCode = "curator_feedback"
+	TextPlanUpdated      TextCode = "plan_updated"
+	TextTaskAssigned     TextCode = "task_assigned"
+	TextReportReceived   TextCode = "report_received"
+	TextCuratorFeedback  TextCode = "curator_feedback"
+	TextSupportEscalated TextCode = "support_escalated"
 )
 
 type text struct {
@@ -56,6 +57,10 @@ var texts = map[string]map[TextCode]text{
 		TextCuratorFeedback: {
 			Title:   "Обратная связь от куратора",
 			Content: "Куратор оставил обратную связь по вашему отчёту",
+		},
+		TextSupportEscalated: {
+			Title:   "Обращение ждёт ответа",
+			Content: "Бот не смог ответить: {reason}",
 		},
 	},
 	"en": {},

@@ -299,6 +299,9 @@ func main() {
 			leadsService,
 			cfg.SupportDailyLimit,
 		)
+		// An escalated conversation sits in the admin queue until somebody
+		// looks. This is what makes them look.
+		supportService.WithOperatorNotices(notificationsSvc)
 	} else {
 		log.Warn("Support bot is disabled", "reason", "TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET or OPENROUTER_API_KEY is absent")
 	}

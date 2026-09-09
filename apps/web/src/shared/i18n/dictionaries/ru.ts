@@ -828,6 +828,7 @@ export const ru = {
             new_feature: 'Новые возможности',
             system_update: 'Системные сообщения',
             general: 'Прочее',
+            support_escalated: 'Обращение в поддержку',
         },
         delivery: {
             loadFailed: 'Не удалось загрузить настройки доставки',

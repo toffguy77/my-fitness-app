@@ -61,6 +61,8 @@ type Service struct {
 	answerer Answerer
 	sender   Sender
 	leads    LeadResolver
+	// operators may be nil; escalation works without it, silently.
+	operators OperatorNotifier
 
 	// dailyLimit caps model calls across every chat: a public entrance in
 	// front of a paid model needs a ceiling that one abusive chat cannot lift.
@@ -187,14 +189,22 @@ func wantsHuman(text string) bool {
 
 // escalate marks the conversation for a person and tells the user so.
 func (s *Service) escalate(ctx context.Context, conversation *Conversation, reason string) error {
-	if _, err := s.db.ExecContext(ctx, `
+	result, err := s.db.ExecContext(ctx, `
 		UPDATE support_conversations
 		SET status = 'escalated', escalation_reason = $2, escalated_at = COALESCE(escalated_at, NOW())
-		WHERE id = $1 AND status <> 'escalated'`, conversation.ID, reason); err != nil {
+		WHERE id = $1 AND status <> 'escalated'`, conversation.ID, reason)
+	if err != nil {
 		return fmt.Errorf("escalate conversation: %w", err)
 	}
 
 	s.log.Info("Support conversation escalated", "conversation_id", conversation.ID, "reason", reason)
+
+	// Only on the way in. A conversation that escalates again with each
+	// unanswerable question would otherwise notify every operator each time,
+	// and a queue that cries every minute is one nobody reads.
+	if changed, err := result.RowsAffected(); err == nil && changed > 0 {
+		s.notifyOperators(ctx, conversation.ID, reason)
+	}
 
 	message := escalationReply
 	if conversation.UserID != nil {
