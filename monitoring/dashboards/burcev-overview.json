@@ -7,7 +7,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": false,
   "refresh": "1m",
   "time": {
@@ -776,6 +776,85 @@
           "calcs": [
             "lastNotNull",
             "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Доля токенов, прочитанных из кэша",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Бот поддержки отправляет перед каждым вопросом всё руководство пользователя. Пока префикс байт в байт неизменен, провайдер читает его из кэша и это почти ничего не стоит. Метка времени или идентификатор запроса перед точкой кэширования превращают каждый вопрос в промах — ответы те же, ошибок нет, растёт только счёт.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "из кэша",
+          "expr": "100 * sum(rate(burcev_model_prompt_tokens_total{environment=\"$environment\", cached=\"yes\"}[1h])) / clamp_min(sum(rate(burcev_model_prompt_tokens_total{environment=\"$environment\"}[1h])), 0.001)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "green",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "min"
           ],
           "showLegend": true
         },

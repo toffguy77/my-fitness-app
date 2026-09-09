@@ -181,7 +181,8 @@ func main() {
 	// Initialize OpenRouter client (for AI food recognition)
 	var orClient *openrouter.Client
 	if cfg.OpenRouterAPIKey != "" {
-		orClient = openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log)
+		orClient = openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log).
+			WithUsageObserver(telemetry.RecordModelUsage)
 		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
 	}
 
@@ -294,7 +295,8 @@ func main() {
 	if cfg.Features.SupportBot {
 		supportService = support.NewService(
 			db.DB, log,
-			openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log),
+			openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log).
+				WithUsageObserver(telemetry.RecordModelUsage),
 			telegram.NewClient(cfg.TelegramBotToken),
 			leadsService,
 			cfg.SupportDailyLimit,
