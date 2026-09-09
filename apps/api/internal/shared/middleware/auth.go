@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -54,7 +55,12 @@ func RequireAuth(cfg *config.Config, versions *TokenVersions) gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			response.Error(c, http.StatusUnauthorized, "Неверный или истекший токен")
+			// token_expired, not a bare unauthorized: the client refreshes on
+			// this one and sends the person to sign in on the others. Told
+			// only "unauthorized", it cannot tell the two apart and either
+			// signs everybody out too eagerly or loops refreshing.
+			response.ErrorCode(c, http.StatusUnauthorized,
+				apperrors.CodeTokenExpired, "Неверный или истекший токен", nil)
 			c.Abort()
 			return
 		}
@@ -67,14 +73,19 @@ func RequireAuth(cfg *config.Config, versions *TokenVersions) gin.HandlerFunc {
 					// Either the account is gone or the database is
 					// unreachable. Neither is a request we should let through
 					// on the strength of a signature alone.
-					response.Error(c, http.StatusUnauthorized, "Сессия недействительна")
+					response.ErrorCode(c, http.StatusUnauthorized,
+						apperrors.CodeUnauthorized, "Сессия недействительна", nil)
 					c.Abort()
 					return
 				}
 				if claims.TokenVersion != current {
 					// Issued before a password change or an explicit sign-out
 					// of every device.
-					response.Error(c, http.StatusUnauthorized, "Сессия завершена, войдите заново")
+					// Not refreshable: the token version moved because the
+					// password changed or every device was signed out. A
+					// refresh would mint another token of the same age.
+					response.ErrorCode(c, http.StatusUnauthorized,
+						apperrors.CodeSessionEnded, "Сессия завершена, войдите заново", nil)
 					c.Abort()
 					return
 				}
@@ -84,7 +95,8 @@ func RequireAuth(cfg *config.Config, versions *TokenVersions) gin.HandlerFunc {
 			c.Set("user_email", claims.Email)
 			c.Set("user_role", claims.Role)
 		} else {
-			response.Error(c, http.StatusUnauthorized, "Неверные данные токена")
+			response.ErrorCode(c, http.StatusUnauthorized,
+				apperrors.CodeTokenInvalid, "Неверные данные токена", nil)
 			c.Abort()
 			return
 		}

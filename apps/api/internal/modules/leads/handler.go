@@ -110,7 +110,8 @@ func (h *Handler) Resume(c *gin.Context) {
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrTokenExpired):
-		response.Error(c, http.StatusGone, "Срок действия ссылки истёк")
+		response.ErrorCode(c, http.StatusGone,
+			apperrors.CodeTokenExpired, "Срок действия ссылки истёк", nil)
 		return
 	case errors.Is(err, apperrors.ErrTokenInvalid), errors.Is(err, apperrors.ErrNotFound):
 		response.Error(c, http.StatusBadRequest, "Ссылка недействительна")

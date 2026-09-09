@@ -345,7 +345,11 @@ func (h *OAuthHandler) ConfirmLink(c *gin.Context) {
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrInvalidCredentials):
-		response.Error(c, http.StatusUnauthorized, "Неверный пароль")
+		// password_incorrect, not invalid_credentials: the session is fine,
+		// the password typed to prove ownership is not. The client shows a
+		// field error rather than sending the person to sign in again.
+		response.ErrorCode(c, http.StatusUnauthorized,
+			apperrors.CodePasswordIncorrect, "Неверный пароль", nil)
 		return
 	case errors.Is(err, apperrors.ErrTokenInvalid):
 		h.clearPendingCookie(c)

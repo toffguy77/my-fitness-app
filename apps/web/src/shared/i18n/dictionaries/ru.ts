@@ -1313,6 +1313,10 @@ export const ru = {
         conflict: 'Действие невозможно в текущем состоянии',
         gone: 'Больше недоступно',
         validation: 'Проверьте введённые данные',
+        // Distinct from token_expired: refreshing will not help, because the
+        // session was ended deliberately.
+
+        session_ended: 'Сессия завершена, войдите заново',
         feature_unavailable: 'Возможность отключена в этой среде',
         internal: 'Сервис временно недоступен',
     },

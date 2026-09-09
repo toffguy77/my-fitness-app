@@ -412,7 +412,10 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrTooManyAttempts):
-			response.Error(c, http.StatusTooManyRequests, "Слишком много попыток. Запросите новый код.")
+			// too_many_attempts, not rate_limited: the answer is "ask for a new
+			// code", not "wait and retry this one".
+			response.ErrorCode(c, http.StatusTooManyRequests,
+				apperrors.CodeTooManyAttempts, "Слишком много попыток. Запросите новый код.", nil)
 		case errors.Is(err, apperrors.ErrCodeExpired):
 			response.Error(c, http.StatusBadRequest, "Код истёк. Запросите новый.")
 		default:
