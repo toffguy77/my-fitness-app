@@ -284,3 +284,14 @@ func TestManualJobMayNotAlsoBeScheduled(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "manual")
 }
+
+// Schedule() reads RunAt, which a manual job does not have. Before this it
+// dereferenced a nil pointer, so a single manual job would crash the whole
+// job list in the admin area — the one place the job's existence is visible.
+func TestManualJobDescribesItsScheduleWithoutPanicking(t *testing.T) {
+	job := Job{Name: "account.purge-orphaned-files", Manual: true, Timeout: time.Minute}
+
+	var schedule string
+	require.NotPanics(t, func() { schedule = job.Schedule() })
+	assert.Equal(t, "manual only", schedule)
+}

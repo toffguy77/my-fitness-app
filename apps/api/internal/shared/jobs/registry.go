@@ -140,6 +140,9 @@ func (r *Registry) All() []Job {
 
 // Schedule renders the job's cadence for display.
 func (j Job) Schedule() string {
+	if j.Manual {
+		return "manual only"
+	}
 	if j.Interval > 0 {
 		return "every " + j.Interval.String()
 	}

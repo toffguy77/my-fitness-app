@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { adminApi, CuratorLoadCard } from '@/features/admin'
 import type { CuratorLoad, AdminUser } from '@/features/admin'
 
@@ -70,6 +71,18 @@ export default function AdminDashboardPage() {
                         ))}
                     </div>
                 )}
+            </section>
+
+            {/* Фоновые задачи не в нижней навигации: сюда заходят редко и по
+                поводу, а седьмая вкладка мешала бы шести ежедневным. */}
+            <section>
+                <Link
+                    href="/admin/jobs"
+                    className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:bg-gray-50"
+                >
+                    <span className="text-sm font-medium text-gray-900">{t('admin.jobs.heading')}</span>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                </Link>
             </section>
         </div>
     )

@@ -1199,6 +1199,18 @@ export const ru = {
             editArticle: 'Редактирование статьи',
             newArticle: 'Новая статья',
         },
+        jobs: {
+            heading: 'Фоновые задачи',
+            loading: 'Загружаем задачи…',
+            loadFailed: 'Не удалось загрузить задачи',
+            run: 'Запустить',
+            runFailed: 'Не удалось запустить задачу',
+            started: 'Задача {name} запущена',
+            neverRan: 'Ни разу не запускалась',
+            failed: 'Ошибка',
+            inProgress: 'Выполняется с {when}',
+            succeeded: 'Успешно — {when}, обработано: {items}',
+        },
         leads: {
             loadFailed: 'Не удалось загрузить заявки',
             markFailed: 'Не удалось отметить заявку',
