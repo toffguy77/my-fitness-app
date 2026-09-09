@@ -156,21 +156,31 @@ func (s *Service) Status(ctx context.Context, userID int64) (*DeletionStatus, er
 // caller should act on — the database is already consistent and the erasure
 // stands — but it must be remembered, or the person's photographs stay in a
 // bucket forever.
-func (s *Service) deleteFiles(ctx context.Context, userID int64) (complete bool) {
-	prefix := fmt.Sprintf("%d/", userID)
+func (s *Service) deleteFiles(ctx context.Context, userID int64, prefixes FilePrefixes) (complete bool) {
 	complete = true
 
 	for name, client := range s.buckets {
 		if client == nil {
 			continue
 		}
-		removed, err := client.DeleteByPrefix(ctx, prefix)
-		if err != nil {
-			s.log.Error("Failed to delete user files", "bucket", name, "user_id", userID, "error", err)
-			complete = false
+		keys := prefixes[name]
+		if len(keys) == 0 {
+			// Nothing of this user's is kept in that bucket. Distinct from a
+			// failure: the bucket is finished, not skipped.
 			continue
 		}
-		s.log.Info("Deleted user files", "bucket", name, "user_id", userID, "objects", removed)
+
+		for _, prefix := range keys {
+			removed, err := client.DeleteByPrefix(ctx, prefix)
+			if err != nil {
+				s.log.Error("Failed to delete user files",
+					"bucket", name, "prefix", prefix, "user_id", userID, "error", err)
+				complete = false
+				continue
+			}
+			s.log.Info("Deleted user files",
+				"bucket", name, "prefix", prefix, "user_id", userID, "objects", removed)
+		}
 	}
 
 	return complete
@@ -203,7 +213,23 @@ func (s *Service) PurgeLeftoverFiles(ctx context.Context) (int, error) {
 
 	purged := 0
 	for _, id := range pending {
-		if !s.deleteFiles(ctx, id) {
+		// The prefixes were written down during the erasure. Recomputing them
+		// here would ask the database about links that erasure has already
+		// removed, find nothing for the chat bucket, and call that success.
+		prefixes, err := s.storedPrefixes(ctx, id)
+		if err != nil {
+			s.log.Error("Failed to read stored file prefixes", "user_id", id, "error", err)
+			continue
+		}
+		if prefixes == nil {
+			// Erased before this list was recorded. Retrying with an empty list
+			// would mark the account clean without touching a single object, so
+			// say so instead and leave the mark unset.
+			s.log.Warn("No stored file prefixes: files must be removed by hand", "user_id", id)
+			continue
+		}
+
+		if !s.deleteFiles(ctx, id, prefixes) {
 			// Still failing: leave the mark unset so the next run tries again.
 			continue
 		}
@@ -218,7 +244,8 @@ func (s *Service) PurgeLeftoverFiles(ctx context.Context) (int, error) {
 
 func (s *Service) markFilesPurged(ctx context.Context, userID int64) error {
 	if _, err := s.db.ExecContext(ctx,
-		`UPDATE users SET files_purged_at = NOW() WHERE id = $1`, userID); err != nil {
+		`UPDATE users SET files_purged_at = NOW(), pending_file_prefixes = NULL WHERE id = $1`,
+		userID); err != nil {
 		return fmt.Errorf("record file purge: %w", err)
 	}
 	return nil

@@ -107,6 +107,14 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 		return fmt.Errorf("resolve system user: %w", err)
 	}
 
+	// Before the transaction, not after: it anonymises the conversations, and
+	// the chat attachments cannot be located once nothing connects them to this
+	// user.
+	prefixes, err := s.prefixesFor(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("collect file prefixes: %w", err)
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin erasure: %w", err)
@@ -152,6 +160,10 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 		return fmt.Errorf("anonymize user record: %w", err)
 	}
 
+	if err := rememberPrefixes(ctx, tx, userID, prefixes); err != nil {
+		return err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit erasure: %w", err)
 	}
@@ -160,7 +172,7 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 	// outage must not undo an erasure the user asked for. What fails here is
 	// recorded by omission — files_purged_at stays NULL — and retried by
 	// account.purge-files.
-	if s.deleteFiles(ctx, userID) {
+	if s.deleteFiles(ctx, userID, prefixes) {
 		if err := s.markFilesPurged(ctx, userID); err != nil {
 			s.log.Error("Failed to record file purge", "user_id", userID, "error", err)
 		}
