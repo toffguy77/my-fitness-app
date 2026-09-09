@@ -679,9 +679,8 @@ const notificationDigestTemplate = `
 
         <p style="color: #666; font-size: 14px;">
             Письмо приходит только о том, что вы не прочитали в приложении.
-            Настроить, о чём писать, можно в
-            <a href="{{.AppURL}}/settings/notifications" style="color: #666;">настройках уведомлений</a>,
-            а <a href="{{.UnsubscribeURL}}" style="color: #666;">здесь</a> — отписаться от писем совсем.
+            Можно <a href="{{.AppURL}}/settings/notifications" style="color: #666;">настроить, о чём писать</a>
+            или <a href="{{.UnsubscribeURL}}" style="color: #666;">отписаться от писем совсем</a>.
         </p>
 
         <p style="color: #999; font-size: 12px; margin-top: 30px;">
