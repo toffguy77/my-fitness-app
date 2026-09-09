@@ -1,5 +1,10 @@
 # Сбор метрик и дашборд, рядом с приложением на том же сервере.
 #
+# Файл лежит в корне, а не в monitoring/, намеренно: compose ищет .env рядом с
+# самим файлом, а Dokploy кладёт переменные проекта в корень репозитория. Из
+# каталога monitoring/ переменные не подхватывались, и сборка падала на разборе
+# файла, ещё до запуска контейнеров.
+#
 # Отдельный проект Dokploy: у наблюдения свой жизненный цикл, и оно не должно
 # перезапускаться вместе с приложением — особенно тогда, когда приложению плохо
 # и смотреть надо именно на него.
@@ -19,7 +24,7 @@ services:
       - --storage.tsdb.retention.time=15d
       - --web.enable-lifecycle
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks:
       - dokploy-network
@@ -44,7 +49,7 @@ services:
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
     networks:
       - dokploy-network
     depends_on:
