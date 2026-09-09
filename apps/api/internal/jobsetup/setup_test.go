@@ -41,6 +41,8 @@ func TestRegister_DeclaresEveryJobValidly(t *testing.T) {
 		"cleanup.job-runs",
 		"account.build-exports",
 		"account.execute-deletions",
+		"account.report-orphaned-files",
+		"account.purge-orphaned-files",
 	}, names)
 }
 
@@ -74,4 +76,28 @@ func TestRegister_PublishingIsMinutely(t *testing.T) {
 	require.True(t, ok)
 	// An author choosing a publish time expects it honoured to the minute.
 	assert.Equal(t, time.Minute, publish.Interval)
+}
+
+// The two clean-up jobs are manual on purpose. A one-off pass after a defect,
+// put on a schedule so the registry would accept it, would run every night for
+// the rest of the product's life — and the purge walks a whole bucket.
+func TestOrphanCleanupJobsAreManual(t *testing.T) {
+	registry := jobs.NewRegistry()
+	Register(registry, Deps{})
+
+	manual := map[string]bool{
+		"account.report-orphaned-files": true,
+		"account.purge-orphaned-files":  true,
+	}
+
+	for _, j := range registry.All() {
+		if !manual[j.Name] {
+			continue
+		}
+		assert.True(t, j.Manual, "%s must not be scheduled", j.Name)
+		assert.Zero(t, j.Interval, "%s must not carry an interval", j.Name)
+		assert.Nil(t, j.RunAt, "%s must not carry a run time", j.Name)
+		delete(manual, j.Name)
+	}
+	assert.Empty(t, manual, "these manual jobs were not registered at all: %v", manual)
 }

@@ -128,6 +128,41 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Одноразовая уборка за стираниями, которые не удалили ничего.
+	//
+	// Пока префикс удаления был "{userID}/", он не совпадал ни с одним ключом:
+	// все они начинаются с назначения. Пустой список — не ошибка, поэтому
+	// стирание отчитывалось об успехе, ставило files_purged_at, и ежедневный
+	// повтор такие аккаунты не берёт — он смотрит только на непомеченные.
+	//
+	// Обе задачи запускаются вручную и по расписанию не ходят: отчёт можно
+	// звать сколько угодно, уборку — один раз, после того как посмотрели отчёт.
+	registry.MustRegister(jobs.Job{
+		Name:    "account.report-orphaned-files",
+		Manual:  true,
+		Timeout: 30 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			reports, err := d.Account.ReportOrphanedFiles(ctx)
+			if err != nil {
+				return 0, err
+			}
+			objects := 0
+			for _, r := range reports {
+				objects += r.Total()
+			}
+			return objects, nil
+		},
+	})
+
+	registry.MustRegister(jobs.Job{
+		Name:    "account.purge-orphaned-files",
+		Manual:  true,
+		Timeout: 60 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Account.PurgeOrphanedFiles(ctx)
+		},
+	})
+
 	// Export archives past their download window. Each holds a copy of a
 	// person's whole account, so it is exactly the thing not to leave in a
 	// bucket indefinitely.

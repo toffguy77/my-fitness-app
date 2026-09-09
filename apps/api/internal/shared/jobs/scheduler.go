@@ -126,6 +126,10 @@ func (s *Scheduler) tick(ctx context.Context) {
 // "has 24 hours elapsed", which would drift with every deploy and place daily
 // snapshots at an arbitrary hour.
 func isDue(job Job, lastRun, now time.Time) bool {
+	if job.Manual {
+		// Never on its own. The whole point is that somebody decides.
+		return false
+	}
 	if job.Interval > 0 {
 		if lastRun.IsZero() {
 			return true

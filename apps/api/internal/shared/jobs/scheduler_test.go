@@ -258,3 +258,29 @@ func TestScheduler_RunsAtMostTwoJobsAtOnce(t *testing.T) {
 		"more jobs ran at once than the pool can afford")
 	assert.Positive(t, peak, "no job ran at all")
 }
+
+// A manual job exists to be decided on, not repeated. If the scheduler ever
+// treated it as due, a one-off clean-up after a defect would run every tick for
+// the rest of the product's life.
+func TestManualJobIsNeverDue(t *testing.T) {
+	job := Job{Name: "account.purge-orphaned-files", Manual: true, Timeout: time.Minute}
+
+	now := time.Now()
+	assert.False(t, isDue(job, time.Time{}, now), "never run before is not a reason to run")
+	assert.False(t, isDue(job, now.Add(-365*24*time.Hour), now), "nor is a year having passed")
+}
+
+// The registry must not accept a job that is both manual and scheduled: one of
+// the two statements would be silently ignored, and which one is not obvious
+// from reading it.
+func TestManualJobMayNotAlsoBeScheduled(t *testing.T) {
+	registry := NewRegistry()
+
+	err := registry.Register(Job{
+		Name: "confused", Manual: true, Interval: time.Hour, Timeout: time.Minute,
+		Run: func(context.Context) (int, error) { return 0, nil },
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "manual")
+}

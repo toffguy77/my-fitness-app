@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -279,6 +280,83 @@ func (s *S3Client) GetFileSize(ctx context.Context, key string) (int64, error) {
 // prefix delete the files of a deleted account would simply stay in the bucket.
 // Listing is paginated because a user with a year of photographs exceeds the
 // 1000-key page size.
+// CountByPrefix reports how many objects sit under a prefix, without touching
+// them.
+//
+// Deletion is not reversible, so anything that decides what to delete should be
+// able to say what it found first.
+func (s *S3Client) CountByPrefix(ctx context.Context, prefix string) (int, error) {
+	full := s.pathPrefix + prefix
+	count := 0
+
+	var continuationToken *string
+	for {
+		listed, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(s.bucket),
+			Prefix:            aws.String(full),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			return count, fmt.Errorf("list objects under %s: %w", full, err)
+		}
+		count += len(listed.Contents)
+		if listed.IsTruncated == nil || !*listed.IsTruncated {
+			return count, nil
+		}
+		continuationToken = listed.NextContinuationToken
+	}
+}
+
+// KeysMatching lists every key under a prefix whose path contains segment.
+//
+// For chat attachments: their key is chat/{conversation}/{user}/{file}, so the
+// user id cannot be a prefix. After an erasure has anonymised the conversations
+// there is nothing left to join on either, and the only way to find one
+// person's files is to walk the bucket. Expensive, and meant for a one-off
+// clean-up rather than the daily path.
+func (s *S3Client) KeysMatching(ctx context.Context, prefix, segment string) ([]string, error) {
+	full := s.pathPrefix + prefix
+	var keys []string
+
+	var continuationToken *string
+	for {
+		listed, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(s.bucket),
+			Prefix:            aws.String(full),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			return keys, fmt.Errorf("list objects under %s: %w", full, err)
+		}
+		for _, obj := range listed.Contents {
+			key := aws.ToString(obj.Key)
+			if strings.Contains(key, segment) {
+				keys = append(keys, key)
+			}
+		}
+		if listed.IsTruncated == nil || !*listed.IsTruncated {
+			return keys, nil
+		}
+		continuationToken = listed.NextContinuationToken
+	}
+}
+
+// DeleteKeys removes exactly the keys given. They are full keys as returned by
+// KeysMatching, so the path prefix is already part of them.
+func (s *S3Client) DeleteKeys(ctx context.Context, keys []string) (int, error) {
+	deleted := 0
+	for _, key := range keys {
+		if _, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(s.bucket),
+			Key:    aws.String(key),
+		}); err != nil {
+			return deleted, fmt.Errorf("delete %s: %w", key, err)
+		}
+		deleted++
+	}
+	return deleted, nil
+}
+
 func (s *S3Client) DeleteByPrefix(ctx context.Context, prefix string) (int, error) {
 	full := s.pathPrefix + prefix
 	deleted := 0
