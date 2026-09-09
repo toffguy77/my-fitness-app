@@ -1,0 +1,49 @@
+# Служба Alertmanager, вынутая из docker-compose.monitoring.yml.
+#
+# Она ждёт двух переменных — TELEGRAM_ALERT_BOT_TOKEN и TELEGRAM_ALERT_CHAT_ID.
+# Без них Alertmanager запускается и молчит: правила срабатывают, а до человека
+# ничего не доходит. Молчащий Alertmanager хуже отсутствующего — он выглядит
+# работающим. Поэтому службы нет в стеке, пока нет токена.
+#
+# Когда токен появится: вернуть этот блок в docker-compose.monitoring.yml перед
+# службой grafana, вернуть том alertmanager-data и вернуть в monitoring/prometheus.yml
+#
+#   alerting:
+#     alertmanagers:
+#       - static_configs:
+#           - targets: ['alertmanager:9093']
+#
+  # Alertmanager разворачивает сработавшее правило в сообщение и решает, когда
+  # его повторить. Отдельно от Prometheus, потому что это его работа: Prometheus
+  # умеет заметить, но не умеет замолчать на время починки.
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    # Значения подставляются в копию конфига перед запуском: сам Alertmanager
+    # переменные окружения в конфиге не раскрывает.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        sed -e "s|__BOT_TOKEN__|$$TELEGRAM_ALERT_BOT_TOKEN|"
+        -e "s|__CHAT_ID__|$$TELEGRAM_ALERT_CHAT_ID|"
+        /etc/alertmanager/alertmanager.yml > /tmp/alertmanager.yml
+        && exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/alertmanager
+    environment:
+      # Без токена контейнер не поднимется. Это честнее, чем работать и молча
+      # копить оповещения, которым некуда идти.
+      - TELEGRAM_ALERT_BOT_TOKEN=${TELEGRAM_ALERT_BOT_TOKEN:?нужен TELEGRAM_ALERT_BOT_TOKEN}
+      - TELEGRAM_ALERT_CHAT_ID=${TELEGRAM_ALERT_CHAT_ID:?нужен TELEGRAM_ALERT_CHAT_ID}
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+    mem_limit: 192m
+    memswap_limit: 192m
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
