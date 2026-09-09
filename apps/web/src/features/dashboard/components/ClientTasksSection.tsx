@@ -26,6 +26,7 @@ import {
 import { dashboardApi } from '../api/dashboardApi'
 import { useDashboardStore } from '../store/dashboardStore'
 import { WORKOUT_TYPES } from './WorkoutBlock'
+import { workoutTypeLabel } from '../utils/workoutTypeLabel'
 import { cn } from '@/shared/utils/cn'
 import { formatLocalDate } from '@/shared/utils/format'
 import type { ClientTaskView, ClientTaskType } from '../types'
@@ -437,7 +438,7 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                                                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                                         )}
                                     >
-                                        {type}
+                                        {workoutTypeLabel(type)}
                                     </button>
                                 ))}
                             </div>

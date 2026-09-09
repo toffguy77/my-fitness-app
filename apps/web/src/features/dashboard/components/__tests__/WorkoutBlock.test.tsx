@@ -75,7 +75,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Силовая',
+                            type: 'strength',
                             duration: 60,
                         },
                     },
@@ -94,7 +94,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Кардио',
+                            type: 'cardio',
                         },
                     },
                 },
@@ -112,7 +112,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Йога',
+                            type: 'yoga',
                             duration: 45,
                         },
                     },
@@ -131,7 +131,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Бег',
+                            type: 'running',
                             duration: 90,
                         },
                     },
@@ -150,7 +150,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Велосипед',
+                            type: 'cycling',
                             duration: 120,
                         },
                     },
@@ -169,7 +169,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'HIIT',
+                            type: 'hiit',
                         },
                     },
                 },
@@ -374,8 +374,8 @@ describe('WorkoutBlock', () => {
                     type: 'workout',
                     data: {
                         completed: true,
-                        types: ['Йога'],
-                        type: 'Йога',
+                        types: ['yoga'],
+                        type: 'yoga',
                         typeDurations: {},
                     },
                 })
@@ -407,9 +407,9 @@ describe('WorkoutBlock', () => {
                     type: 'workout',
                     data: {
                         completed: true,
-                        types: ['HIIT'],
-                        type: 'HIIT',
-                        typeDurations: { HIIT: 30 },
+                        types: ['hiit'],
+                        type: 'hiit',
+                        typeDurations: { hiit: 30 },
                     },
                 })
             })
@@ -476,9 +476,9 @@ describe('WorkoutBlock', () => {
                     type: 'workout',
                     data: {
                         completed: true,
-                        types: ['Силовая', 'Кардио'],
-                        type: 'Силовая',
-                        typeDurations: { Силовая: 45, Кардио: 30 },
+                        types: ['strength', 'cardio'],
+                        type: 'strength',
+                        typeDurations: { strength: 45, cardio: 30 },
                     },
                 })
             })
@@ -539,7 +539,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Силовая',
+                            type: 'strength',
                         },
                     },
                 },
@@ -569,7 +569,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Йога',
+                            type: 'yoga',
                         },
                     },
                 },
@@ -683,7 +683,7 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Силовая',
+                            type: 'strength',
                         },
                     },
                 },
@@ -757,8 +757,8 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Йога',
-                            types: ['Йога'],
+                            type: 'yoga',
+                            types: ['yoga'],
                             typeDurations: { 'Йога': 45 },
                         },
                     },
@@ -785,8 +785,8 @@ describe('WorkoutBlock', () => {
                     '2024-01-15': {
                         workout: {
                             completed: true,
-                            type: 'Бег',
-                            types: ['Бег'],
+                            type: 'running',
+                            types: ['running'],
                             typeDurations: { 'Бег': 30 },
                         },
                     },

@@ -156,3 +156,96 @@ func unitCounts(t *testing.T, db *database.DB, table, column string) map[string]
 	require.NoError(t, rows.Err())
 	return out
 }
+
+// The workout column holds codes, durations and whatever somebody typed
+// themselves, all in one comma-separated string. Migration 062 must convert the
+// eight known names and leave the rest of it exactly as it was.
+func TestWorkoutTypesBecomeCodes(t *testing.T) {
+	db := freshDatabase(t)
+	ctx := context.Background()
+	require.NoError(t, database.NewMigrator(db, migrations.FS, logger.New()).Run(ctx, 0))
+
+	var userID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password, name, role) VALUES ('workouts@example.test','x','W','client')
+		 RETURNING id`).Scan(&userID))
+
+	cases := []struct {
+		day    string
+		stored string
+		want   string
+	}{
+		{"2026-01-01", "Силовая", "strength"},
+		{"2026-01-02", "Силовая:45,Кардио:30", "strength:45,cardio:30"},
+		{"2026-01-03", "Бег, Растяжка", "running,stretching"},
+		// What somebody typed for themselves is not a code and must survive.
+		{"2026-01-04", "Танцы:60", "Танцы:60"},
+		{"2026-01-05", "Кардио:20,Танцы", "cardio:20,Танцы"},
+		{"2026-01-06", "HIIT", "hiit"},
+	}
+	for _, c := range cases {
+		_, err := db.ExecContext(ctx,
+			`INSERT INTO daily_metrics (user_id, date, workout_completed, workout_type)
+			 VALUES ($1, $2::date, true, $3)`, userID, c.day, c.stored)
+		require.NoError(t, err, "inserting %q", c.stored)
+	}
+
+	runMigrationFile(t, db, "062_neutral_workout_codes_up.sql")
+
+	for _, c := range cases {
+		var got string
+		require.NoError(t, db.QueryRowContext(ctx,
+			`SELECT workout_type FROM daily_metrics WHERE user_id = $1 AND date = $2::date`,
+			userID, c.day).Scan(&got))
+		assert.Equal(t, c.want, got, "for %q", c.stored)
+	}
+}
+
+func TestWorkoutCodesRollBack(t *testing.T) {
+	db := freshDatabase(t)
+	ctx := context.Background()
+	require.NoError(t, database.NewMigrator(db, migrations.FS, logger.New()).Run(ctx, 0))
+
+	var userID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password, name, role) VALUES ('back@example.test','x','B','client')
+		 RETURNING id`).Scan(&userID))
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO daily_metrics (user_id, date, workout_completed, workout_type)
+		 VALUES ($1, '2026-02-01'::date, true, 'strength:45,Танцы')`, userID)
+	require.NoError(t, err)
+
+	runMigrationFile(t, db, "062_neutral_workout_codes_down.sql")
+
+	var got string
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT workout_type FROM daily_metrics WHERE user_id = $1`, userID).Scan(&got))
+	assert.Equal(t, "Силовая:45,Танцы", got)
+}
+
+// A day with no workout must not be touched: rebuilding an empty string into
+// an empty list would write "" where NULL belongs.
+func TestWorkoutMigrationLeavesEmptyDaysAlone(t *testing.T) {
+	db := freshDatabase(t)
+	ctx := context.Background()
+	require.NoError(t, database.NewMigrator(db, migrations.FS, logger.New()).Run(ctx, 0))
+
+	var userID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password, name, role) VALUES ('empty@example.test','x','E','client')
+		 RETURNING id`).Scan(&userID))
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO daily_metrics (user_id, date, workout_completed, workout_type)
+		 VALUES ($1, '2026-03-01'::date, false, NULL), ($1, '2026-03-02'::date, false, '')`, userID)
+	require.NoError(t, err)
+
+	runMigrationFile(t, db, "062_neutral_workout_codes_up.sql")
+
+	var nullCount, emptyCount int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT count(*) FROM daily_metrics WHERE user_id = $1 AND workout_type IS NULL`, userID).Scan(&nullCount))
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT count(*) FROM daily_metrics WHERE user_id = $1 AND workout_type = ''`, userID).Scan(&emptyCount))
+	assert.Equal(t, 1, nullCount)
+	assert.Equal(t, 1, emptyCount)
+}

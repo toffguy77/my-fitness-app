@@ -263,7 +263,7 @@ describe('ClientTasksSection', () => {
             // Should call API with workout data
             await waitFor(() => {
                 expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('w2', {
-                    workout_type: 'HIIT',
+                    workout_type: 'hiit',
                     workout_duration: 30,
                 })
             })
@@ -349,7 +349,7 @@ describe('ClientTasksSection', () => {
 
             await waitFor(() => {
                 expect(mockDashboardApi.completeTask).toHaveBeenCalledWith('w5', {
-                    workout_type: 'Бег',
+                    workout_type: 'running',
                     workout_duration: undefined,
                 })
             })

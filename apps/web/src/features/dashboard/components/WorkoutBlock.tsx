@@ -23,6 +23,7 @@ import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
 
+import { workoutTypeLabel, workoutTypeCode } from '../utils/workoutTypeLabel'
 /**
  * Props for WorkoutBlock component
  */
@@ -35,29 +36,24 @@ export interface WorkoutBlockProps {
  * Workout type options
  */
 // The workout types are stored with the workout and compared against in the
-// state, so a translated copy would not match rows already saved. A second
-// language needs these migrated to neutral codes first — see the i18n change,
-// task 6.4. Until then they are values that happen to read as Russian.
+// state. They were Russian words until migration 062; codes now, so a second
+// language can name them and the stored rows still match.
 //
 // OTHER_TYPE is named rather than written out at each comparison: it is the one
 // entry with behaviour attached — it switches on the custom-name field — and
-// spelling it eight times made that invisible.
-// i18n-exempt: stored value, see above.
-export const OTHER_TYPE = 'Другое'
+// spelling it eight times made that invisible. It is also the one that never
+// reaches the database: what gets stored is what the person typed instead.
+export const OTHER_TYPE = 'other'
 
-// i18n-exempt: stored values, see above.
 export const WORKOUT_TYPES = [
-    // i18n-exempt: stored values, see above.
-    'Силовая',
-    'Кардио',
-    'Йога',
-    'HIIT',
-    // i18n-exempt: stored values, see above.
-    'Растяжка',
-    'Плавание',
-    'Бег',
-    // i18n-exempt: stored values, see above.
-    'Велосипед',
+    'strength',
+    'cardio',
+    'yoga',
+    'hiit',
+    'stretching',
+    'swimming',
+    'running',
+    'cycling',
     OTHER_TYPE,
 ] as const
 
@@ -201,10 +197,14 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     // Handle quick add button
     const handleQuickAdd = useCallback(() => {
         if (isWorkoutCompleted) {
-            setSelectedTypes(workout.types ?? (workout.type ? [workout.type] : []))
+            // Through the code map: a day saved before migration 062 holds
+            // Russian words, and comparing those against the code list would
+            // leave every button unselected and then save the workout as if it
+            // had been typed by hand.
+            setSelectedTypes((workout.types ?? (workout.type ? [workout.type] : [])).map(workoutTypeCode))
             if (workout.typeDurations) {
                 setDurations(Object.fromEntries(
-                    Object.entries(workout.typeDurations).map(([k, v]) => [k, String(v)])
+                    Object.entries(workout.typeDurations).map(([k, v]) => [workoutTypeCode(k), String(v)])
                 ))
             } else {
                 setDurations({})
@@ -283,9 +283,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                         <div className="space-y-1">
                             {(workout.types ?? (workout.type ? [workout.type] : [])).map(workoutType => (
                                 <div key={workoutType} className="flex items-center justify-center gap-2 text-gray-700"
-                                    aria-label={t('dashboard.workout.typeAria', { type: workoutType })}>
+                                    aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(workoutType) })}>
                                     <Dumbbell className="h-4 w-4" aria-hidden="true" />
-                                    <span className="font-medium">{workoutType}</span>
+                                    <span className="font-medium">{workoutTypeLabel(workoutType)}</span>
                                     {workout.typeDurations?.[workoutType] && (
                                         <>
                                             <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
@@ -372,9 +372,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                                 ? 'bg-blue-100 border-blue-300 text-blue-700'
                                                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                                         )}
-                                        aria-label={t('dashboard.workout.typeAria', { type })}
+                                        aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(type) })}
                                     >
-                                        {type}
+                                        {workoutTypeLabel(type)}
                                     </button>
                                 ))}
                             </div>
@@ -401,7 +401,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                             <div className="space-y-2">
                                 <span className="text-sm font-medium text-gray-700">{t('dashboard.workout.durationLabel')}</span>
                                 {selectedTypes.map(type => {
-                                    const displayName = type === OTHER_TYPE ? (customType || OTHER_TYPE) : type
+                                    const displayName = type === OTHER_TYPE ? (customType || workoutTypeLabel(OTHER_TYPE)) : workoutTypeLabel(type)
                                     return (
                                         <div key={type} className="flex items-center gap-2">
                                             <span className="text-sm text-gray-600 min-w-[7rem] shrink-0">{displayName}:</span>

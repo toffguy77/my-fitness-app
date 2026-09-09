@@ -6,6 +6,7 @@ import { cn } from '@/shared/utils/cn'
 import type { DayDetail } from '../types'
 
 import { t } from '@/shared/i18n'
+import { workoutTypeLabel } from '@/features/dashboard/utils/workoutTypeLabel'
 interface WorkoutsSectionProps {
     days: DayDetail[]
 }
@@ -70,7 +71,7 @@ export function WorkoutsSection({ days }: WorkoutsSectionProps) {
                     <div key={d.date} className="flex items-center justify-between text-xs">
                         <span className="text-gray-600">{d.label}</span>
                         <span className="text-gray-900 font-medium">
-                            {d.workout!.type || t('curator.workouts.fallbackType')}
+                            {d.workout!.type ? workoutTypeLabel(d.workout!.type) : t('curator.workouts.fallbackType')}
                             {d.workout!.duration > 0 && t('curator.workouts.duration', { minutes: d.workout!.duration })}
                         </span>
                     </div>

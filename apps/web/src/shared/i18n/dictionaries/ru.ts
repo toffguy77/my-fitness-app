@@ -371,6 +371,17 @@ export const ru = {
         },
     },
     dashboard: {
+        workoutTypes: {
+            strength: 'Силовая',
+            cardio: 'Кардио',
+            yoga: 'Йога',
+            hiit: 'HIIT',
+            stretching: 'Растяжка',
+            swimming: 'Плавание',
+            running: 'Бег',
+            cycling: 'Велосипед',
+            other: 'Другое',
+        },
         workout: {
             durationRange: 'Длительность должна быть от 1 до 600 минут',
             pickType: 'Выберите тип тренировки',
