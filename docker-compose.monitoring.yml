@@ -15,7 +15,9 @@
 
 services:
   prometheus:
-    image: prom/prometheus:v3.1.0
+    build:
+      context: ./monitoring
+      dockerfile: prometheus.Dockerfile
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -24,8 +26,6 @@ services:
       - --storage.tsdb.retention.time=15d
       - --web.enable-lifecycle
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     networks:
       - dokploy-network
@@ -39,7 +39,9 @@ services:
         max-file: "3"
 
   grafana:
-    image: grafana/grafana:11.5.1
+    build:
+      context: ./monitoring
+      dockerfile: grafana.Dockerfile
     environment:
       # Пароль задаётся переменной окружения проекта в Dokploy. Пустое
       # значение здесь означало бы admin/admin на машине, смотрящей в
@@ -59,9 +61,6 @@ services:
       - 'test -n "$$GF_SECURITY_ADMIN_PASSWORD" || { echo "GRAFANA_ADMIN_PASSWORD не задан — Grafana смотрит наружу, пароль обязателен"; exit 1; }; exec /run.sh'
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
-      - ./monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
-      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards/burcev:ro
     networks:
       - dokploy-network
     depends_on:
