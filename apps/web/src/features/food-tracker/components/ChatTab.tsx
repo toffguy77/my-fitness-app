@@ -281,7 +281,7 @@ export function ChatTab({
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileChange}
                 className="hidden"
-                aria-label="Выбрать фото"
+                aria-label={t('foodTracker.chat.choosePhoto')}
             />
         </div>
     );

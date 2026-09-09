@@ -65,11 +65,70 @@ function walk(dir, out = []) {
     return out
 }
 
-/** Strips comments so a Russian explanation above the code is not a finding. */
+/**
+ * Strips comments so a Russian explanation above the code is not a finding.
+ *
+ * String-aware on purpose. A regular expression cannot be: `accept="image/*"`
+ * contains the two characters that open a block comment, and a naive strip
+ * treated everything from there to the next `*​/` as a comment — blanking real
+ * code and every untranslated string inside it. This checker reported "i18n OK"
+ * for months while two aria-labels sat in the blind spot.
+ *
+ * So this walks the source once, tracking whether it is inside a string, and
+ * only then treats `/*` and `//` as comments. Newlines are preserved so line
+ * numbers still point at the right place.
+ */
 function stripComments(source) {
-    return source
-        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-        .replace(/(^|[^:])\/\/[^\n]*/g, (m, p) => p)
+    let out = ''
+    let i = 0
+    let quote = null // ' " or ` when inside a string literal
+
+    while (i < source.length) {
+        const c = source[i]
+        const next = source[i + 1]
+
+        if (quote) {
+            if (c === '\\') {
+                // An escape takes the next character with it, whatever it is.
+                out += c + (next ?? '')
+                i += 2
+                continue
+            }
+            if (c === quote) quote = null
+            out += c
+            i += 1
+            continue
+        }
+
+        if (c === '"' || c === "'" || c === '`') {
+            quote = c
+            out += c
+            i += 1
+            continue
+        }
+
+        if (c === '/' && next === '*') {
+            const end = source.indexOf('*/', i + 2)
+            const stop = end === -1 ? source.length : end + 2
+            // Keep the newlines so reported line numbers stay true.
+            out += source.slice(i, stop).replace(/[^\n]/g, ' ')
+            i = stop
+            continue
+        }
+
+        if (c === '/' && next === '/') {
+            let end = source.indexOf('\n', i)
+            if (end === -1) end = source.length
+            out += ' '.repeat(end - i)
+            i = end
+            continue
+        }
+
+        out += c
+        i += 1
+    }
+
+    return out
 }
 
 const files = TRANSLATED.flatMap((dir) => walk(dir))
