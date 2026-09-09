@@ -15,6 +15,7 @@ import type { NutrientRecommendation, ProgressColor } from '../types';
 import { getProgressColor, getPercentage } from '../utils/kbzhuCalculator';
 import { t } from '@/shared/i18n';
 
+import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 // Types
 // ============================================================================
@@ -90,14 +91,14 @@ export function NutrientRecommendationItem({
     const displayPercentage = Math.min(percentage, 100);
 
     // Format progress text
-    const progressText = `${formatNumber(currentIntake)} / ${formatNumber(dailyTarget)} ${unit}`;
+    const progressText = `${formatNumber(currentIntake)} / ${formatNumber(dailyTarget)} ${unitLabel(unit)}`;
 
     // Accessibility label
     const ariaLabel = t('foodTracker.nutrientItem.aria', {
         name,
         current: formatNumber(currentIntake),
         target: formatNumber(dailyTarget),
-        unit,
+        unit: unitLabel(unit),
         percentage: Math.round(percentage),
     });
 

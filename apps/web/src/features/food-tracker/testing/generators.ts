@@ -1,5 +1,3 @@
-// i18n-exempt-file: fixtures for property tests; the unit strings here are the
-// stored values, not labels.
 /**
  * Property-based test generators for food tracker
  * Uses fast-check to generate random test data
@@ -88,7 +86,7 @@ export const foodItemGenerator = (): fc.Arbitrary<FoodItem> => {
         brand: fc.option(fc.string({ minLength: 2, maxLength: 50 }), { nil: undefined }),
         category: fc.string({ minLength: 2, maxLength: 50 }),
         servingSize: fc.float({ min: 1, max: 1000, noNaN: true }),
-        servingUnit: fc.constantFrom('г', 'мл', 'шт', 'порция') /* i18n-exempt: stored values */,
+        servingUnit: fc.constantFrom('g', 'ml', 'pcs', 'serving'),
         nutritionPer100: kbzhuGenerator(),
         barcode: fc.option(fc.stringMatching(/^\d{8,13}$/), { nil: undefined }),
         source: foodSourceGenerator(),
@@ -198,7 +196,7 @@ export const nutrientRecommendationGenerator = (): fc.Arbitrary<NutrientRecommen
         name: fc.string({ minLength: 2, maxLength: 50 }),
         category: nutrientCategoryTypeGenerator(),
         dailyTarget: fc.float({ min: Math.fround(0.001), max: Math.fround(10000), noNaN: true }),
-        unit: fc.constantFrom('г', 'мг', 'мкг', 'МЕ') /* i18n-exempt: stored values */,
+        unit: fc.constantFrom('g', 'mg', 'mcg', 'IU'),
         isWeekly: fc.boolean(),
         isCustom: fc.boolean(),
     });
@@ -211,7 +209,7 @@ export const nutrientFoodSourceGenerator = (): fc.Arbitrary<NutrientFoodSource> 
     return fc.record({
         foodName: fc.string({ minLength: 2, maxLength: 100 }),
         amount: fc.float({ min: 0, max: 1000, noNaN: true }),
-        unit: fc.constantFrom('г', 'мг', 'мкг', 'МЕ') /* i18n-exempt: stored values */,
+        unit: fc.constantFrom('g', 'mg', 'mcg', 'IU'),
         contribution: fc.float({ min: 0, max: 100, noNaN: true }),
     });
 };
@@ -228,7 +226,7 @@ export const nutrientDetailGenerator = (): fc.Arbitrary<NutrientDetail> => {
         effects: fc.string({ minLength: 10, maxLength: 500 }),
         minRecommendation: fc.float({ min: 0, max: 1000, noNaN: true }),
         optimalRecommendation: fc.float({ min: 0, max: 2000, noNaN: true }),
-        unit: fc.constantFrom('г', 'мг', 'мкг', 'МЕ') /* i18n-exempt: stored values */,
+        unit: fc.constantFrom('g', 'mg', 'mcg', 'IU'),
         sourcesInDiet: fc.array(nutrientFoodSourceGenerator(), { minLength: 0, maxLength: 10 }),
     });
 };
@@ -286,7 +284,7 @@ export const mealTemplateGenerator = (): fc.Arbitrary<MealTemplate> => {
  * Generate a custom recommendation unit
  */
 export const customRecommendationUnitGenerator = (): fc.Arbitrary<CustomRecommendationUnit> => {
-    return fc.constantFrom('г', 'мг', 'мкг', 'МЕ') /* i18n-exempt: stored values */;
+    return fc.constantFrom('g', 'mg', 'mcg', 'IU');
 };
 
 /**

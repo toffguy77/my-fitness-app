@@ -21,6 +21,7 @@ import type {
 } from '../types';
 import { t } from '@/shared/i18n';
 
+import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 // Types
 // ============================================================================
@@ -291,7 +292,7 @@ export function RecommendationsTab({
                                                 {rec.name}
                                             </span>
                                             <span className="text-xs text-gray-500 sm:text-sm">
-                                                {rec.currentIntake} / {rec.dailyTarget} {rec.unit}
+                                                {rec.currentIntake} / {rec.dailyTarget} {unitLabel(rec.unit)}
                                             </span>
                                         </button>
                                     ))

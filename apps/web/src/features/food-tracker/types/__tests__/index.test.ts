@@ -325,7 +325,7 @@ describe('Food Tracker Types', () => {
         it('should have valid unit', () => {
             fc.assert(
                 fc.property(nutrientRecommendationGenerator(), (rec: NutrientRecommendation) => {
-                    expect(['г', 'мг', 'мкг', 'МЕ']).toContain(rec.unit);
+                    expect(['g', 'mg', 'mcg', 'IU']).toContain(rec.unit);
                     return true;
                 }),
                 { numRuns: 100 }
@@ -408,7 +408,7 @@ describe('Food Tracker Types', () => {
         it('should have valid unit', () => {
             fc.assert(
                 fc.property(customRecommendationGenerator(), (rec: CustomRecommendation) => {
-                    expect(['г', 'мг', 'мкг', 'МЕ']).toContain(rec.unit);
+                    expect(['g', 'mg', 'mcg', 'IU']).toContain(rec.unit);
                     return true;
                 }),
                 { numRuns: 100 }

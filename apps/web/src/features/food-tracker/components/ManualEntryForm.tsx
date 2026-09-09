@@ -152,10 +152,8 @@ export function ManualEntryForm({
                 fat_per_100: parseFloat(formData.fat.replace(',', '.')) || 0,
                 carbs_per_100: parseFloat(formData.carbs.replace(',', '.')) || 0,
                 serving_size: parseFloat(formData.servingSize.replace(',', '.')) || 100,
-                // i18n-exempt: stored in user_foods.serving_unit, not shown as a
-            // label. Translating it would write 'g' into rows that everything
-            // else reads as 'г'.
-            serving_unit: 'г',
+                // A stored value, not a label: the screen looks up what to show.
+            serving_unit: 'g',
             };
 
             const url = getApiUrl('/food-tracker/user-foods');

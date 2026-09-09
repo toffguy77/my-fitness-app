@@ -42,17 +42,14 @@ interface FormErrors {
 // Constants
 // ============================================================================
 
-// i18n-exempt: these are stored values, not labels — user_nutrient_preferences
-// keeps the unit as written here, so a translated copy would not match the rows
-// already in the database. What a person reads is UNIT_LABELS below.
-const UNITS: CustomRecommendationUnit[] = ['г', 'мг', 'мкг', 'МЕ'];
+// Stored values. What a person reads is UNIT_LABELS below.
+const UNITS: CustomRecommendationUnit[] = ['g', 'mg', 'mcg', 'IU'];
 
 const UNIT_LABELS: Record<CustomRecommendationUnit, string> = {
-    // i18n-exempt: keys, matching the stored values above.
-    'г': t('foodTracker.customRecommendation.unitGrams'),
-    'мг': t('foodTracker.customRecommendation.unitMilligrams'),
-    'мкг': t('foodTracker.customRecommendation.unitMicrograms'),
-    'МЕ': t('foodTracker.customRecommendation.unitIU'), // i18n-exempt: key, matching the stored value
+    g: t('foodTracker.customRecommendation.unitGrams'),
+    mg: t('foodTracker.customRecommendation.unitMilligrams'),
+    mcg: t('foodTracker.customRecommendation.unitMicrograms'),
+    IU: t('foodTracker.customRecommendation.unitIU'),
 };
 
 // ============================================================================
@@ -105,7 +102,7 @@ export function AddCustomRecommendationForm({
     // Form state
     const [name, setName] = useState('');
     const [dailyTarget, setDailyTarget] = useState('');
-    const [unit, setUnit] = useState<CustomRecommendationUnit>('мг' /* i18n-exempt: stored value */);
+    const [unit, setUnit] = useState<CustomRecommendationUnit>('mg');
     const [errors, setErrors] = useState<FormErrors>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -119,7 +116,7 @@ export function AddCustomRecommendationForm({
             setTimeout(() => {
                 setName('');
                 setDailyTarget('');
-                setUnit('мг'); // i18n-exempt: stored value
+                setUnit('mg');
                 setErrors({});
                 setTouched({});
             }, 0);

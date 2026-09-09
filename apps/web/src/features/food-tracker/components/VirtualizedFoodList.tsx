@@ -15,6 +15,7 @@ import type { CSSProperties } from 'react';
 import type { FoodItem } from '../types';
 import { t } from '@/shared/i18n';
 
+import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 // Types
 // ============================================================================
@@ -72,7 +73,7 @@ function FoodRow({
     );
 
     // Format serving info
-    const servingInfo = `${food.servingSize} ${food.servingUnit}`;
+    const servingInfo = `${food.servingSize} ${unitLabel(food.servingUnit)}`;
 
     return (
         <div style={style}>
@@ -163,7 +164,7 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
         [food, onSelect]
     );
 
-    const servingInfo = `${food.servingSize} ${food.servingUnit}`;
+    const servingInfo = `${food.servingSize} ${unitLabel(food.servingUnit)}`;
 
     return (
         <li

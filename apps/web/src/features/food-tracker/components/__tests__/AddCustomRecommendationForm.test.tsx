@@ -156,9 +156,9 @@ describe('AddCustomRecommendationForm', () => {
             renderForm();
 
             const unitSelect = screen.getByLabelText(/Единица измерения/);
-            await user.selectOptions(unitSelect, 'мкг');
+            await user.selectOptions(unitSelect, 'mcg');
 
-            expect(unitSelect).toHaveValue('мкг');
+            expect(unitSelect).toHaveValue('mcg');
         });
     });
 
@@ -257,7 +257,7 @@ describe('AddCustomRecommendationForm', () => {
             expect(props.onAdd).toHaveBeenCalledWith({
                 name: 'Омега-3',
                 dailyTarget: 1000,
-                unit: 'мг',
+                unit: 'mg',
             });
         });
 
@@ -279,14 +279,14 @@ describe('AddCustomRecommendationForm', () => {
 
             await user.type(screen.getByLabelText(/Название/), 'Витамин D');
             await user.type(screen.getByLabelText(/Дневная норма/), '20');
-            await user.selectOptions(screen.getByLabelText(/Единица измерения/), 'мкг');
+            await user.selectOptions(screen.getByLabelText(/Единица измерения/), 'mcg');
 
             await user.click(screen.getByRole('button', { name: /Добавить/ }));
 
             expect(props.onAdd).toHaveBeenCalledWith({
                 name: 'Витамин D',
                 dailyTarget: 20,
-                unit: 'мкг',
+                unit: 'mcg',
             });
         });
     });

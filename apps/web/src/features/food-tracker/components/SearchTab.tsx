@@ -14,6 +14,7 @@ import { Search, Clock, Star, Plus, ChevronRight } from 'lucide-react';
 import type { FoodItem, MealType } from '../types';
 import { t } from '@/shared/i18n';
 
+import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 // Types
 // ============================================================================
@@ -346,7 +347,7 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
 
     // Format serving info
     const servingInfo = useMemo(() => {
-        return `${food.servingSize} ${food.servingUnit}`;
+        return `${food.servingSize} ${unitLabel(food.servingUnit)}`;
     }, [food.servingSize, food.servingUnit]);
 
     return (

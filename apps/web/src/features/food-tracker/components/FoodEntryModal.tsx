@@ -107,7 +107,7 @@ export function FoodEntryModal({
                   name: editingEntry.foodName,
                   nutritionPer100: per100Of(editingEntry),
                   servingSize: editingEntry.portionAmount,
-                  servingUnit: editingEntry.portionType === 'milliliters' ? t('units.milliliter') : t('units.gram'),
+                  servingUnit: editingEntry.portionType === 'milliliters' ? 'ml' : 'g',
               } as FoodItem)
             : null
     );

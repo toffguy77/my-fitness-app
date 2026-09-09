@@ -33,6 +33,7 @@ export const ru = {
         milligram: 'мг',
         microgram: 'мкг',
         iu: 'МЕ',
+        serving: 'порция',
         kcal: 'ккал',
     },
     months: {

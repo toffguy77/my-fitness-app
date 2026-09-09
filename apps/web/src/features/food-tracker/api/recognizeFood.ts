@@ -40,8 +40,8 @@ export async function recognizeFood(photo: File): Promise<RecognitionResult[]> {
             name: food.name,
             category: 'ai',
             servingSize: getEstimatedWeight(food),
-            // i18n-exempt: stored with the entry, not shown as a label.
-        servingUnit: 'г',
+            // A stored value, not a label.
+        servingUnit: 'g',
             nutritionPer100: {
                 calories: food.nutrition.calories,
                 protein: food.nutrition.protein,

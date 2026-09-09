@@ -18,6 +18,7 @@ import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NutrientRecommendation, NutrientCategoryType } from '../types';
 import { t } from '@/shared/i18n';
 
+import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 // Types
 // ============================================================================
@@ -94,7 +95,7 @@ function NutrientCheckbox({
                 className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
             />
             <span className="text-sm text-gray-900 flex-1">{nutrient.name}</span>
-            <span className="text-xs text-gray-500">{nutrient.unit}</span>
+            <span className="text-xs text-gray-500">{unitLabel(nutrient.unit)}</span>
         </label>
     );
 }
