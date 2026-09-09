@@ -119,3 +119,39 @@ jobs:
             echo "### Deployment to ${{ needs.resolve.outputs.environment }} failed ❌" >> "$GITHUB_STEP_SUMMARY"
             echo "Readiness probe: ${{ needs.resolve.outputs.health_url }}" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      # Оповещение в канал команды.
+      #
+      # Как и всё остальное необязательное здесь, включается наличием секрета:
+      # без DEPLOY_NOTIFY_WEBHOOK шаг проходит и говорит об этом, а не падает.
+      # Секрет — адрес входящего webhook (Telegram, Slack, Mattermost — любой,
+      # принимающий JSON с полем text).
+      #
+      # `if: always()` важнее, чем кажется: оповещение о провале нужнее, чем
+      # об успехе, а без этого приходили бы только вторые.
+      - name: Notify the team
+        if: always()
+        env:
+          WEBHOOK: ${{ secrets.DEPLOY_NOTIFY_WEBHOOK }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DEPLOY_NOTIFY_WEBHOOK не задан — оповещение не отправляется."
+            exit 0
+          fi
+
+          if [ "${{ job.status }}" = "success" ]; then
+            text="✅ ${{ needs.resolve.outputs.environment }}: выкачено ${{ github.sha }}"
+          else
+            text="❌ ${{ needs.resolve.outputs.environment }}: выкатка ${{ github.sha }} не удалась — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+
+          # Сообщение — данные, а не часть команды: собирается через jq, чтобы
+          # кавычки и переводы строк в нём не ломали запрос.
+          payload=$(jq -nc --arg text "$text" '{text: $text}')
+
+          # Провал оповещения не должен красить выкатку: она уже состоялась
+          # или уже провалилась, и это её собственный итог.
+          if ! curl -sS --fail --max-time 20 -H 'Content-Type: application/json' \
+               -d "$payload" "$WEBHOOK" >/dev/null; then
+            echo "::warning::Не удалось отправить оповещение о выкатке"
+          fi
