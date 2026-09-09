@@ -13,6 +13,14 @@ global:
   external_labels:
     monitor: burcev
 
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
 scrape_configs:
   - job_name: burcev-api
     metrics_path: /metrics

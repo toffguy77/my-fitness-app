@@ -25,12 +25,47 @@ services:
       - --web.enable-lifecycle
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     networks:
       - dokploy-network
     restart: unless-stopped
     mem_limit: 512m
     memswap_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # Alertmanager разворачивает сработавшее правило в сообщение и решает, когда
+  # его повторить. Отдельно от Prometheus, потому что это его работа: Prometheus
+  # умеет заметить, но не умеет замолчать на время починки.
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    # Значения подставляются в копию конфига перед запуском: сам Alertmanager
+    # переменные окружения в конфиге не раскрывает.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        sed -e "s|__BOT_TOKEN__|$$TELEGRAM_ALERT_BOT_TOKEN|"
+        -e "s|__CHAT_ID__|$$TELEGRAM_ALERT_CHAT_ID|"
+        /etc/alertmanager/alertmanager.yml > /tmp/alertmanager.yml
+        && exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/alertmanager
+    environment:
+      # Без токена контейнер не поднимется. Это честнее, чем работать и молча
+      # копить оповещения, которым некуда идти.
+      - TELEGRAM_ALERT_BOT_TOKEN=${TELEGRAM_ALERT_BOT_TOKEN:?нужен TELEGRAM_ALERT_BOT_TOKEN}
+      - TELEGRAM_ALERT_CHAT_ID=${TELEGRAM_ALERT_CHAT_ID:?нужен TELEGRAM_ALERT_CHAT_ID}
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+    mem_limit: 192m
+    memswap_limit: 192m
     logging:
       driver: json-file
       options:
@@ -71,6 +106,7 @@ services:
 
 volumes:
   prometheus-data:
+  alertmanager-data:
   grafana-data:
 
 networks:

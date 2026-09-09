@@ -1,0 +1,61 @@
+# Оповещения по симптомам, а не по причинам.
+#
+# Правило стоит здесь только тогда, когда на него есть что ответить: сигнал,
+# на который дежурный ничего не делает, через месяц перестают читать.
+#
+# Имена метрик — с префиксом burcev_: пространство имён задаётся при создании
+# (telemetry.New("burcev", ...)). Правило, написанное по памяти без префикса,
+# не сработает никогда и об этом никак не сообщит.
+
+groups:
+  - name: burcev
+    rules:
+      # Сценарий спеки «Рост доли ошибок сервера».
+      - alert: HighServerErrorRate
+        expr: |
+          sum by (environment) (rate(burcev_http_requests_total{status=~"5.."}[5m]))
+            /
+          sum by (environment) (rate(burcev_http_requests_total[5m]))
+            > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.environment }}: больше 5% ответов — ошибки сервера"
+          description: >-
+            Разбивка по маршрутам:
+            topk(5, sum by (route) (rate(burcev_http_requests_total{status=~"5.."}[5m])))
+
+      # Опрос не проходит: контейнер упал, завис или потерял сеть.
+      - alert: ServiceDown
+        expr: up{job="burcev-api"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.environment }}: сервис не отвечает на опрос метрик"
+
+      # Запросы реально ждали соединения с базой. Это симптом, а не догадка о
+      # заполненности пула: счётчик растёт только тогда, когда кто-то стоял в
+      # очереди. Верхней границы пула среди метрик нет, и сравнивать не с чем.
+      - alert: DatabaseConnectionWaits
+        expr: increase(burcev_db_connection_waits_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.environment }}: запросы ждут свободного соединения с БД"
+
+      # Фоновая задача упала. В вебе этого не видно — только здесь.
+      #
+      # exported_job, а не job: у метрики своя метка job, а Prometheus держит
+      # под этим именем имя цели опроса и переименовывает чужую с префиксом.
+      - alert: BackgroundJobFailing
+        expr: increase(burcev_job_runs_total{status="failure"}[1h]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: >-
+            {{ $labels.environment }}: фоновая задача
+            {{ $labels.exported_job }} завершилась ошибкой
