@@ -213,8 +213,12 @@ type Config struct {
 }
 
 // IsProduction reports whether the service runs with production strictness.
+//
+// Both spellings count. The deployment calls it "prod" and Node calls it
+// "production"; accepting only one of them would silently turn off the strict
+// startup checks in the environment that needs them most.
 func (c *Config) IsProduction() bool {
-	return strings.EqualFold(c.Env, "production")
+	return strings.EqualFold(c.Env, "production") || strings.EqualFold(c.Env, "prod")
 }
 
 // Load loads configuration from environment variables
@@ -225,7 +229,14 @@ func Load() (*Config, error) {
 	_ = godotenv.Load("../../.env") // project root when running from apps/api
 
 	cfg := &Config{
-		Env:  getEnv("NODE_ENV", "development"),
+		// APP_ENV first, NODE_ENV only as a fallback.
+		//
+		// NODE_ENV is a Node.js convention, and compose set it to "production"
+		// for this Go service in both environments — so dev called itself
+		// production in its health answer, its logs, and, once error reporting
+		// is switched on, in every report it would file. Dokploy has always set
+		// APP_ENV correctly per environment; nothing was reading it.
+		Env:  getEnvWithFallback("APP_ENV", "NODE_ENV", "development"),
 		Port: getEnvAsInt("PORT", 4000),
 
 		// PostgreSQL configuration

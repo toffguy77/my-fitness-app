@@ -83,7 +83,11 @@ services:
       # Service definition
       - "traefik.http.services.burcev-${APP_ENV:-dev}-api.loadbalancer.server.port=4000"
     environment:
-      - NODE_ENV=production
+      # NODE_ENV is not passed to this service on purpose: it is a Node
+      # convention, it said "production" in both environments, and the Go
+      # service read it as the name of the environment it was running in. The
+      # name comes from APP_ENV below, which the deployment has always set
+      # correctly.
       - PORT=4000
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
