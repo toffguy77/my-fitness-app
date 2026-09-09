@@ -12,13 +12,13 @@
 # слиянию» и «заблокирован» одновременно, без единой упавшей проверки. Перед
 # релизом: gh workflow enable 222915356 и дождаться зелёного.
 #
-# Не покрыто здесь: сборка образов и интеграционные тесты с настоящей
-# PostgreSQL — им нужен движок контейнеров, который поднимается не всегда.
-# Интеграционные гоняются отдельно: make -C apps/api test-integration.
+# Не покрыта здесь только сборка образов.
 #
 # Использование:
-#   scripts/ci-local.sh          все проверки
-#   scripts/ci-local.sh fast     без тестов: только статика, типы, линтеры
+#   scripts/ci-local.sh              все проверки
+#   scripts/ci-local.sh fast         без тестов: только статика, типы, линтеры
+#   scripts/ci-local.sh integration  плюс интеграционные тесты на настоящей
+#                                    PostgreSQL (поднимает и убирает контейнер)
 
 set -uo pipefail
 
@@ -63,6 +63,51 @@ if [ "$MODE" != "fast" ]; then
     # куратора расходится через errgroup. Эти гонки видны только под детектором.
     step "Тесты бэкенда с детектором гонок" bash -c 'cd apps/api && go test -race ./...'
     step "Тесты фронтенда"                  bash -c 'cd apps/web && npx jest --silent'
+fi
+
+# --- Интеграционные тесты (джоба integration-tests) -------------------------
+#
+# Они гоняют миграции на настоящей PostgreSQL. Подставная база принимает любое
+# имя столбца и любой запрос — именно так в схему уезжали миграции, ломающиеся
+# только на живой базе.
+integration_tests() {
+    local container=burcev-ci-local-pg
+    local url="postgres://burcev:burcev@localhost:5433/burcev_test?sslmode=disable"
+
+    # docker бывает алиасом оболочки на podman, а алиасы в скрипт не попадают.
+    local engine=""
+    for candidate in docker podman; do
+        if command -v "$candidate" >/dev/null 2>&1; then engine="$candidate"; break; fi
+    done
+    if [ -z "$engine" ]; then
+        echo "нет ни docker, ни podman — интеграционные тесты пропущены"
+        return 1
+    fi
+
+    "$engine" rm -f "$container" >/dev/null 2>&1
+    "$engine" run -d --name "$container" \
+        -e POSTGRES_USER=burcev -e POSTGRES_PASSWORD=burcev -e POSTGRES_DB=burcev_test \
+        -p 5433:5432 postgres:16-alpine >/dev/null || return 1
+
+    local ready=1
+    for _ in $(seq 1 30); do
+        if "$engine" exec "$container" pg_isready -U burcev >/dev/null 2>&1; then ready=0; break; fi
+        sleep 2
+    done
+    if [ $ready -ne 0 ]; then
+        echo "PostgreSQL не поднялась"
+        "$engine" rm -f "$container" >/dev/null 2>&1
+        return 1
+    fi
+
+    local status=0
+    (cd apps/api && TEST_DATABASE_URL="$url" go test -race -tags=integration ./... -count=1) || status=1
+    "$engine" rm -f "$container" >/dev/null 2>&1
+    return $status
+}
+
+if [ "$MODE" = "integration" ]; then
+    step "Интеграционные тесты на настоящей PostgreSQL" integration_tests
 fi
 
 # --- Итог -------------------------------------------------------------------
