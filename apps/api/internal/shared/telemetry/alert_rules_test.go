@@ -42,6 +42,35 @@ func TestAlertRulesNameMetricsThatExist(t *testing.T) {
 		"alert rules reference metrics this service does not publish: %v", unknown)
 }
 
+// A panel that names a metric nobody publishes draws an empty graph. Unlike a
+// broken alert it is at least visible — but it is visible as "nothing is
+// happening", which is the same thing a healthy system looks like. During an
+// incident that is the worst possible answer.
+//
+// The dashboard is provisioned from the repository, so it can be checked from
+// the repository.
+func TestDashboardPanelsNameMetricsThatExist(t *testing.T) {
+	dashboard, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..",
+		"monitoring", "dashboards", "burcev-overview.json"))
+	require.NoError(t, err, "the dashboard must be readable from here")
+
+	published := publishedMetricNames(t)
+	require.NotEmpty(t, published)
+
+	referenced := regexp.MustCompile(`\bburcev_[a-z0-9_]+`).FindAllString(string(dashboard), -1)
+	require.NotEmpty(t, referenced, "no metric references found — the pattern is out of date")
+
+	var unknown []string
+	for _, name := range referenced {
+		if !published[name] {
+			unknown = append(unknown, name)
+		}
+	}
+	sort.Strings(unknown)
+	assert.Empty(t, unknown,
+		"dashboard panels reference metrics this service does not publish: %v", unknown)
+}
+
 // publishedMetricNames reads the declarations out of metrics.go rather than
 // listing them again, for the same reason the rules are read from their own
 // file: a copy is a thing that goes out of step.

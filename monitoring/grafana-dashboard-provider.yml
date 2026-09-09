@@ -1,0 +1,18 @@
+# Дашборды берутся из репозитория, а не из интерфейса.
+#
+# Дашборд, собранный мышью, живёт только в базе Grafana: его нельзя
+# просмотреть в истории, нельзя восстановить после потери тома и нельзя
+# обсудить в PR. Отсюда allowUiUpdates: false — правка в интерфейсе
+# откатится при следующей загрузке, и это намеренно: менять надо файл.
+
+apiVersion: 1
+
+providers:
+  - name: burcev
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/burcev
+      foldersFromFilesStructure: false

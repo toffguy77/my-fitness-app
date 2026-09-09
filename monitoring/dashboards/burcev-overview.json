@@ -1,0 +1,789 @@
+{
+  "uid": "burcev-overview",
+  "title": "BURCEV — обзор",
+  "description": "Собирается из monitoring/dashboards/burcev-overview.json. Правка в интерфейсе откатится: менять надо файл.",
+  "tags": [
+    "burcev"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Среда",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "burcev-prometheus"
+        },
+        "query": {
+          "query": "label_values(up{job=\"burcev-api\"}, environment)",
+          "refId": "env"
+        },
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false,
+        "current": {},
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Доля ответов 5xx",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Тот же показатель, по которому срабатывает оповещение о росте ошибок сервера. Знаменатель ограничен снизу, иначе при нулевом трафике получается деление на ноль.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * sum(rate(burcev_http_requests_total{environment=\"$environment\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(burcev_http_requests_total{environment=\"$environment\"}[5m])), 0.001)",
+          "legendFormat": "5xx",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Служба отвечает на опрос",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "0 означает, что Prometheus не смог получить /metrics. Это ловится отдельным оповещением: молчащая служба выглядит как служба без ошибок.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "up{job=\"burcev-api\", environment=\"$environment\"}",
+          "legendFormat": "up",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "нет",
+                  "index": 0
+                },
+                "1": {
+                  "text": "да",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Запросов в секунду",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Нужен рядом с долей ошибок: 50 % ошибок на двух запросах и на двух тысячах — разные события.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(burcev_http_requests_total{environment=\"$environment\"}[5m]))",
+          "legendFormat": "rps",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Ожидания соединения с БД",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Сколько раз запрос ждал свободного соединения. Верхней границы пула метрикой не видно, поэтому спрашиваем то, на что можно ответить: ждал ли кто-нибудь.",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "increase(burcev_db_connection_waits_total{environment=\"$environment\"}[10m])",
+          "legendFormat": "за 10 минут",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Задержка HTTP по процентилям",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Медиана говорит про обычный день, 99-й — про то, что видит меньшинство. Среднего здесь нет намеренно: оно скрывает и то, и другое.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(burcev_http_request_duration_seconds_bucket{environment=\"$environment\"}[5m])))",
+          "legendFormat": "медиана",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(burcev_http_request_duration_seconds_bucket{environment=\"$environment\"}[5m])))",
+          "legendFormat": "95-й",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(burcev_http_request_duration_seconds_bucket{environment=\"$environment\"}[5m])))",
+          "legendFormat": "99-й",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Задержка запросов к БД по процентилям",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Первое место, куда смотреть, когда выросла задержка HTTP.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(burcev_db_query_duration_seconds_bucket{environment=\"$environment\"}[5m])))",
+          "legendFormat": "медиана",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(burcev_db_query_duration_seconds_bucket{environment=\"$environment\"}[5m])))",
+          "legendFormat": "95-й",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(burcev_db_query_duration_seconds_bucket{environment=\"$environment\"}[5m])))",
+          "legendFormat": "99-й",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Запросы по маршрутам",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Маршрут — это шаблон gin, а не конкретный путь: иначе на каждый идентификатор заводилась бы своя серия и метрика перестала бы что-либо значить.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (route) (rate(burcev_http_requests_total{environment=\"$environment\"}[5m])))",
+          "legendFormat": "{{route}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Ошибки сервера по маршрутам",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Куда именно смотреть, когда общая доля 5xx поднялась.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (route) (rate(burcev_http_requests_total{environment=\"$environment\", status=~\"5..\"}[5m])))",
+          "legendFormat": "{{route}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Пул соединений с БД",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Занято, упирающееся в открыто, при ненулевых ожиданиях — признак тесного пула.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "burcev_db_connections_open{environment=\"$environment\"}",
+          "legendFormat": "открыто",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "burcev_db_connections_in_use{environment=\"$environment\"}",
+          "legendFormat": "занято",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "burcev_db_connections_idle{environment=\"$environment\"}",
+          "legendFormat": "простаивает",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Фоновые задачи",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Метка задачи приходит как exported_job: собственная метка Prometheus для цели опроса называется job и вытесняет одноимённую метку метрики. Правило, написанное по памяти, здесь не сработало бы и не сказало бы почему.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (exported_job, status) (increase(burcev_job_runs_total{environment=\"$environment\"}[1h]))",
+          "legendFormat": "{{exported_job}} — {{status}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Доменные события",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Регистрации, входы, записи еды. Падение здесь при зелёных технических графиках означает поломку, которую не видно ни по ошибкам, ни по задержке.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (event) (increase(burcev_domain_events_total{environment=\"$environment\"}[1h]))",
+          "legendFormat": "{{event}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}

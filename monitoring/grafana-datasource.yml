@@ -4,6 +4,10 @@ apiVersion: 1
 
 datasources:
   - name: Prometheus
+    # uid задан явно: на него ссылается каждая панель дашборда. Если оставить
+    # его на усмотрение Grafana, ссылки не совпадут и панели будут пустыми —
+    # без единой ошибки, просто без данных.
+    uid: burcev-prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090

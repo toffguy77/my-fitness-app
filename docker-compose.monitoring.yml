@@ -60,6 +60,8 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
+      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards/burcev:ro
     networks:
       - dokploy-network
     depends_on:
