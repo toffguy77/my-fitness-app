@@ -77,5 +77,6 @@ func AllCodes() []string {
 	for _, code := range codes {
 		all = append(all, code)
 	}
-	return append(all, CodeFeatureUnavailable, CodeInternal, CodePasswordIncorrect)
+	return append(all,
+		CodeFeatureUnavailable, CodeInternal, CodePasswordIncorrect, CodeSessionEnded)
 }

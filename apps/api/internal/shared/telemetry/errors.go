@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"
 )
@@ -127,8 +128,13 @@ func Recovery(onPanic func(c *gin.Context, recovered any)) gin.HandlerFunc {
 			MarkError(c.Request.Context(), fmt.Errorf("panic: %v", recovered), http.StatusInternalServerError)
 
 			if !c.Writer.Written() {
+				// Та же форма, что у всех остальных ошибок. Паника — не повод
+				// отвечать чем-то, чего клиент не умеет разбирать: именно
+				// здесь ему особенно нечего показать человеку.
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-					"error": "internal error",
+					"status":  "error",
+					"code":    apperrors.CodeInternal,
+					"message": "Внутренняя ошибка сервера",
 				})
 				return
 			}
