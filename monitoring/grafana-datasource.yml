@@ -1,0 +1,11 @@
+# Источник данных прописан здесь, а не руками в интерфейсе: дашборд, который
+# нельзя восстановить из репозитория, — это дашборд, который однажды исчезнет.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

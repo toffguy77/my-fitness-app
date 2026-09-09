@@ -1,0 +1,73 @@
+# Сбор метрик и дашборд, рядом с приложением на том же сервере.
+#
+# Отдельный проект Dokploy: у наблюдения свой жизненный цикл, и оно не должно
+# перезапускаться вместе с приложением — особенно тогда, когда приложению плохо
+# и смотреть надо именно на него.
+#
+# Обе службы висят в dokploy-network, чтобы дотянуться до API по сетевому
+# псевдониму (burcev-dev-api, burcev-prod-api), и наружу отдаются только через
+# Traefik по своему домену, с собственным входом в Grafana.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Пятнадцать дней: этого хватает, чтобы посмотреть «а как было до», и
+      # диск не растёт бесконечно на сервере, где живёт и само приложение.
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    environment:
+      # Пароль задаётся переменной окружения проекта в Dokploy; без него
+      # Grafana поднимется с admin/admin, а она смотрит наружу.
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?нужен GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN:-metrics.burcev.team}
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+    networks:
+      - dokploy-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    mem_limit: 384m
+    memswap_limit: 384m
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.burcev-grafana.rule=Host(`${GRAFANA_DOMAIN:-metrics.burcev.team}`)"
+      - "traefik.http.routers.burcev-grafana.entrypoints=websecure"
+      - "traefik.http.routers.burcev-grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.burcev-grafana.loadbalancer.server.port=3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  dokploy-network:
+    external: true
