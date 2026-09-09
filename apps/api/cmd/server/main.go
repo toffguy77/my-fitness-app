@@ -316,7 +316,7 @@ func main() {
 		moscow = time.UTC
 	}
 	// Error reporting, if there is somewhere to report to.
-	reportingOn, err := telemetry.StartErrorReporting(cfg.Version, cfg.Env)
+	reportingOn, err := telemetry.StartErrorReporting(cfg.SentryDSN, cfg.Version, cfg.Env)
 	if err != nil {
 		log.Warn("Error reporting could not be started; continuing without it", "error", err)
 	} else if reportingOn {
@@ -330,12 +330,12 @@ func main() {
 	// runs exactly as before and says so once — the same rule as every other
 	// optional capability here.
 	tracingOn, stopTracing, err := telemetry.StartTracing(
-		context.Background(), "burcev-api", cfg.Version, cfg.Env)
+		context.Background(), cfg.OTLPEndpoint, "burcev-api", cfg.Version, cfg.Env)
 	if err != nil {
 		log.Warn("Tracing could not be started; continuing without it", "error", err)
 	} else if tracingOn {
 		log.Info("Tracing enabled",
-			"endpoint", os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+			"endpoint", cfg.OTLPEndpoint,
 			"success_sample_ratio", telemetry.DefaultSuccessRatio)
 		defer func() {
 			if err := stopTracing(context.Background()); err != nil {

@@ -93,9 +93,7 @@ func TestAnUnknownHeaderIsDroppedRatherThanKept(t *testing.T) {
 }
 
 func TestErrorReportingIsOffWithoutADSN(t *testing.T) {
-	t.Setenv("SENTRY_DSN", "")
-
-	on, err := StartErrorReporting("test", "test")
+	on, err := StartErrorReporting("", "test", "test")
 
 	require.NoError(t, err)
 	assert.False(t, on)
@@ -104,14 +102,10 @@ func TestErrorReportingIsOffWithoutADSN(t *testing.T) {
 // The frontend's content-security policy has to allow the host reports go to,
 // and it should come from the same setting rather than a second copy.
 func TestDSNHost(t *testing.T) {
-	t.Setenv("SENTRY_DSN", "https://abc123@o12345.ingest.sentry.io/98765")
-	assert.Equal(t, "o12345.ingest.sentry.io", DSNHost())
-
-	t.Setenv("SENTRY_DSN", "")
-	assert.Empty(t, DSNHost())
-
-	t.Setenv("SENTRY_DSN", strings.Repeat("nonsense", 3))
-	assert.Empty(t, DSNHost())
+	assert.Equal(t, "o12345.ingest.sentry.io",
+		DSNHost("https://abc123@o12345.ingest.sentry.io/98765"))
+	assert.Empty(t, DSNHost(""))
+	assert.Empty(t, DSNHost(strings.Repeat("nonsense", 3)))
 }
 
 // A browser error reaches the tracker through this application rather than

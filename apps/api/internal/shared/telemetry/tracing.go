@@ -34,8 +34,7 @@ type Shutdown func(context.Context) error
 
 // StartTracing wires OpenTelemetry if an endpoint is configured, and reports
 // whether it did.
-func StartTracing(ctx context.Context, serviceName, version, environment string) (bool, Shutdown, error) {
-	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+func StartTracing(ctx context.Context, endpoint, serviceName, version, environment string) (bool, Shutdown, error) {
 	if endpoint == "" {
 		return false, func(context.Context) error { return nil }, nil
 	}

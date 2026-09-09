@@ -3,7 +3,6 @@ package telemetry
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -22,8 +21,7 @@ import (
 
 // StartErrorReporting connects to Sentry when a DSN is configured, and reports
 // whether it did.
-func StartErrorReporting(version, environment string) (bool, error) {
-	dsn := os.Getenv("SENTRY_DSN")
+func StartErrorReporting(dsn, version, environment string) (bool, error) {
 	if dsn == "" {
 		return false, nil
 	}
@@ -143,8 +141,7 @@ func Recovery(onPanic func(c *gin.Context, recovered any)) gin.HandlerFunc {
 
 // DSNHost is the host an error report is sent to, for the frontend's
 // content-security policy. Empty when reporting is off.
-func DSNHost() string {
-	dsn := os.Getenv("SENTRY_DSN")
+func DSNHost(dsn string) string {
 	if dsn == "" {
 		return ""
 	}

@@ -15,9 +15,7 @@ import (
 // Without a collector the application runs exactly as before, and says so once
 // rather than failing or pretending to trace.
 func TestTracingIsOffWithoutAnEndpoint(t *testing.T) {
-	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-
-	on, shutdown, err := StartTracing(context.Background(), "api", "test", "test")
+	on, shutdown, err := StartTracing(context.Background(), "", "api", "test", "test")
 
 	require.NoError(t, err)
 	assert.False(t, on)
