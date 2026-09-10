@@ -128,7 +128,7 @@ export const config = {
          * to violate.
          */
         {
-            source: '/((?!_next/static|_next/image|favicon.ico|icon.svg|logo.svg|manifest.json|sw.js|push-sw.js|workbox-.*).*)',
+            source: '/((?!_next/static|_next/image|favicon.ico|icon.svg|logo.svg|manifest.json|sw.js|workbox-.*).*)',
             missing: [{ type: 'header', key: 'next-action' }],
         },
     ],

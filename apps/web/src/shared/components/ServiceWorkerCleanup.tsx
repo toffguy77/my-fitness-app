@@ -2,7 +2,14 @@
 
 import { useEffect } from 'react'
 
-const SW_CLEANUP_KEY = 'sw-cleanup-v3'
+/**
+ * Bumped whenever every client must run the purge again — here, to remove the
+ * separate push worker now that push and caching live in one.
+ *
+ * Exported so the tests use this value rather than a copy: a test pinned to an
+ * old version passes while asserting behaviour nobody has any more.
+ */
+export const SW_CLEANUP_KEY = 'sw-cleanup-v4'
 
 export function ServiceWorkerCleanup() {
     useEffect(() => {
@@ -32,12 +39,18 @@ export function ServiceWorkerCleanup() {
 
                 const registrations = await navigator.serviceWorker.getRegistrations()
                 for (const reg of registrations) {
-                    // Not the push worker: it caches nothing and intercepts
-                    // nothing, so it cannot serve a stale bundle — and removing
-                    // it would silently end every push subscription on this
-                    // device.
+                    // Everything except the current worker goes, push-sw.js
+                    // included. Push and caching now live in one worker,
+                    // because a page can only be controlled by one; leaving the
+                    // old push worker registered would mean two registrations
+                    // racing for the same scope.
+                    //
+                    // This does end the push subscription tied to it. The
+                    // server retires a subscription the push service reports as
+                    // gone, and the settings screen resubscribes against the
+                    // new worker, so the cost is one lost push at most.
                     const script = reg.active?.scriptURL ?? reg.installing?.scriptURL ?? ''
-                    if (script.endsWith('/push-sw.js')) continue
+                    if (script.endsWith('/sw.js') && !script.endsWith('/push-sw.js')) continue
 
                     await reg.unregister()
                     didWork = true

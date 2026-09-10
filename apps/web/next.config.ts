@@ -43,30 +43,15 @@ const baseConfig: NextConfig = {
 
 let nextConfig: NextConfig;
 if (!isTest) {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const withPWA = require('next-pwa')({
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: process.env.NODE_ENV === 'development',
-    buildExcludes: [/\/api\/v1\//],
-    runtimeCaching: [
-      {
-        urlPattern: /\/api\/v1\/.*/i,
-        handler: 'NetworkOnly',
-      },
-    ],
-  });
-
   // Enable bundle analyzer when ANALYZE=true
   if (process.env.ANALYZE === 'true') {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const withBundleAnalyzer = require('@next/bundle-analyzer')({
       enabled: true,
     });
-    nextConfig = withBundleAnalyzer(withPWA(baseConfig));
+    nextConfig = withBundleAnalyzer(baseConfig);
   } else {
-    nextConfig = withPWA(baseConfig);
+    nextConfig = baseConfig;
   }
 } else {
   nextConfig = baseConfig;

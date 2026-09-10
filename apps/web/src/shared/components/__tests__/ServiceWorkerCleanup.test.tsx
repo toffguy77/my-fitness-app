@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import { ServiceWorkerCleanup } from '../ServiceWorkerCleanup'
+import { ServiceWorkerCleanup, SW_CLEANUP_KEY } from '../ServiceWorkerCleanup'
 
 const mockAddEventListener = jest.fn()
 const mockRemoveEventListener = jest.fn()
@@ -76,7 +76,7 @@ describe('ServiceWorkerCleanup', () => {
     })
 
     it('skips cleanup when localStorage flag is already set', async () => {
-        localStorage.setItem('sw-cleanup-v3', Date.now().toString())
+        localStorage.setItem(SW_CLEANUP_KEY, Date.now().toString())
         const mockUnregister = jest.fn()
         Object.defineProperty(navigator, 'serviceWorker', {
             value: makeSwApi(null, [{ unregister: mockUnregister }]),

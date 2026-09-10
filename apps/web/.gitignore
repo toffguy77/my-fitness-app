@@ -1,0 +1,4 @@
+
+# Service worker, собираемый шагом build:sw. Артефакт сборки, не исходник:
+# исходник — src/app/sw.ts.
+/public/sw.js
