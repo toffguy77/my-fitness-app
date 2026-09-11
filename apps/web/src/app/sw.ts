@@ -18,7 +18,7 @@
 
 import { defaultCache } from '@serwist/next/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { Serwist } from 'serwist'
+import { NetworkFirst, Serwist } from 'serwist'
 
 declare global {
     interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -28,6 +28,30 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope
 
+// Экран «нет подключения» кэшируется вручную, а не предзагрузкой.
+//
+// Готовый механизм отката у Serwist ищет адрес именно в предзагрузке, а её
+// преобразование путей для файла из public/ срезает расширение и оставляет
+// несуществующий адрес. Откат ссылался бы на запись, которой нет: он был бы
+// в коде и не срабатывал бы никогда — это и обнаружилось, когда кэш
+// посмотрели в браузере, а не в сборке.
+const OFFLINE_URL = '/offline.html'
+const OFFLINE_CACHE = 'burcev-offline-v1'
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches
+            .open(OFFLINE_CACHE)
+            // cache: 'reload' — чтобы при обновлении воркера не подложился
+            // старый экран из HTTP-кэша браузера.
+            .then((cache) => cache.add(new Request(OFFLINE_URL, { cache: 'reload' }))),
+    )
+})
+
+const serveOfflinePage = {
+    handlerDidError: async () => (await caches.open(OFFLINE_CACHE)).match(OFFLINE_URL),
+}
+
 const serwist = new Serwist({
     precacheEntries: self.__SW_MANIFEST,
     // Take over at once. The alternative — waiting for every tab to close —
@@ -36,17 +60,23 @@ const serwist = new Serwist({
     skipWaiting: true,
     clientsClaim: true,
     navigationPreload: true,
-    runtimeCaching: defaultCache,
-    // Offline navigation lands on the app shell rather than the browser's error
-    // page. Anything under /api is never served from cache.
-    fallbacks: {
-        entries: [
-            {
-                url: '/offline',
-                matcher: ({ request }) => request.destination === 'document',
-            },
-        ],
-    },
+    runtimeCaching: [
+        // Переходы — первым правилом, иначе их разберёт набор по умолчанию.
+        //
+        // Сначала сеть: страница всегда свежая, когда связь есть. Без связи
+        // отдаётся последняя виденная, а если её нет — экран «нет
+        // подключения» вместо страницы ошибки браузера. Именно на этом
+        // держится очередь записей: приложение должно открываться без сети,
+        // иначе записывать в очередь некуда.
+        {
+            matcher: ({ request }) => request.mode === 'navigate',
+            handler: new NetworkFirst({
+                cacheName: 'burcev-pages',
+                plugins: [serveOfflinePage],
+            }),
+        },
+        ...defaultCache,
+    ],
 })
 
 serwist.addEventListeners()

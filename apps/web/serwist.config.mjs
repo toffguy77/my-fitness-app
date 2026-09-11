@@ -14,5 +14,7 @@ export default await serwist({
     swDest: 'public/sw.js',
     // API никогда не кэшируется: устаревший ответ про чей-то дневник питания
     // хуже, чем отсутствие ответа.
-    globIgnores: ['**/api/v1/**'],
+    // offline.html кэшируется воркером вручную: преобразование путей Serwist
+    // срезает расширение у html из public/ и оставляет несуществующий адрес.
+    globIgnores: ['**/api/v1/**', 'public/offline.html'],
 })
