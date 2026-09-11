@@ -11,6 +11,16 @@ import { useEffect } from 'react'
  */
 export const SW_CLEANUP_KEY = 'sw-cleanup-v4'
 
+/**
+ * Cleans up stale service workers and registers the current one.
+ *
+ * The registration is not incidental: next-pwa injected its own registration
+ * script, Serwist in configurator mode does not, and for a while the worker was
+ * built and served while nothing on any page ever called register(). Everything
+ * looked right — the file was there, correct, and 200 — and not one visitor had
+ * a service worker. The check that the worker builds cannot see this; only
+ * asking the browser can.
+ */
 export function ServiceWorkerCleanup() {
     useEffect(() => {
         if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
@@ -71,6 +81,22 @@ export function ServiceWorkerCleanup() {
                 }
             }
             cleanup()
+        }
+
+        // Registering the worker. Without this line the worker is built,
+        // served and never used: next-pwa injected its own registration and
+        // Serwist in configurator mode does not, so the caching, the offline
+        // screen and push all silently did nothing.
+        //
+        // Registering the same URL twice is a no-op, so it is safe alongside
+        // the settings screen doing the same before subscribing to push.
+        if (process.env.NODE_ENV === 'production') {
+            navigator.serviceWorker.register('/sw.js').catch((error) => {
+                // Not fatal — the application works without it, just without
+                // caching or push. Worth seeing, because nothing else would
+                // show it.
+                console.error('[sw] registration failed', error)
+            })
         }
 
         return () => {

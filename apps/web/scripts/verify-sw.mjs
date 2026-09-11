@@ -6,7 +6,8 @@
 //
 // Поэтому шаг сборки заканчивается утверждением, а не надеждой.
 
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { join, extname } from 'node:path'
 
 const path = 'public/sw.js'
 
@@ -35,3 +36,36 @@ if (missing.length > 0) {
 
 const kb = Math.round(source.length / 1024)
 console.log(`✓ service worker на месте (${kb} КБ): предзагрузка, push, офлайн-экран`)
+
+// Собранный воркер бесполезен, если его никто не подключает.
+//
+// Ровно это и случилось: next-pwa вставлял регистрацию сам, Serwist в режиме
+// конфигуратора — нет, и какое-то время воркер собирался, отдавался по /sw.js
+// и не был зарегистрирован ни у одного посетителя. Файл на месте, корректен,
+// отдаётся с кодом 200 — и ничего не работает. Проверка содержимого такого не
+// видит, поэтому здесь отдельный вопрос: есть ли в исходниках вызов register.
+
+function sourceFiles(dir, out = []) {
+    for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry)
+        if (statSync(full).isDirectory()) {
+            if (['node_modules', '.next', '__tests__', '__mocks__'].includes(entry)) continue
+            sourceFiles(full, out)
+        } else if (['.ts', '.tsx'].includes(extname(full)) && !full.includes('.test.')) {
+            out.push(full)
+        }
+    }
+    return out
+}
+
+const registers = sourceFiles('src').some((file) =>
+    /serviceWorker\s*\.\s*register\s*\(\s*['"`]\/sw\.js/.test(readFileSync(file, 'utf8')),
+)
+
+if (!registers) {
+    console.error('✗ воркер собран, но ничто в src не вызывает navigator.serviceWorker.register("/sw.js").')
+    console.error('  Он будет отдаваться по своему адресу и не работать ни у кого.')
+    process.exit(1)
+}
+
+console.log('✓ регистрация воркера есть в исходниках')
