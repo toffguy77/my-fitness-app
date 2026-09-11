@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { messageForCode, knownErrorCodes, plural, formatDate, formatNumber, currentLanguage, t } from '../index'
 import { pluralRu, pluralEn } from '../plural'
 import { messageFor } from '@/shared/errors/apiErrors'
@@ -55,16 +57,17 @@ describe('Error codes', () => {
     })
 
     it('covers every code the API declares', () => {
-        // Mirrors apps/api/internal/shared/apperrors/codes.go.
-        const apiCodes = [
-            'not_found', 'unauthorized', 'forbidden', 'invalid_credentials',
-            'token_invalid', 'token_expired', 'code_expired', 'too_many_attempts',
-            'rate_limited', 'unsupported_media', 'password_policy', 'password_unchanged',
-            'email_unavailable', 'conflict', 'gone', 'validation',
-            'feature_unavailable', 'internal', 'password_incorrect',
-        ]
+        // Read from the API's own source rather than copied here. A copy is a
+        // second list to keep in step, and the one thing this test exists to
+        // prevent is the two lists disagreeing.
+        const source = readFileSync(
+            join(__dirname, '../../../../../api/internal/shared/apperrors/codes.go'),
+            'utf8',
+        )
+        const apiCodes = [...source.matchAll(/Code[A-Za-z]+\s*=\s*"([a-z_]+)"/g)].map((m) => m[1])
 
-        expect(knownErrorCodes().sort()).toEqual(apiCodes.sort())
+        expect(apiCodes.length).toBeGreaterThan(10)
+        expect(knownErrorCodes().sort()).toEqual([...new Set(apiCodes)].sort())
     })
 })
 

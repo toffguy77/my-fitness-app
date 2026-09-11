@@ -9,6 +9,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import type { WeeklySnapshot, PlatformBenchmark } from '../types'
 
+import { t } from '@/shared/i18n'
 const CHART_HEIGHT = 200
 const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
 const GRID_STROKE = '#f0f0f0'
@@ -35,7 +36,7 @@ function DynamicsTooltip({ active, payload, label }: {
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
                     />
-                    {entry.name === 'own' ? 'Ваш' : 'Платформа'}: <span className="font-medium">{Number(entry.value)}%</span>
+                    {entry.name === 'own' ? t('curator.analytics.own') : t('curator.analytics.platform')}: <span className="font-medium">{Number(entry.value)}%</span>
                 </p>
             ))}
         </div>
@@ -63,7 +64,20 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
         })
     }, [ownSnapshots, benchmarks, weeks])
 
-    if (ownSnapshots.length === 0) return null
+    // A curator whose snapshots have not been collected yet used to see no
+    // section at all, and could not tell an empty week from a broken screen.
+    // The figures arrive from a nightly job, so "not yet" is a normal state and
+    // has to look like one.
+    if (ownSnapshots.length === 0) {
+        return (
+            <div className="rounded-xl bg-white shadow-sm border border-gray-100 px-4 py-5">
+                <p className="text-sm font-semibold text-gray-900">{t('curator.analytics.dynamics')}</p>
+                <p className="mt-2 text-sm text-gray-500">
+                    {t('curator.analytics.emptyHint')}
+                </p>
+            </div>
+        )
+    }
 
     return (
         <div className="rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
@@ -72,7 +86,7 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                 onClick={() => setExpanded(prev => !prev)}
                 className="w-full flex items-center justify-between px-4 py-3 text-left"
             >
-                <span className="text-sm font-semibold text-gray-900">Динамика</span>
+                <span className="text-sm font-semibold text-gray-900">{t('curator.analytics.dynamics')}</span>
                 {expanded ? (
                     <ChevronUp className="h-4 w-4 text-gray-400" />
                 ) : (
@@ -95,10 +109,16 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 )}
                             >
-                                {w} нед
+                                {t('curator.analytics.weeks', { count: w })}
                             </button>
                         ))}
                     </div>
+
+                    {benchmarks.length === 0 && (
+                        <p className="mb-3 text-xs text-gray-500">
+                            {t('curator.analytics.noBenchmarks')}
+                        </p>
+                    )}
 
                     <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                         <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -142,11 +162,11 @@ export function AnalyticsDynamicsChart({ ownSnapshots, benchmarks }: AnalyticsDy
                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                             <span className="inline-block w-3 h-0.5 bg-blue-500 rounded" />
-                            Ваш показатель
+                            {t('curator.analytics.ownMetric')}
                         </span>
                         <span className="flex items-center gap-1">
                             <span className="inline-block w-3 h-0.5 bg-gray-400 rounded border-dashed" />
-                            Платформа
+                            {t('curator.analytics.platform')}
                         </span>
                     </div>
                 </div>

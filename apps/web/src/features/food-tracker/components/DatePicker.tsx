@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -35,24 +36,32 @@ export interface DatePickerProps {
  * Russian month names in genitive case (for "1 января" format)
  */
 const RUSSIAN_MONTHS_GENITIVE = [
-    'января',
-    'февраля',
-    'марта',
-    'апреля',
-    'мая',
-    'июня',
-    'июля',
-    'августа',
-    'сентября',
-    'октября',
-    'ноября',
-    'декабря',
+    t('months.genitive.january'),
+    t('months.genitive.february'),
+    t('months.genitive.march'),
+    t('months.genitive.april'),
+    t('months.genitive.may'),
+    t('months.genitive.june'),
+    t('months.genitive.july'),
+    t('months.genitive.august'),
+    t('months.genitive.september'),
+    t('months.genitive.october'),
+    t('months.genitive.november'),
+    t('months.genitive.december'),
 ] as const;
 
 /**
  * Russian day names for calendar
  */
-const RUSSIAN_DAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] as const;
+const RUSSIAN_DAYS_SHORT = [
+    t('weekdays.short.mon'),
+    t('weekdays.short.tue'),
+    t('weekdays.short.wed'),
+    t('weekdays.short.thu'),
+    t('weekdays.short.fri'),
+    t('weekdays.short.sat'),
+    t('weekdays.short.sun'),
+] as const;
 
 // ============================================================================
 // Helper Functions
@@ -96,7 +105,7 @@ function formatDateRussian(date: Date, showToday: boolean = true): string {
     const month = RUSSIAN_MONTHS_GENITIVE[date.getMonth()];
 
     if (showToday && isToday(date)) {
-        return `Сегодня, ${day} ${month}`;
+        return t('foodTracker.datePicker.todayWithDate', { day, month });
     }
 
     return `${day} ${month}`;
@@ -243,7 +252,7 @@ export function DatePicker({
                     type="button"
                     onClick={goToPreviousDay}
                     className="p-1.5 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:p-2 touch-manipulation"
-                    aria-label="Предыдущий день"
+                    aria-label={t('foodTracker.datePicker.previousDay')}
                 >
                     <ChevronLeft className="w-4 h-4 text-gray-600 sm:w-5 sm:h-5" />
                 </button>
@@ -253,7 +262,7 @@ export function DatePicker({
                     type="button"
                     onClick={toggleCalendar}
                     className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-4 sm:py-2 touch-manipulation"
-                    aria-label="Открыть календарь"
+                    aria-label={t('foodTracker.datePicker.openCalendar')}
                     aria-expanded={isCalendarOpen}
                 >
                     <Calendar className="w-4 h-4 text-gray-500 sm:w-5 sm:h-5" aria-hidden="true" />
@@ -269,7 +278,7 @@ export function DatePicker({
                         ? 'text-gray-300 cursor-not-allowed'
                         : 'hover:bg-gray-100 text-gray-600'
                         }`}
-                    aria-label="Следующий день"
+                    aria-label={t('foodTracker.datePicker.nextDay')}
                 >
                     <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
@@ -284,7 +293,7 @@ export function DatePicker({
                             type="button"
                             onClick={() => navigateCalendarMonth('prev')}
                             className="p-1 rounded hover:bg-gray-100 transition-colors touch-manipulation"
-                            aria-label="Предыдущий месяц"
+                            aria-label={t('foodTracker.datePicker.previousMonth')}
                         >
                             <ChevronLeft className="w-4 h-4 text-gray-600 sm:w-5 sm:h-5" />
                         </button>
@@ -297,7 +306,7 @@ export function DatePicker({
                             type="button"
                             onClick={() => navigateCalendarMonth('next')}
                             className="p-1 rounded hover:bg-gray-100 transition-colors touch-manipulation"
-                            aria-label="Следующий месяц"
+                            aria-label={t('foodTracker.datePicker.nextMonth')}
                         >
                             <ChevronRight className="w-4 h-4 text-gray-600 sm:w-5 sm:h-5" />
                         </button>
@@ -357,7 +366,7 @@ export function DatePicker({
                             onClick={goToToday}
                             className="w-full mt-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:mt-4 sm:py-2 sm:text-sm touch-manipulation"
                         >
-                            Сегодня
+                            {t('foodTracker.datePicker.today')}
                         </button>
                     )}
                 </div>

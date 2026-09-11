@@ -9,6 +9,7 @@
 package router
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -80,11 +81,21 @@ func New(d Deps) *gin.Engine {
 	// can set X-Forwarded-For, but external clients cannot spoof it.
 	_ = engine.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"})
 
-	engine.Use(gin.Recovery())
+	// Replaces gin.Recovery: same answer to the caller, plus a report with the
+	// version and the trace identifier when error reporting is configured.
+	engine.Use(telemetry.Recovery(func(c *gin.Context, recovered any) {
+		d.Log.Error("Recovered from a panic",
+			"error", fmt.Sprint(recovered),
+			"route", c.FullPath(),
+			"method", c.Request.Method)
+	}))
 	engine.Use(middleware.BodyLimit(middleware.MaxBodyBytes))
 	if d.Metrics != nil {
 		engine.Use(d.Metrics.Middleware())
 	}
+	// Before the logger: every log line for this request carries the identifier
+	// this establishes.
+	engine.Use(middleware.Tracing())
 	engine.Use(middleware.Language())
 	engine.Use(middleware.NoCacheAPI())
 	engine.Use(middleware.Logger(d.Log))

@@ -12,6 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Send, Image, Clock, CheckCircle, User, Bot, Plus } from 'lucide-react';
 import type { FoodItem } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -52,7 +53,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     {
         id: 'welcome',
         type: 'system',
-        content: 'Опишите, что вы съели, и я помогу добавить это в дневник.',
+        content: t('foodTracker.chat.greeting'),
         timestamp: new Date(),
     },
 ];
@@ -126,7 +127,7 @@ export function ChatTab({
         const userMessage: ChatMessage = {
             id: `user-${Date.now()}`,
             type: 'user',
-            content: trimmedInput || 'Фото еды',
+            content: trimmedInput || t('foodTracker.chat.photoPlaceholder'),
             timestamp: new Date(),
             photo: photoPreview || undefined,
         };
@@ -155,7 +156,7 @@ export function ChatTab({
                 const mockMessage: ChatMessage = {
                     id: `curator-${Date.now()}`,
                     type: 'curator',
-                    content: 'Куратор сейчас недоступен. Попробуйте позже или воспользуйтесь поиском.',
+                    content: t('foodTracker.chat.curatorUnavailable'),
                     timestamp: new Date(),
                 };
 
@@ -165,7 +166,7 @@ export function ChatTab({
             const errorMessage: ChatMessage = {
                 id: `system-${Date.now()}`,
                 type: 'system',
-                content: 'Не удалось отправить сообщение. Попробуйте снова.',
+                content: t('foodTracker.chat.sendFailed'),
                 timestamp: new Date(),
             };
 
@@ -201,7 +202,7 @@ export function ChatTab({
                 <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border-b border-yellow-200">
                     <Clock className="w-4 h-4 text-yellow-600" />
                     <span className="text-sm text-yellow-700">
-                        Куратор ответит примерно через {estimatedResponseTime} мин
+                        {t('foodTracker.chat.responseTime', { minutes: estimatedResponseTime })}
                     </span>
                 </div>
             )}
@@ -224,14 +225,14 @@ export function ChatTab({
                     <div className="relative inline-block">
                         <img
                             src={photoPreview}
-                            alt="Выбранное фото"
+                            alt={t('foodTracker.chat.chosenPhoto')}
                             className="w-20 h-20 object-cover rounded-lg"
                         />
                         <button
                             type="button"
                             onClick={handleRemovePhoto}
                             className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                            aria-label="Удалить фото"
+                            aria-label={t('foodTracker.chat.removePhoto')}
                         >
                             ×
                         </button>
@@ -246,7 +247,7 @@ export function ChatTab({
                         type="button"
                         onClick={handlePhotoSelect}
                         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        aria-label="Прикрепить фото"
+                        aria-label={t('foodTracker.chat.attachPhoto')}
                     >
                         <Image className="w-6 h-6" />
                     </button>
@@ -256,9 +257,9 @@ export function ChatTab({
                         value={inputValue}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyPress}
-                        placeholder="Опишите, что вы съели..."
+                        placeholder={t('foodTracker.chat.inputPlaceholder')}
                         className="flex-1 px-4 py-2 bg-gray-100 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                        aria-label="Сообщение"
+                        aria-label={t('foodTracker.chat.message')}
                         disabled={isSending}
                     />
                     <button
@@ -266,7 +267,7 @@ export function ChatTab({
                         onClick={handleSendMessage}
                         disabled={isSending || (!inputValue.trim() && !selectedPhoto)}
                         className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                        aria-label="Отправить"
+                        aria-label={t('foodTracker.chat.send')}
                     >
                         <Send className="w-6 h-6" />
                     </button>
@@ -277,10 +278,10 @@ export function ChatTab({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileChange}
                 className="hidden"
-                aria-label="Выбрать фото"
+                aria-label={t('foodTracker.chat.choosePhoto')}
             />
         </div>
     );
@@ -315,7 +316,7 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
                         <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                             <Bot className="w-4 h-4 text-white" />
                         </div>
-                        <span className="text-sm font-medium text-gray-700">Куратор</span>
+                        <span className="text-sm font-medium text-gray-700">{t('foodTracker.chat.curator')}</span>
                     </div>
                 )}
 
@@ -323,7 +324,7 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
                 {message.photo && (
                     <img
                         src={message.photo}
-                        alt="Прикрепленное фото"
+                        alt={t('foodTracker.chat.attachedPhoto')}
                         className="w-full max-w-xs rounded-lg mb-2"
                     />
                 )}
@@ -334,7 +335,7 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
                 {/* Suggestions */}
                 {message.suggestions && message.suggestions.length > 0 && (
                     <div className="mt-3 space-y-2">
-                        <p className="text-sm text-gray-500">Предложения:</p>
+                        <p className="text-sm text-gray-500">{t('foodTracker.chat.suggestions')}</p>
                         {message.suggestions.map(food => (
                             <button
                                 key={food.id}
@@ -347,7 +348,7 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
                                     <span className="text-gray-900">{food.name}</span>
                                 </div>
                                 <span className="text-sm text-gray-500">
-                                    {Math.round(food.nutritionPer100.calories)} ккал
+                                    {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                                 </span>
                             </button>
                         ))}

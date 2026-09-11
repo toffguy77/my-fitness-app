@@ -36,6 +36,14 @@ type Job struct {
 	// Weekday selects the day for PeriodWeekly. Ignored otherwise.
 	Weekday time.Weekday
 
+	// Manual means the scheduler never starts this job: it runs only when
+	// somebody asks, through POST /jobs/:name/run.
+	//
+	// For work that must be decided rather than repeated — a one-off clean-up
+	// after a defect, say. Putting such a job on a schedule to make the registry
+	// accept it would run it every night for the rest of the product's life.
+	Manual bool
+
 	// Timeout bounds one execution. Mandatory: without it a stuck job would
 	// hold its advisory lock and block every later run.
 	Timeout time.Duration
@@ -86,7 +94,11 @@ func (r *Registry) Register(job Job) error {
 	if job.Timeout <= 0 {
 		return fmt.Errorf("job %q must declare a timeout", job.Name)
 	}
-	if (job.Interval == 0) == (job.RunAt == nil) {
+	if job.Manual {
+		if job.Interval != 0 || job.RunAt != nil {
+			return fmt.Errorf("job %q is manual and must not also be scheduled", job.Name)
+		}
+	} else if (job.Interval == 0) == (job.RunAt == nil) {
 		return fmt.Errorf("job %q must set exactly one of Interval or RunAt", job.Name)
 	}
 	if job.RunAt != nil {
@@ -128,6 +140,9 @@ func (r *Registry) All() []Job {
 
 // Schedule renders the job's cadence for display.
 func (j Job) Schedule() string {
+	if j.Manual {
+		return "manual only"
+	}
 	if j.Interval > 0 {
 		return "every " + j.Interval.String()
 	}

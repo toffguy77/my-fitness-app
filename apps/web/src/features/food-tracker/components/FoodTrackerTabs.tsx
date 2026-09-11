@@ -11,6 +11,7 @@
 
 import { useCallback, useRef, KeyboardEvent } from 'react';
 import type { FoodTrackerTab } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -33,8 +34,8 @@ export interface FoodTrackerTabsProps {
  * Tab configuration with Russian labels
  */
 const TABS: { id: FoodTrackerTab; label: string }[] = [
-    { id: 'diet', label: 'Рацион' },
-    { id: 'recommendations', label: 'Рекомендации' },
+    { id: 'diet', label: t('foodTracker.tabs2.diet') },
+    { id: 'recommendations', label: t('foodTracker.tabs2.recommendations') },
 ];
 
 // ============================================================================
@@ -92,7 +93,7 @@ export function FoodTrackerTabs({
     );
 
     return (
-        <div className={`w-full ${className}`} role="tablist" aria-label="Разделы дневника питания">
+        <div className={`w-full ${className}`} role="tablist" aria-label={t('foodTracker.tabs2.aria')}>
             <div className="flex bg-gray-100 rounded-lg p-0.5 sm:p-1">
                 {TABS.map((tab, index) => {
                     const isActive = activeTab === tab.id;

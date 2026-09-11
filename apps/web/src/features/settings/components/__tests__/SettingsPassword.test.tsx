@@ -4,11 +4,23 @@ import { SettingsPassword } from '../SettingsPassword'
 import { ApiError } from '@/shared/errors/apiErrors'
 
 const mockChangePassword = jest.fn()
+const mockLinked = jest.fn()
+const mockRequestReset = jest.fn()
 
 jest.mock('../SettingsPageLayout', () => ({
     SettingsPageLayout: ({ children }: { children: (props: Record<string, unknown>) => React.ReactNode }) => (
-        <div data-testid="settings-layout">{children({ profile: null, isLoading: false })}</div>
+        <div data-testid="settings-layout">
+            {children({ profile: { email: 'guest@example.com' }, isLoading: false })}
+        </div>
     ),
+}))
+
+jest.mock('@/features/auth/api/providers', () => ({
+    providersApi: { linked: () => mockLinked() },
+}))
+
+jest.mock('@/features/auth/api/passwordReset', () => ({
+    requestPasswordReset: (...args: unknown[]) => mockRequestReset(...args),
 }))
 
 jest.mock('../../api/settings', () => ({
@@ -26,9 +38,11 @@ function fillForm(current: string, newPw: string, confirm: string) {
 }
 
 describe('SettingsPassword', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         jest.clearAllMocks()
+        mockLinked.mockResolvedValue({ linked: [], has_password: true })
         render(<SettingsPassword />)
+        await screen.findByText('Текущий пароль')
     })
 
     it('renders the password change form', () => {
@@ -108,5 +122,39 @@ describe('SettingsPassword', () => {
         await waitFor(() => {
             expect(screen.getByText(/Что-то пошло не так/)).toBeInTheDocument()
         })
+    })
+})
+
+// An account created through a provider has no password, so the change form
+// cannot be filled in. Before this, the only route to one was guessing that
+// "forgot password" applies to a password you never had.
+describe('SettingsPassword without a password', () => {
+    beforeEach(() => {
+        jest.clearAllMocks()
+        mockLinked.mockResolvedValue({ linked: [{ provider: 'yandex' }], has_password: false })
+    })
+
+    it('offers to set one instead of asking for the current password', async () => {
+        render(<SettingsPassword />)
+
+        expect(await screen.findByRole('button', { name: 'Отправить ссылку' })).toBeInTheDocument()
+        expect(screen.queryByText('Текущий пароль')).not.toBeInTheDocument()
+    })
+
+    it('sends the link to the account address', async () => {
+        mockRequestReset.mockResolvedValue({})
+        render(<SettingsPassword />)
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Отправить ссылку' }))
+
+        await waitFor(() => expect(mockRequestReset).toHaveBeenCalledWith('guest@example.com'))
+        expect(await screen.findByText(/Ссылка отправлена на guest@example.com/)).toBeInTheDocument()
+    })
+
+    it('shows the change form when the provider state cannot be read', async () => {
+        mockLinked.mockRejectedValue(new Error('offline'))
+        render(<SettingsPassword />)
+
+        expect(await screen.findByText('Текущий пароль')).toBeInTheDocument()
     })
 })

@@ -9,6 +9,7 @@ import type { Payload } from 'recharts/types/component/DefaultTooltipContent'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import type { DayDetail } from '../types'
 
+import { t } from '@/shared/i18n'
 const CHART_HEIGHT = 160
 const AXIS_STYLE = { fontSize: 11, fill: '#9ca3af' }
 const GRID_STROKE = '#f0f0f0'
@@ -32,7 +33,7 @@ function WaterTooltip({ active, payload, label }: {
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
                     />
-                    Вода: <span className="font-medium">{entry.value ?? 0} стаканов</span>
+                    {t('curator.charts.water', { value: entry.value ?? 0 })}
                 </p>
             ))}
         </div>
@@ -60,7 +61,7 @@ export function WaterChart({ days }: WaterChartProps) {
         <Card variant="bordered">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-900">Вода</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-gray-900">{t('curator.charts.waterHeading')}</CardTitle>
                     <span className="text-sm font-semibold text-gray-900">
                         {latestGlasses}/{waterGoal}
                     </span>
@@ -91,7 +92,7 @@ export function WaterChart({ days }: WaterChartProps) {
                                 strokeDasharray="6 3"
                                 strokeWidth={1}
                                 label={{
-                                    value: `Цель ${waterGoal}`,
+                                    value: t('curator.charts.waterGoal', { value: waterGoal }),
                                     position: 'right',
                                     fill: '#60a5fa',
                                     fontSize: 11,

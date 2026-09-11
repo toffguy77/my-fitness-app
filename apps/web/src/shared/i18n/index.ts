@@ -7,17 +7,15 @@
  */
 
 import { ru, type Dictionary } from './dictionaries/ru'
+import { en } from './dictionaries/en'
 import { pluralRu, pluralEn, type PluralForms } from './plural'
 
 export type Language = 'ru' | 'en'
 
-const dictionaries: Record<Language, Dictionary> = {
-    ru,
-    // English has no dictionary yet. It resolves to the Russian one rather
-    // than to blank strings: an untranslated interface is usable, an empty one
-    // is not.
-    en: ru,
-}
+// Russian is the fallback rather than a co-equal entry: a key missing from
+// another language resolves to it, so a half-translated dictionary shows
+// Russian where the translation has not arrived instead of blank space.
+const dictionaries: Record<Language, unknown> = { ru, en }
 
 export const DEFAULT_LANGUAGE: Language = 'ru'
 
@@ -57,10 +55,7 @@ export function t(
     params?: Record<string, string | number>,
     language: Language = currentLanguage()
 ): string {
-    const value = key.split('.').reduce<unknown>(
-        (node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined),
-        dictionaries[language]
-    )
+    const value = lookup(key, dictionaries[language]) ?? lookup(key, ru)
 
     if (typeof value !== 'string') {
         console.warn(`[i18n] missing key "${key}"`)
@@ -74,10 +69,17 @@ export function t(
     )
 }
 
+function lookup(key: string, dictionary: unknown): string | undefined {
+    const value = key.split('.').reduce<unknown>(
+        (node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined),
+        dictionary
+    )
+    return typeof value === 'string' ? value : undefined
+}
+
 /** The message for an error code the API returned. */
 export function messageForCode(code: string, language: Language = currentLanguage()): string | null {
-    const errors = dictionaries[language].errors as Record<string, string>
-    return errors[code] ?? null
+    return lookup(`errors.${code}`, dictionaries[language]) ?? lookup(`errors.${code}`, ru) ?? null
 }
 
 /** Every code this client can render, for the completeness check. */

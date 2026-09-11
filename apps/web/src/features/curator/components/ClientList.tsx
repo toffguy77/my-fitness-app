@@ -6,6 +6,7 @@ import { curatorApi } from '../api/curatorApi'
 import { ClientCard } from './ClientCard'
 import type { ClientCard as ClientCardType } from '../types'
 
+import { t } from '@/shared/i18n'
 interface ClientListProps {
     clients?: ClientCardType[]
     /**
@@ -25,7 +26,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
         if (externalClients) return
         curatorApi.getClients()
             .then(setInternalClients)
-            .catch(() => setError('Не удалось загрузить клиентов'))
+            .catch(() => setError(t('curator.list.loadFailed')))
             .finally(() => setLoading(false))
     }, [externalClients])
 
@@ -48,7 +49,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
     if (clients.length === 0) {
         return (
             <p className="py-8 text-center text-sm text-gray-500">
-                Нет закреплённых клиентов
+                {t('curator.list.empty')}
             </p>
         )
     }
@@ -79,7 +80,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
             {needsAttention.length > 0 && (
                 <section>
                     <h2 className="text-sm font-semibold text-red-600 mb-2">
-                        Требуют внимания
+                        {t('curator.list.needAttention')}
                     </h2>
                     <div className="space-y-3">
                         {needsAttention.map((client) => (
@@ -93,7 +94,7 @@ export function ClientList({ clients: externalClients, attentionClientIds }: Cli
                 <section>
                     {needsAttention.length > 0 && (
                         <h2 className="text-sm font-semibold text-gray-500 mb-2">
-                            Остальные
+                            {t('curator.list.others')}
                         </h2>
                     )}
                     <div className="space-y-3">

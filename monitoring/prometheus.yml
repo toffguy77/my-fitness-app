@@ -1,0 +1,38 @@
+# Сбор метрик приложения.
+#
+# Цели адресуются сетевыми псевдонимами, а не именами контейнеров: имена
+# генерирует Dokploy и меняет при пересоздании проекта, а псевдоним задан в
+# нашем docker-compose.yml и не меняется.
+#
+# /metrics закрыт снаружи — Prometheus ходит по внутренней сети dokploy-network,
+# то есть тем же путём, каким контейнеры видят друг друга.
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  external_labels:
+    monitor: burcev
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: burcev-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['burcev-prod-api:4000']
+        labels:
+          environment: prod
+      # dev опрашивается тоже: увидеть, что метрика сломалась, дешевле там.
+      - targets: ['burcev-dev-api:4000']
+        labels:
+          environment: dev
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

@@ -593,7 +593,7 @@ func (s *Service) CreateFoodEntryFromChat(ctx context.Context, conversationID st
 		INSERT INTO food_items (id, name, category, serving_size, serving_unit,
 			calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
 			source, verified, created_at, updated_at)
-		VALUES ($1, $2, 'chat', $3, 'г', $4, $5, $6, $7, 'user', false, NOW(), NOW())
+		VALUES ($1, $2, 'chat', $3, 'g', $4, $5, $6, $7, 'user', false, NOW(), NOW())
 		ON CONFLICT (id) DO NOTHING
 	`
 

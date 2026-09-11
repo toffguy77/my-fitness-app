@@ -15,6 +15,7 @@ import {
     FileText,
 } from 'lucide-react'
 import type { NavigationItemConfig } from '../types'
+import { t } from '@/shared/i18n'
 
 /**
  * Primary navigation items for the dashboard footer
@@ -28,32 +29,32 @@ import type { NavigationItemConfig } from '../types'
 export const NAVIGATION_ITEMS: NavigationItemConfig[] = [
     {
         id: 'dashboard',
-        label: 'Дашборд',
+        label: t('dashboard.navigation.dashboard'),
         icon: LayoutDashboard,
         href: '/dashboard',
     },
     {
         id: 'food-tracker',
-        label: 'Фудтрекер',
+        label: t('dashboard.navigation.foodTracker'),
         icon: Utensils,
         href: '/food-tracker',
     },
     {
         id: 'workout',
-        label: 'Тренировка',
+        label: t('dashboard.navigation.workout'),
         icon: Dumbbell,
         href: '/workout',
         isDisabled: true,
     },
     {
         id: 'chat',
-        label: 'Чат',
+        label: t('dashboard.navigation.chat'),
         icon: MessageCircle,
         href: '/chat',
     },
     {
         id: 'content',
-        label: 'Контент',
+        label: t('dashboard.navigation.content'),
         icon: FileText,
         href: '/content',
     },

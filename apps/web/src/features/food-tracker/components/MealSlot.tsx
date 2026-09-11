@@ -14,6 +14,7 @@ import { Plus, Sunrise, Sun, Moon, Cookie } from 'lucide-react';
 import type { MealType, FoodEntry, KBZHU } from '../types';
 import { getMealSlotLabel, calculateSlotSubtotal, getFirstEntryTime } from '../utils/mealSlotUtils';
 import { FoodEntryItem } from './FoodEntryItem';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -71,12 +72,12 @@ interface SubtotalDisplayProps {
 function SubtotalDisplay({ subtotal }: SubtotalDisplayProps) {
     return (
         <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-100 sm:gap-3 sm:text-xs">
-            <span className="font-medium">Итого:</span>
-            <span>{Math.round(subtotal.calories)} ккал</span>
+            <span className="font-medium">{t('foodTracker.mealSlot.subtotal')}</span>
+            <span>{Math.round(subtotal.calories)} {t('units.kcal')}</span>
             <span className="text-gray-300 hidden sm:inline">|</span>
-            <span>Б: {Math.round(subtotal.protein)}г</span>
-            <span>Ж: {Math.round(subtotal.fat)}г</span>
-            <span>У: {Math.round(subtotal.carbs)}г</span>
+            <span>{t('macros.proteinShort')}: {Math.round(subtotal.protein)}{t('units.gram')}</span>
+            <span>{t('macros.fatShort')}: {Math.round(subtotal.fat)}{t('units.gram')}</span>
+            <span>{t('macros.carbsShort')}: {Math.round(subtotal.carbs)}{t('units.gram')}</span>
         </div>
     );
 }
@@ -109,7 +110,7 @@ export function MealSlot({
     return (
         <section
             className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}
-            aria-label={`${label} - приём пищи`}
+            aria-label={t('foodTracker.mealSlot.aria', { label })}
         >
             {/* Header - responsive padding */}
             <div className="flex items-center justify-between px-3 py-2.5 bg-gray-50 border-b border-gray-100 sm:px-4 sm:py-3">
@@ -126,7 +127,7 @@ export function MealSlot({
                     type="button"
                     onClick={() => onAddEntry(mealType)}
                     className="p-1.5 rounded-full bg-blue-500 text-white hover:bg-blue-600 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:p-2 touch-manipulation"
-                    aria-label={`Добавить в ${label}`}
+                    aria-label={t('foodTracker.mealSlot.addAria', { label })}
                 >
                     <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
@@ -156,14 +157,14 @@ export function MealSlot({
                     /* Empty state */
                     <div className="py-4 text-center sm:py-6">
                         <p className="text-xs text-gray-400 sm:text-sm">
-                            Нет записей
+                            {t('foodTracker.mealSlot.empty')}
                         </p>
                         <button
                             type="button"
                             onClick={() => onAddEntry(mealType)}
                             className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium focus:outline-none focus-visible:underline sm:mt-2 sm:text-sm touch-manipulation"
                         >
-                            Добавить еду
+                            {t('foodTracker.mealSlot.addFood')}
                         </button>
                     </div>
                 )}

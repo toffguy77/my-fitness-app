@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi, type Lead } from '../api/adminApi'
 
+import { t } from '@/shared/i18n'
 /**
  * People who worked out their numbers and stopped short of registering.
  *
@@ -14,18 +15,18 @@ import { adminApi, type Lead } from '../api/adminApi'
  */
 
 const stepLabels: Record<string, string> = {
-    goal: 'выбор цели',
-    body: 'параметры',
-    activity: 'активность',
-    result: 'увидел расчёт',
-    contact: 'оставил контакт',
-    registration: 'форма регистрации',
+    goal: t('admin.leadSteps.goal'),
+    body: t('admin.leadSteps.body'),
+    activity: t('admin.leadSteps.activity'),
+    result: t('admin.leadSteps.result'),
+    contact: t('admin.leadSteps.contact'),
+    registration: t('admin.leadSteps.registration'),
 }
 
 const goalLabels: Record<string, string> = {
-    loss: 'снизить вес',
-    maintain: 'удержать вес',
-    gain: 'набрать массу',
+    loss: t('admin.leadGoals.loss'),
+    maintain: t('admin.leadGoals.maintain'),
+    gain: t('admin.leadGoals.gain'),
 }
 
 export function LeadList() {
@@ -45,7 +46,7 @@ export function LeadList() {
             try {
                 await load()
             } catch {
-                toast.error('Не удалось загрузить заявки')
+                toast.error(t('admin.leads.loadFailed'))
             } finally {
                 setLoading(false)
             }
@@ -63,7 +64,7 @@ export function LeadList() {
                 )
             )
         } catch {
-            toast.error('Не удалось отметить заявку')
+            toast.error(t('admin.leads.markFailed'))
         } finally {
             setBusy(null)
         }
@@ -78,12 +79,12 @@ export function LeadList() {
     }
 
     if (leads.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">Заявок пока нет</p>
+        return <p className="py-8 text-center text-sm text-gray-500">{t('admin.leads.empty')}</p>
     }
 
     return (
         <div>
-            <p className="mb-3 text-sm text-gray-600">Всего заявок: {total}</p>
+            <p className="mb-3 text-sm text-gray-600">{t('admin.leads.total', { count: total })}</p>
 
             <ul className="space-y-3">
                 {leads.map((lead) => (
@@ -95,7 +96,7 @@ export function LeadList() {
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <p className="text-sm font-semibold text-gray-900">
-                                    {lead.name || 'Без имени'}
+                                    {lead.name || t('admin.leads.noName')}
                                 </p>
                                 <a
                                     href={`mailto:${lead.email}`}
@@ -105,38 +106,38 @@ export function LeadList() {
                                 </a>
                             </div>
                             {lead.handled_at ? (
-                                <span className="text-xs text-gray-500">Обработана</span>
+                                <span className="text-xs text-gray-500">{t('admin.leads.handled')}</span>
                             ) : (
                                 <button
                                     onClick={() => handleMarkHandled(lead)}
                                     disabled={busy === lead.id}
                                     className="text-sm font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-300"
                                 >
-                                    Отметить обработанной
+                                    {t('admin.leads.markHandled')}
                                 </button>
                             )}
                         </div>
 
                         <p className="mt-2 text-xs text-gray-600">
-                            Остановился: {stepLabels[lead.last_step] ?? lead.last_step}
+                            {t('admin.leads.stoppedAt', { step: stepLabels[lead.last_step] ?? lead.last_step })}
                         </p>
 
                         <p className="mt-1 text-xs text-gray-600">
                             {[
                                 lead.parameters.goal && goalLabels[lead.parameters.goal],
-                                lead.parameters.height_cm && `${lead.parameters.height_cm} см`,
-                                lead.parameters.weight_kg && `${lead.parameters.weight_kg} кг`,
-                                lead.result && `${Math.round(lead.result.calories)} ккал`,
+                                lead.parameters.height_cm && t('admin.leads.heightCm', { value: lead.parameters.height_cm }),
+                                lead.parameters.weight_kg && t('admin.leads.weightKg', { value: lead.parameters.weight_kg }),
+                                lead.result && t('admin.leads.calories', { value: Math.round(lead.result.calories) }),
                             ]
                                 .filter(Boolean)
-                                .join(' · ') || 'Параметры не заполнены'}
+                                .join(' · ') || t('admin.leads.noParameters')}
                         </p>
 
                         {/* Whether we may write to them at all is not a detail:
                             it decides what anyone looking at this list can do. */}
                         {!lead.consents.contact && (
                             <p className="mt-2 text-xs text-amber-600">
-                                Согласия на связь нет — писать нельзя
+                                {t('admin.leads.noConsent')}
                             </p>
                         )}
                     </li>

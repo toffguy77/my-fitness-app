@@ -25,6 +25,7 @@ import { calculatePercentage } from '../utils/calculations'
 import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
 import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for StepsBlock component
@@ -69,7 +70,7 @@ const StepsRing = memo(function StepsRing({
             aria-valuenow={cappedPercentage}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`Прогресс шагов: ${percentage.toFixed(1)}%`}
+            aria-label={t('dashboard.steps.progressAria', { percentage: percentage.toFixed(1) })}
         >
             <svg
                 width={size}
@@ -156,7 +157,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
         const validation = validateSteps(numericValue)
 
         if (!validation.isValid) {
-            setValidationError(validation.error || 'Неверное значение')
+            setValidationError(validation.error || t('common.invalidValue'))
         } else {
             setValidationError(null)
         }
@@ -175,7 +176,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
     // Handle save steps
     const handleSave = useCallback(async () => {
         if (!inputValue.trim()) {
-            setValidationError('Введите количество шагов')
+            setValidationError(t('dashboard.steps.required'))
             return
         }
 
@@ -183,7 +184,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
         const validation = validateSteps(numericValue)
 
         if (!validation.isValid) {
-            setValidationError(validation.error || 'Неверное значение')
+            setValidationError(validation.error || t('common.invalidValue'))
             return
         }
 
@@ -198,10 +199,10 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
             setInputValue('')
             setIsDialogOpen(false)
-            toast.success('Шаги сохранены')
+            toast.success(t('dashboard.steps.saved'))
         } catch (error) {
             console.error('Failed to save steps:', error)
-            setValidationError('Не удалось сохранить шаги')
+            setValidationError(t('dashboard.steps.saveFailed'))
         } finally {
             setIsSaving(false)
         }
@@ -239,12 +240,12 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                            Шаги
+                            {t('dashboard.steps.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
                             <AttentionBadge
                                 urgency="normal"
-                                ariaLabel="Шаги не записаны сегодня"
+                                ariaLabel={t('dashboard.steps.noneToday')}
                             />
                         )}
                     </div>
@@ -253,7 +254,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                         size="sm"
                         onClick={handleQuickAdd}
                         className="h-8 w-8 p-0"
-                        aria-label="Добавить шаги"
+                        aria-label={t('dashboard.steps.add')}
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
@@ -262,7 +263,7 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
             <CardContent className="space-y-3">
                 {/* Steps ring display */}
-                <div className="text-center space-y-2" role="region" aria-label="Прогресс шагов">
+                <div className="text-center space-y-2" role="region" aria-label={t('dashboard.steps.progressRegion')}>
                     <div className="flex justify-center">
                         <StepsRing percentage={percentage} size={72} strokeWidth={6}>
                             <span
@@ -270,15 +271,15 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                                     'text-base font-bold leading-tight',
                                     isGoalReached ? 'text-green-600' : 'text-gray-900'
                                 )}
-                                aria-label={`Текущее количество шагов: ${currentSteps.toLocaleString()}`}
+                                aria-label={t('dashboard.steps.currentAria', { steps: currentSteps.toLocaleString() })}
                             >
                                 {formatSteps(currentSteps)}
                             </span>
                         </StepsRing>
                     </div>
                     <div className="space-y-0.5">
-                        <div className="text-xs text-gray-500" aria-label={`Цель: ${stepsGoal.toLocaleString()} шагов`}>
-                            из {formatSteps(stepsGoal)} шагов
+                        <div className="text-xs text-gray-500" aria-label={t('dashboard.steps.goalAria', { steps: stepsGoal.toLocaleString() })}>
+                            {t('dashboard.steps.ofGoal', { steps: formatSteps(stepsGoal) })}
                         </div>
                         <div className={cn(
                             'text-xs font-medium',
@@ -293,10 +294,10 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                         <div
                             className="flex items-center justify-center gap-1.5 text-green-600"
                             role="status"
-                            aria-label="Цель по шагам достигнута"
+                            aria-label={t('dashboard.steps.goalReachedAria')}
                         >
                             <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                            <span className="text-xs font-medium">Цель достигнута!</span>
+                            <span className="text-xs font-medium">{t('dashboard.steps.goalReached')}</span>
                         </div>
                     )}
                 </div>
@@ -306,25 +307,25 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                     <div className="space-y-2.5 p-3 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="steps-dialog-title">
                         <div id="steps-dialog-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <Target className="h-4 w-4" aria-hidden="true" />
-                            <span>Обновить количество шагов</span>
+                            <span>{t('dashboard.steps.update')}</span>
                         </div>
 
                         <div>
                             <label htmlFor="steps-input" className="sr-only">
-                                Количество шагов
+                                {t('dashboard.steps.count')}
                             </label>
                             <Input
                                 id="steps-input"
                                 type="number"
                                 min="0"
                                 max="100000"
-                                placeholder="Введите количество шагов"
+                                placeholder={t('dashboard.steps.placeholder')}
                                 value={inputValue}
                                 onChange={(e) => handleInputChange(e.target.value)}
                                 onKeyDown={handleKeyPress}
                                 error={validationError || undefined}
                                 autoFocus
-                                aria-label="Количество шагов"
+                                aria-label={t('dashboard.steps.count')}
                                 aria-describedby={validationError ? "steps-error" : undefined}
                                 aria-invalid={!!validationError}
                             />
@@ -348,19 +349,19 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
                                 isLoading={isSaving}
                                 disabled={!!validationError || !inputValue.trim()}
                                 className="flex-1"
-                                aria-label="Сохранить количество шагов"
+                                aria-label={t('dashboard.steps.saveAria')}
                             >
                                 <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                                Сохранить
+                                {t('common.save')}
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={handleCancel}
                                 disabled={isSaving}
-                                aria-label="Отменить ввод шагов"
+                                aria-label={t('dashboard.steps.cancelAria')}
                             >
-                                Отмена
+                                {t('common.cancel')}
                             </Button>
                         </div>
                     </div>
@@ -368,31 +369,31 @@ export const StepsBlock = memo(function StepsBlock({ date, className }: StepsBlo
 
                 {/* Empty state or motivational message */}
                 {currentSteps === 0 ? (
-                    <div className="text-center py-2 space-y-2" role="status" aria-label="Шаги не записаны">
+                    <div className="text-center py-2 space-y-2" role="status" aria-label={t('dashboard.steps.emptyAria')}>
                         <Footprints className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">Не записано</p>
+                        <p className="text-sm text-gray-500">{t('dashboard.steps.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleQuickAdd}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Добавить шаги"
+                            aria-label={t('dashboard.steps.add')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Добавить
+                            {t('common.add')}
                         </Button>
                     </div>
                 ) : !isGoalReached && (
                     <div className="text-center">
-                        <p className="text-xs text-gray-500" aria-label={`Осталось ${(stepsGoal - currentSteps).toLocaleString()} шагов до цели`}>
-                            Осталось {(stepsGoal - currentSteps).toLocaleString()} шагов до цели
+                        <p className="text-xs text-gray-500" aria-label={t('dashboard.steps.remainingAria', { steps: (stepsGoal - currentSteps).toLocaleString() })}>
+                            {t('dashboard.steps.remaining', { steps: (stepsGoal - currentSteps).toLocaleString() })}
                         </p>
                     </div>
                 )}
 
                 {/* Helper text */}
                 <div className="text-xs text-gray-400 text-center">
-                    Рекомендуется делать минимум 10,000 шагов в день
+                    {t('dashboard.steps.hint')}
                 </div>
             </CardContent>
         </Card>

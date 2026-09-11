@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { X, Keyboard } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
 import { cn } from '@/shared/utils/cn';
+import { t } from '@/shared/i18n'
 
 /**
  * Keyboard shortcut definition
@@ -30,59 +31,59 @@ const KEYBOARD_SHORTCUTS: KeyboardShortcut[] = [
     // Calendar navigation
     {
         keys: ['←', '→'],
-        description: 'Навигация между днями недели',
-        category: 'Календарь',
+        description: t('dashboard.shortcuts.betweenDays'),
+        category: t('dashboard.shortcuts.categoryCalendar'),
     },
     {
         keys: ['Home'],
-        description: 'Перейти к понедельнику',
-        category: 'Календарь',
+        description: t('dashboard.shortcuts.toMonday'),
+        category: t('dashboard.shortcuts.categoryCalendar'),
     },
     {
         keys: ['End'],
-        description: 'Перейти к воскресенью',
-        category: 'Календарь',
+        description: t('dashboard.shortcuts.toSunday'),
+        category: t('dashboard.shortcuts.categoryCalendar'),
     },
     {
         keys: ['Enter'],
-        description: 'Выбрать день',
-        category: 'Календарь',
+        description: t('dashboard.shortcuts.pickDay'),
+        category: t('dashboard.shortcuts.categoryCalendar'),
     },
 
     // General navigation
     {
         keys: ['Tab'],
-        description: 'Перейти к следующему элементу',
-        category: 'Навигация',
+        description: t('dashboard.shortcuts.nextItem'),
+        category: t('dashboard.shortcuts.categoryNavigation'),
     },
     {
         keys: ['Shift', 'Tab'],
-        description: 'Перейти к предыдущему элементу',
-        category: 'Навигация',
+        description: t('dashboard.shortcuts.previousItem'),
+        category: t('dashboard.shortcuts.categoryNavigation'),
     },
     {
         keys: ['Esc'],
-        description: 'Закрыть диалог или отменить действие',
-        category: 'Навигация',
+        description: t('dashboard.shortcuts.closeDialog'),
+        category: t('dashboard.shortcuts.categoryNavigation'),
     },
 
     // Data entry
     {
         keys: ['Enter'],
-        description: 'Сохранить данные',
-        category: 'Ввод данных',
+        description: t('dashboard.shortcuts.save'),
+        category: t('dashboard.shortcuts.categoryInput'),
     },
     {
         keys: ['Esc'],
-        description: 'Отменить редактирование',
-        category: 'Ввод данных',
+        description: t('dashboard.shortcuts.cancelEditing'),
+        category: t('dashboard.shortcuts.categoryInput'),
     },
 
     // Help
     {
         keys: ['?'],
-        description: 'Показать/скрыть эту справку',
-        category: 'Справка',
+        description: t('dashboard.shortcuts.toggleHelp'),
+        category: t('dashboard.shortcuts.categoryHelp'),
     },
 ];
 
@@ -156,8 +157,8 @@ export function KeyboardShortcutsHelp() {
             <button
                 onClick={() => setIsOpen(true)}
                 className="fixed bottom-4 right-4 p-3 bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 z-50"
-                aria-label="Показать горячие клавиши"
-                title="Горячие клавиши (?)"
+                aria-label={t('dashboard.shortcuts.showAria')}
+                title={t('dashboard.shortcuts.showTitle')}
             >
                 <Keyboard className="h-5 w-5" />
             </button>
@@ -191,13 +192,13 @@ export function KeyboardShortcutsHelp() {
                                 id="keyboard-shortcuts-title"
                                 className="text-xl font-semibold text-gray-900"
                             >
-                                Горячие клавиши
+                                {t('dashboard.shortcuts.title')}
                             </h2>
                         </div>
                         <button
                             onClick={() => setIsOpen(false)}
                             className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            aria-label="Закрыть"
+                            aria-label={t('common.close')}
                         >
                             <X className="h-5 w-5 text-gray-500" />
                         </button>
@@ -243,7 +244,7 @@ export function KeyboardShortcutsHelp() {
                     {/* Footer */}
                     <div className="p-6 border-t bg-gray-50">
                         <p className="text-sm text-gray-600 text-center">
-                            Нажмите <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-white border border-gray-300 rounded">?</kbd> чтобы показать или скрыть эту справку
+                            {t('dashboard.shortcuts.pressHint', { key: '?' })}
                         </p>
                     </div>
                 </div>

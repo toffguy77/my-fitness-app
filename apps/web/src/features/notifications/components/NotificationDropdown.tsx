@@ -6,6 +6,7 @@ import { useNotificationsStore } from '../store/notificationsStore'
 import { CATEGORY_LABELS } from '@/features/content/types'
 import type { Notification } from '../types'
 
+import { t } from '@/shared/i18n'
 interface NotificationDropdownProps {
     onClose: () => void
 }
@@ -139,7 +140,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
         >
             {recentNotifications.length === 0 ? (
                 <div className="p-4 text-center text-sm text-gray-500">
-                    Нет уведомлений
+                    {t('notifications.empty')}
                 </div>
             ) : (
                 <div className="max-h-96 overflow-y-auto">
@@ -152,7 +153,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
                                 onClick={() => toggleGroup(group.category)}
                             >
                                 <span className="text-sm font-medium text-gray-900">
-                                    {group.count} новых: {group.label}
+                                    {t('notifications.groupCount', { count: group.count, label: group.label })}
                                 </span>
                             </button>
                             {expandedGroups.has(group.category) &&
@@ -199,7 +200,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
                 className="w-full p-3 text-sm text-blue-600 hover:bg-gray-50 text-center"
                 onClick={handleViewAll}
             >
-                Все уведомления
+                {t('notifications.all')}
             </button>
         </div>
     )

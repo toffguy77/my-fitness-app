@@ -12,6 +12,7 @@ import { groupNotificationsByDate } from '../utils/dateGrouping';
 import { cn } from '@/shared/utils/cn';
 import { AlertCircle, Inbox } from 'lucide-react';
 
+import { t } from '@/shared/i18n'
 // Lazy load VirtualizedNotificationList for code splitting (Requirement 9.1)
 const VirtualizedNotificationList = lazy(() =>
     import('./VirtualizedNotificationList')
@@ -133,7 +134,7 @@ export function NotificationList({
                         'text-xs',          // Mobile
                         'sm:text-sm',       // Tablet
                         'md:text-sm'        // Desktop
-                    )}>Загрузка уведомлений...</p>
+                    )}>{t('notifications.loadingList')}</p>
                 </div>
             </div>
         );
@@ -167,7 +168,7 @@ export function NotificationList({
                     'sm:text-lg',       // Tablet
                     'md:text-lg'        // Desktop
                 )}>
-                    Ошибка загрузки уведомлений
+                    {t('notifications.loadError')}
                 </h3>
                 <p className={cn(
                     'text-gray-600 mb-4 text-center max-w-md',
@@ -176,7 +177,7 @@ export function NotificationList({
                     'sm:text-sm',       // Tablet
                     'md:text-sm'        // Desktop
                 )}>
-                    {error.message || 'Не удалось загрузить уведомления. Пожалуйста, попробуйте снова.'}
+                    {error.message || t('notifications.loadErrorHint')}
                 </p>
                 <button
                     onClick={onLoadMore}
@@ -197,7 +198,7 @@ export function NotificationList({
                     aria-label="Retry loading notifications"
                     type="button"
                 >
-                    Повторить попытку
+                    {t('notifications.retry')}
                 </button>
             </div>
         );
@@ -231,7 +232,7 @@ export function NotificationList({
                     'sm:text-lg',       // Tablet
                     'md:text-lg'        // Desktop
                 )}>
-                    Нет уведомлений
+                    {t('notifications.empty')}
                 </h3>
                 <p className={cn(
                     'text-gray-600 text-center max-w-md',
@@ -241,8 +242,8 @@ export function NotificationList({
                     'md:text-sm'        // Desktop
                 )}>
                     {category === 'main'
-                        ? 'У вас пока нет личных уведомлений'
-                        : 'У вас пока нет уведомлений о контенте'}
+                        ? t('notifications.emptyPersonal')
+                        : t('notifications.emptyContent')}
                 </p>
             </div>
         );
@@ -356,7 +357,7 @@ export function NotificationList({
                                 'text-xs',          // Mobile
                                 'sm:text-sm',       // Tablet
                                 'md:text-sm'        // Desktop
-                            )}>Загрузка...</span>
+                            )}>{t('common.loading')}</span>
                         </div>
                     )}
                 </div>

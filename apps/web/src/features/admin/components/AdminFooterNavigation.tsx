@@ -6,6 +6,7 @@ import { cn } from '@/shared/utils/cn'
 import { ADMIN_NAVIGATION_ITEMS } from '../utils/adminNavigationConfig'
 import type { AdminNavigationItemId } from '../types'
 
+import { t } from '@/shared/i18n'
 export interface AdminFooterNavigationProps {
     activeItem?: AdminNavigationItemId
     onNavigate?: (itemId: AdminNavigationItemId) => void
@@ -36,7 +37,7 @@ export function AdminFooterNavigation({
             className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-gray-200 bg-white px-2"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="admin-footer-navigation"
-            aria-label="Навигация администратора"
+            aria-label={t('admin.navigation.aria')}
         >
             {ADMIN_NAVIGATION_ITEMS.map((item) => {
                 const Icon = item.icon

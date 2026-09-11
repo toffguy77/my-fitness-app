@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"strings"
@@ -42,7 +41,8 @@ func setupResetServiceTest(t *testing.T) (*ResetService, sqlmock.Sqlmock, func()
 
 	rateLimiter := middleware.NewRateLimiter(db, log)
 
-	service := NewResetService(db, cfg, log, emailService, rateLimiter)
+	service := NewResetService(db, cfg, log, emailService, rateLimiter).
+		WithSessionCache(&fakeSessionCache{})
 
 	cleanup := func() {
 		db.Close()
@@ -367,6 +367,14 @@ func TestResetPassword_Success(t *testing.T) {
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
+	// Ending every session is part of the same transaction as the change.
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WithArgs(userID).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("UPDATE users SET token_version").
+		WithArgs(userID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
 	// Commit transaction
 	mock.ExpectCommit()
 
@@ -374,10 +382,6 @@ func TestResetPassword_Success(t *testing.T) {
 	mock.ExpectQuery("SELECT email FROM users").
 		WithArgs(userID).
 		WillReturnRows(sqlmock.NewRows([]string{"email"}).AddRow("user@example.com"))
-
-	// Completing a reset must end every existing session.
-	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
-		WillReturnResult(sqlmock.NewResult(0, 2))
 
 	err := service.ResetPassword(context.Background(), plainToken, newPassword, ipAddress)
 
@@ -569,6 +573,14 @@ func TestResetPassword_CommitFailure(t *testing.T) {
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
+	// Ending every session is part of the same transaction as the change.
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WithArgs(userID).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("UPDATE users SET token_version").
+		WithArgs(userID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
 	// Commit fails
 	mock.ExpectCommit().WillReturnError(fmt.Errorf("commit error"))
 
@@ -612,6 +624,14 @@ func TestResetPassword_EmailLookupFailure(t *testing.T) {
 		WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
+	// Ending every session is part of the same transaction as the change.
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WithArgs(userID).
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("UPDATE users SET token_version").
+		WithArgs(userID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
 	// Commit transaction
 	mock.ExpectCommit()
 
@@ -619,10 +639,6 @@ func TestResetPassword_EmailLookupFailure(t *testing.T) {
 	mock.ExpectQuery("SELECT email FROM users").
 		WithArgs(userID).
 		WillReturnError(fmt.Errorf("database error"))
-
-	// Completing a reset must end every existing session.
-	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
-		WillReturnResult(sqlmock.NewResult(0, 2))
 
 	err := service.ResetPassword(context.Background(), plainToken, newPassword, ipAddress)
 
@@ -714,34 +730,63 @@ func TestResetPassword_ExpiredToken(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Sessions must actually end. The previous version of this test asserted that
-// the function "should not error" while it was a stub that did nothing, so a
-// stolen refresh token survived a password reset with the suite green.
-func TestInvalidateUserSessions(t *testing.T) {
-	t.Run("revokes every active refresh token", func(t *testing.T) {
+// Sessions must actually end. An earlier version of this test asserted that a
+// stub "should not error" while it did nothing, so a stolen refresh token
+// survived a password reset with the suite green.
+//
+// Both halves are checked here, because either alone is a revocation that does
+// not revoke: revoking the refresh tokens stops new access tokens being minted,
+// and the version bump stops the ones already minted from being accepted.
+func TestResetPasswordEndsEverySession(t *testing.T) {
+	const userID = int64(123)
+	const plainToken = "test-token-123"
+	const newPassword = "NewPass123!@#"
+
+	setup := func(t *testing.T) (*ResetService, sqlmock.Sqlmock, *fakeSessionCache, func()) {
 		service, mock, cleanup := setupResetServiceTest(t)
+		sessions := &fakeSessionCache{}
+		service.WithSessionCache(sessions)
+
+		rows := sqlmock.NewRows([]string{
+			"id", "user_id", "token_hash", "created_at", "expires_at", "used_at", "ip_address", "user_agent",
+		}).AddRow(1, userID, service.tokenGen.HashToken(plainToken),
+			time.Now(), time.Now().Add(time.Hour), nil, "192.168.1.1", "test-agent")
+		mock.ExpectQuery("SELECT (.+) FROM reset_tokens").WillReturnRows(rows)
+		mock.ExpectBegin()
+		mock.ExpectExec("UPDATE users").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec("UPDATE reset_tokens").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+			WithArgs(userID).
+			WillReturnResult(sqlmock.NewResult(0, 2))
+		mock.ExpectExec("UPDATE users SET token_version").
+			WithArgs(userID).
+			WillReturnResult(sqlmock.NewResult(0, 1))
+
+		return service, mock, sessions, cleanup
+	}
+
+	t.Run("revokes refresh tokens and bumps the token version", func(t *testing.T) {
+		service, mock, sessions, cleanup := setup(t)
 		defer cleanup()
 
-		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
-			WithArgs(int64(123)).
-			WillReturnResult(sqlmock.NewResult(0, 4))
+		mock.ExpectCommit()
+		mock.ExpectQuery("SELECT email FROM users").
+			WillReturnRows(sqlmock.NewRows([]string{"email"}).AddRow("user@example.com"))
 
-		err := service.InvalidateUserSessions(context.Background(), int64(123))
-
-		require.NoError(t, err)
+		require.NoError(t, service.ResetPassword(context.Background(), plainToken, newPassword, "192.168.1.1"))
+		assert.Equal(t, []int64{userID}, sessions.bumped,
+			"without the bump, access tokens issued before the reset are still accepted")
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("reports a failure instead of claiming success", func(t *testing.T) {
-		service, mock, cleanup := setupResetServiceTest(t)
+	t.Run("fails loudly rather than resetting without ending sessions", func(t *testing.T) {
+		service, mock, _, cleanup := setup(t)
 		defer cleanup()
+		service.sessions = nil
+		mock.ExpectRollback()
 
-		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
-			WithArgs(int64(123)).
-			WillReturnError(errors.New("connection reset"))
+		err := service.ResetPassword(context.Background(), plainToken, newPassword, "192.168.1.1")
 
-		err := service.InvalidateUserSessions(context.Background(), int64(123))
-
-		require.Error(t, err)
+		require.Error(t, err, "a reset that leaves access tokens valid must not report success")
 	})
 }

@@ -2385,12 +2385,19 @@ func (s *Service) sendPlanUpdatedNotification(ctx context.Context, clientID int6
 	}
 
 	actionURL := "/dashboard"
+	title, content := notifications.Text(
+		s.notificationsSvc.LanguageOf(ctx, clientID),
+		notifications.TextPlanUpdated,
+		map[string]string{
+			"calories": strconv.Itoa(int(plan.Calories)),
+			"protein":  strconv.Itoa(int(plan.Protein)),
+		})
 	notification := &notifications.Notification{
 		UserID:    clientID,
 		Category:  notifications.CategoryMain,
 		Type:      notifications.TypePlanUpdated,
-		Title:     "Обновлен план питания",
-		Content:   "Ваш куратор обновил план питания на эту неделю",
+		Title:     title,
+		Content:   content,
 		ActionURL: &actionURL,
 	}
 
@@ -2406,12 +2413,16 @@ func (s *Service) sendTaskAssignedNotification(ctx context.Context, clientID int
 	}
 
 	actionURL := fmt.Sprintf("/dashboard?task=%s", task.ID)
+	title, content := notifications.Text(
+		s.notificationsSvc.LanguageOf(ctx, clientID),
+		notifications.TextTaskAssigned,
+		map[string]string{"title": task.Title})
 	notification := &notifications.Notification{
 		UserID:    clientID,
 		Category:  notifications.CategoryMain,
 		Type:      notifications.TypeTaskAssigned,
-		Title:     "Новая задача",
-		Content:   fmt.Sprintf("Новая задача: %s", task.Title),
+		Title:     title,
+		Content:   content,
 		ActionURL: &actionURL,
 	}
 
@@ -2426,12 +2437,15 @@ func (s *Service) sendFeedbackReceivedNotification(ctx context.Context, clientID
 		return
 	}
 
+	title, content := notifications.Text(
+		s.notificationsSvc.LanguageOf(ctx, clientID),
+		notifications.TextCuratorFeedback, nil)
 	notification := &notifications.Notification{
 		UserID:   clientID,
 		Category: notifications.CategoryMain,
 		Type:     notifications.TypeFeedbackReceived,
-		Title:    "Обратная связь от куратора",
-		Content:  "Куратор оставил обратную связь по вашему отчёту",
+		Title:    title,
+		Content:  content,
 	}
 
 	actionURL := fmt.Sprintf("/dashboard/weekly-reports/%s/feedback", reportID)

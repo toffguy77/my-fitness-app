@@ -7,6 +7,7 @@ import React from 'react';
 import { WifiOff, Wifi, RefreshCw } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { getQueueSize } from '../utils/offlineQueue';
+import { t, plural } from '@/shared/i18n'
 
 export interface OfflineIndicatorProps {
     className?: string;
@@ -82,11 +83,11 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                 {/* Status text */}
                 <span className="text-sm font-medium">
                     {isOffline ? (
-                        'Нет подключения'
+                        t('dashboard.connection.offline')
                     ) : queueSize > 0 ? (
-                        `Синхронизация (${queueSize})`
+                        t('dashboard.connection.syncing', { count: queueSize })
                     ) : (
-                        'Подключено'
+                        t('dashboard.connection.online')
                     )}
                 </span>
 
@@ -96,7 +97,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
                         onClick={handleSync}
                         disabled={isSyncing}
                         className="ml-2 p-1 rounded hover:bg-white/20 transition-colors disabled:opacity-50"
-                        aria-label="Синхронизировать сейчас"
+                        aria-label={t('dashboard.connection.syncNow')}
                     >
                         <RefreshCw
                             className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`}
@@ -109,7 +110,7 @@ export function OfflineIndicator({ className = '' }: OfflineIndicatorProps) {
             {/* Pending changes count (when offline) */}
             {isOffline && queueSize > 0 && (
                 <div className="mt-2 text-xs text-center text-gray-600 bg-white rounded px-2 py-1 shadow">
-                    {queueSize} {queueSize === 1 ? 'изменение' : 'изменений'} в очереди
+                    {t('dashboard.connection.queued', { count: queueSize, noun: plural(queueSize, { one: t('dashboard.sync.changeOne'), few: t('dashboard.sync.changeFew'), many: t('dashboard.sync.changeMany') }) })}
                 </div>
             )}
         </div>

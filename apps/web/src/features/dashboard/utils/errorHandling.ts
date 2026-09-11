@@ -4,6 +4,8 @@
  */
 
 import toast from 'react-hot-toast';
+import { t } from '@/shared/i18n'
+import { mapApiError as mapSharedApiError, type ApiErrorCode } from '@/shared/errors/mapApiError'
 
 /**
  * Error codes for dashboard operations
@@ -60,95 +62,30 @@ export function isOnline(): boolean {
 /**
  * Map API error to DashboardError
  */
-export function mapApiError(error: any): DashboardError {
-    // Network error (offline)
-    if (!isOnline()) {
-        return {
-            code: DashboardErrorCode.NETWORK_ERROR,
-            message: 'Нет подключения к интернету',
-            retryable: true,
-        };
-    }
+const CODES: Record<ApiErrorCode, DashboardErrorCode> = {
+    UNAUTHORIZED: DashboardErrorCode.UNAUTHORIZED,
+    FORBIDDEN: DashboardErrorCode.FORBIDDEN,
+    NOT_FOUND: DashboardErrorCode.NOT_FOUND,
+    VALIDATION_ERROR: DashboardErrorCode.VALIDATION_ERROR,
+    TIMEOUT: DashboardErrorCode.TIMEOUT_ERROR,
+    RATE_LIMITED: DashboardErrorCode.RATE_LIMIT_ERROR,
+    NETWORK_ERROR: DashboardErrorCode.NETWORK_ERROR,
+    SERVER_ERROR: DashboardErrorCode.SERVER_ERROR,
+    UNKNOWN: DashboardErrorCode.UNKNOWN_ERROR,
+}
 
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
-    const details = error.response?.data?.details;
-
-    // HTTP status code errors
-    switch (status) {
-        case 401:
-            return {
-                code: DashboardErrorCode.UNAUTHORIZED,
-                message: 'Требуется авторизация',
-                retryable: false,
-            };
-
-        case 403:
-            return {
-                code: DashboardErrorCode.FORBIDDEN,
-                message: 'Доступ запрещен',
-                retryable: false,
-            };
-
-        case 404:
-            return {
-                code: DashboardErrorCode.NOT_FOUND,
-                message: 'Данные не найдены',
-                retryable: false,
-            };
-
-        case 400:
-            return {
-                code: DashboardErrorCode.VALIDATION_ERROR,
-                message: message || 'Неверные данные',
-                details,
-                retryable: false,
-            };
-
-        case 408:
-            return {
-                code: DashboardErrorCode.TIMEOUT_ERROR,
-                message: 'Превышено время ожидания',
-                retryable: true,
-            };
-
-        case 429:
-            return {
-                code: DashboardErrorCode.RATE_LIMIT_ERROR,
-                message: 'Слишком много запросов. Попробуйте позже',
-                retryable: true,
-            };
-
-        case 500:
-        case 502:
-        case 503:
-        case 504:
-            return {
-                code: DashboardErrorCode.SERVER_ERROR,
-                message: 'Сервис временно недоступен',
-                retryable: true,
-            };
-    }
-
-    // Network/fetch errors
-    if (
-        error instanceof TypeError ||
-        error.message?.includes('fetch') ||
-        error.message?.includes('network')
-    ) {
-        return {
-            code: DashboardErrorCode.NETWORK_ERROR,
-            message: 'Проверьте подключение к интернету',
-            retryable: true,
-        };
-    }
-
-    // Unknown error
+export function mapApiError(error: unknown): DashboardError {
+    // The statuses and their wording are shared with every other screen; this
+    // keeps the dashboard's own error shape around them.
+    const mapped = mapSharedApiError(error)
+    const details = (error as { response?: { data?: { details?: Record<string, unknown> } } })
+        ?.response?.data?.details
     return {
-        code: DashboardErrorCode.UNKNOWN_ERROR,
-        message: 'Произошла ошибка',
-        retryable: true,
-    };
+        code: CODES[mapped.code],
+        message: mapped.message,
+        retryable: mapped.retryable,
+        ...(details ? { details } : {}),
+    }
 }
 
 /**
@@ -239,7 +176,7 @@ export function showValidationErrors(errors: string[]): void {
             icon: '⚠️',
         });
     } else {
-        const message = `Исправьте ошибки:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`;
+        const message = `${t('dashboard.errors.fixThese')}\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`;
         toast.error(message, {
             duration: 6000,
             icon: '⚠️',
@@ -287,7 +224,7 @@ export function createErrorHandler(componentName: string) {
         }
 
         // Show user-friendly error message
-        toast.error('Произошла ошибка. Попробуйте обновить страницу', {
+        toast.error(t('dashboard.errors.reloadHint'), {
             duration: 5000,
             icon: '❌',
         });

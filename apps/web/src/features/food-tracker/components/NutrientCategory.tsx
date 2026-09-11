@@ -13,6 +13,7 @@ import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { NutrientRecommendationItem } from './NutrientRecommendationItem';
 import type { NutrientRecommendation, NutrientCategoryType } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -55,7 +56,7 @@ export function NutrientCategory({
         <div
             className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${className}`}
             role="region"
-            aria-label={`${label} - категория питательных веществ`}
+            aria-label={t('foodTracker.nutrientCategory.aria', { label })}
         >
             {/* Category header - responsive */}
             <button
@@ -86,7 +87,7 @@ export function NutrientCategory({
                     id={`category-${category}-content`}
                     className="px-3 pb-2.5 space-y-0.5 sm:px-4 sm:pb-3 sm:space-y-1"
                     role="list"
-                    aria-label={`Рекомендации в категории ${label}`}
+                    aria-label={t('foodTracker.nutrientCategory.listAria', { label })}
                 >
                     {recommendations.map((rec) => (
                         <NutrientRecommendationItem

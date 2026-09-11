@@ -63,6 +63,15 @@ export const adminApi = {
 
     closeSupport: (conversationId: string) =>
         apiClient.post<{ closed: boolean }>(`${BASE}/support/conversations/${conversationId}/close`, {}),
+    // Периодические задачи: расписание, последний запуск и ручной запуск.
+    // Единственное место, где видно, что задача вообще существует и работает —
+    // до этого ответ на «выполняется ли она и успешно ли» приходилось искать в
+    // логах контейнера.
+    getJobs: () => apiClient.get<{ jobs: Job[] }>(`${BASE}/jobs`),
+
+    runJob: (name: string) =>
+        apiClient.post<{ job: string; started: boolean }>(
+            `${BASE}/jobs/${encodeURIComponent(name)}/run`, {}),
 }
 
 /** A Telegram support chat. */
@@ -126,4 +135,19 @@ export interface Lead {
     consents: { data_processing: boolean; contact: boolean }
     handled_at?: string
     created_at: string
+}
+/** A periodic job as the admin area sees it. */
+export interface JobRun {
+    started_at: string
+    finished_at?: string
+    status: string
+    error?: string
+    items_processed: number
+}
+
+export interface Job {
+    name: string
+    /** Human-readable schedule, or "manual only" for jobs nobody schedules. */
+    schedule: string
+    last_run?: JobRun | null
 }

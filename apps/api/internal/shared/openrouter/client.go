@@ -53,6 +53,23 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 	log        *logger.Logger
+
+	// observeUsage, when set, receives what each call cost in prompt tokens and
+	// how much of that the provider served from its cache. Optional: the client
+	// is used in places that have no metrics wired, and a nil check is cheaper
+	// than making every caller supply one.
+	observeUsage func(promptTokens, cachedTokens int)
+}
+
+// WithUsageObserver reports token usage for every call.
+//
+// The support bot sends the whole user guide before every question, so the
+// provider's prompt cache is the difference between a small bill and a large
+// one. A cache that stops working raises no error and logs nothing — it just
+// costs more — so the only way to notice is to measure it.
+func (c *Client) WithUsageObserver(fn func(promptTokens, cachedTokens int)) *Client {
+	c.observeUsage = fn
+	return c
 }
 
 // NewClient creates a new OpenRouter API client.
@@ -108,6 +125,27 @@ type chatResponse struct {
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
+	Usage *struct {
+		PromptTokens        int `json:"prompt_tokens"`
+		PromptTokensDetails *struct {
+			CachedTokens int `json:"cached_tokens"`
+		} `json:"prompt_tokens_details,omitempty"`
+	} `json:"usage,omitempty"`
+}
+
+// report hands token usage to the observer, if there is one. A response
+// without a usage block reports nothing rather than reporting zero: zero would
+// read as "the cache served none of it", which is a different statement from
+// "the provider did not say".
+func (r chatResponse) report(observe func(promptTokens, cachedTokens int)) {
+	if observe == nil || r.Usage == nil || r.Usage.PromptTokens <= 0 {
+		return
+	}
+	cached := 0
+	if r.Usage.PromptTokensDetails != nil {
+		cached = r.Usage.PromptTokensDetails.CachedTokens
+	}
+	observe(r.Usage.PromptTokens, cached)
 }
 
 const systemPrompt = `Ты — эксперт по питанию и нутрициологии. Проанализируй фото еды и определи все видимые продукты и ингредиенты блюда.
@@ -191,6 +229,7 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 	if err := json.Unmarshal(respBody, &chatResp); err != nil {
 		return nil, fmt.Errorf("failed to parse API response: %w", err)
 	}
+	chatResp.report(c.observeUsage)
 
 	if chatResp.Error != nil {
 		return nil, fmt.Errorf("OpenRouter API error: %s", chatResp.Error.Message)
@@ -293,6 +332,7 @@ func (c *Client) Ask(ctx context.Context, cachedPrefix, question string, history
 	if err := json.Unmarshal(respBody, &chatResp); err != nil {
 		return "", fmt.Errorf("failed to parse API response: %w", err)
 	}
+	chatResp.report(c.observeUsage)
 	if chatResp.Error != nil {
 		return "", fmt.Errorf("OpenRouter API error: %s", chatResp.Error.Message)
 	}

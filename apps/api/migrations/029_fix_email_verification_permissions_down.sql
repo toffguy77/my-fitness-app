@@ -2,7 +2,7 @@
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_verification_codes') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'email_verification_codes') THEN
         EXECUTE 'REVOKE ALL ON TABLE email_verification_codes FROM PUBLIC';
     END IF;
 

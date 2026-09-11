@@ -24,6 +24,7 @@ import { useDebouncedCallback } from '@/shared/hooks/useDebounce'
 import { AttentionBadge } from './AttentionBadge'
 import { getProfile } from '@/features/settings/api/settings'
 import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for WeightBlock component
@@ -98,7 +99,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
         const validation = validateWeight(numericValue)
 
         if (!validation.isValid) {
-            setValidationError(validation.error || 'Неверное значение')
+            setValidationError(validation.error || t('common.invalidValue'))
         } else {
             setValidationError(null)
         }
@@ -117,7 +118,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
     // Handle save weight
     const handleSave = useCallback(async () => {
         if (!inputValue.trim()) {
-            setValidationError('Введите вес')
+            setValidationError(t('dashboard.weight.required'))
             return
         }
 
@@ -125,7 +126,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
         const validation = validateWeight(numericValue)
 
         if (!validation.isValid) {
-            setValidationError(validation.error || 'Неверное значение')
+            setValidationError(validation.error || t('common.invalidValue'))
             return
         }
 
@@ -140,10 +141,10 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
 
             setInputValue('')
             setIsEditing(false)
-            toast.success('Вес сохранен')
+            toast.success(t('dashboard.weight.saved'))
         } catch (error) {
             console.error('Failed to save weight:', error)
-            setValidationError('Не удалось сохранить вес')
+            setValidationError(t('dashboard.weight.saveFailed'))
         } finally {
             setIsSaving(false)
         }
@@ -187,12 +188,12 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                            Вес
+                            {t('dashboard.weight.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
                             <AttentionBadge
                                 urgency="normal"
-                                ariaLabel="Вес не записан сегодня"
+                                ariaLabel={t('dashboard.weight.noneToday')}
                             />
                         )}
                     </div>
@@ -201,7 +202,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                         size="sm"
                         onClick={handleQuickAdd}
                         className="h-8 w-8 p-0"
-                        aria-label={isWeightLogged ? "Изменить вес" : "Добавить вес"}
+                        aria-label={isWeightLogged ? t('dashboard.weight.change') : t('dashboard.weight.add')}
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
@@ -214,7 +215,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                     <div className="space-y-3">
                         <div>
                             <label htmlFor="weight-input" className="sr-only">
-                                Вес в килограммах
+                                {t('dashboard.weight.kilograms')}
                             </label>
                             <Input
                                 id="weight-input"
@@ -222,13 +223,13 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                 step="0.1"
                                 min="0.1"
                                 max="500"
-                                placeholder="Введите вес в кг"
+                                placeholder={t('dashboard.weight.placeholder')}
                                 value={inputValue}
                                 onChange={(e) => handleInputChange(e.target.value)}
                                 onKeyDown={handleKeyPress}
                                 error={validationError || undefined}
                                 autoFocus
-                                aria-label="Вес в килограммах"
+                                aria-label={t('dashboard.weight.kilograms')}
                                 aria-describedby={validationError ? "weight-error" : undefined}
                                 aria-invalid={!!validationError}
                             />
@@ -251,19 +252,19 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                 isLoading={isSaving}
                                 disabled={!!validationError || !inputValue.trim()}
                                 className="flex-1"
-                                aria-label="Сохранить вес"
+                                aria-label={t('dashboard.weight.saveAria')}
                             >
                                 <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                                Сохранить
+                                {t('common.save')}
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={handleCancel}
                                 disabled={isSaving}
-                                aria-label="Отменить ввод веса"
+                                aria-label={t('dashboard.weight.cancelAria')}
                             >
-                                Отмена
+                                {t('common.cancel')}
                             </Button>
                         </div>
                     </div>
@@ -271,22 +272,22 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                     <div className="text-center space-y-4">
                         {/* Current weight display */}
                         {isWeightLogged ? (
-                            <div className="space-y-2" role="region" aria-label="Текущий вес">
+                            <div className="space-y-2" role="region" aria-label={t('dashboard.weight.currentAria')}>
                                 <div className="text-4xl font-bold text-gray-900">
-                                    <span aria-label={`Текущий вес ${formatWeight(currentWeight)} килограмм`}>
+                                    <span aria-label={t('dashboard.weight.currentValueAria', { weight: formatWeight(currentWeight) })}>
                                         {formatWeight(currentWeight)}
                                     </span>
-                                    <span className="text-lg text-gray-500 ml-1" aria-hidden="true">кг</span>
+                                    <span className="text-lg text-gray-500 ml-1" aria-hidden="true">{t('dashboard.weight.kg')}</span>
                                 </div>
 
                                 {/* Completion indicator */}
                                 <div
                                     className="flex items-center justify-center gap-2 text-green-600"
                                     role="status"
-                                    aria-label="Вес записан"
+                                    aria-label={t('dashboard.weight.loggedAria')}
                                 >
                                     <Check className="h-4 w-4" aria-hidden="true" />
-                                    <span className="text-sm font-medium">Вес записан</span>
+                                    <span className="text-sm font-medium">{t('dashboard.weight.logged')}</span>
                                 </div>
 
                                 {/* Weight change comparison */}
@@ -298,7 +299,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                                 weightChange < 0 ? 'text-green-600' : 'text-gray-600'
                                         )}
                                         role="status"
-                                        aria-label={`Изменение веса: ${weightChange > 0 ? 'увеличение' : weightChange < 0 ? 'уменьшение' : 'без изменений'} на ${Math.abs(weightChange).toFixed(1)} килограмм с вчера`}
+                                        aria-label={t('dashboard.weight.changeAria', { direction: weightChange > 0 ? t('dashboard.weight.increase') : weightChange < 0 ? t('dashboard.weight.decrease') : t('dashboard.weight.unchanged'), amount: Math.abs(weightChange).toFixed(1) })}
                                     >
                                         {weightChange > 0 ? (
                                             <TrendingUp className="h-4 w-4" aria-hidden="true" />
@@ -309,11 +310,11 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                         )}
                                         <span>
                                             {weightChange > 0 ? '+' : ''}
-                                            {formatWeight(Math.abs(weightChange))} кг
+                                            {formatWeight(Math.abs(weightChange))} {t('dashboard.weight.kg')}
                                         </span>
                                         {weightChange !== 0 && (
                                             <span className="text-gray-500">
-                                                с вчера
+                                                {t('dashboard.weight.sinceYesterday')}
                                             </span>
                                         )}
                                     </div>
@@ -321,8 +322,8 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
 
                                 {/* Previous weight reference */}
                                 {previousWeight && (
-                                    <div className="text-xs text-gray-500" aria-label={`Вчера вес был ${formatWeight(previousWeight)} килограмм`}>
-                                        Вчера: {formatWeight(previousWeight)} кг
+                                    <div className="text-xs text-gray-500" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
+                                        {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
                                     </div>
                                 )}
 
@@ -330,20 +331,20 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                 {targetWeight != null && distanceToTarget != null && (
                                     <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500 pt-1">
                                         <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
-                                        <span>Цель: {formatWeight(targetWeight)} кг</span>
+                                        <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                         {Math.abs(distanceToTarget) >= 0.1 ? (
                                             <span className={distanceToTarget > 0 ? 'text-amber-600' : 'text-green-600'}>
-                                                ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} кг)
+                                                ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
                                             </span>
                                         ) : (
-                                            <span className="text-green-600 font-medium">Достигнута!</span>
+                                            <span className="text-green-600 font-medium">{t('dashboard.weight.targetReached')}</span>
                                         )}
                                     </div>
                                 )}
                             </div>
                         ) : (
                             /* Empty state */
-                            <div className="py-8 space-y-3" role="status" aria-label="Вес не записан">
+                            <div className="py-8 space-y-3" role="status" aria-label={t('dashboard.weight.emptyAria')}>
                                 <div className="text-gray-400">
                                     <svg
                                         className="h-12 w-12 mx-auto mb-3"
@@ -361,18 +362,18 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                     </svg>
                                 </div>
                                 <p className="text-sm text-gray-500 mb-3">
-                                    Вес не записан
+                                    {t('dashboard.weight.empty')}
                                 </p>
                                 {previousWeight && (
-                                    <p className="text-xs text-gray-400 mb-3" aria-label={`Вчера вес был ${formatWeight(previousWeight)} килограмм`}>
-                                        Вчера: {formatWeight(previousWeight)} кг
+                                    <p className="text-xs text-gray-400 mb-3" aria-label={t('dashboard.weight.yesterdayAria', { weight: formatWeight(previousWeight) })}>
+                                        {t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}
                                     </p>
                                 )}
                                 {/* Target weight in empty state */}
                                 {targetWeight != null && (
                                     <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
                                         <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
-                                        <span>Цель: {formatWeight(targetWeight)} кг</span>
+                                        <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                     </div>
                                 )}
                                 <Button
@@ -380,10 +381,10 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                                     size="sm"
                                     onClick={handleQuickAdd}
                                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                    aria-label="Записать вес"
+                                    aria-label={t('dashboard.weight.logAria')}
                                 >
                                     <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                                    Записать вес
+                                    {t('dashboard.weight.log')}
                                 </Button>
                             </div>
                         )}
@@ -393,7 +394,7 @@ export const WeightBlock = memo(function WeightBlock({ date, className }: Weight
                 {/* Helper text */}
                 {!isEditing && (
                     <div className="text-xs text-gray-400 text-center">
-                        Рекомендуется взвешиваться утром натощак
+                        {t('dashboard.weight.hint')}
                     </div>
                 )}
             </CardContent>

@@ -7,6 +7,7 @@ import { cn } from '@/shared/utils/cn'
 import { adminApi } from '../api/adminApi'
 import type { AdminConversation } from '../types'
 
+import { t } from '@/shared/i18n'
 export function AdminConversationList() {
     const router = useRouter()
     const [conversations, setConversations] = useState<AdminConversation[]>([])
@@ -19,7 +20,7 @@ export function AdminConversationList() {
                 const page = await adminApi.getConversations()
                 setConversations(page.items)
             } catch {
-                setError('Не удалось загрузить чаты')
+                setError(t('admin.chats.loadFailed'))
             } finally {
                 setLoading(false)
             }
@@ -40,7 +41,7 @@ export function AdminConversationList() {
     }
 
     if (conversations.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">Нет чатов</p>
+        return <p className="py-8 text-center text-sm text-gray-500">{t('admin.chats.empty')}</p>
     }
 
     return (
@@ -65,7 +66,7 @@ export function AdminConversationList() {
                         </span>
                     </div>
                     <p className="text-xs text-gray-500">
-                        {conv.message_count} сообщений
+                        {t('admin.chats.messageCount', { count: conv.message_count })}
                     </p>
                 </button>
             ))}

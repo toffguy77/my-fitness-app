@@ -31,7 +31,8 @@ type Metrics struct {
 	jobDuration *prometheus.HistogramVec
 	jobTotal    *prometheus.CounterVec
 
-	domainEvents *prometheus.CounterVec
+	domainEvents      *prometheus.CounterVec
+	modelPromptTokens *prometheus.CounterVec
 }
 
 // DBStatsFunc reports pool statistics on demand. Taking a function rather than
@@ -88,9 +89,18 @@ func New(namespace string, stats DBStatsFunc) *Metrics {
 		Help:      "Key product events.",
 	}, []string{"event"})
 
+	// Two counters rather than a ready-made share: the share is a question
+	// Prometheus answers, and keeping the raw numbers means a later question
+	// ("how many tokens did we send at all") is still answerable.
+	m.modelPromptTokens = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Name:      "model_prompt_tokens_total",
+		Help:      "Prompt tokens sent to the model, split by whether the provider read them from its cache.",
+	}, []string{"cached"})
+
 	m.registry.MustRegister(
 		m.httpDuration, m.httpTotal, m.dbDuration,
-		m.jobDuration, m.jobTotal, m.domainEvents,
+		m.jobDuration, m.jobTotal, m.domainEvents, m.modelPromptTokens,
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
@@ -170,6 +180,26 @@ const (
 )
 
 // RecordEvent counts a product event.
+// ObserveModelUsage records what one model call cost in prompt tokens and how
+// much of that the provider served from its cache.
+//
+// The cache is not a nicety here: the support bot sends the whole user guide
+// before every question. When the cached share falls, nothing breaks and no
+// error is logged — the bill simply multiplies, quietly, until somebody looks.
+// That is exactly the kind of failure a metric is for.
+func (m *Metrics) ObserveModelUsage(promptTokens, cachedTokens int) {
+	if m == nil || promptTokens < 0 || cachedTokens < 0 {
+		return
+	}
+	if cachedTokens > promptTokens {
+		// A provider that reports more cached than sent is telling us something
+		// we cannot use; counting it would corrupt the share for good.
+		return
+	}
+	m.modelPromptTokens.WithLabelValues("yes").Add(float64(cachedTokens))
+	m.modelPromptTokens.WithLabelValues("no").Add(float64(promptTokens - cachedTokens))
+}
+
 func (m *Metrics) RecordEvent(event string) {
 	m.domainEvents.WithLabelValues(event).Inc()
 }
@@ -191,5 +221,16 @@ func SetDefault(m *Metrics) { defaultMetrics = m }
 func Record(event string) {
 	if defaultMetrics != nil {
 		defaultMetrics.RecordEvent(event)
+	}
+}
+
+// RecordModelUsage records model token usage on the default recorder.
+//
+// It reads the recorder at call time rather than at wiring time: the model
+// clients are constructed before the metric set exists, and a value captured
+// then would be nil for the life of the process.
+func RecordModelUsage(promptTokens, cachedTokens int) {
+	if defaultMetrics != nil {
+		defaultMetrics.ObserveModelUsage(promptTokens, cachedTokens)
 	}
 }

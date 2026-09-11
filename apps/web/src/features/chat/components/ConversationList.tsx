@@ -11,6 +11,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { chatApi } from '../api/chatApi'
 import type { Conversation } from '../types'
+import { t } from '@/shared/i18n'
 
 // ============================================================================
 // Types
@@ -47,9 +48,9 @@ function formatRelativeTime(dateStr: string): string {
     const diffMin = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMs / 3600000)
 
-    if (diffMin < 1) return 'только что'
-    if (diffMin < 60) return `${diffMin} мин назад`
-    if (diffHours < 24) return `${diffHours} ч назад`
+    if (diffMin < 1) return t('chat.justNow')
+    if (diffMin < 60) return t('chat.minutesAgo', { minutes: diffMin })
+    if (diffHours < 24) return t('chat.hoursAgo', { hours: diffHours })
 
     // Check if yesterday
     const yesterday = new Date(now)
@@ -59,7 +60,7 @@ function formatRelativeTime(dateStr: string): string {
         date.getMonth() === yesterday.getMonth() &&
         date.getFullYear() === yesterday.getFullYear()
     ) {
-        return 'вчера'
+        return t('chat.yesterday')
     }
 
     // Format as DD.MM.YYYY
@@ -83,17 +84,17 @@ function getInitials(name: string): string {
  * Get the last message preview text.
  */
 function getPreview(conv: Conversation): string {
-    if (!conv.last_message) return 'Нет сообщений'
+    if (!conv.last_message) return t('chat.noMessages')
 
     switch (conv.last_message.type) {
         case 'text':
             return truncate(conv.last_message.content ?? '', 50)
         case 'image':
-            return 'Фото'
+            return t('chat.photo')
         case 'file':
-            return 'Файл'
+            return t('chat.file')
         case 'food_entry':
-            return 'КБЖУ запись'
+            return t('chat.macroEntry')
         default:
             return truncate(conv.last_message.content ?? '', 50)
     }
@@ -135,7 +136,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <p className="text-gray-400 text-sm">Загрузка чатов...</p>
+                <p className="text-gray-400 text-sm">{t('chat.loadingChats')}</p>
             </div>
         )
     }
@@ -143,7 +144,7 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
     if (sorted.length === 0) {
         return (
             <div className="flex items-center justify-center py-12">
-                <p className="text-gray-400 text-sm">Нет чатов</p>
+                <p className="text-gray-400 text-sm">{t('chat.noChats')}</p>
             </div>
         )
     }

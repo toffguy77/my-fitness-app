@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useSession } from '@/shared/hooks/useSession'
 
+import { t } from '@/shared/i18n'
 // Dynamically import NotificationsPage component for code splitting (Requirement 9.1)
 const NotificationsPageComponent = dynamic(
     () => import('@/features/notifications/components/NotificationsPage').then(mod => ({ default: mod.NotificationsPage })),
@@ -23,7 +24,7 @@ const NotificationsPageComponent = dynamic(
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Загрузка уведомлений...</p>
+                    <p className="text-gray-600">{t('notifications.loadingList')}</p>
                 </div>
             </div>
         ),
@@ -43,7 +44,7 @@ export default function NotificationsPage() {
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Загрузка...</p>
+                    <p className="text-gray-600">{t('common.loading')}</p>
                 </div>
             </div>
         )

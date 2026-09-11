@@ -50,17 +50,22 @@ function bytesToKey(buffer: ArrayBuffer | null): string {
 /**
  * The worker that receives pushes.
  *
- * Registered here rather than waited for: nothing else in this application
- * produces one. `navigator.serviceWorker.ready` never resolves when no worker
- * has been registered, which is why the push section used to render nothing at
- * all — the state stayed "not yet known" forever.
+ * The same worker that does the caching, because a page can only be controlled
+ * by one. A separate push worker at the same scope would be replaced by it, and
+ * push would stop arriving with nothing to say so.
+ *
+ * Registered here rather than waited for: `navigator.serviceWorker.ready` never
+ * resolves when nothing has been registered, which is why the push section used
+ * to render nothing at all — the state stayed "not yet known" forever. Serwist
+ * registers it too; registering the same URL twice is a no-op, and this way the
+ * section does not depend on which happened first.
  */
-const PUSH_WORKER = '/push-sw.js'
+const WORKER = '/sw.js'
 
 async function pushWorker(): Promise<ServiceWorkerRegistration> {
-    const existing = await navigator.serviceWorker.getRegistration(PUSH_WORKER)
+    const existing = await navigator.serviceWorker.getRegistration(WORKER)
     if (existing?.active) return existing
-    return navigator.serviceWorker.register(PUSH_WORKER)
+    return navigator.serviceWorker.register(WORKER)
 }
 
 /** Whether this is an iOS browser outside an installed app. */

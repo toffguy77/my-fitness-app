@@ -12,6 +12,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 import type { FoodEntry } from '../types';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Types
@@ -42,13 +43,13 @@ export interface FoodEntryItemProps {
 function getPortionUnit(portionType: string): string {
     switch (portionType) {
         case 'grams':
-            return 'г';
+            return t('units.gram');
         case 'milliliters':
-            return 'мл';
+            return t('units.milliliter');
         case 'portion':
-            return 'порц.';
+            return t('foodTracker.entry.unitPortion');
         default:
-            return 'г';
+            return t('units.gram');
     }
 }
 
@@ -108,7 +109,7 @@ export function FoodEntryItem({
 
     // Format calories display
     const caloriesDisplay = useMemo(() => {
-        return `${Math.round(entry.nutrition.calories)} ккал`;
+        return t('foodTracker.entry.calories', { calories: Math.round(entry.nutrition.calories) });
     }, [entry.nutrition.calories]);
 
     // Aria label for accessibility
@@ -148,7 +149,7 @@ export function FoodEntryItem({
                                 type="button"
                                 onClick={handleEdit}
                                 className="p-1.5 rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                                aria-label={`Редактировать ${entry.foodName}`}
+                                aria-label={t('foodTracker.entry.editAria', { name: entry.foodName })}
                             >
                                 <Edit2 className="w-4 h-4" />
                             </button>
@@ -158,7 +159,7 @@ export function FoodEntryItem({
                                 type="button"
                                 onClick={handleDelete}
                                 className="p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-                                aria-label={`Удалить ${entry.foodName}`}
+                                aria-label={t('foodTracker.entry.deleteAria', { name: entry.foodName })}
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>

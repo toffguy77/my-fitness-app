@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -113,10 +115,13 @@ func (rl *AuthRateLimiter) Limit(endpoint string) gin.HandlerFunc {
 		if len(valid) >= cfg.maxRequests {
 			// Store pruned slice (without the new request) and reject.
 			bucket.Store(ip, valid)
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"status":  "error",
-				"message": "Слишком много попыток. Попробуйте позже.",
-			})
+			// Через общий помощник: ответ без кода вынуждает клиента
+			// показывать серверную фразу, а это единственный текст, который
+			// нельзя перевести.
+			response.ErrorCode(c, http.StatusTooManyRequests,
+				apperrors.CodeTooManyAttempts,
+				"Слишком много попыток. Попробуйте позже.", nil)
+			c.Abort()
 			return
 		}
 

@@ -3,11 +3,12 @@
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { cn } from '@/shared/utils/cn'
 
+import { t } from '@/shared/i18n'
 const TABS = [
-    { id: 'overview', label: 'Обзор' },
-    { id: 'plan', label: 'План' },
-    { id: 'tasks', label: 'Задачи' },
-    { id: 'reports', label: 'Отчёты' },
+    { id: 'overview', label: t('curator.tabs.overview') },
+    { id: 'plan', label: t('curator.tabs.plan') },
+    { id: 'tasks', label: t('curator.tabs.tasks') },
+    { id: 'reports', label: t('curator.tabs.reports') },
 ] as const
 
 export type TabId = (typeof TABS)[number]['id']

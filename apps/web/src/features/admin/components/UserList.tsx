@@ -7,10 +7,11 @@ import { cn } from '@/shared/utils/cn'
 import { adminApi } from '../api/adminApi'
 import type { AdminUser } from '../types'
 
+import { t } from '@/shared/i18n'
 const ROLE_LABELS: Record<string, string> = {
-    client: 'Клиент',
-    coordinator: 'Куратор',
-    super_admin: 'Админ',
+    client: t('admin.roles.client'),
+    coordinator: t('admin.roles.coordinator'),
+    super_admin: t('admin.roles.super_admin'),
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -38,7 +39,7 @@ export function UserList() {
                 setUsers(page.items)
                 setTotal(page.total)
             })
-            .catch(() => setError('Не удалось загрузить пользователей'))
+            .catch(() => setError(t('admin.users.loadFailed')))
             .finally(() => setLoading(false))
     }, [])
 
@@ -51,7 +52,7 @@ export function UserList() {
             setUsers((current) => [...current, ...page.items])
             setTotal(page.total)
         } catch {
-            setError('Не удалось загрузить пользователей')
+            setError(t('admin.users.loadFailed'))
         } finally {
             setLoadingMore(false)
         }
@@ -85,7 +86,7 @@ export function UserList() {
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Поиск по имени или email..."
+                        placeholder={t('admin.users.searchPlaceholder')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -96,18 +97,18 @@ export function UserList() {
                     onChange={(e) => setRoleFilter(e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 >
-                    <option value="all">Все роли</option>
-                    <option value="client">Клиенты</option>
-                    <option value="coordinator">Кураторы</option>
-                    <option value="super_admin">Админы</option>
+                    <option value="all">{t('admin.users.allRoles')}</option>
+                    <option value="client">{t('admin.users.clients')}</option>
+                    <option value="coordinator">{t('admin.users.curators')}</option>
+                    <option value="super_admin">{t('admin.users.admins')}</option>
                 </select>
             </div>
 
-            <p className="text-xs text-gray-500">{filtered.length} из {users.length} пользователей</p>
+            <p className="text-xs text-gray-500">{t('admin.users.countOf', { shown: filtered.length, total: users.length })}</p>
 
             {/* User list */}
             {filtered.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-500">Пользователи не найдены</p>
+                <p className="py-8 text-center text-sm text-gray-500">{t('admin.users.notFound')}</p>
             ) : (
                 <div className="space-y-2">
                     {filtered.map((user) => {
@@ -156,12 +157,12 @@ export function UserList() {
                                 </div>
                                 {user.curator_name && (
                                     <p className="mt-2 text-xs text-gray-500">
-                                        Куратор: {user.curator_name}
+                                        {t('admin.users.curatorOf', { name: user.curator_name })}
                                     </p>
                                 )}
                                 {user.role === 'coordinator' && user.client_count > 0 && (
                                     <p className="mt-2 text-xs text-gray-500">
-                                        Клиентов: {user.client_count}
+                                        {t('admin.users.clientCount', { count: user.client_count })}
                                     </p>
                                 )}
                             </button>
@@ -173,7 +174,7 @@ export function UserList() {
             {users.length < total && (
                 <div className="mt-6 text-center">
                     <p className="mb-2 text-xs text-gray-500">
-                        Показано {users.length} из {total}
+                        {t('admin.users.shownOf', { shown: users.length, total })}
                     </p>
                     <button
                         type="button"
@@ -181,7 +182,7 @@ export function UserList() {
                         disabled={loadingMore}
                         className="rounded-md border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
                     >
-                        {loadingMore ? 'Загружаем…' : 'Показать ещё'}
+                        {loadingMore ? t('admin.users.loadingMore') : t('admin.users.showMore')}
                     </button>
                 </div>
             )}

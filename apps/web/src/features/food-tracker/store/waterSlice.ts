@@ -16,6 +16,7 @@ import {
     retryWithBackoff,
     isOnline,
 } from './storeUtils';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Slice Interface
@@ -114,7 +115,7 @@ export const createWaterSlice: StateCreator<
             });
 
             const mappedError = mapError(error);
-            toast.error(mappedError.message || 'Не удалось обновить данные о воде');
+            toast.error(mappedError.message || t('foodTracker.entries.waterUpdateFailed'));
         }
     },
 

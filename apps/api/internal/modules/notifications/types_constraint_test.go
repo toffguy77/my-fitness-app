@@ -20,7 +20,7 @@ import (
 // never appears — so it is worth a test that cannot be forgotten.
 func TestNotificationTypesMatchTheDatabaseConstraint(t *testing.T) {
 	inGo := []string{}
-	for _, candidate := range allKnownTypeStrings() {
+	for _, candidate := range allKnownTypeStrings(t) {
 		if NotificationType(candidate).IsValid() {
 			inGo = append(inGo, candidate)
 		}
@@ -35,16 +35,25 @@ func TestNotificationTypesMatchTheDatabaseConstraint(t *testing.T) {
 			"add a migration that redefines notifications_type_check")
 }
 
-// allKnownTypeStrings lists every type this package declares, so the test
-// fails when one is added in Go and nowhere else.
-func allKnownTypeStrings() []string {
-	return []string{
-		string(TypeTrainerFeedback), string(TypeAchievement), string(TypeReminder),
-		string(TypeSystemUpdate), string(TypeNewFeature), string(TypeGeneral),
-		string(TypeNewContent), string(TypePlanUpdated), string(TypeTaskAssigned),
-		string(TypeTaskOverdue), string(TypeFeedbackReceived), string(TypeExportReady),
-		string(TypeClientLeft),
+// allKnownTypeStrings reads the constants out of types.go rather than listing
+// them again here. A list written twice is a list that goes out of step, which
+// is the failure this whole test exists to catch — it should not reintroduce it
+// one file over.
+func allKnownTypeStrings(t *testing.T) []string {
+	t.Helper()
+
+	source, err := os.ReadFile("types.go")
+	require.NoError(t, err)
+
+	pattern := regexp.MustCompile(`Type[A-Za-z]+\s+NotificationType\s*=\s*"([a-z_]+)"`)
+	matches := pattern.FindAllStringSubmatch(string(source), -1)
+	require.NotEmpty(t, matches, "no notification types found — the pattern is out of date")
+
+	types := make([]string, 0, len(matches))
+	for _, m := range matches {
+		types = append(types, m[1])
 	}
+	return types
 }
 
 // typesFromLatestConstraint reads the newest migration that redefines the

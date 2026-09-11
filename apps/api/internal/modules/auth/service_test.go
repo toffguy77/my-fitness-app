@@ -164,10 +164,10 @@ func TestRefreshTokens(t *testing.T) {
 		expiresAt := time.Now().Add(24 * time.Hour)
 
 		// Lookup refresh token
-		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens").
+		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "remember_me"}).
-				AddRow(1, int64(42), expiresAt, nil, false))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
+				AddRow(1, int64(42), expiresAt, nil, nil, false))
 
 		// Begin transaction
 		mock.ExpectBegin()
@@ -209,10 +209,10 @@ func TestRefreshTokens(t *testing.T) {
 		tokenHash := service.tokens.HashToken(plainToken)
 		expiredAt := time.Now().Add(-1 * time.Hour)
 
-		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens").
+		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "remember_me"}).
-				AddRow(1, int64(42), expiredAt, nil, false))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
+				AddRow(1, int64(42), expiredAt, nil, nil, false))
 
 		result, err := service.RefreshTokens(ctx, plainToken, "", "")
 		assert.Error(t, err)
@@ -229,10 +229,10 @@ func TestRefreshTokens(t *testing.T) {
 		tokenHash := service.tokens.HashToken(plainToken)
 		revokedAt := sql.NullTime{Time: time.Now().Add(-1 * time.Hour), Valid: true}
 
-		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens").
+		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
-			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "remember_me"}).
-				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, false))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
+				AddRow(1, int64(42), time.Now().Add(24*time.Hour), revokedAt, nil, false))
 
 		// Expect all tokens to be revoked
 		mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
@@ -253,7 +253,7 @@ func TestRefreshTokens(t *testing.T) {
 		plainToken := "unknown-token"
 		tokenHash := service.tokens.HashToken(plainToken)
 
-		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens").
+		mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 			WithArgs(tokenHash).
 			WillReturnError(sql.ErrNoRows)
 
@@ -366,10 +366,10 @@ func TestRefreshTokensInheritsRememberMe(t *testing.T) {
 			tokenHash := service.tokens.HashToken(plainToken)
 			expiresAt := time.Now().Add(24 * time.Hour)
 
-			mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, remember_me FROM refresh_tokens").
+			mock.ExpectQuery("SELECT id, user_id, expires_at, revoked_at, replaced_by_hash, remember_me").
 				WithArgs(tokenHash).
-				WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "remember_me"}).
-					AddRow(1, int64(42), expiresAt, nil, tc.rememberMe))
+				WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "expires_at", "revoked_at", "replaced_by_hash", "remember_me"}).
+					AddRow(1, int64(42), expiresAt, nil, nil, tc.rememberMe))
 
 			mock.ExpectBegin()
 

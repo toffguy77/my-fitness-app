@@ -2,6 +2,20 @@
  * Validation utilities for dashboard inputs
  */
 
+import { t, plural } from '@/shared/i18n'
+
+/**
+ * The day counter reads "1 день", "2 дня", "5 дней". The rule lives in the
+ * i18n module, so it is stated once rather than inline at each call.
+ */
+function dayNoun(count: number): string {
+    return plural(count, {
+        one: t('dashboard.validation.dayOne'),
+        few: t('dashboard.validation.dayFew'),
+        many: t('dashboard.validation.dayMany'),
+    })
+}
+
 /**
  * Validation result type
  */
@@ -26,7 +40,7 @@ export function validateWeight(input: unknown): ValidationResult {
     if (typeof input !== 'number') {
         return {
             isValid: false,
-            error: 'Вес должен быть числом',
+            error: t('dashboard.validation.weightNotANumber'),
         }
     }
 
@@ -34,7 +48,7 @@ export function validateWeight(input: unknown): ValidationResult {
     if (isNaN(input)) {
         return {
             isValid: false,
-            error: 'Вес должен быть корректным числом',
+            error: t('dashboard.validation.weightNotValid'),
         }
     }
 
@@ -42,7 +56,7 @@ export function validateWeight(input: unknown): ValidationResult {
     if (input <= 0) {
         return {
             isValid: false,
-            error: 'Вес должен быть положительным',
+            error: t('dashboard.validation.weightNotPositive'),
         }
     }
 
@@ -50,7 +64,7 @@ export function validateWeight(input: unknown): ValidationResult {
     if (input > 500) {
         return {
             isValid: false,
-            error: 'Вес должен быть не более 500 кг',
+            error: t('dashboard.validation.weightTooLarge'),
         }
     }
 
@@ -59,7 +73,7 @@ export function validateWeight(input: unknown): ValidationResult {
     if (decimalPlaces > 1) {
         return {
             isValid: false,
-            error: 'Вес может иметь не более 1 знака после запятой',
+            error: t('dashboard.validation.weightPrecision'),
         }
     }
 
@@ -81,7 +95,7 @@ export function validateSteps(input: unknown): ValidationResult {
     if (typeof input !== 'number') {
         return {
             isValid: false,
-            error: 'Шаги должны быть числом',
+            error: t('dashboard.validation.stepsNotANumber'),
         }
     }
 
@@ -89,7 +103,7 @@ export function validateSteps(input: unknown): ValidationResult {
     if (isNaN(input)) {
         return {
             isValid: false,
-            error: 'Шаги должны быть корректным числом',
+            error: t('dashboard.validation.stepsNotValid'),
         }
     }
 
@@ -97,7 +111,7 @@ export function validateSteps(input: unknown): ValidationResult {
     if (input < 0) {
         return {
             isValid: false,
-            error: 'Шаги не могут быть отрицательными',
+            error: t('dashboard.validation.stepsNegative'),
         }
     }
 
@@ -105,7 +119,7 @@ export function validateSteps(input: unknown): ValidationResult {
     if (!Number.isInteger(input)) {
         return {
             isValid: false,
-            error: 'Шаги должны быть целым числом',
+            error: t('dashboard.validation.stepsNotInteger'),
         }
     }
 
@@ -113,7 +127,7 @@ export function validateSteps(input: unknown): ValidationResult {
     if (input > 100000) {
         return {
             isValid: false,
-            error: 'Шаги должны быть не более 100,000',
+            error: t('dashboard.validation.stepsTooLarge'),
         }
     }
 
@@ -135,7 +149,7 @@ export function validateCalories(input: unknown): ValidationResult {
     if (typeof input !== 'number') {
         return {
             isValid: false,
-            error: 'Калории должны быть числом',
+            error: t('dashboard.validation.caloriesNotANumber'),
         }
     }
 
@@ -143,7 +157,7 @@ export function validateCalories(input: unknown): ValidationResult {
     if (isNaN(input)) {
         return {
             isValid: false,
-            error: 'Калории должны быть корректным числом',
+            error: t('dashboard.validation.caloriesNotValid'),
         }
     }
 
@@ -151,7 +165,7 @@ export function validateCalories(input: unknown): ValidationResult {
     if (input < 0) {
         return {
             isValid: false,
-            error: 'Калории не могут быть отрицательными',
+            error: t('dashboard.validation.caloriesNegative'),
         }
     }
 
@@ -159,7 +173,7 @@ export function validateCalories(input: unknown): ValidationResult {
     if (input > 10000) {
         return {
             isValid: false,
-            error: 'Калории должны быть не более 10,000',
+            error: t('dashboard.validation.caloriesTooLarge'),
         }
     }
 
@@ -182,7 +196,7 @@ export function validatePhoto(file: File): ValidationResult {
     if (!validTypes.includes(file.type)) {
         return {
             isValid: false,
-            error: 'Фото должно быть в формате JPEG, PNG или WebP',
+            error: t('dashboard.validation.photoFormat'),
         }
     }
 
@@ -191,7 +205,7 @@ export function validatePhoto(file: File): ValidationResult {
     if (file.size > maxSize) {
         return {
             isValid: false,
-            error: 'Фото должно быть не более 10 МБ',
+            error: t('dashboard.validation.photoTooLarge'),
         }
     }
 
@@ -199,7 +213,7 @@ export function validatePhoto(file: File): ValidationResult {
     if (file.size === 0) {
         return {
             isValid: false,
-            error: 'Файл фото пустой',
+            error: t('dashboard.validation.photoEmpty'),
         }
     }
 
@@ -248,7 +262,7 @@ export function validateWeeklyReport(
     missingItems.nutrition = nutritionMissing
 
     if (nutritionMissing > 0) {
-        errors.push(`Необходимо заполнить питание еще на ${nutritionMissing} ${nutritionMissing === 1 ? 'день' : nutritionMissing < 5 ? 'дня' : 'дней'}`)
+        errors.push(t('dashboard.validation.nutritionMissing', { count: nutritionMissing, noun: dayNoun(nutritionMissing) }))
     }
 
     // Count days with weight data (weight exists)
@@ -257,13 +271,13 @@ export function validateWeeklyReport(
     missingItems.weight = weightMissing
 
     if (weightMissing > 0) {
-        errors.push(`Необходимо записать вес еще на ${weightMissing} ${weightMissing === 1 ? 'день' : weightMissing < 5 ? 'дня' : 'дней'}`)
+        errors.push(t('dashboard.validation.weightMissing', { count: weightMissing, noun: dayNoun(weightMissing) }))
     }
 
     // Check photo uploaded
     if (!hasPhoto) {
         missingItems.photo = true
-        errors.push('Необходимо загрузить фото недели')
+        errors.push(t('dashboard.validation.photoMissing'))
     }
 
     return {

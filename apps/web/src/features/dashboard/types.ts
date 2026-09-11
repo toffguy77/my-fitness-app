@@ -4,6 +4,7 @@
 
 import type { LucideIcon } from 'lucide-react'
 import { z } from 'zod'
+import { t } from '@/shared/i18n'
 
 /**
  * Navigation item identifiers
@@ -328,7 +329,7 @@ export const weeklyPlanSchema = z.object({
     updatedAt: z.date(),
     createdBy: z.string().min(1),
 }).refine(data => data.endDate >= data.startDate, {
-    message: "Дата окончания должна быть не раньше даты начала",
+    message: t('dashboard.dateRange.endBeforeStart'),
     path: ["endDate"],
 })
 
@@ -381,7 +382,7 @@ export const weeklyReportSchema = z.object({
     createdAt: z.date(),
     updatedAt: z.date(),
 }).refine(data => data.weekEnd >= data.weekStart, {
-    message: "Конец недели должен быть не раньше начала недели",
+    message: t('dashboard.dateRange.weekEndBeforeStart'),
     path: ["weekEnd"],
 })
 

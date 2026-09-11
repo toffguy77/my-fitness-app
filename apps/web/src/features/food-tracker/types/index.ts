@@ -238,7 +238,14 @@ export interface MealTemplate {
 /**
  * Unit type for custom recommendations
  */
-export type CustomRecommendationUnit = 'г' | 'мг' | 'мкг' | 'МЕ';
+/**
+ * The values kept in user_custom_recommendations.unit.
+ *
+ * Codes rather than Russian words since migration 061: what a person reads is
+ * chosen when it is shown, so a second language can say "mcg" where this says
+ * "mcg" and Russian still says «мкг».
+ */
+export type CustomRecommendationUnit = 'g' | 'mg' | 'mcg' | 'IU';
 
 /**
  * User-defined custom nutrient recommendation

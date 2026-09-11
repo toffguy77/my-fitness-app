@@ -1,8 +1,9 @@
 import { render } from '@testing-library/react'
-import { ServiceWorkerCleanup } from '../ServiceWorkerCleanup'
+import { ServiceWorkerCleanup, SW_CLEANUP_KEY } from '../ServiceWorkerCleanup'
 
 const mockAddEventListener = jest.fn()
 const mockRemoveEventListener = jest.fn()
+const mockRegister = jest.fn().mockResolvedValue({})
 
 function makeSwApi(controller: object | null = null, registrations: object[] = []) {
     return {
@@ -10,6 +11,7 @@ function makeSwApi(controller: object | null = null, registrations: object[] = [
         addEventListener: mockAddEventListener,
         removeEventListener: mockRemoveEventListener,
         getRegistrations: jest.fn().mockResolvedValue(registrations),
+        register: mockRegister,
     }
 }
 
@@ -76,7 +78,7 @@ describe('ServiceWorkerCleanup', () => {
     })
 
     it('skips cleanup when localStorage flag is already set', async () => {
-        localStorage.setItem('sw-cleanup-v3', Date.now().toString())
+        localStorage.setItem(SW_CLEANUP_KEY, Date.now().toString())
         const mockUnregister = jest.fn()
         Object.defineProperty(navigator, 'serviceWorker', {
             value: makeSwApi(null, [{ unregister: mockUnregister }]),
@@ -86,5 +88,38 @@ describe('ServiceWorkerCleanup', () => {
         render(<ServiceWorkerCleanup />)
         await new Promise(r => setTimeout(r, 0))
         expect(mockUnregister).not.toHaveBeenCalled()
+    })
+})
+
+describe('регистрация воркера', () => {
+    const realEnv = process.env.NODE_ENV
+
+    afterEach(() => {
+        Object.defineProperty(process.env, 'NODE_ENV', { value: realEnv, configurable: true })
+    })
+
+    // Воркер собирался, отдавался по /sw.js и не был зарегистрирован ни у
+    // одного посетителя: next-pwa вставлял регистрацию сам, Serwist в режиме
+    // конфигуратора — нет. Файл на месте и корректен, а кэша, офлайн-экрана и
+    // push нет. Проверка сборки такого не видит: спросить можно только браузер,
+    // либо вот так — у компонента, который обязан это сделать.
+    it('подключает /sw.js в проде', async () => {
+        Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true })
+
+        render(<ServiceWorkerCleanup />)
+        await new Promise(r => setTimeout(r, 0))
+
+        expect(mockRegister).toHaveBeenCalledWith('/sw.js')
+    })
+
+    // В режиме разработки воркер намеренно не собирается, и регистрация только
+    // засоряла бы консоль отказом.
+    it('не подключает в режиме разработки', async () => {
+        Object.defineProperty(process.env, 'NODE_ENV', { value: 'development', configurable: true })
+
+        render(<ServiceWorkerCleanup />)
+        await new Promise(r => setTimeout(r, 0))
+
+        expect(mockRegister).not.toHaveBeenCalled()
     })
 })

@@ -6,6 +6,7 @@ import { cn } from '@/shared/utils/cn'
 import { adminApi } from '../api/adminApi'
 import type { AdminMessage } from '../types'
 
+import { t } from '@/shared/i18n'
 export interface ReadOnlyMessageListProps {
     conversationId: string
 }
@@ -25,7 +26,7 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
                 setMessages(msgs.reverse())
                 setHasMore(msgs.length >= 50)
             })
-            .catch(() => setError('Не удалось загрузить сообщения'))
+            .catch(() => setError(t('admin.chats.messagesLoadFailed')))
             .finally(() => setLoading(false))
     }, [conversationId])
 
@@ -71,7 +72,7 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
     if (messages.length === 0) {
         return (
             <div className="flex items-center justify-center h-full">
-                <p className="text-gray-400 text-sm">Нет сообщений</p>
+                <p className="text-gray-400 text-sm">{t('admin.chats.noMessages')}</p>
             </div>
         )
     }
@@ -86,7 +87,7 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
                         disabled={loadingMore}
                         className="text-sm text-blue-500 hover:text-blue-600 disabled:text-gray-300 transition-colors"
                     >
-                        {loadingMore ? 'Загрузка...' : 'Загрузить ещё'}
+                        {loadingMore ? t('common.loading') : t('admin.chats.loadMore')}
                     </button>
                 </div>
             )}
@@ -110,9 +111,9 @@ export function ReadOnlyMessageList({ conversationId }: ReadOnlyMessageListProps
                             'bg-gray-100 text-gray-900'
                         )}>
                             {msg.type === 'food_entry' ? (
-                                <span className="italic text-gray-600">{msg.content || 'Запись о питании'}</span>
+                                <span className="italic text-gray-600">{msg.content || t('admin.chats.foodEntry')}</span>
                             ) : (
-                                msg.content || <span className="text-gray-400">{'[вложение]'}</span>
+                                msg.content || <span className="text-gray-400">{t('admin.chats.attachment')}</span>
                             )}
                         </div>
                     </div>

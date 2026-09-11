@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Settings } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 
+import { t } from '@/shared/i18n'
 export interface NotificationsLayoutProps {
     /** Child components to render in the layout */
     children: React.ReactNode;
@@ -102,7 +103,7 @@ export function NotificationsLayout({
                                 'min-h-[44px] min-w-[44px] flex items-center justify-center'
                             )}
                             aria-label="Back to dashboard"
-                            title="Вернуться на дашборд"
+                            title={t('notifications.backToDashboard')}
                             type="button"
                         >
                             <ArrowLeft
@@ -124,7 +125,7 @@ export function NotificationsLayout({
                                 'lg:text-3xl'   // Desktop: 30px
                             )}
                         >
-                            Уведомления
+                            {t('notifications.title')}
                         </h1>
                     </div>
 
@@ -144,7 +145,7 @@ export function NotificationsLayout({
                             'min-h-[44px] min-w-[44px] flex items-center justify-center'
                         )}
                         aria-label="Notification settings"
-                        title="Настройки уведомлений"
+                        title={t('notifications.settingsTitle')}
                         type="button"
                     >
                         <Settings

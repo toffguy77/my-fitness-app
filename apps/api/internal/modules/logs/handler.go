@@ -1,12 +1,14 @@
 package logs
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
+	"github.com/burcev/api/internal/shared/telemetry"
 	"github.com/gin-gonic/gin"
 )
 
@@ -104,6 +106,23 @@ func (h *Handler) ReceiveLogs(c *gin.Context) {
 			if entry.Stack != "" {
 				logWithFields = logWithFields.WithField("stack_trace", entry.Stack)
 			}
+		}
+
+		// A browser-side error is worth the same attention as one raised here.
+		// It travels through this endpoint rather than straight from the page:
+		// one credential, on the server, and no second reporting SDK in the
+		// bundle somebody waits for.
+		if entry.Level == "error" || entry.Level == "fatal" {
+			release, _ := entry.Context["appVersion"].(string)
+			traceID := ""
+			if requestID != nil {
+				traceID = fmt.Sprint(requestID)
+			}
+			errorMessage := entry.Message
+			if entry.Error != nil && entry.Error.Message != "" {
+				errorMessage = entry.Error.Message
+			}
+			telemetry.BrowserError(errorMessage, entry.Stack, entry.URL, release, traceID, entry.UserID)
 		}
 
 		// Log based on level

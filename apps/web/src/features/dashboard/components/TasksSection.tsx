@@ -25,6 +25,7 @@ import { CheckCircle, Circle, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { useDashboardStore } from '../store/dashboardStore'
 import type { Task } from '../types'
 import { AttentionBadge } from './AttentionBadge'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for TasksSection component
@@ -138,7 +139,7 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, onViewDetails,
                     : 'bg-white border-gray-200 hover:border-gray-300'
                 }`}
             role="article"
-            aria-label={`Задача: ${task.title}. ${isCompleted ? 'Выполнена' : isOverdue ? 'Просрочена' : 'Активна'}. Срок: ${dueDateFormatted}`}
+            aria-label={t('dashboard.tasks.taskAria', { title: task.title, status: isCompleted ? t('dashboard.tasks.statusDone') : isOverdue ? t('dashboard.tasks.statusOverdue') : t('dashboard.tasks.statusActive'), deadline: dueDateFormatted })}
         >
             {/* Completion checkbox */}
             <button
@@ -146,7 +147,7 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, onViewDetails,
                 onClick={() => onToggleComplete(task.id)}
                 disabled={isCompleted}
                 className="flex-shrink-0 mt-0.5 disabled:cursor-not-allowed"
-                aria-label={isCompleted ? 'Задача выполнена' : 'Отметить задачу как выполненную'}
+                aria-label={isCompleted ? t('dashboard.tasks.doneAria') : t('dashboard.tasks.markTaskDoneAria')}
                 aria-pressed={isCompleted}
             >
                 {isCompleted ? (
@@ -170,10 +171,10 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, onViewDetails,
                     </p>
                 )}
                 <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                    <span>До {dueDateFormatted}</span>
+                    <span>{t('dashboard.tasks.dueDate', { date: dueDateFormatted })}</span>
                     {isOverdue && (
-                        <span className="text-red-600 font-medium" role="status" aria-label="Задача просрочена">
-                            Просрочено
+                        <span className="text-red-600 font-medium" role="status" aria-label={t('dashboard.tasks.overdueAria')}>
+                            {t('dashboard.tasks.overdue')}
                         </span>
                     )}
                 </div>
@@ -184,7 +185,7 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, onViewDetails,
                 type="button"
                 onClick={() => onViewDetails(task.id)}
                 className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label={`Подробнее о задаче: ${task.title}`}
+                aria-label={t('dashboard.tasks.moreAria', { title: task.title })}
             >
                 <ChevronRight className="w-5 h-5" aria-hidden="true" />
             </button>
@@ -328,13 +329,13 @@ export const TasksSection = memo(function TasksSection({
                     id="tasks-heading"
                     className="text-lg font-semibold text-gray-900"
                 >
-                    Задачи
+                    {t('dashboard.tasks.title')}
                 </h2>
                 {showAttentionIndicator && (
                     <AttentionBadge
                         urgency="high"
                         count={urgentTasks.length}
-                        ariaLabel={`${urgentTasks.length} ${urgentTasks.length === 1 ? 'задача требует' : 'задач требуют'} внимания (срок в течение 2 дней)`}
+                        ariaLabel={t('dashboard.tasks.attentionAria', { count: urgentTasks.length, noun: urgentTasks.length === 1 ? t('dashboard.tasks.needsOne') : t('dashboard.tasks.needsMany') })}
                         announceChanges={true}
                         indicatesId="tasks-list"
                     />
@@ -342,7 +343,7 @@ export const TasksSection = memo(function TasksSection({
             </div>
 
             {allTasks.length > 0 ? (
-                <div ref={containerRef} className="space-y-4" role="list" aria-label="Список задач" id="tasks-list">
+                <div ref={containerRef} className="space-y-4" role="list" aria-label={t('dashboard.tasks.listAria')} id="tasks-list">
                     {useVirtualScrolling && showAll ? (
                         /* Virtual scrolling for large lists */
                         <List
@@ -360,7 +361,7 @@ export const TasksSection = memo(function TasksSection({
                             {currentWeekTasks.length > 0 && (
                                 <div role="group" aria-labelledby={`week-${currentWeek}-heading`}>
                                     <h3 id={`week-${currentWeek}-heading`} className="text-sm font-medium text-gray-700 mb-2">
-                                        Неделя {currentWeek}
+                                        {t('dashboard.tasks.week', { week: currentWeek })}
                                     </h3>
                                     <div className="space-y-2">
                                         {currentWeekTasks
@@ -382,7 +383,7 @@ export const TasksSection = memo(function TasksSection({
                             {previousWeekTasks.length > 0 && (
                                 <div role="group" aria-labelledby={`week-${currentWeek - 1}-heading`}>
                                     <h3 id={`week-${currentWeek - 1}-heading`} className="text-sm font-medium text-gray-700 mb-2">
-                                        Неделя {currentWeek - 1}
+                                        {t('dashboard.tasks.week', { week: currentWeek - 1 })}
                                     </h3>
                                     <div className="space-y-2">
                                         {previousWeekTasks
@@ -413,10 +414,10 @@ export const TasksSection = memo(function TasksSection({
                             type="button"
                             onClick={() => setShowAll(true)}
                             className="w-full flex items-center justify-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
-                            aria-label={`Показать еще ${allTasks.length - maxVisibleTasks} задач`}
+                            aria-label={t('dashboard.tasks.showMoreAria', { count: allTasks.length - maxVisibleTasks })}
                         >
                             <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
-                            <span>Еще ({allTasks.length - maxVisibleTasks})</span>
+                            <span>{t('dashboard.tasks.showMore', { count: allTasks.length - maxVisibleTasks })}</span>
                         </button>
                     )}
 
@@ -426,9 +427,9 @@ export const TasksSection = memo(function TasksSection({
                             type="button"
                             onClick={() => setShowAll(false)}
                             className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-600 hover:text-gray-700 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded"
-                            aria-label="Свернуть список задач"
+                            aria-label={t('dashboard.tasks.collapseAria')}
                         >
-                            <span>Свернуть</span>
+                            <span>{t('dashboard.tasks.collapse')}</span>
                         </button>
                     )}
                 </div>
@@ -437,14 +438,14 @@ export const TasksSection = memo(function TasksSection({
                 <div
                     className="flex flex-col items-center justify-center py-8 text-center"
                     role="status"
-                    aria-label="Нет активных задач"
+                    aria-label={t('dashboard.tasks.emptyAria')}
                 >
                     <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                         <CheckCircle className="w-8 h-8 text-gray-400" aria-hidden="true" />
                     </div>
-                    <p className="text-gray-600 text-sm">Нет активных задач</p>
+                    <p className="text-gray-600 text-sm">{t('dashboard.tasks.empty')}</p>
                     <p className="text-gray-500 text-xs mt-2">
-                        Твой тренер назначит задачи
+                        {t('dashboard.tasks.emptyHint')}
                     </p>
                 </div>
             )}

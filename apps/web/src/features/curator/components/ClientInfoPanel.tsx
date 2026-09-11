@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, Send, Instagram } from 'lucide-react'
 import type { ClientDetail } from '../types'
 
+import { t } from '@/shared/i18n'
 interface ClientInfoPanelProps {
     detail: ClientDetail
 }
@@ -25,7 +26,7 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                 className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
             >
                 {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                Подробнее
+                {t('curator.info.more')}
             </button>
 
             {open && (
@@ -43,15 +44,15 @@ export function ClientInfoPanel({ detail }: ClientInfoPanelProps) {
                     </div>
                     <div className="flex flex-wrap gap-x-6 gap-y-1">
                         {hasHeight && (
-                            <span><span className="text-gray-400">Рост:</span> {detail.height} см</span>
+                            <span><span className="text-gray-400">{t('curator.info.height')}</span> {t('curator.info.heightValue', { value: detail.height ?? '' })}</span>
                         )}
                         {hasWeight && (
-                            <span><span className="text-gray-400">Вес:</span> {detail.last_weight} кг</span>
+                            <span><span className="text-gray-400">{t('curator.info.weight')}</span> {t('curator.card.kilograms', { value: detail.last_weight ?? '' })}</span>
                         )}
                     </div>
                     {hasTimezone && (
                         <div>
-                            <span className="text-gray-400">Часовой пояс:</span> {detail.timezone}
+                            <span className="text-gray-400">{t('curator.info.timezone')}</span> {detail.timezone}
                         </div>
                     )}
                     {(hasTelegram || hasInstagram) && (

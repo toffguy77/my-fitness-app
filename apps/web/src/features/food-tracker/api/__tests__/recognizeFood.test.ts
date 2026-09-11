@@ -118,7 +118,8 @@ describe('recognizeFood', () => {
         expect(results[0].food.source).toBe('ai');
         expect(results[0].food.verified).toBe(false);
         expect(results[0].food.servingSize).toBe(150);
-        expect(results[0].food.servingUnit).toBe('г');
+        // A stored value, not a label — migration 061 turned these into codes.
+        expect(results[0].food.servingUnit).toBe('g');
         expect(results[0].food.category).toBe('ai');
 
         // Nutrition values are already per 100g from backend — passed through directly

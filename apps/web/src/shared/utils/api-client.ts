@@ -20,7 +20,10 @@ import { ApiError, NetworkError } from '../errors/apiErrors';
 async function toApiError(response: Response): Promise<ApiError> {
     const data = await response.json().catch(() => ({}));
     const errorId = (data as { error_id?: string })?.error_id;
-    const error = new ApiError(response.status, data, errorId);
+    // The server derives this from the identifier we sent and answers with it;
+    // it is the same value its own log lines and trace carry.
+    const traceId = response.headers.get('X-Request-Id') ?? undefined;
+    const error = new ApiError(response.status, data, errorId, traceId);
     (error as unknown as { response: unknown }).response = { status: response.status, data };
     return error;
 }

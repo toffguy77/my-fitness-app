@@ -42,6 +42,9 @@ type ResetEmailData struct {
 	ResetURL       string
 	ExpirationTime time.Time
 	SupportEmail   string
+	// Language the recipient reads. Empty means Russian, which is what every
+	// letter was before there was anywhere else to look.
+	Language string
 }
 
 // PasswordChangedEmailData contains data for password changed confirmation email
@@ -50,6 +53,9 @@ type PasswordChangedEmailData struct {
 	ChangedAt    time.Time
 	IPAddress    string
 	SupportEmail string
+	// Language the recipient reads. Empty means Russian, which is what every
+	// letter was before there was anywhere else to look.
+	Language string
 }
 
 // OnboardingReminderData contains data for the single reminder sent to somebody
@@ -61,6 +67,9 @@ type OnboardingReminderData struct {
 	ResumeURL      string
 	UnsubscribeURL string
 	SupportEmail   string
+	// Language the recipient reads. Empty means Russian, which is what every
+	// letter was before there was anywhere else to look.
+	Language string
 }
 
 // DigestItemData is one event, as it appears in the digest.
@@ -85,6 +94,9 @@ type DigestEmailData struct {
 	AppURL         string
 	UnsubscribeURL string
 	SupportEmail   string
+	// Language the recipient reads. Empty means Russian, which is what every
+	// letter was before there was anywhere else to look.
+	Language string
 }
 
 // VerificationEmailData contains data for the email verification template
@@ -92,6 +104,9 @@ type VerificationEmailData struct {
 	UserEmail string
 	Code      string
 	ExpiresAt time.Time
+	// Language the recipient reads. Empty means Russian, which is what every
+	// letter was before there was anywhere else to look.
+	Language string
 }
 
 // NewService creates a new email service instance
@@ -129,10 +144,10 @@ func NewService(cfg Config, log *logger.Logger) (*Service, error) {
 
 // SendPasswordResetEmail sends a password reset email with retry logic
 func (s *Service) SendPasswordResetEmail(ctx context.Context, data ResetEmailData) error {
-	subject := "Запрос на сброс пароля - BURCEV"
+	subject := subjectFor(data.Language, "password_reset")
 
 	// Render email template
-	body, err := s.renderTemplate("password_reset", data)
+	body, err := s.renderTemplateIn(data.Language, "password_reset", data)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to render password reset email template")
 		return fmt.Errorf("failed to render template: %w", err)
@@ -176,10 +191,10 @@ func (s *Service) SendPasswordResetEmail(ctx context.Context, data ResetEmailDat
 
 // SendPasswordChangedEmail sends a confirmation email after password change
 func (s *Service) SendPasswordChangedEmail(ctx context.Context, data PasswordChangedEmailData) error {
-	subject := "Пароль изменен - BURCEV"
+	subject := subjectFor(data.Language, "password_changed")
 
 	// Render email template
-	body, err := s.renderTemplate("password_changed", data)
+	body, err := s.renderTemplateIn(data.Language, "password_changed", data)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to render password changed email template")
 		return fmt.Errorf("failed to render template: %w", err)
@@ -206,9 +221,9 @@ func (s *Service) SendPasswordChangedEmail(ctx context.Context, data PasswordCha
 // No retry and no follow-up: a chain of chasing emails turns the product into
 // spam and costs the sender reputation that the transactional mail depends on.
 func (s *Service) SendOnboardingReminder(ctx context.Context, data OnboardingReminderData) error {
-	subject := "Ваш расчёт КБЖУ сохранён — BURCEV"
+	subject := subjectFor(data.Language, "onboarding_reminder")
 
-	body, err := s.renderTemplate("onboarding_reminder", data)
+	body, err := s.renderTemplateIn(data.Language, "onboarding_reminder", data)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to render onboarding reminder template")
 		return fmt.Errorf("failed to render template: %w", err)
@@ -238,9 +253,9 @@ func (s *Service) SendNotificationDigest(ctx context.Context, data DigestEmailDa
 
 	// "1 новое событие" / "3 новых события" — a subject line that does not
 	// agree with its own number reads as machine-made.
-	subject := fmt.Sprintf("%s в BURCEV", pluralEvents(len(items)))
+	subject := fmt.Sprintf(subjectFor(data.Language, "notification_digest"), pluralEvents(len(items)))
 
-	body, err := s.renderTemplate("notification_digest", data)
+	body, err := s.renderTemplateIn(data.Language, "notification_digest", data)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to render notification digest template")
 		return fmt.Errorf("failed to render template: %w", err)
@@ -271,9 +286,9 @@ func pluralEvents(n int) string {
 
 // SendVerificationEmail sends a verification code email with retry logic
 func (s *Service) SendVerificationEmail(ctx context.Context, data VerificationEmailData) error {
-	subject := "Код подтверждения — BURCEV"
+	subject := subjectFor(data.Language, "email_verification")
 
-	body, err := s.renderTemplate("email_verification", data)
+	body, err := s.renderTemplateIn(data.Language, "email_verification", data)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to render verification email template")
 		return fmt.Errorf("failed to render template: %w", err)
@@ -417,9 +432,26 @@ func (s *Service) sendEmailTLS(addr string, auth smtp.Auth, to string, message [
 
 // renderTemplate renders an email template with data
 func (s *Service) renderTemplate(templateName string, data interface{}) (string, error) {
-	var buf bytes.Buffer
-	err := s.templates.ExecuteTemplate(&buf, templateName, data)
+	return s.renderTemplateIn(LanguageRU, templateName, data)
+}
+
+// renderTemplateIn renders a template in the recipient's language, falling back
+// to the Russian text for anything not translated yet.
+func (s *Service) renderTemplateIn(language, templateName string, data interface{}) (string, error) {
+	if language == "" || language == LanguageRU {
+		var buf bytes.Buffer
+		if err := s.templates.ExecuteTemplate(&buf, templateName, data); err != nil {
+			return "", err
+		}
+		return buf.String(), nil
+	}
+
+	parsed, err := template.New(templateName).Parse(bodyFor(language, templateName))
 	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	if err := parsed.Execute(&buf, data); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
@@ -647,9 +679,8 @@ const notificationDigestTemplate = `
 
         <p style="color: #666; font-size: 14px;">
             Письмо приходит только о том, что вы не прочитали в приложении.
-            Настроить, о чём писать, можно в
-            <a href="{{.AppURL}}/settings/notifications" style="color: #666;">настройках уведомлений</a>,
-            а <a href="{{.UnsubscribeURL}}" style="color: #666;">здесь</a> — отписаться от писем совсем.
+            Можно <a href="{{.AppURL}}/settings/notifications" style="color: #666;">настроить, о чём писать</a>
+            или <a href="{{.UnsubscribeURL}}" style="color: #666;">отписаться от писем совсем</a>.
         </p>
 
         <p style="color: #999; font-size: 12px; margin-top: 30px;">

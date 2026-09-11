@@ -6,6 +6,8 @@
 
 'use client'
 
+import { t } from '@/shared/i18n'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -23,7 +25,7 @@ export function TypingIndicator({ isTyping }: TypingIndicatorProps) {
 
     return (
         <div className="flex items-center gap-1 px-4 py-1 text-sm text-gray-400">
-            <span>печатает</span>
+            <span>{t('chat.typing')}</span>
             <span className="inline-flex gap-0.5">
                 <span className="animate-bounce" style={{ animationDelay: '0ms' }}>
                     .

@@ -13,16 +13,16 @@ ALTER TABLE user_foods ADD COLUMN IF NOT EXISTS brand TEXT;
 -- Rename nutrition columns only if old names exist
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_foods' AND column_name = 'calories') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'user_foods' AND column_name = 'calories') THEN
         ALTER TABLE user_foods RENAME COLUMN calories TO calories_per_100;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_foods' AND column_name = 'protein') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'user_foods' AND column_name = 'protein') THEN
         ALTER TABLE user_foods RENAME COLUMN protein TO protein_per_100;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_foods' AND column_name = 'fat') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'user_foods' AND column_name = 'fat') THEN
         ALTER TABLE user_foods RENAME COLUMN fat TO fat_per_100;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_foods' AND column_name = 'carbs') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'user_foods' AND column_name = 'carbs') THEN
         ALTER TABLE user_foods RENAME COLUMN carbs TO carbs_per_100;
     END IF;
 END $$;

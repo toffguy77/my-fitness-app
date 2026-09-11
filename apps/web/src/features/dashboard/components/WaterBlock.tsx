@@ -9,6 +9,7 @@ import { formatLocalDate } from '@/shared/utils/format'
 import { apiClient } from '@/shared/utils/api-client'
 import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
 
 export interface WaterBlockProps {
     date: Date
@@ -43,7 +44,7 @@ const WaterRing = memo(function WaterRing({
             aria-valuenow={cappedPercentage}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`Прогресс воды: ${percentage}%`}
+            aria-label={t('dashboard.water.progressAria', { percentage })}
         >
             <svg width={size} height={size} className="transform -rotate-90" aria-hidden="true">
                 <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="none" className="text-gray-100" />
@@ -85,10 +86,10 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                 { date: dateStr, glasses: 1 }
             )
             setGlasses(result.glasses)
-            toast.success('Стакан воды добавлен')
+            toast.success(t('dashboard.water.added'))
         } catch {
             setGlasses(prevGlasses)
-            toast.error('Не удалось сохранить')
+            toast.error(t('dashboard.water.addFailed'))
         } finally {
             setIsAdding(false)
         }
@@ -118,16 +119,16 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">Вода</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-gray-900">{t('dashboard.water.title')}</CardTitle>
                         {showAttention && (
-                            <AttentionBadge urgency="normal" ariaLabel="Вода не записана сегодня" />
+                            <AttentionBadge urgency="normal" ariaLabel={t('dashboard.water.noneToday')} />
                         )}
                     </div>
                     <Button
                         variant="ghost" size="sm"
                         onClick={handleAddGlass} isLoading={isAdding}
                         className="h-8 w-8 p-0"
-                        aria-label="Добавить стакан воды"
+                        aria-label={t('dashboard.water.addGlassAria')}
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
@@ -136,7 +137,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
 
             <CardContent className="space-y-3">
                 {glasses > 0 ? (
-                    <div className="text-center space-y-2" role="region" aria-label="Прогресс воды">
+                    <div className="text-center space-y-2" role="region" aria-label={t('dashboard.water.progressRegion')}>
                         <div className="flex justify-center">
                             <WaterRing percentage={percentage} size={72} strokeWidth={6}>
                                 <span className={cn(
@@ -148,7 +149,7 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                             </WaterRing>
                         </div>
                         <div className="space-y-0.5">
-                            <div className="text-xs text-gray-500">стаканов ({glassSize} мл)</div>
+                            <div className="text-xs text-gray-500">{t('dashboard.water.glassesOf', { size: glassSize })}</div>
                             <div className={cn(
                                 'text-xs font-medium',
                                 isGoalReached ? 'text-green-600' : 'text-gray-600'
@@ -159,38 +160,38 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                         {isGoalReached ? (
                             <div className="flex items-center justify-center gap-1.5 text-green-600" role="status">
                                 <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                                <span className="text-xs font-medium">Цель достигнута!</span>
+                                <span className="text-xs font-medium">{t('dashboard.water.goalReached')}</span>
                             </div>
                         ) : (
                             <Button
                                 variant="outline" size="sm"
                                 onClick={handleAddGlass} isLoading={isAdding}
                                 className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                aria-label="Добавить стакан воды"
+                                aria-label={t('dashboard.water.addGlassAria')}
                             >
                                 <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                                Добавить
+                                {t('common.add')}
                             </Button>
                         )}
                     </div>
                 ) : (
                     <div className="text-center py-2 space-y-2">
                         <Droplets className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">Не записано</p>
+                        <p className="text-sm text-gray-500">{t('dashboard.water.empty')}</p>
                         <Button
                             variant="outline" size="sm"
                             onClick={handleAddGlass} isLoading={isAdding}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Добавить стакан воды"
+                            aria-label={t('dashboard.water.addGlassAria')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Добавить
+                            {t('common.add')}
                         </Button>
                     </div>
                 )}
 
                 <div className="text-xs text-gray-400 text-center">
-                    Цель: {goal} стаканов в день
+                    {t('dashboard.water.goal', { goal })}
                 </div>
             </CardContent>
         </Card>

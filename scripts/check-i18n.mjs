@@ -18,13 +18,36 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, extname, relative } from 'node:path'
 
-const TRANSLATED = ['apps/web/src/features/auth', 'apps/web/src/features/onboarding']
+const TRANSLATED = [
+    'apps/web/src/features/auth',
+    'apps/web/src/features/onboarding',
+    'apps/web/src/features/settings',
+    'apps/web/src/app/settings',
+    'apps/web/src/features/food-tracker',
+    'apps/web/src/app/food-tracker',
+    'apps/web/src/features/dashboard',
+    'apps/web/src/app/dashboard',
+    'apps/web/src/features/chat',
+    'apps/web/src/app/chat',
+    'apps/web/src/features/notifications',
+    'apps/web/src/app/notifications',
+    'apps/web/src/features/curator',
+    'apps/web/src/app/curator',
+    'apps/web/src/features/admin',
+    'apps/web/src/app/admin',
+]
 
 const DICTIONARY = 'apps/web/src/shared/i18n/dictionaries/ru.ts'
 
 // Cyrillic anywhere in a line is not the rule: comments are written for the
 // people maintaining this and stay in whichever language they were written in.
 const EXEMPT = /i18n-exempt/
+
+// A whole file can be exempt when every string in it is of the same kind —
+// fixtures nobody reads, or a function that already handles languages itself.
+// The marker goes in the first lines, with the reason next to it; per-line
+// markers would be a dozen copies of one sentence.
+const EXEMPT_FILE = /i18n-exempt-file/
 
 const problems = []
 
@@ -42,11 +65,70 @@ function walk(dir, out = []) {
     return out
 }
 
-/** Strips comments so a Russian explanation above the code is not a finding. */
+/**
+ * Strips comments so a Russian explanation above the code is not a finding.
+ *
+ * String-aware on purpose. A regular expression cannot be: `accept="image/*"`
+ * contains the two characters that open a block comment, and a naive strip
+ * treated everything from there to the next `*​/` as a comment — blanking real
+ * code and every untranslated string inside it. This checker reported "i18n OK"
+ * for months while two aria-labels sat in the blind spot.
+ *
+ * So this walks the source once, tracking whether it is inside a string, and
+ * only then treats `/*` and `//` as comments. Newlines are preserved so line
+ * numbers still point at the right place.
+ */
 function stripComments(source) {
-    return source
-        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-        .replace(/(^|[^:])\/\/[^\n]*/g, (m, p) => p)
+    let out = ''
+    let i = 0
+    let quote = null // ' " or ` when inside a string literal
+
+    while (i < source.length) {
+        const c = source[i]
+        const next = source[i + 1]
+
+        if (quote) {
+            if (c === '\\') {
+                // An escape takes the next character with it, whatever it is.
+                out += c + (next ?? '')
+                i += 2
+                continue
+            }
+            if (c === quote) quote = null
+            out += c
+            i += 1
+            continue
+        }
+
+        if (c === '"' || c === "'" || c === '`') {
+            quote = c
+            out += c
+            i += 1
+            continue
+        }
+
+        if (c === '/' && next === '*') {
+            const end = source.indexOf('*/', i + 2)
+            const stop = end === -1 ? source.length : end + 2
+            // Keep the newlines so reported line numbers stay true.
+            out += source.slice(i, stop).replace(/[^\n]/g, ' ')
+            i = stop
+            continue
+        }
+
+        if (c === '/' && next === '/') {
+            let end = source.indexOf('\n', i)
+            if (end === -1) end = source.length
+            out += ' '.repeat(end - i)
+            i = end
+            continue
+        }
+
+        out += c
+        i += 1
+    }
+
+    return out
 }
 
 const files = TRANSLATED.flatMap((dir) => walk(dir))
@@ -55,6 +137,7 @@ const files = TRANSLATED.flatMap((dir) => walk(dir))
 for (const file of files) {
     const source = readFileSync(file, 'utf8')
     const original = source.split('\n')
+    if (original.slice(0, 20).some((l) => EXEMPT_FILE.test(l))) continue
     const lines = stripComments(source).split('\n')
     lines.forEach((line, i) => {
         if (!/[А-Яа-яЁё]/.test(line)) return

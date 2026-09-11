@@ -137,11 +137,14 @@ func (c NutrientCategory) Label() string {
 // NutrientUnit represents units for nutrient measurements
 type NutrientUnit string
 
+// Values, not labels: what a person reads is chosen when it is shown. They were
+// Russian words until migration 061, and screens printed them as they were —
+// which is why a second language would have shown "мкг" in English text.
 const (
-	UnitGrams      NutrientUnit = "г"
-	UnitMilligrams NutrientUnit = "мг"
-	UnitMicrograms NutrientUnit = "мкг"
-	UnitIU         NutrientUnit = "МЕ"
+	UnitGrams      NutrientUnit = "g"
+	UnitMilligrams NutrientUnit = "mg"
+	UnitMicrograms NutrientUnit = "mcg"
+	UnitIU         NutrientUnit = "IU"
 )
 
 // IsValid checks if the nutrient unit is valid
@@ -431,7 +434,7 @@ func (c *UserCustomRecommendation) Validate() error {
 		return fmt.Errorf("дневная норма должна быть положительным числом")
 	}
 	if !c.Unit.IsValid() {
-		return fmt.Errorf("единица измерения должна быть: г, мг, мкг или МЕ")
+		return fmt.Errorf("единица измерения должна быть: g, mg, mcg или IU")
 	}
 	return nil
 }
@@ -615,7 +618,7 @@ func (r *UpdateNutrientPreferencesRequest) Validate() error {
 type CreateCustomRecommendationRequest struct {
 	Name        string       `json:"name" binding:"required,max=100"`
 	DailyTarget float64      `json:"daily_target" binding:"required,gt=0"`
-	Unit        NutrientUnit `json:"unit" binding:"required,oneof=г мг мкг МЕ"`
+	Unit        NutrientUnit `json:"unit" binding:"required,oneof=g mg mcg IU"`
 }
 
 // Validate validates the create custom recommendation request
@@ -630,7 +633,7 @@ func (r *CreateCustomRecommendationRequest) Validate() error {
 		return fmt.Errorf("дневная норма должна быть положительным числом")
 	}
 	if !r.Unit.IsValid() {
-		return fmt.Errorf("единица измерения должна быть: г, мг, мкг или МЕ")
+		return fmt.Errorf("единица измерения должна быть: g, mg, mcg или IU")
 	}
 	return nil
 }

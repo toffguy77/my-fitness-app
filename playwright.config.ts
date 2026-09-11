@@ -61,6 +61,8 @@ export default defineConfig<SessionOptions>({
         'tests/settings-notifications.spec.ts',
         'tests/notification-delivery.spec.ts',
         'tests/notification-digest.spec.ts',
+        'tests/api-smoke.spec.ts',
+        'tests/authorization.spec.ts',
         'tests/settings-social.spec.ts',
         'tests/notifications.spec.ts',
         'tests/food-edit-delete.spec.ts',

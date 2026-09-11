@@ -86,7 +86,7 @@ export const foodItemGenerator = (): fc.Arbitrary<FoodItem> => {
         brand: fc.option(fc.string({ minLength: 2, maxLength: 50 }), { nil: undefined }),
         category: fc.string({ minLength: 2, maxLength: 50 }),
         servingSize: fc.float({ min: 1, max: 1000, noNaN: true }),
-        servingUnit: fc.constantFrom('г', 'мл', 'шт', 'порция'),
+        servingUnit: fc.constantFrom('g', 'ml', 'pcs', 'serving'),
         nutritionPer100: kbzhuGenerator(),
         barcode: fc.option(fc.stringMatching(/^\d{8,13}$/), { nil: undefined }),
         source: foodSourceGenerator(),
@@ -196,7 +196,7 @@ export const nutrientRecommendationGenerator = (): fc.Arbitrary<NutrientRecommen
         name: fc.string({ minLength: 2, maxLength: 50 }),
         category: nutrientCategoryTypeGenerator(),
         dailyTarget: fc.float({ min: Math.fround(0.001), max: Math.fround(10000), noNaN: true }),
-        unit: fc.constantFrom('г', 'мг', 'мкг', 'МЕ'),
+        unit: fc.constantFrom('g', 'mg', 'mcg', 'IU'),
         isWeekly: fc.boolean(),
         isCustom: fc.boolean(),
     });
@@ -209,7 +209,7 @@ export const nutrientFoodSourceGenerator = (): fc.Arbitrary<NutrientFoodSource> 
     return fc.record({
         foodName: fc.string({ minLength: 2, maxLength: 100 }),
         amount: fc.float({ min: 0, max: 1000, noNaN: true }),
-        unit: fc.constantFrom('г', 'мг', 'мкг', 'МЕ'),
+        unit: fc.constantFrom('g', 'mg', 'mcg', 'IU'),
         contribution: fc.float({ min: 0, max: 100, noNaN: true }),
     });
 };
@@ -226,7 +226,7 @@ export const nutrientDetailGenerator = (): fc.Arbitrary<NutrientDetail> => {
         effects: fc.string({ minLength: 10, maxLength: 500 }),
         minRecommendation: fc.float({ min: 0, max: 1000, noNaN: true }),
         optimalRecommendation: fc.float({ min: 0, max: 2000, noNaN: true }),
-        unit: fc.constantFrom('г', 'мг', 'мкг', 'МЕ'),
+        unit: fc.constantFrom('g', 'mg', 'mcg', 'IU'),
         sourcesInDiet: fc.array(nutrientFoodSourceGenerator(), { minLength: 0, maxLength: 10 }),
     });
 };
@@ -284,7 +284,7 @@ export const mealTemplateGenerator = (): fc.Arbitrary<MealTemplate> => {
  * Generate a custom recommendation unit
  */
 export const customRecommendationUnitGenerator = (): fc.Arbitrary<CustomRecommendationUnit> => {
-    return fc.constantFrom('г', 'мг', 'мкг', 'МЕ');
+    return fc.constantFrom('g', 'mg', 'mcg', 'IU');
 };
 
 /**

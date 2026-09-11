@@ -1,0 +1,130 @@
+# Сбор метрик и дашборд, рядом с приложением на том же сервере.
+#
+# Файл лежит в корне, а не в monitoring/, намеренно: compose ищет .env рядом с
+# самим файлом, а Dokploy кладёт переменные проекта в корень репозитория. Из
+# каталога monitoring/ переменные не подхватывались, и сборка падала на разборе
+# файла, ещё до запуска контейнеров.
+#
+# Отдельный проект Dokploy: у наблюдения свой жизненный цикл, и оно не должно
+# перезапускаться вместе с приложением — особенно тогда, когда приложению плохо
+# и смотреть надо именно на него.
+#
+# Обе службы висят в dokploy-network, чтобы дотянуться до API по сетевому
+# псевдониму (burcev-dev-api, burcev-prod-api), и наружу отдаются только через
+# Traefik по своему домену, с собственным входом в Grafana.
+
+services:
+  prometheus:
+    build:
+      context: ./monitoring
+      dockerfile: prometheus.Dockerfile
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Пятнадцать дней: этого хватает, чтобы посмотреть «а как было до», и
+      # диск не растёт бесконечно на сервере, где живёт и само приложение.
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - prometheus-data:/prometheus
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+    mem_limit: 512m
+    memswap_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # Alertmanager разворачивает сработавшее правило в сообщение и решает, когда
+  # его повторить. Отдельно от Prometheus, потому что это его работа: Prometheus
+  # умеет заметить, но не умеет замолчать на время починки.
+  alertmanager:
+    build:
+      context: ./monitoring
+      dockerfile: alertmanager.Dockerfile
+    # Значения подставляются в копию конфига перед запуском: сам Alertmanager
+    # переменные окружения в конфиге не раскрывает, и ${VAR} остался бы там
+    # текстом — каждая тревога уходила бы с недействительным токеном.
+    #
+    # Проверка переменных здесь, а не обязательным синтаксисом compose: тот
+    # роняет разбор файла у разворачивающей системы раньше, чем доходит до
+    # запуска, и без внятного сообщения.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        test -n "$$TELEGRAM_ALERT_BOT_TOKEN" || { echo "нет TELEGRAM_ALERT_BOT_TOKEN — тревогам некуда идти"; exit 1; };
+        test -n "$$TELEGRAM_ALERT_CHAT_ID" || { echo "нет TELEGRAM_ALERT_CHAT_ID — тревогам некуда идти"; exit 1; };
+        sed -e "s|__BOT_TOKEN__|$$TELEGRAM_ALERT_BOT_TOKEN|"
+        -e "s|__CHAT_ID__|$$TELEGRAM_ALERT_CHAT_ID|"
+        /etc/alertmanager/alertmanager.yml > /tmp/alertmanager.yml
+        && exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/alertmanager
+    environment:
+      - TELEGRAM_ALERT_BOT_TOKEN=${TELEGRAM_ALERT_BOT_TOKEN}
+      - TELEGRAM_ALERT_CHAT_ID=${TELEGRAM_ALERT_CHAT_ID}
+    volumes:
+      - alertmanager-data:/alertmanager
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+    mem_limit: 192m
+    memswap_limit: 192m
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  grafana:
+    build:
+      context: ./monitoring
+      dockerfile: grafana.Dockerfile
+    environment:
+      # Пароль задаётся переменной окружения проекта в Dokploy. Пустое
+      # значение здесь означало бы admin/admin на машине, смотрящей в
+      # интернет, поэтому вход проверяется до запуска — см. entrypoint.
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN:-metrics.burcev.team}
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    # Проверка вместо обязательной переменной compose (${VAR:?...}): та же
+    # гарантия, но не зависит от того, как разворачивающая система разбирает
+    # файл. Без пароля контейнер падает с внятным сообщением, а не поднимается
+    # с паролем по умолчанию.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - 'test -n "$$GF_SECURITY_ADMIN_PASSWORD" || { echo "GRAFANA_ADMIN_PASSWORD не задан — Grafana смотрит наружу, пароль обязателен"; exit 1; }; exec /run.sh'
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - dokploy-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    mem_limit: 384m
+    memswap_limit: 384m
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.burcev-grafana.rule=Host(`${GRAFANA_DOMAIN:-metrics.burcev.team}`)"
+      - "traefik.http.routers.burcev-grafana.entrypoints=websecure"
+      - "traefik.http.routers.burcev-grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.burcev-grafana.loadbalancer.server.port=3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  prometheus-data:
+  alertmanager-data:
+  grafana-data:
+
+networks:
+  dokploy-network:
+    external: true

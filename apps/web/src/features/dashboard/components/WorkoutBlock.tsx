@@ -21,7 +21,9 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
 import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
 
+import { workoutTypeLabel, workoutTypeCode } from '../utils/workoutTypeLabel'
 /**
  * Props for WorkoutBlock component
  */
@@ -33,16 +35,26 @@ export interface WorkoutBlockProps {
 /**
  * Workout type options
  */
+// The workout types are stored with the workout and compared against in the
+// state. They were Russian words until migration 062; codes now, so a second
+// language can name them and the stored rows still match.
+//
+// OTHER_TYPE is named rather than written out at each comparison: it is the one
+// entry with behaviour attached — it switches on the custom-name field — and
+// spelling it eight times made that invisible. It is also the one that never
+// reaches the database: what gets stored is what the person typed instead.
+export const OTHER_TYPE = 'other'
+
 export const WORKOUT_TYPES = [
-    'Силовая',
-    'Кардио',
-    'Йога',
-    'HIIT',
-    'Растяжка',
-    'Плавание',
-    'Бег',
-    'Велосипед',
-    'Другое',
+    'strength',
+    'cardio',
+    'yoga',
+    'hiit',
+    'stretching',
+    'swimming',
+    'running',
+    'cycling',
+    OTHER_TYPE,
 ] as const
 
 /**
@@ -79,16 +91,16 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
             }
             return { ...prev, [type]: '' }
         })
-        if (type !== 'Другое') setCustomType('')
+        if (type !== OTHER_TYPE) setCustomType('')
         setValidationError(null)
     }, [])
 
     // Handle custom type input
     const handleCustomTypeChange = useCallback((value: string) => {
         setCustomType(value)
-        if (value.trim() && !selectedTypes.includes('Другое')) {
-            setSelectedTypes(prev => [...prev, 'Другое'])
-            setDurations(prev => ({ ...prev, 'Другое': '' }))
+        if (value.trim() && !selectedTypes.includes(OTHER_TYPE)) {
+            setSelectedTypes(prev => [...prev, OTHER_TYPE])
+            setDurations(prev => ({ ...prev, [OTHER_TYPE]: '' }))
         }
         setValidationError(null)
     }, [selectedTypes])
@@ -98,19 +110,19 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
         setDurations(prev => ({ ...prev, [type]: value }))
         setValidationError(null)
         if (value.trim() && (isNaN(parseInt(value, 10)) || parseInt(value, 10) <= 0 || parseInt(value, 10) > 600)) {
-            setValidationError('Длительность должна быть от 1 до 600 минут')
+            setValidationError(t('dashboard.workout.durationRange'))
         }
     }, [])
 
     // Handle save workout
     const handleSave = useCallback(async () => {
         if (selectedTypes.length === 0) {
-            setValidationError('Выберите тип тренировки')
+            setValidationError(t('dashboard.workout.pickType'))
             return
         }
 
-        if (selectedTypes.includes('Другое') && !customType.trim()) {
-            setValidationError('Укажите тип тренировки')
+        if (selectedTypes.includes(OTHER_TYPE) && !customType.trim()) {
+            setValidationError(t('dashboard.workout.nameType'))
             return
         }
 
@@ -118,7 +130,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
             if (val.trim()) {
                 const n = parseInt(val, 10)
                 if (isNaN(n) || n <= 0 || n > 600) {
-                    setValidationError('Длительность должна быть от 1 до 600 минут')
+                    setValidationError(t('dashboard.workout.durationRange'))
                     return
                 }
             }
@@ -128,11 +140,11 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
         setValidationError(null)
 
         try {
-            const resolvedTypes = selectedTypes.map(t => t === 'Другое' ? customType.trim() : t)
+            const resolvedTypes = selectedTypes.map(type => type === OTHER_TYPE ? customType.trim() : type)
             const typeDurations: Record<string, number> = {}
-            for (const [t, val] of Object.entries(durations)) {
+            for (const [type, val] of Object.entries(durations)) {
                 if (val.trim()) {
-                    const resolved = t === 'Другое' ? customType.trim() : t
+                    const resolved = type === OTHER_TYPE ? customType.trim() : type
                     typeDurations[resolved] = parseInt(val, 10)
                 }
             }
@@ -152,10 +164,10 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
             setCustomType('')
             setDurations({})
             setIsDialogOpen(false)
-            toast.success('Тренировка записана')
+            toast.success(t('dashboard.workout.saved'))
         } catch (error) {
             console.error('Failed to save workout:', error)
-            setValidationError('Не удалось сохранить тренировку')
+            setValidationError(t('dashboard.workout.saveFailed'))
         } finally {
             setIsSaving(false)
         }
@@ -173,10 +185,10 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                 }
             })
 
-            toast.success('Тренировка отменена')
+            toast.success(t('dashboard.workout.cancelled'))
         } catch (error) {
             console.error('Failed to update workout:', error)
-            toast.error('Не удалось обновить тренировку')
+            toast.error(t('dashboard.workout.updateFailed'))
         } finally {
             setIsSaving(false)
         }
@@ -185,10 +197,14 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     // Handle quick add button
     const handleQuickAdd = useCallback(() => {
         if (isWorkoutCompleted) {
-            setSelectedTypes(workout.types ?? (workout.type ? [workout.type] : []))
+            // Through the code map: a day saved before migration 062 holds
+            // Russian words, and comparing those against the code list would
+            // leave every button unselected and then save the workout as if it
+            // had been typed by hand.
+            setSelectedTypes((workout.types ?? (workout.type ? [workout.type] : [])).map(workoutTypeCode))
             if (workout.typeDurations) {
                 setDurations(Object.fromEntries(
-                    Object.entries(workout.typeDurations).map(([k, v]) => [k, String(v)])
+                    Object.entries(workout.typeDurations).map(([k, v]) => [workoutTypeCode(k), String(v)])
                 ))
             } else {
                 setDurations({})
@@ -209,11 +225,11 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     // Format duration display
     const formatDuration = (minutes: number) => {
         if (minutes < 60) {
-            return `${minutes} мин`
+            return t('dashboard.workout.minutes', { minutes })
         }
         const hours = Math.floor(minutes / 60)
         const remainingMinutes = minutes % 60
-        return remainingMinutes > 0 ? `${hours}ч ${remainingMinutes}м` : `${hours}ч`
+        return remainingMinutes > 0 ? t('dashboard.workout.hoursMinutes', { hours, minutes: remainingMinutes }) : t('dashboard.workout.hours', { hours })
     }
 
     // Check if this is today and workout is not logged
@@ -228,12 +244,12 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                            Тренировка
+                            {t('dashboard.workout.title')}
                         </CardTitle>
                         {showAttentionIndicator && (
                             <AttentionBadge
                                 urgency="normal"
-                                ariaLabel="Тренировка не записана сегодня"
+                                ariaLabel={t('dashboard.workout.noneToday')}
                             />
                         )}
                     </div>
@@ -242,7 +258,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                         size="sm"
                         onClick={handleQuickAdd}
                         className="h-8 w-8 p-0"
-                        aria-label={isWorkoutCompleted ? "Изменить тренировку" : "Добавить тренировку"}
+                        aria-label={isWorkoutCompleted ? t('dashboard.workout.change') : t('dashboard.workout.add')}
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
@@ -252,35 +268,35 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
             <CardContent className="space-y-4">
                 {/* Workout status display */}
                 {isWorkoutCompleted ? (
-                    <div className="text-center space-y-4" role="region" aria-label="Информация о тренировке">
+                    <div className="text-center space-y-4" role="region" aria-label={t('dashboard.workout.infoAria')}>
                         {/* Completion indicator */}
                         <div
                             className="flex items-center justify-center gap-2 text-green-600"
                             role="status"
-                            aria-label="Тренировка выполнена"
+                            aria-label={t('dashboard.workout.doneAria')}
                         >
                             <Check className="h-5 w-5" aria-hidden="true" />
-                            <span className="text-lg font-semibold">Тренировка выполнена</span>
+                            <span className="text-lg font-semibold">{t('dashboard.workout.done')}</span>
                         </div>
 
                         {/* Workout details */}
                         <div className="space-y-1">
-                            {(workout.types ?? (workout.type ? [workout.type] : [])).map(t => (
-                                <div key={t} className="flex items-center justify-center gap-2 text-gray-700"
-                                    aria-label={`Тип тренировки: ${t}`}>
+                            {(workout.types ?? (workout.type ? [workout.type] : [])).map(workoutType => (
+                                <div key={workoutType} className="flex items-center justify-center gap-2 text-gray-700"
+                                    aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(workoutType) })}>
                                     <Dumbbell className="h-4 w-4" aria-hidden="true" />
-                                    <span className="font-medium">{t}</span>
-                                    {workout.typeDurations?.[t] && (
+                                    <span className="font-medium">{workoutTypeLabel(workoutType)}</span>
+                                    {workout.typeDurations?.[workoutType] && (
                                         <>
                                             <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
-                                            <span className="text-sm text-gray-500">{formatDuration(workout.typeDurations[t])}</span>
+                                            <span className="text-sm text-gray-500">{formatDuration(workout.typeDurations[workoutType])}</span>
                                         </>
                                     )}
                                 </div>
                             ))}
                             {/* Fallback: single duration for legacy records without per-type durations */}
                             {!workout.typeDurations && workout.duration && (
-                                <div className="flex items-center justify-center gap-2 text-gray-600" aria-label={`Длительность: ${formatDuration(workout.duration)}`}>
+                                <div className="flex items-center justify-center gap-2 text-gray-600" aria-label={t('dashboard.workout.durationAria', { duration: formatDuration(workout.duration) })}>
                                     <Clock className="h-4 w-4" aria-hidden="true" />
                                     <span className="text-sm">{formatDuration(workout.duration)}</span>
                                 </div>
@@ -294,9 +310,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                 size="sm"
                                 onClick={handleQuickAdd}
                                 className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                aria-label="Изменить тренировку"
+                                aria-label={t('dashboard.workout.change')}
                             >
-                                Изменить
+                                {t('dashboard.workout.changeShort')}
                             </Button>
                             <Button
                                 variant="outline"
@@ -304,27 +320,27 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                 onClick={handleMarkNotCompleted}
                                 isLoading={isSaving}
                                 className="text-red-600 border-red-200 hover:bg-red-50"
-                                aria-label="Отменить тренировку"
+                                aria-label={t('dashboard.workout.cancelAria')}
                             >
                                 <X className="h-4 w-4 mr-1" aria-hidden="true" />
-                                Отменить
+                                {t('dashboard.workout.cancelShort')}
                             </Button>
                         </div>
                     </div>
                 ) : (
                     /* Empty state */
-                    <div className="text-center py-2 space-y-2" role="status" aria-label="Тренировка не записана">
+                    <div className="text-center py-2 space-y-2" role="status" aria-label={t('dashboard.workout.emptyAria')}>
                         <Dumbbell className="h-8 w-8 mx-auto text-gray-300" aria-hidden="true" />
-                        <p className="text-sm text-gray-500">Не записано</p>
+                        <p className="text-sm text-gray-500">{t('dashboard.workout.empty')}</p>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleQuickAdd}
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                            aria-label="Добавить тренировку"
+                            aria-label={t('dashboard.workout.add')}
                         >
                             <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                            Добавить
+                            {t('common.add')}
                         </Button>
                     </div>
                 )}
@@ -334,13 +350,13 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                     <div className="space-y-4 p-4 bg-gray-50 rounded-lg border" role="dialog" aria-labelledby="workout-dialog-title">
                         <div id="workout-dialog-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <Dumbbell className="h-4 w-4" aria-hidden="true" />
-                            <span>Добавить тренировку</span>
+                            <span>{t('dashboard.workout.add')}</span>
                         </div>
 
                         {/* Workout type selection (multi-select) */}
                         <div className="space-y-2">
                             <label id="workout-type-label" className="text-sm font-medium text-gray-700">
-                                Тип тренировки (можно выбрать несколько)
+                                {t('dashboard.workout.typeLabel')}
                             </label>
                             <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="workout-type-label">
                                 {WORKOUT_TYPES.map((type) => (
@@ -356,26 +372,26 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                                 ? 'bg-blue-100 border-blue-300 text-blue-700'
                                                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                                         )}
-                                        aria-label={`Тип тренировки: ${type}`}
+                                        aria-label={t('dashboard.workout.typeAria', { type: workoutTypeLabel(type) })}
                                     >
-                                        {type}
+                                        {workoutTypeLabel(type)}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         {/* Custom type input */}
-                        {selectedTypes.includes('Другое') && (
+                        {selectedTypes.includes(OTHER_TYPE) && (
                             <div>
                                 <label htmlFor="custom-workout-type" className="sr-only">
-                                    Укажите тип тренировки
+                                    {t('dashboard.workout.nameType')}
                                 </label>
                                 <Input
                                     id="custom-workout-type"
-                                    placeholder="Укажите тип тренировки"
+                                    placeholder={t('dashboard.workout.customPlaceholder')}
                                     value={customType}
                                     onChange={(e) => handleCustomTypeChange(e.target.value)}
-                                    aria-label="Тип тренировки"
+                                    aria-label={t('dashboard.workout.typeField')}
                                 />
                             </div>
                         )}
@@ -383,9 +399,9 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                         {/* Per-type duration inputs */}
                         {selectedTypes.length > 0 && (
                             <div className="space-y-2">
-                                <span className="text-sm font-medium text-gray-700">Длительность (мин, необязательно)</span>
+                                <span className="text-sm font-medium text-gray-700">{t('dashboard.workout.durationLabel')}</span>
                                 {selectedTypes.map(type => {
-                                    const displayName = type === 'Другое' ? (customType || 'Другое') : type
+                                    const displayName = type === OTHER_TYPE ? (customType || workoutTypeLabel(OTHER_TYPE)) : workoutTypeLabel(type)
                                     return (
                                         <div key={type} className="flex items-center gap-2">
                                             <span className="text-sm text-gray-600 min-w-[7rem] shrink-0">{displayName}:</span>
@@ -393,10 +409,10 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                                 type="number"
                                                 min="1"
                                                 max="600"
-                                                placeholder="мин"
+                                                placeholder={t('dashboard.workout.durationPlaceholder')}
                                                 value={durations[type] ?? ''}
                                                 onChange={(e) => handleDurationChange(type, e.target.value)}
-                                                aria-label={`Длительность: ${displayName}`}
+                                                aria-label={t('dashboard.workout.durationAria', { duration: displayName })}
                                                 aria-invalid={!!validationError}
                                             />
                                         </div>
@@ -419,21 +435,21 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                                 size="sm"
                                 onClick={handleSave}
                                 isLoading={isSaving}
-                                disabled={selectedTypes.length === 0 || (selectedTypes.includes('Другое') && !customType.trim())}
+                                disabled={selectedTypes.length === 0 || (selectedTypes.includes(OTHER_TYPE) && !customType.trim())}
                                 className="flex-1"
-                                aria-label="Сохранить тренировку"
+                                aria-label={t('dashboard.workout.saveAria')}
                             >
                                 <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                                Сохранить
+                                {t('common.save')}
                             </Button>
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={handleCancel}
                                 disabled={isSaving}
-                                aria-label="Отменить добавление тренировки"
+                                aria-label={t('dashboard.workout.cancelAddAria')}
                             >
-                                Отмена
+                                {t('common.cancel')}
                             </Button>
                         </div>
                     </div>
@@ -442,7 +458,7 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
                 {/* Helper text */}
                 {!isDialogOpen && (
                     <div className="text-xs text-gray-400 text-center">
-                        Тренировки помогают достичь целей быстрее
+                        {t('dashboard.workout.hint')}
                     </div>
                 )}
             </CardContent>

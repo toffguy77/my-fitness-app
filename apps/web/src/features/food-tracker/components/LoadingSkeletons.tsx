@@ -10,6 +10,7 @@
  */
 
 import { memo } from 'react';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Base Skeleton Component
@@ -148,7 +149,7 @@ export const SearchResultsSkeleton = memo(function SearchResultsSkeleton() {
 
 export const FoodTrackerPageSkeleton = memo(function FoodTrackerPageSkeleton() {
     return (
-        <div className="space-y-3 pb-20 sm:space-y-4 sm:pb-24" aria-label="Загрузка...">
+        <div className="space-y-3 pb-20 sm:space-y-4 sm:pb-24" aria-label={t('common.loading')}>
             <KBZHUSummarySkeleton />
             <MealSlotSkeleton />
             <MealSlotSkeleton />

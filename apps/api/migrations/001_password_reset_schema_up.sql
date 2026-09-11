@@ -32,11 +32,11 @@ CREATE INDEX IF NOT EXISTS idx_reset_tokens_expires_at ON reset_tokens(expires_a
 -- Add foreign key constraint if users table exists
 DO $$
 BEGIN
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'users') THEN
         -- Add foreign key constraint if it doesn't already exist
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.table_constraints
-            WHERE constraint_name = 'reset_tokens_user_id_fkey'
+            WHERE table_schema = current_schema() AND constraint_name = 'reset_tokens_user_id_fkey'
             AND table_name = 'reset_tokens'
         ) THEN
             ALTER TABLE reset_tokens
@@ -97,11 +97,11 @@ COMMENT ON COLUMN password_reset_attempts.ip_address IS 'IP address of the reque
 DO $$
 BEGIN
     -- Check if users table exists before adding column
-    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'users') THEN
         -- Add column if it doesn't exist
         IF NOT EXISTS (
             SELECT FROM information_schema.columns
-            WHERE table_name = 'users' AND column_name = 'password_changed_at'
+            WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'password_changed_at'
         ) THEN
             ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP;
             COMMENT ON COLUMN users.password_changed_at IS 'Timestamp of last password change';

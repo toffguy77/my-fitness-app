@@ -16,7 +16,7 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)
 -- Grant permissions (required for Yandex Cloud managed PostgreSQL)
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'refresh_tokens') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'refresh_tokens') THEN
         EXECUTE 'GRANT ALL ON TABLE refresh_tokens TO PUBLIC';
         RAISE NOTICE 'Granted permissions on refresh_tokens table';
     END IF;

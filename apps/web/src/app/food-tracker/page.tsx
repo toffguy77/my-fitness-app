@@ -9,14 +9,15 @@
 
 import { Metadata } from 'next';
 import { FoodTrackerPageClient } from './FoodTrackerPageClient';
+import { t } from '@/shared/i18n';
 
 // ============================================================================
 // Metadata
 // ============================================================================
 
 export const metadata: Metadata = {
-    title: 'Дневник питания | BURCEV',
-    description: 'Отслеживайте свой рацион, КБЖУ и водный баланс. Получайте персональные рекомендации по питанию.',
+    title: t('foodTracker.page.title'),
+    description: t('foodTracker.page.description'),
 };
 
 // ============================================================================

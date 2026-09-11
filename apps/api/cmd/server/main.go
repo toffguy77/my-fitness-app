@@ -181,7 +181,8 @@ func main() {
 	// Initialize OpenRouter client (for AI food recognition)
 	var orClient *openrouter.Client
 	if cfg.OpenRouterAPIKey != "" {
-		orClient = openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log)
+		orClient = openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log).
+			WithUsageObserver(telemetry.RecordModelUsage)
 		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
 	}
 
@@ -223,10 +224,11 @@ func main() {
 	// with. Without SMTP it is simply not wired, and the job says so.
 	if emailService != nil {
 		notificationsSvc.WithDigest(
-			func(ctx context.Context, to, name string, items []notifications.DigestItem, unsubscribeURL string) error {
+			func(ctx context.Context, to, name, language string, items []notifications.DigestItem, unsubscribeURL string) error {
 				data := email.DigestEmailData{
 					UserEmail:      to,
 					Name:           name,
+					Language:       language,
 					AppURL:         appOrigin(cfg.AppDomain),
 					UnsubscribeURL: unsubscribeURL,
 				}
@@ -293,11 +295,15 @@ func main() {
 	if cfg.Features.SupportBot {
 		supportService = support.NewService(
 			db.DB, log,
-			openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log),
+			openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log).
+				WithUsageObserver(telemetry.RecordModelUsage),
 			telegram.NewClient(cfg.TelegramBotToken),
 			leadsService,
 			cfg.SupportDailyLimit,
 		)
+		// An escalated conversation sits in the admin queue until somebody
+		// looks. This is what makes them look.
+		supportService.WithOperatorNotices(notificationsSvc)
 	} else {
 		log.Warn("Support bot is disabled", "reason", "TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET or OPENROUTER_API_KEY is absent")
 	}
@@ -311,6 +317,37 @@ func main() {
 		log.Warn("Failed to load Europe/Moscow; scheduling jobs in UTC", "error", err)
 		moscow = time.UTC
 	}
+	// Error reporting, if there is somewhere to report to.
+	reportingOn, err := telemetry.StartErrorReporting(cfg.SentryDSN, cfg.Version, cfg.Env)
+	if err != nil {
+		log.Warn("Error reporting could not be started; continuing without it", "error", err)
+	} else if reportingOn {
+		log.Info("Error reporting enabled", "release", cfg.Version)
+		defer telemetry.FlushErrors()
+	} else {
+		log.Warn("Error reporting is off — SENTRY_DSN is not set")
+	}
+
+	// Tracing, if there is a collector to send it to. Absent, the application
+	// runs exactly as before and says so once — the same rule as every other
+	// optional capability here.
+	tracingOn, stopTracing, err := telemetry.StartTracing(
+		context.Background(), cfg.OTLPEndpoint, "burcev-api", cfg.Version, cfg.Env)
+	if err != nil {
+		log.Warn("Tracing could not be started; continuing without it", "error", err)
+	} else if tracingOn {
+		log.Info("Tracing enabled",
+			"endpoint", cfg.OTLPEndpoint,
+			"success_sample_ratio", telemetry.DefaultSuccessRatio)
+		defer func() {
+			if err := stopTracing(context.Background()); err != nil {
+				log.Warn("Failed to flush traces on shutdown", "error", err)
+			}
+		}()
+	} else {
+		log.Warn("Tracing is off — OTEL_EXPORTER_OTLP_ENDPOINT is not set")
+	}
+
 	metrics := telemetry.New("burcev", db.DB.Stats)
 	// The domain counters were declared and never incremented; installing the
 	// recorder is what lets the services reach them without threading a
@@ -345,6 +382,9 @@ func main() {
 	// half a minute — during which the person who just changed their password
 	// cannot use the application at all.
 	authService.WithSessionCache(tokenVersions)
+	// The same for password reset: it ends every session too, and it is the
+	// flow where a session that outlives the password matters most.
+	resetService.WithSessionCache(tokenVersions)
 
 	router := router.New(router.Deps{
 		Cfg:             cfg,
@@ -356,7 +396,7 @@ func main() {
 		Analytics:     analytics.NewHandler(analyticsService, log),
 		Auth:          auth.NewHandler(authService, cfg, log, verificationService).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Reset:         auth.NewResetHandler(cfg, log, resetService),
-		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService),
+		OAuth:         auth.NewOAuthHandler(cfg, log, authService, oauthRegistry).WithLeads(leadsService).WithAnalytics(analyticsService),
 		Users:         users.NewHandler(db.DB, profilePhotosS3, cfg, log, nutritionCalcSvc),
 		Account:       account.NewHandler(accountService, log),
 		Notifications: notifications.NewHandler(notificationsSvc, cfg, log),

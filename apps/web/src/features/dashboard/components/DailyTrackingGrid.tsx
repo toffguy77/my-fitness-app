@@ -19,6 +19,7 @@ import { NutritionBlock } from './NutritionBlock'
 import { StepsBlock } from './StepsBlock'
 import { WorkoutBlock } from './WorkoutBlock'
 import { WaterBlock } from './WaterBlock'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for DailyTrackingGrid component
@@ -79,7 +80,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                         <div
                             key={index}
                             className="h-80 bg-gray-100 rounded-lg animate-pulse"
-                            aria-label="Загрузка блока отслеживания"
+                            aria-label={t('dashboard.grid.loadingAria')}
                         />
                     ))}
                 </div>
@@ -110,7 +111,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                     </div>
                     <div className="space-y-2">
                         <h3 className="text-lg font-semibold text-gray-900">
-                            Не удалось загрузить данные
+                            {t('dashboard.grid.loadFailed')}
                         </h3>
                         <p className="text-sm text-gray-600">
                             {error.message}
@@ -120,7 +121,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                         onClick={() => handleFetchData()}
                         className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
-                        Попробовать снова
+                        {t('dashboard.grid.retry')}
                     </button>
                 </div>
             </div>
@@ -190,7 +191,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                             />
                         </svg>
-                        <span>Обновление данных...</span>
+                        <span>{t('dashboard.grid.refreshing')}</span>
                     </div>
                 </div>
             )}
@@ -214,7 +215,7 @@ export const DailyTrackingGrid = memo(function DailyTrackingGrid({ date, classNa
                             />
                         </svg>
                         <span className="text-sm text-yellow-800">
-                            Нет подключения к интернету. Показаны сохраненные данные.
+                            {t('dashboard.grid.offlineCached')}
                         </span>
                     </div>
                 </div>

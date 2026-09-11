@@ -9,6 +9,7 @@ import {
 } from '@/features/auth/api/providers'
 import { isApiError } from '@/shared/errors/apiErrors'
 import { SettingsPageLayout } from './SettingsPageLayout'
+import { t } from '@/shared/i18n'
 
 /**
  * External sign-in services attached to this account.
@@ -39,7 +40,7 @@ export function SettingsProviders() {
             try {
                 await refresh()
             } catch {
-                toast.error('Не удалось загрузить привязки')
+                toast.error(t('settings.providers.loadFailed'))
             } finally {
                 setLoading(false)
             }
@@ -55,12 +56,12 @@ export function SettingsProviders() {
         try {
             await providersApi.unlink(provider)
             setLinked((current) => current.filter((item) => item.provider !== provider))
-            toast.success(`${providerLabel(provider)} отвязан`)
+            toast.success(t('settings.providers.unlinked', { provider: providerLabel(provider) }))
         } catch (error) {
             if (isApiError(error) && error.status === 409) {
-                toast.error('Это единственный способ входа. Сначала задайте пароль.')
+                toast.error(t('settings.providers.onlyWayIn'))
             } else {
-                toast.error('Не удалось отвязать сервис')
+                toast.error(t('settings.providers.unlinkFailed'))
             }
         } finally {
             setBusy(null)
@@ -68,7 +69,7 @@ export function SettingsProviders() {
     }
 
     if (loading) {
-        return <p className="py-8 text-center text-sm text-gray-500">Загрузка...</p>
+        return <p className="py-8 text-center text-sm text-gray-500">{t('settings.loading')}</p>
     }
 
     const unlinked = available.filter(
@@ -77,14 +78,14 @@ export function SettingsProviders() {
 
     return (
         <section>
-            <h2 className="text-sm font-bold text-gray-900">Вход через сервисы</h2>
+            <h2 className="text-sm font-bold text-gray-900">{t('settings.providers.heading')}</h2>
             <p className="mt-1 text-sm text-gray-600">
-                Привязанный сервис позволяет входить без пароля.
+                {t('settings.providers.explanation')}
             </p>
 
             {linked.length === 0 && unlinked.length === 0 && (
                 <p className="mt-4 text-sm text-gray-500">
-                    Вход через внешние сервисы сейчас недоступен.
+                    {t('settings.providers.unavailable')}
                 </p>
             )}
 
@@ -101,11 +102,11 @@ export function SettingsProviders() {
                             {item.email && <p className="text-xs text-gray-500">{item.email}</p>}
                             {isOnlyWayIn(item.provider) && (
                                 <p className="mt-1 text-xs text-gray-500">
-                                    Единственный способ входа.{' '}
+                                    {t('settings.providers.onlyWayInBefore')}{' '}
                                     <a href="/forgot-password" className="text-blue-600 hover:underline">
-                                        Задайте пароль
+                                        {t('settings.providers.setPassword')}
                                     </a>
-                                    , чтобы отвязать.
+                                    {t('settings.providers.onlyWayInAfter')}
                                 </p>
                             )}
                         </div>
@@ -114,7 +115,7 @@ export function SettingsProviders() {
                             disabled={busy === item.provider || isOnlyWayIn(item.provider)}
                             className="text-sm font-medium text-red-500 transition-colors hover:text-red-600 disabled:text-gray-300"
                         >
-                            Отвязать
+                            {t('settings.providers.unlink')}
                         </button>
                     </li>
                 ))}
@@ -129,7 +130,7 @@ export function SettingsProviders() {
                             href={providersApi.startUrl(provider)}
                             className="text-sm font-medium text-blue-600 hover:text-blue-700"
                         >
-                            Привязать
+                            {t('settings.providers.link')}
                         </a>
                     </li>
                 ))}
@@ -140,7 +141,7 @@ export function SettingsProviders() {
 
 export function SettingsProvidersPage() {
     return (
-        <SettingsPageLayout title="Вход через сервисы">
+        <SettingsPageLayout title={t('settings.titles.providers')}>
             {() => <SettingsProviders />}
         </SettingsPageLayout>
     )

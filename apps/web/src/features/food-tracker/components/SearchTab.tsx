@@ -12,7 +12,9 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Search, Clock, Star, Plus, ChevronRight } from 'lucide-react';
 import type { FoodItem, MealType } from '../types';
+import { t } from '@/shared/i18n';
 
+import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 // Types
 // ============================================================================
@@ -193,9 +195,9 @@ export function SearchTab({
                     type="text"
                     value={query}
                     onChange={handleInputChange}
-                    placeholder="Поиск блюд и продуктов"
+                    placeholder={t('foodTracker.search.placeholder')}
                     className="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
-                    aria-label="Поиск блюд и продуктов"
+                    aria-label={t('foodTracker.search.placeholder')}
                 />
                 {loading && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -224,7 +226,7 @@ export function SearchTab({
             {/* Empty State */}
             {showEmptyState && (
                 <div className="flex-1 flex flex-col items-center justify-center py-8">
-                    <p className="text-gray-500 mb-4">Ничего не найдено</p>
+                    <p className="text-gray-500 mb-4">{t('foodTracker.search.nothingFound')}</p>
                     {onManualEntry && (
                         <button
                             type="button"
@@ -232,7 +234,7 @@ export function SearchTab({
                             className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         >
                             <Plus className="w-4 h-4" />
-                            <span>Ввести вручную</span>
+                            <span>{t('foodTracker.entryModal.enterManually')}</span>
                         </button>
                     )}
                 </div>
@@ -243,7 +245,7 @@ export function SearchTab({
                 <div className="flex-1 overflow-y-auto space-y-6">
                     {recentFoods.length > 0 && (
                         <FoodSection
-                            title="Недавние"
+                            title={t('foodTracker.search.recent')}
                             icon={<Clock className="w-4 h-4" />}
                             foods={recentFoods}
                             onSelect={handleSelectFood}
@@ -251,7 +253,7 @@ export function SearchTab({
                     )}
                     {popularFoods.length > 0 && (
                         <FoodSection
-                            title="Популярные"
+                            title={t('foodTracker.search.popular')}
                             icon={<Star className="w-4 h-4" />}
                             foods={popularFoods}
                             onSelect={handleSelectFood}
@@ -270,7 +272,7 @@ export function SearchTab({
                     >
                         <div className="flex items-center gap-3">
                             <Plus className="w-5 h-5 text-gray-400" />
-                            <span>Ввести вручную</span>
+                            <span>{t('foodTracker.entryModal.enterManually')}</span>
                         </div>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                     </button>
@@ -315,7 +317,7 @@ function FoodList({ foods, onSelect, emptyMessage }: FoodListProps) {
     }
 
     return (
-        <ul className="space-y-1" role="listbox" aria-label="Список продуктов">
+        <ul className="space-y-1" role="listbox" aria-label={t('foodTracker.search.listAria')}>
             {foods.map((food) => (
                 <FoodListItem key={food.id} food={food} onSelect={onSelect} />
             ))}
@@ -345,7 +347,7 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
 
     // Format serving info
     const servingInfo = useMemo(() => {
-        return `${food.servingSize} ${food.servingUnit}`;
+        return `${food.servingSize} ${unitLabel(food.servingUnit)}`;
     }, [food.servingSize, food.servingUnit]);
 
     return (
@@ -355,7 +357,7 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
             onClick={handleClick}
             onKeyDown={handleKeyDown}
             className="flex items-center justify-between px-3 py-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
-            aria-label={`${food.name}, ${servingInfo}, ${Math.round(food.nutritionPer100.calories)} ккал`}
+            aria-label={t('foodTracker.search.itemAria', { name: food.name, serving: servingInfo, calories: Math.round(food.nutritionPer100.calories) })}
         >
             <div className="flex-1 min-w-0">
                 <p className="text-gray-900 font-medium truncate">{food.name}</p>
@@ -363,9 +365,9 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
             </div>
             <div className="ml-4 text-right">
                 <p className="text-gray-900 font-medium">
-                    {Math.round(food.nutritionPer100.calories)} ккал
+                    {Math.round(food.nutritionPer100.calories)} {t('units.kcal')}
                 </p>
-                <p className="text-xs text-gray-500">на 100г</p>
+                <p className="text-xs text-gray-500">{t('foodTracker.search.per100')}</p>
             </div>
         </li>
     );

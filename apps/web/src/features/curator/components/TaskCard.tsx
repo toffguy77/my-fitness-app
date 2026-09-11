@@ -4,6 +4,7 @@ import { UtensilsCrossed, Dumbbell, Star, Ruler, Pencil, Trash2 } from 'lucide-r
 import { cn } from '@/shared/utils/cn'
 import type { TaskView, TaskType } from '../types'
 
+import { t } from '@/shared/i18n'
 const TYPE_ICONS: Record<TaskType, typeof UtensilsCrossed> = {
     nutrition: UtensilsCrossed,
     workout: Dumbbell,
@@ -12,16 +13,16 @@ const TYPE_ICONS: Record<TaskType, typeof UtensilsCrossed> = {
 }
 
 const TYPE_LABELS: Record<TaskType, string> = {
-    nutrition: 'Питание',
-    workout: 'Тренировка',
-    habit: 'Привычка',
-    measurement: 'Замеры',
+    nutrition: t('curator.task.typeNutrition'),
+    workout: t('curator.task.typeWorkout'),
+    habit: t('curator.task.typeHabit'),
+    measurement: t('curator.task.typeMeasurement'),
 }
 
 const STATUS_LABELS: Record<string, string> = {
-    active: 'Активная',
-    completed: 'Завершена',
-    overdue: 'Просрочена',
+    active: t('curator.taskCard.statusActive'),
+    completed: t('curator.taskCard.statusCompleted'),
+    overdue: t('curator.taskCard.statusOverdue'),
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -68,7 +69,15 @@ function MiniCalendar({
         days.push({ date: dateStr, dayOfWeek: d.getDay(), filled: completionSet.has(dateStr) })
     }
 
-    const dayLabels = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+    const dayLabels = [
+        t('weekdays.short.sun'),
+        t('weekdays.short.mon'),
+        t('weekdays.short.tue'),
+        t('weekdays.short.wed'),
+        t('weekdays.short.thu'),
+        t('weekdays.short.fri'),
+        t('weekdays.short.sat'),
+    ]
 
     function isScheduled(dayOfWeek: number): boolean {
         if (recurrence === 'daily') return true
@@ -132,7 +141,7 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
                                     type="button"
                                     onClick={() => onEdit(task)}
                                     className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                                    aria-label="Редактировать задачу"
+                                    aria-label={t('curator.taskCard.editAria')}
                                 >
                                     <Pencil className="h-3.5 w-3.5" />
                                 </button>
@@ -142,7 +151,7 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
                                     type="button"
                                     onClick={() => onDelete(task.id)}
                                     className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                    aria-label="Удалить задачу"
+                                    aria-label={t('curator.taskCard.deleteAria')}
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -152,7 +161,7 @@ export function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
                     <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-gray-400">{TYPE_LABELS[task.type]}</span>
                         <span className={cn('text-xs', getDeadlineColor(task.deadline))}>
-                            до {formatDeadline(task.deadline)}
+                            {t('curator.taskCard.deadline', { date: formatDeadline(task.deadline) })}
                         </span>
                     </div>
                     {task.description && (

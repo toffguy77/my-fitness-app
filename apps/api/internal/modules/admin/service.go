@@ -373,7 +373,7 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 			_, err = tx.ExecContext(ctx, `
 				INSERT INTO conversations (client_id, curator_id)
 				VALUES ($1, $2)
-				ON CONFLICT (client_id, curator_id) DO NOTHING
+				ON CONFLICT (client_id, curator_id) WHERE anonymized_at IS NULL DO NOTHING
 			`, clientID, newCuratorID)
 			if err != nil {
 				return fmt.Errorf("failed to create conversation for client %d: %w", clientID, err)
@@ -447,7 +447,7 @@ func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) 
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO conversations (client_id, curator_id)
 		VALUES ($1, $2)
-		ON CONFLICT (client_id, curator_id) DO NOTHING
+		ON CONFLICT (client_id, curator_id) WHERE anonymized_at IS NULL DO NOTHING
 	`, clientID, curatorID)
 	if err != nil {
 		return fmt.Errorf("failed to create conversation: %w", err)

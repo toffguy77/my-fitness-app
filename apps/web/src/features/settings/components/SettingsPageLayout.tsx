@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { useSettings } from '../hooks/useSettings'
 import { ArrowLeft } from 'lucide-react'
+import { t } from '@/shared/i18n'
 
 interface SettingsPageLayoutProps {
     title: string
@@ -55,7 +56,7 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
                     className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Профиль
+                    {t('settings.backToProfile')}
                 </Link>
 
                 {/* Page title */}

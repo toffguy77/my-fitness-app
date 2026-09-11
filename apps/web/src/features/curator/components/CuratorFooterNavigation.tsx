@@ -7,6 +7,7 @@ import { CURATOR_NAVIGATION_ITEMS } from '../utils/curatorNavigationConfig'
 import { useUnreadCount } from '@/features/chat/hooks/useUnreadCount'
 import type { CuratorNavigationItemId } from '../types'
 
+import { t } from '@/shared/i18n'
 export interface CuratorFooterNavigationProps {
     activeItem?: CuratorNavigationItemId
     onNavigate?: (itemId: CuratorNavigationItemId) => void
@@ -44,7 +45,7 @@ export function CuratorFooterNavigation({
             className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-gray-200 bg-white px-2"
             style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
             data-testid="curator-footer-navigation"
-            aria-label="Навигация куратора"
+            aria-label={t('curator.navigation.aria')}
         >
             {CURATOR_NAVIGATION_ITEMS.map((item) => {
                 const Icon = item.icon

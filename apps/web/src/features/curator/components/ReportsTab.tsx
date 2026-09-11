@@ -6,6 +6,7 @@ import { curatorApi } from '../api/curatorApi'
 import type { WeeklyReportView } from '../types'
 import { ReportCard } from './ReportCard'
 
+import { t } from '@/shared/i18n'
 interface ReportsTabProps {
     clientId: number
 }
@@ -30,7 +31,7 @@ export function ReportsTab({ clientId }: ReportsTabProps) {
             })
             .catch(() => {
                 if (!cancelled) {
-                    setError('Не удалось загрузить отчёты')
+                    setError(t('curator.reports.loadFailed'))
                     setLoading(false)
                 }
             })
@@ -59,7 +60,7 @@ export function ReportsTab({ clientId }: ReportsTabProps) {
     if (reports.length === 0) {
         return (
             <div className="rounded-xl border-2 border-dashed border-gray-200 p-6 text-center">
-                <p className="text-sm text-gray-500">Отчётов пока нет</p>
+                <p className="text-sm text-gray-500">{t('curator.reports.empty')}</p>
             </div>
         )
     }

@@ -151,7 +151,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		newFoodItemID := uuid.New().String()
 		_, err := s.db.ExecContext(ctx, `
 			INSERT INTO food_items (id, name, category, serving_size, serving_unit, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, source, verified, created_at, updated_at)
-			VALUES ($1, $2, 'ai', $3, 'г', $4, $5, $6, $7, 'user', false, NOW(), NOW())
+			VALUES ($1, $2, 'ai', $3, 'g', $4, $5, $6, $7, 'user', false, NOW(), NOW())
 		`, newFoodItemID, *req.FoodName, req.PortionAmount, calPer100, protPer100, fatPer100, carbsPer100)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка при создании AI продукта в food_items: %w", err)
@@ -160,7 +160,7 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 		// Also create user_food linked to the food_item
 		_, err = s.db.ExecContext(ctx, `
 			INSERT INTO user_foods (id, user_id, name, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, serving_size, serving_unit, source_food_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'г', $1)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'g', $1)
 		`, newFoodItemID, userID, *req.FoodName, calPer100, protPer100, fatPer100, carbsPer100, req.PortionAmount)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка при создании AI продукта в user_foods: %w", err)
@@ -720,7 +720,7 @@ func (s *Service) getFoodItemByID(ctx context.Context, foodID string) (*FoodItem
 	query := `
 		SELECT id::text, name, brand,
 		       COALESCE(category_id::text, '') AS category,
-		       100.0 AS serving_size, 'г' AS serving_unit,
+		       100.0 AS serving_size, 'g' AS serving_unit,
 		       COALESCE(calories, 0), COALESCE(proteins, 0),
 		       COALESCE(fats, 0), COALESCE(carbs, 0),
 		       fiber, NULL::numeric, NULL::numeric,
@@ -959,7 +959,7 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 			-- Products table (small, ILIKE is acceptable)
 			(SELECT id::text AS id, name, brand,
 			       COALESCE(category_id::text, '') AS category,
-			       100.0 AS serving_size, 'г' AS serving_unit,
+			       100.0 AS serving_size, 'g' AS serving_unit,
 			       COALESCE(calories, 0) AS calories_per_100,
 			       COALESCE(proteins, 0) AS protein_per_100,
 			       COALESCE(fats, 0) AS fat_per_100,
@@ -989,7 +989,7 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 			(SELECT id::text AS id, name, brand,
 			       COALESCE(category, '') AS category,
 			       COALESCE(serving_size, 100.0) AS serving_size,
-			       COALESCE(serving_unit, 'г') AS serving_unit,
+			       COALESCE(serving_unit, 'g') AS serving_unit,
 			       COALESCE(calories_per_100, 0) AS calories_per_100,
 			       COALESCE(protein_per_100, 0) AS protein_per_100,
 			       COALESCE(fat_per_100, 0) AS fat_per_100,
@@ -1196,7 +1196,7 @@ func (s *Service) saveOFFProduct(ctx context.Context, barcode string, product *o
 		INSERT INTO food_items (id, name, brand, category, serving_size, serving_unit,
 			calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
 			barcode, source, verified, created_at, updated_at)
-		VALUES ($1, $2, $3, 'imported', 100, 'г', $4, $5, $6, $7, $8, 'openfoodfacts', false, NOW(), NOW())
+		VALUES ($1, $2, $3, 'imported', 100, 'g', $4, $5, $6, $7, $8, 'openfoodfacts', false, NOW(), NOW())
 		ON CONFLICT (barcode) DO UPDATE SET
 			name = EXCLUDED.name, brand = EXCLUDED.brand,
 			calories_per_100 = EXCLUDED.calories_per_100, protein_per_100 = EXCLUDED.protein_per_100,
@@ -1270,7 +1270,7 @@ func (s *Service) getFoodByBarcode(ctx context.Context, barcode string) (*FoodIt
 	pQuery := `
 		SELECT id::text, name, brand,
 		       COALESCE(category_id::text, '') AS category,
-		       100.0 AS serving_size, 'г' AS serving_unit,
+		       100.0 AS serving_size, 'g' AS serving_unit,
 		       COALESCE(calories, 0), COALESCE(proteins, 0),
 		       COALESCE(fats, 0), COALESCE(carbs, 0),
 		       fiber, NULL::numeric, NULL::numeric,
@@ -2176,7 +2176,7 @@ func (s *Service) CreateUserFood(ctx context.Context, userID int64, req *CreateU
 	}
 	servingUnit := req.ServingUnit
 	if servingUnit == "" {
-		servingUnit = "г"
+		servingUnit = "g"
 	}
 
 	var brand *string

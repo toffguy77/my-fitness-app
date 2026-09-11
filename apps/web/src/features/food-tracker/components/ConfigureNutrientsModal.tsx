@@ -16,7 +16,9 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NutrientRecommendation, NutrientCategoryType } from '../types';
+import { t } from '@/shared/i18n';
 
+import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 // Types
 // ============================================================================
@@ -46,11 +48,11 @@ interface CategoryState {
 // ============================================================================
 
 const CATEGORY_LABELS: Record<NutrientCategoryType, string> = {
-    vitamins: 'Витамины',
-    minerals: 'Минералы',
-    lipids: 'Липиды',
-    fiber: 'Клетчатка',
-    plant: 'Растительность',
+    vitamins: t('foodTracker.nutrientCategories.vitamins'),
+    minerals: t('foodTracker.nutrientCategories.minerals'),
+    lipids: t('foodTracker.nutrientCategories.lipids'),
+    fiber: t('foodTracker.nutrientCategories.fiber'),
+    plant: t('foodTracker.nutrientCategories.plant'),
 };
 
 const CATEGORY_ORDER: NutrientCategoryType[] = [
@@ -93,7 +95,7 @@ function NutrientCheckbox({
                 className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
             />
             <span className="text-sm text-gray-900 flex-1">{nutrient.name}</span>
-            <span className="text-xs text-gray-500">{nutrient.unit}</span>
+            <span className="text-xs text-gray-500">{unitLabel(nutrient.unit)}</span>
         </label>
     );
 }
@@ -161,9 +163,9 @@ function CategorySection({
                             onClick={onSelectAll}
                             disabled={allSelected}
                             className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
-                            aria-label={`Выбрать все ${CATEGORY_LABELS[category]}`}
+                            aria-label={t('foodTracker.configureNutrients.selectAllAria', { category: CATEGORY_LABELS[category] })}
                         >
-                            Выбрать все
+                            {t('foodTracker.configureNutrients.selectAll')}
                         </button>
                         <span className="text-gray-300">|</span>
                         <button
@@ -171,9 +173,9 @@ function CategorySection({
                             onClick={onDeselectAll}
                             disabled={noneSelected}
                             className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed focus:outline-none focus-visible:underline"
-                            aria-label={`Снять выбор ${CATEGORY_LABELS[category]}`}
+                            aria-label={t('foodTracker.configureNutrients.clearAria', { category: CATEGORY_LABELS[category] })}
                         >
-                            Снять выбор
+                            {t('foodTracker.configureNutrients.clear')}
                         </button>
                     </div>
 
@@ -352,17 +354,17 @@ export function ConfigureNutrientsModal({
                             id="configure-nutrients-title"
                             className="text-lg font-semibold text-gray-900"
                         >
-                            Настроить список
+                            {t('foodTracker.configureNutrients.title')}
                         </h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            Выбрано: {totalSelected} из {totalNutrients}
+                            {t('foodTracker.configureNutrients.selectedCount', { selected: totalSelected, total: totalNutrients })}
                         </p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                        aria-label="Закрыть"
+                        aria-label={t('common.close')}
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -397,7 +399,7 @@ export function ConfigureNutrientsModal({
                         onClick={onClose}
                         className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
-                        Отмена
+                        {t('common.cancel')}
                     </button>
                     <button
                         type="button"
@@ -405,7 +407,7 @@ export function ConfigureNutrientsModal({
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                         <Check className="w-4 h-4" />
-                        Сохранить
+                        {t('common.save')}
                     </button>
                 </div>
             </div>

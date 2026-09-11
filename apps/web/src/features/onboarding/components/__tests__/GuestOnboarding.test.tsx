@@ -141,7 +141,7 @@ describe('The guest onboarding', () => {
 
             render(<GuestOnboarding />)
             await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
-            await userEvent.click(screen.getByRole('checkbox', { name: /обработку персональных данных/ }))
+            await userEvent.click(screen.getByRole('checkbox', { name: /обработку моих данных/ }))
             await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
 
             await waitFor(() => expect(api.createLead).toHaveBeenCalled())
@@ -160,8 +160,8 @@ describe('The guest onboarding', () => {
 
             render(<GuestOnboarding />)
             await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
-            await userEvent.click(screen.getByRole('checkbox', { name: /обработку персональных данных/ }))
-            await userEvent.click(screen.getByRole('checkbox', { name: /напомнить мне/ }))
+            await userEvent.click(screen.getByRole('checkbox', { name: /обработку моих данных/ }))
+            await userEvent.click(screen.getByRole('checkbox', { name: /письмо-напоминание/ }))
             await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
 
             await waitFor(() =>
@@ -269,7 +269,7 @@ describe('The guest onboarding', () => {
 
         render(<GuestOnboarding />)
         await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
-        await userEvent.click(screen.getByRole('checkbox', { name: /обработку персональных данных/ }))
+        await userEvent.click(screen.getByRole('checkbox', { name: /обработку моих данных/ }))
         await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
 
         await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Не удалось сохранить результат'))

@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"net/http"
 	"strconv"
 
@@ -157,6 +158,13 @@ func (h *Handler) ListExports(c *gin.Context) {
 func (h *Handler) DownloadExport(c *gin.Context) {
 	userID, ok := h.userID(c)
 	if !ok {
+		return
+	}
+
+	// Same reason as everywhere else an identifier arrives from a URL: the
+	// wrong shape means "no such thing", not "the server broke".
+	if _, err := uuid.Parse(c.Param("id")); err != nil {
+		response.NotFound(c, "Выгрузка не найдена")
 		return
 	}
 

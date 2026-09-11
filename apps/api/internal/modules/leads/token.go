@@ -12,6 +12,13 @@ import (
 	"github.com/burcev/api/internal/shared/apperrors"
 )
 
+// LeadCookieName carries the lead token through a sign-up that leaves the site.
+//
+// Declared here rather than in the auth module because this package issues the
+// cookie; auth only reads and clears it. When the two names were written out
+// separately, one of them was a name nobody set.
+const LeadCookieName = "lead_token"
+
 // ResumeTTL bounds how long a return link stays usable.
 const ResumeTTL = 14 * 24 * time.Hour
 

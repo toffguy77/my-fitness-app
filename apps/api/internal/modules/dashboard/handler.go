@@ -3,11 +3,13 @@ package dashboard
 import (
 	"bytes"
 	"context"
-	"github.com/burcev/api/internal/shared/upload"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/upload"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/notifications"
@@ -541,10 +543,9 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 
 	if !valid {
 		h.log.Infow("Week data validation failed", "user_id", userID, "errors", validationErrors)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Validation failed",
-			"errors":  validationErrors,
-		})
+		response.ErrorCode(c, http.StatusBadRequest, apperrors.CodeValidation,
+			"Проверьте введённые данные",
+			map[string]any{"errors": validationErrors})
 		return
 	}
 

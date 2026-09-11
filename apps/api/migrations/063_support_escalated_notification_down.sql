@@ -1,0 +1,12 @@
+-- Обратно, без нового типа. Уведомления этого типа, если они уже есть,
+-- удаляются: иначе ограничение не встанет.
+DELETE FROM notifications WHERE type = 'support_escalated';
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
+    CHECK (type IN (
+        'trainer_feedback', 'achievement', 'reminder', 'system_update',
+        'new_feature', 'general', 'new_content',
+        'plan_updated', 'task_assigned', 'task_overdue', 'feedback_received',
+        'export_ready', 'client_left'
+    ));

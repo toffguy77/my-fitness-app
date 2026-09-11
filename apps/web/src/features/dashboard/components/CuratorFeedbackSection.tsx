@@ -17,6 +17,7 @@ import { useState, useEffect, memo } from 'react'
 import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
 import { dashboardApi } from '../api/dashboardApi'
 import type { CuratorFeedback, RatingLevel } from '../types'
+import { t } from '@/shared/i18n'
 
 /**
  * Props for CuratorFeedbackSection component
@@ -32,11 +33,11 @@ export interface CuratorFeedbackSectionProps {
 function getRatingBadge(rating: RatingLevel): { label: string; className: string } {
     switch (rating) {
         case 'excellent':
-            return { label: 'Отлично', className: 'bg-green-100 text-green-800' }
+            return { label: t('dashboard.feedback.excellent'), className: 'bg-green-100 text-green-800' }
         case 'good':
-            return { label: 'Хорошо', className: 'bg-yellow-100 text-yellow-800' }
+            return { label: t('dashboard.feedback.good'), className: 'bg-yellow-100 text-yellow-800' }
         case 'needs_improvement':
-            return { label: 'Нужно улучшить', className: 'bg-red-100 text-red-800' }
+            return { label: t('dashboard.feedback.needsWork'), className: 'bg-red-100 text-red-800' }
     }
 }
 
@@ -46,11 +47,11 @@ function getRatingBadge(rating: RatingLevel): { label: string; className: string
 function getCategoryName(category: string): string {
     switch (category) {
         case 'nutrition':
-            return 'Питание'
+            return t('dashboard.feedback.nutrition')
         case 'activity':
-            return 'Активность'
+            return t('dashboard.feedback.activity')
         case 'water':
-            return 'Вода'
+            return t('dashboard.feedback.water')
         default:
             return category
     }
@@ -120,7 +121,7 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
                         id="curator-feedback-heading"
                         className="text-base sm:text-lg font-semibold text-gray-900"
                     >
-                        Обратная связь куратора
+                        {t('dashboard.feedback.title')}
                     </h2>
                 </div>
                 {expanded ? (
@@ -138,7 +139,7 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
                 >
                     {/* Category ratings */}
                     {categories.length > 0 && (
-                        <div className="flex flex-wrap gap-2" role="list" aria-label="Оценки по категориям">
+                        <div className="flex flex-wrap gap-2" role="list" aria-label={t('dashboard.feedback.ratingsAria')}>
                             {categories.map((cat) => {
                                 const rating = feedback[cat]!
                                 const badge = getRatingBadge(rating.rating)
@@ -171,7 +172,7 @@ export const CuratorFeedbackSection = memo(function CuratorFeedbackSection({
                     {feedback.recommendations && (
                         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <p className="text-xs font-medium text-blue-800 mb-1">
-                                Рекомендации
+                                {t('dashboard.feedback.recommendations')}
                             </p>
                             <p className="text-sm text-blue-700">
                                 {feedback.recommendations}

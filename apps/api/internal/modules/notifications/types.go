@@ -43,6 +43,12 @@ const (
 	// A client left. The curator planned around them and would otherwise find
 	// out by noticing an absence.
 	TypeClientLeft NotificationType = "client_left"
+
+	// Somebody asked the support bot something it could not answer, and a
+	// person has to. It reaches operators the same way everything else reaches
+	// anybody: in the list of what happened, and by email or push if that is
+	// how they have asked to be told.
+	TypeSupportEscalated NotificationType = "support_escalated"
 )
 
 // IsValid checks if the notification type is valid
@@ -50,7 +56,7 @@ func (t NotificationType) IsValid() bool {
 	switch t {
 	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral, TypeNewContent,
 		TypePlanUpdated, TypeTaskAssigned, TypeTaskOverdue, TypeFeedbackReceived,
-		TypeExportReady, TypeClientLeft:
+		TypeExportReady, TypeClientLeft, TypeSupportEscalated:
 		return true
 	}
 	return false

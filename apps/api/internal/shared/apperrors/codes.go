@@ -30,7 +30,12 @@ const (
 	CodeGone               = "gone"
 	CodeValidation         = "validation"
 	CodeFeatureUnavailable = "feature_unavailable"
-	CodeInternal           = "internal"
+	// Distinct from token_expired: a refresh will not help, because the token
+	// was invalidated deliberately — a password change, or signing out every
+	// device. A client that cannot tell them apart either loops refreshing or
+	// signs people out whenever a token simply aged.
+	CodeSessionEnded = "session_ended"
+	CodeInternal     = "internal"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -72,5 +77,6 @@ func AllCodes() []string {
 	for _, code := range codes {
 		all = append(all, code)
 	}
-	return append(all, CodeFeatureUnavailable, CodeInternal, CodePasswordIncorrect)
+	return append(all,
+		CodeFeatureUnavailable, CodeInternal, CodePasswordIncorrect, CodeSessionEnded)
 }

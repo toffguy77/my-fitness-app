@@ -192,11 +192,14 @@ describe('PhotoUploader', () => {
         })
     })
 
-    it('accepts only image files via the file input', () => {
+    // Not image/*: on iOS that lets the Files app hand over a HEIC photograph,
+    // which the server cannot read. Naming the types makes the same picker
+    // filter it out, and the photo library transcodes to JPEG on the way.
+    it('offers only the image types the server accepts', () => {
         render(<PhotoUploader {...defaultProps} />)
 
         const fileInput = screen.getByLabelText('Выбрать фото')
-        expect(fileInput).toHaveAttribute('accept', 'image/*')
+        expect(fileInput).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp')
     })
 
     it('renders the helper text', () => {

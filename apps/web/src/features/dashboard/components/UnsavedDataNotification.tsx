@@ -9,6 +9,7 @@ import { useUnsavedData } from '../hooks/useUnsavedData';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { t } from '@/shared/i18n'
 
 /**
  * UnsavedDataNotification component
@@ -41,9 +42,9 @@ export function UnsavedDataNotification() {
         try {
             await updateMetric(date, entry.metric);
             removeUnsavedData(date);
-            toast.success('Данные успешно сохранены');
+            toast.success(t('dashboard.unsaved.saved'));
         } catch (error) {
-            toast.error('Не удалось сохранить данные');
+            toast.error(t('dashboard.unsaved.saveFailed'));
         } finally {
             setIsRetrying(false);
         }
@@ -73,11 +74,11 @@ export function UnsavedDataNotification() {
         setIsRetrying(false);
 
         if (successCount > 0) {
-            toast.success(`Сохранено записей: ${successCount}`);
+            toast.success(t('dashboard.unsaved.savedCount', { count: successCount }));
         }
 
         if (failCount > 0) {
-            toast.error(`Не удалось сохранить: ${failCount}`);
+            toast.error(t('dashboard.unsaved.failedCount', { count: failCount }));
         }
     };
 
@@ -87,7 +88,7 @@ export function UnsavedDataNotification() {
     const handleDismiss = () => {
         if (
             window.confirm(
-                'Вы уверены? Несохраненные данные будут удалены без возможности восстановления.'
+                t('dashboard.unsaved.discardConfirm')
             )
         ) {
             clearUnsavedData();
@@ -102,13 +103,13 @@ export function UnsavedDataNotification() {
 
                     <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-semibold text-yellow-900 mb-1">
-                            Несохраненные данные
+                            {t('dashboard.unsaved.title')}
                         </h3>
 
                         <p className="text-sm text-yellow-800 mb-3">
                             {unsavedCount === 1
-                                ? 'Есть 1 несохраненная запись'
-                                : `Есть ${unsavedCount} несохраненных записей`}
+                                ? t('dashboard.unsaved.countOne')
+                                : t('dashboard.unsaved.countMany', { count: unsavedCount })}
                         </p>
 
                         {/* List of unsaved entries */}
@@ -125,17 +126,17 @@ export function UnsavedDataNotification() {
                                                 month: 'short',
                                             })}
                                             {' - '}
-                                            {entry.metric.type === 'weight' && 'Вес'}
-                                            {entry.metric.type === 'steps' && 'Шаги'}
-                                            {entry.metric.type === 'nutrition' && 'Питание'}
-                                            {entry.metric.type === 'workout' && 'Тренировка'}
+                                            {entry.metric.type === 'weight' && t('dashboard.unsaved.weight')}
+                                            {entry.metric.type === 'steps' && t('dashboard.unsaved.steps')}
+                                            {entry.metric.type === 'nutrition' && t('dashboard.unsaved.nutrition')}
+                                            {entry.metric.type === 'workout' && t('dashboard.unsaved.workout')}
                                         </span>
                                         {canRetry(entry.date) && (
                                             <button
                                                 onClick={() => handleRetryOne(entry.date)}
                                                 disabled={isRetrying}
                                                 className="text-yellow-600 hover:text-yellow-800 disabled:opacity-50"
-                                                aria-label="Повторить"
+                                                aria-label={t('dashboard.unsaved.retry')}
                                             >
                                                 <RefreshCw className="h-3 w-3" />
                                             </button>
@@ -156,7 +157,7 @@ export function UnsavedDataNotification() {
                                 className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
                             >
                                 <RefreshCw className="h-3 w-3 mr-1" />
-                                Повторить
+                                {t('dashboard.unsaved.retry')}
                             </Button>
 
                             <Button
@@ -166,7 +167,7 @@ export function UnsavedDataNotification() {
                                 disabled={isRetrying}
                                 className="text-yellow-700 hover:bg-yellow-100"
                             >
-                                Отменить
+                                {t('dashboard.unsaved.discard')}
                             </Button>
                         </div>
                     </div>
@@ -176,7 +177,7 @@ export function UnsavedDataNotification() {
                         onClick={handleDismiss}
                         disabled={isRetrying}
                         className="text-yellow-600 hover:text-yellow-800 disabled:opacity-50"
-                        aria-label="Закрыть"
+                        aria-label={t('common.close')}
                     >
                         <X className="h-4 w-4" />
                     </button>

@@ -63,7 +63,6 @@ describe('what the check covers', () => {
         '/dashboard',
         '/dashboard/weekly',
         '/food-tracker',
-        '/food-tracker/nutrient/vitamin-d',
         '/chat',
         '/profile',
         '/settings/notifications',

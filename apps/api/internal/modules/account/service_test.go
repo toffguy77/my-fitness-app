@@ -240,10 +240,16 @@ func TestPurgeLeftoverFiles_MarksOnlyWhatItActuallyCleared(t *testing.T) {
 	// point here is that each cleared account is marked, one by one.
 	mock.ExpectQuery("FROM users").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(7)).AddRow(int64(9)))
-	mock.ExpectExec("UPDATE users SET files_purged_at").
-		WithArgs(int64(7)).WillReturnResult(sqlmock.NewResult(0, 1))
-	mock.ExpectExec("UPDATE users SET files_purged_at").
-		WithArgs(int64(9)).WillReturnResult(sqlmock.NewResult(0, 1))
+	for _, id := range []int64{7, 9} {
+		// The prefixes are read back rather than recomputed: erasure has already
+		// removed the links they would be derived from.
+		mock.ExpectQuery("SELECT pending_file_prefixes FROM users").
+			WithArgs(id).
+			WillReturnRows(sqlmock.NewRows([]string{"pending_file_prefixes"}).
+				AddRow([]byte(`{"profile-photos":["avatars/` + fmt.Sprint(id) + `/"]}`)))
+		mock.ExpectExec("UPDATE users SET files_purged_at").
+			WithArgs(id).WillReturnResult(sqlmock.NewResult(0, 1))
+	}
 
 	purged, err := service.PurgeLeftoverFiles(context.Background())
 
@@ -317,4 +323,25 @@ func TestRequestDeletion_SucceedsWithoutACurator(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Empty(t, notifier.sent)
+}
+
+// Accounts erased before the prefix list existed have nothing recorded. Retrying
+// them with an empty list would delete nothing and mark them clean — the same
+// false success this whole change is about. They must stay unmarked and be said
+// out loud instead.
+func TestPurgeLeftoverFiles_RefusesToMarkWithoutAPrefixList(t *testing.T) {
+	service, mock := fixture(t)
+
+	mock.ExpectQuery("FROM users").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(7)))
+	mock.ExpectQuery("SELECT pending_file_prefixes FROM users").
+		WithArgs(int64(7)).
+		WillReturnRows(sqlmock.NewRows([]string{"pending_file_prefixes"}).AddRow(nil))
+	// No UPDATE expected: marking it purged would be a lie.
+
+	purged, err := service.PurgeLeftoverFiles(context.Background())
+
+	require.NoError(t, err)
+	assert.Zero(t, purged, "an account whose files were never located must not be marked clean")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

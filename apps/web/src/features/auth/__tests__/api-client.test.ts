@@ -61,6 +61,7 @@ describe('API Client', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 status: 200,
+                headers: new Headers(),
                 json: async () => mockResponse,
             });
 
@@ -84,6 +85,7 @@ describe('API Client', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 status: 200,
+                headers: new Headers(),
                 json: async () => mockResponse,
             });
 
@@ -109,6 +111,7 @@ describe('API Client', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 status: 200,
+                headers: new Headers(),
                 json: async () => mockResponse,
             });
 
@@ -128,6 +131,7 @@ describe('API Client', () => {
             (global.fetch as unknown as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 500,
+                headers: new Headers(),
                 json: async () => ({ message: 'Server Error' }),
             });
 
@@ -154,11 +158,13 @@ describe('API Client', () => {
                 .mockResolvedValueOnce({
                     ok: false,
                     status: 401,
+                    headers: new Headers(),
                     json: async () => ({ message: 'Unauthorized' }),
                 })
                 .mockResolvedValueOnce({
                     ok: true,
                     status: 200,
+                    headers: new Headers(),
                     json: async () => ({
                         data: { token: 'new-access-token' },
                     }),
@@ -166,6 +172,7 @@ describe('API Client', () => {
                 .mockResolvedValueOnce({
                     ok: true,
                     status: 200,
+                    headers: new Headers(),
                     json: async () => ({ data: { id: 1, name: 'Test' } }),
                 });
 
@@ -188,6 +195,7 @@ describe('API Client', () => {
             (global.fetch as jest.Mock).mockResolvedValueOnce({
                 ok: true,
                 status: 200,
+                headers: new Headers(),
                 json: async () => ({ data: {} }),
             });
 
@@ -205,11 +213,13 @@ describe('API Client', () => {
                 .mockResolvedValueOnce({
                     ok: false,
                     status: 401,
+                    headers: new Headers(),
                     json: async () => ({ message: 'Unauthorized' }),
                 })
                 .mockResolvedValueOnce({
                     ok: false,
                     status: 401,
+                    headers: new Headers(),
                     json: async () => ({ message: 'No session' }),
                 });
 
@@ -230,16 +240,19 @@ describe('API Client', () => {
                 .mockResolvedValueOnce({
                     ok: false,
                     status: 401,
+                    headers: new Headers(),
                     json: async () => ({ message: 'Unauthorized' }),
                 })
                 .mockResolvedValueOnce({
                     ok: true,
                     status: 200,
+                    headers: new Headers(),
                     json: async () => ({ data: { token: 'new-access-token' } }),
                 })
                 .mockResolvedValueOnce({
                     ok: true,
                     status: 200,
+                    headers: new Headers(),
                     json: async () => ({ data: {} }),
                 });
 
@@ -256,11 +269,13 @@ describe('API Client', () => {
                 .mockResolvedValueOnce({
                     ok: false,
                     status: 401,
+                    headers: new Headers(),
                     json: async () => ({ message: 'Unauthorized' }),
                 })
                 .mockResolvedValueOnce({
                     ok: false,
                     status: 401,
+                    headers: new Headers(),
                     json: async () => ({ message: 'Invalid refresh token' }),
                 });
 
@@ -275,6 +290,7 @@ describe('API Client', () => {
             (global.fetch as jest.Mock).mockResolvedValueOnce({
                 ok: false,
                 status: 401,
+                headers: new Headers(),
                 json: async () => ({ message: 'Invalid credentials' }),
             });
 
@@ -314,6 +330,7 @@ describe('concurrent refreshes', () => {
                 return {
                     ok: true,
                     status: 200,
+                    headers: new Headers(),
                     json: async () => ({ data: { token: 'a-fresh-token' } }),
                 }
             }

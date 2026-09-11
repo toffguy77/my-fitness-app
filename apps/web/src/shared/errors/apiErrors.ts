@@ -25,13 +25,21 @@ export class ApiError extends Error {
     readonly data: unknown
     /** Present when the server supplied one; shown to the user for support. */
     readonly errorId?: string
+    /**
+     * The server's identifier for this request, echoed in X-Request-Id.
+     *
+     * It is what ties this failure to the server's own log lines and trace, so
+     * a report of "it broke" can be looked up rather than guessed at.
+     */
+    readonly traceId?: string
 
-    constructor(status: number, data: unknown, errorId?: string) {
+    constructor(status: number, data: unknown, errorId?: string, traceId?: string) {
         super(`API request failed with status ${status}`)
         this.name = 'ApiError'
         this.status = status
         this.data = data
         this.errorId = errorId
+        this.traceId = traceId
     }
 }
 

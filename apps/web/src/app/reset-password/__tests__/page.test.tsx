@@ -80,6 +80,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=bad-token')
         ;(global.fetch as jest.Mock).mockResolvedValue({
             ok: false,
+            headers: new Headers(),
             json: () => Promise.resolve({ error: 'Token expired' }),
         })
 
@@ -96,6 +97,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=bad-token')
         ;(global.fetch as jest.Mock).mockResolvedValue({
             ok: false,
+            headers: new Headers(),
             json: () => Promise.resolve({}),
         })
 
@@ -124,6 +126,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
         ;(global.fetch as jest.Mock).mockResolvedValue({
             ok: true,
+            headers: new Headers(),
             json: () => Promise.resolve({ valid: true }),
         })
 
@@ -140,6 +143,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
         ;(global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
+            headers: new Headers(),
             json: () => Promise.resolve({ valid: true }),
         })
 
@@ -163,6 +167,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
         ;(global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
+            headers: new Headers(),
             json: () => Promise.resolve({ valid: true }),
         })
 
@@ -187,6 +192,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
         ;(global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
+            headers: new Headers(),
             json: () => Promise.resolve({ valid: true }),
         })
 
@@ -211,10 +217,12 @@ describe('ResetPasswordPage', () => {
         ;(global.fetch as jest.Mock)
             .mockResolvedValueOnce({
                 ok: true,
+                headers: new Headers(),
                 json: () => Promise.resolve({ valid: true }),
             })
             .mockResolvedValueOnce({
                 ok: true,
+                headers: new Headers(),
                 json: () => Promise.resolve({ message: 'Password reset' }),
             })
 
@@ -244,10 +252,12 @@ describe('ResetPasswordPage', () => {
         ;(global.fetch as jest.Mock)
             .mockResolvedValueOnce({
                 ok: true,
+                headers: new Headers(),
                 json: () => Promise.resolve({ valid: true }),
             })
             .mockResolvedValueOnce({
                 ok: false,
+                headers: new Headers(),
                 json: () => Promise.resolve({ error: 'Token used already' }),
             })
 
@@ -273,10 +283,12 @@ describe('ResetPasswordPage', () => {
         ;(global.fetch as jest.Mock)
             .mockResolvedValueOnce({
                 ok: true,
+                headers: new Headers(),
                 json: () => Promise.resolve({ valid: true }),
             })
             .mockResolvedValueOnce({
                 ok: false,
+                headers: new Headers(),
                 json: () => Promise.resolve({}),
             })
 
@@ -301,6 +313,7 @@ describe('ResetPasswordPage', () => {
         ;(global.fetch as jest.Mock)
             .mockResolvedValueOnce({
                 ok: true,
+                headers: new Headers(),
                 json: () => Promise.resolve({ valid: true }),
             })
             .mockRejectedValueOnce('network failure')
@@ -327,6 +340,7 @@ describe('ResetPasswordPage', () => {
         ;(global.fetch as jest.Mock)
             .mockResolvedValueOnce({
                 ok: true,
+                headers: new Headers(),
                 json: () => Promise.resolve({ valid: true }),
             })
             .mockImplementationOnce(
@@ -368,6 +382,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
         ;(global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
+            headers: new Headers(),
             json: () => Promise.resolve({ valid: true }),
         })
 
@@ -396,6 +411,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
         ;(global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
+            headers: new Headers(),
             json: () => Promise.resolve({ valid: true }),
         })
 
@@ -426,6 +442,7 @@ describe('ResetPasswordPage', () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
         ;(global.fetch as jest.Mock).mockResolvedValueOnce({
             ok: true,
+            headers: new Headers(),
             json: () => Promise.resolve({ valid: true }),
         })
 

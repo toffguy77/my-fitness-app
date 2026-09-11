@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Нет подключения — BURCEV</title>
+<!--
+  Обычный файл, а не страница приложения, и это осознанно.
+
+  Корневой макет читает headers() ради nonce для CSP, поэтому ни один маршрут
+  не собирается в статический HTML. Значит, предзагружать нечего: откат на
+  страницу приложения существовал бы только на бумаге — ровно это и было, пока
+  файл не появился.
+
+  К тому же экран без сети не должен зависеть ни от сборки, ни от React, ни от
+  гидратации: всё это в момент показа может быть недоступно. Отсюда и стили
+  внутри файла — сторонний CSS тоже пришлось бы откуда-то взять.
+
+  Текст здесь, а не в словаре, по той же причине: словарь живёт в сборке.
+  Когда появится второй язык, этот файл надо будет собирать из словаря шагом
+  build:sw — сейчас язык один, и заводить ради этого генератор рано.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 0 1.5rem; text-align: center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #111827; background: #ffffff;
+  }
+  h1 { margin: 0; font-size: 1.125rem; font-weight: 600; }
+  p { margin: 0.5rem 0 0; max-width: 24rem; font-size: 0.875rem; color: #4b5563; line-height: 1.5; }
+  p + p { margin-top: 1.5rem; color: #6b7280; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #f3f4f6; background: #111827; }
+    p { color: #d1d5db; }
+    p + p { color: #9ca3af; }
+  }
+</style>
+</head>
+<body>
+  <h1>Нет подключения к интернету</h1>
+  <p>Страница не загрузилась, потому что нет сети. Как только связь появится, откройте её снова.</p>
+  <p>То, что вы успели записать без сети, сохранено и отправится само.</p>
+</body>
+</html>

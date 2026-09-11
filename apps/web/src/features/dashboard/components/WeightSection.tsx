@@ -19,6 +19,7 @@ import { AttentionBadge } from './AttentionBadge'
 import { getProfile } from '@/features/settings/api/settings'
 import { apiClient } from '@/shared/utils/api-client'
 import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
 
 interface WeightTrendPoint {
     date: Date
@@ -49,8 +50,8 @@ function WeightTooltip({ active, payload, label }: {
                         className="inline-block w-2 h-2 rounded-full mr-1.5"
                         style={{ backgroundColor: entry.color }}
                     />
-                    {entry.name === 'target' ? 'Цель' : 'Вес'}:{' '}
-                    <span className="font-medium">{Number(entry.value).toFixed(1)} кг</span>
+                    {entry.name === 'target' ? t('dashboard.weightSection.targetLabel') : t('dashboard.weightSection.weightLabel')}:{' '}
+                    <span className="font-medium">{t('dashboard.weightSection.valueKg', { value: Number(entry.value).toFixed(1) })}</span>
                 </p>
             ))}
         </div>
@@ -114,7 +115,7 @@ const WeightTrendChart = memo(function WeightTrendChart({
                             strokeDasharray="6 3"
                             strokeWidth={1}
                             label={{
-                                value: `Цель ${targetWeight}`,
+                                value: t('dashboard.weightSection.targetWithValue', { weight: targetWeight }),
                                 position: 'right',
                                 fill: '#22c55e',
                                 fontSize: 11,
@@ -135,12 +136,12 @@ const WeightTrendChart = memo(function WeightTrendChart({
             <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                 <span className="flex items-center gap-1.5">
                     <span className="inline-block w-4 border-t-2 border-blue-500" />
-                    Вес
+                    {t('dashboard.weightSection.weightLabel')}
                 </span>
                 {targetWeight != null && (
                     <span className="flex items-center gap-1.5">
                         <span className="inline-block w-4 border-t-2 border-dashed border-green-500" />
-                        Цель
+                        {t('dashboard.weightSection.targetLabel')}
                     </span>
                 )}
             </div>
@@ -205,7 +206,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
     const debouncedValidate = useDebouncedCallback((value: string) => {
         if (value.trim() === '') { setValidationError(null); return }
         const v = validateWeight(parseFloat(value))
-        setValidationError(v.isValid ? null : v.error || 'Неверное значение')
+        setValidationError(v.isValid ? null : v.error || t('common.invalidValue'))
     }, 300)
 
     const handleInputChange = useCallback(
@@ -218,19 +219,19 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
     )
 
     const handleSave = useCallback(async () => {
-        if (!inputValue.trim()) { setValidationError('Введите вес'); return }
+        if (!inputValue.trim()) { setValidationError(t('dashboard.weight.required')); return }
         const num = parseFloat(inputValue)
         const v = validateWeight(num)
-        if (!v.isValid) { setValidationError(v.error || 'Неверное значение'); return }
+        if (!v.isValid) { setValidationError(v.error || t('common.invalidValue')); return }
         setIsSaving(true)
         setValidationError(null)
         try {
             await updateMetric(dateStr, { type: 'weight', data: { weight: num } })
             setInputValue('')
             setIsEditing(false)
-            toast.success('Вес сохранен')
+            toast.success(t('dashboard.weight.saved'))
         } catch {
-            setValidationError('Не удалось сохранить вес')
+            setValidationError(t('dashboard.weight.saveFailed'))
         } finally {
             setIsSaving(false)
         }
@@ -269,15 +270,15 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg font-semibold text-gray-900">Вес</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-gray-900">{t('dashboard.weight.title')}</CardTitle>
                         {showAttention && (
-                            <AttentionBadge urgency="normal" ariaLabel="Вес не записан сегодня" />
+                            <AttentionBadge urgency="normal" ariaLabel={t('dashboard.weight.noneToday')} />
                         )}
                     </div>
                     <Button
                         variant="ghost" size="sm" onClick={handleQuickAdd}
                         className="h-8 w-8 p-0"
-                        aria-label={isWeightLogged ? 'Изменить вес' : 'Добавить вес'}
+                        aria-label={isWeightLogged ? t('dashboard.weight.change') : t('dashboard.weight.add')}
                     >
                         <Plus className="h-4 w-4" />
                     </Button>
@@ -288,14 +289,14 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                 {isEditing ? (
                     <div className="space-y-3">
                         <div>
-                            <label htmlFor="weight-input" className="sr-only">Вес в килограммах</label>
+                            <label htmlFor="weight-input" className="sr-only">{t('dashboard.weight.kilograms')}</label>
                             <Input
                                 id="weight-input" type="number" step="0.1" min="0.1" max="500"
-                                placeholder="Введите вес в кг" value={inputValue}
+                                placeholder={t('dashboard.weight.placeholder')} value={inputValue}
                                 onChange={(e) => handleInputChange(e.target.value)}
                                 onKeyDown={handleKeyPress}
                                 error={validationError || undefined}
-                                autoFocus aria-label="Вес в килограммах"
+                                autoFocus aria-label={t('dashboard.weight.kilograms')}
                             />
                         </div>
                         <div className="flex gap-2">
@@ -305,10 +306,10 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                                 className="flex-1"
                             >
                                 <Check className="h-4 w-4 mr-2" aria-hidden="true" />
-                                Сохранить
+                                {t('common.save')}
                             </Button>
                             <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
-                                Отмена
+                                {t('common.cancel')}
                             </Button>
                         </div>
                     </div>
@@ -320,11 +321,11 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                                 <div className="space-y-1.5">
                                     <div className="text-4xl font-bold text-gray-900">
                                         {formatWeight(currentWeight)}
-                                        <span className="text-lg text-gray-500 ml-1">кг</span>
+                                        <span className="text-lg text-gray-500 ml-1">{t('dashboard.weight.kg')}</span>
                                     </div>
                                     <div className="flex items-center justify-center gap-2 text-green-600">
                                         <Check className="h-4 w-4" aria-hidden="true" />
-                                        <span className="text-sm font-medium">Записан</span>
+                                        <span className="text-sm font-medium">{t('dashboard.weightSection.recorded')}</span>
                                     </div>
                                     {weightChange !== null && (
                                         <div className={cn(
@@ -332,33 +333,33 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                                             weightChange > 0 ? 'text-red-600' : weightChange < 0 ? 'text-green-600' : 'text-gray-600',
                                         )}>
                                             {weightChange > 0 ? <TrendingUp className="h-4 w-4" /> : weightChange < 0 ? <TrendingDown className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-                                            <span>{weightChange > 0 ? '+' : ''}{formatWeight(Math.abs(weightChange))} кг с вчера</span>
+                                            <span>{t('dashboard.weightSection.changeSinceYesterday', { sign: weightChange > 0 ? '+' : '', amount: formatWeight(Math.abs(weightChange)) })}</span>
                                         </div>
                                     )}
                                     {targetWeight != null && distanceToTarget != null && (
                                         <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
                                             <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
-                                            <span>Цель: {formatWeight(targetWeight)} кг</span>
+                                            <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                             {Math.abs(distanceToTarget) >= 0.1 ? (
                                                 <span className={distanceToTarget > 0 ? 'text-amber-600' : 'text-green-600'}>
-                                                    ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} кг)
+                                                    ({distanceToTarget > 0 ? '-' : '+'}{formatWeight(Math.abs(distanceToTarget))} {t('dashboard.weight.kg')})
                                                 </span>
                                             ) : (
-                                                <span className="text-green-600 font-medium">Достигнута!</span>
+                                                <span className="text-green-600 font-medium">{t('dashboard.weight.targetReached')}</span>
                                             )}
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div className="space-y-2 py-2">
-                                    <p className="text-sm text-gray-500">Не записано</p>
+                                    <p className="text-sm text-gray-500">{t('dashboard.workout.empty')}</p>
                                     {previousWeight && (
-                                        <p className="text-xs text-gray-400">Вчера: {formatWeight(previousWeight)} кг</p>
+                                        <p className="text-xs text-gray-400">{t('dashboard.weight.yesterday', { weight: formatWeight(previousWeight) })}</p>
                                     )}
                                     {targetWeight != null && (
                                         <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
                                             <Target className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
-                                            <span>Цель: {formatWeight(targetWeight)} кг</span>
+                                            <span>{t('dashboard.weight.target', { weight: formatWeight(targetWeight) })}</span>
                                         </div>
                                     )}
                                     <Button
@@ -366,7 +367,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                                         className="text-blue-600 border-blue-200 hover:bg-blue-50"
                                     >
                                         <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                                        Добавить
+                                        {t('common.add')}
                                     </Button>
                                 </div>
                             )}
@@ -382,7 +383,7 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                                             'text-xs font-medium',
                                             trendChange < 0 ? 'text-green-600' : trendChange > 0 ? 'text-orange-600' : 'text-gray-500',
                                         )}>
-                                            {trendChange < 0 ? '' : '+'}{trendChange.toFixed(1)} кг за 4 недели
+                                            {t('dashboard.weightSection.trend', { sign: trendChange < 0 ? '' : '+', amount: trendChange.toFixed(1) })}
                                         </span>
                                     </div>
                                 )}

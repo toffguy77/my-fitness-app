@@ -8,6 +8,7 @@
 import type { NotificationCategory } from '../types';
 import { cn } from '@/shared/utils/cn';
 
+import { t } from '@/shared/i18n'
 export interface NotificationsTabsProps {
     /** Currently active tab */
     activeTab: NotificationCategory;
@@ -40,8 +41,8 @@ export function NotificationsTabs({
     unreadCounts,
 }: NotificationsTabsProps) {
     const tabs: Array<{ id: NotificationCategory; label: string }> = [
-        { id: 'main', label: 'Основные' },
-        { id: 'content', label: 'Контент' },
+        { id: 'main', label: t('notifications.tabMain') },
+        { id: 'content', label: t('notifications.tabContent') },
     ];
 
     const handleKeyDown = (event: React.KeyboardEvent, currentIndex: number) => {

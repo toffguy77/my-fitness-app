@@ -26,11 +26,17 @@ CREATE INDEX IF NOT EXISTS idx_user_foods_user_id ON user_foods(user_id);
 -- The full-text index spans `brand`, which only exists when this migration
 -- created the table. Where migration 009 created it first, `brand` arrives in
 -- migration 036, which builds this index there instead.
+--
+-- current_schema() is not decoration: information_schema spans the whole
+-- database, so without it the question "does user_foods have a brand column?"
+-- was answered by any schema that happened to have one. In CI, where several
+-- test schemas exist side by side, the guard passed and then CREATE INDEX
+-- resolved user_foods to this schema's table, which has no brand.
 DO $$
 BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'user_foods' AND column_name = 'brand'
+        WHERE table_schema = current_schema() AND table_name = 'user_foods' AND column_name = 'brand'
     ) THEN
         CREATE INDEX IF NOT EXISTS idx_user_foods_name_fts ON user_foods
             USING gin(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')));

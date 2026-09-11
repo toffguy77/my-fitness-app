@@ -34,6 +34,21 @@ import {
     type QueueEntry,
 } from '../utils/offlineQueue';
 
+import { t, plural } from '@/shared/i18n'
+import { mapApiError } from '@/shared/errors/mapApiError'
+
+/**
+ * "1 изменение", "2 изменения", "5 изменений". The previous version said
+ * "изменение" or "изменений" and nothing else, so two and three read wrong.
+ */
+function changeNoun(count: number): string {
+    return plural(count, {
+        one: t('dashboard.sync.changeOne'),
+        few: t('dashboard.sync.changeFew'),
+        many: t('dashboard.sync.changeMany'),
+    })
+}
+
 /**
  * LocalStorage keys for caching
  */
@@ -426,56 +441,10 @@ function isOnline(): boolean {
 /**
  * Helper: Map API errors to DashboardError
  */
-function mapError(error: any): DashboardError {
-    if (!isOnline()) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: 'Нет подключения к интернету',
-        };
-    }
-
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
-
-    if (status === 401) {
-        return {
-            code: 'UNAUTHORIZED',
-            message: 'Требуется авторизация',
-        };
-    }
-
-    if (status === 404) {
-        return {
-            code: 'NOT_FOUND',
-            message: 'Данные не найдены',
-        };
-    }
-
-    if (status === 400) {
-        return {
-            code: 'VALIDATION_ERROR',
-            message: message || 'Неверные данные',
-        };
-    }
-
-    if (status === 500) {
-        return {
-            code: 'SERVER_ERROR',
-            message: 'Сервис временно недоступен',
-        };
-    }
-
-    if (error instanceof TypeError || error.message?.includes('fetch') || error.message?.includes('network')) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: 'Проверьте подключение к интернету',
-        };
-    }
-
-    return {
-        code: 'SERVER_ERROR',
-        message: 'Произошла ошибка',
-    };
+function mapError(error: unknown): DashboardError {
+    // The mapping is shared; only the noun for a missing thing is ours.
+    const mapped = mapApiError(error, { notFound: t('dashboard.storeErrors.notFound') });
+    return { code: mapped.code, message: mapped.message };
 }
 
 /**
@@ -1182,7 +1151,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         // If offline, queue the mutation
         if (state.isOffline || !isOnline()) {
             addToQueue('metric', date, metric);
-            toast.success('Изменения сохранены локально', {
+            toast.success(t('dashboard.sync.savedLocally'), {
                 icon: '💾',
                 duration: 2000,
             });
@@ -1215,7 +1184,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             if (mappedError.code === 'NETWORK_ERROR') {
                 addToQueue('metric', date, metric);
                 set({ isOffline: true });
-                toast.error('Нет подключения. Изменения сохранены локально', {
+                toast.error(t('dashboard.sync.offlineSavedLocally'), {
                     icon: '📡',
                     duration: 3000,
                 });
@@ -1231,7 +1200,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 error: mappedError,
             }));
 
-            toast.error(mappedError.message || 'Не удалось сохранить данные');
+            toast.error(mappedError.message || t('dashboard.sync.saveFailed'));
 
             throw error;
         }
@@ -1369,7 +1338,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         // If offline, queue the mutation
         if (state.isOffline || !isOnline()) {
             addToQueue('task', taskId, { status });
-            toast.success('Изменения сохранены локально', {
+            toast.success(t('dashboard.sync.savedLocally'), {
                 icon: '💾',
                 duration: 2000,
             });
@@ -1391,7 +1360,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             if (mappedError.code === 'NETWORK_ERROR') {
                 addToQueue('task', taskId, { status });
                 set({ isOffline: true });
-                toast.error('Нет подключения. Изменения сохранены локально', {
+                toast.error(t('dashboard.sync.offlineSavedLocally'), {
                     icon: '📡',
                     duration: 3000,
                 });
@@ -1406,7 +1375,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 error: mappedError,
             }));
 
-            toast.error(mappedError.message || 'Не удалось обновить задачу');
+            toast.error(mappedError.message || t('dashboard.sync.taskUpdateFailed'));
 
             throw error;
         }
@@ -1431,7 +1400,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             );
 
             set({ isLoading: false });
-            toast.success('Отчет успешно отправлен');
+            toast.success(t('dashboard.sync.reportSent'));
         } catch (error: any) {
             const mappedError = mapError(error);
             set({
@@ -1440,7 +1409,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 isOffline: mappedError.code === 'NETWORK_ERROR',
             });
 
-            toast.error(mappedError.message || 'Не удалось отправить отчет');
+            toast.error(mappedError.message || t('dashboard.sync.reportFailed'));
             throw error;
         }
     },
@@ -1476,7 +1445,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             }
 
             set({ isLoading: false });
-            toast.success('Фото успешно загружено');
+            toast.success(t('dashboard.sync.photoUploaded'));
         } catch (error: any) {
             const mappedError = mapError(error);
             set({
@@ -1485,7 +1454,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 isOffline: mappedError.code === 'NETWORK_ERROR',
             });
 
-            toast.error(mappedError.message || 'Не удалось загрузить фото');
+            toast.error(mappedError.message || t('dashboard.sync.photoFailed'));
             throw error;
         }
     },
@@ -1574,14 +1543,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         set({ isOffline });
 
         if (isOffline && !wasOffline) {
-            toast.error('Нет подключения к интернету', {
+            toast.error(t('dashboard.storeErrors.offline'), {
                 duration: 4000,
                 icon: '📡',
             });
         }
 
         if (!isOffline && wasOffline) {
-            toast.success('Подключение восстановлено', {
+            toast.success(t('dashboard.sync.reconnected'), {
                 duration: 3000,
                 icon: '✅',
             });
@@ -1689,14 +1658,14 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             // Show notification about sync results
             const syncedCount = queue.length - failedEntries.length;
             if (syncedCount > 0) {
-                toast.success(`Синхронизировано ${syncedCount} ${syncedCount === 1 ? 'изменение' : 'изменений'}`, {
+                toast.success(t('dashboard.sync.synced', { count: syncedCount, noun: changeNoun(syncedCount) }), {
                     icon: '✅',
                     duration: 3000,
                 });
             }
 
             if (failedEntries.length > 0) {
-                toast.error(`Не удалось синхронизировать ${failedEntries.length} ${failedEntries.length === 1 ? 'изменение' : 'изменений'}`, {
+                toast.error(t('dashboard.sync.syncFailed', { count: failedEntries.length, noun: changeNoun(failedEntries.length) }), {
                     icon: '⚠️',
                     duration: 4000,
                 });

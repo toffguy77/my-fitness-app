@@ -108,7 +108,6 @@ export { KBZHUSummary } from './components/KBZHUSummary';
 export { RecommendationsTab } from './components/RecommendationsTab';
 export { NutrientCategory } from './components/NutrientCategory';
 export { NutrientRecommendationItem } from './components/NutrientRecommendationItem';
-export { NutrientDetailPage } from './components/NutrientDetailPage';
 export { ConfigureNutrientsModal } from './components/ConfigureNutrientsModal';
 export { AddCustomRecommendationForm } from './components/AddCustomRecommendationForm';
 

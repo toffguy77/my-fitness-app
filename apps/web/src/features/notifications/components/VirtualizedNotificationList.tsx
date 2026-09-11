@@ -10,6 +10,7 @@ import { List } from 'react-window';
 import type { Notification } from '../types';
 import { NotificationItem } from './NotificationItem';
 
+import { t } from '@/shared/i18n'
 export interface VirtualizedNotificationListProps {
     groupedNotifications: Array<{ date: string; notifications: Notification[] }>;
     onMarkAsRead: (id: string) => void;
@@ -99,7 +100,7 @@ export default function VirtualizedNotificationList({
                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                 />
                             </svg>
-                            <span className="text-sm text-gray-600">Загрузка...</span>
+                            <span className="text-sm text-gray-600">{t('common.loading')}</span>
                         </div>
                     )}
                 </div>

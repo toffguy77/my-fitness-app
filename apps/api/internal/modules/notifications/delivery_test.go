@@ -246,7 +246,7 @@ func TestDigestNeedsASender(t *testing.T) {
 // digestRows builds the join the digest reads.
 func digestRows() *sqlmock.Rows {
 	return sqlmock.NewRows([]string{
-		"id", "user_id", "email", "name", "title", "content", "action_url", "created_at", "already_read",
+		"id", "user_id", "email", "name", "language", "title", "content", "action_url", "created_at", "already_read",
 	})
 }
 
@@ -260,15 +260,15 @@ func TestSendDueDigests(t *testing.T) {
 
 		var sentTo string
 		var sentItems []DigestItem
-		service.WithDigest(func(_ context.Context, to, _ string, items []DigestItem, _ string) error {
+		service.WithDigest(func(_ context.Context, to, _, _ string, items []DigestItem, _ string) error {
 			sentTo, sentItems = to, items
 			return nil
 		}, "a-secret", "https://burcev.team")
 
 		mock.ExpectQuery(`FROM notification_deliveries d`).
 			WillReturnRows(digestRows().
-				AddRow(1, int64(7), "person@example.com", "Аня", "Первое", "Текст", "/chat", now, false).
-				AddRow(2, int64(7), "person@example.com", "Аня", "Второе", "Текст", "", now, false))
+				AddRow(1, int64(7), "person@example.com", "Аня", "ru", "Первое", "Текст", "/chat", now, false).
+				AddRow(2, int64(7), "person@example.com", "Аня", "ru", "Второе", "Текст", "", now, false))
 		mock.ExpectExec(`UPDATE notification_deliveries`).
 			WillReturnResult(sqlmock.NewResult(0, 2))
 
@@ -286,14 +286,14 @@ func TestSendDueDigests(t *testing.T) {
 		defer cleanup()
 
 		called := false
-		service.WithDigest(func(context.Context, string, string, []DigestItem, string) error {
+		service.WithDigest(func(context.Context, string, string, string, []DigestItem, string) error {
 			called = true
 			return nil
 		}, "a-secret", "https://burcev.team")
 
 		mock.ExpectQuery(`FROM notification_deliveries d`).
 			WillReturnRows(digestRows().
-				AddRow(1, int64(7), "person@example.com", "", "Прочитано", "Текст", "", now, true))
+				AddRow(1, int64(7), "person@example.com", "", "ru", "Прочитано", "Текст", "", now, true))
 		// Marked skipped: the email existed to catch what the application
 		// missed, and it did not miss this one.
 		mock.ExpectExec(`UPDATE notification_deliveries`).
@@ -310,13 +310,13 @@ func TestSendDueDigests(t *testing.T) {
 		service, mock, cleanup := setupTestService(t)
 		defer cleanup()
 
-		service.WithDigest(func(context.Context, string, string, []DigestItem, string) error {
+		service.WithDigest(func(context.Context, string, string, string, []DigestItem, string) error {
 			return errors.New("smtp said no")
 		}, "a-secret", "https://burcev.team")
 
 		mock.ExpectQuery(`FROM notification_deliveries d`).
 			WillReturnRows(digestRows().
-				AddRow(1, int64(7), "person@example.com", "", "Событие", "Текст", "", now, false))
+				AddRow(1, int64(7), "person@example.com", "", "ru", "Событие", "Текст", "", now, false))
 		mock.ExpectExec(`UPDATE notification_deliveries`).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -331,15 +331,15 @@ func TestSendDueDigests(t *testing.T) {
 		defer cleanup()
 
 		recipients := []string{}
-		service.WithDigest(func(_ context.Context, to, _ string, _ []DigestItem, _ string) error {
+		service.WithDigest(func(_ context.Context, to, _, _ string, _ []DigestItem, _ string) error {
 			recipients = append(recipients, to)
 			return nil
 		}, "a-secret", "https://burcev.team")
 
 		mock.ExpectQuery(`FROM notification_deliveries d`).
 			WillReturnRows(digestRows().
-				AddRow(1, int64(7), "one@example.com", "", "Событие", "Текст", "", now, false).
-				AddRow(2, int64(8), "two@example.com", "", "Событие", "Текст", "", now, false))
+				AddRow(1, int64(7), "one@example.com", "", "ru", "Событие", "Текст", "", now, false).
+				AddRow(2, int64(8), "two@example.com", "", "ru", "Событие", "Текст", "", now, false))
 		mock.ExpectExec(`UPDATE notification_deliveries`).WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec(`UPDATE notification_deliveries`).WillReturnResult(sqlmock.NewResult(0, 1))
 

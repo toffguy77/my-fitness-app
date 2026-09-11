@@ -39,6 +39,11 @@ type Features struct {
 	DataExports     bool
 	SupportBot      bool
 	WebPush         bool
+	// Observability, reported for the same reason as the rest: "is it on?" has
+	// to be answerable from outside, or the only way to find out is to break
+	// something and see whether anybody hears.
+	ErrorReporting bool
+	Tracing        bool
 }
 
 // Disabled returns the names of the capabilities that are turned off, in a
@@ -58,6 +63,8 @@ func (f Features) Disabled() []string {
 		{"data_exports", f.DataExports},
 		{"support_bot", f.SupportBot},
 		{"web_push", f.WebPush},
+		{"error_reporting", f.ErrorReporting},
+		{"tracing", f.Tracing},
 	} {
 		if !c.on {
 			off = append(off, c.name)
@@ -78,6 +85,8 @@ func (f Features) Map() map[string]bool {
 		"data_exports":     f.DataExports,
 		"support_bot":      f.SupportBot,
 		"web_push":         f.WebPush,
+		"error_reporting":  f.ErrorReporting,
+		"tracing":          f.Tracing,
 	}
 }
 
@@ -202,6 +211,11 @@ type Config struct {
 	// Version identifies the running build; set from APP_VERSION at deploy time.
 	Version string
 
+	// Observability. Both are optional: absent, the capability is off and the
+	// startup log says so.
+	SentryDSN    string
+	OTLPEndpoint string
+
 	// Migrations
 	MigrationBaseline int
 
@@ -213,8 +227,12 @@ type Config struct {
 }
 
 // IsProduction reports whether the service runs with production strictness.
+//
+// Both spellings count. The deployment calls it "prod" and Node calls it
+// "production"; accepting only one of them would silently turn off the strict
+// startup checks in the environment that needs them most.
 func (c *Config) IsProduction() bool {
-	return strings.EqualFold(c.Env, "production")
+	return strings.EqualFold(c.Env, "production") || strings.EqualFold(c.Env, "prod")
 }
 
 // Load loads configuration from environment variables
@@ -225,7 +243,14 @@ func Load() (*Config, error) {
 	_ = godotenv.Load("../../.env") // project root when running from apps/api
 
 	cfg := &Config{
-		Env:  getEnv("NODE_ENV", "development"),
+		// APP_ENV first, NODE_ENV only as a fallback.
+		//
+		// NODE_ENV is a Node.js convention, and compose set it to "production"
+		// for this Go service in both environments — so dev called itself
+		// production in its health answer, its logs, and, once error reporting
+		// is switched on, in every report it would file. Dokploy has always set
+		// APP_ENV correctly per environment; nothing was reading it.
+		Env:  getEnvWithFallback("APP_ENV", "NODE_ENV", "development"),
 		Port: getEnvAsInt("PORT", 4000),
 
 		// PostgreSQL configuration
@@ -246,8 +271,10 @@ func Load() (*Config, error) {
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-key"),
 
 		// Application domain (drives ResetPasswordURL and links in emails)
-		AppDomain: getEnv("APP_DOMAIN", ""),
-		Version:   getEnv("APP_VERSION", "dev"),
+		AppDomain:    getEnv("APP_DOMAIN", ""),
+		Version:      getEnv("APP_VERSION", "dev"),
+		SentryDSN:    getEnv("SENTRY_DSN", ""),
+		OTLPEndpoint: getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
 
 		// SMTP Configuration (Yandex Mail)
 		SMTPHost:        getEnv("SMTP_HOST", "smtp.yandex.ru"),
@@ -357,6 +384,9 @@ func deriveFeatures(c *Config) Features {
 		// Both halves of the key pair and a contact address: a push service
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",
+
+		ErrorReporting: c.SentryDSN != "",
+		Tracing:        c.OTLPEndpoint != "",
 	}
 }
 

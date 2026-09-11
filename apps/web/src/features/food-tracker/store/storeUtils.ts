@@ -11,6 +11,8 @@ import type {
     FoodTrackerError,
     EntriesByMealType,
 } from '../types';
+import { t } from '@/shared/i18n';
+import { mapApiError } from '@/shared/errors/mapApiError';
 
 // ============================================================================
 // Constants
@@ -84,6 +86,7 @@ export function loadCachedEntries(date: string): EntriesByMealType | null {
         const data = JSON.parse(cached);
         return data as EntriesByMealType;
     } catch (error) {
+        // i18n-exempt: console output for developers, never shown in the interface.
         console.error('Не удалось загрузить кэшированные записи:', error);
         return null;
     }
@@ -100,6 +103,7 @@ export function saveCachedEntries(date: string, entries: EntriesByMealType): voi
         localStorage.setItem(key, JSON.stringify(entries));
         localStorage.setItem(CACHE_KEYS.LAST_SYNC, new Date().toISOString());
     } catch (error) {
+        // i18n-exempt: console output for developers.
         console.error('Не удалось сохранить записи в кэш:', error);
     }
 }
@@ -118,6 +122,7 @@ export function loadCachedWaterLog(date: string): WaterLog | null {
 
         return JSON.parse(cached) as WaterLog;
     } catch (error) {
+        // i18n-exempt: console output for developers.
         console.error('Не удалось загрузить кэшированные данные о воде:', error);
         return null;
     }
@@ -133,6 +138,7 @@ export function saveCachedWaterLog(date: string, waterLog: WaterLog): void {
         const key = getCacheKey(CACHE_KEYS.WATER_LOG, date);
         localStorage.setItem(key, JSON.stringify(waterLog));
     } catch (error) {
+        // i18n-exempt: console output for developers.
         console.error('Не удалось сохранить данные о воде в кэш:', error);
     }
 }
@@ -151,59 +157,15 @@ export function isOnline(): boolean {
 /**
  * Map API errors to FoodTrackerError with offline detection
  */
-export function mapError(error: any): FoodTrackerError {
-    // Check if offline first
-    if (!isOnline()) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: 'Нет подключения к интернету',
-        };
-    }
-
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
-
-    if (status === 401) {
-        return {
-            code: 'UNAUTHORIZED',
-            message: 'Требуется авторизация',
-        };
-    }
-
-    if (status === 404) {
-        return {
-            code: 'NOT_FOUND',
-            message: 'Запись не найдена',
-        };
-    }
-
-    if (status === 400) {
-        return {
-            code: 'VALIDATION_ERROR',
-            message: message || 'Неверный формат данных',
-        };
-    }
-
-    if (status === 500) {
-        return {
-            code: 'SERVER_ERROR',
-            message: 'Сервис временно недоступен',
-        };
-    }
-
-    // Network errors (fetch failed, timeout, etc.)
-    // Only classify as network error if the message indicates a fetch/network failure,
-    // not arbitrary TypeErrors from data processing.
-    if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
-        return {
-            code: 'NETWORK_ERROR',
-            message: 'Проверьте подключение к интернету',
-        };
-    }
-
+export function mapError(error: unknown): FoodTrackerError {
+    // The mapping is shared; only the noun for a missing thing is ours.
+    const mapped = mapApiError(error, { notFound: t('foodTracker.storeErrors.notFound') });
     return {
-        code: 'SERVER_ERROR',
-        message: 'Произошла ошибка',
+        code: mapped.code === 'FORBIDDEN' || mapped.code === 'TIMEOUT' ||
+            mapped.code === 'RATE_LIMITED' || mapped.code === 'UNKNOWN'
+            ? 'SERVER_ERROR'
+            : mapped.code,
+        message: mapped.message,
     };
 }
 

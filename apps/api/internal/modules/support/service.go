@@ -61,6 +61,8 @@ type Service struct {
 	answerer Answerer
 	sender   Sender
 	leads    LeadResolver
+	// operators may be nil; escalation works without it, silently.
+	operators OperatorNotifier
 
 	// dailyLimit caps model calls across every chat: a public entrance in
 	// front of a paid model needs a ceiling that one abusive chat cannot lift.
@@ -92,18 +94,26 @@ func NewService(db *sql.DB, log *logger.Logger, answerer Answerer, sender Sender
 }
 
 // Replies the bot gives without asking the model at all.
+//
+// None of them names a deadline. Operators answer when they see the question —
+// there is no shift and no published hours — so "ответят здесь же" without a
+// qualifier reads as "shortly" to somebody writing at three in the morning.
+// A promise nobody made is worse than no promise: the person waits, then
+// writes again, and the wait is what they remember.
 const (
 	greeting = "Здравствуйте! Я отвечаю на вопросы о сервисе BURCEV: как устроен дневник питания, " +
 		"что делает куратор, что происходит с вашими данными. Спрашивайте.\n\n" +
 		"Если я не знаю ответа — передам вопрос человеку."
 
 	escalationReply = "Не нашёл ответа в документации и не буду придумывать. " +
-		"Передал ваш вопрос человеку — ответят здесь же."
+		"Передал ваш вопрос человеку — ответ придёт сюда же, в этот чат. " +
+		"Мы небольшая команда и отвечаем не круглосуточно, так что это может занять время."
 
 	rateLimitedReply = "Слишком много вопросов подряд. Подождите минуту, пожалуйста — " +
-		"или напишите «оператор», и вам ответит человек."
+		"или напишите «оператор», и вопрос уйдёт человеку."
 
-	busyReply = "Сейчас не могу ответить сам. Передал ваш вопрос человеку — ответят здесь же."
+	busyReply = "Сейчас не могу ответить сам. Передал ваш вопрос человеку — ответ придёт " +
+		"сюда же, в этот чат. Мы небольшая команда и отвечаем не круглосуточно."
 
 	signedInReply = "Вы уже зарегистрированы. Всё, что касается вашего плана, питания и прогресса, " +
 		"лучше обсудить с куратором в чате приложения — там он видит вашу историю."
@@ -187,14 +197,22 @@ func wantsHuman(text string) bool {
 
 // escalate marks the conversation for a person and tells the user so.
 func (s *Service) escalate(ctx context.Context, conversation *Conversation, reason string) error {
-	if _, err := s.db.ExecContext(ctx, `
+	result, err := s.db.ExecContext(ctx, `
 		UPDATE support_conversations
 		SET status = 'escalated', escalation_reason = $2, escalated_at = COALESCE(escalated_at, NOW())
-		WHERE id = $1 AND status <> 'escalated'`, conversation.ID, reason); err != nil {
+		WHERE id = $1 AND status <> 'escalated'`, conversation.ID, reason)
+	if err != nil {
 		return fmt.Errorf("escalate conversation: %w", err)
 	}
 
 	s.log.Info("Support conversation escalated", "conversation_id", conversation.ID, "reason", reason)
+
+	// Only on the way in. A conversation that escalates again with each
+	// unanswerable question would otherwise notify every operator each time,
+	// and a queue that cries every minute is one nobody reads.
+	if changed, err := result.RowsAffected(); err == nil && changed > 0 {
+		s.notifyOperators(ctx, conversation.ID, reason)
+	}
 
 	message := escalationReply
 	if conversation.UserID != nil {

@@ -2,8 +2,25 @@
 
 import { useEffect } from 'react'
 
-const SW_CLEANUP_KEY = 'sw-cleanup-v3'
+/**
+ * Bumped whenever every client must run the purge again — here, to remove the
+ * separate push worker now that push and caching live in one.
+ *
+ * Exported so the tests use this value rather than a copy: a test pinned to an
+ * old version passes while asserting behaviour nobody has any more.
+ */
+export const SW_CLEANUP_KEY = 'sw-cleanup-v4'
 
+/**
+ * Cleans up stale service workers and registers the current one.
+ *
+ * The registration is not incidental: next-pwa injected its own registration
+ * script, Serwist in configurator mode does not, and for a while the worker was
+ * built and served while nothing on any page ever called register(). Everything
+ * looked right — the file was there, correct, and 200 — and not one visitor had
+ * a service worker. The check that the worker builds cannot see this; only
+ * asking the browser can.
+ */
 export function ServiceWorkerCleanup() {
     useEffect(() => {
         if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
@@ -32,12 +49,18 @@ export function ServiceWorkerCleanup() {
 
                 const registrations = await navigator.serviceWorker.getRegistrations()
                 for (const reg of registrations) {
-                    // Not the push worker: it caches nothing and intercepts
-                    // nothing, so it cannot serve a stale bundle — and removing
-                    // it would silently end every push subscription on this
-                    // device.
+                    // Everything except the current worker goes, push-sw.js
+                    // included. Push and caching now live in one worker,
+                    // because a page can only be controlled by one; leaving the
+                    // old push worker registered would mean two registrations
+                    // racing for the same scope.
+                    //
+                    // This does end the push subscription tied to it. The
+                    // server retires a subscription the push service reports as
+                    // gone, and the settings screen resubscribes against the
+                    // new worker, so the cost is one lost push at most.
                     const script = reg.active?.scriptURL ?? reg.installing?.scriptURL ?? ''
-                    if (script.endsWith('/push-sw.js')) continue
+                    if (script.endsWith('/sw.js') && !script.endsWith('/push-sw.js')) continue
 
                     await reg.unregister()
                     didWork = true
@@ -58,6 +81,22 @@ export function ServiceWorkerCleanup() {
                 }
             }
             cleanup()
+        }
+
+        // Registering the worker. Without this line the worker is built,
+        // served and never used: next-pwa injected its own registration and
+        // Serwist in configurator mode does not, so the caching, the offline
+        // screen and push all silently did nothing.
+        //
+        // Registering the same URL twice is a no-op, so it is safe alongside
+        // the settings screen doing the same before subscribing to push.
+        if (process.env.NODE_ENV === 'production') {
+            navigator.serviceWorker.register('/sw.js').catch((error) => {
+                // Not fatal — the application works without it, just without
+                // caching or push. Worth seeing, because nothing else would
+                // show it.
+                console.error('[sw] registration failed', error)
+            })
         }
 
         return () => {

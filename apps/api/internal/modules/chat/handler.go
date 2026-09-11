@@ -373,18 +373,21 @@ func (h *Handler) HandleWebSocket(c *gin.Context) {
 	if c.Query("token") != "" {
 		// Refused rather than accepted for compatibility: leaving the old path
 		// open would mean the token keeps ending up in logs.
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "use a ws-ticket"})
+		response.ErrorCode(c, http.StatusUnauthorized, apperrors.CodeTokenInvalid,
+			"Ссылка недействительна", nil)
 		return
 	}
 
 	if h.tickets == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "chat is unavailable"})
+		response.ErrorCode(c, http.StatusServiceUnavailable, apperrors.CodeFeatureUnavailable,
+			"Чат сейчас недоступен", nil)
 		return
 	}
 
 	userID, err := h.tickets.RedeemWSTicket(c.Request.Context(), c.Query("ticket"))
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid ticket"})
+		response.ErrorCode(c, http.StatusUnauthorized, apperrors.CodeTokenInvalid,
+			"Ссылка недействительна", nil)
 		return
 	}
 

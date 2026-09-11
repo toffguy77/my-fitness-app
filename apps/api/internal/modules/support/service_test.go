@@ -3,6 +3,7 @@ package support
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -228,4 +229,41 @@ func TestPurgeOld_DeletesByLastMessage(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 4, deleted)
+}
+
+// Операторы отвечают, когда увидят: смен нет, часы нигде не объявлены.
+// Поэтому ни один текст бота не должен называть срок — ни числом, ни словом
+// вроде «скоро». Обещание, которого никто не давал, хуже отсутствия обещания:
+// человек ждёт, пишет снова, и запоминает именно ожидание.
+func TestBotPromisesNoDeadline(t *testing.T) {
+	replies := map[string]string{
+		"greeting":         greeting,
+		"escalationReply":  escalationReply,
+		"rateLimitedReply": rateLimitedReply,
+		"busyReply":        busyReply,
+		"signedInReply":    signedInReply,
+	}
+
+	// Слова, обещающие срок. «минуту» в rateLimitedReply — про паузу перед
+	// следующим вопросом к боту, а не про ответ человека, поэтому проверяется
+	// только соседство с обещанием ответа.
+	deadlines := []string{
+		"скоро", "в течение", "сразу же", "немедленно", "быстро",
+		"через час", "в ближайшее", "оперативно", "круглосуточно отвеч",
+	}
+
+	for name, text := range replies {
+		lower := strings.ToLower(text)
+		for _, word := range deadlines {
+			assert.NotContains(t, lower, word,
+				"%s обещает срок (%q), которого никто не гарантирует", name, word)
+		}
+	}
+
+	// Обратная сторона: если ответ человека упомянут, должно быть сказано, что
+	// он не мгновенный. Иначе «передал человеку» читается как «сейчас ответят».
+	for _, name := range []string{"escalationReply", "busyReply"} {
+		assert.Contains(t, strings.ToLower(replies[name]), "не круглосуточно",
+			"%s передаёт вопрос человеку, но не предупреждает об ожидании", name)
+	}
 }

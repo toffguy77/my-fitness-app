@@ -56,9 +56,13 @@ var Dictionary = map[string]Definition{
 	EventRegistrationOpened: {Optional: []string{"method"}},
 	EventRegistrationFailed: {Required: []string{"reason"}, Optional: []string{"method"}},
 
-	EventRegistered:    {Optional: []string{"method"}, ServerOnly: true},
+	// method is required, not optional, on both: an account arrives either by
+	// password or through a named provider, and an event that does not say
+	// which is counted as neither. When it was optional the provider path
+	// recorded nothing and the funnel read as if everyone used a password.
+	EventRegistered:    {Required: []string{"method"}, ServerOnly: true},
 	EventEmailVerified: {ServerOnly: true},
-	EventSignedIn:      {Optional: []string{"method"}, ServerOnly: true},
+	EventSignedIn:      {Required: []string{"method"}, ServerOnly: true},
 	EventCuratorAssign: {ServerOnly: true},
 	EventWeeklyReport:  {ServerOnly: true},
 

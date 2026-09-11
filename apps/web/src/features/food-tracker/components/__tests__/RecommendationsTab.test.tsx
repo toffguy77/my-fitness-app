@@ -38,7 +38,7 @@ const createMockRecommendation = (
     name: 'Витамин C',
     category: 'vitamins',
     dailyTarget: 90,
-    unit: 'мг',
+    unit: 'mg',
     isWeekly: false,
     isCustom: false,
     ...overrides,
@@ -50,7 +50,7 @@ const createMockCustomRecommendation = (
     id: `custom-${Math.random().toString(36).slice(2)}`,
     name: 'Коллаген',
     dailyTarget: 10,
-    unit: 'г',
+    unit: 'g',
     currentIntake: 5,
     ...overrides,
 });
@@ -82,7 +82,7 @@ describe('NutrientRecommendationItem', () => {
         it('displays progress in format "current / target unit"', () => {
             const recommendation = createMockRecommendation({
                 dailyTarget: 100,
-                unit: 'мг',
+                unit: 'mg',
             });
 
             render(
@@ -210,7 +210,7 @@ describe('NutrientRecommendationItem', () => {
             const recommendation = createMockRecommendation({
                 name: 'Кальций',
                 dailyTarget: 1000,
-                unit: 'мг',
+                unit: 'mg',
             });
 
             render(
