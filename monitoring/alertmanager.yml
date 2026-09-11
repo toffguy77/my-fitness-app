@@ -25,7 +25,7 @@ route:
 receivers:
   - name: telegram
     telegram_configs:
-      - bot_token: ${TELEGRAM_ALERT_BOT_TOKEN}
+      - bot_token: __BOT_TOKEN__
         chat_id: __CHAT_ID__
         parse_mode: ''
         message: |-

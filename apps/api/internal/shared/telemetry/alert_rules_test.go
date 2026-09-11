@@ -103,3 +103,39 @@ func publishedMetricNames(t *testing.T) map[string]bool {
 
 	return names
 }
+
+// Alertmanager не раскрывает переменные окружения в своём конфиге, поэтому
+// значения подставляются метками при старте контейнера. Метка в конфиге и
+// метка в команде подстановки должны совпадать буква в букву.
+//
+// Они не совпадали: в конфиге стояло ${TELEGRAM_ALERT_BOT_TOKEN}, а sed искал
+// __BOT_TOKEN__. Токен остался бы в файле текстом, Alertmanager запустился бы
+// и молча отправлял тревоги с недействительным токеном — то есть никуда.
+// Заметить это можно было только по ненаступившей тревоге.
+func TestAlertmanagerPlaceholdersAreSubstituted(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..", "..")
+
+	config, err := os.ReadFile(filepath.Join(root, "monitoring", "alertmanager.yml"))
+	require.NoError(t, err)
+	compose, err := os.ReadFile(filepath.Join(root, "docker-compose.monitoring.yml"))
+	require.NoError(t, err)
+
+	placeholders := regexp.MustCompile(`__[A-Z_]+__`).FindAllString(string(config), -1)
+	require.NotEmpty(t, placeholders, "в конфиге нет ни одной метки — подстановка перестала быть нужна?")
+
+	for _, p := range placeholders {
+		assert.Contains(t, string(compose), p,
+			"метка %s есть в конфиге, но её никто не подставляет", p)
+	}
+
+	// Обратная сторона: синтаксис переменных окружения в этом файле не работает
+	// вовсе, и оставленный ${...} — это тихо неверное значение. Комментарии не
+	// в счёт: в них про этот синтаксис как раз и написано.
+	for i, line := range strings.Split(string(config), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		assert.NotContains(t, line, "${",
+			"строка %d: Alertmanager не раскрывает ${...} — нужна метка и подстановка", i+1)
+	}
+}
