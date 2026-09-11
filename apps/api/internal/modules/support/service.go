@@ -94,18 +94,26 @@ func NewService(db *sql.DB, log *logger.Logger, answerer Answerer, sender Sender
 }
 
 // Replies the bot gives without asking the model at all.
+//
+// None of them names a deadline. Operators answer when they see the question —
+// there is no shift and no published hours — so "ответят здесь же" without a
+// qualifier reads as "shortly" to somebody writing at three in the morning.
+// A promise nobody made is worse than no promise: the person waits, then
+// writes again, and the wait is what they remember.
 const (
 	greeting = "Здравствуйте! Я отвечаю на вопросы о сервисе BURCEV: как устроен дневник питания, " +
 		"что делает куратор, что происходит с вашими данными. Спрашивайте.\n\n" +
 		"Если я не знаю ответа — передам вопрос человеку."
 
 	escalationReply = "Не нашёл ответа в документации и не буду придумывать. " +
-		"Передал ваш вопрос человеку — ответят здесь же."
+		"Передал ваш вопрос человеку — ответ придёт сюда же, в этот чат. " +
+		"Мы небольшая команда и отвечаем не круглосуточно, так что это может занять время."
 
 	rateLimitedReply = "Слишком много вопросов подряд. Подождите минуту, пожалуйста — " +
-		"или напишите «оператор», и вам ответит человек."
+		"или напишите «оператор», и вопрос уйдёт человеку."
 
-	busyReply = "Сейчас не могу ответить сам. Передал ваш вопрос человеку — ответят здесь же."
+	busyReply = "Сейчас не могу ответить сам. Передал ваш вопрос человеку — ответ придёт " +
+		"сюда же, в этот чат. Мы небольшая команда и отвечаем не круглосуточно."
 
 	signedInReply = "Вы уже зарегистрированы. Всё, что касается вашего плана, питания и прогресса, " +
 		"лучше обсудить с куратором в чате приложения — там он видит вашу историю."
