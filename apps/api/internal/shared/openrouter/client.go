@@ -90,7 +90,20 @@ func NewClient(apiKey, model string, log *logger.Logger) *Client {
 type chatRequest struct {
 	Model    string        `json:"model"`
 	Messages []chatMessage `json:"messages"`
+	// MaxTokens ограничивает ответ. Без него провайдер берёт предел модели —
+	// у нынешней это 65536 — и резервирует под него средства на счёте. Запрос
+	// отклоняется целиком, если на счёте меньше, чем этот резерв, даже когда
+	// настоящий ответ стоил бы копейки.
+	MaxTokens int `json:"max_tokens,omitempty"`
 }
+
+// supportAnswerLimit — потолок ответа бота поддержки.
+//
+// Инструкция велит отвечать двумя-тремя предложениями, а маркер отказа и вовсе
+// одна строка. Тысяча токенов оставляет запас на развёрнутый ответ со ссылкой
+// на раздел документации и при этом не заставляет резервировать средства под
+// ответ, которого никогда не будет.
+const supportAnswerLimit = 1000
 
 type chatMessage struct {
 	Role    string        `json:"role"`
@@ -296,7 +309,9 @@ func (c *Client) Ask(ctx context.Context, cachedPrefix, question string, history
 		Content: []contentPart{{Type: "text", Text: question}},
 	})
 
-	bodyBytes, err := json.Marshal(chatRequest{Model: c.model, Messages: messages})
+	bodyBytes, err := json.Marshal(chatRequest{
+		Model: c.model, Messages: messages, MaxTokens: supportAnswerLimit,
+	})
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}

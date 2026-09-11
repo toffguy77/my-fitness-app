@@ -395,6 +395,10 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 			return
 		}
 		h.log.Error("Food recognition failed", "error", err, "user_id", userID)
+		// Отдельный счётчик: этот отказ виден в доле 5xx, но неотличим там от
+		// всех прочих. Когда кончаются средства у провайдера модели, ломается
+		// именно он — и знать это заранее дешевле, чем разбираться по логам.
+		telemetry.Record(telemetry.EventModelCallFailed)
 		response.InternalError(c, "Не удалось распознать еду")
 		return
 	}

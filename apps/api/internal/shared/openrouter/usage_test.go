@@ -84,3 +84,24 @@ func TestUsageReportingWithoutObserver(t *testing.T) {
 
 	assert.NotPanics(t, func() { resp.report(nil) })
 }
+
+// Потолок ответа отправляется всегда.
+//
+// Без него провайдер берёт предел модели — 65536 токенов — и резервирует под
+// него средства. Запрос отклоняется целиком при нехватке резерва, даже когда
+// настоящий ответ стоил бы копейки: именно так бот поддержки оказался
+// неработоспособным при небольшом остатке на счёте, отвечая «передал человеку»
+// на каждый вопрос.
+func TestSupportRequestCapsTheAnswer(t *testing.T) {
+	body, err := json.Marshal(chatRequest{
+		Model: "любая", Messages: nil, MaxTokens: supportAnswerLimit,
+	})
+	require.NoError(t, err)
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(body, &decoded))
+
+	assert.Equal(t, float64(supportAnswerLimit), decoded["max_tokens"])
+	assert.Less(t, supportAnswerLimit, 4000,
+		"потолок должен оставаться скромным: инструкция велит отвечать двумя-тремя предложениями")
+}

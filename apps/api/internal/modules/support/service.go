@@ -12,6 +12,7 @@ import (
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/openrouter"
+	"github.com/burcev/api/internal/shared/telemetry"
 )
 
 // Retention bounds how long a support conversation is kept.
@@ -164,6 +165,9 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 	answer, err := s.answerer.Ask(ctx, prefix, s.question(conversation, text), history)
 	if err != nil {
 		s.log.Error("Support model call failed", "error", err)
+		// Считаем отдельно: эскалация выглядит как штатная работа, и без
+		// счётчика отказ модели заметить нечем.
+		telemetry.Record(telemetry.EventModelCallFailed)
 		return s.escalate(ctx, conversation, "ошибка обращения к модели")
 	}
 

@@ -177,6 +177,15 @@ const (
 	EventMessageSent     = "message_sent"
 	EventFoodRecognized  = "food_recognized"
 	EventEmailSent       = "email_sent"
+	// EventModelCallFailed: обращение к модели не удалось.
+	//
+	// Такой отказ невидим снаружи: бот отвечает «передал вопрос человеку» и
+	// возвращает 200, распознавание еды просто не срабатывает. Ни ошибки в
+	// ответе, ни падения доли 5xx. Именно так закончившиеся средства на счёте
+	// провайдера превращают две возможности в неработающие, а /ready
+	// продолжает показывать их включёнными — признак проверяет наличие ключа,
+	// а не способность им воспользоваться.
+	EventModelCallFailed = "model_call_failed"
 )
 
 // RecordEvent counts a product event.
