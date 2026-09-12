@@ -186,6 +186,10 @@ func (s *Service) SendPasswordResetEmail(ctx context.Context, data ResetEmailDat
 		"attempts", maxRetries,
 	)
 
+	// Считаем отказ: снаружи он почти не виден — ответ намеренно одинаков
+	// независимо от исхода, чтобы по нему нельзя было перебирать адреса.
+	telemetry.Record(telemetry.EventEmailFailed)
+
 	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
 }
 
@@ -319,6 +323,10 @@ func (s *Service) SendVerificationEmail(ctx context.Context, data VerificationEm
 			time.Sleep(backoff)
 		}
 	}
+
+	// Считаем отказ: снаружи он почти не виден — ответ намеренно одинаков
+	// независимо от исхода, чтобы по нему нельзя было перебирать адреса.
+	telemetry.Record(telemetry.EventEmailFailed)
 
 	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
 }
