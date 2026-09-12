@@ -10,6 +10,7 @@ import (
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
+	"github.com/burcev/api/internal/shared/upload"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -361,6 +362,9 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
+		if h.refuseBadMedia(c, err) {
+			return
+		}
 		h.log.Error("Failed to upload media", "error", err, "user_id", userID, "article_id", articleID)
 		response.InternalError(c, "Не удалось загрузить файл")
 		return
@@ -405,6 +409,30 @@ func (h *Handler) UploadMarkdownFile(c *gin.Context) {
 	response.Success(c, http.StatusCreated, article)
 }
 
+// refuseBadMedia answers a rejected upload, or reports that it did not.
+//
+// Отказ обязан объяснять, что делать. Снимок с iPhone получал здесь
+// «поддерживаются только изображения» — про фотографию, снятую минуту назад, и
+// без единого слова о том, как её всё-таки приложить. Причина при этом была:
+// `upload.Receive` возвращает её отдельной ошибкой, а обработчик подменял её
+// постоянной строкой.
+//
+// Вторая половина хуже: загрузка медиа статьи не разбирала негодный тип вовсе
+// и отвечала 500. Для вызывающего это «сломалось у нас», а сломалось у него —
+// и повторять запрос бессмысленно.
+func (h *Handler) refuseBadMedia(c *gin.Context, err error) bool {
+	if errors.Is(err, upload.ErrHEIC) {
+		response.Error(c, http.StatusBadRequest, upload.ErrHEIC.Error())
+		return true
+	}
+	if errors.Is(err, apperrors.ErrUnsupportedMedia) {
+		response.Error(c, http.StatusBadRequest,
+			"Поддерживаются только изображения (JPEG, PNG, WebP, GIF)")
+		return true
+	}
+	return false
+}
+
 // UploadCoverImage handles POST /api/v1/content/articles/cover
 func (h *Handler) UploadCoverImage(c *gin.Context) {
 	_, ok := h.getUserID(c)
@@ -420,8 +448,7 @@ func (h *Handler) UploadCoverImage(c *gin.Context) {
 
 	url, err := h.service.UploadCoverImage(c.Request.Context(), file)
 	if err != nil {
-		if errors.Is(err, apperrors.ErrUnsupportedMedia) {
-			response.Error(c, http.StatusBadRequest, "Поддерживаются только изображения (JPEG, PNG, WebP, GIF)")
+		if h.refuseBadMedia(c, err) {
 			return
 		}
 		h.log.Error("Failed to upload cover image", "error", err)
