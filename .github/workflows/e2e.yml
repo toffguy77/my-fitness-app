@@ -3,11 +3,14 @@ name: E2E
 # The end-to-end suite exists (33 spec files) but never ran in CI. It is the
 # only layer that would have caught a frontend calling an unregistered route,
 # or a curator analytics screen that can never fill. It blocks the merge.
+#
+# Runs where it earns its ~14 minutes: on the way into main, and on request.
+# It used to run on every push to dev as well, which made it noise — and noise
+# is how a suite stops being read. The release path is what it protects.
 on:
-  push:
-    branches: [main, dev]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
