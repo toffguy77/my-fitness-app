@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/shared/httpx"
 	"github.com/burcev/api/internal/shared/logger"
 )
 
@@ -108,7 +109,7 @@ func NewClient(apiKey, model string, log *logger.Logger) *Client {
 		model:      model,
 		baseURL:    DefaultBaseURL,
 		authScheme: DefaultAuthScheme,
-		httpClient: &http.Client{Timeout: Timeout},
+		httpClient: httpx.NewClient(Timeout),
 		log:        log,
 	}
 }

@@ -12,6 +12,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/burcev/api/internal/shared/httpx"
 	"net/http"
 	"time"
 )
@@ -32,7 +34,7 @@ func NewClient(token string) *Client {
 	return &Client{
 		token:      token,
 		baseURL:    "https://api.telegram.org",
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		httpClient: httpx.NewClient(15 * time.Second),
 	}
 }
 
