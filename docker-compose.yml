@@ -151,6 +151,13 @@ services:
       - LLM_MODEL=${LLM_MODEL}
       - LLM_BASE_URL=${LLM_BASE_URL}
       - LLM_AUTH_SCHEME=${LLM_AUTH_SCHEME}
+      # Зрение — отдельный поставщик: модель для текста принимает картинку и
+      # молча её игнорирует, то есть общая настройка дала бы выдуманный состав
+      # блюда вместо отказа.
+      - VISION_API_KEY=${VISION_API_KEY}
+      - VISION_MODEL=${VISION_MODEL}
+      - VISION_BASE_URL=${VISION_BASE_URL}
+      - VISION_AUTH_SCHEME=${VISION_AUTH_SCHEME}
       # Прежние имена приняты как запасные, чтобы окружение можно было
       # перевести не в один миг.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}

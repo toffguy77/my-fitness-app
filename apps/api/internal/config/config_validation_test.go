@@ -140,7 +140,10 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	// имеет. Возможность, включённая по одному ключу, отвечала бы отказом на
 	// каждый запрос, продолжая числиться доступной.
 	t.Setenv("LLM_API_KEY", "llm-key")
-	t.Setenv("LLM_MODEL", "gpt://каталог/yandexgpt/latest")
+	// Зрение — отдельный поставщик: текстовая модель принимает картинку и молча
+	// её игнорирует, поэтому распознавание еды включается своими настройками.
+	t.Setenv("VISION_API_KEY", "vision-key")
+	t.Setenv("VISION_MODEL", "провайдер/модель-со-зрением")
 	t.Setenv("S3_ACCESS_KEY_ID", "key")
 	t.Setenv("S3_SECRET_ACCESS_KEY", "secret")
 

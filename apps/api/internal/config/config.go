@@ -180,9 +180,8 @@ type Config struct {
 	VKOAuthClientID         string
 	VKOAuthClientSecret     string
 
-	// OpenRouter (AI food recognition)
-	OpenRouterAPIKey          string
-	OpenRouterModel           string
+	// Модели: текст и зрение
+	LLMAPIKey                 string
 	FoodRecognitionDailyLimit int
 
 	// Telegram support bot. Absent credentials disable the capability rather
@@ -201,8 +200,16 @@ type Config struct {
 	SupportModel          string
 	// LLMBaseURL и LLMAuthScheme описывают поставщика модели. Вместе, а не по
 	// отдельности: адрес без схемы авторизации — это запрос, который отклонят.
-	LLMBaseURL        string
-	LLMAuthScheme     string
+	LLMBaseURL    string
+	LLMAuthScheme string
+	// Зрение настраивается отдельно от текста, и это необходимость, а не
+	// удобство: поставщик текста изображения не принимает — запрос проходит с
+	// кодом 200, картинка молча игнорируется. Общая настройка означала бы
+	// выдуманный состав блюда вместо честного отказа.
+	VisionAPIKey      string
+	VisionModel       string
+	VisionBaseURL     string
+	VisionAuthScheme  string
 	SupportDailyLimit int
 
 	// NotificationEmailDelay is how long a notification is given to be read in
@@ -349,10 +356,20 @@ func Load() (*Config, error) {
 		// OpenRouter на Yandex Foundation Models, и названия, привязанные к
 		// одному из них, врали бы при следующей смене. Прежние имена приняты
 		// как запасные, чтобы окружение можно было перевести не в один миг.
-		OpenRouterAPIKey:          getEnvWithFallback("LLM_API_KEY", "OPENROUTER_API_KEY", ""),
-		OpenRouterModel:           getEnvWithFallback("LLM_MODEL", "OPENROUTER_MODEL", ""),
-		LLMBaseURL:                getEnv("LLM_BASE_URL", llm.DefaultBaseURL),
-		LLMAuthScheme:             getEnv("LLM_AUTH_SCHEME", llm.DefaultAuthScheme),
+		LLMAPIKey:     getEnvWithFallback("LLM_API_KEY", "OPENROUTER_API_KEY", ""),
+		LLMBaseURL:    getEnv("LLM_BASE_URL", llm.DefaultBaseURL),
+		LLMAuthScheme: getEnv("LLM_AUTH_SCHEME", llm.DefaultAuthScheme),
+
+		// Зрение — свой поставщик, и это необходимость, а не удобство. Ни одна
+		// модель в каталоге поставщика текста не принимает изображения: запрос
+		// проходит с кодом 200, картинка молча игнорируется, и ответ строится
+		// по одному тексту. Для распознавания еды это выдуманный состав блюда,
+		// поданный как результат, — хуже, чем честный отказ.
+		VisionAPIKey:     getEnvWithFallback("VISION_API_KEY", "OPENROUTER_API_KEY", ""),
+		VisionModel:      getEnvWithFallback("VISION_MODEL", "OPENROUTER_MODEL", ""),
+		VisionBaseURL:    getEnv("VISION_BASE_URL", "https://openrouter.ai/api/v1/chat/completions"),
+		VisionAuthScheme: getEnv("VISION_AUTH_SCHEME", "Bearer"),
+
 		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:              getEnv("VAPID_SUBJECT", ""),
@@ -387,7 +404,7 @@ func deriveFeatures(c *Config) Features {
 		// идентификатор каталога и у каждой установки своё. Запрос без имени
 		// отклоняется, и возможность, числящаяся включённой по одному ключу,
 		// снова врала бы.
-		FoodRecognition: c.OpenRouterAPIKey != "" && c.OpenRouterModel != "",
+		FoodRecognition: c.VisionAPIKey != "" && c.VisionModel != "",
 		WeeklyPhotos:    s3(c.WeeklyPhotosS3AccessKeyID, c.WeeklyPhotosS3SecretAccessKey),
 		ProfileAvatars:  s3(c.ProfilePhotosS3AccessKeyID, c.ProfilePhotosS3SecretAccessKey),
 		ChatAttachments: s3(c.ChatS3AccessKeyID, c.ChatS3SecretAccessKey),
@@ -396,7 +413,7 @@ func deriveFeatures(c *Config) Features {
 		// The bot needs all three: a token to reply with, a secret to tell a
 		// genuine update from anybody's POST, and a model to answer with.
 		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" &&
-			c.OpenRouterAPIKey != "" && c.SupportModel != "",
+			c.LLMAPIKey != "" && c.SupportModel != "",
 		// Both halves of the key pair and a contact address: a push service
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",

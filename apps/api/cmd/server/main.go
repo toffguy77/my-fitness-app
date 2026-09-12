@@ -179,13 +179,19 @@ func main() {
 		PathPrefix:      cfg.S3PathPrefix,
 	})
 
-	// Initialize OpenRouter client (for AI food recognition)
+	// Клиент модели со зрением — для распознавания еды по фото.
 	var orClient *llm.Client
-	if cfg.OpenRouterAPIKey != "" {
-		orClient = llm.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log).
-			WithEndpoint(cfg.LLMBaseURL, cfg.LLMAuthScheme).
+	// Оба нужны: ключ без имени модели — это запрос, который отклонят, а
+	// возможность при этом числилась бы настроенной.
+	if cfg.VisionAPIKey != "" && cfg.VisionModel != "" {
+		// Распознавание еды идёт к поставщику со зрением, а не к текстовому.
+		// Общий клиент означал бы выдуманный состав блюда: текстовая модель
+		// принимает запрос с картинкой, молча её игнорирует и отвечает по
+		// одному тексту — с кодом 200.
+		orClient = llm.NewClient(cfg.VisionAPIKey, cfg.VisionModel, log).
+			WithEndpoint(cfg.VisionBaseURL, cfg.VisionAuthScheme).
 			WithUsageObserver(telemetry.RecordModelUsage)
-		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
+		log.Info("Vision model client initialized", "model", cfg.VisionModel)
 	}
 
 	// Initialize rate limiter (DB-backed, for password reset)
@@ -297,7 +303,7 @@ func main() {
 	if cfg.Features.SupportBot {
 		supportService = support.NewService(
 			db.DB, log,
-			llm.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log).
+			llm.NewClient(cfg.LLMAPIKey, cfg.SupportModel, log).
 				WithEndpoint(cfg.LLMBaseURL, cfg.LLMAuthScheme).
 				WithUsageObserver(telemetry.RecordModelUsage),
 			telegram.NewClient(cfg.TelegramBotToken),
