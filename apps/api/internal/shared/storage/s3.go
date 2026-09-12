@@ -392,3 +392,21 @@ func (s *S3Client) DeleteByPrefix(ctx context.Context, prefix string) (int, erro
 
 	return deleted, nil
 }
+
+// Reachable confirms the bucket answers with these credentials.
+//
+// The capability flag means "an access key is set", never "it opens this
+// bucket". A revoked key, a renamed bucket or a lost IAM binding all look
+// identical from the configuration: present. This asks the question the
+// configuration cannot answer, and asks it cheaply — one listing, one key.
+func (s *S3Client) Reachable(ctx context.Context) error {
+	one := int32(1)
+	_, err := s.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket:  aws.String(s.bucket),
+		MaxKeys: &one,
+	})
+	if err != nil {
+		return fmt.Errorf("bucket %s unreachable: %w", s.bucket, err)
+	}
+	return nil
+}

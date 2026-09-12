@@ -2,6 +2,7 @@ package openrouter
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,4 +105,15 @@ func TestSupportRequestCapsTheAnswer(t *testing.T) {
 	assert.Equal(t, float64(supportAnswerLimit), decoded["max_tokens"])
 	assert.Less(t, supportAnswerLimit, 4000,
 		"потолок должен оставаться скромным: инструкция велит отвечать двумя-тремя предложениями")
+}
+
+// Сведения о ключе лежат рядом с завершением чата, а не под ним: baseURL —
+// это полный адрес запроса к модели. Проверка, собранная невнимательно,
+// стучалась бы в .../chat/completions/key и всегда сообщала бы о поломке —
+// то есть шумела бы ровно там, где должна была успокаивать.
+func TestKeyCheckAsksTheRightAddress(t *testing.T) {
+	root := strings.TrimSuffix(DefaultBaseURL, "/chat/completions")
+
+	assert.Equal(t, "https://openrouter.ai/api/v1", root)
+	assert.NotContains(t, root+"/key", "chat/completions")
 }

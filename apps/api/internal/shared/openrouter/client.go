@@ -364,3 +364,33 @@ type Turn struct {
 	Role string
 	Text string
 }
+
+// VerifyKey asks the provider whether this key can still be used.
+//
+// Free: it reads the key's own state rather than spending a request on the
+// model. Worth having, because "the key is set" and "the key works" came apart
+// in practice — the account ran out of credit, every call started failing with
+// 402, and both capabilities that depend on it went on reporting themselves as
+// available while quietly doing nothing.
+func (c *Client) VerifyKey(ctx context.Context) error {
+	// baseURL — это полный адрес завершения чата, а не корень API: сведения о
+	// ключе лежат рядом с ним, а не под ним.
+	root := strings.TrimSuffix(c.baseURL, "/chat/completions")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, root+"/key", nil)
+	if err != nil {
+		return fmt.Errorf("build key request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("ask provider about the key: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("provider answered %d about the key", resp.StatusCode)
+	}
+	return nil
+}

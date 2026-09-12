@@ -33,6 +33,7 @@ type Metrics struct {
 
 	domainEvents      *prometheus.CounterVec
 	modelPromptTokens *prometheus.CounterVec
+	capabilityHealth  *prometheus.GaugeVec
 }
 
 // DBStatsFunc reports pool statistics on demand. Taking a function rather than
@@ -98,9 +99,24 @@ func New(namespace string, stats DBStatsFunc) *Metrics {
 		Help:      "Prompt tokens sent to the model, split by whether the provider read them from its cache.",
 	}, []string{"cached"})
 
+	// Признак возможности в конфигурации означает «настройки заданы», и никогда
+	// — «они работают». За один день это обмануло дважды: у почты отозвали
+	// пароль приложения, у провайдера модели кончились средства, и обе
+	// возможности продолжали числиться включёнными, ничего не делая.
+	//
+	// Эта метрика отвечает на второй вопрос: 1 — проверено и работает, 0 —
+	// настроено и не работает. Отсутствие означает «не настроено», и это
+	// третье состояние, которое не надо путать с поломкой.
+	m.capabilityHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "capability_healthy",
+		Help:      "Whether a configured capability answers when asked: 1 yes, 0 no.",
+	}, []string{"capability"})
+
 	m.registry.MustRegister(
 		m.httpDuration, m.httpTotal, m.dbDuration,
 		m.jobDuration, m.jobTotal, m.domainEvents, m.modelPromptTokens,
+		m.capabilityHealth,
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
@@ -229,6 +245,18 @@ func (m *Metrics) ObserveModelUsage(promptTokens, cachedTokens int) {
 	m.modelPromptTokens.WithLabelValues("no").Add(float64(promptTokens - cachedTokens))
 }
 
+// SetCapabilityHealth records the outcome of one capability check.
+func (m *Metrics) SetCapabilityHealth(capability string, healthy bool) {
+	if m == nil {
+		return
+	}
+	value := 0.0
+	if healthy {
+		value = 1
+	}
+	m.capabilityHealth.WithLabelValues(capability).Set(value)
+}
+
 func (m *Metrics) RecordEvent(event string) {
 	m.domainEvents.WithLabelValues(event).Inc()
 }
@@ -261,5 +289,12 @@ func Record(event string) {
 func RecordModelUsage(promptTokens, cachedTokens int) {
 	if defaultMetrics != nil {
 		defaultMetrics.ObserveModelUsage(promptTokens, cachedTokens)
+	}
+}
+
+// SetCapabilityHealth records a capability check on the default recorder.
+func SetCapabilityHealth(capability string, healthy bool) {
+	if defaultMetrics != nil {
+		defaultMetrics.SetCapabilityHealth(capability, healthy)
 	}
 }

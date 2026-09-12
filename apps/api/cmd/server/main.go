@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/burcev/api/internal/capabilities"
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/jobsetup"
 	"github.com/burcev/api/internal/modules/account"
@@ -359,6 +360,41 @@ func main() {
 	scheduler.SetObserver(func(name string, status jobs.Status, d time.Duration, _ int) {
 		metrics.ObserveJob(name, string(status), d)
 	})
+	// Чем проверять, что возможность не только настроена, но и работает.
+	//
+	// Имена совпадают с признаками в config.Features.Map(), чтобы сломанная
+	// возможность и флаг, уверяющий в обратном, несли одну и ту же метку.
+	var checks []capabilities.Check
+	if emailService != nil {
+		checks = append(checks, capabilities.Check{
+			Name: "email", Verify: emailService.VerifyCredentials,
+		})
+	}
+	if orClient != nil {
+		// Две возможности на одном ключе: когда у провайдера кончаются
+		// средства, отказывают обе.
+		checks = append(checks,
+			capabilities.Check{Name: "food_recognition", Verify: orClient.VerifyKey},
+			capabilities.Check{Name: "support_bot", Verify: orClient.VerifyKey})
+	}
+	for name, client := range map[string]*storage.S3Client{
+		"weekly_photos":    s3Client,
+		"profile_avatars":  profilePhotosS3,
+		"chat_attachments": chatS3,
+		"content_media":    contentS3,
+		"data_exports":     dataExportsS3,
+	} {
+		if client != nil {
+			checks = append(checks, capabilities.Check{Name: name, Verify: client.Reachable})
+		}
+	}
+
+	var capabilityVerifier *capabilities.Verifier
+	if len(checks) > 0 {
+		capabilityVerifier = capabilities.New(
+			capabilityReporter{}, log, checks...)
+	}
+
 	jobsetup.Register(jobRegistry, jobsetup.Deps{
 		Account:       accountService,
 		Auth:          authService,
@@ -372,6 +408,7 @@ func main() {
 		AppDomain:     cfg.AppDomain,
 		RateLimiter:   rateLimiter,
 		Scheduler:     scheduler,
+		Capabilities:  capabilityVerifier,
 	})
 
 	// Routing lives in internal/router, one file per domain.
@@ -488,4 +525,14 @@ func appOrigin(domain string) string {
 		return "http://localhost:3069"
 	}
 	return "https://" + domain
+}
+
+// capabilityReporter соединяет проверку возможностей с метриками.
+//
+// Отдельный тип, а не передача самих метрик: пакет capabilities поднимает
+// результат и не должен знать, как устроена телеметрия.
+type capabilityReporter struct{}
+
+func (capabilityReporter) SetCapabilityHealth(capability string, healthy bool) {
+	telemetry.SetCapabilityHealth(capability, healthy)
 }

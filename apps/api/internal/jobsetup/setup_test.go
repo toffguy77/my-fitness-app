@@ -78,6 +78,21 @@ func TestRegister_PublishingIsMinutely(t *testing.T) {
 	assert.Equal(t, time.Minute, publish.Interval)
 }
 
+// Опрос возможностей регистрируется только когда есть что опрашивать.
+//
+// Пустые Deps означают деплой, где ни почта, ни модель, ни хранилища не
+// настроены: заводить там ежечасную задачу, которой нечего проверять, —
+// значит каждый час писать в историю запусков пустую строку.
+func TestCapabilityCheckOnlyWhenThereIsSomethingToCheck(t *testing.T) {
+	registry := jobs.NewRegistry()
+	Register(registry, Deps{})
+
+	for _, j := range registry.All() {
+		assert.NotEqual(t, "capabilities.verify", j.Name,
+			"без настроенных возможностей опрашивать нечего")
+	}
+}
+
 // The two clean-up jobs are manual on purpose. A one-off pass after a defect,
 // put on a schedule so the registry would accept it, would run every night for
 // the rest of the product's life — and the purge walks a whole bucket.
