@@ -148,7 +148,6 @@ services:
       # Поставщик модели. Имена без его названия: он уже сменился один раз, и
       # переменная, названная по поставщику, соврала бы при следующей смене.
       - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_MODEL=${LLM_MODEL}
       - LLM_BASE_URL=${LLM_BASE_URL}
       - LLM_AUTH_SCHEME=${LLM_AUTH_SCHEME}
       # Зрение — отдельный поставщик: модель для текста принимает картинку и
@@ -161,7 +160,7 @@ services:
       # Прежние имена приняты как запасные, чтобы окружение можно было
       # перевести не в один миг.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL}   # запасное имя для VISION_MODEL
       - FOOD_RECOGNITION_DAILY_LIMIT=${FOOD_RECOGNITION_DAILY_LIMIT}
       # Optional capabilities: absent values switch the feature off and are
       # reported at startup and in /health, rather than failing the boot.
