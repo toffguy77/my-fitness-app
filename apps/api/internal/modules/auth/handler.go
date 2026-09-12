@@ -290,6 +290,15 @@ func (h *Handler) Refresh(c *gin.Context) {
 		return
 	}
 
+	// Считаем источник: приём токена из тела существует только ради вкладок,
+	// открытых до перехода на cookie, и убирать его можно тогда, когда доля
+	// дойдёт до нуля — а не тогда, когда покажется, что пора.
+	if fromCookie {
+		telemetry.Record(telemetry.EventRefreshFromCookie)
+	} else {
+		telemetry.Record(telemetry.EventRefreshFromBody)
+	}
+
 	result, err := h.service.RefreshTokens(c.Request.Context(), token, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		h.log.Errorw("Token refresh failed", "error", err)
