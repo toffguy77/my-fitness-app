@@ -1,4 +1,4 @@
-package openrouter
+package llm
 
 import (
 	"bytes"
@@ -12,21 +12,34 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/shared/httpx"
 	"github.com/burcev/api/internal/shared/logger"
 )
 
 const (
-	DefaultBaseURL = "https://openrouter.ai/api/v1/chat/completions"
-	// Both defaults are overridable by configuration: which model answers, and
-	// what it costs, is an operational decision rather than a constant. The
-	// previous default here was pinned to a model two generations old.
-	DefaultModel = "anthropic/claude-sonnet-5"
-	// The support bot reads the whole documentation corpus on every question,
-	// so the prefix is cached and a stronger model is affordable.
-	DefaultSupportModel = "anthropic/claude-opus-5"
-	Timeout             = 30 * time.Second
-	UserAgent           = "BurcevFitnessApp/1.0 (https://burcev.team)"
+	// DefaultBaseURL — OpenAI-совместимый эндпоинт Yandex Foundation Models.
+	//
+	// Переехали с OpenRouter: он принимает оплату только картами, которые
+	// здесь не проходят. Замер перед переездом показал, что менять почти
+	// нечего и что стало лучше — провайдер кэширует префикс (99,8% из кэша на
+	// втором запросе) и считает его в 14 267 токенов вместо 25 410,
+	// токенизатор эффективнее для русского. Поле
+	// `prompt_tokens_details.cached_tokens` приходит в том же виде.
+	DefaultBaseURL = "https://llm.api.cloud.yandex.net/v1/chat/completions"
+
+	// DefaultAuthScheme: Яндекс ждёт `Api-Key`, а не `Bearer`.
+	DefaultAuthScheme = "Api-Key"
+
+	Timeout   = 30 * time.Second
+	UserAgent = "BurcevFitnessApp/1.0 (https://burcev.team)"
 )
+
+// Умолчания для имени модели нет намеренно.
+//
+// У Яндекса имя включает идентификатор каталога — `gpt://<каталог>/yandexgpt/
+// latest`, — то есть оно у каждой установки своё. Константа здесь была бы либо
+// чужой, либо ломающейся молча: запрос с неверным именем отклоняется, а
+// возможность при этом числилась бы настроенной.
 
 // RecognizedFoodItem represents a food item recognized from a photo by the AI model.
 type RecognizedFoodItem struct {
@@ -53,12 +66,29 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 	log        *logger.Logger
+	// authScheme — слово перед ключом в заголовке Authorization. У провайдеров
+	// оно разное: `Bearer` у OpenAI-совместимых, `Api-Key` у Яндекса.
+	authScheme string
 
 	// observeUsage, when set, receives what each call cost in prompt tokens and
 	// how much of that the provider served from its cache. Optional: the client
 	// is used in places that have no metrics wired, and a nil check is cheaper
 	// than making every caller supply one.
 	observeUsage func(promptTokens, cachedTokens int)
+}
+
+// WithEndpoint points the client at a different provider.
+//
+// Оба значения вместе: адрес без схемы авторизации — это запрос, который
+// отклонят, и разбираться придётся по коду ответа вместо очевидного.
+func (c *Client) WithEndpoint(baseURL, authScheme string) *Client {
+	if baseURL != "" {
+		c.baseURL = baseURL
+	}
+	if authScheme != "" {
+		c.authScheme = authScheme
+	}
+	return c
 }
 
 // WithUsageObserver reports token usage for every call.
@@ -74,14 +104,12 @@ func (c *Client) WithUsageObserver(fn func(promptTokens, cachedTokens int)) *Cli
 
 // NewClient creates a new OpenRouter API client.
 func NewClient(apiKey, model string, log *logger.Logger) *Client {
-	if model == "" {
-		model = DefaultModel
-	}
 	return &Client{
 		apiKey:     apiKey,
 		model:      model,
 		baseURL:    DefaultBaseURL,
-		httpClient: &http.Client{Timeout: Timeout},
+		authScheme: DefaultAuthScheme,
+		httpClient: httpx.NewClient(Timeout),
 		log:        log,
 	}
 }
@@ -90,7 +118,20 @@ func NewClient(apiKey, model string, log *logger.Logger) *Client {
 type chatRequest struct {
 	Model    string        `json:"model"`
 	Messages []chatMessage `json:"messages"`
+	// MaxTokens ограничивает ответ. Без него провайдер берёт предел модели —
+	// у нынешней это 65536 — и резервирует под него средства на счёте. Запрос
+	// отклоняется целиком, если на счёте меньше, чем этот резерв, даже когда
+	// настоящий ответ стоил бы копейки.
+	MaxTokens int `json:"max_tokens,omitempty"`
 }
+
+// supportAnswerLimit — потолок ответа бота поддержки.
+//
+// Инструкция велит отвечать двумя-тремя предложениями, а маркер отказа и вовсе
+// одна строка. Тысяча токенов оставляет запас на развёрнутый ответ со ссылкой
+// на раздел документации и при этом не заставляет резервировать средства под
+// ответ, которого никогда не будет.
+const supportAnswerLimit = 1000
 
 type chatMessage struct {
 	Role    string        `json:"role"`
@@ -202,7 +243,7 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Authorization", c.authScheme+" "+c.apiKey)
 	req.Header.Set("HTTP-Referer", "https://burcev.team")
 	req.Header.Set("User-Agent", UserAgent)
 
@@ -296,7 +337,9 @@ func (c *Client) Ask(ctx context.Context, cachedPrefix, question string, history
 		Content: []contentPart{{Type: "text", Text: question}},
 	})
 
-	bodyBytes, err := json.Marshal(chatRequest{Model: c.model, Messages: messages})
+	bodyBytes, err := json.Marshal(chatRequest{
+		Model: c.model, Messages: messages, MaxTokens: supportAnswerLimit,
+	})
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -306,7 +349,7 @@ func (c *Client) Ask(ctx context.Context, cachedPrefix, question string, history
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Authorization", c.authScheme+" "+c.apiKey)
 	req.Header.Set("HTTP-Referer", "https://burcev.team")
 	req.Header.Set("User-Agent", UserAgent)
 
@@ -349,3 +392,12 @@ type Turn struct {
 	Role string
 	Text string
 }
+
+// Отдельной проверки ключа здесь нет намеренно.
+//
+// У прежнего провайдера был бесплатный эндпоинт состояния ключа; у Яндекса
+// такого нет, и единственный способ спросить — потратить запрос. Ежечасная
+// трата ради проверки хуже, чем наблюдение за настоящими отказами: событие
+// `model_call_failed` считается на обоих путях, и на него заведено
+// оповещение. Сломанный ключ станет виден в течение пятнадцати минут после
+// первого живого обращения, и бесплатно.

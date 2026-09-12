@@ -136,7 +136,14 @@ func TestValidate_MissingDatabase(t *testing.T) {
 
 func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	prodEnv(t)
-	t.Setenv("OPENROUTER_API_KEY", "or-key")
+	// Ключа мало: имя модели включает идентификатор каталога и умолчания не
+	// имеет. Возможность, включённая по одному ключу, отвечала бы отказом на
+	// каждый запрос, продолжая числиться доступной.
+	t.Setenv("LLM_API_KEY", "llm-key")
+	// Зрение — отдельный поставщик: текстовая модель принимает картинку и молча
+	// её игнорирует, поэтому распознавание еды включается своими настройками.
+	t.Setenv("VISION_API_KEY", "vision-key")
+	t.Setenv("VISION_MODEL", "провайдер/модель-со-зрением")
 	t.Setenv("S3_ACCESS_KEY_ID", "key")
 	t.Setenv("S3_SECRET_ACCESS_KEY", "secret")
 
@@ -150,7 +157,7 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	assert.True(t, cfg.Features.ChatAttachments)
 	assert.True(t, cfg.Features.DataExports)
 	// The support bot needs a Telegram token and webhook secret on top of the
-	// OpenRouter key, so it stays off here; the observability pair needs its
+	// model credentials, so it stays off here; the observability pair needs its
 	// own credentials and is off for the same reason.
 	assert.Equal(t, []string{"support_bot", "web_push", "error_reporting", "tracing"},
 		cfg.Features.Disabled())

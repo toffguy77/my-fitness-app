@@ -5,6 +5,17 @@
 # Alertmanager это означало бы тревоги, уходящие по старым правилам доставки —
 # или никуда.
 
-FROM prom/alertmanager:v0.28.0
+# Базовые образы тянутся через зеркало, а не напрямую с Docker Hub.
+#
+# За один день 2026-09-12 семь сборок из десяти упали на `registry-1.docker.io`:
+# то отказ разрешения имени, то обрыв соединения, то ответ по IPv6, до которого
+# с этого хоста не достучаться. Код был ни при чём ни разу.
+#
+# mirror.gcr.io — сквозной кэш Docker Hub, который держит Google: те же самые
+# образы, тот же протокол. Значение вынесено в аргумент: вернуться на Docker Hub
+# — это `--build-arg BASE_REGISTRY=docker.io` и ничего больше.
+ARG BASE_REGISTRY=mirror.gcr.io
+
+FROM ${BASE_REGISTRY}/prom/alertmanager:v0.28.0
 
 COPY alertmanager.yml /etc/alertmanager/alertmanager.yml

@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/internal/shared/openrouter"
+	"github.com/burcev/api/internal/shared/telemetry"
 )
 
 // Retention bounds how long a support conversation is kept.
@@ -46,7 +47,7 @@ type LeadSummary struct {
 
 // Answerer produces an answer to a question behind a cached prefix.
 type Answerer interface {
-	Ask(ctx context.Context, cachedPrefix, question string, history []openrouter.Turn) (string, error)
+	Ask(ctx context.Context, cachedPrefix, question string, history []llm.Turn) (string, error)
 }
 
 // Sender delivers a message back to the chat it came from.
@@ -164,6 +165,9 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 	answer, err := s.answerer.Ask(ctx, prefix, s.question(conversation, text), history)
 	if err != nil {
 		s.log.Error("Support model call failed", "error", err)
+		// Считаем отдельно: эскалация выглядит как штатная работа, и без
+		// счётчика отказ модели заметить нечем.
+		telemetry.Record(telemetry.EventModelCallFailed)
 		return s.escalate(ctx, conversation, "ошибка обращения к модели")
 	}
 
@@ -338,7 +342,7 @@ func (s *Service) attachLead(ctx context.Context, conversation *Conversation, pa
 	conversation.LeadID = &leadID
 }
 
-func (s *Service) recentTurns(ctx context.Context, conversationID string) ([]openrouter.Turn, error) {
+func (s *Service) recentTurns(ctx context.Context, conversationID string) ([]llm.Turn, error) {
 	// Enough for a follow-up question to make sense, short enough that the
 	// variable part of the request stays small.
 	rows, err := s.db.QueryContext(ctx, `
@@ -352,7 +356,7 @@ func (s *Service) recentTurns(ctx context.Context, conversationID string) ([]ope
 	}
 	defer rows.Close()
 
-	turns := make([]openrouter.Turn, 0, 7)
+	turns := make([]llm.Turn, 0, 7)
 	for rows.Next() {
 		var author, text string
 		if err := rows.Scan(&author, &text); err != nil {
@@ -362,7 +366,7 @@ func (s *Service) recentTurns(ctx context.Context, conversationID string) ([]ope
 		if author == "bot" {
 			role = "assistant"
 		}
-		turns = append(turns, openrouter.Turn{Role: role, Text: text})
+		turns = append(turns, llm.Turn{Role: role, Text: text})
 	}
 	// The last row is the message being answered; it is added by the caller.
 	if len(turns) > 0 {

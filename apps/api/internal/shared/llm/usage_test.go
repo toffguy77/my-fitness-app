@@ -1,4 +1,4 @@
-package openrouter
+package llm
 
 import (
 	"encoding/json"
@@ -83,4 +83,46 @@ func TestUsageReportingWithoutObserver(t *testing.T) {
 		[]byte(`{"usage":{"prompt_tokens":10,"prompt_tokens_details":{"cached_tokens":5}}}`), &resp))
 
 	assert.NotPanics(t, func() { resp.report(nil) })
+}
+
+// Потолок ответа отправляется всегда.
+//
+// Без него провайдер берёт предел модели — 65536 токенов — и резервирует под
+// него средства. Запрос отклоняется целиком при нехватке резерва, даже когда
+// настоящий ответ стоил бы копейки: именно так бот поддержки оказался
+// неработоспособным при небольшом остатке на счёте, отвечая «передал человеку»
+// на каждый вопрос.
+func TestSupportRequestCapsTheAnswer(t *testing.T) {
+	body, err := json.Marshal(chatRequest{
+		Model: "любая", Messages: nil, MaxTokens: supportAnswerLimit,
+	})
+	require.NoError(t, err)
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(body, &decoded))
+
+	assert.Equal(t, float64(supportAnswerLimit), decoded["max_tokens"])
+	assert.Less(t, supportAnswerLimit, 4000,
+		"потолок должен оставаться скромным: инструкция велит отвечать двумя-тремя предложениями")
+}
+
+// Схема авторизации у провайдеров разная: `Bearer` у OpenAI-совместимых,
+// `Api-Key` у Яндекса. Запрос с чужой схемой отклоняется, и разбираться
+// пришлось бы по коду ответа вместо очевидного — поэтому адрес и схема
+// задаются вместе, одним вызовом.
+func TestEndpointAndSchemeTravelTogether(t *testing.T) {
+	c := NewClient("ключ", "модель", nil)
+
+	assert.Equal(t, DefaultAuthScheme, c.authScheme, "по умолчанию — схема Яндекса")
+	assert.Equal(t, DefaultBaseURL, c.baseURL)
+
+	c.WithEndpoint("https://openrouter.ai/api/v1/chat/completions", "Bearer")
+	assert.Equal(t, "Bearer", c.authScheme)
+	assert.Contains(t, c.baseURL, "openrouter")
+
+	// Пустые значения ничего не портят: так конфигурация без явных настроек
+	// оставляет умолчания, а не обнуляет их.
+	c.WithEndpoint("", "")
+	assert.Equal(t, "Bearer", c.authScheme)
+	assert.Contains(t, c.baseURL, "openrouter")
 }

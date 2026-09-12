@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/burcev/api/internal/capabilities"
 	"github.com/burcev/api/internal/modules/account"
 	"github.com/burcev/api/internal/modules/analytics"
 	"github.com/burcev/api/internal/modules/auth"
@@ -60,6 +61,8 @@ type Deps struct {
 	AppDomain   string
 	RateLimiter *middleware.RateLimiter
 	Scheduler   *jobs.Scheduler
+	// Capabilities is nil when nothing verifiable is configured.
+	Capabilities *capabilities.Verifier
 }
 
 // Register declares every periodic job. It panics on an invalid declaration:
@@ -127,6 +130,26 @@ func Register(registry *jobs.Registry, d Deps) {
 			return d.Account.PurgeLeftoverFiles(ctx)
 		},
 	})
+
+	// Опрос возможностей: работают ли те, что числятся включёнными.
+	//
+	// Настройки могут сказать только, что они заполнены. Дважды за один день
+	// это оказалось другим вопросом: у почты отозвали пароль приложения, у
+	// провайдера модели кончились средства — и обе возможности продолжали
+	// числиться доступными, пока люди не упёрлись в них руками.
+	//
+	// Раз в час: достаточно часто, чтобы узнать до того, как напишет человек,
+	// и достаточно редко, чтобы не превратиться в нагрузку на провайдеров.
+	if d.Capabilities != nil {
+		registry.MustRegister(jobs.Job{
+			Name:     "capabilities.verify",
+			Interval: time.Hour,
+			Timeout:  5 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				return d.Capabilities.Run(ctx)
+			},
+		})
+	}
 
 	// Одноразовая уборка за стираниями, которые не удалили ничего.
 	//

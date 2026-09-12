@@ -12,6 +12,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/burcev/api/internal/shared/httpx"
 	"net/http"
 	"time"
 )
@@ -32,7 +34,7 @@ func NewClient(token string) *Client {
 	return &Client{
 		token:      token,
 		baseURL:    "https://api.telegram.org",
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		httpClient: httpx.NewClient(15 * time.Second),
 	}
 }
 
@@ -100,4 +102,64 @@ func ValidSecret(expected, received string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare([]byte(expected), []byte(received)) == 1
+}
+
+// VerifyWebhook asks Telegram whether it can still reach us.
+//
+// The most silent failure this bot has. Telegram keeps the last delivery error
+// to itself: if our certificate expires, the route changes or the host refuses
+// the connection, updates simply stop arriving. Nothing is logged here, because
+// nothing reaches here. The bot looks alive — the token works, the process runs
+// — and nobody gets an answer.
+//
+// getWebhookInfo is free and reports the last error Telegram saw. That is the
+// only place this failure is visible from.
+func (c *Client) VerifyWebhook(ctx context.Context, expectedURL string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		fmt.Sprintf("%s/bot%s/getWebhookInfo", c.baseURL, c.token), nil)
+	if err != nil {
+		return fmt.Errorf("build webhook request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("ask telegram about the webhook: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("telegram rejected the bot token")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("telegram answered %d about the webhook", resp.StatusCode)
+	}
+
+	var body struct {
+		OK     bool `json:"ok"`
+		Result struct {
+			URL              string `json:"url"`
+			LastErrorMessage string `json:"last_error_message"`
+			LastErrorDate    int64  `json:"last_error_date"`
+		} `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return fmt.Errorf("decode webhook info: %w", err)
+	}
+	if !body.OK {
+		return fmt.Errorf("telegram refused to describe the webhook")
+	}
+
+	if body.Result.URL == "" {
+		return fmt.Errorf("no webhook is set: nothing reaches the bot")
+	}
+	if expectedURL != "" && body.Result.URL != expectedURL {
+		// Обычно это значит, что вебхук перебила другая среда: токен один, а
+		// адрес у Telegram только один на бота.
+		return fmt.Errorf("webhook points at %s, not at us", body.Result.URL)
+	}
+	if body.Result.LastErrorMessage != "" {
+		return fmt.Errorf("telegram could not deliver: %s", body.Result.LastErrorMessage)
+	}
+
+	return nil
 }

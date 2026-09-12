@@ -7,7 +7,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": false,
   "refresh": "1m",
   "time": {
@@ -855,6 +855,77 @@
           "calcs": [
             "lastNotNull",
             "min"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Откуда приходит refresh-токен",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "burcev-prometheus"
+      },
+      "description": "Приём токена из тела запроса существует только ради вкладок, открытых до перехода на cookie. Убирать его можно, когда доля дойдёт до нуля — иначе разлогинятся те, кто просто давно не перезагружал страницу.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "refId": "A",
+          "range": true,
+          "legendFormat": "из cookie",
+          "expr": "sum(rate(burcev_domain_events_total{environment=\"$environment\", event=\"refresh_from_cookie\"}[1h]))"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "burcev-prometheus"
+          },
+          "editorMode": "code",
+          "refId": "B",
+          "range": true,
+          "legendFormat": "из тела запроса",
+          "expr": "sum(rate(burcev_domain_events_total{environment=\"$environment\", event=\"refresh_from_body\"}[1h]))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
           ],
           "showLegend": true
         },

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/burcev/api/internal/capabilities"
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/jobsetup"
 	"github.com/burcev/api/internal/modules/account"
@@ -31,9 +32,9 @@ import (
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/jobs"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
-	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/telegram"
 	"github.com/burcev/api/internal/shared/telemetry"
@@ -178,12 +179,19 @@ func main() {
 		PathPrefix:      cfg.S3PathPrefix,
 	})
 
-	// Initialize OpenRouter client (for AI food recognition)
-	var orClient *openrouter.Client
-	if cfg.OpenRouterAPIKey != "" {
-		orClient = openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log).
+	// Клиент модели со зрением — для распознавания еды по фото.
+	var orClient *llm.Client
+	// Оба нужны: ключ без имени модели — это запрос, который отклонят, а
+	// возможность при этом числилась бы настроенной.
+	if cfg.VisionAPIKey != "" && cfg.VisionModel != "" {
+		// Распознавание еды идёт к поставщику со зрением, а не к текстовому.
+		// Общий клиент означал бы выдуманный состав блюда: текстовая модель
+		// принимает запрос с картинкой, молча её игнорирует и отвечает по
+		// одному тексту — с кодом 200.
+		orClient = llm.NewClient(cfg.VisionAPIKey, cfg.VisionModel, log).
+			WithEndpoint(cfg.VisionBaseURL, cfg.VisionAuthScheme).
 			WithUsageObserver(telemetry.RecordModelUsage)
-		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
+		log.Info("Vision model client initialized", "model", cfg.VisionModel)
 	}
 
 	// Initialize rate limiter (DB-backed, for password reset)
@@ -295,7 +303,8 @@ func main() {
 	if cfg.Features.SupportBot {
 		supportService = support.NewService(
 			db.DB, log,
-			openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log).
+			llm.NewClient(cfg.LLMAPIKey, cfg.SupportModel, log).
+				WithEndpoint(cfg.LLMBaseURL, cfg.LLMAuthScheme).
 				WithUsageObserver(telemetry.RecordModelUsage),
 			telegram.NewClient(cfg.TelegramBotToken),
 			leadsService,
@@ -359,6 +368,52 @@ func main() {
 	scheduler.SetObserver(func(name string, status jobs.Status, d time.Duration, _ int) {
 		metrics.ObserveJob(name, string(status), d)
 	})
+	// Чем проверять, что возможность не только настроена, но и работает.
+	//
+	// Имена совпадают с признаками в config.Features.Map(), чтобы сломанная
+	// возможность и флаг, уверяющий в обратном, несли одну и ту же метку.
+	var checks []capabilities.Check
+	if emailService != nil {
+		checks = append(checks, capabilities.Check{
+			Name: "email", Verify: emailService.VerifyCredentials,
+		})
+	}
+	// Проверки ключа модели среди возможностей нет: у провайдера нет
+	// бесплатного способа спросить о ключе, а ежечасная трата ради проверки
+	// хуже наблюдения за настоящими отказами. Событие `model_call_failed`
+	// считается на обоих путях, и на него заведено оповещение.
+
+	// Для бота состояние вебхука важнее состояния ключа: если Telegram
+	// перестанет до нас достукиваться, обновления просто не придут, и здесь об
+	// этом не будет ни строчки — потому что сюда ничего не дойдёт.
+	if cfg.TelegramBotToken != "" {
+		bot := telegram.NewClient(cfg.TelegramBotToken)
+		webhookURL := appOrigin(cfg.AppDomain) + "/api/v1/public/support/telegram"
+		checks = append(checks, capabilities.Check{
+			Name: "support_bot",
+			Verify: func(ctx context.Context) error {
+				return bot.VerifyWebhook(ctx, webhookURL)
+			},
+		})
+	}
+	for name, client := range map[string]*storage.S3Client{
+		"weekly_photos":    s3Client,
+		"profile_avatars":  profilePhotosS3,
+		"chat_attachments": chatS3,
+		"content_media":    contentS3,
+		"data_exports":     dataExportsS3,
+	} {
+		if client != nil {
+			checks = append(checks, capabilities.Check{Name: name, Verify: client.Reachable})
+		}
+	}
+
+	var capabilityVerifier *capabilities.Verifier
+	if len(checks) > 0 {
+		capabilityVerifier = capabilities.New(
+			capabilityReporter{}, log, checks...)
+	}
+
 	jobsetup.Register(jobRegistry, jobsetup.Deps{
 		Account:       accountService,
 		Auth:          authService,
@@ -372,6 +427,7 @@ func main() {
 		AppDomain:     cfg.AppDomain,
 		RateLimiter:   rateLimiter,
 		Scheduler:     scheduler,
+		Capabilities:  capabilityVerifier,
 	})
 
 	// Routing lives in internal/router, one file per domain.
@@ -488,4 +544,14 @@ func appOrigin(domain string) string {
 		return "http://localhost:3069"
 	}
 	return "https://" + domain
+}
+
+// capabilityReporter соединяет проверку возможностей с метриками.
+//
+// Отдельный тип, а не передача самих метрик: пакет capabilities поднимает
+// результат и не должен знать, как устроена телеметрия.
+type capabilityReporter struct{}
+
+func (capabilityReporter) SetCapabilityHealth(capability string, healthy bool) {
+	telemetry.SetCapabilityHealth(capability, healthy)
 }

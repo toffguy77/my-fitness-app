@@ -33,6 +33,7 @@ type Metrics struct {
 
 	domainEvents      *prometheus.CounterVec
 	modelPromptTokens *prometheus.CounterVec
+	capabilityHealth  *prometheus.GaugeVec
 }
 
 // DBStatsFunc reports pool statistics on demand. Taking a function rather than
@@ -98,9 +99,24 @@ func New(namespace string, stats DBStatsFunc) *Metrics {
 		Help:      "Prompt tokens sent to the model, split by whether the provider read them from its cache.",
 	}, []string{"cached"})
 
+	// Признак возможности в конфигурации означает «настройки заданы», и никогда
+	// — «они работают». За один день это обмануло дважды: у почты отозвали
+	// пароль приложения, у провайдера модели кончились средства, и обе
+	// возможности продолжали числиться включёнными, ничего не делая.
+	//
+	// Эта метрика отвечает на второй вопрос: 1 — проверено и работает, 0 —
+	// настроено и не работает. Отсутствие означает «не настроено», и это
+	// третье состояние, которое не надо путать с поломкой.
+	m.capabilityHealth = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "capability_healthy",
+		Help:      "Whether a configured capability answers when asked: 1 yes, 0 no.",
+	}, []string{"capability"})
+
 	m.registry.MustRegister(
 		m.httpDuration, m.httpTotal, m.dbDuration,
 		m.jobDuration, m.jobTotal, m.domainEvents, m.modelPromptTokens,
+		m.capabilityHealth,
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
@@ -177,6 +193,35 @@ const (
 	EventMessageSent     = "message_sent"
 	EventFoodRecognized  = "food_recognized"
 	EventEmailSent       = "email_sent"
+	// EventModelCallFailed: обращение к модели не удалось.
+	//
+	// Такой отказ невидим снаружи: бот отвечает «передал вопрос человеку» и
+	// возвращает 200, распознавание еды просто не срабатывает. Ни ошибки в
+	// ответе, ни падения доли 5xx. Именно так закончившиеся средства на счёте
+	// провайдера превращают две возможности в неработающие, а /ready
+	// продолжает показывать их включёнными — признак проверяет наличие ключа,
+	// а не способность им воспользоваться.
+	EventModelCallFailed = "model_call_failed"
+	// Откуда пришёл refresh-токен. Две записи, потому что вопрос «можно ли уже
+	// убрать приём токена из тела» — это вопрос о доле, а не о наличии.
+	//
+	// Тело поддерживается ради страниц, открытых до перехода на cookie: их
+	// сборка ещё умеет только так. Убрать приём раньше, чем доля дойдёт до
+	// нуля, — значит разлогинить тех, кто просто давно не перезагружал вкладку.
+	EventRefreshFromCookie = "refresh_from_cookie"
+	EventRefreshFromBody   = "refresh_from_body"
+	// EventEmailFailed: письмо не ушло после всех попыток.
+	//
+	// Снаружи это почти невидимо: отправка сброса пароля отвечает «если аккаунт
+	// существует, вы получите инструкции» независимо от исхода — так и надо,
+	// иначе по ответу можно перебирать чужие адреса. Человек просто ждёт письма,
+	// которого не будет.
+	//
+	// Проверено на живом: пароль приложения Яндекса перестал приниматься
+	// (`535 Invalid user or password`), и ни один код подтверждения и ни один
+	// сброс не доходили — при этом /ready показывал возможность включённой,
+	// потому что признак смотрит на наличие настроек, а не на их годность.
+	EventEmailFailed = "email_failed"
 )
 
 // RecordEvent counts a product event.
@@ -198,6 +243,18 @@ func (m *Metrics) ObserveModelUsage(promptTokens, cachedTokens int) {
 	}
 	m.modelPromptTokens.WithLabelValues("yes").Add(float64(cachedTokens))
 	m.modelPromptTokens.WithLabelValues("no").Add(float64(promptTokens - cachedTokens))
+}
+
+// SetCapabilityHealth records the outcome of one capability check.
+func (m *Metrics) SetCapabilityHealth(capability string, healthy bool) {
+	if m == nil {
+		return
+	}
+	value := 0.0
+	if healthy {
+		value = 1
+	}
+	m.capabilityHealth.WithLabelValues(capability).Set(value)
 }
 
 func (m *Metrics) RecordEvent(event string) {
@@ -232,5 +289,12 @@ func Record(event string) {
 func RecordModelUsage(promptTokens, cachedTokens int) {
 	if defaultMetrics != nil {
 		defaultMetrics.ObserveModelUsage(promptTokens, cachedTokens)
+	}
+}
+
+// SetCapabilityHealth records a capability check on the default recorder.
+func SetCapabilityHealth(capability string, healthy bool) {
+	if defaultMetrics != nil {
+		defaultMetrics.SetCapabilityHealth(capability, healthy)
 	}
 }

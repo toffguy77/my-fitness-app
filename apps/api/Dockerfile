@@ -1,5 +1,16 @@
 # Build stage
-FROM golang:1.26-alpine AS builder
+# Базовые образы тянутся через зеркало, а не напрямую с Docker Hub.
+#
+# За один день 2026-09-12 семь сборок из десяти упали на `registry-1.docker.io`:
+# то отказ разрешения имени, то обрыв соединения, то ответ по IPv6, до которого
+# с этого хоста не достучаться. Код был ни при чём ни разу.
+#
+# mirror.gcr.io — сквозной кэш Docker Hub, который держит Google: те же самые
+# образы, тот же протокол. Значение вынесено в аргумент: вернуться на Docker Hub
+# — это `--build-arg BASE_REGISTRY=docker.io` и ничего больше.
+ARG BASE_REGISTRY=mirror.gcr.io
+
+FROM ${BASE_REGISTRY}/library/golang:1.26-alpine AS builder
 
 # Install build dependencies
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
@@ -32,7 +43,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
 
 # Development stage
-FROM golang:1.26-alpine AS development
+FROM ${BASE_REGISTRY}/library/golang:1.26-alpine AS development
 
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
 # image tag already fixes the Alpine release, and `apk upgrade` exists to pull
@@ -69,7 +80,7 @@ EXPOSE 4000
 CMD ["air", "-c", ".air.toml"]
 
 # Production runtime
-FROM alpine:3.19 AS production
+FROM ${BASE_REGISTRY}/library/alpine:3.19 AS production
 
 # DL3018 asks for pinned apk versions. We deliberately do not pin: the base
 # image tag already fixes the Alpine release, and `apk upgrade` exists to pull
