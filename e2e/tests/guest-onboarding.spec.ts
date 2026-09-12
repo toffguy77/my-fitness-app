@@ -56,7 +56,7 @@ test.describe('Guest onboarding', () => {
     await page.getByLabel('Email').fill('guest@burcev.test')
     await expect(page.getByRole('button', { name: 'Сохранить и продолжить' })).toBeDisabled()
 
-    await page.getByRole('checkbox', { name: /обработку персональных данных/ }).check()
+    await page.getByRole('checkbox', { name: /обработку моих данных/ }).check()
     await expect(page.getByRole('button', { name: 'Сохранить и продолжить' })).toBeEnabled()
   })
 
