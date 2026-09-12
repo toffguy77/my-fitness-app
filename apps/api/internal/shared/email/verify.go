@@ -8,6 +8,8 @@ import (
 	"net/smtp"
 	"strconv"
 	"time"
+
+	"github.com/burcev/api/internal/shared/httpx"
 )
 
 // VerifyCredentials connects and authenticates, and sends nothing.
@@ -33,19 +35,23 @@ func (s *Service) VerifyCredentials(ctx context.Context) error {
 	dialCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	var conn net.Conn
-	var err error
-	if s.smtpPort == 465 {
-		dialer := &tls.Dialer{Config: &tls.Config{
-			ServerName: s.smtpHost,
-			MinVersion: tls.VersionTLS12,
-		}}
-		conn, err = dialer.DialContext(dialCtx, "tcp", addr)
-	} else {
-		conn, err = (&net.Dialer{}).DialContext(dialCtx, "tcp", addr)
-	}
+	// Через httpx, а не напрямую: у smtp.yandex.ru есть адрес IPv6, а на этом
+	// хосте в IPv6 нет маршрута. Проверка, которая сама не может дозвониться,
+	// объявила бы исправную почту сломанной.
+	conn, err := httpx.DialContext(dialCtx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("connect to %s: %w", addr, err)
+	}
+	if s.smtpPort == 465 {
+		tlsConn := tls.Client(conn, &tls.Config{
+			ServerName: s.smtpHost,
+			MinVersion: tls.VersionTLS12,
+		})
+		if err := tlsConn.HandshakeContext(dialCtx); err != nil {
+			_ = conn.Close()
+			return fmt.Errorf("tls handshake with %s: %w", addr, err)
+		}
+		conn = tlsConn
 	}
 	defer func() { _ = conn.Close() }()
 

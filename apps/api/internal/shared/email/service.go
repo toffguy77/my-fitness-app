@@ -10,6 +10,7 @@ import (
 	"net/smtp"
 	"time"
 
+	"github.com/burcev/api/internal/shared/httpx"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/telemetry"
 )
@@ -22,6 +23,7 @@ type Service struct {
 	smtpPassword string
 	fromAddress  string
 	fromName     string
+	replyTo      string
 	log          *logger.Logger
 	templates    *template.Template
 }
@@ -34,6 +36,8 @@ type Config struct {
 	SMTPPassword string
 	FromAddress  string
 	FromName     string
+	// ReplyTo is where answers go. Пусто — заголовка нет.
+	ReplyTo string
 }
 
 // ResetEmailData contains data for password reset email template
@@ -137,6 +141,7 @@ func NewService(cfg Config, log *logger.Logger) (*Service, error) {
 		smtpPassword: cfg.SMTPPassword,
 		fromAddress:  cfg.FromAddress,
 		fromName:     cfg.FromName,
+		replyTo:      cfg.ReplyTo,
 		log:          log,
 		templates:    templates,
 	}, nil
@@ -347,6 +352,11 @@ func (s *Service) sendEmail(ctx context.Context, to, subject, body string) error
 	headers["MIME-Version"] = "1.0"
 	headers["Content-Type"] = "text/html; charset=UTF-8"
 	headers["Date"] = time.Now().Format(time.RFC1123Z)
+	// Почта уходит с ящика, который никто не читает. Человек, ответивший на
+	// письмо, должен попасть к людям, а не в пустоту.
+	if s.replyTo != "" {
+		headers["Reply-To"] = s.replyTo
+	}
 
 	message := ""
 	for k, v := range headers {
@@ -389,12 +399,18 @@ func (s *Service) sendEmailTLS(addr string, auth smtp.Auth, to string, message [
 	// calling goroutine indefinitely.
 	dialCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	dialer := &tls.Dialer{Config: tlsConfig}
-	netConn, err := dialer.DialContext(dialCtx, "tcp", addr)
+	// Через httpx: у smtp.yandex.ru есть адрес IPv6, а на этом хосте в IPv6 нет
+	// маршрута. Тот же отказ уже обездвижил бота поддержки — там он выглядел
+	// как неисправность Telegram, здесь выглядел бы как неисправность Яндекса.
+	rawConn, err := httpx.DialContext(dialCtx, "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
-	conn := netConn.(*tls.Conn)
+	conn := tls.Client(rawConn, tlsConfig)
+	if err := conn.HandshakeContext(dialCtx); err != nil {
+		_ = rawConn.Close()
+		return fmt.Errorf("failed tls handshake: %w", err)
+	}
 	defer func() { _ = conn.Close() }()
 
 	// Create SMTP client

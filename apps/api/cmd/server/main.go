@@ -117,6 +117,7 @@ func main() {
 			SMTPPassword: cfg.SMTPPassword,
 			FromAddress:  cfg.SMTPFromAddress,
 			FromName:     cfg.SMTPFromName,
+			ReplyTo:      cfg.SMTPReplyTo,
 		}, log)
 		if err != nil {
 			log.Fatal("Failed to initialize email service", "error", err)
