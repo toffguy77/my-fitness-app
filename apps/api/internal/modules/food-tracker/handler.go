@@ -10,9 +10,9 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/database"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
-	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/telemetry"
@@ -56,7 +56,7 @@ type FoodExtrasService interface {
 	CreateCustomRecommendation(ctx context.Context, userID int64, req *CreateCustomRecommendationRequest) (*UserCustomRecommendation, error)
 	CheckRecognitionLimit(ctx context.Context, userID int64, dailyLimit int) (remaining int, err error)
 	RecordRecognitionUsage(ctx context.Context, userID int64, photoURL string, foodsCount int) error
-	RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *openrouter.Client) (*AIRecognitionResponse, error)
+	RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *llm.Client) (*AIRecognitionResponse, error)
 }
 
 // Handler handles food tracker requests
@@ -65,7 +65,7 @@ type Handler struct {
 	log       *logger.Logger
 	db        *database.DB
 	s3        *storage.S3Client
-	orClient  *openrouter.Client
+	orClient  *llm.Client
 	entries   FoodEntriesService
 	search    FoodSearchService
 	userFoods UserFoodsService
@@ -73,7 +73,7 @@ type Handler struct {
 }
 
 // NewHandler creates a new food tracker handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client, orClient *openrouter.Client) *Handler {
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client, orClient *llm.Client) *Handler {
 	svc := NewService(db, log)
 	return &Handler{
 		cfg:       cfg,

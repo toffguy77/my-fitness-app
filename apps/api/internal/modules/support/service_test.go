@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ type fakeAnswerer struct {
 	lastAsk string
 }
 
-func (f *fakeAnswerer) Ask(_ context.Context, prefix, question string, _ []openrouter.Turn) (string, error) {
+func (f *fakeAnswerer) Ask(_ context.Context, prefix, question string, _ []llm.Turn) (string, error) {
 	f.calls++
 	f.prefix = prefix
 	f.lastAsk = question

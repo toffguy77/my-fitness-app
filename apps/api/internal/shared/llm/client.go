@@ -1,11 +1,10 @@
-package openrouter
+package llm
 
 import (
 	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,17 +16,29 @@ import (
 )
 
 const (
-	DefaultBaseURL = "https://openrouter.ai/api/v1/chat/completions"
-	// Both defaults are overridable by configuration: which model answers, and
-	// what it costs, is an operational decision rather than a constant. The
-	// previous default here was pinned to a model two generations old.
-	DefaultModel = "anthropic/claude-sonnet-5"
-	// The support bot reads the whole documentation corpus on every question,
-	// so the prefix is cached and a stronger model is affordable.
-	DefaultSupportModel = "anthropic/claude-opus-5"
-	Timeout             = 30 * time.Second
-	UserAgent           = "BurcevFitnessApp/1.0 (https://burcev.team)"
+	// DefaultBaseURL — OpenAI-совместимый эндпоинт Yandex Foundation Models.
+	//
+	// Переехали с OpenRouter: он принимает оплату только картами, которые
+	// здесь не проходят. Замер перед переездом показал, что менять почти
+	// нечего и что стало лучше — провайдер кэширует префикс (99,8% из кэша на
+	// втором запросе) и считает его в 14 267 токенов вместо 25 410,
+	// токенизатор эффективнее для русского. Поле
+	// `prompt_tokens_details.cached_tokens` приходит в том же виде.
+	DefaultBaseURL = "https://llm.api.cloud.yandex.net/v1/chat/completions"
+
+	// DefaultAuthScheme: Яндекс ждёт `Api-Key`, а не `Bearer`.
+	DefaultAuthScheme = "Api-Key"
+
+	Timeout   = 30 * time.Second
+	UserAgent = "BurcevFitnessApp/1.0 (https://burcev.team)"
 )
+
+// Умолчания для имени модели нет намеренно.
+//
+// У Яндекса имя включает идентификатор каталога — `gpt://<каталог>/yandexgpt/
+// latest`, — то есть оно у каждой установки своё. Константа здесь была бы либо
+// чужой, либо ломающейся молча: запрос с неверным именем отклоняется, а
+// возможность при этом числилась бы настроенной.
 
 // RecognizedFoodItem represents a food item recognized from a photo by the AI model.
 type RecognizedFoodItem struct {
@@ -54,12 +65,29 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 	log        *logger.Logger
+	// authScheme — слово перед ключом в заголовке Authorization. У провайдеров
+	// оно разное: `Bearer` у OpenAI-совместимых, `Api-Key` у Яндекса.
+	authScheme string
 
 	// observeUsage, when set, receives what each call cost in prompt tokens and
 	// how much of that the provider served from its cache. Optional: the client
 	// is used in places that have no metrics wired, and a nil check is cheaper
 	// than making every caller supply one.
 	observeUsage func(promptTokens, cachedTokens int)
+}
+
+// WithEndpoint points the client at a different provider.
+//
+// Оба значения вместе: адрес без схемы авторизации — это запрос, который
+// отклонят, и разбираться придётся по коду ответа вместо очевидного.
+func (c *Client) WithEndpoint(baseURL, authScheme string) *Client {
+	if baseURL != "" {
+		c.baseURL = baseURL
+	}
+	if authScheme != "" {
+		c.authScheme = authScheme
+	}
+	return c
 }
 
 // WithUsageObserver reports token usage for every call.
@@ -75,13 +103,11 @@ func (c *Client) WithUsageObserver(fn func(promptTokens, cachedTokens int)) *Cli
 
 // NewClient creates a new OpenRouter API client.
 func NewClient(apiKey, model string, log *logger.Logger) *Client {
-	if model == "" {
-		model = DefaultModel
-	}
 	return &Client{
 		apiKey:     apiKey,
 		model:      model,
 		baseURL:    DefaultBaseURL,
+		authScheme: DefaultAuthScheme,
 		httpClient: &http.Client{Timeout: Timeout},
 		log:        log,
 	}
@@ -216,7 +242,7 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Authorization", c.authScheme+" "+c.apiKey)
 	req.Header.Set("HTTP-Referer", "https://burcev.team")
 	req.Header.Set("User-Agent", UserAgent)
 
@@ -322,7 +348,7 @@ func (c *Client) Ask(ctx context.Context, cachedPrefix, question string, history
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Authorization", c.authScheme+" "+c.apiKey)
 	req.Header.Set("HTTP-Referer", "https://burcev.team")
 	req.Header.Set("User-Agent", UserAgent)
 
@@ -366,47 +392,11 @@ type Turn struct {
 	Text string
 }
 
-// VerifyKey asks the provider whether this key can still be used.
+// Отдельной проверки ключа здесь нет намеренно.
 //
-// Free: it reads the key's own state rather than spending a request on the
-// model. Worth having, because "the key is set" and "the key works" came apart
-// in practice — the account ran out of credit, every call started failing with
-// 402, and both capabilities that depend on it went on reporting themselves as
-// available while quietly doing nothing.
-func (c *Client) VerifyKey(ctx context.Context) error {
-	// baseURL — это полный адрес завершения чата, а не корень API: сведения о
-	// ключе лежат рядом с ним, а не под ним.
-	root := strings.TrimSuffix(c.baseURL, "/chat/completions")
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, root+"/key", nil)
-	if err != nil {
-		return fmt.Errorf("build key request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("ask provider about the key: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	switch {
-	case resp.StatusCode == http.StatusOK:
-		return nil
-	case resp.StatusCode == http.StatusUnauthorized,
-		resp.StatusCode == http.StatusPaymentRequired:
-		// Ключ отозван или средства кончились: это ответ о самом ключе.
-		return fmt.Errorf("provider rejected the key: %d", resp.StatusCode)
-	default:
-		// Всё прочее — отказ разговаривать, а не показание о ключе. С этого
-		// сервера, например, сведения о ключе отдаются 403, хотя запросы к
-		// модели доходят. Считать это поломкой значит поднимать тревогу о том,
-		// чего мы не знаем.
-		return fmt.Errorf("%w: provider answered %d about the key",
-			ErrKeyStateUnknown, resp.StatusCode)
-	}
-}
-
-// ErrKeyStateUnknown: провайдер не сообщил состояние ключа. Не то же самое,
-// что «ключ не годится».
-var ErrKeyStateUnknown = errors.New("key state unknown")
+// У прежнего провайдера был бесплатный эндпоинт состояния ключа; у Яндекса
+// такого нет, и единственный способ спросить — потратить запрос. Ежечасная
+// трата ради проверки хуже, чем наблюдение за настоящими отказами: событие
+// `model_call_failed` считается на обоих путях, и на него заведено
+// оповещение. Сломанный ключ станет виден в течение пятнадцати минут после
+// первого живого обращения, и бесплатно.

@@ -1,8 +1,7 @@
-package openrouter
+package llm
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -107,13 +106,23 @@ func TestSupportRequestCapsTheAnswer(t *testing.T) {
 		"потолок должен оставаться скромным: инструкция велит отвечать двумя-тремя предложениями")
 }
 
-// Сведения о ключе лежат рядом с завершением чата, а не под ним: baseURL —
-// это полный адрес запроса к модели. Проверка, собранная невнимательно,
-// стучалась бы в .../chat/completions/key и всегда сообщала бы о поломке —
-// то есть шумела бы ровно там, где должна была успокаивать.
-func TestKeyCheckAsksTheRightAddress(t *testing.T) {
-	root := strings.TrimSuffix(DefaultBaseURL, "/chat/completions")
+// Схема авторизации у провайдеров разная: `Bearer` у OpenAI-совместимых,
+// `Api-Key` у Яндекса. Запрос с чужой схемой отклоняется, и разбираться
+// пришлось бы по коду ответа вместо очевидного — поэтому адрес и схема
+// задаются вместе, одним вызовом.
+func TestEndpointAndSchemeTravelTogether(t *testing.T) {
+	c := NewClient("ключ", "модель", nil)
 
-	assert.Equal(t, "https://openrouter.ai/api/v1", root)
-	assert.NotContains(t, root+"/key", "chat/completions")
+	assert.Equal(t, DefaultAuthScheme, c.authScheme, "по умолчанию — схема Яндекса")
+	assert.Equal(t, DefaultBaseURL, c.baseURL)
+
+	c.WithEndpoint("https://openrouter.ai/api/v1/chat/completions", "Bearer")
+	assert.Equal(t, "Bearer", c.authScheme)
+	assert.Contains(t, c.baseURL, "openrouter")
+
+	// Пустые значения ничего не портят: так конфигурация без явных настроек
+	// оставляет умолчания, а не обнуляет их.
+	c.WithEndpoint("", "")
+	assert.Equal(t, "Bearer", c.authScheme)
+	assert.Contains(t, c.baseURL, "openrouter")
 }

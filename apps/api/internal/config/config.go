@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/burcev/api/internal/shared/openrouter"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/joho/godotenv"
 )
 
@@ -199,7 +199,11 @@ type Config struct {
 	TelegramWebhookSecret string
 	TelegramBotUsername   string
 	SupportModel          string
-	SupportDailyLimit     int
+	// LLMBaseURL и LLMAuthScheme описывают поставщика модели. Вместе, а не по
+	// отдельности: адрес без схемы авторизации — это запрос, который отклонят.
+	LLMBaseURL        string
+	LLMAuthScheme     string
+	SupportDailyLimit int
 
 	// NotificationEmailDelay is how long a notification is given to be read in
 	// the application before it is worth an email. Zero uses the default.
@@ -339,16 +343,23 @@ func Load() (*Config, error) {
 		VKOAuthClientID:         getEnv("VK_OAUTH_CLIENT_ID", ""),
 		VKOAuthClientSecret:     getEnv("VK_OAUTH_CLIENT_SECRET", ""),
 
-		// OpenRouter (AI food recognition)
-		OpenRouterAPIKey:          getEnv("OPENROUTER_API_KEY", ""),
-		OpenRouterModel:           getEnv("OPENROUTER_MODEL", openrouter.DefaultModel),
+		// Модель: распознавание еды и бот поддержки.
+		//
+		// Имена переменных больше не называют поставщика: он сменился с
+		// OpenRouter на Yandex Foundation Models, и названия, привязанные к
+		// одному из них, врали бы при следующей смене. Прежние имена приняты
+		// как запасные, чтобы окружение можно было перевести не в один миг.
+		OpenRouterAPIKey:          getEnvWithFallback("LLM_API_KEY", "OPENROUTER_API_KEY", ""),
+		OpenRouterModel:           getEnvWithFallback("LLM_MODEL", "OPENROUTER_MODEL", ""),
+		LLMBaseURL:                getEnv("LLM_BASE_URL", llm.DefaultBaseURL),
+		LLMAuthScheme:             getEnv("LLM_AUTH_SCHEME", llm.DefaultAuthScheme),
 		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:              getEnv("VAPID_SUBJECT", ""),
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
-		SupportModel:              getEnv("SUPPORT_MODEL", openrouter.DefaultSupportModel),
+		SupportModel:              getEnv("SUPPORT_MODEL", ""),
 		SupportDailyLimit:         getEnvAsInt("SUPPORT_DAILY_LIMIT", 500),
 		NotificationEmailDelay:    getEnvAsDuration("NOTIFICATION_EMAIL_DELAY", 0),
 		FoodRecognitionDailyLimit: getEnvAsInt("FOOD_RECOGNITION_DAILY_LIMIT", 3),
@@ -371,8 +382,12 @@ func Load() (*Config, error) {
 func deriveFeatures(c *Config) Features {
 	s3 := func(key, secret string) bool { return key != "" && secret != "" }
 	return Features{
-		Email:           c.SMTPUsername != "" && c.SMTPPassword != "" && c.SMTPFromAddress != "",
-		FoodRecognition: c.OpenRouterAPIKey != "",
+		Email: c.SMTPUsername != "" && c.SMTPPassword != "" && c.SMTPFromAddress != "",
+		// Ключа мало: у имени модели нет умолчания, потому что оно включает
+		// идентификатор каталога и у каждой установки своё. Запрос без имени
+		// отклоняется, и возможность, числящаяся включённой по одному ключу,
+		// снова врала бы.
+		FoodRecognition: c.OpenRouterAPIKey != "" && c.OpenRouterModel != "",
 		WeeklyPhotos:    s3(c.WeeklyPhotosS3AccessKeyID, c.WeeklyPhotosS3SecretAccessKey),
 		ProfileAvatars:  s3(c.ProfilePhotosS3AccessKeyID, c.ProfilePhotosS3SecretAccessKey),
 		ChatAttachments: s3(c.ChatS3AccessKeyID, c.ChatS3SecretAccessKey),
@@ -380,7 +395,8 @@ func deriveFeatures(c *Config) Features {
 		DataExports:     s3(c.DataExportsS3AccessKeyID, c.DataExportsS3SecretAccessKey),
 		// The bot needs all three: a token to reply with, a secret to tell a
 		// genuine update from anybody's POST, and a model to answer with.
-		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" && c.OpenRouterAPIKey != "",
+		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" &&
+			c.OpenRouterAPIKey != "" && c.SupportModel != "",
 		// Both halves of the key pair and a contact address: a push service
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",

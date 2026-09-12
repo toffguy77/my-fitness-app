@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +27,7 @@ type usage struct {
 	prompt, cached int
 }
 
-func liveClient(t *testing.T, seen *[]usage) *openrouter.Client {
+func liveClient(t *testing.T, seen *[]usage) *llm.Client {
 	t.Helper()
 	key := os.Getenv("OPENROUTER_API_KEY")
 	if key == "" {
@@ -35,9 +35,9 @@ func liveClient(t *testing.T, seen *[]usage) *openrouter.Client {
 	}
 	model := os.Getenv("SUPPORT_MODEL")
 	if model == "" {
-		model = openrouter.DefaultSupportModel
+		model = llm.DefaultSupportModel
 	}
-	return openrouter.NewClient(key, model, logger.New()).
+	return llm.NewClient(key, model, logger.New()).
 		WithUsageObserver(func(prompt, cached int) {
 			*seen = append(*seen, usage{prompt, cached})
 		})

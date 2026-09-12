@@ -86,3 +86,20 @@ func TestPrefix_CarriesTheRulesAndTheWholeCorpus(t *testing.T) {
 	assert.Less(t, strings.Index(prefix, "ТОЛЬКО по документации"),
 		strings.Index(prefix, "=== 01"))
 }
+
+// Выгрузка префикса для замеров вне Go: `PREFIX_OUT=/tmp/prefix.txt go test ...`.
+//
+// Замер кэширования у провайдера делается curl'ом, и ему нужен тот же самый
+// байт в байт префикс — собранный отсюда, а не переписанный руками. Переписанный
+// отличался бы, и замер отвечал бы на другой вопрос.
+func TestDumpPrefixForMeasurement(t *testing.T) {
+	out := os.Getenv("PREFIX_OUT")
+	if out == "" {
+		t.Skip("PREFIX_OUT не задан — выгрузка не нужна")
+	}
+
+	prefix, err := buildPrefix()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(out, []byte(prefix), 0o600))
+	t.Logf("префикс записан в %s: %d байт", out, len(prefix))
+}

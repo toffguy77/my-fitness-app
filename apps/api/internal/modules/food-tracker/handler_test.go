@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
-	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -169,7 +169,7 @@ func (m *MockService) RecordRecognitionUsage(ctx context.Context, userID int64, 
 	return args.Error(0)
 }
 
-func (m *MockService) RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *openrouter.Client) (*AIRecognitionResponse, error) {
+func (m *MockService) RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *llm.Client) (*AIRecognitionResponse, error) {
 	args := m.Called(ctx, userID, imageData, contentType, s3PhotoURL, dailyLimit, orClient)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -236,7 +236,7 @@ func setupTestHandlerWithMock() (*Handler, *MockService) {
 		search:    mockService,
 		userFoods: mockService,
 		extras:    mockService,
-		orClient:  openrouter.NewClient("test-key", "", log),
+		orClient:  llm.NewClient("test-key", "", log),
 	}
 
 	return handler, mockService
@@ -513,7 +513,7 @@ func TestRecognizeFood_Success(t *testing.T) {
 		RemainingRecognitions: 19,
 	}
 
-	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*openrouter.Client")).
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
 		Return(expectedResp, nil)
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
@@ -584,7 +584,7 @@ func TestRecognizeFood_LimitExceeded(t *testing.T) {
 
 	imageData := testPNG(t)
 
-	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*openrouter.Client")).
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
 		Return(nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня"))
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)

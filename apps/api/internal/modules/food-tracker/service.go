@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/shared/database"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/openfoodfacts"
-	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/google/uuid"
 )
 
@@ -2376,7 +2376,7 @@ func (s *Service) RecordRecognitionUsage(ctx context.Context, userID int64, phot
 }
 
 // RecognizeFood orchestrates AI food recognition: check limit, call OpenRouter, map results, record usage
-func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *openrouter.Client) (*AIRecognitionResponse, error) {
+func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *llm.Client) (*AIRecognitionResponse, error) {
 	// Check daily limit
 	remaining, err := s.CheckRecognitionLimit(ctx, userID, dailyLimit)
 	if err != nil {

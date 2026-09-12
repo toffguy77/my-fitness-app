@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -33,9 +32,9 @@ import (
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/jobs"
+	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
-	"github.com/burcev/api/internal/shared/openrouter"
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/telegram"
 	"github.com/burcev/api/internal/shared/telemetry"
@@ -181,9 +180,10 @@ func main() {
 	})
 
 	// Initialize OpenRouter client (for AI food recognition)
-	var orClient *openrouter.Client
+	var orClient *llm.Client
 	if cfg.OpenRouterAPIKey != "" {
-		orClient = openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log).
+		orClient = llm.NewClient(cfg.OpenRouterAPIKey, cfg.OpenRouterModel, log).
+			WithEndpoint(cfg.LLMBaseURL, cfg.LLMAuthScheme).
 			WithUsageObserver(telemetry.RecordModelUsage)
 		log.Info("OpenRouter client initialized", "model", cfg.OpenRouterModel)
 	}
@@ -297,7 +297,8 @@ func main() {
 	if cfg.Features.SupportBot {
 		supportService = support.NewService(
 			db.DB, log,
-			openrouter.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log).
+			llm.NewClient(cfg.OpenRouterAPIKey, cfg.SupportModel, log).
+				WithEndpoint(cfg.LLMBaseURL, cfg.LLMAuthScheme).
 				WithUsageObserver(telemetry.RecordModelUsage),
 			telegram.NewClient(cfg.TelegramBotToken),
 			leadsService,
@@ -371,22 +372,10 @@ func main() {
 			Name: "email", Verify: emailService.VerifyCredentials,
 		})
 	}
-	if orClient != nil {
-		// Две возможности на одном ключе: когда у провайдера кончаются
-		// средства, отказывают обе.
-		// Отказ провайдера обсуждать ключ — это не показание о ключе, и
-		// переводится в «нечего сказать», чтобы не поднимать тревогу вслепую.
-		verifyModel := func(ctx context.Context) error {
-			if err := orClient.VerifyKey(ctx); err != nil {
-				if errors.Is(err, openrouter.ErrKeyStateUnknown) {
-					return fmt.Errorf("%w: %v", capabilities.ErrIndeterminate, err)
-				}
-				return err
-			}
-			return nil
-		}
-		checks = append(checks, capabilities.Check{Name: "food_recognition", Verify: verifyModel})
-	}
+	// Проверки ключа модели среди возможностей нет: у провайдера нет
+	// бесплатного способа спросить о ключе, а ежечасная трата ради проверки
+	// хуже наблюдения за настоящими отказами. Событие `model_call_failed`
+	// считается на обоих путях, и на него заведено оповещение.
 
 	// Для бота состояние вебхука важнее состояния ключа: если Telegram
 	// перестанет до нас достукиваться, обновления просто не придут, и здесь об

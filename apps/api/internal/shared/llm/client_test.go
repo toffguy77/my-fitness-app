@@ -1,4 +1,4 @@
-package openrouter
+package llm
 
 import (
 	"context"
@@ -41,7 +41,9 @@ func TestRecognizeFood_Success(t *testing.T) {
 		// Verify request
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "Bearer test-api-key", r.Header.Get("Authorization"))
+		// Схема по умолчанию — Api-Key: у нынешнего провайдера она такая, а
+		// `Bearer` остаётся доступен через WithEndpoint для OpenAI-совместимых.
+		assert.Equal(t, DefaultAuthScheme+" test-api-key", r.Header.Get("Authorization"))
 
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
@@ -269,16 +271,20 @@ func TestRecognizeFood_Timeout(t *testing.T) {
 	assert.Contains(t, err.Error(), "request failed")
 }
 
-func TestNewClient_DefaultModel(t *testing.T) {
+// Умолчания для имени модели нет намеренно: у Яндекса оно включает
+// идентификатор каталога и у каждой установки своё. Пустое имя остаётся
+// пустым, и возможность считается ненастроенной — вместо того чтобы слать
+// запросы с чужим именем и получать отказ на каждый.
+func TestNewClient_ModelHasNoDefault(t *testing.T) {
 	log := logger.New()
 	c := NewClient("key", "", log)
-	assert.Equal(t, DefaultModel, c.model)
+	assert.Empty(t, c.model)
 }
 
 func TestNewClient_CustomModel(t *testing.T) {
 	log := logger.New()
-	c := NewClient("key", "openai/gpt-4o", log)
-	assert.Equal(t, "openai/gpt-4o", c.model)
+	c := NewClient("key", "gpt://каталог/yandexgpt/latest", log)
+	assert.Equal(t, "gpt://каталог/yandexgpt/latest", c.model)
 }
 
 func TestStripMarkdownCodeFences(t *testing.T) {
