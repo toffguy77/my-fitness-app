@@ -385,9 +385,21 @@ func main() {
 			}
 			return nil
 		}
-		checks = append(checks,
-			capabilities.Check{Name: "food_recognition", Verify: verifyModel},
-			capabilities.Check{Name: "support_bot", Verify: verifyModel})
+		checks = append(checks, capabilities.Check{Name: "food_recognition", Verify: verifyModel})
+	}
+
+	// Для бота состояние вебхука важнее состояния ключа: если Telegram
+	// перестанет до нас достукиваться, обновления просто не придут, и здесь об
+	// этом не будет ни строчки — потому что сюда ничего не дойдёт.
+	if cfg.TelegramBotToken != "" {
+		bot := telegram.NewClient(cfg.TelegramBotToken)
+		webhookURL := appOrigin(cfg.AppDomain) + "/api/v1/public/support/telegram"
+		checks = append(checks, capabilities.Check{
+			Name: "support_bot",
+			Verify: func(ctx context.Context) error {
+				return bot.VerifyWebhook(ctx, webhookURL)
+			},
+		})
 	}
 	for name, client := range map[string]*storage.S3Client{
 		"weekly_photos":    s3Client,
