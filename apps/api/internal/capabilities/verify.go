@@ -14,8 +14,18 @@ package capabilities
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrIndeterminate says the check could not answer — not that the capability is
+// broken.
+//
+// The difference matters. A provider that refuses to discuss the key from this
+// network, or a container DNS that misbehaves for a second, tells us nothing
+// about whether people can use the feature. Reporting that as a failure is how
+// an alert becomes something people scroll past.
+var ErrIndeterminate = errors.New("check could not answer")
 
 // Check is one capability and the question that settles it.
 type Check struct {
@@ -63,9 +73,13 @@ func New(report Reporter, log Logger, checks ...Check) *Verifier {
 // the service down because a bucket was briefly unreachable.
 func (v *Verifier) Run(ctx context.Context) (broken int, err error) {
 	for _, check := range v.checks {
-		checkCtx, cancel := context.WithTimeout(ctx, v.timeout)
-		failure := check.Verify(checkCtx)
-		cancel()
+		failure := v.attempt(ctx, check)
+
+		// Нечего сказать — не говорим ничего: прежнее показание остаётся, и
+		// тревога не поднимается на пустом месте.
+		if errors.Is(failure, ErrIndeterminate) {
+			continue
+		}
 
 		healthy := failure == nil
 		if v.report != nil {
@@ -93,4 +107,29 @@ func (v *Verifier) Run(ctx context.Context) (broken int, err error) {
 	}
 
 	return broken, nil
+}
+
+// attempt runs one check, retrying once.
+//
+// Container DNS misbehaves for a second at a time on this host — the database
+// connection log is full of it. A single blip is not an outage, and an alert
+// that fires on one is an alert people learn to ignore.
+func (v *Verifier) attempt(ctx context.Context, check Check) error {
+	var last error
+	for i := range 2 {
+		if i > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(3 * time.Second):
+			}
+		}
+		checkCtx, cancel := context.WithTimeout(ctx, v.timeout)
+		last = check.Verify(checkCtx)
+		cancel()
+		if last == nil || errors.Is(last, ErrIndeterminate) {
+			return last
+		}
+	}
+	return last
 }

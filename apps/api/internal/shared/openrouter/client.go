@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -389,8 +390,23 @@ func (c *Client) VerifyKey(ctx context.Context) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("provider answered %d about the key", resp.StatusCode)
+	switch {
+	case resp.StatusCode == http.StatusOK:
+		return nil
+	case resp.StatusCode == http.StatusUnauthorized,
+		resp.StatusCode == http.StatusPaymentRequired:
+		// Ключ отозван или средства кончились: это ответ о самом ключе.
+		return fmt.Errorf("provider rejected the key: %d", resp.StatusCode)
+	default:
+		// Всё прочее — отказ разговаривать, а не показание о ключе. С этого
+		// сервера, например, сведения о ключе отдаются 403, хотя запросы к
+		// модели доходят. Считать это поломкой значит поднимать тревогу о том,
+		// чего мы не знаем.
+		return fmt.Errorf("%w: provider answered %d about the key",
+			ErrKeyStateUnknown, resp.StatusCode)
 	}
-	return nil
 }
+
+// ErrKeyStateUnknown: провайдер не сообщил состояние ключа. Не то же самое,
+// что «ключ не годится».
+var ErrKeyStateUnknown = errors.New("key state unknown")

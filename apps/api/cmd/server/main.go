@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -373,9 +374,20 @@ func main() {
 	if orClient != nil {
 		// Две возможности на одном ключе: когда у провайдера кончаются
 		// средства, отказывают обе.
+		// Отказ провайдера обсуждать ключ — это не показание о ключе, и
+		// переводится в «нечего сказать», чтобы не поднимать тревогу вслепую.
+		verifyModel := func(ctx context.Context) error {
+			if err := orClient.VerifyKey(ctx); err != nil {
+				if errors.Is(err, openrouter.ErrKeyStateUnknown) {
+					return fmt.Errorf("%w: %v", capabilities.ErrIndeterminate, err)
+				}
+				return err
+			}
+			return nil
+		}
 		checks = append(checks,
-			capabilities.Check{Name: "food_recognition", Verify: orClient.VerifyKey},
-			capabilities.Check{Name: "support_bot", Verify: orClient.VerifyKey})
+			capabilities.Check{Name: "food_recognition", Verify: verifyModel},
+			capabilities.Check{Name: "support_bot", Verify: verifyModel})
 	}
 	for name, client := range map[string]*storage.S3Client{
 		"weekly_photos":    s3Client,

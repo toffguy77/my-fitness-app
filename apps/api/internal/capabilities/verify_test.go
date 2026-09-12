@@ -92,3 +92,20 @@ func TestBrokenCapabilityIsNotAnError(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, broken)
 }
+
+// «Не смог ответить» и «не работает» — разные вещи. Провайдер, отказавшийся
+// обсуждать ключ с этого сервера, не сообщает ничего о том, могут ли люди
+// пользоваться возможностью. Показание при этом должно остаться прежним.
+func TestIndeterminateLeavesTheReadingAlone(t *testing.T) {
+	report := &recordingReporter{}
+	v := New(report, &recordingLogger{}, Check{
+		Name:   "food_recognition",
+		Verify: func(context.Context) error { return ErrIndeterminate },
+	})
+
+	broken, err := v.Run(context.Background())
+
+	require.NoError(t, err)
+	assert.Zero(t, broken, "неизвестность — не поломка")
+	assert.Zero(t, report.n, "показание не трогаем: прежнее вернее выдуманного")
+}
