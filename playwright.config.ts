@@ -15,6 +15,19 @@ dotenv.config({ path: path.resolve(__dirname, 'e2e', '.env') })
 const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3070'
 const isStaging = !!process.env.E2E_BASE_URL
 
+// Куда именно поедет набор — вслух, до первой проверки.
+//
+// E2E_BASE_URL можно задать в e2e/.env, и тогда `npm run test:e2e` молча
+// уходит на удалённый стенд вместо локального: тесты пишут туда данные, а
+// локальный API при этом не получает ни одного запроса и выглядит исправным.
+// Отказы приходят от чужого ограничителя попыток и объясняют не то.
+// Строка ниже стоит ноль и снимает весь этот класс недоразумений.
+console.log(
+    isStaging
+        ? `E2E: удалённый стенд ${baseURL} (из E2E_BASE_URL — данные пишутся туда)`
+        : `E2E: локальный стенд ${baseURL}`,
+)
+
 export default defineConfig<SessionOptions>({
   testDir: './e2e',
   fullyParallel: true,
