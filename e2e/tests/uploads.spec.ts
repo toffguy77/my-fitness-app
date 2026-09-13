@@ -1,4 +1,4 @@
-import type { BrowserContext } from '@playwright/test'
+import type { APIResponse, BrowserContext } from '@playwright/test'
 
 import { test, expect, signIn, asUser } from '../fixtures/session'
 
@@ -47,12 +47,26 @@ interface Point {
     role: 'client' | 'curator'
     /** Некоторые точки требуют дополнительных полей формы. */
     extra?: Record<string, string>
-    /**
-     * Точка за выключенной возможностью отвечает 503 на что угодно, и проверять
-     * на ней разбор типов бессмысленно — до него дело не доходит. Но сам отказ
-     * проверять надо: «одинаково и внятно» — это обещание, а не следствие.
-     */
-    mayBeDisabled?: boolean
+}
+
+/**
+ * Возможность выключена?
+ *
+ * Загрузки держатся на хранилище, распознавание еды — на ключе модели. Ни того
+ * ни другого может не быть: в CI нет учётных данных S3 вовсе. Это не поломка, и
+ * обещание продукта здесь — отвечать одинаково и машиночитаемо, а не падать.
+ * Проверяем именно обещание, а на остальных утверждениях честно
+ * останавливаемся: без хранилища успешную загрузку проверить нечем.
+ */
+async function declinedAsUnavailable(response: APIResponse, where: string): Promise<boolean> {
+    if (response.status() !== 503) return false
+
+    const body = await response.json()
+    expect(body?.code, `503 без машиночитаемого кода: ${JSON.stringify(body)}`).toBe(
+        'feature_unavailable',
+    )
+    test.info().annotations.push({ type: 'возможность выключена', description: where })
+    return true
 }
 
 /** Первая беседа этого человека: сеятель заводит её вместе с аккаунтами. */
@@ -106,6 +120,11 @@ const POINTS: Point[] = [
                     audience_scope: 'all',
                 },
             })
+            if (created.status() === 503) {
+                // Тело статьи хранится в S3: нет хранилища — нет и статьи.
+                // Пропускаем, а не выдумываем идентификатор.
+                test.skip(true, 'создание статей недоступно: хранилище не настроено')
+            }
             expect(created.ok(), `статью не создать: ${await created.text()}`).toBeTruthy()
             const body = await created.json()
             const id = body?.data?.id ?? body?.id
@@ -120,9 +139,6 @@ const POINTS: Point[] = [
         path: '/api/v1/food-tracker/recognize',
         field: 'photo',
         role: 'client',
-        // Возможность включается наличием ключа модели зрения. Его может не
-        // быть — тогда точка обязана отказывать одинаково, а не падать.
-        mayBeDisabled: true,
     },
 ]
 
@@ -150,17 +166,7 @@ for (const point of POINTS) {
                 },
             })
 
-            if (point.mayBeDisabled && response.status() === 503) {
-                // Выключенная возможность обязана отказывать машиночитаемо, а
-                // не строкой: иначе клиент не отличит «выключено» от «сломано».
-                const body = await response.json()
-                expect(body?.code, `503 без кода: ${JSON.stringify(body)}`).toBeTruthy()
-                test.info().annotations.push({
-                    type: 'возможность выключена',
-                    description: `${point.name}: 503 с кодом ${body.code}`,
-                })
-                return
-            }
+            if (await declinedAsUnavailable(response, point.name)) return
 
             expect(response.status(), await response.text()).toBeLessThan(400)
         })
@@ -180,8 +186,10 @@ for (const point of POINTS) {
                 },
             })
 
+            if (await declinedAsUnavailable(response, point.name)) return
+
             expect(response.status()).toBeGreaterThanOrEqual(400)
-            expect(response.status()).toBeLessThan(504)
+            expect(response.status()).toBeLessThan(500)
         })
 
         // Отказ обязан объяснять, что делать: «неподдерживаемый тип файла» про
@@ -198,10 +206,10 @@ for (const point of POINTS) {
                 },
             })
 
-            expect(response.status()).toBeGreaterThanOrEqual(400)
-            expect(response.status()).toBeLessThan(504)
+            if (await declinedAsUnavailable(response, point.name)) return
 
-            if (point.mayBeDisabled && response.status() === 503) return
+            expect(response.status()).toBeGreaterThanOrEqual(400)
+            expect(response.status()).toBeLessThan(500)
 
             const body = await response.text()
             expect(body).toContain('HEIC')
