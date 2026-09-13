@@ -24,8 +24,8 @@ const isStaging = !!process.env.E2E_BASE_URL
 // Строка ниже стоит ноль и снимает весь этот класс недоразумений.
 console.log(
     isStaging
-        ? `E2E: удалённый стенд ${baseURL} (из E2E_BASE_URL — данные пишутся туда)`
-        : `E2E: локальный стенд ${baseURL}`,
+        ? `E2E: ${baseURL} — адрес задан переменной E2E_BASE_URL, данные пишутся туда`
+        : `E2E: ${baseURL} — стенд по умолчанию`,
 )
 
 export default defineConfig<SessionOptions>({
@@ -119,6 +119,8 @@ export default defineConfig<SessionOptions>({
         // Сам заводит сессию под нужную роль на каждую проверку, поэтому
         // живёт здесь, а не в проектах с предустановленной ролью.
         'tests/uploads.spec.ts',
+        // Заводит свои учётные записи сама — тем самым путём, которым их заводит человек.
+        'tests/registration.spec.ts',
       ],
     },
   ],
