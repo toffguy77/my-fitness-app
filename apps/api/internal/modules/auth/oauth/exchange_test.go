@@ -26,14 +26,28 @@ func stubYandex(t *testing.T, token, profile http.HandlerFunc) Provider {
 	return p
 }
 
-func stubVK(t *testing.T, token http.HandlerFunc) Provider {
+// stubVK подделывает оба шага VK ID: обмен кода на токен и запрос профиля.
+//
+// Двумя, а не одним, потому что так устроен протокол. Прежняя заглушка отдавала
+// профиль вместе с токеном — и проверка доказывала не поведение VK, а веру в
+// него: вход падал на живом входе с «token response has no user id», а набор
+// оставался зелёным.
+func stubVK(t *testing.T, token, userInfo http.HandlerFunc) Provider {
 	t.Helper()
-	srv := httptest.NewServer(token)
-	t.Cleanup(srv.Close)
+	tokenSrv := httptest.NewServer(token)
+	userSrv := httptest.NewServer(userInfo)
+	t.Cleanup(tokenSrv.Close)
+	t.Cleanup(userSrv.Close)
 
 	p := NewVK("client", "secret").(*vkProvider)
-	p.tokenURL = srv.URL
+	p.tokenURL = tokenSrv.URL
+	p.userInfoURL = userSrv.URL
 	return p
+}
+
+/** Ответ на обмен кода: только токен, как и отдаёт VK ID. */
+func vkToken(w http.ResponseWriter, _ *http.Request) {
+	_, _ = w.Write([]byte(`{"access_token":"t","refresh_token":"r","expires_in":3600}`))
 }
 
 func TestYandexExchange_SendsTheVerifierAndReadsTheProfile(t *testing.T) {
@@ -126,10 +140,11 @@ func TestYandexExchange_RefusesUnusableResponses(t *testing.T) {
 	}
 }
 
-// VK returns the profile alongside the token, in either of two shapes.
-func TestVKExchange_ReadsBothResponseShapes(t *testing.T) {
-	t.Run("identifier at the top level", func(t *testing.T) {
-		provider := stubVK(t, func(w http.ResponseWriter, _ *http.Request) {
+// Профиль приходит из user_info, в любом из двух видов — и с числовым
+// идентификатором тоже: VK отдаёт его по-разному в разных местах протокола.
+func TestVKExchange_ReadsTheProfileFromUserInfo(t *testing.T) {
+	t.Run("идентификатор на верхнем уровне", func(t *testing.T) {
+		provider := stubVK(t, vkToken, func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = w.Write([]byte(`{"user_id":"5","email":"a@vk.ru","user":{"first_name":"Иван","last_name":"Петров"}}`))
 		})
 
@@ -141,8 +156,8 @@ func TestVKExchange_ReadsBothResponseShapes(t *testing.T) {
 		assert.Equal(t, "Иван Петров", profile.Name)
 	})
 
-	t.Run("identifier nested in the user object", func(t *testing.T) {
-		provider := stubVK(t, func(w http.ResponseWriter, _ *http.Request) {
+	t.Run("идентификатор внутри user", func(t *testing.T) {
+		provider := stubVK(t, vkToken, func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = w.Write([]byte(`{"user":{"user_id":"6","email":"b@vk.ru","first_name":"Ольга","avatar":"https://vk/a.jpg"}}`))
 		})
 
@@ -154,12 +169,43 @@ func TestVKExchange_ReadsBothResponseShapes(t *testing.T) {
 		assert.Equal(t, "Ольга", profile.Name)
 		assert.Equal(t, "https://vk/a.jpg", profile.AvatarURL)
 	})
+
+	t.Run("числовой идентификатор", func(t *testing.T) {
+		provider := stubVK(t, vkToken, func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"user":{"user_id":774561,"first_name":"Число"}}`))
+		})
+
+		profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+
+		require.NoError(t, err)
+		assert.Equal(t, "774561", profile.ProviderUserID,
+			"жёсткий тип здесь означает отказ входа при следующей правке у VK")
+	})
 }
 
-// Without the `email` scope VK returns no address. That is an ordinary outcome
-// the caller resolves by asking the user, not a failure.
+// Ответ на обмен кода профиля не содержит — и это норма, а не отказ. Ровно на
+// этом вход и ломался: код искал владельца там, где его нет.
+func TestVKExchange_TokenResponseCarriesNoProfile(t *testing.T) {
+	var askedUserInfo bool
+	provider := stubVK(t, vkToken, func(w http.ResponseWriter, r *http.Request) {
+		askedUserInfo = true
+		require.NoError(t, r.ParseForm())
+		assert.Equal(t, "t", r.Form.Get("access_token"), "профиль просят по полученному токену")
+		assert.Equal(t, "client", r.Form.Get("client_id"))
+		_, _ = w.Write([]byte(`{"user":{"user_id":"77","first_name":"Кто","last_name":"То"}}`))
+	})
+
+	profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+
+	require.NoError(t, err)
+	assert.True(t, askedUserInfo, "профиль обязан запрашиваться отдельно")
+	assert.Equal(t, "77", profile.ProviderUserID)
+}
+
+// Без разрешения `email` адреса нет. Это обычный исход: его спрашивают у
+// человека, а не считают отказом.
 func TestVKExchange_MissingEmailIsNotAnError(t *testing.T) {
-	provider := stubVK(t, func(w http.ResponseWriter, _ *http.Request) {
+	provider := stubVK(t, vkToken, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"user_id":"9","user":{"first_name":"Без","last_name":"Почты"}}`))
 	})
 
@@ -170,12 +216,29 @@ func TestVKExchange_MissingEmailIsNotAnError(t *testing.T) {
 	assert.Equal(t, "9", profile.ProviderUserID)
 }
 
-func TestVKExchange_RefusesAResponseWithoutAnIdentifier(t *testing.T) {
-	provider := stubVK(t, func(w http.ResponseWriter, _ *http.Request) {
+// Ни токен, ни профиль не назвали владельца — входить некому.
+func TestVKExchange_RefusesWhenNobodyNamesTheUser(t *testing.T) {
+	provider := stubVK(t, vkToken, func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"user":{"first_name":"Никто"}}`))
 	})
 
 	_, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
 
 	assert.Error(t, err)
+}
+
+// Обмен без токена — неисправность, и говорить надо о ней, а не идти дальше.
+func TestVKExchange_RefusesATokenResponseWithoutAToken(t *testing.T) {
+	provider := stubVK(t,
+		func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"error":"invalid_grant"}`))
+		},
+		func(w http.ResponseWriter, _ *http.Request) {
+			t.Error("профиль не должен запрашиваться без токена")
+		})
+
+	_, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "access token")
 }
