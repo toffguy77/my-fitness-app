@@ -32,4 +32,11 @@ type Message struct {
 	Author    string    `json:"author"`
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"created_at"`
+	// Delivered: Telegram принял сообщение. Без этого поля оператор, открывший
+	// переписку, не отличит отправленное от того, что осталось у нас: текст
+	// записывается до попытки отправки, чтобы не пропасть при отказе.
+	//
+	// nil — у входящих, где доставлять некуда, и у сообщений старше миграции
+	// 065, про которые исхода не знает никто.
+	Delivered *bool `json:"delivered,omitempty"`
 }

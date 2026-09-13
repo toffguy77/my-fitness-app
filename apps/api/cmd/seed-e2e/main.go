@@ -8,15 +8,28 @@
 //
 //	DATABASE_URL=... go run ./cmd/seed-e2e
 //
+// Или, когда до базы не дотянуться оттуда, где есть Go, — напечатать SQL и
+// выполнить его там, где база достижима:
+//
+//	go run ./cmd/seed-e2e -sql > seed.sql
+//	psql "$DATABASE_URL" -f seed.sql
+//
+// Так заведены учётные записи на dev: управляемый PostgreSQL закрыт снаружи, а
+// на сервере нет Go. Вывод повторяет то, что делает сам сеятель, потому что
+// собирается из тех же данных — расходиться нечему.
+//
 // Credentials come from the same environment variables the tests read.
 package main
 
 import (
 	"context"
 	"database/sql"
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -50,6 +63,17 @@ var accounts = []account{
 }
 
 func main() {
+	printSQL := flag.Bool("sql", false,
+		"напечатать SQL вместо выполнения: для баз, до которых отсюда не дотянуться")
+	flag.Parse()
+
+	if *printSQL {
+		if err := emitSQL(os.Stdout); err != nil {
+			log.Fatalf("собрать SQL: %v", err)
+		}
+		return
+	}
+
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		log.Fatal("DATABASE_URL is required")
@@ -102,6 +126,80 @@ func main() {
 		log.Fatalf("seed products: %v", err)
 	}
 	fmt.Println("seeded catalogue products")
+}
+
+// emitSQL prints what the seeder would do, as SQL.
+//
+// Идентификаторы не выводятся намеренно: на чужой базе они заняты. Всё, что
+// ссылается на пользователя, ищет его по адресу — так скрипт безопасен на базе,
+// где уже кто-то живёт, и его можно выполнить дважды.
+func emitSQL(out io.Writer) error {
+	write := func(format string, args ...any) {
+		_, _ = fmt.Fprintf(out, format+"\n", args...)
+	}
+
+	write("-- Учётные записи для набора Playwright.")
+	write("-- Собрано `go run ./cmd/seed-e2e -sql`; выполнять можно повторно.")
+	write("BEGIN;")
+	write("")
+
+	for _, a := range accounts {
+		email, password := os.Getenv(a.emailVar), os.Getenv(a.passwordVar)
+		if email == "" || password == "" {
+			return fmt.Errorf("%s и %s должны быть заданы", a.emailVar, a.passwordVar)
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+		if err != nil {
+			return fmt.Errorf("хеш пароля для %s: %w", a.key, err)
+		}
+		write("INSERT INTO users (email, password, name, role, email_verified, onboarding_completed)")
+		write("VALUES (%s, %s, %s, %s, true, true)", quote(email), quote(string(hash)), quote(a.name), quote(a.role))
+		write("ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password,")
+		write("    role = EXCLUDED.role, email_verified = true, onboarding_completed = true;")
+		write("")
+	}
+
+	curator := quote(os.Getenv("E2E_CURATOR_EMAIL"))
+	client := quote(os.Getenv("E2E_CLIENT_EMAIL"))
+
+	write("-- Экраны куратора пусты без назначенного клиента.")
+	write("INSERT INTO curator_client_relationships (curator_id, client_id, status)")
+	write("SELECT c.id, k.id, 'active' FROM users c, users k")
+	write("WHERE c.email = %s AND k.email = %s", curator, client)
+	write("ON CONFLICT DO NOTHING;")
+	write("")
+
+	write("-- Экранам чата нужна беседа: API заводит её на старте только для")
+	write("-- отношений, существовавших до запуска.")
+	write("INSERT INTO conversations (curator_id, client_id)")
+	write("SELECT c.id, k.id FROM users c, users k")
+	write("WHERE c.email = %s AND k.email = %s", curator, client)
+	write("  AND NOT EXISTS (SELECT 1 FROM conversations v")
+	write("                  WHERE v.curator_id = c.id AND v.client_id = k.id);")
+	write("")
+
+	write("-- Без цели по воде блок воды не показывается вовсе.")
+	write("INSERT INTO user_settings (user_id, water_goal)")
+	write("SELECT id, 8 FROM users WHERE email = %s", client)
+	write("ON CONFLICT (user_id) DO UPDATE SET water_goal = EXCLUDED.water_goal;")
+	write("")
+
+	write("-- Поиску еды нечего искать в пустом каталоге.")
+	for _, p := range catalogue {
+		write("INSERT INTO products (name, brand, calories, proteins, fats, carbs, source)")
+		write("SELECT %s, %s, %g, %g, %g, %g, 'database'",
+			quote(p.name), quote(p.brand), p.calories, p.proteins, p.fats, p.carbs)
+		write("WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = %s);", quote(p.name))
+	}
+	write("")
+	write("COMMIT;")
+	return nil
+}
+
+// quote отдаёт строковый литерал PostgreSQL. Одиночная кавычка удваивается —
+// иначе имя с апострофом превращает скрипт в чужой запрос.
+func quote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
 func setWaterGoal(ctx context.Context, db *sql.DB, userID int64, glasses int) error {

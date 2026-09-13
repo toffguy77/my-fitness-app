@@ -57,6 +57,9 @@ gofmt_check() {
 }
 step "gofmt" gofmt_check
 step "go vet" bash -c 'cd apps/api && go vet ./...'
+# Под тегами — только сборка: живые прогоны стоят денег, а несобирающийся
+# тест неотличим от отсутствующего.
+step "go vet (теги сборки)" bash -c 'cd apps/api && for t in integration live; do go vet -tags="$t" ./... || exit 1; done'
 
 if [ "$MODE" != "fast" ]; then
     # -race обязателен: хаб веб-сокетов делится между горутинами, а аналитика

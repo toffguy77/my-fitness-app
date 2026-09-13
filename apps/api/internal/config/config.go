@@ -120,6 +120,10 @@ type Config struct {
 	SMTPPassword    string
 	SMTPFromAddress string
 	SMTPFromName    string
+	// SMTPReplyTo is where a person who answers a letter actually reaches us.
+	// Письма уходят с noreply@ — без этого заголовка ответ уходил бы в ящик,
+	// который никто не открывает.
+	SMTPReplyTo string
 
 	// Password Reset
 	ResetPasswordURL string
@@ -294,6 +298,7 @@ func Load() (*Config, error) {
 		SMTPPassword:    getEnv("SMTP_PASSWORD", ""),
 		SMTPFromAddress: getEnv("SMTP_FROM_ADDRESS", ""),
 		SMTPFromName:    getEnv("SMTP_FROM_NAME", "BURCEV"),
+		SMTPReplyTo:     getEnv("SMTP_REPLY_TO", "support@burcev.team"),
 
 		// Password Reset
 		ResetPasswordURL: getResetPasswordURL(),

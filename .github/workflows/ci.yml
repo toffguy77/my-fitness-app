@@ -107,6 +107,18 @@ jobs:
         working-directory: apps/api
         run: go vet ./...
 
+      # Тесты под тегами сборки обычный vet не видит, и они тихо гниют:
+      # живой прогон бота перестал компилироваться на переезде с OpenRouter
+      # на Yandex Foundation Models и молчал об этом, потому что собирать его
+      # было некому. Здесь только сборка — запуск живых тестов стоит денег.
+      - name: go vet (теги сборки)
+        working-directory: apps/api
+        run: |
+          for tag in integration live; do
+            echo "── $tag"
+            go vet -tags="$tag" ./...
+          done
+
       # -race is mandatory: the WebSocket hub is shared between goroutines and
       # curator analytics fan out through errgroup. Those races appear under
       # production load and not on a laptop.

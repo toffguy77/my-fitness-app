@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -43,6 +45,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// describeDSN pulls the host and database name out of a connection string,
+// without the credentials in it.
+//
+// Ошибку разбора не возвращаем: подключение к этому моменту уже состоялось, и
+// нечитаемый DSN — повод сказать «не разобрал», а не повод молчать или падать.
+func describeDSN(dsn string) (host, database string) {
+	parsed, err := url.Parse(dsn)
+	if err != nil || parsed.Host == "" {
+		return "(не разобрал строку подключения)", "(не разобрал строку подключения)"
+	}
+	return parsed.Host, strings.TrimPrefix(parsed.Path, "/")
+}
+
 func main() {
 	// Initialize logger
 	log := logger.New()
@@ -71,8 +86,16 @@ func main() {
 	}
 
 	// Initialize database
+	//
+	// Куда подключились на самом деле — отдельно от того, что лежит в
+	// переменных: при заданном DATABASE_URL разрозненные DB_* не участвуют, а
+	// журнал печатал именно их. Строка «подключено к web-app-db на продовом
+	// хосте» при подключении к localhost — это не мелочь: ровно по такой
+	// строке и идут, когда разбирают инцидент в три часа ночи.
 	var db *database.DB
+	connectedHost, connectedName := cfg.DatabaseHost, cfg.DatabaseName
 	if cfg.DatabaseURL != "" {
+		connectedHost, connectedName = describeDSN(cfg.DatabaseURL)
 		db, err = database.NewPostgresFromURL(cfg.DatabaseURL, cfg.MaxOpenConns, cfg.MaxIdleConns)
 	} else {
 		db, err = database.NewPostgres(database.PostgresConfig{
@@ -92,8 +115,8 @@ func main() {
 	defer func() { _ = db.Close() }()
 
 	log.Info("Database connected successfully",
-		"host", cfg.DatabaseHost,
-		"database", cfg.DatabaseName,
+		"host", connectedHost,
+		"database", connectedName,
 		"max_open_conns", cfg.MaxOpenConns,
 	)
 
@@ -117,6 +140,7 @@ func main() {
 			SMTPPassword: cfg.SMTPPassword,
 			FromAddress:  cfg.SMTPFromAddress,
 			FromName:     cfg.SMTPFromName,
+			ReplyTo:      cfg.SMTPReplyTo,
 		}, log)
 		if err != nil {
 			log.Fatal("Failed to initialize email service", "error", err)

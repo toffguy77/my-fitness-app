@@ -60,3 +60,19 @@ func TestNetworkIsRewrittenBeforeDialing(t *testing.T) {
 func TestTimeoutIsHonoured(t *testing.T) {
 	assert.Equal(t, 3*time.Second, NewClient(3*time.Second).Timeout)
 }
+
+// Набор номера по IPv4 нужен не только HTTP.
+//
+// SMTP открывает свой сокет, и у smtp.yandex.ru есть адрес IPv6 — то есть
+// почта несла тот же дефект, что и бот, и ждала тех же условий. Слушатель
+// здесь только на IPv4: без подмены сети «tcp6» до него не доходит.
+func TestAsksForIPv6AndGetsIPv4(t *testing.T) {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer func() { _ = listener.Close() }()
+
+	conn, err := DialContext(context.Background(), "tcp6", listener.Addr().String())
+
+	require.NoError(t, err, "подмена сети не сработала — так молчал бот")
+	_ = conn.Close()
+}

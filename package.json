@@ -35,6 +35,7 @@
     "test:e2e:staging": "E2E_BASE_URL=https://new.burcev.team playwright test"
   },
   "overrides": {
+    "browserslist": "4.28.9",
     "serialize-javascript": "7.0.5",
     "rollup": "2.80.0",
     "minimatch": "10.2.4",

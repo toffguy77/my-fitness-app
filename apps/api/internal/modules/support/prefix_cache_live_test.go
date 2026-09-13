@@ -6,7 +6,14 @@
 //
 // Запуск:
 //
-//	OPENROUTER_API_KEY=… go test -tags=live ./internal/modules/support/ -run TestLive -v
+//	LLM_API_KEY=… SUPPORT_MODEL=gpt://<folder>/yandexgpt/latest \
+//		go test -tags=live ./internal/modules/support/ -run TestLive -v
+//
+// Компилируется в CI (`go vet -tags=live ./...`), но не запускается. Именно
+// этого здесь не хватало: после переезда с OpenRouter на Yandex Foundation
+// Models файл перестал собираться и молчал об этом, потому что собирать его
+// было некому. Тест, который не компилируется, ничем не отличается от
+// отсутствующего — только выглядит иначе.
 
 package support
 
@@ -29,18 +36,34 @@ type usage struct {
 
 func liveClient(t *testing.T, seen *[]usage) *llm.Client {
 	t.Helper()
-	key := os.Getenv("OPENROUTER_API_KEY")
+	key := os.Getenv("LLM_API_KEY")
 	if key == "" {
-		t.Skip("нет OPENROUTER_API_KEY — живой прогон пропущен")
+		key = os.Getenv("OPENROUTER_API_KEY") // прежнее имя, пока не везде убрано
 	}
+	if key == "" {
+		t.Skip("нет LLM_API_KEY — живой прогон пропущен")
+	}
+
+	// Умолчания для модели нет намеренно: у Яндекса имя модели содержит
+	// идентификатор каталога, и угадать его нельзя. Молча взять чужую модель
+	// хуже, чем пропустить прогон.
 	model := os.Getenv("SUPPORT_MODEL")
 	if model == "" {
-		model = llm.DefaultSupportModel
+		t.Skip("нет SUPPORT_MODEL — живой прогон пропущен")
 	}
-	return llm.NewClient(key, model, logger.New()).
-		WithUsageObserver(func(prompt, cached int) {
-			*seen = append(*seen, usage{prompt, cached})
-		})
+
+	client := llm.NewClient(key, model, logger.New())
+	if base := os.Getenv("LLM_BASE_URL"); base != "" {
+		scheme := os.Getenv("LLM_AUTH_SCHEME")
+		if scheme == "" {
+			scheme = llm.DefaultAuthScheme
+		}
+		client = client.WithEndpoint(base, scheme)
+	}
+
+	return client.WithUsageObserver(func(prompt, cached int) {
+		*seen = append(*seen, usage{prompt, cached})
+	})
 }
 
 // Бот отправляет перед каждым вопросом всё руководство пользователя. Вопрос,

@@ -128,7 +128,7 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 	}
 
 	text := strings.TrimSpace(in.Text)
-	if err := s.recordMessage(ctx, conversation.ID, "user", text, nil); err != nil {
+	if _, err := s.recordMessage(ctx, conversation.ID, "user", text, nil); err != nil {
 		return err
 	}
 
@@ -226,11 +226,19 @@ func (s *Service) escalate(ctx context.Context, conversation *Conversation, reas
 }
 
 // reply records what the bot said and sends it.
+//
+// Отметка о доставке ставится по факту, как и у оператора: бот, принимающий
+// сообщения и не способный ответить, — это то, что уже случалось на проде, и
+// переписка не должна выглядеть исправной, когда человек ничего не получил.
 func (s *Service) reply(ctx context.Context, conversation *Conversation, text string) error {
-	if err := s.recordMessage(ctx, conversation.ID, "bot", text, nil); err != nil {
+	messageID, err := s.recordMessage(ctx, conversation.ID, "bot", text, nil)
+	if err != nil {
 		return err
 	}
-	return s.sender.SendMessage(ctx, conversation.ChatID, text)
+	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
+		return err
+	}
+	return s.markDelivered(ctx, messageID)
 }
 
 // AnswerAsOperator delivers a person's reply into the same chat.
@@ -240,10 +248,33 @@ func (s *Service) AnswerAsOperator(ctx context.Context, conversationID string, o
 		return err
 	}
 
-	if err := s.recordMessage(ctx, conversation.ID, "operator", text, &operatorID); err != nil {
+	messageID, err := s.recordMessage(ctx, conversation.ID, "operator", text, &operatorID)
+	if err != nil {
 		return err
 	}
-	return s.sender.SendMessage(ctx, conversation.ChatID, text)
+
+	// Записываем до отправки намеренно: иначе отказ Telegram стоил бы оператору
+	// набранного текста. Но и отметку о доставке ставим только по факту — иначе
+	// следующий оператор, открыв переписку, увидит обычное сообщение и решит,
+	// что человеку ответили, хотя тот ничего не получил.
+	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
+		return err
+	}
+	return s.markDelivered(ctx, messageID)
+}
+
+// markDelivered отмечает, что Telegram принял сообщение.
+//
+// Ошибка здесь не отменяет отправки — сообщение уже у человека, — поэтому она
+// попадает в журнал, а не наружу.
+func (s *Service) markDelivered(ctx context.Context, messageID string) error {
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE support_messages SET delivered_at = NOW() WHERE id = $1::uuid`,
+		messageID); err != nil {
+		s.log.Error("Could not mark a delivered message as delivered",
+			"message_id", messageID, "error", err)
+	}
+	return nil
 }
 
 // Close ends a conversation once it has been dealt with.
@@ -375,18 +406,20 @@ func (s *Service) recentTurns(ctx context.Context, conversationID string) ([]llm
 	return turns, rows.Err()
 }
 
-func (s *Service) recordMessage(ctx context.Context, conversationID, author, text string, operatorID *int64) error {
-	if _, err := s.db.ExecContext(ctx, `
+func (s *Service) recordMessage(ctx context.Context, conversationID, author, text string, operatorID *int64) (string, error) {
+	var messageID string
+	if err := s.db.QueryRowContext(ctx, `
 		INSERT INTO support_messages (conversation_id, author, text, operator_id)
-		VALUES ($1, $2, $3, $4)`, conversationID, author, text, operatorID); err != nil {
-		return fmt.Errorf("record support message: %w", err)
+		VALUES ($1, $2, $3, $4) RETURNING id`,
+		conversationID, author, text, operatorID).Scan(&messageID); err != nil {
+		return "", fmt.Errorf("record support message: %w", err)
 	}
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE support_conversations SET last_message_at = NOW() WHERE id = $1`,
 		conversationID); err != nil {
-		return fmt.Errorf("touch support conversation: %w", err)
+		return "", fmt.Errorf("touch support conversation: %w", err)
 	}
-	return nil
+	return messageID, nil
 }
 
 func (s *Service) conversationFor(ctx context.Context, in IncomingMessage) (*Conversation, error) {
@@ -499,7 +532,7 @@ func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversat
 	}
 
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, author, text, created_at FROM support_messages
+		`SELECT id, author, text, created_at, delivered_at FROM support_messages
 		 WHERE conversation_id = $1 ORDER BY created_at ASC`, conversationID)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("load support messages: %w", err)
@@ -509,8 +542,15 @@ func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversat
 	messages := make([]Message, 0)
 	for rows.Next() {
 		var m Message
-		if err := rows.Scan(&m.ID, &m.Author, &m.Text, &m.CreatedAt); err != nil {
+		var deliveredAt sql.NullTime
+		if err := rows.Scan(&m.ID, &m.Author, &m.Text, &m.CreatedAt, &deliveredAt); err != nil {
 			return nil, nil, nil, fmt.Errorf("scan support message: %w", err)
+		}
+		// Про входящее говорить о доставке нечего, а про исходящее — говорить
+		// обязательно, в том числе когда ответа нет: именно это и есть новость.
+		if m.Author != "user" {
+			delivered := deliveredAt.Valid
+			m.Delivered = &delivered
 		}
 		messages = append(messages, m)
 	}

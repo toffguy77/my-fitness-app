@@ -55,6 +55,7 @@ var codes = map[error]string{
 	ErrPasswordPolicy:     CodePasswordPolicy,
 	ErrPasswordUnchanged:  CodePasswordUnchanged,
 	ErrEmailUnavailable:   CodeEmailUnavailable,
+	ErrFeatureUnavailable: CodeFeatureUnavailable,
 	ErrConflict:           CodeConflict,
 	ErrGone:               CodeGone,
 	ErrValidation:         CodeValidation,
@@ -73,10 +74,12 @@ func CodeFor(err error) string {
 // AllCodes lists every code the API can return, so the clients' dictionaries
 // can be checked for completeness rather than trusted.
 func AllCodes() []string {
-	all := make([]string, 0, len(codes)+2)
+	all := make([]string, 0, len(codes)+3)
 	for _, code := range codes {
 		all = append(all, code)
 	}
-	return append(all,
-		CodeFeatureUnavailable, CodeInternal, CodePasswordIncorrect, CodeSessionEnded)
+	// Эти коды ставятся ответами напрямую, без ошибки-сентинела.
+	// CodeFeatureUnavailable здесь больше нет: у него появился сентинел
+	// apperrors.ErrFeatureUnavailable, и он приходит из карты выше.
+	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded)
 }
