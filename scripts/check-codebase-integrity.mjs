@@ -140,6 +140,27 @@ for (const file of appPages) {
     )
 }
 
+// --- Каждый e2e-тест обязан входить в какой-нибудь проект Playwright ---
+//
+// Проекты перечисляют файлы поимённо, и файл, забытый в этом списке, просто не
+// запускается. Ровно так и вышло: набор проверок на загрузку файлов пролежал
+// целый релиз, отчитываясь зелёным Playwright, и не выполнился ни разу. Тест,
+// который не запускается, ничем не отличается от отсутствующего.
+const playwrightConfig = readFileSync('playwright.config.ts', 'utf8')
+const specFiles = walk('e2e/tests', (f) => f.endsWith('.spec.ts'))
+const unlisted = specFiles
+    .map((f) => relative(process.cwd(), f).replace(/^e2e\//, ''))
+    .filter((name) => !playwrightConfig.includes(`'${name}'`))
+
+for (const name of unlisted) {
+    problems.push(
+        `E2E spec is in no Playwright project: e2e/${name}\n` +
+            `  Projects list files by name, so a file missing from every testMatch\n` +
+            `  never runs — and the suite still reports green.\n` +
+            `  Add it to a project in playwright.config.ts.`,
+    )
+}
+
 if (problems.length > 0) {
     console.error('Codebase integrity check failed:\n')
     for (const p of problems) console.error(p + '\n')
@@ -149,5 +170,6 @@ if (problems.length > 0) {
 console.log(
     `Codebase integrity OK — ${declared.size} public env vars all used, ` +
         `${configs.length} Next.js config, no unimplemented shipped handlers, ` +
-        `${appPages.length} app files free of fixture data.`,
+        `${appPages.length} app files free of fixture data, ` +
+        `${specFiles.length} e2e specs all in a project.`,
 )

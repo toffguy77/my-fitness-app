@@ -20,6 +20,23 @@ import (
 	"time"
 )
 
+// dialer is shared: the settings are the same everywhere, and having one of
+// them means there is one place to revisit when IPv6 starts working.
+var dialer = &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+
+// DialContext dials over IPv4 whatever network it is asked for.
+//
+// Exported because HTTP is not the only thing on this host that leaves it. SMTP
+// dials its own socket, and smtp.yandex.ru publishes an AAAA record — so the
+// mail path had the same defect as the bot, waiting for the same conditions.
+func DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	switch network {
+	case "tcp", "tcp6":
+		network = "tcp4"
+	}
+	return dialer.DialContext(ctx, network, addr)
+}
+
 // NewClient returns an HTTP client that talks IPv4.
 //
 // Не «предпочитает», а именно только IPv4: предпочтение здесь уже пробовали —
@@ -27,16 +44,8 @@ import (
 // IPv6, это место придётся вспомнить; ради этого оно и собрано в одном пакете,
 // а не рассыпано по клиентам.
 func NewClient(timeout time.Duration) *http.Client {
-	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
-
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		switch network {
-		case "tcp", "tcp6":
-			network = "tcp4"
-		}
-		return dialer.DialContext(ctx, network, addr)
-	}
+	transport.DialContext = DialContext
 
 	return &http.Client{Timeout: timeout, Transport: transport}
 }

@@ -79,7 +79,11 @@ func NewService(db *database.DB, log *logger.Logger, s3 S3Uploader, wsHub *ws.Hu
 	}
 }
 
-var errS3NotConfigured = fmt.Errorf("S3 storage is not configured for content")
+// Обёрнута сентинелом, чтобы обработчик мог ответить «выключено», а не
+// «сломалось»: без хранилища ни статью со телом, ни обложку сохранить негде, и
+// повторять запрос бессмысленно.
+var errS3NotConfigured = fmt.Errorf("%w: S3 storage is not configured for content",
+	apperrors.ErrFeatureUnavailable)
 
 func (s *Service) requireS3() error {
 	if s.s3 == nil {

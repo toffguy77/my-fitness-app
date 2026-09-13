@@ -10,6 +10,7 @@ import (
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
+	"github.com/burcev/api/internal/shared/upload"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -104,6 +105,13 @@ func (h *Handler) CreateArticle(c *gin.Context) {
 
 	article, err := h.service.CreateArticle(c.Request.Context(), userID, req)
 	if err != nil {
+		// Тело статьи хранится в S3. Без него сохранять некуда — но это
+		// выключенная возможность, а не поломка: 500 предлагает повторить
+		// запрос, который не может получиться.
+		if errors.Is(err, apperrors.ErrFeatureUnavailable) {
+			response.FeatureUnavailable(c, "Создание статей недоступно в этом окружении")
+			return
+		}
 		h.log.Error("Failed to create article", "error", err, "user_id", userID)
 		response.InternalError(c, "Не удалось создать статью")
 		return
@@ -195,6 +203,10 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 			return
 		}
 		h.log.Error("Failed to update article", "error", err, "user_id", userID, "article_id", articleID)
+		if errors.Is(err, apperrors.ErrFeatureUnavailable) {
+			response.FeatureUnavailable(c, "Редактирование статей недоступно в этом окружении")
+			return
+		}
 		response.InternalError(c, "Не удалось обновить статью")
 		return
 	}
@@ -361,6 +373,9 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 			response.Forbidden(c, "Нет доступа к этой статье")
 			return
 		}
+		if h.refuseBadMedia(c, err) {
+			return
+		}
 		h.log.Error("Failed to upload media", "error", err, "user_id", userID, "article_id", articleID)
 		response.InternalError(c, "Не удалось загрузить файл")
 		return
@@ -398,11 +413,45 @@ func (h *Handler) UploadMarkdownFile(c *gin.Context) {
 	article, err := h.service.UploadMarkdownFile(c.Request.Context(), userID, file, req)
 	if err != nil {
 		h.log.Error("Failed to upload markdown file", "error", err, "user_id", userID)
+		if h.refuseBadMedia(c, err) {
+			return
+		}
 		response.InternalError(c, "Не удалось загрузить markdown файл")
 		return
 	}
 
 	response.Success(c, http.StatusCreated, article)
+}
+
+// refuseBadMedia answers a rejected upload, or reports that it did not.
+//
+// Отказ обязан объяснять, что делать. Снимок с iPhone получал здесь
+// «поддерживаются только изображения» — про фотографию, снятую минуту назад, и
+// без единого слова о том, как её всё-таки приложить. Причина при этом была:
+// `upload.Receive` возвращает её отдельной ошибкой, а обработчик подменял её
+// постоянной строкой.
+//
+// Вторая половина хуже: загрузка медиа статьи не разбирала негодный тип вовсе
+// и отвечала 500. Для вызывающего это «сломалось у нас», а сломалось у него —
+// и повторять запрос бессмысленно.
+func (h *Handler) refuseBadMedia(c *gin.Context, err error) bool {
+	// Хранилище не настроено — это выключенная возможность, а не поломка.
+	// Соседние модули отвечают так же; контент отвечал 500, то есть предлагал
+	// повторить запрос, который не может получиться.
+	if errors.Is(err, apperrors.ErrFeatureUnavailable) {
+		response.FeatureUnavailable(c, "Загрузка медиафайлов недоступна в этом окружении")
+		return true
+	}
+	if errors.Is(err, upload.ErrHEIC) {
+		response.Error(c, http.StatusBadRequest, upload.ErrHEIC.Error())
+		return true
+	}
+	if errors.Is(err, apperrors.ErrUnsupportedMedia) {
+		response.Error(c, http.StatusBadRequest,
+			"Поддерживаются только изображения (JPEG, PNG, WebP, GIF)")
+		return true
+	}
+	return false
 }
 
 // UploadCoverImage handles POST /api/v1/content/articles/cover
@@ -420,8 +469,7 @@ func (h *Handler) UploadCoverImage(c *gin.Context) {
 
 	url, err := h.service.UploadCoverImage(c.Request.Context(), file)
 	if err != nil {
-		if errors.Is(err, apperrors.ErrUnsupportedMedia) {
-			response.Error(c, http.StatusBadRequest, "Поддерживаются только изображения (JPEG, PNG, WebP, GIF)")
+		if h.refuseBadMedia(c, err) {
 			return
 		}
 		h.log.Error("Failed to upload cover image", "error", err)
