@@ -66,7 +66,12 @@ jobs:
       E2E_PASSWORD_PASSWORD: E2e!Password#2026
       # The whole suite signs in from one address; without this the auth
       # limiter reads it as one person guessing passwords.
-      AUTH_RATE_LIMIT_SCALE: '20'
+      #
+      # 20 was too tight to notice: it allowed 200 sign-ins per 15 minutes
+      # against a suite that makes ~193 — seven spare. Eight new tests would
+      # have broken the run with a 429 that names the limiter, not the cause,
+      # and a re-run inside the same window broke it outright.
+      AUTH_RATE_LIMIT_SCALE: '100'
       # Mail goes to the catcher above, so the digest can be read back.
       SMTP_HOST: localhost
       SMTP_PORT: '1025'
