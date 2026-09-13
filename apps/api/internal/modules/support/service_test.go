@@ -66,7 +66,8 @@ func expectConversation(mock sqlmock.Sqlmock, status string) {
 }
 
 func expectRecordedMessage(mock sqlmock.Sqlmock) {
-	mock.ExpectExec("INSERT INTO support_messages").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectQuery("INSERT INTO support_messages").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("msg-1"))
 	mock.ExpectExec("UPDATE support_conversations SET last_message_at").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 }
