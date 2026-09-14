@@ -108,9 +108,16 @@ type User struct {
 
 // LoginResult represents login response
 type LoginResult struct {
-	User         *User  `json:"user"`
-	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token"`
+	User  *User  `json:"user"`
+	Token string `json:"token"`
+	// RefreshToken живёт только внутри: обработчик кладёт его в HttpOnly-cookie
+	// и не показывает в теле ответа.
+	//
+	// Токен в теле можно записать в журнал, оставить в кэше посредника или
+	// прочитать из ответа любым сценарием на странице — ровно от этого и
+	// уводил переезд в cookie, а тело ответа сводило его на нет. Клиент его
+	// не читал ни разу: он был объявлен в типе и больше нигде.
+	RefreshToken string `json:"-"`
 	// PendingDeletion is set when this account is inside its cancellation
 	// window. Somebody who signs in during those thirty days has almost
 	// certainly changed their mind, and the app has to be able to say so
