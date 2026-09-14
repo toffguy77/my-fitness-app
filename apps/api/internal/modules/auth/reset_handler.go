@@ -143,6 +143,11 @@ func (h *ResetHandler) ResetPassword(c *gin.Context) {
 		}
 
 		// Check if it's a password validation error
+		var policy *PolicyError
+		if errors.As(err, &policy) {
+			response.Error(c, http.StatusUnprocessableEntity, policy.ForPerson())
+			return
+		}
 		if errors.Is(err, apperrors.ErrPasswordPolicy) {
 			response.Error(c, http.StatusBadRequest, err.Error())
 			return
