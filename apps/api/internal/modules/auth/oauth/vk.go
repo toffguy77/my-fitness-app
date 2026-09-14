@@ -81,14 +81,19 @@ func (p *vkProvider) AuthorizationURL(state, codeChallenge, redirectURI string) 
 	return p.authURL + "?" + params.Encode()
 }
 
-func (p *vkProvider) Exchange(ctx context.Context, code, codeVerifier, redirectURI string) (*Profile, error) {
+func (p *vkProvider) Exchange(ctx context.Context, in ExchangeRequest) (*Profile, error) {
 	form := url.Values{
 		"grant_type":    {"authorization_code"},
-		"code":          {code},
+		"code":          {in.Code},
 		"client_id":     {p.clientID},
 		"client_secret": {p.clientSecret},
-		"code_verifier": {codeVerifier},
-		"redirect_uri":  {redirectURI},
+		"code_verifier": {in.CodeVerifier},
+		"redirect_uri":  {in.RedirectURI},
+	}
+	// VK ID выдаёт код вместе с device_id и без него токен не отдаёт. Поля нет
+	// в обычном OAuth, поэтому оно приходит из обратного вызова как есть.
+	if deviceID := in.Callback.Get("device_id"); deviceID != "" {
+		form.Set("device_id", deviceID)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
@@ -111,12 +116,20 @@ func (p *vkProvider) Exchange(ctx context.Context, code, codeVerifier, redirectU
 	var token struct {
 		AccessToken string `json:"access_token"`
 		UserID      vkID   `json:"user_id"`
+		// VK отвечает на отказ кодом 200 и телом с ошибкой. Пока эти поля не
+		// читались, любой отказ выглядел как «нет токена» — то есть как наша
+		// неисправность, и починить по такому сообщению было нечего.
+		Error       string `json:"error"`
+		Description string `json:"error_description"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
 		return nil, fmt.Errorf("decode token response: %w", err)
 	}
+	if token.Error != "" {
+		return nil, fmt.Errorf("vk refused the exchange: %s (%s)", token.Error, token.Description)
+	}
 	if token.AccessToken == "" {
-		return nil, fmt.Errorf("token response has no access token")
+		return nil, fmt.Errorf("token response has no access token and no error")
 	}
 
 	profile, err := p.userInfo(ctx, token.AccessToken)

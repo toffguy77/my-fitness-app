@@ -65,7 +65,7 @@ func TestYandexExchange_SendsTheVerifierAndReadsTheProfile(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":"77","default_email":"a@ya.ru","display_name":"Аня","default_avatar_id":"av1"}`))
 		})
 
-	profile, err := provider.Exchange(context.Background(), "the-code", "the-verifier", "https://app/cb")
+	profile, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "the-code", CodeVerifier: "the-verifier", RedirectURI: "https://app/cb"})
 
 	require.NoError(t, err)
 	// Without the verifier an intercepted code would be redeemable by anyone.
@@ -88,7 +88,7 @@ func TestYandexExchange_OmitsAnEmptyAvatar(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":"1","real_name":"Real","default_avatar_id":"x","is_avatar_empty":true}`))
 		})
 
-	profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+	profile, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb"})
 
 	require.NoError(t, err)
 	assert.Empty(t, profile.AvatarURL)
@@ -133,7 +133,9 @@ func TestYandexExchange_RefusesUnusableResponses(t *testing.T) {
 				tc.profile = func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
 			}
 			_, err := stubYandex(t, tc.token, tc.profile).
-				Exchange(context.Background(), "c", "v", "https://app/cb")
+				Exchange(context.Background(), ExchangeRequest{
+					Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb",
+				})
 
 			assert.Error(t, err)
 		})
@@ -148,7 +150,7 @@ func TestVKExchange_ReadsTheProfileFromUserInfo(t *testing.T) {
 			_, _ = w.Write([]byte(`{"user_id":"5","email":"a@vk.ru","user":{"first_name":"Иван","last_name":"Петров"}}`))
 		})
 
-		profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+		profile, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb"})
 
 		require.NoError(t, err)
 		assert.Equal(t, "5", profile.ProviderUserID)
@@ -161,7 +163,7 @@ func TestVKExchange_ReadsTheProfileFromUserInfo(t *testing.T) {
 			_, _ = w.Write([]byte(`{"user":{"user_id":"6","email":"b@vk.ru","first_name":"Ольга","avatar":"https://vk/a.jpg"}}`))
 		})
 
-		profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+		profile, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb"})
 
 		require.NoError(t, err)
 		assert.Equal(t, "6", profile.ProviderUserID)
@@ -175,7 +177,7 @@ func TestVKExchange_ReadsTheProfileFromUserInfo(t *testing.T) {
 			_, _ = w.Write([]byte(`{"user":{"user_id":774561,"first_name":"Число"}}`))
 		})
 
-		profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+		profile, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb"})
 
 		require.NoError(t, err)
 		assert.Equal(t, "774561", profile.ProviderUserID,
@@ -195,7 +197,7 @@ func TestVKExchange_TokenResponseCarriesNoProfile(t *testing.T) {
 		_, _ = w.Write([]byte(`{"user":{"user_id":"77","first_name":"Кто","last_name":"То"}}`))
 	})
 
-	profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+	profile, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb"})
 
 	require.NoError(t, err)
 	assert.True(t, askedUserInfo, "профиль обязан запрашиваться отдельно")
@@ -209,7 +211,7 @@ func TestVKExchange_MissingEmailIsNotAnError(t *testing.T) {
 		_, _ = w.Write([]byte(`{"user_id":"9","user":{"first_name":"Без","last_name":"Почты"}}`))
 	})
 
-	profile, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+	profile, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb"})
 
 	require.NoError(t, err)
 	assert.Empty(t, profile.Email)
@@ -222,23 +224,73 @@ func TestVKExchange_RefusesWhenNobodyNamesTheUser(t *testing.T) {
 		_, _ = w.Write([]byte(`{"user":{"first_name":"Никто"}}`))
 	})
 
-	_, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+	_, err := provider.Exchange(context.Background(), ExchangeRequest{Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb"})
 
 	assert.Error(t, err)
 }
 
-// Обмен без токена — неисправность, и говорить надо о ней, а не идти дальше.
-func TestVKExchange_RefusesATokenResponseWithoutAToken(t *testing.T) {
+// Отказ VK обязан доходить словами VK.
+//
+// Он отвечает на отказ кодом 200 и телом с ошибкой. Пока эти поля не читались,
+// любой отказ выглядел как «нет токена» — то есть как наша неисправность, и
+// починить по такому сообщению было нечего. Живой вход ломался именно так.
+func TestVKExchange_SurfacesVKsOwnRefusal(t *testing.T) {
 	provider := stubVK(t,
 		func(w http.ResponseWriter, _ *http.Request) {
-			_, _ = w.Write([]byte(`{"error":"invalid_grant"}`))
+			_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"code is expired"}`))
 		},
-		func(w http.ResponseWriter, _ *http.Request) {
+		func(http.ResponseWriter, *http.Request) {
+			t.Error("профиль не должен запрашиваться после отказа")
+		})
+
+	_, err := provider.Exchange(context.Background(), ExchangeRequest{
+		Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb",
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid_grant")
+	assert.Contains(t, err.Error(), "code is expired",
+		"пояснение провайдера и есть то, по чему это чинят")
+}
+
+// Ни токена, ни ошибки — говорить надо и об этом, иначе молчание выглядит
+// как успех.
+func TestVKExchange_RefusesAnEmptyTokenResponse(t *testing.T) {
+	provider := stubVK(t,
+		func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(`{}`)) },
+		func(http.ResponseWriter, *http.Request) {
 			t.Error("профиль не должен запрашиваться без токена")
 		})
 
-	_, err := provider.Exchange(context.Background(), "c", "v", "https://app/cb")
+	_, err := provider.Exchange(context.Background(), ExchangeRequest{
+		Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb",
+	})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "access token")
+}
+
+// VK ID выдаёт код вместе с device_id и без него токен не отдаёт. Поля нет в
+// обычном OAuth, поэтому оно и потерялось: обмен уходил без него, VK отвечал
+// отказом, а мы жаловались на отсутствие токена.
+func TestVKExchange_PassesDeviceIDFromTheCallback(t *testing.T) {
+	var got url.Values
+	provider := stubVK(t,
+		func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, r.ParseForm())
+			got = r.Form
+			_, _ = w.Write([]byte(`{"access_token":"t"}`))
+		},
+		func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`{"user":{"user_id":"1","first_name":"Кто"}}`))
+		})
+
+	_, err := provider.Exchange(context.Background(), ExchangeRequest{
+		Code: "c", CodeVerifier: "v", RedirectURI: "https://app/cb",
+		Callback: url.Values{"device_id": {"устройство-77"}},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "устройство-77", got.Get("device_id"))
+	assert.Equal(t, "v", got.Get("code_verifier"), "PKCE обязателен в VK ID")
 }

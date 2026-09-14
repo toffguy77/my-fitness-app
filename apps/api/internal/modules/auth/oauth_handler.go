@@ -151,7 +151,12 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
-	profile, err := provider.Exchange(c.Request.Context(), code, verifier, h.redirectURI(name))
+	profile, err := provider.Exchange(c.Request.Context(), oauth.ExchangeRequest{
+		Code:         code,
+		CodeVerifier: verifier,
+		RedirectURI:  h.redirectURI(name),
+		Callback:     c.Request.URL.Query(),
+	})
 	if err != nil {
 		h.log.Error("Failed to exchange authorization code", "error", err, "provider", name)
 		h.redirectToApp(c, "/auth?oauth=failed")
