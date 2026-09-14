@@ -72,12 +72,27 @@ var strategies = []TableStrategy{
 	{Table: "weekly_plans", Column: "user_id", Strategy: StrategyDelete, Reason: "plans written for them"},
 	{Table: "curator_client_relationships", Column: "client_id", Strategy: StrategyDelete, Reason: "their assignment to a curator"},
 	{Table: "user_consents", Column: "user_id", Strategy: StrategyDelete, Reason: "consent records for a person who no longer exists"},
+	// Привязка входа через провайдера. Остаться она не может: в ней лежат
+	// идентификатор человека у Яндекса или VK, его адрес, имя и фотография, а
+	// сама привязка позволила бы войти обратно в удалённый аккаунт.
+	{Table: "external_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the link that would sign them back in, plus their name and address at the provider"},
+	{Table: "push_subscriptions", Column: "user_id", Strategy: StrategyDelete, Reason: "browser endpoints and keys belonging to them"},
+	{Table: "notification_preferences", Column: "user_id", Strategy: StrategyDelete, Reason: "their channel choices"},
+	{Table: "notification_deliveries", Column: "user_id", Strategy: StrategyDelete, Reason: "what was sent to them and when"},
+	{Table: "ws_tickets", Column: "user_id", Strategy: StrategyDelete, Reason: "short-lived socket tickets — sessions by another name"},
+	// Связь посетителя браузера с человеком. Она и есть то, чем обезличенные
+	// события снова становятся личными; после удаления её быть не должно.
+	{Table: "analytics_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the mapping that re-identifies anonymous events"},
 
 	// Part of a curator's working record.
 	{Table: "messages", Column: "sender_id", Strategy: StrategyAnonymize, Reason: "the curator's conversation must stay readable; the text loses its author"},
 	{Table: "conversations", Column: "client_id", Strategy: StrategyAnonymize, Reason: "the conversation belongs to the curator too", AlsoSet: "anonymized_at = NOW()"},
 	{Table: "weekly_reports", Column: "user_id", Strategy: StrategyAnonymize, Reason: "reports carry the curator's own feedback"},
 	{Table: "articles", Column: "author_id", Strategy: StrategyAnonymize, Reason: "published articles outlive their author's account"},
+	// События воронки остаются — по ним считают, где люди уходят, — но человека
+	// в них не остаётся. Вместе с удалённой analytics_identities связать их с
+	// кем-то больше нечем.
+	{Table: "analytics_events", Column: "user_id", Strategy: StrategyAnonymize, Reason: "the funnel is counted from these; the person is not in them afterwards"},
 
 	// Already anonymous aggregates.
 	{Table: "curator_daily_snapshots", Column: "curator_id", Strategy: StrategyKeep, Reason: "per-curator counts, no personal data of the deleted user"},

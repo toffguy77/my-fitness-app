@@ -162,7 +162,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        # Та же мажорная версия, что в Yandex Cloud: на 16 проверки шли против
+        # схемы, которой нигде нет. Разница уже вводила в заблуждение — PG17+
+        # записывает NOT NULL отдельными ограничениями, и сравнение схем на
+        # разных версиях показывало расхождения, которых не существует.
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: burcev
           POSTGRES_PASSWORD: burcev

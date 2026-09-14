@@ -24,6 +24,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -192,8 +193,14 @@ func emitSQL(out io.Writer) error {
 	// Одной вставкой, а не пятью: условие пустоты проверяется один раз, до
 	// строк. Пятью — первая делает таблицу непустой, и остальные четыре молча
 	// пропадают. Ровно это и случилось при первой попытке.
-	write("INSERT INTO products (name, brand, calories, proteins, fats, carbs, source)")
-	write("SELECT t.* FROM (VALUES")
+	// Категория обязательна: у каждого продукта каталога она есть, и ослаблять
+	// это на проде ради учебных записей было бы менять продукт под тест.
+	write("INSERT INTO categories (name, slug, type, source_url)")
+	write("SELECT 'Проверочная', 'e2e-fixture', 'food', 'https://example.invalid/e2e'")
+	write("WHERE NOT EXISTS (SELECT 1 FROM categories);")
+	write("")
+	write("INSERT INTO products (name, brand, calories, proteins, fats, carbs, source, category_id)")
+	write("SELECT t.*, (SELECT id FROM categories ORDER BY id LIMIT 1) FROM (VALUES")
 	for i, p := range catalogue {
 		comma := ","
 		if i == len(catalogue)-1 {
@@ -267,11 +274,27 @@ func seedProducts(ctx context.Context, db *sql.DB) error {
 		return nil
 	}
 
+	// Категория обязательна у каждого продукта каталога.
+	var categoryID int64
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO categories (name, slug, type, source_url)
+		SELECT 'Проверочная', 'e2e-fixture', 'food', 'https://example.invalid/e2e'
+		WHERE NOT EXISTS (SELECT 1 FROM categories)
+		RETURNING id`).Scan(&categoryID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("create fixture category: %w", err)
+		}
+		if err := db.QueryRowContext(ctx,
+			`SELECT id FROM categories ORDER BY id LIMIT 1`).Scan(&categoryID); err != nil {
+			return fmt.Errorf("find a category: %w", err)
+		}
+	}
+
 	for _, p := range catalogue {
 		if _, err := db.ExecContext(ctx, `
-			INSERT INTO products (name, brand, calories, proteins, fats, carbs, source)
-			VALUES ($1, $2, $3, $4, $5, $6, 'database')`,
-			p.name, p.brand, p.calories, p.proteins, p.fats, p.carbs); err != nil {
+			INSERT INTO products (name, brand, calories, proteins, fats, carbs, source, category_id)
+			VALUES ($1, $2, $3, $4, $5, $6, 'database', $7)`,
+			p.name, p.brand, p.calories, p.proteins, p.fats, p.carbs, categoryID); err != nil {
 			return fmt.Errorf("insert %s: %w", p.name, err)
 		}
 	}

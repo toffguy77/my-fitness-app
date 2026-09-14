@@ -1,0 +1,697 @@
+INDEX analytics_events analytics_events_pkey btree (id)
+INDEX analytics_events idx_analytics_events_name_time btree (name, occurred_at)
+INDEX analytics_events idx_analytics_events_occurred_at btree (occurred_at)
+INDEX analytics_events idx_analytics_events_user btree (user_id, occurred_at) WHERE (user_id IS NOT NULL)
+INDEX analytics_events idx_analytics_events_visitor btree (visitor_id, occurred_at)
+INDEX analytics_identities analytics_identities_pkey btree (visitor_id)
+INDEX analytics_identities idx_analytics_identities_user btree (user_id)
+INDEX article_audience article_audience_pkey btree (article_id, client_id)
+INDEX article_audience idx_article_audience_client btree (client_id)
+INDEX articles articles_pkey btree (id)
+INDEX articles idx_articles_author btree (author_id)
+INDEX articles idx_articles_category btree (category)
+INDEX articles idx_articles_published_at btree (published_at DESC)
+INDEX articles idx_articles_scheduled btree (status, scheduled_at) WHERE (status = 'scheduled'::content_status)
+INDEX articles idx_articles_status btree (status)
+INDEX articles idx_articles_status_scheduled_at btree (status, scheduled_at) WHERE (status = 'scheduled'::content_status)
+INDEX barcode_cache barcode_cache_barcode_key btree (barcode)
+INDEX barcode_cache barcode_cache_pkey btree (id)
+INDEX barcode_cache idx_barcode_cache_barcode btree (barcode)
+INDEX barcode_cache idx_barcode_cache_expires btree (expires_at)
+INDEX barcode_cache idx_barcode_cache_source btree (source)
+INDEX categories categories_pkey btree (id)
+INDEX categories categories_slug_key btree (slug)
+INDEX categories idx_categories_source btree (source)
+INDEX content_notification_mute content_notification_mute_pkey btree (user_id)
+INDEX content_notification_preferences content_notification_preferences_pkey btree (user_id, category)
+INDEX conversations conversations_pkey btree (id)
+INDEX conversations idx_conversations_client btree (client_id)
+INDEX conversations idx_conversations_curator btree (curator_id)
+INDEX conversations idx_conversations_live_pair btree (client_id, curator_id) WHERE (anonymized_at IS NULL)
+INDEX curator_client_relationships coach_client_relationships_coach_id_client_id_key btree (curator_id, client_id)
+INDEX curator_client_relationships coach_client_relationships_pkey btree (id)
+INDEX curator_client_relationships idx_curator_client_client btree (client_id, status)
+INDEX curator_client_relationships idx_curator_client_curator btree (curator_id, status)
+INDEX curator_daily_snapshots curator_daily_snapshots_curator_id_date_key btree (curator_id, date)
+INDEX curator_daily_snapshots curator_daily_snapshots_pkey btree (id)
+INDEX curator_daily_snapshots idx_curator_daily_snap_curator btree (curator_id)
+INDEX curator_daily_snapshots idx_curator_daily_snap_date btree (date)
+INDEX curator_weekly_snapshots curator_weekly_snapshots_curator_id_week_start_key btree (curator_id, week_start)
+INDEX curator_weekly_snapshots curator_weekly_snapshots_pkey btree (id)
+INDEX curator_weekly_snapshots idx_curator_weekly_snap_curator btree (curator_id)
+INDEX daily_calculated_targets daily_calculated_targets_pkey btree (id)
+INDEX daily_calculated_targets idx_dct_user_date btree (user_id, date DESC)
+INDEX daily_calculated_targets uq_user_date btree (user_id, date)
+INDEX daily_metrics daily_metrics_pkey btree (id)
+INDEX daily_metrics daily_metrics_user_id_date_key btree (user_id, date)
+INDEX daily_metrics idx_daily_metrics_date btree (date DESC)
+INDEX daily_metrics idx_daily_metrics_user_date btree (user_id, date DESC)
+INDEX data_exports data_exports_pkey btree (id)
+INDEX data_exports idx_data_exports_status btree (status)
+INDEX data_exports idx_data_exports_user btree (user_id, requested_at DESC)
+INDEX email_verification_codes email_verification_codes_pkey btree (id)
+INDEX email_verification_codes idx_email_verification_codes_user_id btree (user_id)
+INDEX external_identities external_identities_pkey btree (id)
+INDEX external_identities idx_external_identities_provider_user btree (provider, provider_user_id)
+INDEX external_identities idx_external_identities_user_provider btree (user_id, provider)
+INDEX food_entries food_entries_pkey btree (id)
+INDEX food_entries idx_food_entries_food_id btree (food_id)
+INDEX food_entries idx_food_entries_meal_type btree (meal_type)
+INDEX food_entries idx_food_entries_user_date btree (user_id, date DESC)
+INDEX food_entries idx_food_entries_user_date_meal btree (user_id, date, meal_type)
+INDEX food_items food_items_pkey btree (id)
+INDEX food_items idx_food_items_barcode_unique btree (barcode) WHERE (barcode IS NOT NULL)
+INDEX food_items idx_food_items_category btree (category)
+INDEX food_items idx_food_items_name_brand_fts gin (to_tsvector('russian'::regconfig, ((COALESCE(name, ''::text) || ' '::text) || COALESCE(brand, ''::text))))
+INDEX food_items idx_food_items_name_fts gin (to_tsvector('russian'::regconfig, name))
+INDEX food_items idx_food_items_source btree (source)
+INDEX food_recognition_usage food_recognition_usage_pkey btree (id)
+INDEX food_recognition_usage idx_food_recognition_usage_user_date btree (user_id, used_at)
+INDEX job_runs idx_job_runs_name_started btree (job_name, started_at DESC)
+INDEX job_runs idx_job_runs_started btree (started_at)
+INDEX job_runs job_runs_pkey btree (id)
+INDEX leads idx_leads_created_at btree (created_at)
+INDEX leads idx_leads_email btree (email)
+INDEX leads idx_leads_reminder btree (reminder_sent_at, contact_consent)
+INDEX leads leads_pkey btree (id)
+INDEX meal_templates idx_meal_templates_meal_type btree (user_id, meal_type)
+INDEX meal_templates idx_meal_templates_user_id btree (user_id)
+INDEX meal_templates meal_templates_pkey btree (id)
+INDEX message_attachments idx_message_attachments_message btree (message_id)
+INDEX message_attachments message_attachments_pkey btree (id)
+INDEX message_read_status message_read_status_pkey btree (conversation_id, user_id)
+INDEX messages idx_messages_conversation btree (conversation_id, created_at DESC)
+INDEX messages idx_messages_sender btree (sender_id)
+INDEX messages messages_pkey btree (id)
+INDEX notification_deliveries idx_notification_deliveries_due btree (not_before) WHERE (status = 'pending'::text)
+INDEX notification_deliveries idx_notification_deliveries_user btree (user_id, created_at DESC)
+INDEX notification_deliveries notification_deliveries_notification_id_channel_key btree (notification_id, channel)
+INDEX notification_deliveries notification_deliveries_pkey btree (id)
+INDEX notification_preferences notification_preferences_pkey btree (user_id, type, channel)
+INDEX notifications idx_notifications_user_category btree (user_id, category, created_at DESC)
+INDEX notifications idx_notifications_user_unread btree (user_id, read_at) WHERE (read_at IS NULL)
+INDEX notifications notifications_pkey btree (id)
+INDEX nutrient_recommendations idx_nutrient_recommendations_category btree (category)
+INDEX nutrient_recommendations idx_nutrient_recommendations_weekly btree (is_weekly) WHERE (is_weekly = true)
+INDEX nutrient_recommendations nutrient_recommendations_pkey btree (id)
+INDEX nutrients idx_nutrients_group btree (nutrient_group)
+INDEX nutrients idx_nutrients_product btree (product_id)
+INDEX nutrients nutrients_pkey btree (id)
+INDEX oauth_pending_links idx_oauth_pending_links_expires_at btree (expires_at)
+INDEX oauth_pending_links oauth_pending_links_pkey btree (id)
+INDEX password_reset_attempts idx_reset_attempts_email_time btree (email, attempted_at DESC)
+INDEX password_reset_attempts idx_reset_attempts_ip_time btree (ip_address, attempted_at DESC)
+INDEX password_reset_attempts password_reset_attempts_pkey btree (id)
+INDEX platform_weekly_benchmarks platform_weekly_benchmarks_pkey btree (week_start)
+INDEX products idx_products_barcode btree (barcode)
+INDEX products idx_products_brand_trgm gin (brand gin_trgm_ops)
+INDEX products idx_products_category btree (category_id)
+INDEX products idx_products_name gin (to_tsvector('russian'::regconfig, name))
+INDEX products idx_products_name_brand_fts gin (to_tsvector('russian'::regconfig, ((COALESCE(name, ''::text) || ' '::text) || COALESCE(brand, ''::text))))
+INDEX products idx_products_name_trgm gin (name gin_trgm_ops)
+INDEX products idx_products_source btree (source)
+INDEX products idx_products_vendor_code btree (vendor_code)
+INDEX products products_pkey btree (id)
+INDEX push_subscriptions idx_push_subscriptions_user btree (user_id)
+INDEX push_subscriptions push_subscriptions_endpoint_key btree (endpoint)
+INDEX push_subscriptions push_subscriptions_pkey btree (id)
+INDEX refresh_tokens idx_refresh_tokens_token_hash btree (token_hash)
+INDEX refresh_tokens idx_refresh_tokens_user_id btree (user_id)
+INDEX refresh_tokens refresh_tokens_pkey btree (id)
+INDEX refresh_tokens refresh_tokens_token_hash_key btree (token_hash)
+INDEX reset_tokens idx_reset_tokens_expires_at btree (expires_at)
+INDEX reset_tokens idx_reset_tokens_token_hash btree (token_hash)
+INDEX reset_tokens idx_reset_tokens_user_id btree (user_id)
+INDEX reset_tokens reset_tokens_pkey btree (id)
+INDEX reset_tokens reset_tokens_token_hash_key btree (token_hash)
+INDEX schema_migrations schema_migrations_pkey btree (version)
+INDEX support_conversations idx_support_conversations_last_message btree (last_message_at)
+INDEX support_conversations idx_support_conversations_status btree (status, escalated_at)
+INDEX support_conversations support_conversations_chat_id_key btree (chat_id)
+INDEX support_conversations support_conversations_pkey btree (id)
+INDEX support_messages idx_support_messages_conversation btree (conversation_id, created_at)
+INDEX support_messages support_messages_pkey btree (id)
+INDEX task_completions idx_task_completions_date btree (completed_date)
+INDEX task_completions idx_task_completions_task_id btree (task_id)
+INDEX task_completions task_completions_pkey btree (id)
+INDEX task_completions task_completions_task_id_completed_date_key btree (task_id, completed_date)
+INDEX tasks idx_tasks_curator btree (curator_id, created_at DESC)
+INDEX tasks idx_tasks_user_status btree (user_id, status, due_date DESC)
+INDEX tasks idx_tasks_week btree (user_id, week_number DESC)
+INDEX tasks tasks_pkey btree (id)
+INDEX user_consents idx_user_consents_lead_id btree (lead_id)
+INDEX user_consents idx_user_consents_type btree (consent_type)
+INDEX user_consents idx_user_consents_user_id btree (user_id)
+INDEX user_consents user_consents_pkey btree (id)
+INDEX user_custom_recommendations idx_user_custom_recommendations_user_id btree (user_id)
+INDEX user_custom_recommendations user_custom_recommendations_pkey btree (id)
+INDEX user_favorite_foods idx_user_favorite_foods_user_id btree (user_id)
+INDEX user_favorite_foods user_favorite_foods_pkey btree (id)
+INDEX user_favorite_foods user_favorite_foods_user_id_food_id_key btree (user_id, food_id)
+INDEX user_foods idx_user_foods_name_fts gin (to_tsvector('russian'::regconfig, ((COALESCE(name, ''::text) || ' '::text) || COALESCE(brand, ''::text))))
+INDEX user_foods idx_user_foods_user_id btree (user_id)
+INDEX user_foods user_foods_pkey btree (id)
+INDEX user_nutrient_preferences idx_user_nutrient_preferences_tracked btree (user_id, is_tracked) WHERE (is_tracked = true)
+INDEX user_nutrient_preferences idx_user_nutrient_preferences_user_id btree (user_id)
+INDEX user_nutrient_preferences user_nutrient_preferences_pkey btree (id)
+INDEX user_nutrient_preferences user_nutrient_preferences_user_id_nutrient_id_key btree (user_id, nutrient_id)
+INDEX user_settings idx_user_settings_user_id btree (user_id)
+INDEX user_settings user_settings_pkey btree (id)
+INDEX user_settings user_settings_user_id_key btree (user_id)
+INDEX users idx_users_deletion_requested btree (deletion_requested_at) WHERE (deletion_requested_at IS NOT NULL)
+INDEX users idx_users_email btree (email)
+INDEX users idx_users_files_pending btree (deleted_at) WHERE ((deleted_at IS NOT NULL) AND (files_purged_at IS NULL))
+INDEX users users_email_key btree (email)
+INDEX users users_pkey btree (id)
+INDEX water_logs idx_water_logs_date btree (date DESC)
+INDEX water_logs idx_water_logs_user btree (user_id)
+INDEX water_logs idx_water_logs_user_date btree (user_id, date DESC)
+INDEX water_logs water_logs_pkey btree (id)
+INDEX water_logs water_logs_user_id_date_key btree (user_id, date)
+INDEX weekly_photos idx_weekly_photos_user_week btree (user_id, week_start DESC)
+INDEX weekly_photos weekly_photos_pkey btree (id)
+INDEX weekly_photos weekly_photos_user_id_week_identifier_key btree (user_id, week_identifier)
+INDEX weekly_plans idx_weekly_plans_curator btree (curator_id, created_at DESC)
+INDEX weekly_plans idx_weekly_plans_dates btree (start_date, end_date)
+INDEX weekly_plans idx_weekly_plans_user_active btree (user_id, is_active, start_date DESC)
+INDEX weekly_plans weekly_plans_pkey btree (id)
+INDEX weekly_reports idx_weekly_reports_curator btree (curator_id, submitted_at DESC)
+INDEX weekly_reports idx_weekly_reports_summary gin (summary)
+INDEX weekly_reports idx_weekly_reports_user_week btree (user_id, week_start DESC)
+INDEX weekly_reports weekly_reports_pkey btree (id)
+INDEX weekly_reports weekly_reports_user_id_week_start_key btree (user_id, week_start)
+INDEX ws_tickets idx_ws_tickets_expires_at btree (expires_at)
+INDEX ws_tickets ws_tickets_pkey btree (token_hash)
+analytics_events.app_version text
+analytics_events.id bigint NOT NULL DEFAULT nextval('analytics_events_id_seq')
+analytics_events.name text NOT NULL
+analytics_events.occurred_at timestamp with time zone NOT NULL DEFAULT now()
+analytics_events.platform text
+analytics_events.properties jsonb NOT NULL DEFAULT '{}'
+analytics_events.user_id bigint
+analytics_events.visitor_id uuid NOT NULL
+analytics_identities.linked_at timestamp with time zone NOT NULL DEFAULT now()
+analytics_identities.user_id bigint NOT NULL
+analytics_identities.visitor_id uuid NOT NULL
+article_audience.article_id uuid NOT NULL
+article_audience.client_id bigint NOT NULL
+articles.audience_scope USER-DEFINED NOT NULL DEFAULT 'my_clients'_type
+articles.author_id bigint NOT NULL
+articles.category USER-DEFINED NOT NULL DEFAULT 'general'_category
+articles.content_s3_key text
+articles.cover_image_url text
+articles.created_at timestamp with time zone NOT NULL DEFAULT now()
+articles.excerpt character varying
+articles.id uuid NOT NULL DEFAULT gen_random_uuid()
+articles.published_at timestamp with time zone
+articles.scheduled_at timestamp with time zone
+articles.status USER-DEFINED NOT NULL DEFAULT 'draft'_status
+articles.title character varying NOT NULL
+articles.updated_at timestamp with time zone NOT NULL DEFAULT now()
+barcode_cache.barcode text NOT NULL
+barcode_cache.created_at timestamp with time zone DEFAULT now()
+barcode_cache.expires_at timestamp with time zone NOT NULL
+barcode_cache.food_data jsonb NOT NULL
+barcode_cache.id uuid NOT NULL DEFAULT gen_random_uuid()
+barcode_cache.source text NOT NULL DEFAULT 'openfoodfacts'
+barcode_cache.updated_at timestamp with time zone DEFAULT now()
+categories.id bigint NOT NULL DEFAULT nextval('categories_id_seq')
+categories.name text NOT NULL
+categories.slug text NOT NULL
+categories.source text NOT NULL DEFAULT 'health-diet'
+categories.source_url text NOT NULL
+categories.type text NOT NULL
+content_notification_mute.muted_at timestamp with time zone DEFAULT now()
+content_notification_mute.user_id bigint NOT NULL
+content_notification_preferences.category USER-DEFINED NOT NULL
+content_notification_preferences.created_at timestamp with time zone DEFAULT now()
+content_notification_preferences.user_id bigint NOT NULL
+conversations.anonymized_at timestamp with time zone
+conversations.client_id bigint NOT NULL
+conversations.created_at timestamp with time zone NOT NULL DEFAULT now()
+conversations.curator_id bigint NOT NULL
+conversations.id uuid NOT NULL DEFAULT gen_random_uuid()
+conversations.updated_at timestamp with time zone NOT NULL DEFAULT now()
+curator_client_relationships.client_id bigint NOT NULL
+curator_client_relationships.created_at timestamp with time zone DEFAULT now()
+curator_client_relationships.curator_id bigint NOT NULL
+curator_client_relationships.id uuid NOT NULL DEFAULT gen_random_uuid()
+curator_client_relationships.status text NOT NULL DEFAULT 'active'
+curator_client_relationships.updated_at timestamp with time zone DEFAULT now()
+curator_daily_snapshots.active_tasks integer NOT NULL DEFAULT 0
+curator_daily_snapshots.attention_clients integer NOT NULL DEFAULT 0
+curator_daily_snapshots.avg_client_streak numeric NOT NULL DEFAULT 0
+curator_daily_snapshots.avg_kbzhu_percent numeric NOT NULL DEFAULT 0
+curator_daily_snapshots.completed_tasks integer NOT NULL DEFAULT 0
+curator_daily_snapshots.created_at timestamp with time zone NOT NULL DEFAULT now()
+curator_daily_snapshots.curator_id bigint NOT NULL
+curator_daily_snapshots.date date NOT NULL
+curator_daily_snapshots.id uuid NOT NULL DEFAULT gen_random_uuid()
+curator_daily_snapshots.overdue_tasks integer NOT NULL DEFAULT 0
+curator_daily_snapshots.total_clients integer NOT NULL DEFAULT 0
+curator_daily_snapshots.total_unread integer NOT NULL DEFAULT 0
+curator_weekly_snapshots.avg_client_streak numeric NOT NULL DEFAULT 0
+curator_weekly_snapshots.avg_kbzhu_percent numeric NOT NULL DEFAULT 0
+curator_weekly_snapshots.avg_response_time_hours numeric NOT NULL DEFAULT 0
+curator_weekly_snapshots.clients_off_track integer NOT NULL DEFAULT 0
+curator_weekly_snapshots.clients_on_track integer NOT NULL DEFAULT 0
+curator_weekly_snapshots.clients_total integer NOT NULL DEFAULT 0
+curator_weekly_snapshots.clients_with_feedback integer NOT NULL DEFAULT 0
+curator_weekly_snapshots.created_at timestamp with time zone NOT NULL DEFAULT now()
+curator_weekly_snapshots.curator_id bigint NOT NULL
+curator_weekly_snapshots.id uuid NOT NULL DEFAULT gen_random_uuid()
+curator_weekly_snapshots.task_completion_rate numeric NOT NULL DEFAULT 0
+curator_weekly_snapshots.week_start date NOT NULL
+daily_calculated_targets.bmr numeric NOT NULL
+daily_calculated_targets.calories numeric NOT NULL
+daily_calculated_targets.carbs numeric NOT NULL
+daily_calculated_targets.created_at timestamp with time zone NOT NULL DEFAULT now()
+daily_calculated_targets.date date NOT NULL
+daily_calculated_targets.fat numeric NOT NULL
+daily_calculated_targets.id bigint NOT NULL DEFAULT nextval('daily_calculated_targets_id_seq')
+daily_calculated_targets.protein numeric NOT NULL
+daily_calculated_targets.source character varying NOT NULL DEFAULT 'calculated'
+daily_calculated_targets.tdee numeric NOT NULL
+daily_calculated_targets.user_id bigint NOT NULL
+daily_calculated_targets.weight_used numeric NOT NULL
+daily_calculated_targets.workout_bonus numeric NOT NULL DEFAULT 0
+daily_metrics.calories integer DEFAULT 0
+daily_metrics.carbs integer DEFAULT 0
+daily_metrics.created_at timestamp with time zone DEFAULT now()
+daily_metrics.date date NOT NULL
+daily_metrics.fat integer DEFAULT 0
+daily_metrics.id uuid NOT NULL DEFAULT gen_random_uuid()
+daily_metrics.protein integer DEFAULT 0
+daily_metrics.steps integer DEFAULT 0
+daily_metrics.updated_at timestamp with time zone DEFAULT now()
+daily_metrics.user_id bigint NOT NULL
+daily_metrics.weight numeric
+daily_metrics.workout_completed boolean DEFAULT false
+daily_metrics.workout_duration integer
+daily_metrics.workout_type text
+data_exports.completed_at timestamp with time zone
+data_exports.downloaded_at timestamp with time zone
+data_exports.error text
+data_exports.expires_at timestamp with time zone
+data_exports.id uuid NOT NULL DEFAULT gen_random_uuid()
+data_exports.requested_at timestamp with time zone NOT NULL DEFAULT now()
+data_exports.s3_key text
+data_exports.status text NOT NULL DEFAULT 'pending'
+data_exports.user_id bigint NOT NULL
+email_verification_codes.attempts integer NOT NULL DEFAULT 0
+email_verification_codes.code_hash character varying NOT NULL
+email_verification_codes.created_at timestamp with time zone NOT NULL DEFAULT now()
+email_verification_codes.expires_at timestamp with time zone NOT NULL
+email_verification_codes.id bigint NOT NULL DEFAULT nextval('email_verification_codes_id_seq')
+email_verification_codes.ip_address character varying
+email_verification_codes.used_at timestamp with time zone
+email_verification_codes.user_agent text
+email_verification_codes.user_id bigint NOT NULL
+external_identities.avatar_url text
+external_identities.created_at timestamp with time zone NOT NULL DEFAULT now()
+external_identities.email text
+external_identities.id uuid NOT NULL DEFAULT gen_random_uuid()
+external_identities.last_login_at timestamp with time zone
+external_identities.name text
+external_identities.provider text NOT NULL
+external_identities.provider_user_id text NOT NULL
+external_identities.user_id bigint NOT NULL
+food_entries.calories numeric NOT NULL
+food_entries.carbs numeric NOT NULL
+food_entries.created_at timestamp with time zone DEFAULT now()
+food_entries.created_by bigint
+food_entries.date date NOT NULL
+food_entries.fat numeric NOT NULL
+food_entries.food_id uuid NOT NULL
+food_entries.food_name text NOT NULL
+food_entries.id uuid NOT NULL DEFAULT gen_random_uuid()
+food_entries.meal_type text NOT NULL
+food_entries.photo_url text
+food_entries.portion_amount numeric NOT NULL
+food_entries.portion_type text NOT NULL
+food_entries.protein numeric NOT NULL
+food_entries.time text NOT NULL
+food_entries.updated_at timestamp with time zone DEFAULT now()
+food_entries.user_id bigint NOT NULL
+food_items.additional_nutrients jsonb
+food_items.barcode text
+food_items.brand text
+food_items.calories_per_100 numeric NOT NULL
+food_items.carbs_per_100 numeric NOT NULL DEFAULT 0
+food_items.category text NOT NULL
+food_items.created_at timestamp with time zone DEFAULT now()
+food_items.default_weight numeric
+food_items.default_weight_unit text DEFAULT 'г'
+food_items.fat_per_100 numeric NOT NULL DEFAULT 0
+food_items.fiber_per_100 numeric DEFAULT 0
+food_items.id uuid NOT NULL DEFAULT gen_random_uuid()
+food_items.name text NOT NULL
+food_items.protein_per_100 numeric NOT NULL DEFAULT 0
+food_items.serving_size numeric NOT NULL DEFAULT 100
+food_items.serving_unit text NOT NULL DEFAULT 'g'
+food_items.sodium_per_100 numeric DEFAULT 0
+food_items.source text NOT NULL DEFAULT 'database'
+food_items.sugar_per_100 numeric DEFAULT 0
+food_items.updated_at timestamp with time zone DEFAULT now()
+food_items.verified boolean DEFAULT false
+food_recognition_usage.foods_count integer NOT NULL DEFAULT 0
+food_recognition_usage.id integer NOT NULL DEFAULT nextval('food_recognition_usage_id_seq')
+food_recognition_usage.photo_url text
+food_recognition_usage.used_at timestamp with time zone NOT NULL DEFAULT now()
+food_recognition_usage.user_id bigint NOT NULL
+job_runs.error text
+job_runs.finished_at timestamp with time zone
+job_runs.id uuid NOT NULL DEFAULT gen_random_uuid()
+job_runs.items_processed integer NOT NULL DEFAULT 0
+job_runs.job_name text NOT NULL
+job_runs.started_at timestamp with time zone NOT NULL DEFAULT now()
+job_runs.status text NOT NULL
+leads.activity_level text
+leads.birth_date date
+leads.calories numeric
+leads.carbs numeric
+leads.contact_consent boolean NOT NULL DEFAULT false
+leads.created_at timestamp with time zone NOT NULL DEFAULT now()
+leads.data_consent boolean NOT NULL DEFAULT false
+leads.email text NOT NULL
+leads.fat numeric
+leads.goal text
+leads.handled_at timestamp with time zone
+leads.handled_by bigint
+leads.height_cm numeric
+leads.id uuid NOT NULL DEFAULT gen_random_uuid()
+leads.last_step text NOT NULL DEFAULT 'contact'
+leads.name text
+leads.protein numeric
+leads.reminder_sent_at timestamp with time zone
+leads.sex text
+leads.source text
+leads.updated_at timestamp with time zone NOT NULL DEFAULT now()
+leads.water_glasses integer
+leads.weight_kg numeric
+meal_templates.created_at timestamp with time zone DEFAULT now()
+meal_templates.entries jsonb NOT NULL
+meal_templates.id uuid NOT NULL DEFAULT gen_random_uuid()
+meal_templates.meal_type text NOT NULL
+meal_templates.name text NOT NULL
+meal_templates.total_calories numeric NOT NULL
+meal_templates.total_carbs numeric NOT NULL
+meal_templates.total_fat numeric NOT NULL
+meal_templates.total_protein numeric NOT NULL
+meal_templates.user_id bigint NOT NULL
+message_attachments.created_at timestamp with time zone NOT NULL DEFAULT now()
+message_attachments.file_name text NOT NULL
+message_attachments.file_size bigint NOT NULL
+message_attachments.file_url text NOT NULL
+message_attachments.id uuid NOT NULL DEFAULT gen_random_uuid()
+message_attachments.message_id uuid NOT NULL
+message_attachments.mime_type text NOT NULL
+message_read_status.conversation_id uuid NOT NULL
+message_read_status.last_read_at timestamp with time zone NOT NULL DEFAULT now()
+message_read_status.user_id bigint NOT NULL
+messages.content text
+messages.conversation_id uuid NOT NULL
+messages.created_at timestamp with time zone NOT NULL DEFAULT now()
+messages.id uuid NOT NULL DEFAULT gen_random_uuid()
+messages.metadata jsonb
+messages.sender_id bigint NOT NULL
+messages.type text NOT NULL
+notification_deliveries.attempts integer NOT NULL DEFAULT 0
+notification_deliveries.channel text NOT NULL
+notification_deliveries.created_at timestamp with time zone NOT NULL DEFAULT now()
+notification_deliveries.id bigint NOT NULL DEFAULT nextval('notification_deliveries_id_seq')
+notification_deliveries.last_error text
+notification_deliveries.not_before timestamp with time zone NOT NULL DEFAULT now()
+notification_deliveries.notification_id uuid NOT NULL
+notification_deliveries.status text NOT NULL DEFAULT 'pending'
+notification_deliveries.updated_at timestamp with time zone NOT NULL DEFAULT now()
+notification_deliveries.user_id bigint NOT NULL
+notification_preferences.channel text NOT NULL
+notification_preferences.enabled boolean NOT NULL
+notification_preferences.type text NOT NULL
+notification_preferences.updated_at timestamp with time zone NOT NULL DEFAULT now()
+notification_preferences.user_id bigint NOT NULL
+notifications.action_url character varying
+notifications.category character varying NOT NULL
+notifications.content text NOT NULL
+notifications.content_category USER-DEFINED
+notifications.created_at timestamp with time zone NOT NULL DEFAULT now()
+notifications.icon_url character varying
+notifications.id uuid NOT NULL DEFAULT gen_random_uuid()
+notifications.read_at timestamp with time zone
+notifications.title character varying NOT NULL
+notifications.type character varying NOT NULL
+notifications.user_id bigint NOT NULL
+nutrient_recommendations.benefits text
+nutrient_recommendations.category text NOT NULL
+nutrient_recommendations.created_at timestamp with time zone DEFAULT now()
+nutrient_recommendations.daily_target numeric NOT NULL
+nutrient_recommendations.description text
+nutrient_recommendations.effects text
+nutrient_recommendations.id uuid NOT NULL DEFAULT gen_random_uuid()
+nutrient_recommendations.is_weekly boolean DEFAULT false
+nutrient_recommendations.min_recommendation numeric
+nutrient_recommendations.name text NOT NULL
+nutrient_recommendations.optimal_recommendation numeric
+nutrient_recommendations.unit text NOT NULL
+nutrients.amount numeric
+nutrients.daily_norm_percent numeric
+nutrients.id bigint NOT NULL DEFAULT nextval('nutrients_id_seq')
+nutrients.nutrient_group text NOT NULL
+nutrients.nutrient_name text NOT NULL
+nutrients.product_id bigint NOT NULL
+nutrients.unit text NOT NULL
+oauth_pending_links.avatar_url text
+oauth_pending_links.created_at timestamp with time zone NOT NULL DEFAULT now()
+oauth_pending_links.email text
+oauth_pending_links.expires_at timestamp with time zone NOT NULL
+oauth_pending_links.id uuid NOT NULL DEFAULT gen_random_uuid()
+oauth_pending_links.name text
+oauth_pending_links.provider text NOT NULL
+oauth_pending_links.provider_user_id text NOT NULL
+password_reset_attempts.attempted_at timestamp without time zone NOT NULL DEFAULT now()
+password_reset_attempts.email character varying NOT NULL
+password_reset_attempts.id bigint NOT NULL DEFAULT nextval('password_reset_attempts_id_seq')
+password_reset_attempts.ip_address character varying NOT NULL
+platform_weekly_benchmarks.avg_client_streak numeric NOT NULL DEFAULT 0
+platform_weekly_benchmarks.avg_feedback_rate numeric NOT NULL DEFAULT 0
+platform_weekly_benchmarks.avg_kbzhu_percent numeric NOT NULL DEFAULT 0
+platform_weekly_benchmarks.avg_response_time_hours numeric NOT NULL DEFAULT 0
+platform_weekly_benchmarks.avg_task_completion_rate numeric NOT NULL DEFAULT 0
+platform_weekly_benchmarks.created_at timestamp with time zone NOT NULL DEFAULT now()
+platform_weekly_benchmarks.curator_count integer NOT NULL DEFAULT 0
+platform_weekly_benchmarks.week_start date NOT NULL
+products.barcode text
+products.brand text
+products.calories numeric
+products.carbs numeric
+products.category_id bigint NOT NULL
+products.created_at timestamp with time zone DEFAULT now()
+products.default_weight numeric
+products.default_weight_unit text DEFAULT 'г'
+products.fats numeric
+products.fiber numeric
+products.id bigint NOT NULL DEFAULT nextval('products_id_seq')
+products.manufacturer text
+products.name text NOT NULL
+products.proteins numeric
+products.source text NOT NULL DEFAULT 'database'
+products.source_url text
+products.vendor_code text
+products.water numeric
+push_subscriptions.auth text NOT NULL
+push_subscriptions.created_at timestamp with time zone NOT NULL DEFAULT now()
+push_subscriptions.endpoint text NOT NULL
+push_subscriptions.failures integer NOT NULL DEFAULT 0
+push_subscriptions.id bigint NOT NULL DEFAULT nextval('push_subscriptions_id_seq')
+push_subscriptions.last_used_at timestamp with time zone
+push_subscriptions.p256dh text NOT NULL
+push_subscriptions.user_agent text
+push_subscriptions.user_id bigint NOT NULL
+refresh_tokens.created_at timestamp without time zone NOT NULL DEFAULT now()
+refresh_tokens.expires_at timestamp without time zone NOT NULL
+refresh_tokens.id bigint NOT NULL DEFAULT nextval('refresh_tokens_id_seq')
+refresh_tokens.ip_address character varying
+refresh_tokens.remember_me boolean NOT NULL DEFAULT false
+refresh_tokens.replaced_by_hash character varying
+refresh_tokens.revoked_at timestamp without time zone
+refresh_tokens.token_hash character varying NOT NULL
+refresh_tokens.user_agent text
+refresh_tokens.user_id bigint NOT NULL
+reset_tokens.created_at timestamp without time zone NOT NULL DEFAULT now()
+reset_tokens.expires_at timestamp without time zone NOT NULL
+reset_tokens.id bigint NOT NULL DEFAULT nextval('reset_tokens_id_seq')
+reset_tokens.ip_address character varying
+reset_tokens.token_hash character varying NOT NULL
+reset_tokens.used_at timestamp without time zone
+reset_tokens.user_agent text
+reset_tokens.user_id bigint NOT NULL
+schema_migrations.applied_at timestamp with time zone NOT NULL DEFAULT now()
+schema_migrations.name text NOT NULL
+schema_migrations.version integer NOT NULL
+support_conversations.chat_id bigint NOT NULL
+support_conversations.closed_at timestamp with time zone
+support_conversations.closed_by bigint
+support_conversations.created_at timestamp with time zone NOT NULL DEFAULT now()
+support_conversations.escalated_at timestamp with time zone
+support_conversations.escalation_reason text
+support_conversations.id uuid NOT NULL DEFAULT gen_random_uuid()
+support_conversations.last_message_at timestamp with time zone NOT NULL DEFAULT now()
+support_conversations.lead_id uuid
+support_conversations.status text NOT NULL DEFAULT 'open'
+support_conversations.telegram_name text
+support_conversations.telegram_username text
+support_conversations.user_id bigint
+support_messages.author text NOT NULL
+support_messages.conversation_id uuid NOT NULL
+support_messages.created_at timestamp with time zone NOT NULL DEFAULT now()
+support_messages.delivered_at timestamp with time zone
+support_messages.id uuid NOT NULL DEFAULT gen_random_uuid()
+support_messages.operator_id bigint
+support_messages.text text NOT NULL
+task_completions.completed_date date NOT NULL
+task_completions.created_at timestamp with time zone NOT NULL DEFAULT now()
+task_completions.id uuid NOT NULL DEFAULT gen_random_uuid()
+task_completions.task_id uuid NOT NULL
+tasks.assigned_at timestamp with time zone DEFAULT now()
+tasks.completed_at timestamp with time zone
+tasks.created_at timestamp with time zone DEFAULT now()
+tasks.curator_id bigint NOT NULL
+tasks.description text
+tasks.due_date date NOT NULL
+tasks.id uuid NOT NULL DEFAULT gen_random_uuid()
+tasks.recurrence character varying NOT NULL DEFAULT 'once'
+tasks.recurrence_days ARRAY
+tasks.status text NOT NULL DEFAULT 'active'
+tasks.title text NOT NULL
+tasks.type character varying NOT NULL DEFAULT 'habit'
+tasks.updated_at timestamp with time zone DEFAULT now()
+tasks.user_id bigint NOT NULL
+tasks.week_number integer NOT NULL
+user_consents.consent_type text NOT NULL
+user_consents.granted boolean NOT NULL
+user_consents.granted_at timestamp with time zone DEFAULT now()
+user_consents.id bigint NOT NULL DEFAULT nextval('user_consents_id_seq')
+user_consents.ip_address inet
+user_consents.lead_id uuid
+user_consents.user_agent text
+user_consents.user_id bigint
+user_custom_recommendations.created_at timestamp with time zone DEFAULT now()
+user_custom_recommendations.current_intake numeric DEFAULT 0
+user_custom_recommendations.daily_target numeric NOT NULL
+user_custom_recommendations.id uuid NOT NULL DEFAULT gen_random_uuid()
+user_custom_recommendations.name text NOT NULL
+user_custom_recommendations.unit text NOT NULL
+user_custom_recommendations.updated_at timestamp with time zone DEFAULT now()
+user_custom_recommendations.user_id bigint NOT NULL
+user_favorite_foods.created_at timestamp with time zone DEFAULT now()
+user_favorite_foods.food_id uuid NOT NULL
+user_favorite_foods.id uuid NOT NULL DEFAULT gen_random_uuid()
+user_favorite_foods.user_id bigint NOT NULL
+user_foods.brand text
+user_foods.calories_per_100 numeric NOT NULL
+user_foods.carbs_per_100 numeric NOT NULL DEFAULT 0
+user_foods.created_at timestamp with time zone DEFAULT now()
+user_foods.fat_per_100 numeric NOT NULL DEFAULT 0
+user_foods.id uuid NOT NULL DEFAULT gen_random_uuid()
+user_foods.name text NOT NULL
+user_foods.protein_per_100 numeric NOT NULL DEFAULT 0
+user_foods.serving_size numeric NOT NULL DEFAULT 100
+user_foods.serving_unit text NOT NULL DEFAULT 'g'
+user_foods.source_food_id uuid
+user_foods.updated_at timestamp with time zone DEFAULT now()
+user_foods.user_id bigint NOT NULL
+user_nutrient_preferences.created_at timestamp with time zone DEFAULT now()
+user_nutrient_preferences.id uuid NOT NULL DEFAULT gen_random_uuid()
+user_nutrient_preferences.is_tracked boolean DEFAULT true
+user_nutrient_preferences.nutrient_id uuid NOT NULL
+user_nutrient_preferences.user_id bigint NOT NULL
+user_settings.activity_level character varying DEFAULT 'moderate'
+user_settings.apple_health_enabled boolean DEFAULT false
+user_settings.biological_sex character varying
+user_settings.birth_date date
+user_settings.created_at timestamp with time zone DEFAULT now()
+user_settings.fitness_goal character varying DEFAULT 'maintain'
+user_settings.height numeric
+user_settings.id bigint NOT NULL DEFAULT nextval('user_settings_id_seq')
+user_settings.instagram_username text
+user_settings.language text NOT NULL DEFAULT 'ru'
+user_settings.target_weight numeric
+user_settings.telegram_username text
+user_settings.timezone text NOT NULL DEFAULT 'Europe/Moscow'
+user_settings.units text NOT NULL DEFAULT 'metric'
+user_settings.updated_at timestamp with time zone DEFAULT now()
+user_settings.user_id bigint NOT NULL
+user_settings.water_goal integer
+users.anonymized_at timestamp with time zone
+users.avatar_url text
+users.created_at timestamp with time zone DEFAULT now()
+users.deleted_at timestamp with time zone
+users.deletion_requested_at timestamp with time zone
+users.email text NOT NULL
+users.email_unsubscribed_at timestamp with time zone
+users.email_verified boolean NOT NULL DEFAULT false
+users.files_purged_at timestamp with time zone
+users.id bigint NOT NULL DEFAULT nextval('users_id_seq')
+users.is_system boolean NOT NULL DEFAULT false
+users.name text
+users.onboarding_completed boolean DEFAULT false
+users.password text
+users.password_changed_at timestamp without time zone
+users.pending_file_prefixes jsonb
+users.quiet_hours_end smallint
+users.quiet_hours_start smallint
+users.role text NOT NULL DEFAULT 'client'
+users.token_version integer NOT NULL DEFAULT 0
+users.updated_at timestamp with time zone DEFAULT now()
+water_logs.created_at timestamp with time zone DEFAULT now()
+water_logs.date date NOT NULL
+water_logs.glass_size integer NOT NULL DEFAULT 250
+water_logs.glasses integer NOT NULL DEFAULT 0
+water_logs.goal integer NOT NULL DEFAULT 8
+water_logs.id uuid NOT NULL DEFAULT gen_random_uuid()
+water_logs.updated_at timestamp with time zone DEFAULT now()
+water_logs.user_id bigint NOT NULL
+weekly_photos.created_at timestamp with time zone DEFAULT now()
+weekly_photos.file_size integer NOT NULL
+weekly_photos.id uuid NOT NULL DEFAULT gen_random_uuid()
+weekly_photos.mime_type text NOT NULL
+weekly_photos.photo_url text NOT NULL
+weekly_photos.uploaded_at timestamp with time zone DEFAULT now()
+weekly_photos.user_id bigint NOT NULL
+weekly_photos.week_end date NOT NULL
+weekly_photos.week_identifier text NOT NULL
+weekly_photos.week_start date NOT NULL
+weekly_plans.calories_goal integer NOT NULL
+weekly_plans.carbs_goal integer
+weekly_plans.comment text
+weekly_plans.created_at timestamp with time zone DEFAULT now()
+weekly_plans.created_by bigint NOT NULL
+weekly_plans.curator_id bigint NOT NULL
+weekly_plans.end_date date NOT NULL
+weekly_plans.fat_goal integer
+weekly_plans.id uuid NOT NULL DEFAULT gen_random_uuid()
+weekly_plans.is_active boolean DEFAULT true
+weekly_plans.protein_goal integer NOT NULL
+weekly_plans.start_date date NOT NULL
+weekly_plans.steps_goal integer
+weekly_plans.updated_at timestamp with time zone DEFAULT now()
+weekly_plans.user_id bigint NOT NULL
+weekly_reports.created_at timestamp with time zone DEFAULT now()
+weekly_reports.curator_feedback jsonb
+weekly_reports.curator_id bigint NOT NULL
+weekly_reports.id uuid NOT NULL DEFAULT gen_random_uuid()
+weekly_reports.photo_url text
+weekly_reports.reviewed_at timestamp with time zone
+weekly_reports.submitted_at timestamp with time zone DEFAULT now()
+weekly_reports.summary jsonb NOT NULL
+weekly_reports.updated_at timestamp with time zone DEFAULT now()
+weekly_reports.user_id bigint NOT NULL
+weekly_reports.week_end date NOT NULL
+weekly_reports.week_number integer NOT NULL
+weekly_reports.week_start date NOT NULL
+ws_tickets.created_at timestamp with time zone NOT NULL DEFAULT now()
+ws_tickets.expires_at timestamp with time zone NOT NULL
+ws_tickets.token_hash text NOT NULL
+ws_tickets.used_at timestamp with time zone
+ws_tickets.user_id bigint NOT NULL
