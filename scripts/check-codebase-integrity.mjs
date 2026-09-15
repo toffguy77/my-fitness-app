@@ -222,6 +222,41 @@ for (const name of unsent) {
     )
 }
 
+// Переменная, которую читает сервер, должна доходить до контейнера.
+//
+// Dokploy хранит переменные окружения у себя, а docker-compose передаёт в
+// службу только то, что перечислено явно. Забытая строка выглядит как рабочая
+// настройка: значение стоит в панели, в .env.example описано, а служба его не
+// видит и молча работает как с пустым.
+//
+// Так дважды произошло на самом деле: APP_VERSION четыре дня показывала чужую
+// версию, а TELEGRAM_SUPPORT_GROUP_ID выключала мост переписки при заданной
+// группе.
+const compose = readFileSync('docker-compose.yml', 'utf8')
+const configGo = readFileSync('apps/api/internal/config/config.go', 'utf8')
+
+const readByServer = new Set(
+    [...configGo.matchAll(/getEnv(?:AsInt64|AsInt|AsDuration|WithFallback)?\(\s*"([A-Z0-9_]+)"/g)].map(
+        (m) => m[1],
+    ),
+)
+// Переменные, которые сервер читает не сам: их задаёт платформа или они
+// собираются из других.
+const notFromCompose = new Set(['PORT', 'NODE_ENV', 'DATABASE_URL'])
+
+const forwarded = new Set(
+    [...compose.matchAll(/^\s*-\s*([A-Z0-9_]+)=\$\{/gm)].map((m) => m[1]),
+)
+
+for (const name of [...readByServer].sort()) {
+    if (notFromCompose.has(name) || forwarded.has(name)) continue
+    problems.push(
+        `Сервер читает ${name}, но docker-compose.yml её не пробрасывает.\n` +
+            `  Значение будет стоять в панели и в .env.example, а служба увидит пустоту\n` +
+            `  и промолчит об этом. Добавьте строку в окружение службы api.`,
+    )
+}
+
 if (problems.length > 0) {
     console.error('Codebase integrity check failed:\n')
     for (const p of problems) console.error(p + '\n')
@@ -233,5 +268,6 @@ console.log(
         `${configs.length} Next.js config, no unimplemented shipped handlers, ` +
         `${appPages.length} app files free of fixture data, ` +
         `${specFiles.length} e2e specs all in a project, ` +
-        `${declaredEvents.length} analytics events all sent.`,
+        `${declaredEvents.length} analytics events all sent, ` +
+            `${readByServer.size} server env vars all forwarded by compose.`,
 )
