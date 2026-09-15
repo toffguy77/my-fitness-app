@@ -81,6 +81,10 @@ const allowRealAccounts = "E2E_SEED_INTO_DATABASE_WITH_REAL_ACCOUNTS"
 //
 // Ошибиться здесь легко и незаметно: DATABASE_URL берётся из окружения, а
 // окружение переживает смену задачи. Отказ громче любой инструкции.
+//
+// Служебная учётная запись-заглушка (`is_system`) за человека не считается:
+// она есть в любой свежей схеме, и без этой оговорки защита отказывала бы на
+// чистой базе — то есть её сняли бы в первый же день.
 func refuseIfNotATestDatabase(ctx context.Context, db *sql.DB) error {
 	if os.Getenv(allowRealAccounts) == "1" {
 		fmt.Fprintf(os.Stderr, "ВНИМАНИЕ: %s=1 — защита снята намеренно\n", allowRealAccounts)
@@ -91,6 +95,7 @@ func refuseIfNotATestDatabase(ctx context.Context, db *sql.DB) error {
 	err := db.QueryRowContext(ctx, `
 		SELECT count(*) FROM users
 		 WHERE deleted_at IS NULL
+		   AND is_system = false
 		   AND email NOT LIKE '%@burcev.test'`).Scan(&real)
 	if err != nil {
 		return fmt.Errorf("проверить, тестовая ли это база: %w", err)
