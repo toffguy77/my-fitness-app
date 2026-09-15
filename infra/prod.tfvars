@@ -10,7 +10,12 @@ pg_db_lc_collate = "ru_RU.UTF-8"
 pg_db_lc_type    = "ru_RU.UTF-8"
 
 # DB owner differs from the managed user (changing owner forces DB replacement in YC MDB!)
-pg_db_owner = "web-app-user"
+# Владелец боевой базы — burcev-web, проверено запросом к самой базе.
+# Здесь стояло "web-app-user", и `terraform plan` отвечал на это
+# «must be replaced»: смена владельца заменяет ресурс, то есть удаляет
+# боевую базу со всеми данными. README при этом предлагает запускать
+# apply именно так.
+pg_db_owner = "burcev-web"
 
 # Existing user grants and permissions
 pg_user_grants      = ["mdb_admin"]

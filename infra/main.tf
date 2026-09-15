@@ -15,17 +15,25 @@ terraform {
     }
   }
 
+  # Yandex Object Storage, не AWS. Отсюда набор пропусков: у Yandex нет ни
+  # STS, ни IAM-ролей, ни метаданных инстанса, и запрос к ним не возвращает
+  # ошибку, а просто не разрешается. Без skip_requesting_account_id backend
+  # уходит в sts.ru-central1.amazonaws.com и `terraform init` не проходит
+  # вовсе — ни у кого, независимо от прав.
   backend "s3" {
-    endpoint = "https://storage.yandexcloud.net"
-    bucket   = "burcev-terraform-state"
-    key      = "infra.tfstate"
-    region   = "ru-central1"
+    endpoints = {
+      s3 = "https://storage.yandexcloud.net"
+    }
+    bucket = "burcev-terraform-state"
+    key    = "infra.tfstate"
+    region = "ru-central1"
 
     skip_region_validation      = true
     skip_credentials_validation = true
     skip_metadata_api_check     = true
+    skip_requesting_account_id  = true
 
-    force_path_style = true
+    use_path_style = true
   }
 }
 
