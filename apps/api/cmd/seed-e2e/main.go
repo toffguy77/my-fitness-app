@@ -63,6 +63,49 @@ var accounts = []account{
 	{"other-curator", "E2E_OTHER_CURATOR_EMAIL", "E2E_OTHER_CURATOR_PASSWORD", "coordinator", "E2E Other Curator"},
 }
 
+// allowRealAccounts — осознанный обход защиты ниже.
+const allowRealAccounts = "E2E_SEED_INTO_DATABASE_WITH_REAL_ACCOUNTS"
+
+// refuseIfNotATestDatabase отказывается сеять туда, где живут настоящие люди.
+//
+// Проверяется не имя хоста и не имя базы — их легко перепутать и незаметно
+// поправить. Проверяется содержимое: если в базе есть учётные записи, которые
+// не являются фикстурами, это не тестовая база, чем бы ни была строка
+// подключения.
+//
+// Повод конкретный. 2026-09-13 фикстуры уехали на прод: пять учёток, включая
+// одну с ролью super_admin, с паролем, посчитанным `bcrypt.MinCost` —
+// стоимостью 4 вместо 10. Для тестов это правильно: иначе прогон тратит
+// секунды на хэширование. На проде это учётная запись с полными правами и
+// намеренно ослабленным паролем.
+//
+// Ошибиться здесь легко и незаметно: DATABASE_URL берётся из окружения, а
+// окружение переживает смену задачи. Отказ громче любой инструкции.
+func refuseIfNotATestDatabase(ctx context.Context, db *sql.DB) error {
+	if os.Getenv(allowRealAccounts) == "1" {
+		fmt.Fprintf(os.Stderr, "ВНИМАНИЕ: %s=1 — защита снята намеренно\n", allowRealAccounts)
+		return nil
+	}
+
+	var real int
+	err := db.QueryRowContext(ctx, `
+		SELECT count(*) FROM users
+		 WHERE deleted_at IS NULL
+		   AND email NOT LIKE '%@burcev.test'`).Scan(&real)
+	if err != nil {
+		return fmt.Errorf("проверить, тестовая ли это база: %w", err)
+	}
+	if real > 0 {
+		return fmt.Errorf(
+			"отказ: в базе %d учётных записей, не являющихся фикстурами — это не тестовая база.\n"+
+				"Фикстуры создаются со стоимостью bcrypt %d вместо обычной: на боевой базе это\n"+
+				"учётная запись с полными правами и намеренно ослабленным паролем.\n"+
+				"Проверьте DATABASE_URL. Если вы действительно этого хотите — %s=1",
+			real, bcrypt.MinCost, allowRealAccounts)
+	}
+	return nil
+}
+
 func main() {
 	printSQL := flag.Bool("sql", false,
 		"напечатать SQL вместо выполнения: для баз, до которых отсюда не дотянуться")
@@ -88,6 +131,10 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+
+	if err := refuseIfNotATestDatabase(ctx, db); err != nil {
+		log.Fatal(err)
+	}
 
 	ids := make(map[string]int64, len(accounts))
 	for _, a := range accounts {
