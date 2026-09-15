@@ -29,6 +29,7 @@ import (
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/support"
+	"github.com/burcev/api/internal/modules/supportbridge"
 	"github.com/burcev/api/internal/modules/telegramlink"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/router"
@@ -325,6 +326,7 @@ func main() {
 	// Support bot. Absent credentials mean no bot at all rather than a broken
 	// one: the routes are not registered and the capability reports itself off.
 	var supportService *support.Service
+	var bridge *supportbridge.Service
 	if cfg.Features.SupportBot {
 		supportService = support.NewService(
 			db.DB, log,
@@ -338,6 +340,12 @@ func main() {
 		// An escalated conversation sits in the admin queue until somebody
 		// looks. This is what makes them look.
 		supportService.WithOperatorNotices(notificationsSvc)
+
+		// Мост переписки: тема на клиента. Без заданной группы выключен —
+		// переписка идёт по-старому, а не ломается.
+		bridge = supportbridge.NewService(db.DB, telegram.NewClient(cfg.TelegramBotToken),
+			log, cfg.TelegramSupportGroupID, appOrigin(cfg.AppDomain))
+		accountService.WithTopics(bridge)
 	} else {
 		log.Warn("Support bot is disabled", "reason", "TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET or OPENROUTER_API_KEY is absent")
 	}
@@ -420,6 +428,32 @@ func main() {
 				return bot.VerifyWebhook(ctx, webhookURL)
 			},
 		})
+
+		// Мост переписки держится на правах бота в группе, а права снимаются в
+		// интерфейсе Telegram — настройки об этом не узнают. Без этой проверки
+		// переписка перестала бы ходить, ничем не отличаясь от исправной, и мы
+		// услышали бы об этом от клиента. Ровно так уже молчал вебхук.
+		if cfg.TelegramSupportGroupID != 0 {
+			groupID := cfg.TelegramSupportGroupID
+			checks = append(checks, capabilities.Check{
+				Name: "support_bridge",
+				Verify: func(ctx context.Context) error {
+					state, err := bot.CheckForum(ctx, groupID)
+					if err != nil {
+						return fmt.Errorf("группа поддержки недоступна: %w", err)
+					}
+					switch {
+					case !state.IsForum:
+						return fmt.Errorf("в группе поддержки выключены темы")
+					case !state.BotIsAdmin:
+						return fmt.Errorf("бот не администратор группы поддержки")
+					case !state.CanManageTopic:
+						return fmt.Errorf("боту не разрешено управлять темами")
+					}
+					return nil
+				},
+			})
+		}
 	}
 	for name, client := range map[string]*storage.S3Client{
 		"weekly_photos":    s3Client,

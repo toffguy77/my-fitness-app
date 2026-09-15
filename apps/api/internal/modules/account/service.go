@@ -29,6 +29,8 @@ type Service struct {
 	buckets map[string]*storage.S3Client
 	// notifier may be nil; nothing here depends on it existing.
 	notifier Notifier
+	// topics may be nil: без моста закрывать нечего.
+	topics TopicCloser
 }
 
 // Notifier tells somebody that something happened. Declared here as the
@@ -59,6 +61,19 @@ func (s *Service) notify(ctx context.Context, userID int64, notificationType, ti
 // NewService creates the service. buckets maps a name used in logs to a client.
 func NewService(db *database.DB, log *logger.Logger, buckets map[string]*storage.S3Client) *Service {
 	return &Service{db: db, log: log, buckets: buckets}
+}
+
+// TopicCloser закрывает тему переписки стёртого человека.
+//
+// Узкий интерфейс: стиранию не нужно знать ни про Telegram, ни про форумы.
+type TopicCloser interface {
+	Close(ctx context.Context, clientID int64) error
+}
+
+// WithTopics подключает закрытие тем. Без него стирание работает по-прежнему.
+func (s *Service) WithTopics(closer TopicCloser) *Service {
+	s.topics = closer
+	return s
 }
 
 // DeletionStatus describes where an account is in the deletion process.

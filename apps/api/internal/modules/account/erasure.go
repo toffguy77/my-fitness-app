@@ -202,6 +202,19 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 		}
 	}
 
+	// Тема в Telegram закрывается, но не удаляется: решение не трогать историю
+	// переписки принято отдельно и записано в проектировании. Закрытие — то
+	// единственное, что бот умеет надёжно, и оно означает, что новых сообщений
+	// в теме не появится.
+	//
+	// Как и файлы, по возможности: отказ чужого сервиса не отменяет стирания, о
+	// котором человек попросил.
+	if s.topics != nil {
+		if err := s.topics.Close(ctx, userID); err != nil {
+			s.log.Error("Failed to close the support topic", "user_id", userID, "error", err)
+		}
+	}
+
 	return nil
 }
 
