@@ -361,6 +361,8 @@ func main() {
 		}
 		bridge.WithPlatform(supportbridge.NewPlatformDelivery(db.DB))
 		supportService.WithMedia(bridge)
+		// Привязка Telegram: `/start <билет>` гасится до логики поддержки.
+		supportService.WithLinks(telegramlink.NewService(db.DB))
 
 		// Уведомления — и в Telegram тому, кто его привязал.
 		notificationsSvc.WithTelegram(telegramlink.NewDelivery(
