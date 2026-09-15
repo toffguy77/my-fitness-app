@@ -82,3 +82,20 @@ func (noSender) SendToTopic(context.Context, int64, int64, string) (int64, error
 func (noSender) CheckForum(context.Context, int64) (telegram.ForumState, error) {
 	return telegram.ForumState{}, nil
 }
+
+// Выключенный мост не трогает файлы.
+func TestDisabledBridgeIgnoresFiles(t *testing.T) {
+	service := NewService(nil, nil, logger.New(), 0, "")
+	assert.NoError(t, service.RelayFile(context.Background(), 1, "Имя", SourceApp, "ключ", "image/png", ""))
+	assert.NoError(t, service.RelayFileFromTelegram(context.Background(), 1, "Имя", "ключ", "image/png", ""))
+	assert.NoError(t, service.StoreOnPlatform(context.Background(), 1, "ключ", "image/png", ""))
+}
+
+// Форма Relay для каждого канала подставляет свой источник.
+func TestRelayHelpersCarryTheirSource(t *testing.T) {
+	service := NewService(nil, nil, logger.New(), 0, "")
+	// Мост выключен, поэтому обе формы молчат — проверяем, что они не падают и
+	// вызываются, а разницу источников покрывает тест на живой базе.
+	require.NoError(t, service.RelayFromApp(context.Background(), 1, "Имя", "текст"))
+	require.NoError(t, service.RelayFromTelegram(context.Background(), 1, "Имя", "текст"))
+}

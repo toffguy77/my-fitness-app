@@ -131,3 +131,43 @@ func TestMessageWithoutATopicOmitsTheField(t *testing.T) {
 	_, present := got["message_thread_id"]
 	assert.False(t, present, "нулевая тема уехала в Telegram как идентификатор")
 }
+
+// Недоступный Telegram — это отказ проверки, а не «группа в порядке».
+func TestCheckForumReportsEachFailure(t *testing.T) {
+	for name, bodies := range map[string]map[string]string{
+		"getChat отказал": {
+			"getChat": `{"ok":false,"description":"chat not found"}`,
+		},
+		"getMe отказал": {
+			"getChat": `{"ok":true,"result":{"is_forum":true}}`,
+			"getMe":   `{"ok":false,"description":"unauthorized"}`,
+		},
+		"getChatMember отказал": {
+			"getChat":       `{"ok":true,"result":{"is_forum":true}}`,
+			"getMe":         `{"ok":true,"result":{"id":1}}`,
+			"getChatMember": `{"ok":false,"description":"user not found"}`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := answering(t, bodies).CheckForum(context.Background(), -100)
+			require.Error(t, err, "отказ Telegram принят за исправную группу")
+		})
+	}
+}
+
+// Закрытие темы тоже отвечает кодом 200 на отказ.
+func TestCloseForumTopicReportsARefusal(t *testing.T) {
+	c := answering(t, map[string]string{
+		"closeForumTopic": `{"ok":false,"description":"topic not found"}`,
+	})
+
+	err := c.CloseForumTopic(context.Background(), -100, 7)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "topic not found")
+}
+
+func TestCloseForumTopicSucceeds(t *testing.T) {
+	c := answering(t, map[string]string{"closeForumTopic": `{"ok":true,"result":true}`})
+	assert.NoError(t, c.CloseForumTopic(context.Background(), -100, 7))
+}
