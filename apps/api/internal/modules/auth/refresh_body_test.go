@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,4 +54,31 @@ func TestRefreshStillAcceptsABodyToken(t *testing.T) {
 	require.NoError(t, json.NewDecoder(strings.NewReader(
 		`{"refresh_token":"из-старой-вкладки"}`)).Decode(&req))
 	assert.Equal(t, "из-старой-вкладки", req.RefreshToken)
+}
+
+// bodyRefreshSunset — день, после которого приём токена из тела запроса больше
+// не нужен: вкладки, открытые до перехода на cookie, к этому сроку истекут
+// сами.
+var bodyRefreshSunset = time.Date(2026, time.November, 1, 0, 0, 0, 0, time.UTC)
+
+// Срок, который сам о себе напоминает.
+//
+// Отложенное удаление, записанное только в комментарии, не удаляется никогда:
+// день наступает, и про него некому вспомнить. Комментарий рядом честно
+// объяснял, почему приём пока остаётся, — и ровно поэтому пережил бы свою
+// причину молча.
+//
+// После срока сборка падает здесь и говорит, что делать. Это не поломка: это
+// единственный момент, когда решение снова оказывается в чьих-то руках.
+func TestBodyRefreshRemovalIsDue(t *testing.T) {
+	if time.Now().Before(bodyRefreshSunset) {
+		t.Skipf("приём из тела остаётся намеренно до %s",
+			bodyRefreshSunset.Format("2006-01-02"))
+	}
+
+	t.Fatalf("срок вышел (%s): убрать приём refresh_token из тела запроса — "+
+		"поле RefreshRequest.RefreshToken, ветку в обработчике и эти две проверки. "+
+		"Задача secure-token-lifecycle 9.3. Если переносите срок — переносите "+
+		"осознанно, правкой bodyRefreshSunset, а не удалением проверки",
+		bodyRefreshSunset.Format("2006-01-02"))
 }
