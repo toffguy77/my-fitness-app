@@ -353,6 +353,10 @@ func main() {
 			supportbridge.NewCuratorByTelegram(db.DB))
 		// Сообщения из чата платформы — в ту же тему.
 		chatService.WithBridge(bridge)
+
+		// Уведомления — и в Telegram тому, кто его привязал.
+		notificationsSvc.WithTelegram(telegramlink.NewDelivery(
+			telegramlink.NewService(db.DB), telegram.NewClient(cfg.TelegramBotToken)))
 	} else {
 		log.Warn("Support bot is disabled", "reason", "TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET or OPENROUTER_API_KEY is absent")
 	}
