@@ -27,9 +27,24 @@ type ServiceInterface interface {
 }
 
 // Service handles chat business logic
+// TopicBridge переносит сообщение клиента в тему куратора.
+//
+// Узкий интерфейс: чату незачем знать ни про Telegram, ни про темы форума.
+type TopicBridge interface {
+	RelayFromApp(ctx context.Context, clientID int64, displayName, text string) error
+}
+
+// WithBridge подключает мост. Без него чат работает по-прежнему.
+func (s *Service) WithBridge(bridge TopicBridge) *Service {
+	s.bridge = bridge
+	return s
+}
+
 type Service struct {
 	db  *sql.DB
 	log *logger.Logger
+	// bridge может быть nil: без моста зеркалить некуда.
+	bridge TopicBridge
 }
 
 // NewService creates a new chat service
@@ -428,6 +443,27 @@ func (s *Service) SendMessage(ctx context.Context, conversationID string, sender
 		msg.Metadata = metadata
 	}
 	msg.Attachments = []MessageAttachment{}
+
+	// Сообщение клиента уезжает в тему куратора: у клиента два канала, а
+	// разговор должен быть один. Сообщения самого куратора не зеркалим — он их
+	// там и написал бы.
+	//
+	// По возможности: группа может быть недоступна, а сообщение человека от
+	// этого пропадать не должно.
+	if s.bridge != nil {
+		var clientID int64
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT client_id FROM conversations WHERE id = $1`, conversationID).Scan(&clientID); err == nil {
+			if clientID == senderID && req.Content != nil && *req.Content != "" {
+				var name sql.NullString
+				_ = s.db.QueryRowContext(ctx, `SELECT name FROM users WHERE id = $1`, clientID).Scan(&name)
+				if err := s.bridge.RelayFromApp(ctx, clientID, name.String, *req.Content); err != nil {
+					s.log.Warn("Не удалось зеркалировать сообщение в тему",
+						"error", err, "conversation_id", conversationID)
+				}
+			}
+		}
+	}
 
 	// Update conversation updated_at
 	updateQuery := `UPDATE conversations SET updated_at = NOW() WHERE id = $1`

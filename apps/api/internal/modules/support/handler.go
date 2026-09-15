@@ -56,6 +56,30 @@ func (h *Handler) Webhook(c *gin.Context) {
 		return
 	}
 
+	// Сообщение из группы кураторов — это ответ куратора, а не вопрос клиента.
+	// Разводится до всего остального: иначе ответ куратора уехал бы в модель как
+	// обращение, а сам куратор завёл бы себе тему.
+	if h.cfg.TelegramSupportGroupID != 0 && update.Message.Chat.ID == h.cfg.TelegramSupportGroupID {
+		var replyTo int64
+		if update.Message.ReplyToMessage != nil {
+			replyTo = update.Message.ReplyToMessage.MessageID
+		}
+		var operatorID int64
+		if update.Message.From != nil {
+			operatorID = update.Message.From.ID
+		}
+		if err := h.service.HandleCuratorReply(c.Request.Context(), CuratorReply{
+			ThreadID:         update.Message.MessageThreadID,
+			ReplyToMessageID: replyTo,
+			TelegramUserID:   operatorID,
+			Text:             update.Message.Text,
+		}); err != nil {
+			h.log.Error("Failed to deliver a curator reply", "error", err)
+		}
+		response.Success(c, http.StatusOK, gin.H{"ok": true})
+		return
+	}
+
 	in := IncomingMessage{
 		ChatID: update.Message.Chat.ID,
 		Text:   update.Message.Text,

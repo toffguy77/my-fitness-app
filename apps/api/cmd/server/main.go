@@ -346,6 +346,13 @@ func main() {
 		bridge = supportbridge.NewService(db.DB, telegram.NewClient(cfg.TelegramBotToken),
 			log, cfg.TelegramSupportGroupID, appOrigin(cfg.AppDomain))
 		accountService.WithTopics(bridge)
+		// Ответы куратора из темы: мост говорит, кому и куда, а доставка
+		// кладёт ответ в переписку платформы от его имени.
+		supportService.WithBridge(bridge,
+			supportbridge.NewPlatformDelivery(db.DB),
+			supportbridge.NewCuratorByTelegram(db.DB))
+		// Сообщения из чата платформы — в ту же тему.
+		chatService.WithBridge(bridge)
 	} else {
 		log.Warn("Support bot is disabled", "reason", "TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET or OPENROUTER_API_KEY is absent")
 	}

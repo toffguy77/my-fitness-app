@@ -263,3 +263,27 @@ func (s *Service) Healthy(ctx context.Context) error {
 	}
 	return nil
 }
+
+// TargetForReply — форма, в которой мост нужен поддержке.
+//
+// Возвращает клиента, признак «отвечать в Telegram» и признак «адресат найден».
+// Отдельный признак найденности нужен, чтобы отличить служебную переписку
+// кураторов в теме от ответа, который надо доставить.
+func (s *Service) TargetForReply(ctx context.Context, threadID, replyToMessageID int64) (int64, bool, bool, error) {
+	target, err := s.TargetFor(ctx, threadID, replyToMessageID)
+	if err != nil || target == nil {
+		return 0, false, false, err
+	}
+	return target.ClientID, target.Source == SourceTelegram, true, nil
+}
+
+// RelayFromTelegram — форма Relay, в которой мост нужен поддержке: без типа
+// источника, потому что он здесь всегда один.
+func (s *Service) RelayFromTelegram(ctx context.Context, clientID int64, displayName, text string) error {
+	return s.Relay(ctx, clientID, displayName, SourceTelegram, text)
+}
+
+// RelayFromApp — то же для чата платформы.
+func (s *Service) RelayFromApp(ctx context.Context, clientID int64, displayName, text string) error {
+	return s.Relay(ctx, clientID, displayName, SourceApp, text)
+}

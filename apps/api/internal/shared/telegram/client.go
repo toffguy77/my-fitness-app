@@ -49,8 +49,16 @@ type Update struct {
 			FirstName string `json:"first_name"`
 		} `json:"from"`
 		Chat struct {
-			ID int64 `json:"id"`
+			ID   int64  `json:"id"`
+			Type string `json:"type"`
 		} `json:"chat"`
+		// MessageThreadID непуст для сообщений внутри темы форума.
+		MessageThreadID int64 `json:"message_thread_id"`
+		// ReplyToMessage — то, на что ответили. Для куратора в теме это
+		// единственный способ сказать, в какой канал вернуть ответ.
+		ReplyToMessage *struct {
+			MessageID int64 `json:"message_id"`
+		} `json:"reply_to_message"`
 		Text string `json:"text"`
 	} `json:"message"`
 }

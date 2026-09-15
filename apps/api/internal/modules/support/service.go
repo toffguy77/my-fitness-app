@@ -65,6 +65,10 @@ type Service struct {
 	leads    LeadResolver
 	// operators may be nil; escalation works without it, silently.
 	operators OperatorNotifier
+	// Мост переписки: тема на клиента и обратная доставка ответа куратора.
+	bridge   Bridge
+	delivery Delivery
+	curators CuratorResolver
 
 	// dailyLimit caps model calls across every chat: a public entrance in
 	// front of a paid model needs a ceiling that one abusive chat cannot lift.
@@ -137,6 +141,15 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 	if strings.HasPrefix(text, "/start") {
 		s.attachLead(ctx, conversation, strings.TrimSpace(strings.TrimPrefix(text, "/start")))
 		return s.reply(ctx, conversation, greeting)
+	}
+
+	// Сообщение клиента уезжает в тему куратора. По возможности: группа может
+	// быть недоступна, а вопрос человека от этого не должен пропадать.
+	if s.bridge != nil && conversation.UserID != nil {
+		if err := s.bridge.RelayFromTelegram(ctx, *conversation.UserID, in.Name, text); err != nil {
+			s.log.Error("Не удалось зеркалировать сообщение в тему",
+				"error", err, "conversation_id", conversation.ID)
+		}
 	}
 
 	// Asking for a person is always granted; nobody has to argue with a bot.
