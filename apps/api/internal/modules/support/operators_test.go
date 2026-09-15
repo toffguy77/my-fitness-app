@@ -44,7 +44,7 @@ func TestEveryOperatorIsToldAboutAnEscalation(t *testing.T) {
 
 	mock.ExpectQuery("SELECT id FROM users").WillReturnRows(operatorRows(1, 2))
 
-	service.notifyOperators(context.Background(), "conv-1", "оплата")
+	service.notifyOperators(context.Background(), "conv-1", nil, "оплата")
 
 	require.Len(t, notifier.created, 2)
 	for _, n := range notifier.created {
@@ -72,7 +72,7 @@ func TestAnEscalationSurvivesAFailureToAnnounceIt(t *testing.T) {
 	mock.ExpectQuery("SELECT id FROM users").WillReturnRows(operatorRows(1))
 
 	assert.NotPanics(t, func() {
-		service.notifyOperators(context.Background(), "conv-1", "что-то")
+		service.notifyOperators(context.Background(), "conv-1", nil, "что-то")
 	})
 }
 
@@ -86,7 +86,7 @@ func TestEscalationWorksWithoutANotifier(t *testing.T) {
 	service := NewService(db, logger.New(), nil, nil, nil, 100)
 
 	assert.NotPanics(t, func() {
-		service.notifyOperators(context.Background(), "conv-1", "что-то")
+		service.notifyOperators(context.Background(), "conv-1", nil, "что-то")
 	})
 }
 
@@ -102,7 +102,7 @@ func TestNoOperatorsIsWorthSaying(t *testing.T) {
 
 	mock.ExpectQuery("SELECT id FROM users").WillReturnRows(operatorRows())
 
-	service.notifyOperators(context.Background(), "conv-1", "что-то")
+	service.notifyOperators(context.Background(), "conv-1", nil, "что-то")
 
 	assert.Empty(t, notifier.created)
 }

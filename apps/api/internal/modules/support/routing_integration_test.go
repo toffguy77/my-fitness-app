@@ -1,0 +1,102 @@
+//go:build integration
+
+package support
+
+import (
+	"context"
+	"testing"
+
+	"github.com/burcev/api/internal/modules/notifications"
+	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/testsupport"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+type notedRecipients struct{ ids []int64 }
+
+func (n *notedRecipients) CreateNotification(_ context.Context, note *notifications.Notification) error {
+	n.ids = append(n.ids, note.UserID)
+	return nil
+}
+func (n *notedRecipients) LanguageOf(context.Context, int64) string { return "ru" }
+
+func TestEscalationCallsTheClientsCurator(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_curator")
+	ctx := context.Background()
+	noted := &notedRecipients{}
+	service := NewService(db.DB, logger.New(), nil, nil, nil, 100)
+	service.operators = noted
+
+	var admin, curator, client int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('админ@e.test','x','А','super_admin') RETURNING id`).Scan(&admin))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('куратор@e.test','x','К','coordinator') RETURNING id`).Scan(&curator))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('клиент@e.test','x','Кл','client') RETURNING id`).Scan(&client))
+	_, err := db.ExecContext(ctx, `INSERT INTO curator_client_relationships (curator_id, client_id, status) VALUES ($1,$2,'active')`, curator, client)
+	require.NoError(t, err)
+
+	service.notifyOperators(ctx, "обращение-1", &client, "ответа нет в документации")
+
+	assert.Equal(t, []int64{curator}, noted.ids, "позвали не куратора клиента")
+	assert.NotContains(t, noted.ids, admin, "суперадмина позвали при живом кураторе")
+}
+
+// Обращение до регистрации звать некому — значит, суперадминам.
+func TestEscalationWithoutAnAccountCallsSuperAdmins(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_anon")
+	ctx := context.Background()
+	noted := &notedRecipients{}
+	service := NewService(db.DB, logger.New(), nil, nil, nil, 100)
+	service.operators = noted
+
+	var admin int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('админ@e.test','x','А','super_admin') RETURNING id`).Scan(&admin))
+
+	service.notifyOperators(ctx, "обращение-2", nil, "по просьбе пользователя")
+
+	assert.Equal(t, []int64{admin}, noted.ids)
+}
+
+// Клиент без активного куратора — тоже к суперадминам.
+func TestClientWithoutACuratorFallsBack(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_nocurator")
+	ctx := context.Background()
+	noted := &notedRecipients{}
+	service := NewService(db.DB, logger.New(), nil, nil, nil, 100)
+	service.operators = noted
+
+	var admin, curator, client int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('админ@e.test','x','А','super_admin') RETURNING id`).Scan(&admin))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('бывший@e.test','x','Б','coordinator') RETURNING id`).Scan(&curator))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('клиент@e.test','x','Кл','client') RETURNING id`).Scan(&client))
+	// Связь есть, но неактивная: куратор был и перестал.
+	_, err := db.ExecContext(ctx, `INSERT INTO curator_client_relationships (curator_id, client_id, status) VALUES ($1,$2,'inactive')`, curator, client)
+	require.NoError(t, err)
+
+	service.notifyOperators(ctx, "обращение-3", &client, "ответа нет в документации")
+
+	assert.Equal(t, []int64{admin}, noted.ids, "позвали неактивного куратора")
+}
+
+// Куратор мог смениться между первым вопросом и передачей человеку.
+func TestTheCuratorIsChosenAtEscalationTime(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_swap")
+	ctx := context.Background()
+	noted := &notedRecipients{}
+	service := NewService(db.DB, logger.New(), nil, nil, nil, 100)
+	service.operators = noted
+
+	var was, now, client int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('был@e.test','x','Б','coordinator') RETURNING id`).Scan(&was))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('стал@e.test','x','С','coordinator') RETURNING id`).Scan(&now))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('клиент@e.test','x','Кл','client') RETURNING id`).Scan(&client))
+	_, err := db.ExecContext(ctx, `INSERT INTO curator_client_relationships (curator_id, client_id, status) VALUES ($1,$2,'inactive')`, was, client)
+	require.NoError(t, err)
+	_, err = db.ExecContext(ctx, `INSERT INTO curator_client_relationships (curator_id, client_id, status) VALUES ($1,$2,'active')`, now, client)
+	require.NoError(t, err)
+
+	service.notifyOperators(ctx, "обращение-4", &client, "ответа нет в документации")
+
+	assert.Equal(t, []int64{now}, noted.ids, "позвали прежнего куратора")
+}

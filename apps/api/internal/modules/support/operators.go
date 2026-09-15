@@ -37,31 +37,14 @@ func (s *Service) WithOperatorNotices(notifier OperatorNotifier) *Service {
 // happened, and the person waiting in Telegram has already been told somebody
 // will answer. Undoing that because a notification could not be written would
 // be the wrong trade.
-func (s *Service) notifyOperators(ctx context.Context, conversationID, reason string) {
+func (s *Service) notifyOperators(ctx context.Context, conversationID string, clientID *int64, reason string) {
 	if s.operators == nil {
 		return
 	}
 
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id FROM users
-		 WHERE role = 'super_admin' AND deleted_at IS NULL AND deletion_requested_at IS NULL`)
+	operatorIDs, err := s.recipientsFor(ctx, clientID)
 	if err != nil {
 		s.log.Error("Could not list operators to notify", "error", err)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
-	var operatorIDs []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			s.log.Error("Could not read an operator id", "error", err)
-			return
-		}
-		operatorIDs = append(operatorIDs, id)
-	}
-	if err := rows.Err(); err != nil {
-		s.log.Error("Could not read the operator list", "error", err)
 		return
 	}
 
@@ -92,4 +75,49 @@ func (s *Service) notifyOperators(ctx context.Context, conversationID, reason st
 				"error", fmt.Sprint(err), "operator_id", operatorID, "conversation_id", conversationID)
 		}
 	}
+}
+
+// recipientsFor выбирает, кого звать на обращение.
+//
+// Куратора клиента — он ведёт этого человека, видит его дневник и переписку.
+// Суперадминов — только когда куратора нет: обращение пришло от незнакомца
+// (человек пишет боту до регистрации) либо у клиента нет активной связи.
+//
+// Выбор делается в момент эскалации, а не при создании обращения: между первым
+// вопросом и передачей человеку куратор может смениться, и звать надо того, кто
+// ведёт клиента сейчас.
+func (s *Service) recipientsFor(ctx context.Context, clientID *int64) ([]int64, error) {
+	if clientID != nil {
+		curators, err := s.query(ctx,
+			`SELECT curator_id FROM curator_client_relationships
+			  WHERE client_id = $1 AND status = 'active'`, *clientID)
+		if err != nil {
+			return nil, fmt.Errorf("look up the client's curator: %w", err)
+		}
+		if len(curators) > 0 {
+			return curators, nil
+		}
+	}
+
+	return s.query(ctx,
+		`SELECT id FROM users
+		  WHERE role = 'super_admin' AND deleted_at IS NULL AND deletion_requested_at IS NULL`)
+}
+
+func (s *Service) query(ctx context.Context, sql string, args ...any) ([]int64, error) {
+	rows, err := s.db.QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }

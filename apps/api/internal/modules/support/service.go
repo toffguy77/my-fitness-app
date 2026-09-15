@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -189,14 +190,28 @@ func (s *Service) question(conversation *Conversation, text string) string {
 	return "Вопрос: " + text
 }
 
+// humanCommand — явная просьба позвать человека.
+//
+// Команда и кнопка выражают намерение, а не оставляют его угадывать.
+const humanCommand = "/human"
+
+// humanRequest ловит просьбы, где намерение выражено оборотом, а не командой.
+//
+// Требуется весь оборот, а не отдельное слово. Подстрока «поддержк» совпадала в
+// вопросе «какая поддержка форматов у фото?» и звала оператора на ровном месте:
+// человек спрашивал про форматы, а получал переданное обращение и ожидание.
+var humanRequest = regexp.MustCompile(
+	`(?i)(позов|позва|соедин|переключ|свяж)[а-яё]*\s+(с\s+)?(человек|оператор|менеджер|специалист)[а-яё]*` +
+		`|(нужен|нужна|хочу|дайте|можно)\s+([а-яё]*жив[а-яё]+\s+)?(человек|оператор|менеджер)[а-яё]*` +
+		`|жив[а-яё]+\s+(человек|оператор)[а-яё]*` +
+		`|^(человек|оператор|менеджер)[а-яё]*\s*\?*$`)
+
 func wantsHuman(text string) bool {
-	lowered := strings.ToLower(text)
-	for _, phrase := range []string{"оператор", "человек", "поддержк", "менеджер", "живой"} {
-		if strings.Contains(lowered, phrase) {
-			return true
-		}
+	trimmed := strings.TrimSpace(strings.ToLower(text))
+	if trimmed == humanCommand || strings.HasPrefix(trimmed, humanCommand+" ") {
+		return true
 	}
-	return false
+	return humanRequest.MatchString(trimmed)
 }
 
 // escalate marks the conversation for a person and tells the user so.
@@ -215,7 +230,7 @@ func (s *Service) escalate(ctx context.Context, conversation *Conversation, reas
 	// unanswerable question would otherwise notify every operator each time,
 	// and a queue that cries every minute is one nobody reads.
 	if changed, err := result.RowsAffected(); err == nil && changed > 0 {
-		s.notifyOperators(ctx, conversation.ID, reason)
+		s.notifyOperators(ctx, conversation.ID, conversation.UserID, reason)
 	}
 
 	message := escalationReply
