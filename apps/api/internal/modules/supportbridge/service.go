@@ -31,7 +31,7 @@ const (
 type Sender interface {
 	CreateForumTopic(ctx context.Context, chatID int64, name string) (int64, error)
 	CloseForumTopic(ctx context.Context, chatID, threadID int64) error
-	SendToTopic(ctx context.Context, chatID, threadID int64, text string) error
+	SendToTopic(ctx context.Context, chatID, threadID int64, text string) (int64, error)
 	CheckForum(ctx context.Context, chatID int64) (telegram.ForumState, error)
 }
 
@@ -115,10 +115,96 @@ func (s *Service) Relay(ctx context.Context, clientID int64, displayName string,
 	// Ссылка на карточку, а не показатели: куратор всё равно откроет карточку,
 	// а копия веса и замеров в Telegram переживёт удаление аккаунта.
 	body := fmt.Sprintf("[%s] %s\n\n%s/curator/clients/%d", source, text, s.appURL, clientID)
-	if err := s.sender.SendToTopic(ctx, s.groupID, threadID, body); err != nil {
+	messageID, err := s.sender.SendToTopic(ctx, s.groupID, threadID, body)
+	if err != nil {
 		return fmt.Errorf("relay to topic: %w", err)
 	}
+
+	// Запоминаем, чем было это сообщение: реплай на него — единственный способ
+	// куратора сказать, в какой канал вернуть ответ.
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO support_relays (group_message_id, client_id, source)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (group_message_id) DO NOTHING`,
+		messageID, clientID, source.code()); err != nil {
+		s.log.Errorw("Не удалось запомнить зеркалированное сообщение",
+			"error", err, "client_id", clientID)
+	}
 	return nil
+}
+
+// code — как источник хранится в базе.
+func (s Source) code() string {
+	if s == SourceApp {
+		return "app"
+	}
+	return "telegram"
+}
+
+func sourceFromCode(code string) Source {
+	if code == "app" {
+		return SourceApp
+	}
+	return SourceTelegram
+}
+
+// Target описывает, кому и куда возвращать ответ куратора.
+type Target struct {
+	ClientID int64
+	Source   Source
+}
+
+// TargetFor решает, куда уйдёт ответ, написанный в теме.
+//
+// Реплай на конкретное сообщение — точное указание: канал берётся из него.
+// Без реплая берётся канал последнего сообщения клиента: в обычном разговоре
+// оба правила дают одно и то же, расходятся они только там, где человек писал в
+// оба канала — и тогда реплай единственный способ выразить намерение.
+func (s *Service) TargetFor(ctx context.Context, threadID int64, replyToMessageID int64) (*Target, error) {
+	if !s.Enabled() {
+		return nil, nil
+	}
+
+	if replyToMessageID != 0 {
+		var t Target
+		var code string
+		err := s.db.QueryRowContext(ctx,
+			`SELECT client_id, source FROM support_relays WHERE group_message_id = $1`,
+			replyToMessageID).Scan(&t.ClientID, &code)
+		if err == nil {
+			t.Source = sourceFromCode(code)
+			return &t, nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("resolve reply target: %w", err)
+		}
+		// Реплай на что-то постороннее — например, на сообщение другого
+		// куратора. Падать не на чем: ниже найдём клиента по теме.
+	}
+
+	var clientID int64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT client_id FROM support_topics WHERE thread_id = $1 AND closed_at IS NULL`,
+		threadID).Scan(&clientID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("resolve topic owner: %w", err)
+	}
+
+	var code string
+	err = s.db.QueryRowContext(ctx,
+		`SELECT source FROM support_relays WHERE client_id = $1
+		  ORDER BY created_at DESC, group_message_id DESC LIMIT 1`, clientID).Scan(&code)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Клиент ещё ничего не писал — отвечать в Telegram бессмысленно.
+		return &Target{ClientID: clientID, Source: SourceApp}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("resolve last channel: %w", err)
+	}
+	return &Target{ClientID: clientID, Source: sourceFromCode(code)}, nil
 }
 
 // Close закрывает тему клиента: история остаётся, новых сообщений не будет.

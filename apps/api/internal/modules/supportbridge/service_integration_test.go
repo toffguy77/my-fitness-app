@@ -21,13 +21,14 @@ import (
 
 // fakeSender записывает, о чём просили Telegram.
 type fakeSender struct {
-	mu       sync.Mutex
-	created  []string
-	closed   []int64
-	messages []string
-	nextID   int64
-	failNext error
-	state    telegram.ForumState
+	mu            sync.Mutex
+	created       []string
+	closed        []int64
+	messages      []string
+	nextID        int64
+	lastMessageID int64
+	failNext      error
+	state         telegram.ForumState
 }
 
 func (f *fakeSender) CreateForumTopic(_ context.Context, _ int64, name string) (int64, error) {
@@ -55,11 +56,12 @@ func (f *fakeSender) CloseForumTopic(_ context.Context, _, threadID int64) error
 	return nil
 }
 
-func (f *fakeSender) SendToTopic(_ context.Context, _, threadID int64, text string) error {
+func (f *fakeSender) SendToTopic(_ context.Context, _, threadID int64, text string) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.messages = append(f.messages, fmt.Sprintf("%d|%s", threadID, text))
-	return nil
+	f.lastMessageID++
+	return f.lastMessageID, nil
 }
 
 func (f *fakeSender) CheckForum(_ context.Context, _ int64) (telegram.ForumState, error) {
@@ -201,4 +203,82 @@ func TestHealthyNamesWhatIsWrong(t *testing.T) {
 			assert.Contains(t, err.Error(), c.want)
 		})
 	}
+}
+
+// Ответ реплаем уходит в канал того сообщения, на которое отвечают.
+func TestReplyGoesToTheChannelOfTheMessageAnsweredTo(t *testing.T) {
+	sender := &fakeSender{}
+	service, db := newService(t, "bridge_reply", sender)
+	ctx := context.Background()
+	id := client(t, db, "реплай@example.test")
+
+	require.NoError(t, service.Relay(ctx, id, "Анна К.", supportbridge.SourceApp, "из приложения"))
+	require.NoError(t, service.Relay(ctx, id, "Анна К.", supportbridge.SourceTelegram, "из бота"))
+
+	// Первое зеркалированное сообщение — из приложения, второе — из бота.
+	var threadID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT thread_id FROM support_topics WHERE client_id = $1`, id).Scan(&threadID))
+
+	target, err := service.TargetFor(ctx, threadID, 1)
+	require.NoError(t, err)
+	require.NotNil(t, target)
+	assert.Equal(t, supportbridge.SourceApp, target.Source, "ответ на сообщение из приложения ушёл бы в Telegram")
+	assert.Equal(t, id, target.ClientID)
+
+	target, err = service.TargetFor(ctx, threadID, 2)
+	require.NoError(t, err)
+	require.NotNil(t, target)
+	assert.Equal(t, supportbridge.SourceTelegram, target.Source)
+}
+
+// Ответ без реплая уходит туда, откуда пришло последнее сообщение клиента.
+func TestReplyWithoutAQuoteFollowsTheLastChannel(t *testing.T) {
+	sender := &fakeSender{}
+	service, db := newService(t, "bridge_last", sender)
+	ctx := context.Background()
+	id := client(t, db, "последний@example.test")
+
+	require.NoError(t, service.Relay(ctx, id, "Анна К.", supportbridge.SourceTelegram, "из бота"))
+	require.NoError(t, service.Relay(ctx, id, "Анна К.", supportbridge.SourceApp, "потом из приложения"))
+
+	var threadID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT thread_id FROM support_topics WHERE client_id = $1`, id).Scan(&threadID))
+
+	target, err := service.TargetFor(ctx, threadID, 0)
+
+	require.NoError(t, err)
+	require.NotNil(t, target)
+	assert.Equal(t, supportbridge.SourceApp, target.Source, "ответ ушёл не в тот канал, где человек сейчас")
+}
+
+// Реплай на постороннее сообщение не теряет клиента: тема его знает.
+func TestReplyToSomethingElseStillFindsTheClient(t *testing.T) {
+	sender := &fakeSender{}
+	service, db := newService(t, "bridge_stray", sender)
+	ctx := context.Background()
+	id := client(t, db, "постороннее@example.test")
+	require.NoError(t, service.Relay(ctx, id, "Анна К.", supportbridge.SourceApp, "вопрос"))
+
+	var threadID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT thread_id FROM support_topics WHERE client_id = $1`, id).Scan(&threadID))
+
+	target, err := service.TargetFor(ctx, threadID, 9999)
+
+	require.NoError(t, err)
+	require.NotNil(t, target)
+	assert.Equal(t, id, target.ClientID)
+}
+
+// Сообщение в теме, которой нет, никого не адресует.
+func TestUnknownTopicHasNoTarget(t *testing.T) {
+	sender := &fakeSender{}
+	service, _ := newService(t, "bridge_unknown", sender)
+
+	target, err := service.TargetFor(context.Background(), 777, 0)
+
+	require.NoError(t, err)
+	assert.Nil(t, target)
 }

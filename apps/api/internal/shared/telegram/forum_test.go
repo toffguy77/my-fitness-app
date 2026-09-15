@@ -125,7 +125,8 @@ func TestMessageWithoutATopicOmitsTheField(t *testing.T) {
 	c := NewClient("токен")
 	c.baseURL = server.URL
 
-	require.NoError(t, c.SendToTopic(context.Background(), -100, 0, "текст"))
+	_, err := c.SendToTopic(context.Background(), -100, 0, "текст")
+	require.NoError(t, err)
 
 	_, present := got["message_thread_id"]
 	assert.False(t, present, "нулевая тема уехала в Telegram как идентификатор")

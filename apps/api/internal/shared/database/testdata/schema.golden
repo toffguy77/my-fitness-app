@@ -131,6 +131,8 @@ INDEX support_conversations support_conversations_chat_id_key btree (chat_id)
 INDEX support_conversations support_conversations_pkey btree (id)
 INDEX support_messages idx_support_messages_conversation btree (conversation_id, created_at)
 INDEX support_messages support_messages_pkey btree (id)
+INDEX support_relays idx_support_relays_client btree (client_id, created_at DESC)
+INDEX support_relays support_relays_pkey btree (group_message_id)
 INDEX support_topics idx_support_topics_thread btree (thread_id)
 INDEX support_topics support_topics_pkey btree (client_id)
 INDEX task_completions idx_task_completions_date btree (completed_date)
@@ -557,6 +559,10 @@ support_messages.delivered_at timestamp with time zone
 support_messages.id uuid NOT NULL DEFAULT gen_random_uuid()
 support_messages.operator_id bigint
 support_messages.text text NOT NULL
+support_relays.client_id bigint NOT NULL
+support_relays.created_at timestamp with time zone NOT NULL DEFAULT now()
+support_relays.group_message_id bigint NOT NULL
+support_relays.source text NOT NULL
 support_topics.client_id bigint NOT NULL
 support_topics.closed_at timestamp with time zone
 support_topics.created_at timestamp with time zone NOT NULL DEFAULT now()

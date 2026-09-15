@@ -18,7 +18,7 @@ import (
 //
 // threadID == 0 означает общую ленту группы: так уходят сообщения, которым тема
 // ещё не нужна или уже не положена.
-func (c *Client) SendToTopic(ctx context.Context, chatID, threadID int64, text string) error {
+func (c *Client) SendToTopic(ctx context.Context, chatID, threadID int64, text string) (int64, error) {
 	payload := map[string]any{
 		"chat_id":                  chatID,
 		"text":                     text,
@@ -27,8 +27,17 @@ func (c *Client) SendToTopic(ctx context.Context, chatID, threadID int64, text s
 	if threadID != 0 {
 		payload["message_thread_id"] = threadID
 	}
-	_, err := c.call(ctx, "sendMessage", payload)
-	return err
+	raw, err := c.call(ctx, "sendMessage", payload)
+	if err != nil {
+		return 0, err
+	}
+	var sent struct {
+		MessageID int64 `json:"message_id"`
+	}
+	if err := json.Unmarshal(raw, &sent); err != nil {
+		return 0, fmt.Errorf("read sent message: %w", err)
+	}
+	return sent.MessageID, nil
 }
 
 // CreateForumTopic заводит тему и возвращает её идентификатор.
