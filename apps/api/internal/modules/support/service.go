@@ -71,6 +71,8 @@ type Service struct {
 	curators CuratorResolver
 	// media может быть nil: без хранилища вложения не ходят.
 	media MediaBridge
+	// links может быть nil: без привязки /start работает как раньше.
+	links LinkRedeemer
 
 	// dailyLimit caps model calls across every chat: a public entrance in
 	// front of a paid model needs a ceiling that one abusive chat cannot lift.
@@ -129,6 +131,17 @@ const (
 
 // HandleMessage is the whole conversation loop for one incoming message.
 func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
+	// Привязка Telegram к учётной записи — до всего остального.
+	//
+	// Она не вопрос к поддержке: обращения не создаёт, модель не зовёт, дневной
+	// лимит не тратит. Иначе человек, нажавший «Подключить Telegram» в профиле,
+	// заводил бы себе обращение и получал ответ бота на билет.
+	if payload, ok := startPayload(in.Text); ok && s.links != nil {
+		if done, err := s.redeemLink(ctx, in, payload); done {
+			return err
+		}
+	}
+
 	conversation, err := s.conversationFor(ctx, in)
 	if err != nil {
 		return err
