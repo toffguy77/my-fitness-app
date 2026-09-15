@@ -38,6 +38,7 @@ type Features struct {
 	ContentMedia    bool
 	DataExports     bool
 	SupportBot      bool
+	SupportBridge   bool
 	WebPush         bool
 	// Observability, reported for the same reason as the rest: "is it on?" has
 	// to be answerable from outside, or the only way to find out is to break
@@ -62,6 +63,7 @@ func (f Features) Disabled() []string {
 		{"content_media", f.ContentMedia},
 		{"data_exports", f.DataExports},
 		{"support_bot", f.SupportBot},
+		{"support_bridge", f.SupportBridge},
 		{"web_push", f.WebPush},
 		{"error_reporting", f.ErrorReporting},
 		{"tracing", f.Tracing},
@@ -84,6 +86,7 @@ func (f Features) Map() map[string]bool {
 		"content_media":    f.ContentMedia,
 		"data_exports":     f.DataExports,
 		"support_bot":      f.SupportBot,
+		"support_bridge":   f.SupportBridge,
 		"web_push":         f.WebPush,
 		"error_reporting":  f.ErrorReporting,
 		"tracing":          f.Tracing,
@@ -201,7 +204,10 @@ type Config struct {
 	TelegramBotToken      string
 	TelegramWebhookSecret string
 	TelegramBotUsername   string
-	SupportModel          string
+	// TelegramSupportGroupID — форум-группа кураторов. Ноль означает, что мост
+	// выключен: переписка идёт по-старому, а не ломается.
+	TelegramSupportGroupID int64
+	SupportModel           string
 	// LLMBaseURL и LLMAuthScheme описывают поставщика модели. Вместе, а не по
 	// отдельности: адрес без схемы авторизации — это запрос, который отклонят.
 	LLMBaseURL    string
@@ -381,6 +387,7 @@ func Load() (*Config, error) {
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
+		TelegramSupportGroupID:    getEnvAsInt64("TELEGRAM_SUPPORT_GROUP_ID", 0),
 		SupportModel:              getEnv("SUPPORT_MODEL", ""),
 		SupportDailyLimit:         getEnvAsInt("SUPPORT_DAILY_LIMIT", 500),
 		NotificationEmailDelay:    getEnvAsDuration("NOTIFICATION_EMAIL_DELAY", 0),
@@ -419,6 +426,10 @@ func deriveFeatures(c *Config) Features {
 		// genuine update from anybody's POST, and a model to answer with.
 		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" &&
 			c.LLMAPIKey != "" && c.SupportModel != "",
+		// Мост переписки: бот и заданная группа. Права бота в группе отсюда не
+		// видны — их спрашивают у Telegram ежечасной проверкой, потому что
+		// право можно снять в интерфейсе группы, и настройки об этом не узнают.
+		SupportBridge: c.TelegramBotToken != "" && c.TelegramSupportGroupID != 0,
 		// Both halves of the key pair and a contact address: a push service
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",
@@ -520,6 +531,16 @@ func getResetPasswordURL() string {
 // not take the service down.
 func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
 	if value, err := time.ParseDuration(getEnv(key, "")); err == nil {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvAsInt64 читает целое, не помещающееся в int на 32-битных сборках.
+//
+// Идентификатор супергруппы Telegram — как раз такой: -1003907264482.
+func getEnvAsInt64(key string, defaultValue int64) int64 {
+	if value, err := strconv.ParseInt(getEnv(key, ""), 10, 64); err == nil {
 		return value
 	}
 	return defaultValue
