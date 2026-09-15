@@ -50,6 +50,27 @@ func NewService(db *sql.DB, log *logger.Logger) *Service {
 //
 // Refusing an unknown name is the point: free-form names become a heap of typos
 // and synonyms within a month, and extending the dictionary is a deliberate act.
+// isScalar answers whether a property is something a report can group by.
+//
+// Every report reads properties as text — `properties->>'method' = 'yandex'`.
+// A struct or a map survives every other check here, marshals to `{}` and lands
+// in the table looking like a healthy row, but matches no query ever. The
+// provider funnel was empty for exactly that reason: `method` held an
+// `oauth.Provider`, not its name.
+//
+// Refusing it turns a metric that can never fill into a line in the log.
+func isScalar(value any) bool {
+	switch value.(type) {
+	case nil, string, bool,
+		int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64, json.Number:
+		return true
+	default:
+		return false
+	}
+}
+
 func Validate(event Event, fromClient bool) error {
 	definition, known := Dictionary[event.Name]
 	if !known {
@@ -69,13 +90,17 @@ func Validate(event Event, fromClient bool) error {
 		allowed[property] = struct{}{}
 	}
 
-	for property := range event.Properties {
+	for property, value := range event.Properties {
 		if IsForbidden(property) {
 			return fmt.Errorf("property %q may never be sent: %w", property, apperrors.ErrValidation)
 		}
 		if _, ok := allowed[property]; !ok {
 			return fmt.Errorf("property %q is not declared for %q: %w",
 				property, event.Name, apperrors.ErrValidation)
+		}
+		if !isScalar(value) {
+			return fmt.Errorf("property %q of %q is %T, not a value a report can group by: %w",
+				property, event.Name, value, apperrors.ErrValidation)
 		}
 	}
 

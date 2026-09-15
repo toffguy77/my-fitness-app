@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/analytics"
 	"github.com/burcev/api/internal/modules/auth/oauth"
 	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -49,6 +51,38 @@ func (h *OAuthHandler) WithLeads(claimer LeadClaimer) *OAuthHandler {
 }
 
 // NewOAuthHandler creates the handler.
+// recordOutcome writes the fact of a sign-in or a sign-up through a provider.
+//
+// The method is the provider's own name, so the funnel separates "signed up
+// with Yandex" from "signed up with a password" rather than counting both as
+// one. This is the sole source for the share of provider sign-ins, and it is
+// best effort on the way down: an event missing a required property is logged
+// and dropped. That silence is the reason this lives in its own method with a
+// test on a real schema — a metric that can never fill has no way of saying so.
+//
+// The browser's visitor identifier cannot be linked here the way a password
+// registration links it: the callback arrives as a redirect from the provider
+// and carries no request body. What happened before the sign-up therefore
+// stays anonymous on this path.
+func (h *OAuthHandler) recordOutcome(ctx context.Context, outcome *OAuthOutcome, provider string) {
+	if h.analytics == nil || outcome == nil {
+		return
+	}
+
+	var name string
+	switch outcome.Result {
+	case OAuthRegistered:
+		name = analytics.EventRegistered
+	case OAuthSignedIn:
+		name = analytics.EventSignedIn
+	default:
+		return
+	}
+
+	h.analytics.RecordServerEvent(ctx, name, outcome.User.User.ID,
+		map[string]any{"method": provider})
+}
+
 func NewOAuthHandler(cfg *config.Config, log *logger.Logger, service *Service, registry *oauth.Registry) *OAuthHandler {
 	return &OAuthHandler{cfg: cfg, log: log, service: service, registry: registry}
 }
@@ -184,24 +218,7 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		}
 	}
 
-	// The method is the provider's own name, so the funnel separates "signed up
-	// with Yandex" from "signed up with a password" rather than counting both
-	// as one.
-	//
-	// The browser's visitor identifier cannot be linked here the way a password
-	// registration links it: the callback arrives as a redirect from the
-	// provider and carries no request body. What happened before the sign-up
-	// therefore stays anonymous on this path.
-	if h.analytics != nil {
-		switch outcome.Result {
-		case OAuthRegistered:
-			h.analytics.RecordServerEvent(c.Request.Context(), "registered",
-				outcome.User.User.ID, map[string]any{"method": provider})
-		case OAuthSignedIn:
-			h.analytics.RecordServerEvent(c.Request.Context(), "signed_in",
-				outcome.User.User.ID, map[string]any{"method": provider})
-		}
-	}
+	h.recordOutcome(c.Request.Context(), outcome, name)
 
 	switch outcome.Result {
 	case OAuthSignedIn, OAuthRegistered:
