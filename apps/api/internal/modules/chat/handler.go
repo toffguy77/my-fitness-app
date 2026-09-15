@@ -37,12 +37,17 @@ type Handler struct {
 }
 
 // NewHandler creates a new chat handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client, hub *ws.Hub) *Handler {
+// NewHandler принимает службу, а не собирает свою.
+//
+// Собранная здесь была бы другим объектом: всё, что подключили к службе при
+// старте — мост переписки, отправитель, — до этих endpoint'ов не дошло бы. На
+// это есть охранник в scripts/check-codebase-integrity.mjs, и он это поймал.
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, service *Service, s3 *storage.S3Client, hub *ws.Hub) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
 		db:      db,
-		service: NewService(db, log),
+		service: service,
 		s3:      s3,
 		hub:     hub,
 	}
