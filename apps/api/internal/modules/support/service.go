@@ -284,12 +284,25 @@ func (s *Service) reply(ctx context.Context, conversation *Conversation, text st
 
 // AnswerAsOperator delivers a person's reply into the same chat.
 func (s *Service) AnswerAsOperator(ctx context.Context, conversationID string, operatorID int64, text string) error {
+	return s.answerAs(ctx, conversationID, &operatorID, text)
+}
+
+// answerAsUnknown отвечает, когда автор не установлен.
+//
+// Так бывает у ответа из Telegram: куратор может не привязывать свой аккаунт к
+// боту и всё равно отвечать из группы. Ноль вместо идентификатора сюда не
+// годится — внешний ключ на users его не примет, и ответ не запишется вовсе.
+func (s *Service) answerAsUnknown(ctx context.Context, conversationID, text string) error {
+	return s.answerAs(ctx, conversationID, nil, text)
+}
+
+func (s *Service) answerAs(ctx context.Context, conversationID string, operatorID *int64, text string) error {
 	conversation, err := s.byID(ctx, conversationID)
 	if err != nil {
 		return err
 	}
 
-	messageID, err := s.recordMessage(ctx, conversation.ID, "operator", text, &operatorID)
+	messageID, err := s.recordMessage(ctx, conversation.ID, "operator", text, operatorID)
 	if err != nil {
 		return err
 	}

@@ -179,3 +179,36 @@ func TestFreshEscalationWaitsForTheThreshold(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, raised, "подняли раньше порога")
 }
+
+// Ответ куратора, чей аккаунт не привязан к боту, всё равно записывается.
+//
+// Найдено живой проверкой на dev: идентификатор оператора подставлялся нулём, а
+// внешний ключ на users его не принимает — ответ не записывался вовсе, и
+// человек его не получал. Подменённая база это пропускала: ключей у неё нет.
+func TestReplyFromAnUnlinkedCuratorIsStillRecorded(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_unlinked")
+	ctx := context.Background()
+	service := NewService(db.DB, logger.New(), nil, &noopSender{}, nil, 100)
+
+	var client int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email,password,name,role) VALUES ('кли@e.test','x','К','client') RETURNING id`).Scan(&client))
+	var conversationID string
+	require.NoError(t, db.QueryRowContext(ctx, `
+		INSERT INTO support_conversations (chat_id, user_id, status)
+		VALUES (9911, $1, 'escalated') RETURNING id`, client).Scan(&conversationID))
+
+	require.NoError(t, service.answerAsUnknown(ctx, conversationID, "Отвечаю без привязки"))
+
+	var author *int64
+	var text string
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT operator_id, text FROM support_messages WHERE conversation_id = $1::uuid AND author = 'operator'`,
+		conversationID).Scan(&author, &text))
+	assert.Nil(t, author, "непривязанный куратор записан идентификатором, которого нет")
+	assert.Equal(t, "Отвечаю без привязки", text)
+}
+
+type noopSender struct{}
+
+func (noopSender) SendMessage(context.Context, int64, string) error { return nil }

@@ -83,15 +83,15 @@ func (s *Service) HandleCuratorReply(ctx context.Context, reply CuratorReply) er
 		}
 	}
 
-	if toTelegram {
-		return s.answerClientInTelegram(ctx, clientID, reply.Text)
-	}
-
 	var curatorID int64
 	if s.curators != nil {
 		if id, found, err := s.curators.ByTelegramChat(ctx, reply.TelegramUserID); err == nil && found {
 			curatorID = id
 		}
+	}
+
+	if toTelegram {
+		return s.answerClientInTelegram(ctx, clientID, curatorID, reply.Text)
 	}
 	if s.delivery == nil {
 		return fmt.Errorf("ответ некуда доставить: чат платформы не подключён")
@@ -100,7 +100,7 @@ func (s *Service) HandleCuratorReply(ctx context.Context, reply CuratorReply) er
 }
 
 // answerClientInTelegram отправляет ответ в обращение клиента.
-func (s *Service) answerClientInTelegram(ctx context.Context, clientID int64, text string) error {
+func (s *Service) answerClientInTelegram(ctx context.Context, clientID, curatorID int64, text string) error {
 	var conversationID string
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id FROM support_conversations WHERE user_id = $1
@@ -108,7 +108,11 @@ func (s *Service) answerClientInTelegram(ctx context.Context, clientID int64, te
 	if err != nil {
 		return fmt.Errorf("find the client's conversation: %w", err)
 	}
-	// Идентификатор оператора здесь нулевой: отвечает куратор из Telegram, и его
-	// учётная запись на платформе может быть не связана с этим чатом.
-	return s.AnswerAsOperator(ctx, conversationID, 0, text)
+	// Автор может быть неизвестен: куратор отвечает из группы, а свой аккаунт к
+	// боту мог не привязывать. Ноль вместо идентификатора внешний ключ не
+	// примет — ответ просто не запишется, и человек его не получит.
+	if curatorID == 0 {
+		return s.answerAsUnknown(ctx, conversationID, text)
+	}
+	return s.AnswerAsOperator(ctx, conversationID, curatorID, text)
 }
