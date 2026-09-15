@@ -56,6 +56,25 @@ terraform output s3_secret_key      # single sensitive output (printed raw)
 
 Existing prod resources (service account, DB user, database) can be imported into Terraform state. See `imports.tf` for instructions — uncomment the import blocks, fill in IDs, then run `terraform apply -var-file=prod.tfvars`.
 
+## Прежде чем запускать apply на проде
+
+**Всегда сначала `plan`, и всегда читайте строку `Plan:`.** Причина не
+формальная: 2026-09-15 `plan` на проде показывал
+`yandex_mdb_postgresql_database.app must be replaced` — то есть `apply` удалил
+бы боевую базу со всеми данными. Два расхождения конфигурации с реальностью,
+каждого хватало:
+
+- `pg_db_owner` в `prod.tfvars` был `web-app-user`, а настоящий владелец —
+  `burcev-web`. Смена владельца заменяет ресурс.
+- Расширение `pg_trgm` пришло миграцией 066 и в конфигурации отсутствовало.
+
+Оба исправлены, у базы стоит `prevent_destroy`. Но общее правило остаётся:
+**если в плане есть `to destroy` или `must be replaced` — не применять**,
+а разбираться, чем конфигурация разошлась с реальностью.
+
+**Расширение, добавленное миграцией, добавляется и в `database.tf`** — в том же
+изменении, а не потом.
+
 ## Notes
 
 - `pg_user_password` is sensitive and must be passed via `-var` flag or `TF_VAR_pg_user_password` env var. It is **not** stored in tfvars files.

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -64,6 +65,12 @@ type Service struct {
 	leads    LeadResolver
 	// operators may be nil; escalation works without it, silently.
 	operators OperatorNotifier
+	// Мост переписки: тема на клиента и обратная доставка ответа куратора.
+	bridge   Bridge
+	delivery Delivery
+	curators CuratorResolver
+	// media может быть nil: без хранилища вложения не ходят.
+	media MediaBridge
 
 	// dailyLimit caps model calls across every chat: a public entrance in
 	// front of a paid model needs a ceiling that one abusive chat cannot lift.
@@ -138,6 +145,15 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 		return s.reply(ctx, conversation, greeting)
 	}
 
+	// Сообщение клиента уезжает в тему куратора. По возможности: группа может
+	// быть недоступна, а вопрос человека от этого не должен пропадать.
+	if s.bridge != nil && conversation.UserID != nil {
+		if err := s.bridge.RelayFromTelegram(ctx, *conversation.UserID, in.Name, text); err != nil {
+			s.log.Error("Не удалось зеркалировать сообщение в тему",
+				"error", err, "conversation_id", conversation.ID)
+		}
+	}
+
 	// Asking for a person is always granted; nobody has to argue with a bot.
 	if wantsHuman(text) {
 		return s.escalate(ctx, conversation, "по просьбе пользователя")
@@ -189,14 +205,28 @@ func (s *Service) question(conversation *Conversation, text string) string {
 	return "Вопрос: " + text
 }
 
+// humanCommand — явная просьба позвать человека.
+//
+// Команда и кнопка выражают намерение, а не оставляют его угадывать.
+const humanCommand = "/human"
+
+// humanRequest ловит просьбы, где намерение выражено оборотом, а не командой.
+//
+// Требуется весь оборот, а не отдельное слово. Подстрока «поддержк» совпадала в
+// вопросе «какая поддержка форматов у фото?» и звала оператора на ровном месте:
+// человек спрашивал про форматы, а получал переданное обращение и ожидание.
+var humanRequest = regexp.MustCompile(
+	`(?i)(позов|позва|соедин|переключ|свяж)[а-яё]*\s+(с\s+)?(человек|оператор|менеджер|специалист)[а-яё]*` +
+		`|(нужен|нужна|хочу|дайте|можно)\s+([а-яё]*жив[а-яё]+\s+)?(человек|оператор|менеджер)[а-яё]*` +
+		`|жив[а-яё]+\s+(человек|оператор)[а-яё]*` +
+		`|^(человек|оператор|менеджер)[а-яё]*\s*\?*$`)
+
 func wantsHuman(text string) bool {
-	lowered := strings.ToLower(text)
-	for _, phrase := range []string{"оператор", "человек", "поддержк", "менеджер", "живой"} {
-		if strings.Contains(lowered, phrase) {
-			return true
-		}
+	trimmed := strings.TrimSpace(strings.ToLower(text))
+	if trimmed == humanCommand || strings.HasPrefix(trimmed, humanCommand+" ") {
+		return true
 	}
-	return false
+	return humanRequest.MatchString(trimmed)
 }
 
 // escalate marks the conversation for a person and tells the user so.
@@ -215,7 +245,7 @@ func (s *Service) escalate(ctx context.Context, conversation *Conversation, reas
 	// unanswerable question would otherwise notify every operator each time,
 	// and a queue that cries every minute is one nobody reads.
 	if changed, err := result.RowsAffected(); err == nil && changed > 0 {
-		s.notifyOperators(ctx, conversation.ID, reason)
+		s.notifyOperators(ctx, conversation.ID, conversation.UserID, reason)
 	}
 
 	message := escalationReply
@@ -238,17 +268,41 @@ func (s *Service) reply(ctx context.Context, conversation *Conversation, text st
 	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
 		return err
 	}
+
+	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
+	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
+	// неотличимо от забытого.
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
+		  WHERE id = $1::uuid`, conversation.ID); err != nil {
+		s.log.Error("Could not record that a person answered",
+			"conversation_id", conversation.ID, "error", err)
+	}
+
 	return s.markDelivered(ctx, messageID)
 }
 
 // AnswerAsOperator delivers a person's reply into the same chat.
 func (s *Service) AnswerAsOperator(ctx context.Context, conversationID string, operatorID int64, text string) error {
+	return s.answerAs(ctx, conversationID, &operatorID, text)
+}
+
+// answerAsUnknown отвечает, когда автор не установлен.
+//
+// Так бывает у ответа из Telegram: куратор может не привязывать свой аккаунт к
+// боту и всё равно отвечать из группы. Ноль вместо идентификатора сюда не
+// годится — внешний ключ на users его не примет, и ответ не запишется вовсе.
+func (s *Service) answerAsUnknown(ctx context.Context, conversationID, text string) error {
+	return s.answerAs(ctx, conversationID, nil, text)
+}
+
+func (s *Service) answerAs(ctx context.Context, conversationID string, operatorID *int64, text string) error {
 	conversation, err := s.byID(ctx, conversationID)
 	if err != nil {
 		return err
 	}
 
-	messageID, err := s.recordMessage(ctx, conversation.ID, "operator", text, &operatorID)
+	messageID, err := s.recordMessage(ctx, conversation.ID, "operator", text, operatorID)
 	if err != nil {
 		return err
 	}
@@ -260,6 +314,17 @@ func (s *Service) AnswerAsOperator(ctx context.Context, conversationID string, o
 	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
 		return err
 	}
+
+	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
+	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
+	// неотличимо от забытого.
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
+		  WHERE id = $1::uuid`, conversation.ID); err != nil {
+		s.log.Error("Could not record that a person answered",
+			"conversation_id", conversation.ID, "error", err)
+	}
+
 	return s.markDelivered(ctx, messageID)
 }
 

@@ -49,9 +49,28 @@ type Update struct {
 			FirstName string `json:"first_name"`
 		} `json:"from"`
 		Chat struct {
-			ID int64 `json:"id"`
+			ID   int64  `json:"id"`
+			Type string `json:"type"`
 		} `json:"chat"`
+		// MessageThreadID непуст для сообщений внутри темы форума.
+		MessageThreadID int64 `json:"message_thread_id"`
+		// ReplyToMessage — то, на что ответили. Для куратора в теме это
+		// единственный способ сказать, в какой канал вернуть ответ.
+		ReplyToMessage *struct {
+			MessageID int64 `json:"message_id"`
+		} `json:"reply_to_message"`
 		Text string `json:"text"`
+		// Photo приходит набором размеров; нужен последний — он самый крупный.
+		Photo []struct {
+			FileID   string `json:"file_id"`
+			FileSize int64  `json:"file_size"`
+		} `json:"photo"`
+		Document *struct {
+			FileID   string `json:"file_id"`
+			FileName string `json:"file_name"`
+			FileSize int64  `json:"file_size"`
+		} `json:"document"`
+		Caption string `json:"caption"`
 	} `json:"message"`
 }
 
@@ -162,4 +181,53 @@ func (c *Client) VerifyWebhook(ctx context.Context, expectedURL string) error {
 	}
 
 	return nil
+}
+
+// call выполняет метод Bot API и возвращает поле result.
+//
+// Telegram отвечает двухсоткой и на отказ тоже: признак успеха — поле `ok`, а
+// причина — в `description`. Проверять только код состояния значит принимать
+// «у бота нет прав» за успешную отправку.
+func (c *Client) call(ctx context.Context, method string, payload map[string]any) (json.RawMessage, error) {
+	var reader io.Reader
+	if payload != nil {
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("marshal %s: %w", method, err)
+		}
+		reader = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		fmt.Sprintf("%s/bot%s/%s", c.baseURL, c.token, method), reader)
+	if err != nil {
+		return nil, fmt.Errorf("build %s request: %w", method, err)
+	}
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("call %s: %w", method, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("read %s response: %w", method, err)
+	}
+
+	var envelope struct {
+		OK          bool            `json:"ok"`
+		Result      json.RawMessage `json:"result"`
+		Description string          `json:"description"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return nil, fmt.Errorf("telegram answered %s with %d: %s", method, resp.StatusCode, raw)
+	}
+	if !envelope.OK {
+		return nil, fmt.Errorf("telegram refused %s: %s", method, envelope.Description)
+	}
+	return envelope.Result, nil
 }

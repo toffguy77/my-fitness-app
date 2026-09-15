@@ -28,6 +28,7 @@ import (
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/support"
+	"github.com/burcev/api/internal/modules/telegramlink"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
@@ -67,6 +68,8 @@ type Deps struct {
 	Admin         *admin.Handler
 	AdminJobs     *admin.JobsHandler
 	Support       *support.Handler
+	// TelegramLink может быть nil: без бота подключать нечего.
+	TelegramLink *telegramlink.Handler
 
 	// Metrics is optional; when nil no instrumentation is installed.
 	Metrics *telemetry.Metrics

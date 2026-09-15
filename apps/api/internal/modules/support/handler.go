@@ -50,8 +50,63 @@ func (h *Handler) Webhook(c *gin.Context) {
 		return
 	}
 
-	if update.Message == nil || update.Message.Text == "" {
-		// Stickers, photographs, joins: nothing to answer, nothing to retry.
+	if update.Message == nil {
+		// Присоединения, выходы, служебные обновления: отвечать нечему.
+		response.Success(c, http.StatusOK, gin.H{"ok": true})
+		return
+	}
+
+	// Фотография или файл от клиента.
+	//
+	// Раньше здесь стояло «nothing to answer» и на фотографию не приходило
+	// ничего: ни ответа, ни отказа. Молчание в ответ на отправленный файл
+	// читается как поломка, а не как «не умею».
+	if fileID, fileName := attachmentOf(&update); fileID != "" {
+		if err := h.service.HandleAttachment(c.Request.Context(), Attachment{
+			ChatID:   update.Message.Chat.ID,
+			FileID:   fileID,
+			FileName: fileName,
+			Caption:  update.Message.Caption,
+		}); err != nil {
+			h.log.Error("Failed to handle a support attachment", "error", err)
+		}
+		response.Success(c, http.StatusOK, gin.H{"ok": true})
+		return
+	}
+
+	if update.Message.Text == "" {
+		// Стикеры и прочее без текста: отвечать не на что.
+		response.Success(c, http.StatusOK, gin.H{"ok": true})
+		return
+	}
+
+	// Сообщение из группы кураторов — это ответ куратора, а не вопрос клиента.
+	// Разводится до всего остального: иначе ответ куратора уехал бы в модель как
+	// обращение, а сам куратор завёл бы себе тему.
+	if h.cfg.TelegramSupportGroupID != 0 && update.Message.Chat.ID == h.cfg.TelegramSupportGroupID {
+		var replyTo int64
+		if update.Message.ReplyToMessage != nil {
+			replyTo = update.Message.ReplyToMessage.MessageID
+		}
+		var operatorID int64
+		if update.Message.From != nil {
+			operatorID = update.Message.From.ID
+		}
+		fileID, fileName := attachmentOf(&update)
+		text := update.Message.Text
+		if text == "" {
+			text = update.Message.Caption
+		}
+		if err := h.service.HandleCuratorReply(c.Request.Context(), CuratorReply{
+			ThreadID:         update.Message.MessageThreadID,
+			ReplyToMessageID: replyTo,
+			TelegramUserID:   operatorID,
+			Text:             text,
+			FileID:           fileID,
+			FileName:         fileName,
+		}); err != nil {
+			h.log.Error("Failed to deliver a curator reply", "error", err)
+		}
 		response.Success(c, http.StatusOK, gin.H{"ok": true})
 		return
 	}
@@ -184,4 +239,17 @@ func (h *Handler) CloseConversation(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, gin.H{"closed": true})
+}
+
+// attachmentOf достаёт присланный файл из обновления.
+//
+// Фотография приходит набором размеров; берётся последний — он самый крупный.
+func attachmentOf(update *telegram.Update) (fileID, fileName string) {
+	if n := len(update.Message.Photo); n > 0 {
+		return update.Message.Photo[n-1].FileID, "photo.jpg"
+	}
+	if update.Message.Document != nil {
+		return update.Message.Document.FileID, update.Message.Document.FileName
+	}
+	return "", ""
 }

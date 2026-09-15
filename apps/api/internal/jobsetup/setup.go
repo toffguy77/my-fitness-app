@@ -248,6 +248,23 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Обращение, до которого не дошли руки, поднимается на суперадминов.
+	//
+	// Смотрим часто, потому что смысл в том, чтобы поднять его, пока человек
+	// ещё ждёт. Порог — внутри работы; интервал говорит лишь о том, как часто
+	// мы смотрим.
+	registry.MustRegister(jobs.Job{
+		Name:     "support.raise-unanswered",
+		Interval: 5 * time.Minute,
+		Timeout:  time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			if d.Support == nil {
+				return 0, nil
+			}
+			return d.Support.RaiseUnanswered(ctx, support.ReescalationAfter)
+		},
+	})
+
 	// Support chats hold what people typed before they had accounts, so they
 	// are not kept forever either.
 	registry.MustRegister(jobs.Job{

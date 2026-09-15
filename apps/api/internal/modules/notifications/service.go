@@ -35,6 +35,8 @@ type Service struct {
 	// pushClient refuses to connect to anything inside the network, whatever
 	// the endpoint resolves to at the moment of connection.
 	pushClient *http.Client
+	// telegram может быть nil: без привязок доставлять некуда.
+	telegram TelegramDelivery
 }
 
 // NewService creates a new notifications service
@@ -376,7 +378,55 @@ func (s *Service) CreateNotification(ctx context.Context, notification *Notifica
 		"type":            notification.Type,
 	})
 
+	// Telegram — поверх настроенных каналов, а не вместо них и не вместо
+	// переключателя в настройках. Кто привязал — получает и там; кто не
+	// привязал, не замечает разницы.
+	//
+	// После фиксации и в стороне от её ошибок: уведомление уже создано, и
+	// откатывать его из-за недоставленного сообщения — неверный размен.
+	s.sendToTelegram(ctx, notification)
+
 	return nil
+}
+
+// TelegramDelivery отправляет уведомление в привязанный Telegram.
+type TelegramDelivery interface {
+	// ChatID возвращает чат человека и признак наличия привязки.
+	ChatID(ctx context.Context, userID int64) (int64, bool, error)
+	// Send отправляет сообщение.
+	Send(ctx context.Context, chatID int64, text string) error
+}
+
+// WithTelegram подключает доставку в Telegram. Без неё всё работает по-прежнему.
+func (s *Service) WithTelegram(delivery TelegramDelivery) *Service {
+	s.telegram = delivery
+	return s
+}
+
+// sendToTelegram доставляет уведомление в Telegram, если человек его привязал.
+//
+// Отсутствие привязки — обычное положение дел, а не отказ: молчать об этом
+// правильно. Неудача отправки — в журнал, потому что уведомление уже создано.
+func (s *Service) sendToTelegram(ctx context.Context, notification *Notification) {
+	if s.telegram == nil {
+		return
+	}
+
+	chatID, linked, err := s.telegram.ChatID(ctx, notification.UserID)
+	if err != nil {
+		s.log.Warn("Не удалось проверить привязку Telegram",
+			"user_id", notification.UserID, "error", err)
+		return
+	}
+	if !linked {
+		return
+	}
+
+	text := notification.Title + "\n\n" + notification.Content
+	if err := s.telegram.Send(ctx, chatID, text); err != nil {
+		s.log.Warn("Не удалось отправить уведомление в Telegram",
+			"user_id", notification.UserID, "notification_id", notification.ID, "error", err)
+	}
 }
 
 // isLeaving reports whether the account has asked to be deleted or already has

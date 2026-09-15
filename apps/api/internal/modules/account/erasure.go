@@ -84,6 +84,16 @@ var strategies = []TableStrategy{
 	// события снова становятся личными; после удаления её быть не должно.
 	{Table: "analytics_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the mapping that re-identifies anonymous events"},
 
+	// Привязка Telegram и билеты к ней. Привязка — это адрес, по которому
+	// человеку можно написать; билет — право эту привязку создать. Ни то ни
+	// другое не должно пережить аккаунт.
+	{Table: "telegram_links", Column: "user_id", Strategy: StrategyDelete, Reason: "the address the bot writes to, and the name behind it"},
+	{Table: "telegram_link_tickets", Column: "user_id", Strategy: StrategyDelete, Reason: "the right to create that link"},
+	// Строка о теме уходит; сама тема в Telegram закрывается отдельно и
+	// намеренно не удаляется — это решение записано в проектировании.
+	{Table: "support_topics", Column: "client_id", Strategy: StrategyDelete, Reason: "our pointer to the forum topic; the topic itself is closed, not erased"},
+	{Table: "support_relays", Column: "client_id", Strategy: StrategyDelete, Reason: "what we mirrored into the topic and from which channel"},
+
 	// Part of a curator's working record.
 	{Table: "messages", Column: "sender_id", Strategy: StrategyAnonymize, Reason: "the curator's conversation must stay readable; the text loses its author"},
 	{Table: "conversations", Column: "client_id", Strategy: StrategyAnonymize, Reason: "the conversation belongs to the curator too", AlsoSet: "anonymized_at = NOW()"},
@@ -190,6 +200,19 @@ func (s *Service) Erase(ctx context.Context, userID int64) error {
 	if s.deleteFiles(ctx, userID, prefixes) {
 		if err := s.markFilesPurged(ctx, userID); err != nil {
 			s.log.Error("Failed to record file purge", "user_id", userID, "error", err)
+		}
+	}
+
+	// Тема в Telegram закрывается, но не удаляется: решение не трогать историю
+	// переписки принято отдельно и записано в проектировании. Закрытие — то
+	// единственное, что бот умеет надёжно, и оно означает, что новых сообщений
+	// в теме не появится.
+	//
+	// Как и файлы, по возможности: отказ чужого сервиса не отменяет стирания, о
+	// котором человек попросил.
+	if s.topics != nil {
+		if err := s.topics.Close(ctx, userID); err != nil {
+			s.log.Error("Failed to close the support topic", "user_id", userID, "error", err)
 		}
 	}
 

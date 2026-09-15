@@ -158,8 +158,10 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	assert.True(t, cfg.Features.DataExports)
 	// The support bot needs a Telegram token and webhook secret on top of the
 	// model credentials, so it stays off here; the observability pair needs its
-	// own credentials and is off for the same reason.
-	assert.Equal(t, []string{"support_bot", "web_push", "error_reporting", "tracing"},
+	// own credentials and is off for the same reason. Мост переписки требует
+	// сверх того идентификатор форум-группы — её создаёт человек, и вывести её
+	// из учётных данных нельзя.
+	assert.Equal(t, []string{"support_bot", "support_bridge", "web_push", "error_reporting", "tracing"},
 		cfg.Features.Disabled())
 }
 
