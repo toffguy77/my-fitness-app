@@ -41,7 +41,7 @@ func (s *Service) HandleAttachment(ctx context.Context, in Attachment) error {
 	}
 
 	if s.media == nil {
-		return nil
+		return s.reply(ctx, conversation, attachmentsOffReply)
 	}
 	if conversation.UserID == nil {
 		// До регистрации вложение некуда положить: у человека нет ни карточки,
