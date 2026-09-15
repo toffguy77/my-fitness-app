@@ -9,6 +9,7 @@ package oauth
 import (
 	"context"
 	"fmt"
+	"net/url"
 )
 
 // Profile is what every adapter returns, whatever the provider actually sent.
@@ -24,6 +25,21 @@ type Profile struct {
 	AvatarURL string
 }
 
+// ExchangeRequest is what the callback hands the adapter.
+//
+// Структурой, а не списком параметров: провайдеры расходятся не только в
+// ответе, но и в том, что требуют на входе. VK ID, например, не отдаёт токен
+// без device_id, который приходит в обратном вызове и не предусмотрен
+// обычным OAuth. Добавление такого поля не должно менять подпись у всех.
+type ExchangeRequest struct {
+	Code         string
+	CodeVerifier string
+	RedirectURI  string
+	// Callback carries the query the provider returned with, for the fields
+	// only that provider knows about.
+	Callback url.Values
+}
+
 // Provider is one external sign-in service.
 type Provider interface {
 	// Name is the stable identifier stored with the link.
@@ -31,7 +47,7 @@ type Provider interface {
 	// AuthorizationURL builds the URL the browser is sent to.
 	AuthorizationURL(state, codeChallenge, redirectURI string) string
 	// Exchange turns an authorization code into a normalised profile.
-	Exchange(ctx context.Context, code, codeVerifier, redirectURI string) (*Profile, error)
+	Exchange(ctx context.Context, req ExchangeRequest) (*Profile, error)
 }
 
 // Registry holds the providers this deployment has credentials for.

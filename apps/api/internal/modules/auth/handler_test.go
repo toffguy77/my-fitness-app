@@ -91,7 +91,10 @@ func TestRegister(t *testing.T) {
 		assert.Equal(t, "test@example.com", user["email"])
 		assert.Equal(t, "Test User", user["name"])
 		assert.NotEmpty(t, data["token"])
-		assert.NotEmpty(t, data["refresh_token"])
+		// Токен обновления в теле ответа не приходит: он живёт в
+		// HttpOnly-cookie, и это весь смысл переезда.
+		assert.NotContains(t, data, "refresh_token")
+		assert.NotEmpty(t, w.Header().Get("Set-Cookie"), "сессия ставится cookie")
 	})
 
 	t.Run("invalid email", func(t *testing.T) {
@@ -166,7 +169,10 @@ func TestLogin(t *testing.T) {
 		assert.Equal(t, "success", response["status"])
 		data := response["data"].(map[string]interface{})
 		assert.NotEmpty(t, data["token"])
-		assert.NotEmpty(t, data["refresh_token"])
+		// Токен обновления в теле ответа не приходит: он живёт в
+		// HttpOnly-cookie, и это весь смысл переезда.
+		assert.NotContains(t, data, "refresh_token")
+		assert.NotEmpty(t, w.Header().Get("Set-Cookie"), "сессия ставится cookie")
 		user := data["user"].(map[string]interface{})
 		assert.Equal(t, "test@example.com", user["email"])
 	})
@@ -251,7 +257,10 @@ func TestLoginWithRememberMe(t *testing.T) {
 		assert.Equal(t, "success", response["status"])
 		data := response["data"].(map[string]interface{})
 		assert.NotEmpty(t, data["token"])
-		assert.NotEmpty(t, data["refresh_token"])
+		// Токен обновления в теле ответа не приходит: он живёт в
+		// HttpOnly-cookie, и это весь смысл переезда.
+		assert.NotContains(t, data, "refresh_token")
+		assert.NotEmpty(t, w.Header().Get("Set-Cookie"), "сессия ставится cookie")
 	})
 
 	t.Run("remember_me defaults to false when omitted", func(t *testing.T) {

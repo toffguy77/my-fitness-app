@@ -56,8 +56,8 @@ func (p *yandexProvider) AuthorizationURL(state, codeChallenge, redirectURI stri
 	return p.authURL + "?" + params.Encode()
 }
 
-func (p *yandexProvider) Exchange(ctx context.Context, code, codeVerifier, redirectURI string) (*Profile, error) {
-	token, err := p.exchangeCode(ctx, code, codeVerifier, redirectURI)
+func (p *yandexProvider) Exchange(ctx context.Context, in ExchangeRequest) (*Profile, error) {
+	token, err := p.exchangeCode(ctx, in.Code, in.CodeVerifier, in.RedirectURI)
 	if err != nil {
 		return nil, err
 	}

@@ -161,6 +161,67 @@ for (const name of unlisted) {
     )
 }
 
+
+// --- Каждое объявленное событие аналитики должен кто-то отправлять ---
+//
+// Словарь объявлен дважды — в Go и в TypeScript — и сервер отказывает всему,
+// чего не знает. Но ничто не проверяло обратное: событие, объявленное с обеих
+// сторон и не отправляемое ниоткуда, выглядит в воронке как «этого шага никто
+// не делал». Так и было с support_chat_opened: объявлено на обеих сторонах,
+// не отправлялось никем, и провал на его месте нельзя было отличить от
+// отсутствия трафика.
+const goDictionary = readFileSync('apps/api/internal/modules/analytics/dictionary.go', 'utf8')
+const tsDictionary = readFileSync('apps/web/src/shared/analytics/events.ts', 'utf8')
+
+const declaredEvents = [...goDictionary.matchAll(/Event[A-Za-z]+\s*=\s*"([a-z_]+)"/g)].map((m) => m[1])
+const tsNames = new Map(
+    [...tsDictionary.matchAll(/(\w+):\s*'([a-z_]+)'/g)].map((m) => [m[2], m[1]]),
+)
+
+// Обе стороны обязаны знать одно и то же: имя, объявленное только в клиенте,
+// сервер отклонит, а объявленное только на сервере никто не пошлёт.
+for (const [name] of tsNames) {
+    if (!declaredEvents.includes(name)) {
+        problems.push(
+            `Analytics event declared in the client but not on the server: ${name}\n` +
+                `  The server refuses names it does not know, so this one never arrives.\n` +
+                `  Add it to apps/api/internal/modules/analytics/dictionary.go.`,
+        )
+    }
+}
+
+// Без самого словаря: иначе каждое событие «находит себя» в объявлении, и
+// проверка проходит всегда. Первая версия этого сторожа была ровно такой.
+const apiText = walk(
+    'apps/api/internal',
+    (f) => f.endsWith('.go') && !f.endsWith('_test.go') && !f.endsWith('dictionary.go'),
+)
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n')
+// Без тестов намеренно: вызов track() внутри проверки — не отправка события.
+const productionWebText = walk('apps/web/src', (f) => /\.tsx?$/.test(f) && !f.includes('__tests__'))
+    .map((f) => readFileSync(f, 'utf8'))
+    .join('\n')
+
+// Считается отправкой любая ссылка вне словаря: сервер шлёт факты именем
+// строкой, клиент — ключом словаря, и отправить можно как через track(), так и
+// через <TrackView>. Проверять способ значило бы ловить форму записи, а вопрос
+// здесь другой — существует ли вообще место, где событие рождается.
+const unsent = declaredEvents.filter((name) => {
+    if (apiText.includes(`"${name}"`)) return false
+    const key = tsNames.get(name)
+    if (key && new RegExp(`EVENTS\\.${key}\\b`).test(productionWebText)) return false
+    return true
+})
+
+for (const name of unsent) {
+    problems.push(
+        `Analytics event is declared but never sent: ${name}\n` +
+            `  A step nobody emits looks in the funnel exactly like a step nobody took.\n` +
+            `  Send it where it happens, or remove it from both dictionaries.`,
+    )
+}
+
 if (problems.length > 0) {
     console.error('Codebase integrity check failed:\n')
     for (const p of problems) console.error(p + '\n')
@@ -171,5 +232,6 @@ console.log(
     `Codebase integrity OK — ${declared.size} public env vars all used, ` +
         `${configs.length} Next.js config, no unimplemented shipped handlers, ` +
         `${appPages.length} app files free of fixture data, ` +
-        `${specFiles.length} e2e specs all in a project.`,
+        `${specFiles.length} e2e specs all in a project, ` +
+        `${declaredEvents.length} analytics events all sent.`,
 )

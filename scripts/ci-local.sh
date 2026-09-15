@@ -94,7 +94,7 @@ integration_tests() {
     "$engine" rm -f "$container" >/dev/null 2>&1
     "$engine" run -d --name "$container" \
         -e POSTGRES_USER=burcev -e POSTGRES_PASSWORD=burcev -e POSTGRES_DB=burcev_test \
-        -p 5433:5432 postgres:16-alpine >/dev/null || return 1
+        -p 5433:5432 postgres:18-alpine >/dev/null || return 1
 
     local ready=1
     for _ in $(seq 1 30); do

@@ -9,6 +9,7 @@
  */
 
 import { leadToken } from '@/features/onboarding/api/guest'
+import { EVENTS, track } from '@/shared/analytics'
 
 export function SupportLink({ className }: { className?: string }) {
     // Read here rather than at module load: Next inlines the value either way,
@@ -23,6 +24,13 @@ export function SupportLink({ className }: { className?: string }) {
     const token = leadToken()
     const href = `https://t.me/${botUsername}${token ? `?start=${encodeURIComponent(token)}` : ''}`
 
+    // Шаг воронки: отсюда человек уходит спрашивать живого. Событие объявлено
+    // в обоих словарях с самого начала, но не отправлялось ниоткуда — и в
+    // воронке на его месте была дыра, неотличимая от «никто не спрашивал».
+    //
+    // Не await и не задержка перехода: аналитика не должна стоять между
+    // человеком и ответом на его вопрос. Отправка идёт очередью с sendBeacon,
+    // которая переживает уход со страницы.
     return (
         <a
             href={href}
@@ -30,6 +38,7 @@ export function SupportLink({ className }: { className?: string }) {
             rel="noopener noreferrer"
             data-testid="support-link"
             className={className ?? 'text-sm text-blue-600 hover:underline'}
+            onClick={() => track(EVENTS.supportOpened, { from: token ? 'with_lead' : 'no_lead' })}
         >
             Задать вопрос в Telegram
         </a>

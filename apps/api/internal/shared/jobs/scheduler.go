@@ -78,12 +78,26 @@ func (s *Scheduler) SetObserver(o Observer) { s.observe = o }
 //
 // Waiting matters: cancelling and exiting would leave rows stuck in "running"
 // and could interrupt a half-written snapshot.
+// orphanAge is how long a run must claim to be running before we conclude
+// nobody is running it.
+const orphanAge = time.Hour
+
 func (s *Scheduler) Run(ctx context.Context) {
 	ticker := time.NewTicker(tickInterval)
 	defer ticker.Stop()
 
 	s.log.Info("Job scheduler started",
 		"jobs", len(s.registry.All()), "tick", tickInterval.String())
+
+	// Записи, оставшиеся от умершего процесса, закрываем здесь: иначе они
+	// вечно утверждают, что задача идёт. Час — заведомо больше любого нашего
+	// таймаута и заведомо меньше промежутка между выкатками.
+	if closed, err := s.store.closeOrphans(ctx, orphanAge); err != nil {
+		s.log.Error("Could not close orphaned job runs", "error", err)
+	} else if closed > 0 {
+		s.log.Warn("Closed job runs left by a process that died",
+			"runs", closed, "older_than", orphanAge.String())
+	}
 
 	for {
 		select {

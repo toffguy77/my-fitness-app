@@ -24,6 +24,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -185,12 +186,31 @@ func emitSQL(out io.Writer) error {
 	write("")
 
 	write("-- Поиску еды нечего искать в пустом каталоге.")
-	for _, p := range catalogue {
-		write("INSERT INTO products (name, brand, calories, proteins, fats, carbs, source)")
-		write("SELECT %s, %s, %g, %g, %g, %g, 'database'",
-			quote(p.name), quote(p.brand), p.calories, p.proteins, p.fats, p.carbs)
-		write("WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = %s);", quote(p.name))
+	write("--")
+	write("-- Только в пустом: на dev и проде каталог залит импортом, и там у")
+	write("-- products есть столбцы, которых миграции не создают — category_id")
+	write("-- обязателен. Дописывать туда учебные пять строк и не нужно, и нечем.")
+	// Одной вставкой, а не пятью: условие пустоты проверяется один раз, до
+	// строк. Пятью — первая делает таблицу непустой, и остальные четыре молча
+	// пропадают. Ровно это и случилось при первой попытке.
+	// Категория обязательна: у каждого продукта каталога она есть, и ослаблять
+	// это на проде ради учебных записей было бы менять продукт под тест.
+	write("INSERT INTO categories (name, slug, type, source_url)")
+	write("SELECT 'Проверочная', 'e2e-fixture', 'food', 'https://example.invalid/e2e'")
+	write("WHERE NOT EXISTS (SELECT 1 FROM categories);")
+	write("")
+	write("INSERT INTO products (name, brand, calories, proteins, fats, carbs, source, category_id)")
+	write("SELECT t.*, (SELECT id FROM categories ORDER BY id LIMIT 1) FROM (VALUES")
+	for i, p := range catalogue {
+		comma := ","
+		if i == len(catalogue)-1 {
+			comma = ""
+		}
+		write("    (%s, %s, %g::numeric, %g::numeric, %g::numeric, %g::numeric, 'database')%s",
+			quote(p.name), quote(p.brand), p.calories, p.proteins, p.fats, p.carbs, comma)
 	}
+	write(") AS t(name, brand, calories, proteins, fats, carbs, source)")
+	write("WHERE NOT EXISTS (SELECT 1 FROM products);")
 	write("")
 	write("COMMIT;")
 	return nil
@@ -222,6 +242,11 @@ func ensureConversation(ctx context.Context, db *sql.DB, curatorID, clientID int
 }
 
 // catalogue entries the food-search tests look for.
+//
+// Заводятся только в пустой каталог. На dev и проде он заполнен импортом, и
+// схема products там отличается от той, что строят миграции: category_id
+// обязателен, есть source_url, water, manufacturer, нет barcode. Расхождение
+// реальное и описано в docs/operations; сеятелю достаточно его не задевать.
 var catalogue = []struct {
 	name     string
 	brand    string
@@ -238,12 +263,38 @@ var catalogue = []struct {
 }
 
 func seedProducts(ctx context.Context, db *sql.DB) error {
+	// Пустоту проверяем один раз, до вставок: иначе первая строка делает
+	// таблицу непустой и остальные молча пропадают.
+	var empty bool
+	if err := db.QueryRowContext(ctx,
+		`SELECT NOT EXISTS (SELECT 1 FROM products)`).Scan(&empty); err != nil {
+		return fmt.Errorf("check catalogue: %w", err)
+	}
+	if !empty {
+		return nil
+	}
+
+	// Категория обязательна у каждого продукта каталога.
+	var categoryID int64
+	if err := db.QueryRowContext(ctx, `
+		INSERT INTO categories (name, slug, type, source_url)
+		SELECT 'Проверочная', 'e2e-fixture', 'food', 'https://example.invalid/e2e'
+		WHERE NOT EXISTS (SELECT 1 FROM categories)
+		RETURNING id`).Scan(&categoryID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("create fixture category: %w", err)
+		}
+		if err := db.QueryRowContext(ctx,
+			`SELECT id FROM categories ORDER BY id LIMIT 1`).Scan(&categoryID); err != nil {
+			return fmt.Errorf("find a category: %w", err)
+		}
+	}
+
 	for _, p := range catalogue {
 		if _, err := db.ExecContext(ctx, `
-			INSERT INTO products (name, brand, calories, proteins, fats, carbs, source)
-			SELECT $1, $2, $3, $4, $5, $6, 'database'
-			WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = $1)`,
-			p.name, p.brand, p.calories, p.proteins, p.fats, p.carbs); err != nil {
+			INSERT INTO products (name, brand, calories, proteins, fats, carbs, source, category_id)
+			VALUES ($1, $2, $3, $4, $5, $6, 'database', $7)`,
+			p.name, p.brand, p.calories, p.proteins, p.fats, p.carbs, categoryID); err != nil {
 			return fmt.Errorf("insert %s: %w", p.name, err)
 		}
 	}

@@ -192,8 +192,22 @@ func (h *Handler) Register(c *gin.Context) {
 
 	result, err := h.service.Register(c.Request.Context(), req.Email, req.Password, req.Name, c.ClientIP(), c.Request.UserAgent(), req.Consents)
 	if err != nil {
-		h.log.Errorw("Registration failed", "error", err, "email", req.Email)
-		response.Error(c, http.StatusBadRequest, err.Error())
+		// Наружу — только то, что человек может исправить. Раньше сюда уходил
+		// err.Error() на любую ошибку, и при занятом адресе он получал
+		// «duplicate key value violates unique constraint "users_email_key"».
+		var policy *PolicyError
+		switch {
+		case errors.As(err, &policy):
+			response.ErrorCode(c, http.StatusUnprocessableEntity,
+				policy.ForPerson(), apperrors.CodePasswordPolicy, nil)
+		case errors.Is(err, apperrors.ErrConflict):
+			response.ErrorCode(c, http.StatusConflict,
+				"Этот адрес уже зарегистрирован. Попробуйте войти или восстановить пароль.",
+				apperrors.CodeConflict, nil)
+		default:
+			h.log.Errorw("Registration failed", "error", err, "email", req.Email)
+			response.Error(c, http.StatusBadRequest, "Не удалось зарегистрировать. Попробуйте позже.")
+		}
 		return
 	}
 
@@ -387,7 +401,12 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		case errors.Is(err, apperrors.ErrPasswordUnchanged):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		case errors.Is(err, apperrors.ErrPasswordPolicy):
-			response.Error(c, http.StatusUnprocessableEntity, err.Error())
+			var policy *PolicyError
+			message := "Пароль не подходит."
+			if errors.As(err, &policy) {
+				message = policy.ForPerson()
+			}
+			response.Error(c, http.StatusUnprocessableEntity, message)
 		default:
 			h.log.Errorw("Password change failed", "error", err, "user_id", userID)
 			response.Error(c, http.StatusInternalServerError, "Не удалось изменить пароль")

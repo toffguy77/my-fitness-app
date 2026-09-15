@@ -129,9 +129,18 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 	startedProvider, _ := c.Cookie(providerCookie)
 	h.clearFlowCookies(c)
 
-	if expectedState == "" || verifier == "" ||
-		c.Query("state") != expectedState || startedProvider != name {
-		h.log.Warn("Rejected OAuth callback with mismatched state", "provider", name)
+	// Отказ называется по существу, а не одним словом на все случаи.
+	//
+	// «Не совпало» покрывало три разные неисправности: cookie не дошла до нас,
+	// cookie от прежней попытки, и ответ не от того провайдера. Чинятся они
+	// по-разному — первая означает, что cookie теряется по дороге, вторая, что
+	// человек начал вход дважды, — а в журнале все три выглядели одинаково, и
+	// живой отказ на dev нечем было отличить.
+	//
+	// Значения состояния не пишем: это одноразовый секрет потока.
+	if reason := stateFailure(expectedState, verifier, startedProvider, name,
+		c.Query("state")); reason != "" {
+		h.log.Warn("Rejected OAuth callback", "provider", name, "reason", reason)
 		h.redirectToApp(c, "/auth?oauth=invalid_state")
 		return
 	}
@@ -142,7 +151,12 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
-	profile, err := provider.Exchange(c.Request.Context(), code, verifier, h.redirectURI(name))
+	profile, err := provider.Exchange(c.Request.Context(), oauth.ExchangeRequest{
+		Code:         code,
+		CodeVerifier: verifier,
+		RedirectURI:  h.redirectURI(name),
+		Callback:     c.Request.URL.Query(),
+	})
 	if err != nil {
 		h.log.Error("Failed to exchange authorization code", "error", err, "provider", name)
 		h.redirectToApp(c, "/auth?oauth=failed")
@@ -293,6 +307,30 @@ func (h *OAuthHandler) redirectWithSession(c *gin.Context, outcome *OAuthOutcome
 	h.redirectToApp(c, "/auth/complete?"+url.Values{
 		"result": {string(outcome.Result)},
 	}.Encode())
+}
+
+// stateFailure says why a callback was refused, or "" when it was not.
+//
+// Отдельной функцией, чтобы каждый случай можно было назвать и проверить: в
+// обработчике они сливались в одно условие, и различать их было негде.
+func stateFailure(expectedState, verifier, startedProvider, provider, gotState string) string {
+	switch {
+	case expectedState == "" && verifier == "":
+		// Ни одной cookie потока: до нас они не доехали. Ошибка наша — путь,
+		// домен, SameSite или посредник, съедающий Set-Cookie.
+		return "поток не начинался в этом браузере: cookie потока отсутствуют"
+	case expectedState == "":
+		return "нет cookie состояния при наличии остальных"
+	case verifier == "":
+		return "нет cookie проверочного кода при наличии состояния"
+	case startedProvider != provider:
+		// Человек начал вход одним провайдером, вернулся другим: почти всегда
+		// две вкладки или повторный старт поверх незавершённого.
+		return "вернулся другой провайдер: начинали с " + startedProvider
+	case gotState != expectedState:
+		return "состояние от другой попытки входа"
+	}
+	return ""
 }
 
 func (h *OAuthHandler) setFlowCookie(c *gin.Context, name, value string) {

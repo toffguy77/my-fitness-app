@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"strings"
+
+	"github.com/burcev/api/internal/shared/apperrors"
 	"unicode"
 )
 
@@ -143,4 +146,28 @@ func containsSpecialChar(s string) bool {
 		}
 	}
 	return false
+}
+
+// PolicyError carries the reasons a password was refused.
+//
+// Типом, а не текстом: раньше причины склеивались в сообщение вместе с
+// обёрткой, и человек на проде видел
+// «пароль не соответствует требованиям: [Пароль должен содержать хотя бы одну
+// цифру]: password does not meet policy» — с английским хвостом внутренней
+// ошибки и квадратными скобками из вывода Go.
+type PolicyError struct {
+	Reasons []string
+}
+
+func (e *PolicyError) Error() string {
+	return "password does not meet policy: " + strings.Join(e.Reasons, "; ")
+}
+
+// Unwrap keeps errors.Is working for callers that only ask "was it the policy".
+func (e *PolicyError) Unwrap() error { return apperrors.ErrPasswordPolicy }
+
+// ForPerson renders the reasons for whoever typed the password. Ничего, кроме
+// самих причин: остальное — наше внутреннее устройство.
+func (e *PolicyError) ForPerson() string {
+	return "Пароль не подходит: " + strings.Join(e.Reasons, "; ")
 }

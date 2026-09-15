@@ -208,6 +208,12 @@ func TestCompleteWithEmail_ExistingAddressStillNeedsProof(t *testing.T) {
 	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows(""))
 	mock.ExpectQuery("SELECT id FROM users WHERE email").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(9)))
+	// Адрес записывается в саму попытку: следующий шаг читает её из базы, а не
+	// продолжает работу с той же структурой в памяти. Что запись действительно
+	// доходит до строки, проверяет oauth_pending_integration_test.go — подмена
+	// на такой вопрос отвечает «да» в любом случае.
+	mock.ExpectExec("UPDATE oauth_pending_links SET email").
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	outcome, err := service.CompleteWithEmail(context.Background(), "pending-1", "taken@example.com", "ip", "ua")
 

@@ -4,12 +4,11 @@ package account_test
 
 import (
 	"context"
-	"database/sql"
-	"os"
 	"sort"
 	"testing"
 
 	"github.com/burcev/api/internal/modules/account"
+	"github.com/burcev/api/internal/testsupport"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,17 +21,17 @@ import (
 //
 // Run with: go test -tags=integration ./internal/modules/account/
 func TestErasureCoversSchema(t *testing.T) {
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL is not set; skipping integration test")
-	}
+	// Через testsupport, а не своим соединением к public.
+	//
+	// Прежде тест открывал своё соединение и спрашивал current_schema() —
+	// то есть public, куда миграции не применяются: каждый тест получает своё
+	// пространство имён. В CI public пуст, запрос возвращал ноль строк, и
+	// проверка проходила вхолостую. Она не работала ни разу, а когда её
+	// наконец запустили против настоящей схемы, нашлось семь таблиц без
+	// стратегии — включая привязку входа через провайдера.
+	db := testsupport.SchemaWithMigrations(t, "erasure_coverage")
 
-	db, err := sql.Open("pgx", dsn)
-	require.NoError(t, err)
-	defer func() { _ = db.Close() }()
-	require.NoError(t, db.Ping())
-
-	rows, err := db.Query(`
+	rows, err := db.QueryContext(context.Background(), `
 		SELECT DISTINCT tc.table_name
 		FROM information_schema.table_constraints tc
 		JOIN information_schema.constraint_column_usage ccu

@@ -31,7 +31,6 @@ export interface AuthResponse {
         onboarding_completed: boolean;
     };
     token: string; // JWT access token
-    refresh_token: string; // Opaque refresh token
     /**
      * Present when the account is inside its cancellation window. Somebody
      * signing in during those thirty days has almost certainly changed their

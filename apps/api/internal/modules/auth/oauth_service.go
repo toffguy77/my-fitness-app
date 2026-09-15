@@ -336,6 +336,28 @@ func (s *Service) storePendingLink(ctx context.Context, provider string, profile
 }
 
 // pendingLink loads an unfinished attempt. An expired row is treated as absent.
+// rememberPendingEmail stores the address the person typed on the attempt.
+//
+// Без этого следующий шаг не знает, о каком адресе речь: он читает попытку из
+// базы, а не продолжает работу с той же структурой в памяти.
+func (s *Service) rememberPendingEmail(ctx context.Context, id, email string) error {
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE oauth_pending_links SET email = $2 WHERE id = $1 AND expires_at > NOW()`,
+		id, email)
+	if err != nil {
+		return fmt.Errorf("remember pending email: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("remember pending email: %w", err)
+	}
+	if affected == 0 {
+		// Попытки уже нет — вот теперь «истекла» будет правдой.
+		return fmt.Errorf("pending link vanished: %w", apperrors.ErrTokenInvalid)
+	}
+	return nil
+}
+
 func (s *Service) pendingLink(ctx context.Context, id string) (string, *oauth.Profile, error) {
 	var provider string
 	var profile oauth.Profile
@@ -437,6 +459,16 @@ func (s *Service) CompleteWithEmail(ctx context.Context, pendingID, email, ip, u
 		return nil, err
 	}
 	if existingID != 0 {
+		// Записываем адрес в саму попытку, а не только в прочитанную из неё
+		// структуру. Шаг подтверждения читает попытку заново, и без этого он
+		// находил её без адреса, отвечал ErrTokenInvalid, а человек видел
+		// «попытка входа истекла» — хотя ничего не истекало.
+		//
+		// Ветка срабатывает только у провайдеров, не отдающих адрес. У Яндекса
+		// он приходит сам, поэтому вход через него работал, а через VK — нет.
+		if err := s.rememberPendingEmail(ctx, pendingID, email); err != nil {
+			return nil, err
+		}
 		profile.Email = email
 		return &OAuthOutcome{
 			Result:         OAuthNeedsLinkConfirmation,

@@ -35,7 +35,8 @@ jobs:
           MP_SMTP_AUTH_ALLOW_INSECURE: '1'
 
       postgres:
-        image: postgres:16-alpine
+        # Та же мажорная версия, что на проде (см. ci.yml).
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: burcev
           POSTGRES_PASSWORD: burcev

@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgconn"
 	"strings"
 	"time"
 
@@ -106,9 +108,16 @@ type User struct {
 
 // LoginResult represents login response
 type LoginResult struct {
-	User         *User  `json:"user"`
-	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token"`
+	User  *User  `json:"user"`
+	Token string `json:"token"`
+	// RefreshToken живёт только внутри: обработчик кладёт его в HttpOnly-cookie
+	// и не показывает в теле ответа.
+	//
+	// Токен в теле можно записать в журнал, оставить в кэше посредника или
+	// прочитать из ответа любым сценарием на странице — ровно от этого и
+	// уводил переезд в cookie, а тело ответа сводило его на нет. Клиент его
+	// не читал ни разу: он был объявлен в типе и больше нигде.
+	RefreshToken string `json:"-"`
 	// PendingDeletion is set when this account is inside its cancellation
 	// window. Somebody who signs in during those thirty days has almost
 	// certainly changed their mind, and the app has to be able to say so
@@ -123,12 +132,21 @@ type PendingDeletion struct {
 }
 
 // Register registers a new user and returns login result with tokens
+// isUniqueViolation reports a PostgreSQL unique-constraint violation.
+//
+// По коду, а не по тексту: текст меняется от версии к версии и от языка
+// сообщений, а 23505 — часть протокола.
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
 func (s *Service) Register(ctx context.Context, email, password, name, ip, ua string, consents *ConsentsInput) (*LoginResult, error) {
 	s.log.Infow("User registration", "email", email)
 
 	// Validate password policy
 	if result := s.passwordVal.Validate(password); !result.Valid {
-		return nil, fmt.Errorf("пароль не соответствует требованиям: %v: %w", result.Errors, apperrors.ErrPasswordPolicy)
+		return nil, &PolicyError{Reasons: result.Errors}
 	}
 
 	// Hash password
@@ -151,6 +169,14 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	)
 	s.log.LogDatabaseQuery("Register.InsertUser", time.Since(startTime), err, map[string]any{"email": email})
 	if err != nil {
+		// Занятый адрес — обычный исход, а не неисправность. Различать его
+		// здесь, а не отдавать наружу текст ошибки базы: обработчик пересказывал
+		// его дословно, и человек получал
+		// «duplicate key value violates unique constraint "users_email_key"» —
+		// вместе с устройством нашей базы.
+		if isUniqueViolation(err) {
+			return nil, fmt.Errorf("адрес уже зарегистрирован: %w", apperrors.ErrConflict)
+		}
 		return nil, fmt.Errorf("ошибка при регистрации: %w", err)
 	}
 
@@ -483,7 +509,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	}
 
 	if result := s.passwordVal.Validate(newPassword); !result.Valid {
-		return fmt.Errorf("пароль не соответствует требованиям: %v: %w", result.Errors, apperrors.ErrPasswordPolicy)
+		return &PolicyError{Reasons: result.Errors}
 	}
 
 	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)

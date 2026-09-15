@@ -17,6 +17,14 @@ const (
 	// StatusSkipped means another instance held the lock. Recorded rather than
 	// ignored so "did anything run?" has an answer on every instance.
 	StatusSkipped Status = "skipped"
+	// StatusInterrupted means the process died while the job was running.
+	//
+	// Таймаут задачи обработан отдельно: `finish` пишет исход своим контекстом.
+	// А вот внезапную смерть процесса — замену контейнера на выкатке, SIGKILL —
+	// записать некому, и строка остаётся «running» навсегда. На проде таких
+	// накопилось шесть за две недели: запись утверждала, что задача идёт, когда
+	// ничего не шло.
+	StatusInterrupted Status = "interrupted"
 )
 
 // Run is one recorded execution.
@@ -65,6 +73,29 @@ func (s *store) finish(ctx context.Context, id string, status Status, items int,
 		return fmt.Errorf("record job finish: %w", err)
 	}
 	return nil
+}
+
+// closeOrphans marks runs nobody will ever finish.
+//
+// Вызывается при старте планировщика: всё, что числится идущим дольше порога,
+// осталось от процесса, которого больше нет. Порог, а не «всё подряд», потому
+// что во время выкатки старый контейнер ещё доживает свои задачи, и обрывать
+// их записью было бы такой же неправдой, только наоборот.
+func (s *store) closeOrphans(ctx context.Context, olderThan time.Duration) (int64, error) {
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE job_runs
+		 SET status = $1, finished_at = NOW(),
+		     error = 'процесс завершился, не дописав исход'
+		 WHERE status = $2 AND started_at < NOW() - $3::interval`,
+		StatusInterrupted, StatusRunning, fmt.Sprintf("%d seconds", int(olderThan.Seconds())))
+	if err != nil {
+		return 0, fmt.Errorf("close orphaned runs: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("close orphaned runs: %w", err)
+	}
+	return affected, nil
 }
 
 // recordSkipped writes a completed "skipped" row in one statement.

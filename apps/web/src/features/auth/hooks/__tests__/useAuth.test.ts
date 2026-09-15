@@ -98,7 +98,6 @@ describe('useAuth', () => {
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
-                refresh_token: 'mock-refresh-token',
             };
 
             mockLoginUser.mockResolvedValue(mockResponse);
@@ -147,7 +146,6 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'mock-jwt-token',
-                refresh_token: 'mock-refresh-token',
             };
 
             mockLoginUser.mockResolvedValue(mockResponse);
@@ -222,7 +220,6 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
-                refresh_token: 'new-user-refresh-token',
             };
 
             mockRegisterUser.mockResolvedValue(mockResponse);
@@ -322,7 +319,6 @@ describe('useAuth', () => {
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
-                refresh_token: 'mock-refresh-token',
             };
 
             // Create a promise we can control
@@ -378,7 +374,6 @@ describe('useAuth', () => {
                     onboarding_completed: true,
                 },
                 token: 'mock-jwt-token',
-                refresh_token: 'mock-refresh-token',
             };
 
             // First login fails
@@ -421,7 +416,6 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
-                refresh_token: 'new-user-refresh-token',
             };
 
             let resolveRegister: (value: AuthResponse) => void;
@@ -483,7 +477,6 @@ describe('useAuth', () => {
                     onboarding_completed: false,
                 },
                 token: 'new-user-jwt-token',
-                refresh_token: 'new-user-refresh-token',
             };
 
             // First registration fails
