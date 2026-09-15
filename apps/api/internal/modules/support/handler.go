@@ -92,11 +92,18 @@ func (h *Handler) Webhook(c *gin.Context) {
 		if update.Message.From != nil {
 			operatorID = update.Message.From.ID
 		}
+		fileID, fileName := attachmentOf(&update)
+		text := update.Message.Text
+		if text == "" {
+			text = update.Message.Caption
+		}
 		if err := h.service.HandleCuratorReply(c.Request.Context(), CuratorReply{
 			ThreadID:         update.Message.MessageThreadID,
 			ReplyToMessageID: replyTo,
 			TelegramUserID:   operatorID,
-			Text:             update.Message.Text,
+			Text:             text,
+			FileID:           fileID,
+			FileName:         fileName,
 		}); err != nil {
 			h.log.Error("Failed to deliver a curator reply", "error", err)
 		}

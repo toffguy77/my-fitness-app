@@ -15,6 +15,9 @@ type CuratorReply struct {
 	// TelegramUserID — кто написал. Нужен, чтобы записать автора на платформе.
 	TelegramUserID int64
 	Text           string
+	// FileID непуст, когда куратор отправил фотографию или файл.
+	FileID   string
+	FileName string
 }
 
 // Bridge — то, что мосту нужно уметь. Интерфейс узкий: поддержке незачем знать,
@@ -62,6 +65,22 @@ func (s *Service) HandleCuratorReply(ctx context.Context, reply CuratorReply) er
 		// Сообщение в теме, за которой никого нет: служебная переписка
 		// кураторов между собой. Молчим, а не гадаем.
 		return nil
+	}
+
+	// Вложение от куратора: сохраняем у себя и отдаём клиенту ссылкой.
+	// Пересылать чужой file_id нельзя — он привязан к боту и чату.
+	if reply.FileID != "" && s.media != nil {
+		key, kind, err := s.media.SaveIncoming(ctx, clientID, reply.FileID, reply.FileName)
+		if err != nil {
+			return fmt.Errorf("сохранить вложение куратора: %w", err)
+		}
+		if err := s.media.StoreOnPlatform(ctx, clientID, key, kind, reply.Text); err != nil {
+			s.log.Error("Не удалось положить вложение куратора в переписку",
+				"error", err, "client_id", clientID)
+		}
+		if !toTelegram {
+			return nil
+		}
 	}
 
 	if toTelegram {
