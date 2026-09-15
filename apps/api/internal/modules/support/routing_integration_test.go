@@ -100,3 +100,82 @@ func TestTheCuratorIsChosenAtEscalationTime(t *testing.T) {
 
 	assert.Equal(t, []int64{now}, noted.ids, "позвали прежнего куратора")
 }
+
+// Обращение, на которое никто не ответил, поднимается на суперадминов.
+//
+// Подключением считается отправленный ответ, а не открытая очередь. И
+// поднимается один раз: очередь, которая кричит на каждом проходе, перестаёт
+// что-либо значить.
+func TestUnansweredEscalationIsRaisedOnce(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_raise")
+	ctx := context.Background()
+	noted := &notedRecipients{}
+	service := NewService(db.DB, logger.New(), nil, nil, nil, 100)
+	service.operators = noted
+
+	var admin, curator, client int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('админ@e.test','x','А','super_admin') RETURNING id`).Scan(&admin))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('куратор@e.test','x','К','coordinator') RETURNING id`).Scan(&curator))
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('клиент@e.test','x','Кл','client') RETURNING id`).Scan(&client))
+
+	var conversationID string
+	require.NoError(t, db.QueryRowContext(ctx, `
+		INSERT INTO support_conversations (chat_id, user_id, status, escalation_reason, escalated_at)
+		VALUES (5001, $1, 'escalated', 'ответа нет в документации', NOW() - INTERVAL '45 minutes')
+		RETURNING id`, client).Scan(&conversationID))
+
+	raised, err := service.RaiseUnanswered(ctx, ReescalationAfter)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, raised)
+	assert.Equal(t, []int64{admin}, noted.ids, "подняли не на суперадминов")
+
+	// Второй проход молчит.
+	noted.ids = nil
+	raised, err = service.RaiseUnanswered(ctx, ReescalationAfter)
+	require.NoError(t, err)
+	assert.Zero(t, raised, "обращение подняли второй раз")
+	assert.Empty(t, noted.ids)
+}
+
+// Куратор ответил вовремя — поднимать нечего.
+func TestAnsweredEscalationIsNotRaised(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_answered")
+	ctx := context.Background()
+	noted := &notedRecipients{}
+	service := NewService(db.DB, logger.New(), nil, nil, nil, 100)
+	service.operators = noted
+
+	var client int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('клиент@e.test','x','Кл','client') RETURNING id`).Scan(&client))
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO support_conversations (chat_id, user_id, status, escalated_at, answered_at)
+		VALUES (5002, $1, 'escalated', NOW() - INTERVAL '45 minutes', NOW() - INTERVAL '40 minutes')`, client)
+	require.NoError(t, err)
+
+	raised, err := service.RaiseUnanswered(ctx, ReescalationAfter)
+
+	require.NoError(t, err)
+	assert.Zero(t, raised, "подняли обращение, на которое ответили")
+}
+
+// Порог соблюдается: свежее обращение не поднимается.
+func TestFreshEscalationWaitsForTheThreshold(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "routing_fresh")
+	ctx := context.Background()
+	noted := &notedRecipients{}
+	service := NewService(db.DB, logger.New(), nil, nil, nil, 100)
+	service.operators = noted
+
+	var client int64
+	require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO users (email,password,name,role) VALUES ('клиент@e.test','x','Кл','client') RETURNING id`).Scan(&client))
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO support_conversations (chat_id, user_id, status, escalated_at)
+		VALUES (5003, $1, 'escalated', NOW() - INTERVAL '5 minutes')`, client)
+	require.NoError(t, err)
+
+	raised, err := service.RaiseUnanswered(ctx, ReescalationAfter)
+
+	require.NoError(t, err)
+	assert.Zero(t, raised, "подняли раньше порога")
+}

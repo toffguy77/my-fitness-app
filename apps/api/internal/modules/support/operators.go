@@ -3,6 +3,7 @@ package support
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/burcev/api/internal/modules/notifications"
 )
@@ -120,4 +121,62 @@ func (s *Service) query(ctx context.Context, sql string, args ...any) ([]int64, 
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// ReescalationAfter — сколько ждать ответа куратора, прежде чем звать
+// суперадминов.
+//
+// Тридцать минут: решение владельца продукта. Значение по умолчанию, а не
+// закон — пересматривать по первым живым обращениям.
+const ReescalationAfter = 30 * time.Minute
+
+// RaiseUnanswered поднимает на суперадминов обращения, до которых не дошли руки.
+//
+// Подключением считается отправленный ответ (`answered_at`), а не просмотр
+// очереди: обращение, на которое «посмотрели», для человека неотличимо от
+// забытого.
+//
+// Поднимается один раз на обращение — отсюда `reescalated_at`. Очередь, которая
+// кричит на каждом проходе, перестаёт что-либо значить.
+//
+// Клиенту при этом ничего не пишется: он уже услышал, что человек подключится, а
+// «зовём другого» звучит как отказ, а не как забота.
+func (s *Service) RaiseUnanswered(ctx context.Context, after time.Duration) (int, error) {
+	if s.operators == nil {
+		return 0, nil
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		UPDATE support_conversations
+		   SET reescalated_at = NOW()
+		 WHERE status = 'escalated'
+		   AND answered_at IS NULL
+		   AND reescalated_at IS NULL
+		   AND escalated_at < NOW() - $1::interval
+		RETURNING id, COALESCE(escalation_reason, '')`,
+		fmt.Sprintf("%d seconds", int(after.Seconds())))
+	if err != nil {
+		return 0, fmt.Errorf("find unanswered escalations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	type pending struct{ id, reason string }
+	var raised []pending
+	for rows.Next() {
+		var p pending
+		if err := rows.Scan(&p.id, &p.reason); err != nil {
+			return 0, fmt.Errorf("read an unanswered escalation: %w", err)
+		}
+		raised = append(raised, p)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("read unanswered escalations: %w", err)
+	}
+
+	for _, p := range raised {
+		// Сознательно без клиента: это уже второй заход, и он именно к
+		// суперадминам, кто бы ни был куратором.
+		s.notifyOperators(ctx, p.id, nil, "куратор не ответил: "+p.reason)
+	}
+	return len(raised), nil
 }

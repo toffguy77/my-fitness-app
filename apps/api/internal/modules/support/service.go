@@ -253,6 +253,17 @@ func (s *Service) reply(ctx context.Context, conversation *Conversation, text st
 	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
 		return err
 	}
+
+	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
+	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
+	// неотличимо от забытого.
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
+		  WHERE id = $1::uuid`, conversation.ID); err != nil {
+		s.log.Error("Could not record that a person answered",
+			"conversation_id", conversation.ID, "error", err)
+	}
+
 	return s.markDelivered(ctx, messageID)
 }
 
@@ -275,6 +286,17 @@ func (s *Service) AnswerAsOperator(ctx context.Context, conversationID string, o
 	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
 		return err
 	}
+
+	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
+	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
+	// неотличимо от забытого.
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
+		  WHERE id = $1::uuid`, conversation.ID); err != nil {
+		s.log.Error("Could not record that a person answered",
+			"conversation_id", conversation.ID, "error", err)
+	}
+
 	return s.markDelivered(ctx, messageID)
 }
 

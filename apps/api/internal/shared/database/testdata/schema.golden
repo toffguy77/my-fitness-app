@@ -545,6 +545,7 @@ support_conversations.escalation_reason text
 support_conversations.id uuid NOT NULL DEFAULT gen_random_uuid()
 support_conversations.last_message_at timestamp with time zone NOT NULL DEFAULT now()
 support_conversations.lead_id uuid
+support_conversations.reescalated_at timestamp with time zone
 support_conversations.status text NOT NULL DEFAULT 'open'
 support_conversations.telegram_name text
 support_conversations.telegram_username text
