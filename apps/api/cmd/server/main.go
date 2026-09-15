@@ -29,6 +29,7 @@ import (
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/support"
+	"github.com/burcev/api/internal/modules/telegramlink"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/router"
 	"github.com/burcev/api/internal/shared/database"
@@ -490,8 +491,12 @@ func main() {
 		Admin:         admin.NewHandler(cfg, log, db).WithAnalytics(analyticsService),
 		AdminJobs:     admin.NewJobsHandler(scheduler),
 		Support:       support.NewHandler(cfg, log, supportService),
-		Metrics:       metrics,
-		Content:       content.NewHandler(cfg, log, contentService),
+		// Собирается всегда: без имени бота обработчик отвечает «недоступно»,
+		// а не отсутствует. Маршрут, существующий только при части настроек, —
+		// это таблица маршрутов, зависящая от окружения.
+		TelegramLink: telegramlink.NewHandler(telegramlink.NewService(db.DB), log, cfg.TelegramBotUsername),
+		Metrics:      metrics,
+		Content:      content.NewHandler(cfg, log, contentService),
 	})
 
 	schedulerCtx, schedulerCancel := context.WithCancel(context.Background())

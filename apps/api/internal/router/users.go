@@ -24,6 +24,18 @@ func registerUserRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/me/export", d.Account.RequestExport)
 	g.GET("/me/export", d.Account.ListExports)
 	g.GET("/me/export/:id", d.Account.DownloadExport)
+
+	// Подключение Telegram. Ручка выдачи ссылки — POST, а не GET: каждый вызов
+	// создаёт новый одноразовый билет, то есть меняет состояние.
+	//
+	// Регистрируются безусловно. Условие здесь сделало бы таблицу маршрутов
+	// зависящей от того, как собраны зависимости: снимок routes.golden строится
+	// на нулевых обработчиках, и маршрут за `!= nil` в него не попадёт — а
+	// значит проверка контракта фронта с бэкендом не найдёт того, что фронт
+	// зовёт. «Бот не настроен» — ответ обработчика, а не отсутствие маршрута.
+	g.GET("/me/telegram", d.TelegramLink.Status)
+	g.POST("/me/telegram", d.TelegramLink.Connect)
+	g.DELETE("/me/telegram", d.TelegramLink.Disconnect)
 }
 
 func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {

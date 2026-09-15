@@ -8,6 +8,7 @@ DELETE /api/v1/food-tracker/user-foods/:id
 DELETE /api/v1/notifications/push
 DELETE /api/v1/users/avatar
 DELETE /api/v1/users/me/deletion
+DELETE /api/v1/users/me/telegram
 GET /api/v1/admin/conversations
 GET /api/v1/admin/conversations/:id/messages
 GET /api/v1/admin/curators
@@ -71,6 +72,7 @@ GET /api/v1/public/leads/unsubscribe
 GET /api/v1/users/me/deletion
 GET /api/v1/users/me/export
 GET /api/v1/users/me/export/:id
+GET /api/v1/users/me/telegram
 GET /api/v1/users/profile
 GET /health
 GET /ready
@@ -134,6 +136,7 @@ POST /api/v1/public/support/telegram
 POST /api/v1/users/avatar
 POST /api/v1/users/me/deletion
 POST /api/v1/users/me/export
+POST /api/v1/users/me/telegram
 PUT /api/v1/content/articles/:id
 PUT /api/v1/curator/clients/:id/target-weight
 PUT /api/v1/curator/clients/:id/tasks/:taskId
