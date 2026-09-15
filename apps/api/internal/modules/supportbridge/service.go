@@ -42,6 +42,10 @@ type Service struct {
 	log     *logger.Logger
 	groupID int64
 	appURL  string
+	// store и downloader могут быть nil: без хранилища вложения не ходят.
+	store      FileStore
+	downloader Downloader
+	platform   PlatformAttacher
 }
 
 func NewService(db *sql.DB, sender Sender, log *logger.Logger, groupID int64, appURL string) *Service {

@@ -354,6 +354,14 @@ func main() {
 		// Сообщения из чата платформы — в ту же тему.
 		chatService.WithBridge(bridge)
 
+		// Вложения: приём от клиента и запись в переписку платформы. Без
+		// хранилища бот отвечает отказом, а не молчит.
+		if chatS3 != nil {
+			bridge.WithMedia(chatS3, telegram.NewClient(cfg.TelegramBotToken))
+		}
+		bridge.WithPlatform(supportbridge.NewPlatformDelivery(db.DB))
+		supportService.WithMedia(bridge)
+
 		// Уведомления — и в Telegram тому, кто его привязал.
 		notificationsSvc.WithTelegram(telegramlink.NewDelivery(
 			telegramlink.NewService(db.DB), telegram.NewClient(cfg.TelegramBotToken)))

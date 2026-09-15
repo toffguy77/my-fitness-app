@@ -60,6 +60,17 @@ type Update struct {
 			MessageID int64 `json:"message_id"`
 		} `json:"reply_to_message"`
 		Text string `json:"text"`
+		// Photo приходит набором размеров; нужен последний — он самый крупный.
+		Photo []struct {
+			FileID   string `json:"file_id"`
+			FileSize int64  `json:"file_size"`
+		} `json:"photo"`
+		Document *struct {
+			FileID   string `json:"file_id"`
+			FileName string `json:"file_name"`
+			FileSize int64  `json:"file_size"`
+		} `json:"document"`
+		Caption string `json:"caption"`
 	} `json:"message"`
 }
 

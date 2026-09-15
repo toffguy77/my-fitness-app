@@ -69,6 +69,8 @@ type Service struct {
 	bridge   Bridge
 	delivery Delivery
 	curators CuratorResolver
+	// media может быть nil: без хранилища вложения не ходят.
+	media MediaBridge
 
 	// dailyLimit caps model calls across every chat: a public entrance in
 	// front of a paid model needs a ceiling that one abusive chat cannot lift.
