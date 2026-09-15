@@ -1,9 +1,9 @@
 ## 1. Хранение и стирание
 
-- [ ] 1.1 Миграция: `telegram_links(user_id PK → users, chat_id BIGINT NOT NULL UNIQUE, username TEXT, linked_at)`, `telegram_link_tickets(token_hash PK, user_id → users, expires_at, used_at, created_at)`, `support_topics(client_id PK → users, thread_id BIGINT NOT NULL, created_at)`, `support_conversations.answered_at`. Проверка: накатывается и откатывается на чистой базе.
-- [ ] 1.2 Стратегии стирания для трёх новых таблиц (`StrategyDelete`). Проверка: убедиться, что без стратегии `TestErasureCoversSchema` падает — иначе защита вакуумная.
-- [ ] 1.3 Дополнить `TestErasureLeavesNoTraceInTheTablesAddedLast` новыми таблицами. Проверка: абляция снятой стратегии даёт «остались строки стёртого человека».
-- [ ] 1.4 Обновить `testdata/schema.golden`. Проверка: `UPDATE_GOLDEN=1 go test ./internal/shared/database/`, в диффе только новое.
+- [x] 1.1 Миграция: `telegram_links(user_id PK → users, chat_id BIGINT NOT NULL UNIQUE, username TEXT, linked_at)`, `telegram_link_tickets(token_hash PK, user_id → users, expires_at, used_at, created_at)`, `support_topics(client_id PK → users, thread_id BIGINT NOT NULL, created_at)`, `support_conversations.answered_at`. Проверка: накатывается и откатывается на чистой базе.
+- [x] 1.2 Стратегии стирания для трёх новых таблиц (`StrategyDelete`). Проверка: убедиться, что без стратегии `TestErasureCoversSchema` падает — иначе защита вакуумная.
+- [x] 1.3 Дополнить `TestErasureLeavesNoTraceInTheTablesAddedLast` новыми таблицами. Проверка: абляция снятой стратегии даёт «остались строки стёртого человека».
+- [x] 1.4 Обновить `testdata/schema.golden`. Проверка: `UPDATE_GOLDEN=1 go test ./internal/shared/database/`, в диффе только новое.
 
 ## 2. Билет привязки
 

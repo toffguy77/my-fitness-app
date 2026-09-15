@@ -131,6 +131,8 @@ INDEX support_conversations support_conversations_chat_id_key btree (chat_id)
 INDEX support_conversations support_conversations_pkey btree (id)
 INDEX support_messages idx_support_messages_conversation btree (conversation_id, created_at)
 INDEX support_messages support_messages_pkey btree (id)
+INDEX support_topics idx_support_topics_thread btree (thread_id)
+INDEX support_topics support_topics_pkey btree (client_id)
 INDEX task_completions idx_task_completions_date btree (completed_date)
 INDEX task_completions idx_task_completions_task_id btree (task_id)
 INDEX task_completions task_completions_pkey btree (id)
@@ -139,6 +141,10 @@ INDEX tasks idx_tasks_curator btree (curator_id, created_at DESC)
 INDEX tasks idx_tasks_user_status btree (user_id, status, due_date DESC)
 INDEX tasks idx_tasks_week btree (user_id, week_number DESC)
 INDEX tasks tasks_pkey btree (id)
+INDEX telegram_link_tickets idx_telegram_link_tickets_user btree (user_id)
+INDEX telegram_link_tickets telegram_link_tickets_pkey btree (token_hash)
+INDEX telegram_links telegram_links_chat_id_key btree (chat_id)
+INDEX telegram_links telegram_links_pkey btree (user_id)
 INDEX user_consents idx_user_consents_lead_id btree (lead_id)
 INDEX user_consents idx_user_consents_type btree (consent_type)
 INDEX user_consents idx_user_consents_user_id btree (user_id)
@@ -529,6 +535,7 @@ reset_tokens.user_id bigint NOT NULL
 schema_migrations.applied_at timestamp with time zone NOT NULL DEFAULT now()
 schema_migrations.name text NOT NULL
 schema_migrations.version integer NOT NULL
+support_conversations.answered_at timestamp with time zone
 support_conversations.chat_id bigint NOT NULL
 support_conversations.closed_at timestamp with time zone
 support_conversations.closed_by bigint
@@ -549,6 +556,10 @@ support_messages.delivered_at timestamp with time zone
 support_messages.id uuid NOT NULL DEFAULT gen_random_uuid()
 support_messages.operator_id bigint
 support_messages.text text NOT NULL
+support_topics.client_id bigint NOT NULL
+support_topics.closed_at timestamp with time zone
+support_topics.created_at timestamp with time zone NOT NULL DEFAULT now()
+support_topics.thread_id bigint NOT NULL
 task_completions.completed_date date NOT NULL
 task_completions.created_at timestamp with time zone NOT NULL DEFAULT now()
 task_completions.id uuid NOT NULL DEFAULT gen_random_uuid()
@@ -568,6 +579,15 @@ tasks.type character varying NOT NULL DEFAULT 'habit'
 tasks.updated_at timestamp with time zone DEFAULT now()
 tasks.user_id bigint NOT NULL
 tasks.week_number integer NOT NULL
+telegram_link_tickets.created_at timestamp with time zone NOT NULL DEFAULT now()
+telegram_link_tickets.expires_at timestamp with time zone NOT NULL
+telegram_link_tickets.token_hash text NOT NULL
+telegram_link_tickets.used_at timestamp with time zone
+telegram_link_tickets.user_id bigint NOT NULL
+telegram_links.chat_id bigint NOT NULL
+telegram_links.linked_at timestamp with time zone NOT NULL DEFAULT now()
+telegram_links.user_id bigint NOT NULL
+telegram_links.username text
 user_consents.consent_type text NOT NULL
 user_consents.granted boolean NOT NULL
 user_consents.granted_at timestamp with time zone DEFAULT now()

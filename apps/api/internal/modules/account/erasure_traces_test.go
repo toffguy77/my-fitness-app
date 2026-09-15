@@ -58,25 +58,40 @@ func TestErasureLeavesNoTraceInTheTablesAddedLast(t *testing.T) {
 		      VALUES (gen_random_uuid(), $1)`, id)
 		seed(`INSERT INTO analytics_events (name, visitor_id, user_id, platform, properties)
 		      VALUES ('signed_in', gen_random_uuid(), $1, 'server', '{"method":"yandex"}'::jsonb)`, id)
+		seed(`INSERT INTO telegram_links (user_id, chat_id, username)
+		      VALUES ($1::bigint, $1::bigint * 1000, 'ник' || $1::bigint)`, id)
+		seed(`INSERT INTO telegram_link_tickets (token_hash, user_id, expires_at)
+		      VALUES ('билет-' || $1::bigint, $1::bigint, NOW() + INTERVAL '10 minutes')`, id)
+		seed(`INSERT INTO support_topics (client_id, thread_id)
+		      VALUES ($1::bigint, $1::bigint * 7)`, id)
 	}
 
 	require.NoError(t, service.Erase(ctx, user))
 
-	// Удалить — значит не осталось ничего.
-	for _, table := range []string{
-		"external_identities", "push_subscriptions", "notification_preferences",
-		"notification_deliveries", "ws_tickets", "analytics_identities",
+	// Удалить — значит не осталось ничего. Столбец указывается рядом с
+	// таблицей: у темы это client_id, и охранник схемы ловит её именно по
+	// ссылке на users, а не по имени столбца.
+	for _, table := range []struct{ name, column string }{
+		{"external_identities", "user_id"},
+		{"push_subscriptions", "user_id"},
+		{"notification_preferences", "user_id"},
+		{"notification_deliveries", "user_id"},
+		{"ws_tickets", "user_id"},
+		{"analytics_identities", "user_id"},
+		{"telegram_links", "user_id"},
+		{"telegram_link_tickets", "user_id"},
+		{"support_topics", "client_id"},
 	} {
 		var left int
 		require.NoError(t, db.QueryRowContext(ctx,
-			`SELECT count(*) FROM `+table+` WHERE user_id = $1`, user).Scan(&left))
-		assert.Zero(t, left, "в %s остались строки стёртого человека", table)
+			`SELECT count(*) FROM `+table.name+` WHERE `+table.column+` = $1`, user).Scan(&left))
+		assert.Zero(t, left, "в %s остались строки стёртого человека", table.name)
 
 		// И ровно его: у соседа всё на месте.
 		var neighbour int
 		require.NoError(t, db.QueryRowContext(ctx,
-			`SELECT count(*) FROM `+table+` WHERE user_id = $1`, other).Scan(&neighbour))
-		assert.Equal(t, 1, neighbour, "стирание задело чужие строки в %s", table)
+			`SELECT count(*) FROM `+table.name+` WHERE `+table.column+` = $1`, other).Scan(&neighbour))
+		assert.Equal(t, 1, neighbour, "стирание задело чужие строки в %s", table.name)
 	}
 
 	// Обезличить — значит строка на месте, а человека в ней нет. Воронка

@@ -84,6 +84,15 @@ var strategies = []TableStrategy{
 	// события снова становятся личными; после удаления её быть не должно.
 	{Table: "analytics_identities", Column: "user_id", Strategy: StrategyDelete, Reason: "the mapping that re-identifies anonymous events"},
 
+	// Привязка Telegram и билеты к ней. Привязка — это адрес, по которому
+	// человеку можно написать; билет — право эту привязку создать. Ни то ни
+	// другое не должно пережить аккаунт.
+	{Table: "telegram_links", Column: "user_id", Strategy: StrategyDelete, Reason: "the address the bot writes to, and the name behind it"},
+	{Table: "telegram_link_tickets", Column: "user_id", Strategy: StrategyDelete, Reason: "the right to create that link"},
+	// Строка о теме уходит; сама тема в Telegram закрывается отдельно и
+	// намеренно не удаляется — это решение записано в проектировании.
+	{Table: "support_topics", Column: "client_id", Strategy: StrategyDelete, Reason: "our pointer to the forum topic; the topic itself is closed, not erased"},
+
 	// Part of a curator's working record.
 	{Table: "messages", Column: "sender_id", Strategy: StrategyAnonymize, Reason: "the curator's conversation must stay readable; the text loses its author"},
 	{Table: "conversations", Column: "client_id", Strategy: StrategyAnonymize, Reason: "the conversation belongs to the curator too", AlsoSet: "anonymized_at = NOW()"},
