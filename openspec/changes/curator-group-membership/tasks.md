@@ -1,15 +1,15 @@
 ## 1. Хранение
 
-- [ ] 1.1 Миграция `curator_group_invites(user_id PK → users, invite_link, issued_at, joined_at)`. Проверка: накатывается и откатывается на чистой базе.
-- [ ] 1.2 Стратегия стирания `Delete`. Проверка: убедиться, что без неё `TestErasureCoversSchema` падает.
-- [ ] 1.3 Обновить `schema.golden`, в диффе только новое.
+- [x] 1.1 Миграция `curator_group_invites(user_id PK → users, invite_link, issued_at, joined_at)`. Проверка: накатывается и откатывается на чистой базе.
+- [x] 1.2 Стратегия стирания `Delete`. Проверка: убедиться, что без неё `TestErasureCoversSchema` падает.
+- [x] 1.3 Обновить `schema.golden`, в диффе только новое.
 
 ## 2. Клиент Telegram
 
-- [ ] 2.1 `CreateInviteLink(chatID, name)` с `creates_join_request: true` и пределом в одно вступление. Проверка: тест на подставном сервере, отказ приходит с кодом 200 — на это уже есть образец.
-- [ ] 2.2 `ApproveJoinRequest` и `DeclineJoinRequest`. Проверка: отказ Telegram не принимается за успех.
-- [ ] 2.3 `RemoveMember`: `banChatMember`, следом `unbanChatMember`. Проверка: тест считает оба вызова — без второго вернуть человека будет нельзя.
-- [ ] 2.4 `ChatMembers` для сверки. Проверка: недоступность отличается от пустого состава.
+- [x] 2.1 `CreateInviteLink(chatID, name)` с `creates_join_request: true` и пределом в одно вступление. Проверка: тест на подставном сервере, отказ приходит с кодом 200 — на это уже есть образец.
+- [x] 2.2 `ApproveJoinRequest` и `DeclineJoinRequest`. Проверка: отказ Telegram не принимается за успех.
+- [x] 2.3 `RemoveMember`: `banChatMember`, следом `unbanChatMember`. Проверка: тест считает оба вызова — без второго вернуть человека будет нельзя.
+- [x] 2.4 `ChatMembers` для сверки. Проверка: недоступность отличается от пустого состава.
 
 ## 3. Кому место в группе
 

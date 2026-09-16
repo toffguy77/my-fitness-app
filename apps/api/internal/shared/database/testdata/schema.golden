@@ -36,6 +36,7 @@ INDEX curator_daily_snapshots curator_daily_snapshots_curator_id_date_key btree 
 INDEX curator_daily_snapshots curator_daily_snapshots_pkey btree (id)
 INDEX curator_daily_snapshots idx_curator_daily_snap_curator btree (curator_id)
 INDEX curator_daily_snapshots idx_curator_daily_snap_date btree (date)
+INDEX curator_group_invites curator_group_invites_pkey btree (user_id)
 INDEX curator_weekly_snapshots curator_weekly_snapshots_curator_id_week_start_key btree (curator_id, week_start)
 INDEX curator_weekly_snapshots curator_weekly_snapshots_pkey btree (id)
 INDEX curator_weekly_snapshots idx_curator_weekly_snap_curator btree (curator_id)
@@ -258,6 +259,10 @@ curator_daily_snapshots.id uuid NOT NULL DEFAULT gen_random_uuid()
 curator_daily_snapshots.overdue_tasks integer NOT NULL DEFAULT 0
 curator_daily_snapshots.total_clients integer NOT NULL DEFAULT 0
 curator_daily_snapshots.total_unread integer NOT NULL DEFAULT 0
+curator_group_invites.invite_link text NOT NULL
+curator_group_invites.issued_at timestamp with time zone NOT NULL DEFAULT now()
+curator_group_invites.joined_at timestamp with time zone
+curator_group_invites.user_id bigint NOT NULL
 curator_weekly_snapshots.avg_client_streak numeric NOT NULL DEFAULT 0
 curator_weekly_snapshots.avg_kbzhu_percent numeric NOT NULL DEFAULT 0
 curator_weekly_snapshots.avg_response_time_hours numeric NOT NULL DEFAULT 0
