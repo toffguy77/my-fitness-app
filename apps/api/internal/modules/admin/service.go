@@ -28,6 +28,8 @@ type ServiceInterface interface {
 type Service struct {
 	db  *database.DB
 	log *logger.Logger
+	// groupMembers может быть nil: без группы состав не ведётся.
+	groupMembers GroupMembership
 }
 
 // NewService creates a new admin service
@@ -269,7 +271,54 @@ func (s *Service) ChangeRole(ctx context.Context, userID int64, newRole string) 
 		"duration": time.Since(startTime).String(),
 	})
 
+	// Состав рабочей группы следует за ролью. По возможности: отказ Telegram не
+	// повод не менять роль, о которой попросил администратор.
+	//
+	// Сверка по расписанию догонит то, что здесь не удалось, — но не сразу, а
+	// ушедший куратор до тех пор видит переписку клиентов. Поэтому пробуем тут.
+	s.syncGroupMembership(ctx, userID, currentRole, newRole)
+
 	return nil
+}
+
+// GroupMembership — состав рабочей группы кураторов.
+type GroupMembership interface {
+	OnRoleGranted(ctx context.Context, userID int64, name string) error
+	OnRoleRevoked(ctx context.Context, userID int64) error
+}
+
+// WithGroupMembership подключает ведение состава группы.
+func (s *Service) WithGroupMembership(members GroupMembership) *Service {
+	s.groupMembers = members
+	return s
+}
+
+func inGroupRole(role string) bool {
+	return role == "coordinator" || role == "super_admin"
+}
+
+func (s *Service) syncGroupMembership(ctx context.Context, userID int64, from, to string) {
+	if s.groupMembers == nil || inGroupRole(from) == inGroupRole(to) {
+		return
+	}
+
+	if inGroupRole(to) {
+		var name string
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT COALESCE(name, '') FROM users WHERE id = $1`, userID).Scan(&name); err != nil {
+			s.log.Error("Не удалось прочитать имя для приглашения", "error", err, "user_id", userID)
+		}
+		if err := s.groupMembers.OnRoleGranted(ctx, userID, name); err != nil {
+			s.log.Error("Не удалось пригласить нового куратора в группу",
+				"error", err, "user_id", userID)
+		}
+		return
+	}
+
+	if err := s.groupMembers.OnRoleRevoked(ctx, userID); err != nil {
+		s.log.Error("Не удалось убрать бывшего куратора из группы",
+			"error", err, "user_id", userID)
+	}
 }
 
 // demoteCurator handles the complex case of demoting a coordinator to client:

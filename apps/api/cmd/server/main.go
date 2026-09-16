@@ -239,6 +239,8 @@ func main() {
 
 	// Ensure conversations exist for all active curator-client relationships.
 	chatService := chat.NewService(db, log)
+	adminService := admin.NewService(db, log)
+	telegramLinkHandler := telegramlink.NewHandler(telegramlink.NewService(db.DB), log, cfg.TelegramBotUsername)
 	if err := chatService.EnsureConversationsExist(context.Background()); err != nil {
 		log.Error("Failed to ensure conversations exist", "error", err)
 	}
@@ -363,6 +365,13 @@ func main() {
 		supportService.WithMedia(bridge)
 		// Привязка Telegram: `/start <билет>` гасится до логики поддержки.
 		supportService.WithLinks(telegramlink.NewService(db.DB))
+
+		// Состав рабочей группы следует за ролями в базе.
+		bot := telegram.NewClient(cfg.TelegramBotToken)
+		bridge.WithMembership(bot, bot)
+		supportService.WithMembership(bridge).WithGroup(cfg.TelegramSupportGroupID)
+		adminService.WithGroupMembership(bridge)
+		telegramLinkHandler.WithInvites(bridge)
 
 		// Уведомления — и в Telegram тому, кто его привязал.
 		notificationsSvc.WithTelegram(telegramlink.NewDelivery(
@@ -503,6 +512,7 @@ func main() {
 		Leads:         leadsService,
 		Notifications: notificationsSvc,
 		Support:       supportService,
+		Bridge:        bridge,
 		Email:         emailService,
 		AppDomain:     cfg.AppDomain,
 		RateLimiter:   rateLimiter,
@@ -543,7 +553,7 @@ func main() {
 		Dashboard:     dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc).WithAnalytics(analyticsService),
 		Chat:          chat.NewHandler(cfg, log, db, chatService, chatS3, wsHub).WithTickets(authService),
 		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
-		Admin:         admin.NewHandler(cfg, log, db).WithAnalytics(analyticsService),
+		Admin:         admin.NewHandler(cfg, log, adminService).WithAnalytics(analyticsService),
 		AdminJobs:     admin.NewJobsHandler(scheduler),
 		Support:       support.NewHandler(cfg, log, supportService),
 		// Собирается всегда: без имени бота обработчик отвечает «недоступно»,

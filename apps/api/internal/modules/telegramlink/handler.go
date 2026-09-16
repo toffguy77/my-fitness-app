@@ -1,6 +1,7 @@
 package telegramlink
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -15,6 +16,8 @@ type Handler struct {
 	service     *Service
 	log         *logger.Logger
 	botUsername string
+	// invites может быть nil: без группы приглашать некуда.
+	invites GroupInviter
 }
 
 func NewHandler(service *Service, log *logger.Logger, botUsername string) *Handler {
@@ -104,4 +107,46 @@ func callerID(c *gin.Context) (int64, bool) {
 		return 0, false
 	}
 	return userID, true
+}
+
+// GroupInvite отдаёт ссылку в рабочую группу.
+//
+// Нужна тем, кто не привязал Telegram: боту некуда им написать — он не пишет
+// первым, — и единственное место, где ссылку можно увидеть, это профиль.
+func (h *Handler) GroupInvite(c *gin.Context) {
+	userID, ok := callerID(c)
+	if !ok {
+		return
+	}
+	if h.invites == nil {
+		response.ErrorCode(c, http.StatusServiceUnavailable, apperrors.CodeFeatureUnavailable,
+			"Рабочая группа не настроена", nil)
+		return
+	}
+
+	link, err := h.invites.InviteLinkFor(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Errorw("Не удалось выдать приглашение в группу", "error", err, "user_id", userID)
+		response.Error(c, http.StatusInternalServerError, "Не удалось получить ссылку")
+		return
+	}
+	if link == "" {
+		// Приглашение положено кураторам; всем остальным отвечаем тем же, чем и
+		// на выключенную возможность — без намёка на то, кому оно положено.
+		response.ErrorCode(c, http.StatusServiceUnavailable, apperrors.CodeFeatureUnavailable,
+			"Рабочая группа не настроена", nil)
+		return
+	}
+	response.Success(c, http.StatusOK, gin.H{"invite_link": link})
+}
+
+// GroupInviter выдаёт приглашение в рабочую группу.
+type GroupInviter interface {
+	InviteLinkFor(ctx context.Context, userID int64) (string, error)
+}
+
+// WithInvites подключает выдачу приглашений.
+func (h *Handler) WithInvites(invites GroupInviter) *Handler {
+	h.invites = invites
+	return h
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/modules/support"
+	"github.com/burcev/api/internal/modules/supportbridge"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/jobs"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -55,6 +56,8 @@ type Deps struct {
 	// Support is nil when the bot is not configured; its cleanup job then has
 	// nothing to clean.
 	Support *support.Service
+	// Bridge is nil when the curators group is not configured.
+	Bridge *supportbridge.Service
 	// Email may be nil: mail is an optional capability, and the reminder job
 	// declares itself unavailable rather than failing every night.
 	Email       *email.Service
@@ -245,6 +248,23 @@ func Register(registry *jobs.Registry, d Deps) {
 		Timeout:  5 * time.Minute,
 		Run: func(ctx context.Context) (int, error) {
 			return sendLeadReminders(ctx, d)
+		},
+	})
+
+	// Состав рабочей группы сверяется с ролями.
+	//
+	// Существует не вместо реакции на смену роли, а на случаи мимо неё: правка
+	// роли прямо в базе, человек вышел сам, бота не было в сети. Раз в час —
+	// достаточно: смена роли обрабатывается сразу, а это подчистка.
+	registry.MustRegister(jobs.Job{
+		Name:     "support.reconcile-group",
+		Interval: time.Hour,
+		Timeout:  2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			if d.Bridge == nil {
+				return 0, nil
+			}
+			return d.Bridge.Reconcile(ctx)
 		},
 	})
 

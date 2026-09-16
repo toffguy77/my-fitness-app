@@ -269,3 +269,30 @@ func TestMembershipDisabled(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, n)
 }
+
+// Ссылка в профиле положена куратору и не положена клиенту.
+//
+// Отличать «не положено» от «группа не настроена» наружу незачем: это подсказка
+// о том, кому она положена.
+func TestInviteLinkForIsOnlyForCurators(t *testing.T) {
+	s, db, _, _ := withMembership(t, "grp_profile")
+	ctx := context.Background()
+
+	curator := account(t, db, "кур@e.test", "coordinator")
+	link, err := s.InviteLinkFor(ctx, curator)
+	require.NoError(t, err)
+	assert.NotEmpty(t, link)
+
+	client := account(t, db, "кли@e.test", "client")
+	link, err = s.InviteLinkFor(ctx, client)
+	require.NoError(t, err)
+	assert.Empty(t, link, "клиенту выдали ссылку в рабочую группу")
+
+	// Ожидающий удаления уже уходит: доступ к переписке ему не нужен.
+	leaving := account(t, db, "уходит@e.test", "coordinator")
+	_, err = db.ExecContext(ctx, `UPDATE users SET deletion_requested_at = NOW() WHERE id = $1`, leaving)
+	require.NoError(t, err)
+	link, err = s.InviteLinkFor(ctx, leaving)
+	require.NoError(t, err)
+	assert.Empty(t, link, "уходящему выдали ссылку")
+}

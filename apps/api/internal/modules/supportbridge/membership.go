@@ -326,3 +326,24 @@ func (s *Service) reportMissing(ctx context.Context, members []telegram.Member) 
 		s.log.Errorw("Не удалось дочитать список кураторов", "error", err)
 	}
 }
+
+// InviteLinkFor отдаёт приглашение человеку, которому оно положено.
+//
+// Пустая строка означает «не положено» — роли нет либо группа не настроена.
+// Отличать эти два случая наружу незачем.
+func (s *Service) InviteLinkFor(ctx context.Context, userID int64) (string, error) {
+	if !s.membershipEnabled() {
+		return "", nil
+	}
+	belongs, err := s.belongsInGroup(ctx, userID)
+	if err != nil || !belongs {
+		return "", err
+	}
+
+	var name string
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COALESCE(name, '') FROM users WHERE id = $1`, userID).Scan(&name); err != nil {
+		return "", fmt.Errorf("read name for invite: %w", err)
+	}
+	return s.InviteFor(ctx, userID, name)
+}

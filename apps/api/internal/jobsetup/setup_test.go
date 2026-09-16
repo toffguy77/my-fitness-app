@@ -38,6 +38,7 @@ func TestRegister_DeclaresEveryJobValidly(t *testing.T) {
 		"leads.purge-expired",
 		"analytics.purge-events",
 		"support.purge-conversations",
+		"support.reconcile-group",
 		"support.raise-unanswered",
 		"cleanup.job-runs",
 		"account.build-exports",
