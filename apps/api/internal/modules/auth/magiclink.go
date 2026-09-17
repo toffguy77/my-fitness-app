@@ -45,11 +45,12 @@ func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consen
 	if err != nil {
 		return fmt.Errorf("look up account: %w", err)
 	}
+	defer rows.Close()
+
 	var matches []int64
 	for rows.Next() {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
-			rows.Close()
 			return fmt.Errorf("look up account: %w", err)
 		}
 		matches = append(matches, id)
@@ -57,7 +58,6 @@ func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consen
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("look up account: %w", err)
 	}
-	rows.Close()
 
 	var userID *int64
 	switch len(matches) {
