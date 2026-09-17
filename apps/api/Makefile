@@ -1,9 +1,20 @@
-.PHONY: build test test-race test-coverage-ci coverage-gate lint vet sync-knowledge
+.PHONY: build test test-race test-coverage-ci test-integration-ci coverage-gate lint vet sync-knowledge
 
-# Minimum statement coverage. Set to the level measured when the gate was
-# introduced (49.5%): the purpose is to forbid regression, not to force a number
-# nobody agreed to. Raise it deliberately, in its own change.
-COVERAGE_MIN ?= 49.0
+# Minimum statement coverage.
+#
+# Меряется на прогоне **с тегом integration** — том, который гоняет и обычные
+# тесты, и те, что ходят в живую базу. Раньше порог считался по прогону без
+# тега и видел на четыре пункта меньше: всё, что проверяется против настоящей
+# схемы, для него не существовало.
+#
+# Это било по самому нужному. В этом коде инфраструктурное намеренно
+# проверяется на живой базе, а не на подменах — подмены здесь уже пропускали
+# живые дефекты. Порог, не считающий такие тесты, требовал добирать число
+# обычными — то есть ровно теми, которым тут доверия меньше.
+#
+# Цель прежняя: запретить ухудшение, а не выбить число, о котором никто не
+# договаривался. Поднимать осознанно и отдельным изменением.
+COVERAGE_MIN ?= 50.0
 
 build:
 	go build -o bin/server ./cmd/server
@@ -19,6 +30,11 @@ test-race:
 
 test-coverage-ci:
 	go test -race ./... -coverprofile=coverage.out -covermode=atomic -count=1
+
+# Прогон с живой базой: и обычные тесты, и интеграционные. Порог проверяется
+# здесь, потому что только здесь видно всё.
+test-integration-ci:
+	go test -race -tags=integration ./... -coverprofile=coverage.out -covermode=atomic -count=1
 	$(MAKE) coverage-gate
 
 # Fails the build when coverage drops below the agreed floor. Previously CI
