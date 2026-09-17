@@ -67,6 +67,12 @@ interface WeighablePosition {
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
 
+// Five kilograms is well past any single portion — a bowl of soup, a whole
+// watermelon — so this catches a typo (a stray zero, a stuck digit), never
+// real food. It exists to stop a mistyped weight from silently wrecking a
+// day's total, not to second-guess a plausible one.
+const MAX_POSITION_WEIGHT_GRAMS = 5000;
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -93,14 +99,38 @@ function getWeighablePositions(result: RecognitionResult): WeighablePosition[] {
     ];
 }
 
-/** A weight a human actually typed — not empty, not zero, not garbage. */
-function parseEnteredWeight(raw: string | undefined): number | null {
-    if (raw === undefined) return null;
+/**
+ * Validates a weight a human typed, one field at a time. An empty field
+ * (or one with only whitespace) is not an error — it just has no value yet,
+ * and is reported the same way whether it was never touched or cleared.
+ * Anything actually typed that isn't a usable weight — not a number, zero
+ * or negative, or past the sanity ceiling — gets a specific reason, so a
+ * "0" or a stray extra digit doesn't look identical to an empty field.
+ */
+function validateEnteredWeight(raw: string | undefined): { value: number | null; error: string | null } {
+    if (raw === undefined) return { value: null, error: null };
     const trimmed = raw.trim();
-    if (trimmed === '') return null;
+    if (trimmed === '') return { value: null, error: null };
+
     const value = Number(trimmed);
-    if (!Number.isFinite(value) || value <= 0) return null;
-    return value;
+    if (!Number.isFinite(value)) {
+        return { value: null, error: t('foodTracker.photo.weightNotANumber') };
+    }
+    if (value <= 0) {
+        return { value: null, error: t('foodTracker.photo.weightNotPositive') };
+    }
+    if (value > MAX_POSITION_WEIGHT_GRAMS) {
+        return {
+            value: null,
+            error: t('foodTracker.photo.weightTooLarge', { max: MAX_POSITION_WEIGHT_GRAMS }),
+        };
+    }
+    return { value, error: null };
+}
+
+/** A weight a human actually typed — not empty, not zero, not too large, not garbage. */
+function parseEnteredWeight(raw: string | undefined): number | null {
+    return validateEnteredWeight(raw).value;
 }
 
 // ============================================================================
@@ -220,14 +250,15 @@ export function AIPhotoTab({
             { weight: 0, calories: 0, protein: 0, fat: 0, carbs: 0 }
         );
 
-        const nutritionPer100: KBZHU = totals.weight > 0
-            ? {
-                calories: roundToOneDecimal((totals.calories / totals.weight) * 100),
-                protein: roundToOneDecimal((totals.protein / totals.weight) * 100),
-                fat: roundToOneDecimal((totals.fat / totals.weight) * 100),
-                carbs: roundToOneDecimal((totals.carbs / totals.weight) * 100),
-            }
-            : combined.food.nutritionPer100;
+        // `weights` all passed the null check above, and getWeighablePositions
+        // always returns at least one position, so totals.weight is always > 0
+        // here — there is no zero-weight case left to branch on.
+        const nutritionPer100: KBZHU = {
+            calories: roundToOneDecimal((totals.calories / totals.weight) * 100),
+            protein: roundToOneDecimal((totals.protein / totals.weight) * 100),
+            fat: roundToOneDecimal((totals.fat / totals.weight) * 100),
+            carbs: roundToOneDecimal((totals.carbs / totals.weight) * 100),
+        };
 
         onSelectFoods([
             {
@@ -418,7 +449,9 @@ export function AIPhotoTab({
                                                     : t('foodTracker.photo.portionWeightAria')
                                             }
                                         >
-                                            {positions.map((position, idx) => (
+                                            {positions.map((position, idx) => {
+                                                const weightValidation = validateEnteredWeight(enteredWeights[idx]);
+                                                return (
                                                 <li
                                                     key={idx}
                                                     className="p-2 bg-gray-50 rounded-lg text-sm"
@@ -441,11 +474,13 @@ export function AIPhotoTab({
                                                             type="number"
                                                             inputMode="decimal"
                                                             min="0"
+                                                            max={MAX_POSITION_WEIGHT_GRAMS}
                                                             step="1"
                                                             value={enteredWeights[idx] ?? ''}
                                                             onChange={(e) => handleWeightChange(idx, e.target.value)}
                                                             placeholder={t('foodTracker.photo.weightPlaceholder')}
                                                             aria-label={t('foodTracker.photo.weightInputLabel', { name: position.name })}
+                                                            aria-invalid={weightValidation.error !== null}
                                                             className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                         />
                                                         <span className="text-gray-500 text-xs">{t('units.gram')}</span>
@@ -455,13 +490,23 @@ export function AIPhotoTab({
                                                         <button
                                                             type="button"
                                                             onClick={() => handleUseModelEstimate(idx, position.estimatedWeight)}
+                                                            aria-label={t('foodTracker.photo.useModelEstimateAria', { name: position.name })}
                                                             className="text-xs text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
                                                         >
                                                             {t('foodTracker.photo.useModelEstimate')}
                                                         </button>
                                                     </div>
+                                                    {/* What's wrong with what was typed, not a repeat of the
+                                                        generic "enter a weight" hint — a "0" or an extra digit
+                                                        must not look the same as an untouched field. */}
+                                                    {weightValidation.error && (
+                                                        <p className="text-xs text-red-600 mt-1">
+                                                            {weightValidation.error}
+                                                        </p>
+                                                    )}
                                                 </li>
-                                            ))}
+                                                );
+                                            })}
                                         </ul>
                                     </div>
                                 )}
