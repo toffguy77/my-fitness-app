@@ -24,6 +24,7 @@ var subjects = map[string]map[string]string{
 		"onboarding_reminder": "Ваш расчёт КБЖУ сохранён — BURCEV",
 		"email_verification":  "Код подтверждения — BURCEV",
 		"notification_digest": "%s в BURCEV",
+		"magic_link":          "Ссылка для входа - BURCEV",
 	},
 	"en": {},
 }
@@ -37,6 +38,7 @@ var bodies = map[string]map[string]string{
 		"email_verification":  emailVerificationTemplate,
 		"onboarding_reminder": onboardingReminderTemplate,
 		"notification_digest": notificationDigestTemplate,
+		"magic_link":          magicLinkTemplate,
 	},
 	"en": {},
 }

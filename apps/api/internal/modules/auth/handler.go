@@ -108,6 +108,12 @@ type ConsentsInput struct {
 	Marketing      bool `json:"marketing"`
 }
 
+// MagicLinkRequest represents a request for a one-time sign-in link.
+type MagicLinkRequest struct {
+	Email    string         `json:"email" binding:"required,email"`
+	Consents *ConsentsInput `json:"consents"`
+}
+
 // LoginRequest represents login request
 type LoginRequest struct {
 	Email      string `json:"email" binding:"required,email"`
@@ -230,6 +236,40 @@ func (h *Handler) Register(c *gin.Context) {
 
 	h.setRefreshCookie(c, result.RefreshToken, false)
 	response.Success(c, http.StatusCreated, result)
+}
+
+// RequestMagicLink handles POST /api/v1/auth/magic-link/request.
+//
+// The response is the same whether or not an account exists for the address:
+// see Service.RequestMagicLink for why.
+func (h *Handler) RequestMagicLink(c *gin.Context) {
+	var req MagicLinkRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Проверьте адрес почты")
+		return
+	}
+
+	err := h.service.RequestMagicLink(c.Request.Context(), req.Email, req.Consents,
+		c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+		// Ничего сверх общего ответа: см. Service.RequestMagicLink.
+	case errors.Is(err, apperrors.ErrValidation):
+		response.Error(c, http.StatusBadRequest,
+			"Нужно согласие на условия, политику конфиденциальности и обработку данных")
+		return
+	case errors.Is(err, apperrors.ErrEmailUnavailable):
+		response.Fail(c, http.StatusServiceUnavailable, err,
+			"Отправка почты сейчас недоступна — войдите по паролю")
+		return
+	default:
+		h.log.Errorw("Failed to issue magic link", "error", err)
+		response.InternalError(c, "Не удалось отправить ссылку")
+		return
+	}
+
+	response.SuccessWithMessage(c, http.StatusOK,
+		"Если такой адрес существует, мы отправили на него ссылку для входа", nil)
 }
 
 // WSTicket handles POST /api/v1/auth/ws-ticket.

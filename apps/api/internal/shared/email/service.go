@@ -113,6 +113,17 @@ type VerificationEmailData struct {
 	Language string
 }
 
+// MagicLinkEmailData contains data for the one-time sign-in link email.
+type MagicLinkEmailData struct {
+	UserEmail    string
+	MagicLinkURL string
+	ExpiresAt    time.Time
+	SupportEmail string
+	// Language the recipient reads. Empty means Russian, which is what every
+	// letter was before there was anywhere else to look.
+	Language string
+}
+
 // NewService creates a new email service instance
 func NewService(cfg Config, log *logger.Logger) (*Service, error) {
 	if cfg.SMTPHost == "" {
@@ -336,6 +347,56 @@ func (s *Service) SendVerificationEmail(ctx context.Context, data VerificationEm
 	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
 }
 
+// SendMagicLink sends the one-time sign-in link, with retry logic like the
+// other authentication emails.
+//
+// It always sends the same letter, whether or not the recipient already has
+// an account: the endpoint that calls this answers identically either way, so
+// there is nothing here yet to tell the two apart. Splitting the wording into
+// a sign-in and a sign-up variant, and testing the template directly, is a
+// later task's job.
+func (s *Service) SendMagicLink(ctx context.Context, data MagicLinkEmailData) error {
+	subject := subjectFor(data.Language, "magic_link")
+
+	body, err := s.renderTemplateIn(data.Language, "magic_link", data)
+	if err != nil {
+		s.log.WithError(err).Error("Failed to render magic link email template")
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	maxRetries := 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := s.sendEmail(ctx, data.UserEmail, subject, body)
+		if err == nil {
+			s.log.Info("Magic link email sent successfully",
+				"email", data.UserEmail,
+				"attempt", attempt,
+			)
+			return nil
+		}
+
+		lastErr = err
+		s.log.WithError(err).Warn("Failed to send magic link email",
+			"email", data.UserEmail,
+			"attempt", attempt,
+			"max_retries", maxRetries,
+		)
+
+		if attempt < maxRetries {
+			backoff := time.Duration(attempt) * time.Second
+			time.Sleep(backoff)
+		}
+	}
+
+	// Считаем отказ: снаружи он почти не виден — ответ намеренно одинаков
+	// независимо от исхода, чтобы по нему нельзя было перебирать адреса.
+	telemetry.Record(telemetry.EventEmailFailed)
+
+	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
+}
+
 // sendEmail sends an email via SMTP.
 //
 // Counted here rather than at each call site: "did the mail actually go out" is
@@ -508,6 +569,11 @@ func parseTemplates() (*template.Template, error) {
 	}
 
 	_, err = tmpl.New("notification_digest").Parse(notificationDigestTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tmpl.New("magic_link").Parse(magicLinkTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -709,6 +775,49 @@ const notificationDigestTemplate = `
 
         <p style="color: #999; font-size: 12px; margin-top: 30px;">
             Вопросы: <a href="mailto:{{.SupportEmail}}" style="color: #999;">{{.SupportEmail}}</a>
+        </p>
+    </div>
+</body>
+</html>
+`
+
+// magicLinkTemplate is the one-time sign-in link letter.
+//
+// One letter for both sign-in and account creation, for now: a later task
+// splits the wording by outcome and tests the two variants directly.
+const magicLinkTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в BURCEV</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+        <h2 style="color: #2c3e50; margin-top: 0;">Ссылка для входа</h2>
+
+        <p>Здравствуйте,</p>
+
+        <p>Вы запросили вход в BURCEV на <strong>{{.UserEmail}}</strong>.</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{.MagicLinkURL}}" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block; font-weight: bold;">Войти</a>
+        </div>
+
+        <p>Или скопируйте и вставьте эту ссылку в браузер:</p>
+        <p style="word-break: break-all; color: #2563eb;">{{.MagicLinkURL}}</p>
+
+        <p><strong>Ссылка действует до {{.ExpiresAt.Format "02.01.2006 в 15:04 MST"}} и сработает один раз.</strong></p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #666; font-size: 14px;">
+            Если вы не запрашивали вход, просто не открывайте ссылку — по вопросам безопасности пишите на {{.SupportEmail}}.
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">
+            Это автоматическое сообщение от BURCEV. Пожалуйста, не отвечайте на это письмо.
         </p>
     </div>
 </body>

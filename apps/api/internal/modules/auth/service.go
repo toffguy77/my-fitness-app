@@ -11,6 +11,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -60,6 +61,11 @@ type Service struct {
 	// middleware's cache TTL. Optional: without it the revocation is still
 	// correct, just up to half a minute late.
 	sessions SessionCache
+	// emailService sends the letters this service triggers (magic links
+	// today). Optional: when the email capability is off, this is nil, and
+	// that is the normal state in an environment with no SMTP credentials —
+	// not an error.
+	emailService *email.Service
 }
 
 // SessionCache is the narrow part of middleware.TokenVersions this service
@@ -77,6 +83,15 @@ type SessionCache interface {
 // WithSessionCache supplies the cache to invalidate on a revocation.
 func (s *Service) WithSessionCache(cache SessionCache) *Service {
 	s.sessions = cache
+	return s
+}
+
+// WithEmailService supplies the sender for letters this service triggers.
+// Separate from the constructor for the same reason as WithSessionCache: the
+// service is built at startup before the email capability's availability is
+// known, and the two would otherwise have to agree on construction order.
+func (s *Service) WithEmailService(emailService *email.Service) *Service {
+	s.emailService = emailService
 	return s
 }
 
