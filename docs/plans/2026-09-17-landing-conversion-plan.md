@@ -637,83 +637,223 @@ git commit -m "feat(auth): аккаунт по ссылке пишет согл�
 ```
 
 ---
-### Task 5: Вход по паролю в беспарольный аккаунт неотличим от неверного пароля
+### Task 5: Вход по паролю не выдаёт беспарольный аккаунт и не пускает по пустой строке
 
 **Files:**
 - Modify: `apps/api/internal/modules/auth/service.go` (метод `Login`)
 - Modify: `apps/api/internal/modules/auth/service_test.go`
+- Create: `apps/api/internal/modules/auth/login_passwordless_integration_test.go`
 
 **Interfaces:**
-- Consumes: `users.password_hash` теперь NULL-допустим (задача 1).
-- Produces: поведение `Login` при `password_hash IS NULL`; новых имён не вводит.
+- Consumes: столбец `users.password` — он уже NULL-допустим с миграции 049 (внешние провайдеры создают аккаунт с `password = NULL`, `oauth_service.go:126-128`). Миграция для этого **не нужна**.
+- Produces: поведение `Login` при пустом и отсутствующем сохранённом пароле. Новых имён не вводит.
 
-- [ ] **Step 1: Написать падающий тест на неразличимость**
+**Что здесь на самом деле** (план изначально описывал это неверно, механизм установлен по коду и проверен на живой базе):
+
+`Login` читает пароль так:
 
 ```go
-// Аккаунт без пароля не должен выдавать себя ответом: иначе вход по паролю
-// становится способом узнать, каким образом человек регистрировался.
-func TestLoginIntoPasswordlessAccountLooksLikeWrongPassword(t *testing.T) {
-	svc, mock := setupService(t)
+var hashedPassword string
+err := s.db.QueryRowContext(ctx, query, email).Scan(..., &hashedPassword, ...)
+```
 
-	mock.ExpectQuery(`FROM users WHERE email`).
-		WithArgs("passwordless@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "password_hash"}).
-			AddRow(int64(7), "passwordless@example.com", nil))
-	_, errNoHash := svc.Login(context.Background(), "passwordless@example.com", "guess", "ip", "ua")
+Дальше идёт ветка миграции старых plaintext-паролей в bcrypt:
 
-	mock.ExpectQuery(`FROM users WHERE email`).
-		WithArgs("withpass@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "password_hash"}).
-			AddRow(int64(8), "withpass@example.com", "$2a$10$notarealhashnotarealhashnotare"))
-	_, errWrongPass := svc.Login(context.Background(), "withpass@example.com", "guess", "ip", "ua")
-
-	require.Error(t, errNoHash)
-	require.Error(t, errWrongPass)
-	assert.Equal(t, errWrongPass.Error(), errNoHash.Error())
-	assert.True(t, errors.Is(errNoHash, apperrors.ErrInvalidCredentials))
+```go
+if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+    if strings.HasPrefix(hashedPassword, "$2") {
+        return nil, ErrInvalidCredentials
+    }
+    if hashedPassword != password {
+        return nil, ErrInvalidCredentials
+    }
+    // сюда — значит вход удался, пароль мигрируется в bcrypt
 }
 ```
 
-- [ ] **Step 2: Запустить тест и убедиться, что он падает**
+Отсюда два дефекта.
 
-Run: `cd apps/api && go test ./internal/modules/auth/ -run TestLoginIntoPasswordlessAccount -v`
-Expected: FAIL — скорее всего паникой на разыменовании `nil`, либо отличающимся текстом ошибки.
+**Дефект A — пустая строка пускает внутрь.** При `password = ''` в базе: bcrypt падает, префикса `$2` нет, `'' != ''` ложно — управление проваливается вниз, в «успех». Любой, кто пришлёт пустой пароль на такой аккаунт, войдёт. Сегодня недостижимо: пустую строку не пишет ни один из трёх путей записи (`reset_service.go:313`, `service.go:284`, `service.go:522`) — проверено. Но это мина: любая будущая миграция или правка, положившая пустую строку, превращает её в живой обход.
 
-- [ ] **Step 3: Реализовать**
+**Дефект B — NULL даёт не тот класс ответа.** `Scan` NULL в `string` возвращает `converting NULL to string is unsupported` (проверено на живой базе). `Login` возвращает обёрнутую ошибку, не `ErrInvalidCredentials`, — то есть внутреннюю ошибку вместо «неверный пароль». По коду ответа посторонний отличает беспарольный аккаунт от обычного. После этого плана таких аккаунтов станет много: их создаёт вход по ссылке.
+
+- [ ] **Step 1: Написать падающий тест на дефект B**
 
 ```go
-	// Аккаунт без пароля: заведён по ссылке входа и пароля не имеет. Отвечаем
-	// тем же отказом, что и на неверный пароль, и тратим то же время — разница
-	// в скорости сообщила бы то же самое, что разница в тексте.
-	if user.PasswordHash == nil {
-		bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
-		return nil, apperrors.ErrInvalidCredentials
+// Аккаунт без пароля не должен выдавать себя ответом: иначе вход по паролю
+// становится способом узнать, каким образом человек регистрировался. Таких
+// аккаунтов в системе уже два вида — заведённые внешним провайдером и, после
+// этого изменения, заведённые по ссылке входа.
+func TestLoginIntoPasswordlessAccountLooksLikeWrongPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	expectUserRow(mock, "passwordless@example.com", nil)
+	_, errNoPassword := svc.Login(context.Background(),
+		"passwordless@example.com", "guess", "ip", "ua", false)
+
+	expectUserRow(mock, "withpass@example.com", strPtr(bcryptOf(t, "correct horse")))
+	_, errWrongPassword := svc.Login(context.Background(),
+		"withpass@example.com", "guess", "ip", "ua", false)
+
+	require.Error(t, errNoPassword)
+	require.Error(t, errWrongPassword)
+	assert.True(t, errors.Is(errNoPassword, apperrors.ErrInvalidCredentials),
+		"беспарольный аккаунт обязан отвечать тем же, чем неверный пароль, получено: %v", errNoPassword)
+	assert.True(t, errors.Is(errWrongPassword, apperrors.ErrInvalidCredentials))
+}
+```
+
+`expectUserRow` — вспомогательная функция теста: ставит ожидание запроса пользователя, отдавая `password` как `nil` или как значение. Столбцы и их порядок взять из настоящего запроса в `Login`, не выдумывать.
+
+- [ ] **Step 2: Написать падающий тест на дефект A**
+
+```go
+// Пустая строка в базе не пароль, а отсутствие пароля. Ветка миграции
+// plaintext-пароля в bcrypt сравнивает сохранённое значение с присланным
+// напрямую, и на двух пустых строках это сравнение истинно — то есть вход
+// удаётся без пароля вовсе.
+func TestLoginRefusesEmptyStoredPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	empty := ""
+
+	expectUserRow(mock, "empty@example.com", &empty)
+	_, errEmptyGuess := svc.Login(context.Background(), "empty@example.com", "", "ip", "ua", false)
+
+	expectUserRow(mock, "empty@example.com", &empty)
+	_, errAnyGuess := svc.Login(context.Background(), "empty@example.com", "что угодно", "ip", "ua", false)
+
+	assert.True(t, errors.Is(errEmptyGuess, apperrors.ErrInvalidCredentials),
+		"пустой пароль к пустому сохранённому значению обязан быть отказом, получено: %v", errEmptyGuess)
+	assert.True(t, errors.Is(errAnyGuess, apperrors.ErrInvalidCredentials))
+}
+
+// Миграция настоящего plaintext-пароля должна продолжать работать: этот тест
+// охраняет починку от того, чтобы она заодно сломала легаси-вход.
+func TestLoginStillMigratesRealPlaintextPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	stored := "legacy-plaintext"
+	expectUserRow(mock, "legacy@example.com", &stored)
+	mock.ExpectExec(`UPDATE users SET password`).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	result, err := svc.Login(context.Background(), "legacy@example.com", "legacy-plaintext", "ip", "ua", false)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+```
+
+- [ ] **Step 3: Запустить тесты и убедиться, что они падают**
+
+Run: `cd apps/api && go test ./internal/modules/auth/ -run 'TestLoginIntoPasswordlessAccount|TestLoginRefusesEmptyStoredPassword|TestLoginStillMigratesRealPlaintextPassword' -v`
+Expected: первые два FAIL (дефект B — падение `Scan`; дефект A — вход удаётся и ошибки нет), третий PASS.
+
+- [ ] **Step 4: Читать пароль как значение, которого может не быть**
+
+```go
+	var storedPassword sql.NullString
+```
+
+и в `Scan` передавать `&storedPassword` вместо `&hashedPassword`.
+
+- [ ] **Step 5: Отказывать до сравнения, когда сравнивать не с чем**
+
+Сразу после `Scan` и до всякой проверки пароля:
+
+```go
+	// Пароля нет вовсе (аккаунт заведён внешним провайдером или ссылкой входа)
+	// либо сохранена пустая строка. И то и другое — не пароль, а его
+	// отсутствие, и отвечать на это надо тем же, чем на неверный пароль:
+	// разница в ответе сообщила бы, каким способом человек регистрировался.
+	//
+	// Сравнение с фиктивным хэшем — чтобы отказ стоил столько же времени,
+	// сколько неверный пароль; разница в скорости говорит то же самое, что
+	// разница в тексте.
+	if !storedPassword.Valid || storedPassword.String == "" {
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
+		return nil, fmt.Errorf("Login.NoPassword: %w", apperrors.ErrInvalidCredentials)
 	}
 ```
 
-Где `dummyBcryptHash` — константа с настоящим bcrypt-хэшем произвольной строки, объявленная рядом:
+Константу объявить рядом с методом:
 
 ```go
-// Хэш, с которым сравнивают, когда сравнивать не с чем. Нужен, чтобы отказ
-// беспарольному аккаунту стоил столько же времени, сколько неверный пароль.
+// Хэш, с которым сравнивают, когда сравнивать не с чем: он нужен только
+// затем, чтобы отказ беспарольному аккаунту занимал столько же времени,
+// сколько неверный пароль.
 const dummyBcryptHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
 ```
 
-- [ ] **Step 4: Запустить тест**
+- [ ] **Step 6: Закрыть саму ветку миграции от пустых значений**
 
-Run: `cd apps/api && go test ./internal/modules/auth/ -run TestLoginIntoPasswordlessAccount -v`
-Expected: PASS.
+Дальше по методу заменить обращения к `hashedPassword` на `storedPassword.String`. Ветка миграции plaintext после шага 5 уже недостижима с пустым сохранённым значением, но присланный пустой пароль в ней сравнивается с непустым сохранённым и честно не совпадёт. Убедись, что условие `strings.HasPrefix(storedPassword.String, "$2")` сохранено: оно и отделяет настоящий bcrypt-хэш от легаси-значения.
 
-- [ ] **Step 5: Прогнать весь модуль**
+- [ ] **Step 7: Запустить тесты**
+
+Run: `cd apps/api && go test ./internal/modules/auth/ -run TestLogin -v`
+Expected: PASS все три, включая тест миграции legacy-пароля.
+
+- [ ] **Step 8: Написать интеграционный тест на живой базе**
+
+```go
+//go:build integration
+
+// Проверяется на живой базе намеренно: оба дефекта — про то, что приходит из
+// базы, а sqlmock отдаёт ровно то, что ему сказали отдать, и про NULL в
+// столбце не знает ничего. Дефект B и обнаружился только на живой базе.
+func TestLoginAgainstRealPasswordlessRows(t *testing.T) {
+	db := testsupport.DB(t)
+	svc := newServiceForTest(t, db)
+
+	nullID := seedUser(t, db, "null@example.com", nil)
+	emptyID := seedUser(t, db, "empty@example.com", strPtr(""))
+	require.NotZero(t, nullID)
+	require.NotZero(t, emptyID)
+
+	_, errNull := svc.Login(context.Background(), "null@example.com", "", "ip", "ua", false)
+	_, errEmpty := svc.Login(context.Background(), "empty@example.com", "", "ip", "ua", false)
+
+	assert.True(t, errors.Is(errNull, apperrors.ErrInvalidCredentials),
+		"NULL-пароль обязан давать отказ, а не внутреннюю ошибку: %v", errNull)
+	assert.True(t, errors.Is(errEmpty, apperrors.ErrInvalidCredentials),
+		"пустой пароль обязан давать отказ, а не вход: %v", errEmpty)
+}
+```
+
+- [ ] **Step 9: Прогнать интеграционный тест**
+
+Run:
+```
+export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable'
+cd apps/api && go test -tags=integration ./internal/modules/auth/ -run TestLoginAgainstRealPasswordlessRows -v
+```
+Expected: `--- PASS: TestLoginAgainstRealPasswordlessRows`. Без тега и без переменной тест не выполняется, а `go test` всё равно печатает `ok` — в отчёте должна быть строка `--- PASS:`, а не `ok`.
+
+- [ ] **Step 10: Прогнать весь модуль**
 
 Run: `cd apps/api && go test ./internal/modules/auth/`
-Expected: PASS — существующий вход по паролю не затронут.
+Expected: PASS — существующий вход по паролю и вход через внешнего провайдера не затронуты.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add apps/api/internal/modules/auth/service.go apps/api/internal/modules/auth/service_test.go
-git commit -m "fix(auth): беспарольный аккаунт не выдаёт себя ответом на вход по паролю"
+git add apps/api/internal/modules/auth/
+git commit -m "fix(auth): пустой и отсутствующий пароль дают отказ, а не вход
+
+Login читал пароль в string, поэтому NULL ронял Scan и возвращал
+внутреннюю ошибку вместо неверных учётных данных — по классу ответа
+беспарольный аккаунт был отличим от обычного.
+
+Хуже: ветка миграции plaintext-пароля сравнивала сохранённое значение с
+присланным напрямую, и на двух пустых строках сравнение истинно. Аккаунт
+с пустой строкой в password пускал внутрь по пустому паролю. Сегодня
+недостижимо — пустую строку не пишет ни один путь, — но вход по ссылке
+добавляет беспарольные аккаунты, и мину надо снять до этого."
 ```
 
 ---
