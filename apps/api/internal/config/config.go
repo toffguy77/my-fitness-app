@@ -378,8 +378,8 @@ func Load() (*Config, error) {
 		// поданный как результат, — хуже, чем честный отказ.
 		VisionAPIKey:     getEnvWithFallback("VISION_API_KEY", "OPENROUTER_API_KEY", ""),
 		VisionModel:      getEnvWithFallback("VISION_MODEL", "OPENROUTER_MODEL", ""),
-		VisionBaseURL:    getEnv("VISION_BASE_URL", "https://openrouter.ai/api/v1/chat/completions"),
-		VisionAuthScheme: getEnv("VISION_AUTH_SCHEME", "Bearer"),
+		VisionBaseURL:    getEnv("VISION_BASE_URL", llm.DefaultBaseURL),
+		VisionAuthScheme: getEnv("VISION_AUTH_SCHEME", llm.DefaultAuthScheme),
 
 		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
@@ -416,6 +416,16 @@ func deriveFeatures(c *Config) Features {
 		// идентификатор каталога и у каждой установки своё. Запрос без имени
 		// отклоняется, и возможность, числящаяся включённой по одному ключу,
 		// снова врала бы.
+		//
+		// Поставщик зрения больше не отдельный: в каталоге Яндекса есть модель,
+		// принимающая изображения, и живёт она на том же эндпоинте, что и
+		// текстовая. Проверено настоящим запросом — изображение в base64
+		// доходит и описывается. Раньше здесь стояло, что таких моделей в
+		// каталоге нет; это было верно и увело умолчание на OpenRouter,
+		// который здесь не оплачивается (см. llm.DefaultBaseURL).
+		//
+		// У модели есть своя ловушка, и она закрыта в llm.RecognizeFood: без
+		// явного отключения размышления она возвращает пустое содержание.
 		FoodRecognition: c.VisionAPIKey != "" && c.VisionModel != "",
 		WeeklyPhotos:    s3(c.WeeklyPhotosS3AccessKeyID, c.WeeklyPhotosS3SecretAccessKey),
 		ProfileAvatars:  s3(c.ProfilePhotosS3AccessKeyID, c.ProfilePhotosS3SecretAccessKey),

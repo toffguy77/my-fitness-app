@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -123,6 +124,10 @@ type chatRequest struct {
 	// отклоняется целиком, если на счёте меньше, чем этот резерв, даже когда
 	// настоящий ответ стоил бы копейки.
 	MaxTokens int `json:"max_tokens,omitempty"`
+	// ChatTemplateKwargs передаётся поставщику как есть. Нужен распознаванию,
+	// чтобы отключить размышление модели; путь бота его не задаёт, и поведение
+	// там не меняется.
+	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs,omitempty"`
 }
 
 // supportAnswerLimit — потолок ответа бота поддержки.
@@ -132,6 +137,22 @@ type chatRequest struct {
 // на раздел документации и при этом не заставляет резервировать средства под
 // ответ, которого никогда не будет.
 const supportAnswerLimit = 1000
+
+// recognitionAnswerLimit — потолок ответа распознавания еды.
+//
+// Раньше предела не было вовсе, и его брал поставщик — у разных поставщиков он
+// разный и может быть очень большим. Запрос без потолка — это счёт без потолка.
+// Тысячи хватает на список блюд с граммовками и КБЖУ и заведомо мало на
+// размышление вслух.
+const recognitionAnswerLimit = 1000
+
+// ErrEmptyModelAnswer — модель ответила, но без содержания.
+//
+// Отдельная ошибка, потому что раньше этот случай попадал в разбор JSON и
+// выходил сообщением про испорченный ответ, хотя ответа не было вовсе. Так
+// ведёт себя рассуждающая модель, у которой размышление съело весь бюджет:
+// content пуст, finish_reason — length, и виновата не фотография человека.
+var ErrEmptyModelAnswer = errors.New("model returned no content")
 
 type chatMessage struct {
 	Role    string        `json:"role"`
@@ -231,6 +252,13 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 				},
 			},
 		},
+		MaxTokens: recognitionAnswerLimit,
+		// Модель со зрением в каталоге — рассуждающая: она складывает
+		// размышление в отдельное поле и оставляет содержание пустым, пока не
+		// закончит. На проверке с бюджетом в 2000 токенов размышление заняло
+		// весь бюджет, и ответа не появилось. Это единственный способ его
+		// отключить: родной reasoning_options эндпоинт отвергает.
+		ChatTemplateKwargs: map[string]any{"enable_thinking": false},
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)
@@ -281,6 +309,9 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 	}
 
 	content := chatResp.Choices[0].Message.Content
+	if strings.TrimSpace(content) == "" {
+		return nil, ErrEmptyModelAnswer
+	}
 	jsonStr := stripMarkdownCodeFences(content)
 
 	var result RecognitionResponse
