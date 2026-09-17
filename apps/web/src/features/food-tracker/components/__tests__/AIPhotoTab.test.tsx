@@ -516,6 +516,50 @@ describe('AIPhotoTab', () => {
         });
     });
 
+    // Follow-up round: owner reasoned that a person entering "85" without
+    // seeing what it produces can't actually vouch for the number — the
+    // point of typing it is to look at the plate AND the result.
+    describe('Live Running Total', () => {
+        it('shows a running total from what is entered so far, marked as partial, updating as fields fill in', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            // Nothing typed yet — the total must still be visible (not blank),
+            // and marked as partial so it's clear it isn't the final number.
+            expect(screen.getByText(/Итого: 0 ккал/)).toBeInTheDocument();
+            expect(screen.getByText(/промежуточный итог/i)).toBeInTheDocument();
+
+            // One position filled — the running total reflects just that one.
+            await user.type(screen.getByLabelText(/Вес порции: Гречка/i), '200');
+            await waitFor(() => {
+                expect(screen.getByText(/Итого: 260 ккал/)).toBeInTheDocument();
+            });
+            expect(screen.getByText(/промежуточный итог/i)).toBeInTheDocument();
+
+            // Second position filled — total updates again, and the partial
+            // marker disappears now that every position has a weight.
+            await user.type(screen.getByLabelText(/Вес порции: Курица/i), '150');
+            await waitFor(() => {
+                expect(screen.getByText(/Итого: 508 ккал/)).toBeInTheDocument();
+            });
+            expect(screen.queryByText(/промежуточный итог/i)).not.toBeInTheDocument();
+        });
+    });
+
     describe('Low Confidence Warning', () => {
         it('shows warning for low confidence results', async () => {
             const onRecognize = jest.fn().mockResolvedValue(mockLowConfidenceResult);
