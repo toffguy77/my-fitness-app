@@ -321,6 +321,7 @@ email_verification_codes.created_at timestamp with time zone NOT NULL DEFAULT no
 email_verification_codes.expires_at timestamp with time zone NOT NULL
 email_verification_codes.id bigint NOT NULL DEFAULT nextval('email_verification_codes_id_seq')
 email_verification_codes.ip_address character varying
+email_verification_codes.purpose text NOT NULL DEFAULT 'email_verification'
 email_verification_codes.used_at timestamp with time zone
 email_verification_codes.user_agent text
 email_verification_codes.user_id bigint NOT NULL

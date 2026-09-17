@@ -56,11 +56,16 @@ func TestRequestDeletionForPasswordlessAccount(t *testing.T) {
 // capturingCodeSender records the codes VerificationService would have
 // e-mailed, so a test can use the real plaintext code without a live SMTP
 // server — the same role auth's capturingSender plays for magic links.
+// verificationCalls exists so a test can also get its hands on a code issued
+// for e-mail confirmation, not just for deletion — needed to prove the two
+// purposes cannot confirm each other.
 type capturingCodeSender struct {
-	deletionCalls []email.VerificationEmailData
+	verificationCalls []email.VerificationEmailData
+	deletionCalls     []email.VerificationEmailData
 }
 
-func (c *capturingCodeSender) SendVerificationEmail(context.Context, email.VerificationEmailData) error {
+func (c *capturingCodeSender) SendVerificationEmail(_ context.Context, data email.VerificationEmailData) error {
+	c.verificationCalls = append(c.verificationCalls, data)
 	return nil
 }
 
@@ -74,13 +79,15 @@ func (c *capturingCodeSender) SendAccountDeletionCode(_ context.Context, data em
 // standing in for SMTP. The point of the tests below is that account's
 // deletion path and auth's existing code mechanism (hashing, rate limiting,
 // attempt counting) actually work together against real SQL — a fake
-// DeletionCodeService would prove nothing about that.
-func newAccountServiceForTest(t *testing.T, db *database.DB) (*account.Service, *capturingCodeSender) {
+// DeletionCodeService would prove nothing about that. The verifier itself is
+// returned too: some tests need to issue an e-mail-verification code
+// directly (SendCode), which is not something account.Service ever calls.
+func newAccountServiceForTest(t *testing.T, db *database.DB) (*account.Service, *auth.VerificationService, *capturingCodeSender) {
 	t.Helper()
 	sender := &capturingCodeSender{}
 	verifier := auth.NewVerificationService(db.DB, logger.New(), nil).WithCodeSender(sender)
 	svc := account.NewService(db, logger.New(), nil).WithCodeVerifier(verifier)
-	return svc, sender
+	return svc, verifier, sender
 }
 
 func seedPasswordlessUser(t *testing.T, db *database.DB, userEmail string) int64 {
@@ -141,7 +148,7 @@ func assertNotScheduledForDeletion(t *testing.T, db *database.DB, userID int64) 
 // асимметрия, которую нашло ревью и которую чинит вся задача 5а.
 func TestPasswordlessDeletionRequiresEmailedCode(t *testing.T) {
 	db := testsupport.SchemaWithMigrations(t, "deletion_code")
-	svc, sender := newAccountServiceForTest(t, db)
+	svc, _, sender := newAccountServiceForTest(t, db)
 
 	userID := seedPasswordlessUser(t, db, "nopass@example.test")
 
@@ -162,7 +169,7 @@ func TestPasswordlessDeletionRequiresEmailedCode(t *testing.T) {
 // только другой вызывающий и другое письмо.
 func TestPasswordlessDeletionCodeIsRateLimited(t *testing.T) {
 	db := testsupport.SchemaWithMigrations(t, "deletion_code_bruteforce")
-	svc, sender := newAccountServiceForTest(t, db)
+	svc, _, sender := newAccountServiceForTest(t, db)
 
 	userID := seedPasswordlessUser(t, db, "brute@example.test")
 	requestDeletionCode(t, svc, sender, userID)
@@ -180,7 +187,7 @@ func TestPasswordlessDeletionCodeIsRateLimited(t *testing.T) {
 // Этот тест охраняет починку задачи 5 от самой задачи 5а.
 func TestDeletionWithPasswordIsUnchanged(t *testing.T) {
 	db := testsupport.SchemaWithMigrations(t, "deletion_with_password")
-	svc, _ := newAccountServiceForTest(t, db)
+	svc, _, _ := newAccountServiceForTest(t, db)
 
 	userID := seedUserWithPassword(t, db, "haspass@example.test", "верный пароль")
 
@@ -194,7 +201,7 @@ func TestDeletionWithPasswordIsUnchanged(t *testing.T) {
 // этим способом.
 func TestRequestDeletionCode_RefusesForAccountWithPassword(t *testing.T) {
 	db := testsupport.SchemaWithMigrations(t, "deletion_code_has_password")
-	svc, sender := newAccountServiceForTest(t, db)
+	svc, _, sender := newAccountServiceForTest(t, db)
 
 	userID := seedUserWithPassword(t, db, "haspass-code@example.test", "верный пароль")
 
@@ -203,4 +210,57 @@ func TestRequestDeletionCode_RefusesForAccountWithPassword(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrConflict))
 	assert.Empty(t, sender.deletionCalls, "письмо не должно уйти аккаунту с паролем")
+}
+
+// requestEmailVerificationCode issues a code for the *other* purpose —
+// confirming the address, exactly what happens after registration — through
+// the same VerificationService, and returns its plaintext.
+func requestEmailVerificationCode(t *testing.T, verifier *auth.VerificationService, sender *capturingCodeSender, userID int64, userEmail string) string {
+	t.Helper()
+	before := len(sender.verificationCalls)
+	require.NoError(t, verifier.SendCode(context.Background(), userID, userEmail, "127.0.0.1", "test"))
+	require.Greater(t, len(sender.verificationCalls), before, "код подтверждения почты обязан быть отправлен письмом")
+	return sender.verificationCalls[len(sender.verificationCalls)-1].Code
+}
+
+// A code sent to confirm an e-mail address is not proof for anything else.
+// Before the fix, latestUnusedCode picked "the most recent unused code for
+// this user" with no notion of what it was issued for, so this exact code —
+// requested for a completely different, much less consequential reason —
+// deleted the account.
+func TestEmailVerificationCodeDoesNotConfirmDeletion(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_code_purpose_cross_1")
+	svc, verifier, sender := newAccountServiceForTest(t, db)
+
+	userID := seedPasswordlessUser(t, db, "cross-purpose-1@example.test")
+
+	code := requestEmailVerificationCode(t, verifier, sender, userID, "cross-purpose-1@example.test")
+
+	_, err := svc.RequestDeletion(context.Background(), userID, "", code)
+
+	require.Error(t, err, "код почты не должен подтверждать удаление")
+	assert.True(t, errors.Is(err, apperrors.ErrInvalidCredentials))
+	assertNotScheduledForDeletion(t, db, userID)
+}
+
+// The other direction: a code sent to confirm a deletion must not confirm the
+// address either. Less dangerous than the first direction (deleting nothing
+// on a wrong pairing that at worst marks an address verified), but the same
+// missing scope would have allowed it before the fix.
+func TestDeletionCodeDoesNotConfirmEmailVerification(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_code_purpose_cross_2")
+	svc, verifier, sender := newAccountServiceForTest(t, db)
+
+	userID := seedPasswordlessUser(t, db, "cross-purpose-2@example.test")
+
+	code := requestDeletionCode(t, svc, sender, userID)
+
+	err := verifier.VerifyCode(context.Background(), userID, code)
+
+	require.Error(t, err, "код удаления не должен подтверждать почту")
+
+	var verified bool
+	require.NoError(t, db.QueryRowContext(context.Background(),
+		`SELECT email_verified FROM users WHERE id = $1`, userID).Scan(&verified))
+	assert.False(t, verified, "почта не должна оказаться подтверждённой кодом, выданным на удаление")
 }

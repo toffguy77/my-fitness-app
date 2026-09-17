@@ -22,6 +22,21 @@ const (
 	resendWindowDuration    = 10 * time.Minute
 )
 
+// codePurpose names what a code was issued to confirm. Stored on the row
+// (migration 074) and checked on every lookup: without it, the most recent
+// unused code for a user answered "is this a real code sent to this mailbox"
+// regardless of what it was for, so a code sent to confirm an e-mail address
+// could confirm that account's deletion, and the other way round. Review
+// found this before it shipped — the whole point of a mailed code for a
+// passwordless deletion is a proof distinct from the session, and a code
+// answering for any purpose is no such proof.
+type codePurpose string
+
+const (
+	purposeEmailVerification codePurpose = "email_verification"
+	purposeAccountDeletion   codePurpose = "account_deletion"
+)
+
 // CodeSender delivers a 6-digit code by e-mail. Declared here as the
 // narrowest thing VerificationService needs — the two letters it can send
 // (email_verification, account_deletion_code) — so a test can capture what
@@ -78,12 +93,17 @@ func hashCode(code string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// issueCode generates a code, rate-limits, stores it, and hands it to deliver
-// for sending. Storage, rate limiting and the 6-digit format are the one
-// mechanism shared by every caller; only the outbound letter differs, which
-// is exactly what deliver captures.
+// issueCode generates a code, rate-limits, stores it tagged with purpose, and
+// hands it to deliver for sending. Storage, rate limiting and the 6-digit
+// format are the one mechanism shared by every caller; only the outbound
+// letter and the stored purpose differ, which is exactly what deliver and
+// purpose capture.
+//
+// The rate limit counts every purpose together for one user: it is a limit on
+// how many codes this mailbox is sent per window, not a separate allowance
+// per reason to send one.
 func (vs *VerificationService) issueCode(ctx context.Context, userID int64, userEmail, ip, ua string,
-	deliver func(email.VerificationEmailData) error) error {
+	purpose codePurpose, deliver func(email.VerificationEmailData) error) error {
 	// Rate limit: count codes created in the last window
 	var recentCount int
 	err := vs.db.QueryRowContext(ctx,
@@ -107,9 +127,9 @@ func (vs *VerificationService) issueCode(ctx context.Context, userID int64, user
 	// Store hashed code
 	expiresAt := time.Now().Add(verificationCodeTTL)
 	_, err = vs.db.ExecContext(ctx,
-		`INSERT INTO email_verification_codes (user_id, code_hash, expires_at, ip_address, user_agent)
-		 VALUES ($1, $2, $3, $4, $5)`,
-		userID, hashCode(code), expiresAt, ip, ua,
+		`INSERT INTO email_verification_codes (user_id, code_hash, expires_at, ip_address, user_agent, purpose)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		userID, hashCode(code), expiresAt, ip, ua, string(purpose),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to store verification code: %w", err)
@@ -128,14 +148,14 @@ func (vs *VerificationService) issueCode(ctx context.Context, userID int64, user
 		return fmt.Errorf("failed to send email")
 	}
 
-	vs.log.Infow("Code sent", "user_id", userID, "email", userEmail)
+	vs.log.Infow("Code sent", "user_id", userID, "email", userEmail, "purpose", purpose)
 	return nil
 }
 
 // SendCode generates a new 6-digit code and sends it to the user's email, to
 // confirm the address itself.
 func (vs *VerificationService) SendCode(ctx context.Context, userID int64, userEmail, ip, ua string) error {
-	return vs.issueCode(ctx, userID, userEmail, ip, ua, func(data email.VerificationEmailData) error {
+	return vs.issueCode(ctx, userID, userEmail, ip, ua, purposeEmailVerification, func(data email.VerificationEmailData) error {
 		return vs.emailService.SendVerificationEmail(ctx, data)
 	})
 }
@@ -143,15 +163,16 @@ func (vs *VerificationService) SendCode(ctx context.Context, userID int64, userE
 // SendDeletionCode generates a new 6-digit code and sends it to confirm the
 // deletion of an account that has no password to check instead — see
 // VerifyDeletionCode. Storage, rate limiting and the 6-digit format are
-// identical to SendCode; only the outbound letter's subject differs, so the
-// inbox says what is being confirmed.
+// identical to SendCode; the outbound letter and the stored purpose differ,
+// so the inbox says what is being confirmed and a later lookup cannot mistake
+// this code for one sent to confirm an address.
 func (vs *VerificationService) SendDeletionCode(ctx context.Context, userID int64, userEmail, ip, ua string) error {
-	return vs.issueCode(ctx, userID, userEmail, ip, ua, func(data email.VerificationEmailData) error {
+	return vs.issueCode(ctx, userID, userEmail, ip, ua, purposeAccountDeletion, func(data email.VerificationEmailData) error {
 		return vs.emailService.SendAccountDeletionCode(ctx, data)
 	})
 }
 
-// codeRecord is the most recent unused code for a user, as stored.
+// codeRecord is the most recent unused code for a user and purpose, as stored.
 type codeRecord struct {
 	id        int64
 	hash      string
@@ -159,16 +180,17 @@ type codeRecord struct {
 	attempts  int
 }
 
-// latestUnusedCode fetches the code a submission is checked against.
-func (vs *VerificationService) latestUnusedCode(ctx context.Context, userID int64) (codeRecord, error) {
+// latestUnusedCode fetches the code a submission is checked against — scoped
+// to purpose, so a code issued for one reason can never answer for another.
+func (vs *VerificationService) latestUnusedCode(ctx context.Context, userID int64, purpose codePurpose) (codeRecord, error) {
 	var rec codeRecord
 	err := vs.db.QueryRowContext(ctx,
 		`SELECT id, code_hash, expires_at, attempts
 		 FROM email_verification_codes
-		 WHERE user_id = $1 AND used_at IS NULL
+		 WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL
 		 ORDER BY created_at DESC
 		 LIMIT 1`,
-		userID,
+		userID, string(purpose),
 	).Scan(&rec.id, &rec.hash, &rec.expiresAt, &rec.attempts)
 	if err == sql.ErrNoRows {
 		return rec, fmt.Errorf("no active code")
@@ -203,10 +225,10 @@ func (vs *VerificationService) matchCode(ctx context.Context, rec codeRecord, co
 	return nil
 }
 
-// VerifyCode checks the submitted code against the latest unused code for the
-// user, and marks the address confirmed.
+// VerifyCode checks the submitted code against the latest unused
+// email_verification code for the user, and marks the address confirmed.
 func (vs *VerificationService) VerifyCode(ctx context.Context, userID int64, code string) error {
-	rec, err := vs.latestUnusedCode(ctx, userID)
+	rec, err := vs.latestUnusedCode(ctx, userID, purposeEmailVerification)
 	if err != nil {
 		return err
 	}
@@ -240,12 +262,12 @@ func (vs *VerificationService) VerifyCode(ctx context.Context, userID int64, cod
 	return nil
 }
 
-// VerifyDeletionCode checks a code sent for account deletion. Unlike
-// VerifyCode it must not mark the address confirmed: a deletion code proves
-// only that this request reached the mailbox, nothing about e-mail
-// verification status.
+// VerifyDeletionCode checks a code sent for account deletion — and only one
+// sent for that purpose (see latestUnusedCode). Unlike VerifyCode it must not
+// mark the address confirmed: a deletion code proves only that this request
+// reached the mailbox, nothing about e-mail verification status.
 func (vs *VerificationService) VerifyDeletionCode(ctx context.Context, userID int64, code string) error {
-	rec, err := vs.latestUnusedCode(ctx, userID)
+	rec, err := vs.latestUnusedCode(ctx, userID, purposeAccountDeletion)
 	if err != nil {
 		return err
 	}
