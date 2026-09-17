@@ -172,16 +172,16 @@ func (s *Service) LinkProvider(ctx context.Context, userID int64, provider strin
 // Refuses to remove the last way in: a user with no password and one provider
 // would lose access to a year of data with a single click.
 func (s *Service) UnlinkProvider(ctx context.Context, userID int64, provider string) error {
-	var hasPassword bool
+	var password sql.NullString
 	var linkCount int
 	if err := s.db.QueryRowContext(ctx, `
-		SELECT u.password IS NOT NULL,
+		SELECT u.password,
 		       (SELECT COUNT(*) FROM external_identities WHERE user_id = u.id)
-		FROM users u WHERE u.id = $1`, userID).Scan(&hasPassword, &linkCount); err != nil {
+		FROM users u WHERE u.id = $1`, userID).Scan(&password, &linkCount); err != nil {
 		return fmt.Errorf("check sign-in methods: %w", err)
 	}
 
-	if !hasPassword && linkCount <= 1 {
+	if !PasswordIsSet(password) && linkCount <= 1 {
 		return fmt.Errorf("cannot remove the only sign-in method: %w", apperrors.ErrConflict)
 	}
 

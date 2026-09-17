@@ -315,11 +315,17 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 	// либо сохранена пустая строка. И то и другое — не пароль, а его
 	// отсутствие, и отвечать на это надо тем же, чем на неверный пароль:
 	// разница в ответе сообщила бы, каким способом человек регистрировался.
+	// PasswordIsSet, а не проверка на месте: то же самое правило уже было
+	// написано вручную здесь и параллельно расходилось в HasPassword,
+	// ConfirmLinkWithPassword и UnlinkProvider — именно параллельность и
+	// породила расхождения. Здесь оно было верным и до этой правки, но
+	// оставлять его пятым отдельным выражением значит первым, кто исправит
+	// правило в одном месте, забыть про это.
 	//
 	// Сравнение с фиктивным хэшем — чтобы отказ стоил столько же времени,
 	// сколько неверный пароль; разница в скорости говорит то же самое, что
 	// разница в тексте.
-	if !storedPassword.Valid || storedPassword.String == "" {
+	if !PasswordIsSet(storedPassword) {
 		_ = bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
 		return nil, fmt.Errorf("Login.NoPassword: %w", apperrors.ErrInvalidCredentials)
 	}
