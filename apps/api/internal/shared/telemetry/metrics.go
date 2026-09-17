@@ -34,6 +34,7 @@ type Metrics struct {
 	domainEvents      *prometheus.CounterVec
 	modelPromptTokens *prometheus.CounterVec
 	capabilityHealth  *prometheus.GaugeVec
+	databaseHealth    prometheus.Gauge
 }
 
 // DBStatsFunc reports pool statistics on demand. Taking a function rather than
@@ -113,10 +114,22 @@ func New(namespace string, stats DBStatsFunc) *Metrics {
 		Help:      "Whether a configured capability answers when asked: 1 yes, 0 no.",
 	}, []string{"capability"})
 
+	// База — не возможность, а условие работы.
+	//
+	// Её нет среди capability_healthy намеренно: у тех выдержка тревоги в два
+	// часа, потому что сеть этого сервера рвётся и часть отказов — рябь. База
+	// столько ждать не может: 2026-09-16 прод не видел её шесть с половиной
+	// часов, и никто не узнал — оповещения на неё просто не было.
+	m.databaseHealth = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "database_healthy",
+		Help:      "Whether the database answers: 1 yes, 0 no.",
+	})
+
 	m.registry.MustRegister(
 		m.httpDuration, m.httpTotal, m.dbDuration,
 		m.jobDuration, m.jobTotal, m.domainEvents, m.modelPromptTokens,
-		m.capabilityHealth,
+		m.capabilityHealth, m.databaseHealth,
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
@@ -224,6 +237,18 @@ const (
 	EventEmailFailed = "email_failed"
 )
 
+// SetDatabaseHealth records whether the database answered.
+func (m *Metrics) SetDatabaseHealth(healthy bool) {
+	if m == nil {
+		return
+	}
+	value := 0.0
+	if healthy {
+		value = 1
+	}
+	m.databaseHealth.Set(value)
+}
+
 // RecordEvent counts a product event.
 // ObserveModelUsage records what one model call cost in prompt tokens and how
 // much of that the provider served from its cache.
@@ -296,5 +321,12 @@ func RecordModelUsage(promptTokens, cachedTokens int) {
 func SetCapabilityHealth(capability string, healthy bool) {
 	if defaultMetrics != nil {
 		defaultMetrics.SetCapabilityHealth(capability, healthy)
+	}
+}
+
+// SetDatabaseHealth records database availability on the default recorder.
+func SetDatabaseHealth(healthy bool) {
+	if defaultMetrics != nil {
+		defaultMetrics.SetDatabaseHealth(healthy)
 	}
 }

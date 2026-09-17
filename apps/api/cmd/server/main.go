@@ -426,6 +426,10 @@ func main() {
 	// metrics handle through every constructor.
 	telemetry.SetDefault(metrics)
 
+	// База — условие работы, а не возможность: за ней следим отдельно и часто.
+	// Без этого её отказ остаётся единственным, о котором никто не узнаёт.
+	go database.Watch(context.Background(), db, log)
+
 	jobRegistry := jobs.NewRegistry()
 	scheduler := jobs.NewScheduler(db.DB, jobRegistry, log, moscow)
 	scheduler.SetObserver(func(name string, status jobs.Status, d time.Duration, _ int) {
