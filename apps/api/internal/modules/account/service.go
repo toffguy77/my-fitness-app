@@ -88,7 +88,7 @@ type DeletionStatus struct {
 // The current password is required: this is the most destructive action the
 // product offers, and an unattended session must not be enough to trigger it.
 func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPassword string) (*DeletionStatus, error) {
-	var storedHash string
+	var storedHash sql.NullString
 	var alreadyRequested sql.NullTime
 	err := s.db.QueryRowContext(ctx,
 		`SELECT password, deletion_requested_at FROM users WHERE id = $1`, userID).
@@ -100,8 +100,18 @@ func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPass
 		return nil, fmt.Errorf("load user: %w", err)
 	}
 
-	if bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)) != nil {
-		return nil, fmt.Errorf("password mismatch: %w", apperrors.ErrInvalidCredentials)
+	// An account created through an external provider or a magic link has no
+	// password (password = NULL) — there is nothing to check currentPassword
+	// against. Refusing here the way ConfirmLinkWithPassword does ("nothing to
+	// prove ownership with") is not an option: unlike linking, there is no
+	// alternative route to deletion, so refusing would make it permanently
+	// unreachable for these accounts — which is exactly the outage being fixed.
+	// The already-authenticated session (required to reach this method at all)
+	// is the only proof available, and is accepted as such.
+	if storedHash.Valid && storedHash.String != "" {
+		if bcrypt.CompareHashAndPassword([]byte(storedHash.String), []byte(currentPassword)) != nil {
+			return nil, fmt.Errorf("password mismatch: %w", apperrors.ErrInvalidCredentials)
+		}
 	}
 
 	if alreadyRequested.Valid {

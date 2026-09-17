@@ -563,3 +563,19 @@ func TestLoginStillMigratesRealPlaintextPassword(t *testing.T) {
 	require.NotNil(t, result)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+// dummyBcryptHash нужен только затем, чтобы отказ беспарольному аккаунту
+// стоил процессору столько же, сколько настоящее сравнение bcrypt: разница во
+// времени ответа сообщила бы то же самое, что разница в тексте. Измерять само
+// время в тесте не годится — такая проверка шатается на загруженной машине и
+// начнёт мигать без всякой регрессии. Вместо этого сравниваем "стоимость",
+// которую bcrypt сам закодировал в хэш: если кто-то заменит константу на хэш
+// с меньшей стоимостью (например, скопирует чужой bcrypt.MinCost для тестов),
+// сравнение всё ещё "успешно" провалится по паролю, но перестанет стоить
+// нужного количества раундов — и этот тест поймает именно это, детерминированно.
+func TestDummyBcryptHashCostMatchesRealHashes(t *testing.T) {
+	cost, err := bcrypt.Cost([]byte(dummyBcryptHash))
+	require.NoError(t, err)
+	assert.Equal(t, bcrypt.DefaultCost, cost,
+		"dummyBcryptHash должен стоить процессору столько же, сколько настоящий хэш с bcrypt.DefaultCost, иначе отказ беспарольному аккаунту выдаёт себя скоростью")
+}

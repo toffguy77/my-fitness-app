@@ -545,7 +545,7 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 // `replacement` is filled with a fresh token pair for the caller's own session:
 // see endAllSessions for why every other one is destroyed and this one is not.
 func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string, replacement *LoginResult) error {
-	var storedHash string
+	var storedHash sql.NullString
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
 		`SELECT password FROM users WHERE id = $1`,
@@ -556,11 +556,24 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 		return fmt.Errorf("ошибка при получении данных пользователя: %w", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)); err != nil {
+	// An account created through an external provider or a magic link has no
+	// password (password = NULL) to change. Unlike RequestDeletion, there is
+	// no fallback proof that would make "change" meaningful here: the form
+	// asks for a *current* password to confirm against, and none exists to
+	// confirm against. The honest answer is the same one already used for the
+	// identical situation in oauth_service.ConfirmLinkWithPassword — a clear
+	// conflict, not an internal error and not a silent skip that would let
+	// anyone with a live session set a password on someone else's provider-only
+	// account.
+	if !storedHash.Valid || storedHash.String == "" {
+		return fmt.Errorf("аккаунт без пароля: нечего менять: %w", apperrors.ErrConflict)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash.String), []byte(currentPassword)); err != nil {
 		return fmt.Errorf("ChangePassword.verify: %w", apperrors.ErrInvalidCredentials)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(newPassword)); err == nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash.String), []byte(newPassword)); err == nil {
 		return fmt.Errorf("новый пароль должен отличаться от текущего: %w", apperrors.ErrPasswordUnchanged)
 	}
 

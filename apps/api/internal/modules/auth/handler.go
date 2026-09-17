@@ -496,6 +496,11 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 			// tell the three apart.
 			response.ErrorCode(c, http.StatusUnauthorized,
 				apperrors.CodePasswordIncorrect, "Неверный текущий пароль", nil)
+		case errors.Is(err, apperrors.ErrConflict):
+			// Аккаунт заведён через внешнего провайдера или по ссылке входа и
+			// пароля не имеет вовсе — менять нечего.
+			response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+				"У этого аккаунта нет пароля: вход выполняется через внешний сервис или по ссылке.", nil)
 		case errors.Is(err, apperrors.ErrPasswordUnchanged):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		case errors.Is(err, apperrors.ErrPasswordPolicy):
