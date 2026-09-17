@@ -297,6 +297,13 @@ func (h *Handler) ConsumeMagicLink(c *gin.Context) {
 	case errors.Is(err, apperrors.ErrTokenInvalid):
 		response.Error(c, http.StatusBadRequest, "Ссылка не подходит — запросите новую")
 		return
+	case errors.Is(err, apperrors.ErrConflict):
+		// Гонка на создании аккаунта — см. createAccountFromMagicLink.
+		// Ссылка уже погашена и не сработает второй раз, но обычный вход
+		// теперь найдёт аккаунт: подсказываем запросить ссылку заново.
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+			"Этот адрес уже зарегистрирован. Запросите ссылку для входа ещё раз.", nil)
+		return
 	default:
 		h.log.Errorw("Failed to consume magic link", "error", err)
 		response.InternalError(c, "Не удалось войти")

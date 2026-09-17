@@ -221,27 +221,7 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	_, _ = s.db.ExecContext(ctx, "INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", user.ID)
 
 	// Store consents
-	if consents != nil {
-		consentTypes := []struct {
-			ctype   string
-			granted bool
-		}{
-			{"terms_of_service", consents.TermsOfService},
-			{"privacy_policy", consents.PrivacyPolicy},
-			{"data_processing", consents.DataProcessing},
-			{"marketing", consents.Marketing},
-		}
-		for _, c := range consentTypes {
-			_, err := s.db.ExecContext(ctx,
-				`INSERT INTO user_consents (user_id, consent_type, granted, granted_at, ip_address, user_agent)
-				 VALUES ($1, $2, $3, NOW(), $4::inet, $5)`,
-				user.ID, c.ctype, c.granted, ip, ua,
-			)
-			if err != nil {
-				s.log.Warnw("Failed to store consent", "user_id", user.ID, "type", c.ctype, "error", err)
-			}
-		}
-	}
+	s.storeConsents(ctx, user.ID, consents, ip, ua)
 
 	// Auto-assign curator (coordinator with fewest active clients)
 	s.assignCurator(ctx, user.ID)
@@ -263,6 +243,41 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 		Token:        token,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+// storeConsents records each consent flag as its own row.
+//
+// Extracted out of Register so the magic-link account path (createAccountFromMagicLink)
+// writes consents the exact same way: a divergence here would mean some
+// accounts have no record of what they agreed to, invisible on a mock that
+// does not keep rows.
+//
+// Best effort, as Register always treated it: a row failing to write is
+// logged, not fatal — the account is real either way, and refusing it over a
+// consent log entry would be a strange kind of protection.
+func (s *Service) storeConsents(ctx context.Context, userID int64, consents *ConsentsInput, ip, ua string) {
+	if consents == nil {
+		return
+	}
+	consentTypes := []struct {
+		ctype   string
+		granted bool
+	}{
+		{"terms_of_service", consents.TermsOfService},
+		{"privacy_policy", consents.PrivacyPolicy},
+		{"data_processing", consents.DataProcessing},
+		{"marketing", consents.Marketing},
+	}
+	for _, c := range consentTypes {
+		_, err := s.db.ExecContext(ctx,
+			`INSERT INTO user_consents (user_id, consent_type, granted, granted_at, ip_address, user_agent)
+			 VALUES ($1, $2, $3, NOW(), $4::inet, $5)`,
+			userID, c.ctype, c.granted, ip, ua,
+		)
+		if err != nil {
+			s.log.Warnw("Failed to store consent", "user_id", userID, "type", c.ctype, "error", err)
+		}
+	}
 }
 
 // Login authenticates a user

@@ -159,12 +159,56 @@ func (s *Service) ConsumeMagicLink(ctx context.Context, token, ip, ua string) (*
 // createAccountFromMagicLink создаёт аккаунт по адресу и согласиям,
 // сохранённым при выдаче ссылки, и сразу выдаёт сессию.
 //
-// Заглушка: создание аккаунта — отдельная задача (4), ещё не сделанная.
-// Возвращает отказ на любой вызов. Наружу это не торчит: маршрут погашения
-// ещё не зарегистрирован (задача 6), а тесты этой задачи погашают только
-// ссылки с уже существующим user_id и сюда не заходят. Перенос заявки на
-// нового пользователя (leadToken) — дело обработчика, не этой функции: сервис
-// auth о заявках не знает.
+// Перенос заявки на нового пользователя (leadToken) — дело обработчика, не
+// этой функции: сервис auth о заявках не знает, а узкий интерфейс LeadClaimer
+// в handler.go существует ровно затем, чтобы auth и leads не зависели от
+// типов друг друга.
 func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient string, consents []byte, ip, ua string) (*LoginResult, error) {
-	return nil, fmt.Errorf("создание аккаунта по ссылке входа ещё не реализовано")
+	var parsed ConsentsInput
+	if len(consents) > 0 {
+		if err := json.Unmarshal(consents, &parsed); err != nil {
+			return nil, fmt.Errorf("decode stored consents: %w", err)
+		}
+	}
+
+	// Адрес подтверждён самим фактом перехода по ссылке, отправленной на
+	// него: письмо с кодом подтверждения, которое проходит обычная
+	// регистрация, здесь было бы просьбой доказать то, что человек только
+	// что доказал. Пароля у аккаунта нет — вход только по ссылке или,
+	// позже, через смену пароля из настроек.
+	var userID int64
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO users (email, password, name, role, email_verified, created_at, updated_at)
+		VALUES ($1, NULL, NULL, 'client', true, NOW(), NOW())
+		RETURNING id`, recipient).Scan(&userID)
+	if err != nil {
+		if isUniqueViolation(err) {
+			// Гонка: между выдачей ссылки и переходом по ней аккаунт на этот
+			// адрес завели другим путём — паролем, второй вкладкой, входом
+			// через провайдера. Ссылка уже погашена запросом в
+			// ConsumeMagicLink (consumed_at выставлен) и повторно не
+			// сработает, так что восстанавливать сессию прямо здесь означало
+			// бы разбирать вторую гонку — например, кому в итоге принадлежат
+			// согласия и заявка, которые эта функция ещё не записала. Проще
+			// и безопаснее отказать тем же кодом, что и обычная регистрация
+			// на занятый адрес: человек запросит ссылку снова и получит вход
+			// в уже существующий аккаунт через обычный путь ConsumeMagicLink
+			// (issueTokensForUser).
+			return nil, fmt.Errorf("адрес уже зарегистрирован: %w", apperrors.ErrConflict)
+		}
+		return nil, fmt.Errorf("create account from magic link: %w", err)
+	}
+
+	// Тот же вызов, что и в Register: без строки настроек первый же запрос
+	// профиля упадёт.
+	if _, err := s.db.ExecContext(ctx,
+		"INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", userID); err != nil {
+		return nil, fmt.Errorf("create user settings: %w", err)
+	}
+
+	// Тот же метод, что и у обычной регистрации: расхождение здесь означало
+	// бы пользователей без единой записи о согласии.
+	s.storeConsents(ctx, userID, &parsed, ip, ua)
+
+	return s.issueTokensForUser(ctx, userID, ip, ua)
 }

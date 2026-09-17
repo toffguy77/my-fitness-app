@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/modules/leads"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/testsupport"
@@ -264,4 +267,193 @@ func TestConsumeMagicLinkIsSingleUseUnderConcurrency(t *testing.T) {
 
 	assert.Equal(t, 1, ok, "ровно один переход обязан выдать сессию")
 	assert.Equal(t, 1, failed)
+}
+
+// seedMagicLinkWithConsents вставляет непогашенную ссылку на адрес без
+// аккаунта, с согласиями — как их записал бы RequestMagicLink. В отличие от
+// seedMagicLink, user_id здесь NULL: это ветка createAccountFromMagicLink,
+// а не issueTokensForUser.
+func seedMagicLinkWithConsents(t *testing.T, db *sql.DB, tokenGen *auth.TokenGenerator, recipientEmail, consentsJSON string) string {
+	t.Helper()
+	plainToken, hashedToken, err := tokenGen.GenerateToken()
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(context.Background(), `
+		INSERT INTO magic_links (token_hash, email, user_id, consents, expires_at)
+		VALUES ($1, $2, NULL, $3::jsonb, $4)`,
+		hashedToken, recipientEmail, consentsJSON, time.Now().Add(time.Minute))
+	require.NoError(t, err)
+
+	return plainToken
+}
+
+// Обычная регистрация пишет согласия в user_consents (service.go, storeConsents).
+// Путь по ссылке — в обход неё — дал бы пользователей без единой записи о
+// согласии; на sqlmock это было бы незаметно, потому что подмена не хранит
+// строк.
+func TestMagicLinkAccountRecordsConsents(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "magiclink_consents")
+	ctx := context.Background()
+	svc := auth.NewService(db.DB, &config.Config{}, logger.New())
+
+	token := seedMagicLinkWithConsents(t, db.DB, auth.NewTokenGenerator(), "fresh@example.test",
+		`{"terms_of_service":true,"privacy_policy":true,"data_processing":true,"marketing":false}`)
+
+	result, created, err := svc.ConsumeMagicLink(ctx, token, "127.0.0.1", "test")
+	require.NoError(t, err)
+	require.True(t, created)
+
+	rows, err := db.QueryContext(ctx,
+		`SELECT consent_type, granted FROM user_consents WHERE user_id = $1 ORDER BY consent_type`,
+		result.User.ID)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	granted := map[string]bool{}
+	for rows.Next() {
+		var ctype string
+		var ok bool
+		require.NoError(t, rows.Scan(&ctype, &ok))
+		granted[ctype] = ok
+	}
+	require.NoError(t, rows.Err())
+
+	assert.Len(t, granted, 4, "должны быть записаны все четыре согласия")
+	assert.True(t, granted["terms_of_service"])
+	assert.True(t, granted["privacy_policy"])
+	assert.True(t, granted["data_processing"])
+	assert.False(t, granted["marketing"])
+}
+
+// seedLead сохраняет заявку с ростом и весом через настоящий leads.Service —
+// не вставкой в таблицу leads напрямую, чтобы тест прошёл через тот же путь,
+// которым заявка попадает в базу в проде (включая запись её согласий).
+func seedLead(t *testing.T, leadsSvc *leads.Service, leadEmail string, heightCm, weightKg float64) string {
+	t.Helper()
+	_, token, err := leadsSvc.Create(context.Background(), leads.CreateInput{
+		Email: leadEmail,
+		Parameters: leads.Parameters{
+			HeightCm: &heightCm,
+			WeightKg: &weightKg,
+		},
+		Consents: leads.Consents{DataProcessing: true, Contact: true},
+	}, "127.0.0.1", "test")
+	require.NoError(t, err)
+	return token
+}
+
+// Адрес, на который пришла ссылка, подтверждён самим переходом по ней —
+// второе письмо с кодом не нужно. А рост и вес, которые человек ввёл в
+// заявке до регистрации, не должны спрашиваться второй раз: они обязаны
+// оказаться в user_settings и daily_metrics после переноса заявки.
+//
+// Перенос заявки — дело обработчика (h.claimLead в handler.go), не сервиса
+// auth: здесь он воспроизводится тем же вызовом, leads.Service.ClaimInto,
+// которым его делает ConsumeMagicLink-хендлер.
+func TestMagicLinkAccountIsVerifiedAndClaimsLead(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "magiclink_lead")
+	ctx := context.Background()
+	svc := auth.NewService(db.DB, &config.Config{}, logger.New())
+	leadsSvc := leads.NewService(db.DB, logger.New(), "test-secret")
+
+	leadToken := seedLead(t, leadsSvc, "fresh2@example.test", 178.0, 82.5)
+	token := seedMagicLinkWithConsents(t, db.DB, auth.NewTokenGenerator(), "fresh2@example.test",
+		`{"terms_of_service":true,"privacy_policy":true,"data_processing":true}`)
+
+	result, created, err := svc.ConsumeMagicLink(ctx, token, "127.0.0.1", "test")
+	require.NoError(t, err)
+	require.True(t, created)
+
+	require.NoError(t, leadsSvc.ClaimInto(ctx, leadToken, result.User.ID))
+
+	var verified bool
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT email_verified FROM users WHERE id = $1`, result.User.ID).Scan(&verified))
+	assert.True(t, verified, "адрес подтверждён самим переходом по ссылке")
+
+	// Рост и вес из заявки — в user_settings.height и daily_metrics.weight:
+	// таблицы user_profiles в схеме нет.
+	var height sql.NullFloat64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT height FROM user_settings WHERE user_id = $1`, result.User.ID).Scan(&height))
+	require.True(t, height.Valid)
+	assert.InDelta(t, 178.0, height.Float64, 0.01)
+
+	var weight sql.NullFloat64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT weight FROM daily_metrics WHERE user_id = $1 AND date = CURRENT_DATE`,
+		result.User.ID).Scan(&weight))
+	require.True(t, weight.Valid)
+	assert.InDelta(t, 82.5, weight.Float64, 0.01)
+}
+
+// leads.Claim переносит согласия заявки, меняя владельца строки
+// (UPDATE user_consents SET user_id = ..., lead_id = NULL WHERE lead_id = ...),
+// а не копируя их поверх новых. Ничто в этой задаче это не меняет — тест
+// охраняет свойство от будущей правки, которая заменит UPDATE на INSERT и
+// задвоит согласия каждому, кто регистрируется из заявки.
+func TestLeadClaimMovesConsentsWithoutDuplicating(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "magiclink_lead_consents")
+	ctx := context.Background()
+	svc := auth.NewService(db.DB, &config.Config{}, logger.New())
+	leadsSvc := leads.NewService(db.DB, logger.New(), "test-secret")
+
+	leadToken := seedLead(t, leadsSvc, "fresh3@example.test", 170.0, 60.0)
+
+	var leadRowsBefore int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM user_consents WHERE lead_id IS NOT NULL`).Scan(&leadRowsBefore))
+	require.Equal(t, 2, leadRowsBefore, "заявка должна записать оба своих согласия")
+
+	token := seedMagicLinkWithConsents(t, db.DB, auth.NewTokenGenerator(), "fresh3@example.test",
+		`{"terms_of_service":true,"privacy_policy":true,"data_processing":true}`)
+
+	result, created, err := svc.ConsumeMagicLink(ctx, token, "127.0.0.1", "test")
+	require.NoError(t, err)
+	require.True(t, created)
+
+	// До переноса: 4 согласия аккаунта (storeConsents всегда пишет все
+	// четыре типа, включая отказы) + 2 согласия заявки.
+	var totalBeforeClaim int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM user_consents WHERE user_id = $1 OR lead_id IS NOT NULL`,
+		result.User.ID).Scan(&totalBeforeClaim))
+	require.Equal(t, 6, totalBeforeClaim)
+
+	require.NoError(t, leadsSvc.ClaimInto(ctx, leadToken, result.User.ID))
+
+	var leadRowsAfter int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM user_consents WHERE lead_id IS NOT NULL`).Scan(&leadRowsAfter))
+	assert.Equal(t, 0, leadRowsAfter, "у перенесённой заявки не должно остаться строк с lead_id")
+
+	var totalAfterClaim int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM user_consents WHERE user_id = $1`, result.User.ID).Scan(&totalAfterClaim))
+	assert.Equal(t, 6, totalAfterClaim, "перенос меняет владельца строк, а не копирует их — то же количество, что и до переноса")
+}
+
+// createAccountFromMagicLink должна отличать гонку на уникальности адреса
+// (аккаунт завели другим путём между выдачей ссылки и переходом по ней) от
+// прочих отказов базы: обработчик ConsumeMagicLink разбирает ошибки через
+// errors.Is с apperrors и отправляет всё неизвестное в default — то есть в
+// 500 с логом, а не в понятный ответ.
+func TestMagicLinkAccountConflictWhenAddressTakenDuringRace(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "magiclink_conflict")
+	ctx := context.Background()
+	svc := auth.NewService(db.DB, &config.Config{}, logger.New())
+
+	token := seedMagicLinkWithConsents(t, db.DB, auth.NewTokenGenerator(), "raced@example.test",
+		`{"terms_of_service":true,"privacy_policy":true,"data_processing":true}`)
+
+	// Имитируем гонку: пока ссылка обрабатывалась, кто-то завёл аккаунт на
+	// этот же адрес другим путём (например, паролем).
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO users (email, password, name, role) VALUES ('raced@example.test', 'x', 'Кто-то', 'client')`)
+	require.NoError(t, err)
+
+	_, _, err = svc.ConsumeMagicLink(ctx, token, "127.0.0.1", "test")
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, apperrors.ErrConflict),
+		"отказ обязан быть распознаваемым сентинелом, а не голой ошибкой базы")
 }
