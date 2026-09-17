@@ -298,8 +298,8 @@ describe('AIPhotoTab', () => {
 
             await waitFor(() => {
                 expect(screen.getByText('Состав')).toBeInTheDocument();
-                expect(screen.getByText(/Гречка — 200 г/)).toBeInTheDocument();
-                expect(screen.getByText(/Курица — 150 г/)).toBeInTheDocument();
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+                expect(screen.getByText('Курица')).toBeInTheDocument();
             });
         });
 
@@ -346,11 +346,16 @@ describe('AIPhotoTab', () => {
                 expect(screen.getByText('Гречка с курицей')).toBeInTheDocument();
             });
 
+            // Weight is not filled in by the model's estimate — it must be typed.
+            await user.type(screen.getByLabelText(/Вес порции: Гречка/i), '200');
+            await user.type(screen.getByLabelText(/Вес порции: Курица/i), '150');
+
             const confirmButton = screen.getByRole('button', { name: /добавить/i });
+            expect(confirmButton).toBeEnabled();
             await user.click(confirmButton);
 
             expect(onSelectFoods).toHaveBeenCalledWith([
-                expect.objectContaining({ name: 'Гречка с курицей' }),
+                expect.objectContaining({ name: 'Гречка с курицей', servingSize: 350 }),
             ]);
         });
 
@@ -375,6 +380,139 @@ describe('AIPhotoTab', () => {
 
             const confirmButton = screen.getByRole('button', { name: /добавить/i });
             expect(confirmButton).toBeDisabled();
+        });
+    });
+
+    // Spec: "Вес порции подтверждает человек" (openspec/changes/enable-food-recognition/specs/food-recognition/spec.md)
+    describe('Portion Weight Confirmation', () => {
+        it('shows an empty weight input per position with the model estimate shown alongside as a hint', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            const buckwheatInput = screen.getByLabelText(/Вес порции: Гречка/i) as HTMLInputElement;
+            const chickenInput = screen.getByLabelText(/Вес порции: Курица/i) as HTMLInputElement;
+
+            // The field itself must not arrive pre-filled with the model's number —
+            // a filled field is one people leave untouched.
+            expect(buckwheatInput.value).toBe('');
+            expect(chickenInput.value).toBe('');
+
+            // But the model's estimate is still visible, as a hint next to the field.
+            expect(screen.getByText(/Оценка модели: 200 г/)).toBeInTheDocument();
+            expect(screen.getByText(/Оценка модели: 150 г/)).toBeInTheDocument();
+        });
+
+        it('lets a person accept the model estimate explicitly via a button, without it being the default', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            const buckwheatInput = screen.getByLabelText(/Вес порции: Гречка/i) as HTMLInputElement;
+            expect(buckwheatInput.value).toBe('');
+
+            const useEstimateButtons = screen.getAllByRole('button', { name: /подставить/i });
+            await user.click(useEstimateButtons[0]);
+
+            expect(buckwheatInput.value).toBe('200');
+        });
+
+        it('does not save the entry while at least one position has no weight entered', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+            const onSelectFoods = jest.fn();
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={onSelectFoods}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
+            expect(confirmButton).toBeDisabled();
+
+            // Filling only one of the two positions must still leave it disabled.
+            await user.type(screen.getByLabelText(/Вес порции: Гречка/i), '200');
+            expect(confirmButton).toBeDisabled();
+
+            await user.click(confirmButton);
+            expect(onSelectFoods).not.toHaveBeenCalled();
+        });
+
+        it('recalculates calories from the entered weights, not from the model estimate', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+            const onSelectFoods = jest.fn();
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={onSelectFoods}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            // Deliberately different from the model's 200g / 150g estimate.
+            await user.type(screen.getByLabelText(/Вес порции: Гречка/i), '100');
+            await user.type(screen.getByLabelText(/Вес порции: Курица/i), '50');
+
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
+            expect(confirmButton).toBeEnabled();
+            await user.click(confirmButton);
+
+            expect(onSelectFoods).toHaveBeenCalledTimes(1);
+            const [[savedFoods]] = onSelectFoods.mock.calls;
+            const saved = savedFoods[0];
+
+            // Weight entered by the human, not the model's combined 350g estimate.
+            expect(saved.servingSize).toBe(150);
+
+            // Buckwheat: 130 kcal/100g * 100g = 130; Chicken: 165 kcal/100g * 50g = 82.5
+            const totalCalories = (saved.nutritionPer100.calories * saved.servingSize) / 100;
+            expect(totalCalories).toBeCloseTo(212.5, 0);
+
+            // Had the model's own weights (200g / 150g) been used, the total would be
+            // 130*2 + 165*1.5 = 507.5 kcal — well outside the recalculated figure.
+            expect(totalCalories).not.toBeCloseTo(507.5, 0);
         });
     });
 
