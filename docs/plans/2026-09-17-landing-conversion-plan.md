@@ -865,6 +865,142 @@ Login читал пароль в string, поэтому NULL ронял Scan и 
 
 ---
 
+### Task 5а: Беспарольный пользователь может удалить свой аккаунт
+
+**Files:**
+- Modify: `apps/api/internal/modules/account/service.go` (`RequestDeletion`)
+- Modify: `apps/api/internal/modules/account/handler.go`
+- Modify: `apps/api/internal/modules/auth/handler.go` (отдать признак наличия пароля)
+- Modify: `apps/web/src/features/settings/components/SettingsPrivacy.tsx`
+- Test: `apps/api/internal/modules/account/deletion_passwordless_integration_test.go`, `apps/web/src/features/settings/components/__tests__/SettingsPrivacy.test.tsx`
+
+**Почему эта задача существует.** Задача 5 починила `RequestDeletion` так, что он больше не падает на беспарольном аккаунте. Но форма удаления держит кнопку заблокированной условием `!password` (`SettingsPrivacy.tsx:212`), а пароля у такого человека нет. То есть удаление данных для него по-прежнему недоступно — сломано не пятисоткой, а неактивной кнопкой.
+
+Владелец продукта выбрал: **необратимое действие подтверждается кодом с почты**, а не одной действующей сессией. Причина — асимметрия, которую нашло ревью: для аккаунта с паролем угнанной сессии мало, а для беспарольного её хватало бы.
+
+**Почему код, а не ссылка.** Человек стоит в настройках и уже ввёл подтверждающую фразу. Ссылка выкинула бы его на другую страницу и потеряла контекст; код оставляет на месте. Для входа решение обратное — там оставлена ссылка, потому что человек ещё никуда не пришёл.
+
+**Interfaces:**
+- Consumes: существующий `VerificationService` (`auth/verification_service.go`) — шестизначные коды, срок 10 минут, не более 5 попыток, коды хранятся хэшами, повторная отправка ограничена; таблица `email_verification_codes` (миграция 027). Подходит целиком: при удалении пользователь всегда есть, а `user_id` в таблице объявлен `NOT NULL`.
+- Produces: признак наличия пароля в ответе о текущем пользователе; подтверждение удаления кодом.
+
+- [ ] **Step 1: Написать падающий тест — форма не даёт удалиться без пароля**
+
+```tsx
+it('даёт удалиться аккаунту без пароля — подтверждением с почты', async () => {
+    renderPrivacy({ hasPassword: false })
+
+    await userEvent.type(screen.getByLabelText(/подтвержд/i), CONFIRM_PHRASE)
+
+    // Поля пароля быть не должно: его неоткуда взять.
+    expect(screen.queryByLabelText(/пароль/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /удалить/i })).toBeEnabled()
+})
+
+it('аккаунту с паролем по-прежнему нужен пароль', async () => {
+    renderPrivacy({ hasPassword: true })
+
+    await userEvent.type(screen.getByLabelText(/подтвержд/i), CONFIRM_PHRASE)
+
+    expect(screen.getByLabelText(/пароль/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /удалить/i })).toBeDisabled()
+})
+```
+
+- [ ] **Step 2: Написать падающий тест на подтверждение кодом**
+
+```go
+//go:build integration
+
+// Необратимое действие для беспарольного аккаунта подтверждается кодом с
+// почты, а не одной действующей сессией: для аккаунта с паролем угнанной
+// сессии мало, и беспарольный не должен защищаться слабее.
+func TestPasswordlessDeletionRequiresEmailedCode(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_code")
+	svc := newAccountServiceForTest(t, db)
+
+	userID := seedPasswordlessUser(t, db, "nopass@example.test")
+
+	// Без кода — отказ, и аккаунт не помечен к удалению.
+	err := svc.RequestDeletion(context.Background(), userID, "", "")
+	require.Error(t, err)
+	assertNotScheduledForDeletion(t, db, userID)
+
+	code := requestDeletionCode(t, svc, userID)
+
+	require.NoError(t, svc.RequestDeletion(context.Background(), userID, "", code))
+	assertScheduledForDeletion(t, db, userID)
+}
+
+// Перебор шести цифр закрывается счётчиком попыток, как у подтверждения почты.
+func TestPasswordlessDeletionCodeIsRateLimited(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_code_bruteforce")
+	svc := newAccountServiceForTest(t, db)
+
+	userID := seedPasswordlessUser(t, db, "brute@example.test")
+	requestDeletionCode(t, svc, userID)
+
+	var lastErr error
+	for i := 0; i < 6; i++ {
+		lastErr = svc.RequestDeletion(context.Background(), userID, "", "000000")
+	}
+
+	assert.True(t, errors.Is(lastErr, apperrors.ErrTooManyAttempts))
+	assertNotScheduledForDeletion(t, db, userID)
+}
+
+// Аккаунт с паролем не меняет поведения: код ему не нужен и не спрашивается.
+func TestDeletionWithPasswordIsUnchanged(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_with_password")
+	svc := newAccountServiceForTest(t, db)
+
+	userID := seedUserWithPassword(t, db, "haspass@example.test", "верный пароль")
+
+	require.NoError(t, svc.RequestDeletion(context.Background(), userID, "верный пароль", ""))
+	assertScheduledForDeletion(t, db, userID)
+}
+```
+
+- [ ] **Step 3: Запустить и убедиться, что падают**
+
+Run:
+```
+export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable'
+cd apps/api && go test -tags=integration ./internal/modules/account/ -run 'TestPasswordlessDeletion|TestDeletionWithPassword' -v
+```
+Expected: первые два FAIL, третий PASS — он охраняет неизменность пути с паролем.
+
+- [ ] **Step 4: Отдать признак наличия пароля клиенту**
+
+`GetCurrentUser` (`auth/handler.go:453`) сейчас отвечает из токена и в базу не ходит. Добавь `has_password` — это один запрос по первичному ключу. В комментарии объясни, почему эндпоинт перестал быть чисто токенным: форма удаления обязана знать, что спрашивать, а вывести это из токена нельзя — пароль могли завести уже после его выдачи.
+
+- [ ] **Step 5: Принимать код в `RequestDeletion`**
+
+Для аккаунта с паролем — прежняя проверка, без изменений. Для беспарольного — проверка кода через существующий `VerificationService`. Отсутствие и того и другого — отказ, а не пропуск.
+
+- [ ] **Step 6: Добавить отправку кода подтверждения удаления**
+
+Отдельная тема письма: человек должен видеть в заголовке, что подтверждает удаление, а не вход. Тема и шаблон регистрируются в `email/dictionary.go`, как все остальные.
+
+- [ ] **Step 7: Переделать форму**
+
+Аккаунту с паролем — как сейчас. Беспарольному — кнопка «Прислать код», поле для шести цифр, и кнопка удаления,活ная при заполненной фразе и введённом коде. Поля пароля у него нет вовсе.
+
+- [ ] **Step 8: Прогнать всё**
+
+Run: `cd apps/api && go test -tags=integration ./... && go test ./...`
+Run: `cd apps/web && npx jest src/features/settings/`
+Expected: зелено; тест неизменности пути с паролем проходит.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add apps/api/internal/modules/account/ apps/api/internal/modules/auth/ apps/api/internal/shared/email/ apps/web/src/features/settings/
+git commit -m "feat(account): беспарольный пользователь удаляет аккаунт по коду с почты"
+```
+
+---
+
 ### Task 6: Маршруты, ограничение частоты и письмо
 
 **Files:**
