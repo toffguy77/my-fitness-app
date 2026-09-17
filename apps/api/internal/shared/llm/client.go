@@ -142,9 +142,15 @@ const supportAnswerLimit = 1000
 //
 // Раньше предела не было вовсе, и его брал поставщик — у разных поставщиков он
 // разный и может быть очень большим. Запрос без потолка — это счёт без потолка.
-// Тысячи хватает на список блюд с граммовками и КБЖУ и заведомо мало на
-// размышление вслух.
-const recognitionAnswerLimit = 1000
+//
+// Значение выбрано по живой проверке, а не на глаз: на тысяче ответ про
+// снимок с десятком продуктов обрывался на полуслове и разваливал разбор
+// JSON. Каждое блюдо занимает около сотни токенов вместе с КБЖУ, так что
+// этого хватает на витрину еды, не то что на тарелку.
+const recognitionAnswerLimit = 3000
+
+// finishReasonLength — поставщик оборвал ответ по пределу длины.
+const finishReasonLength = "length"
 
 // ErrEmptyModelAnswer — модель ответила, но без содержания.
 //
@@ -153,6 +159,14 @@ const recognitionAnswerLimit = 1000
 // ведёт себя рассуждающая модель, у которой размышление съело весь бюджет:
 // content пуст, finish_reason — length, и виновата не фотография человека.
 var ErrEmptyModelAnswer = errors.New("model returned no content")
+
+// ErrAnswerTruncated — модель не уместила ответ в отведённый предел.
+//
+// Отдельно от разбора JSON намеренно: обрезанный ответ ломается именно там, но
+// сообщение про испорченный JSON уводит искать дефект в модели или в промпте,
+// тогда как чинится это пределом. Найдено живой проверкой — снимок с десятком
+// продуктов обрывался на середине поля.
+var ErrAnswerTruncated = errors.New("model answer hit the length limit")
 
 type chatMessage struct {
 	Role    string        `json:"role"`
@@ -178,13 +192,21 @@ type imageURL struct {
 }
 
 // chatResponse is the OpenRouter chat completion response.
+// chatChoice — один вариант ответа. Назван, а не оставлен анонимным: у
+// анонимной структуры каждое новое поле ломает всякий литерал в тестах, и
+// добавление finish_reason упёрлось ровно в это.
+type chatChoice struct {
+	Message struct {
+		Content string `json:"content"`
+	} `json:"message"`
+	// FinishReason отличает законченный ответ от обрезанного. Без него обрыв
+	// виден только как испорченный JSON.
+	FinishReason string `json:"finish_reason"`
+}
+
 type chatResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-	Error *struct {
+	Choices []chatChoice `json:"choices"`
+	Error   *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 	Usage *struct {
@@ -312,6 +334,9 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 	if strings.TrimSpace(content) == "" {
 		return nil, ErrEmptyModelAnswer
 	}
+	if chatResp.Choices[0].FinishReason == finishReasonLength {
+		return nil, ErrAnswerTruncated
+	}
 	jsonStr := stripMarkdownCodeFences(content)
 
 	var result RecognitionResponse
@@ -319,7 +344,23 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 		return nil, fmt.Errorf("failed to parse recognition result: %w (content: %s)", err, content)
 	}
 
-	c.log.Info("food recognition completed", "items_count", len(result.Items), "model", c.model)
+	// Модель иногда называет то, что едой не является, и сама ставит такому
+	// нулевой вес — на живой проверке это был чайный пакетик с пометкой
+	// «неингредиент». Ноль граммов не еда: в дневнике это строка, которая
+	// ничего не весит и ничего не добавляет, но требует от человека решения,
+	// что с ней делать. Выбрасываем здесь, а не в интерфейсе, чтобы решение
+	// было одно на всех потребителей.
+	kept := result.Items[:0]
+	for _, item := range result.Items {
+		if item.EstimatedWeight > 0 {
+			kept = append(kept, item)
+		}
+	}
+	dropped := len(result.Items) - len(kept)
+	result.Items = kept
+
+	c.log.Info("food recognition completed",
+		"items_count", len(result.Items), "dropped_weightless", dropped, "model", c.model)
 
 	return &result, nil
 }
