@@ -280,6 +280,11 @@ func (s *Service) storeConsents(ctx context.Context, userID int64, consents *Con
 	}
 }
 
+// dummyBcryptHash: хэш, с которым сравнивают, когда сравнивать не с чем: он
+// нужен только затем, чтобы отказ беспарольному аккаунту занимал столько же
+// времени, сколько неверный пароль.
+const dummyBcryptHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+
 // Login authenticates a user
 func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rememberMe bool) (*LoginResult, error) {
 	s.log.Infow("User login", "email", email)
@@ -292,11 +297,11 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 	`
 
 	var user User
-	var hashedPassword string
+	var storedPassword sql.NullString
 	var deletionRequestedAt sql.NullTime
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &deletionRequestedAt, &user.TokenVersion,
+		&user.ID, &user.Email, &user.Name, &storedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &deletionRequestedAt, &user.TokenVersion,
 	)
 	s.log.LogDatabaseQuery("Login.LookupUser", time.Since(startTime), err, map[string]any{"email": email})
 	if err != nil {
@@ -306,14 +311,27 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 		return nil, fmt.Errorf("ошибка при входе: %w", err)
 	}
 
+	// Пароля нет вовсе (аккаунт заведён внешним провайдером или ссылкой входа)
+	// либо сохранена пустая строка. И то и другое — не пароль, а его
+	// отсутствие, и отвечать на это надо тем же, чем на неверный пароль:
+	// разница в ответе сообщила бы, каким способом человек регистрировался.
+	//
+	// Сравнение с фиктивным хэшем — чтобы отказ стоил столько же времени,
+	// сколько неверный пароль; разница в скорости говорит то же самое, что
+	// разница в тексте.
+	if !storedPassword.Valid || storedPassword.String == "" {
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
+		return nil, fmt.Errorf("Login.NoPassword: %w", apperrors.ErrInvalidCredentials)
+	}
+
 	// Verify password
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(storedPassword.String), []byte(password)); err != nil {
 		// If stored password is not a bcrypt hash, try plaintext comparison
 		// and migrate to bcrypt on success
-		if strings.HasPrefix(hashedPassword, "$2") {
+		if strings.HasPrefix(storedPassword.String, "$2") {
 			return nil, fmt.Errorf("Login.VerifyPassword: %w", apperrors.ErrInvalidCredentials)
 		}
-		if hashedPassword != password {
+		if storedPassword.String != password {
 			return nil, fmt.Errorf("Login.VerifyPassword: %w", apperrors.ErrInvalidCredentials)
 		}
 		// Migrate plaintext password to bcrypt
