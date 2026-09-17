@@ -23,6 +23,11 @@
 - Порог покрытия: branches 79 %, functions 85 %, lines 87 %, statements 84 %.
 - Пороговые значения и формулировки согласий проверяет `consentWording.test.ts`: текст обязан называть параметры тела и упоминать сведения о здоровье, согласие на связь остаётся отдельным.
 - Подмены скрывают дефекты: там, где проверка касается того, что попало в базу, писать интеграционный тест на живой базе (`//go:build integration`, `internal/testsupport`), а не sqlmock.
+- **Интеграционный тест требует двух вещей сразу: тега и базы.** Без `-tags=integration` файл не попадает в сборку; без `TEST_DATABASE_URL` тест делает `t.Skip` (`internal/testsupport/schema.go:34`) — и `go test` в обоих случаях печатает `ok`. Пропущенный тест не является пройденным: отчёт обязан показывать строку `--- PASS: <имя теста>`, а не только `ok <пакет>`. Команда целиком:
+  ```
+  export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable'
+  cd apps/api && go test -tags=integration ./<пакет>/ -run <Тест> -v
+  ```
 
 ---
 
@@ -99,8 +104,8 @@ ALTER TABLE users ALTER COLUMN password_hash SET NOT NULL;
 
 - [ ] **Step 3: Прогнать миграции на чистой базе**
 
-Run: `cd apps/api && go test ./internal/shared/database/`
-Expected: PASS — миграция 073 применяется в общем прогоне.
+Run: `export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable' && cd apps/api && go test -tags=integration ./internal/shared/database/ -v`
+Expected: PASS с видимыми строками `--- PASS: TestMigrationsApplyToCleanDatabase` и `--- PASS: TestMigrationsRollBackInReverse` — они и прогоняют мигратор через файлы 073. Без тега эти тесты в сборку не попадают, и `go test` печатает `ok`, ничего не проверив.
 
 - [ ] **Step 4: Проверить откат вручную**
 
