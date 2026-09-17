@@ -99,3 +99,55 @@ func TestRelayHelpersCarryTheirSource(t *testing.T) {
 	require.NoError(t, service.RelayFromApp(context.Background(), 1, "Имя", "текст"))
 	require.NoError(t, service.RelayFromTelegram(context.Background(), 1, "Имя", "текст"))
 }
+
+// Без заданной группы состав не ведётся — и ни одна из веток не падает.
+//
+// Это не формальность: половина сред живёт без группы (на проде её не было
+// неделю), и любой из этих вызовов там происходит по-настоящему.
+func TestMembershipDisabledDoesNothing(t *testing.T) {
+	ctx := context.Background()
+	service := NewService(nil, &noSender{}, logger.New(), 0, "")
+
+	link, err := service.InviteFor(ctx, 1, "Имя")
+	require.NoError(t, err)
+	assert.Empty(t, link)
+
+	link, err = service.InviteLinkFor(ctx, 1)
+	require.NoError(t, err)
+	assert.Empty(t, link)
+
+	require.NoError(t, service.OnRoleGranted(ctx, 1, "Имя"))
+	require.NoError(t, service.OnRoleRevoked(ctx, 1))
+	require.NoError(t, service.OnJoinRequest(ctx, 1, "ник"))
+
+	removed, err := service.Reconcile(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, removed)
+}
+
+// Ведение состава требует и группы, и того, кто умеет её менять.
+func TestMembershipEnabledNeedsBoth(t *testing.T) {
+	assert.False(t, NewService(nil, nil, logger.New(), 0, "").membershipEnabled(),
+		"без группы состав считается управляемым")
+	assert.False(t, NewService(nil, nil, logger.New(), -100, "").membershipEnabled(),
+		"без клиента Telegram состав считается управляемым")
+
+	s := NewService(nil, nil, logger.New(), -100, "")
+	s.members = &noMembers{}
+	assert.True(t, s.membershipEnabled())
+
+	var absent *Service
+	assert.False(t, absent.membershipEnabled(), "нулевой мост должен молчать, а не падать")
+}
+
+type noMembers struct{}
+
+func (noMembers) CreateInviteLink(context.Context, int64, string) (telegram.InviteLink, error) {
+	return telegram.InviteLink{}, nil
+}
+func (noMembers) ApproveJoinRequest(context.Context, int64, int64) error { return nil }
+func (noMembers) DeclineJoinRequest(context.Context, int64, int64) error { return nil }
+func (noMembers) RemoveMember(context.Context, int64, int64) error       { return nil }
+func (noMembers) Administrators(context.Context, int64) ([]telegram.Member, error) {
+	return nil, nil
+}
