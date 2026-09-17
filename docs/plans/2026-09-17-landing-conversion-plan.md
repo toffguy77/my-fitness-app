@@ -1498,8 +1498,10 @@ git commit -m "feat(web): переписать посадочную страни
 - Modify: `apps/web/src/features/onboarding/api/guest.ts`
 - Modify: `apps/web/src/features/onboarding/components/__tests__/GuestOnboarding.test.tsx`
 - Modify: `apps/api/internal/modules/leads/service.go` (сохранение источника)
-- Create: `apps/api/migrations/074_leads_capture_source_up.sql`
-- Create: `apps/api/migrations/074_leads_capture_source_down.sql`
+- Create: `apps/api/migrations/<следующий свободный номер>_leads_capture_source_up.sql`
+- Create: `apps/api/migrations/<следующий свободный номер>_leads_capture_source_down.sql`
+
+**Номер бери фактический,** а не записанный здесь: пока план писался, 073 и 074 заняли ссылки входа и назначение кода подтверждения. Посмотри `ls apps/api/migrations/` и возьми следующий свободный.
 
 **Interfaces:**
 - Consumes: `guestApi.saveLead` и `rememberLeadToken` — существующие (`features/onboarding/api/guest.ts`); `leads.CreateInput` (`modules/leads/types.go`).
@@ -1509,7 +1511,7 @@ git commit -m "feat(web): переписать посадочную страни
 
 ```sql
 -- Migration: Lead capture source
--- Version: 074
+-- Version: <следующий свободный>
 --
 -- Контакт теперь берётся в трёх местах: шаг контакта в мастере, экран
 -- результата и разговор с ботом. Без отметки источника сравнить их между собой
