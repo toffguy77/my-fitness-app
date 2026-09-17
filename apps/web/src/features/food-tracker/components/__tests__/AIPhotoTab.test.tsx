@@ -560,6 +560,204 @@ describe('AIPhotoTab', () => {
         });
     });
 
+    // Round 2/5: an untyped digit (99999999) used to sail straight into the
+    // diary as a valid weight, and "0"/garbage looked identical to an
+    // untouched field. Neither is acceptable for a number a person is meant
+    // to answer for.
+    describe('Weight Input Validation', () => {
+        it('rejects a weight over the 5000g ceiling with a specific message, not the generic hint', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+            const onSelectFoods = jest.fn();
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={onSelectFoods}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            // A typo that added a digit — 50000 instead of, say, 200.
+            await user.type(screen.getByLabelText(/Вес порции: Гречка/i), '50000');
+            await user.type(screen.getByLabelText(/Вес порции: Курица/i), '150');
+
+            // The message names what's wrong (over the ceiling), not the
+            // generic "введите вес каждой позиции" hint.
+            expect(screen.getByText(/Больше 5000 г/)).toBeInTheDocument();
+
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
+            expect(confirmButton).toBeDisabled();
+
+            await user.click(confirmButton);
+            expect(onSelectFoods).not.toHaveBeenCalled();
+        });
+
+        it('accepts exactly 5000g but rejects one gram more', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            const buckwheatInput = screen.getByLabelText(/Вес порции: Гречка/i);
+            await user.type(buckwheatInput, '5000');
+            expect(screen.queryByText(/Больше 5000 г/)).not.toBeInTheDocument();
+
+            await user.clear(buckwheatInput);
+            await user.type(buckwheatInput, '5001');
+            expect(screen.getByText(/Больше 5000 г/)).toBeInTheDocument();
+        });
+
+        it('tells a person a zero weight is invalid, distinctly from an empty field', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(mockHighConfidenceResult);
+            const onSelectFoods = jest.fn();
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={onSelectFoods}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Гречка')).toBeInTheDocument();
+            });
+
+            // Before anything is typed, only the generic "not everything is
+            // filled in yet" hint is shown — no per-field complaint.
+            expect(screen.queryByText(/должен быть больше нуля/i)).not.toBeInTheDocument();
+
+            await user.type(screen.getByLabelText(/Вес порции: Гречка/i), '0');
+
+            // A typed "0" gets its own reason, different from the blank-field state.
+            expect(screen.getByText(/должен быть больше нуля/i)).toBeInTheDocument();
+
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
+            expect(confirmButton).toBeDisabled();
+            await user.click(confirmButton);
+            expect(onSelectFoods).not.toHaveBeenCalled();
+        });
+    });
+
+    // Round 2/5: this branch (the model returned no composition breakdown,
+    // so the whole dish is the single position) shares the same code as the
+    // composition branch, but had no dedicated test — a regression here
+    // would go unnoticed.
+    describe('No Composition Breakdown (single position)', () => {
+        const singlePositionResult: RecognitionResult[] = [
+            createMockRecognitionResult(
+                createMockFood({ id: 'single-1', name: 'Творог', nutritionPer100: { calories: 120, protein: 18, fat: 3, carbs: 3 } }),
+                0.91
+                // No composition — the whole dish is the only position.
+            ),
+        ];
+
+        it('shows one empty weight input for the whole dish, with the model estimate alongside as a hint', async () => {
+            const onRecognize = jest.fn().mockResolvedValue(singlePositionResult);
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Творог')).toBeInTheDocument();
+            });
+
+            const weightInput = screen.getByLabelText(/Вес порции: Творог/i) as HTMLInputElement;
+            expect(weightInput.value).toBe('');
+            expect(screen.getByText(/Оценка модели: 100 г/)).toBeInTheDocument();
+        });
+
+        it('does not save the entry without a weight when the model did not break the dish into a composition', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(singlePositionResult);
+            const onSelectFoods = jest.fn();
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={onSelectFoods}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Творог')).toBeInTheDocument();
+            });
+
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
+            expect(confirmButton).toBeDisabled();
+
+            await user.click(confirmButton);
+            expect(onSelectFoods).not.toHaveBeenCalled();
+        });
+
+        it('recalculates calories from the entered weight when the model did not break the dish into a composition', async () => {
+            const user = userEvent.setup();
+            const onRecognize = jest.fn().mockResolvedValue(singlePositionResult);
+            const onSelectFoods = jest.fn();
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={onSelectFoods}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText('Творог')).toBeInTheDocument();
+            });
+
+            // Deliberately different from the model's own 100g estimate.
+            await user.type(screen.getByLabelText(/Вес порции: Творог/i), '150');
+
+            const confirmButton = screen.getByRole('button', { name: /добавить/i });
+            expect(confirmButton).toBeEnabled();
+            await user.click(confirmButton);
+
+            expect(onSelectFoods).toHaveBeenCalledTimes(1);
+            const [[savedFoods]] = onSelectFoods.mock.calls;
+            const saved = savedFoods[0];
+
+            // 120 kcal/100g at 150g entered — the human's weight, not the model's 100g.
+            expect(saved.servingSize).toBe(150);
+            expect(saved.nutritionPer100).toEqual({ calories: 120, protein: 18, fat: 3, carbs: 3 });
+        });
+    });
+
     describe('Low Confidence Warning', () => {
         it('shows warning for low confidence results', async () => {
             const onRecognize = jest.fn().mockResolvedValue(mockLowConfidenceResult);
