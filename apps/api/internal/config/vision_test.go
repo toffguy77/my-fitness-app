@@ -91,3 +91,40 @@ func TestFoodRecognitionNeedsBothKeyAndModel(t *testing.T) {
 		})
 	}
 }
+
+// Установка на старых именах имела связный смысл: ключ OpenRouter и умолчания,
+// указывающие на OpenRouter. Отдав ей яндексовые умолчания, мы отправили бы её
+// ключ на чужой эндпоинт с чужой схемой — и она получила бы отказ, из которого
+// ничего не понять.
+func TestLegacyOpenRouterNamesKeepLegacyDefaults(t *testing.T) {
+	clearConfigEnv(t)
+	clearVisionEnv(t)
+	t.Setenv("JWT_SECRET", "test-secret-value-long-enough-to-pass")
+	t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
+	t.Setenv("OPENROUTER_API_KEY", "ключ от OpenRouter")
+	t.Setenv("OPENROUTER_MODEL", "openai/gpt-4o")
+
+	cfg, err := Load()
+	require.NoError(t, err)
+
+	assert.Contains(t, cfg.VisionBaseURL, "openrouter",
+		"ключ, выданный одним поставщиком, не должен уходить другому")
+	assert.Equal(t, "Bearer", cfg.VisionAuthScheme)
+	assert.True(t, cfg.Features.FoodRecognition)
+}
+
+// Явно заданный адрес сильнее любого умолчания, включая наследованное.
+func TestExplicitEndpointBeatsLegacyDefaults(t *testing.T) {
+	clearConfigEnv(t)
+	clearVisionEnv(t)
+	t.Setenv("JWT_SECRET", "test-secret-value-long-enough-to-pass")
+	t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
+	t.Setenv("OPENROUTER_API_KEY", "ключ")
+	t.Setenv("OPENROUTER_MODEL", "модель")
+	t.Setenv("VISION_BASE_URL", "https://example.test/v1/chat/completions")
+
+	cfg, err := Load()
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://example.test/v1/chat/completions", cfg.VisionBaseURL)
+}

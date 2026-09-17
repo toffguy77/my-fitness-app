@@ -653,3 +653,38 @@ func TestSearchFoodsHandler_ContextCanceled(t *testing.T) {
 	assert.Equal(t, 499, w.Code, "handler should return 499 for canceled requests, not 500")
 	mockSvc.AssertExpectations(t)
 }
+
+// Модель ответила, но сказать ей оказалось нечего, либо ответ не уместился в
+// отведённый предел. И то и другое — не вина фотографии, и человеку честнее
+// это сказать: иначе он будет переснимать тарелку, пока не сдастся. Раньше оба
+// случая выходили наружу пятисоткой «Не удалось распознать еду».
+func TestRecognizeFood_ModelSaidNothingUsable(t *testing.T) {
+	cases := map[string]error{
+		"модель ничего не вернула": llm.ErrEmptyModelAnswer,
+		"ответ оборван по пределу": llm.ErrAnswerTruncated,
+	}
+
+	for name, cause := range cases {
+		t.Run(name, func(t *testing.T) {
+			handler, mockService := setupTestHandlerWithMock()
+
+			mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
+				Return((*AIRecognitionResponse)(nil), fmt.Errorf("ошибка при распознавании еды: %w", cause))
+
+			req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", testPNG(t))
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Set("user_id", int64(1))
+			c.Request = req
+
+			handler.RecognizeFood(c)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, w.Code,
+				"это не внутренняя ошибка: сервер отработал, а разобрать нечего")
+			assert.Contains(t, w.Body.String(), "вручную",
+				"человеку нужен выход, а не констатация неудачи")
+			mockService.AssertExpectations(t)
+		})
+	}
+}

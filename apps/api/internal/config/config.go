@@ -378,8 +378,8 @@ func Load() (*Config, error) {
 		// поданный как результат, — хуже, чем честный отказ.
 		VisionAPIKey:     getEnvWithFallback("VISION_API_KEY", "OPENROUTER_API_KEY", ""),
 		VisionModel:      getEnvWithFallback("VISION_MODEL", "OPENROUTER_MODEL", ""),
-		VisionBaseURL:    getEnv("VISION_BASE_URL", llm.DefaultBaseURL),
-		VisionAuthScheme: getEnv("VISION_AUTH_SCHEME", llm.DefaultAuthScheme),
+		VisionBaseURL:    getEnv("VISION_BASE_URL", visionDefaultBaseURL()),
+		VisionAuthScheme: getEnv("VISION_AUTH_SCHEME", visionDefaultAuthScheme()),
 
 		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
@@ -405,6 +405,38 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// Умолчания поставщика зрения зависят от того, какими именами задан ключ.
+//
+// Установка, настроенная по старым именам OPENROUTER_*, имела связный смысл:
+// ключ OpenRouter и умолчания, указывающие на OpenRouter. Если теперь отдать
+// ей яндексовые умолчания, её ключ полетит на чужой эндпоинт с чужой схемой
+// авторизации, и она получит отказ, из которого ничего не понять. Поэтому
+// старое имя тянет за собой старые умолчания — а новое имя новые.
+//
+// Явно заданные VISION_BASE_URL и VISION_AUTH_SCHEME сильнее обоих.
+const (
+	openRouterBaseURL    = "https://openrouter.ai/api/v1/chat/completions"
+	openRouterAuthScheme = "Bearer"
+)
+
+func configuredByLegacyOpenRouterNames() bool {
+	return os.Getenv("VISION_API_KEY") == "" && os.Getenv("OPENROUTER_API_KEY") != ""
+}
+
+func visionDefaultBaseURL() string {
+	if configuredByLegacyOpenRouterNames() {
+		return openRouterBaseURL
+	}
+	return llm.DefaultBaseURL
+}
+
+func visionDefaultAuthScheme() string {
+	if configuredByLegacyOpenRouterNames() {
+		return openRouterAuthScheme
+	}
+	return llm.DefaultAuthScheme
 }
 
 // deriveFeatures turns the presence of credentials into capability flags.

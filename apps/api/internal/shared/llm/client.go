@@ -334,13 +334,17 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 	if strings.TrimSpace(content) == "" {
 		return nil, ErrEmptyModelAnswer
 	}
-	if chatResp.Choices[0].FinishReason == finishReasonLength {
-		return nil, ErrAnswerTruncated
-	}
 	jsonStr := stripMarkdownCodeFences(content)
 
 	var result RecognitionResponse
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		// Разбираем прежде, чем судить по finish_reason: ответ, оборванный по
+		// пределу, до валидного JSON не дотягивает почти никогда, но если
+		// модель успела закрыть структуру последним разрешённым токеном,
+		// выбрасывать годный результат не за что.
+		if chatResp.Choices[0].FinishReason == finishReasonLength {
+			return nil, ErrAnswerTruncated
+		}
 		return nil, fmt.Errorf("failed to parse recognition result: %w (content: %s)", err, content)
 	}
 
