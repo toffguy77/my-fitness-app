@@ -211,3 +211,57 @@ func TestRequestMagicLink_AmbiguousCaseAnswersLikeSuccess(t *testing.T) {
 	require.Len(t, sender.calls, 1)
 	assert.Equal(t, "nobody-else@example.test", sender.calls[0].UserEmail)
 }
+
+// seedMagicLink вставляет строку magic_links напрямую, минуя RequestMagicLink:
+// этому тесту нужна ссылка на уже существующего пользователя с известным
+// открытым токеном, а не письмо.
+func seedMagicLink(t *testing.T, db *sql.DB, tokenGen *auth.TokenGenerator, userID int64, expiresAt time.Time) string {
+	t.Helper()
+	plainToken, hashedToken, err := tokenGen.GenerateToken()
+	require.NoError(t, err)
+
+	_, err = db.ExecContext(context.Background(), `
+		INSERT INTO magic_links (token_hash, email, user_id, expires_at)
+		VALUES ($1, 'concurrent@example.test', $2, $3)`,
+		hashedToken, userID, expiresAt)
+	require.NoError(t, err)
+
+	return plainToken
+}
+
+// Одноразовость проверяется на настоящей базе намеренно. На sqlmock «второй
+// переход не выдаёт сессию» проходит и тогда, когда погашение написано как
+// чтение с последующей записью без условия: подмена не спотыкается на гонке,
+// а именно она здесь и опасна — две вкладки, открытые из одного письма.
+func TestConsumeMagicLinkIsSingleUseUnderConcurrency(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "magiclink_race")
+	ctx := context.Background()
+	svc := auth.NewService(db.DB, &config.Config{}, logger.New())
+
+	var userID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password, name, role) VALUES ('concurrent@example.test', 'x', 'Кто-то', 'client') RETURNING id`).
+		Scan(&userID))
+
+	token := seedMagicLink(t, db.DB, auth.NewTokenGenerator(), userID, time.Now().Add(time.Minute))
+
+	results := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			_, _, err := svc.ConsumeMagicLink(context.Background(), token, "127.0.0.1", "test")
+			results <- err
+		}()
+	}
+
+	var ok, failed int
+	for i := 0; i < 2; i++ {
+		if err := <-results; err == nil {
+			ok++
+		} else {
+			failed++
+		}
+	}
+
+	assert.Equal(t, 1, ok, "ровно один переход обязан выдать сессию")
+	assert.Equal(t, 1, failed)
+}

@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
@@ -111,4 +113,58 @@ func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consen
 		ExpiresAt:    expiresAt,
 		SupportEmail: "support@burcev.team",
 	})
+}
+
+// ConsumeMagicLink обменивает ссылку на сессию.
+//
+// Погашение — один запрос с условием, а не чтение с последующей записью:
+// UPDATE ... WHERE consumed_at IS NULL AND expires_at > NOW() RETURNING ...
+// сам решает, кто выигрывает гонку. Две вкладки, открытые из одного письма,
+// обязаны разойтись на уровне базы — проверка перед записью для этого не
+// годится ни в каком виде, читающие соединения её не видят друг у друга.
+//
+// Второе значение — true, если аккаунт был создан этим вызовом.
+func (s *Service) ConsumeMagicLink(ctx context.Context, token, ip, ua string) (*LoginResult, bool, error) {
+	hash := s.tokens.HashToken(token)
+
+	var recipient string
+	var userID *int64
+	var consents []byte
+	err := s.db.QueryRowContext(ctx, `
+		UPDATE magic_links
+		   SET consumed_at = NOW()
+		 WHERE token_hash = $1
+		   AND consumed_at IS NULL
+		   AND expires_at > NOW()
+		RETURNING email, user_id, consents`, hash).
+		Scan(&recipient, &userID, &consents)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Истёкшая, уже погашенная и поддельная ссылка отвечают одинаково:
+		// разница сказала бы, что такой токен когда-то существовал.
+		return nil, false, fmt.Errorf("magic link not redeemable: %w", apperrors.ErrTokenInvalid)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("consume magic link: %w", err)
+	}
+
+	if userID != nil {
+		result, err := s.issueTokensForUser(ctx, *userID, ip, ua)
+		return result, false, err
+	}
+
+	result, err := s.createAccountFromMagicLink(ctx, recipient, consents, ip, ua)
+	return result, true, err
+}
+
+// createAccountFromMagicLink создаёт аккаунт по адресу и согласиям,
+// сохранённым при выдаче ссылки, и сразу выдаёт сессию.
+//
+// Заглушка: создание аккаунта — отдельная задача (4), ещё не сделанная.
+// Возвращает отказ на любой вызов. Наружу это не торчит: маршрут погашения
+// ещё не зарегистрирован (задача 6), а тесты этой задачи погашают только
+// ссылки с уже существующим user_id и сюда не заходят. Перенос заявки на
+// нового пользователя (leadToken) — дело обработчика, не этой функции: сервис
+// auth о заявках не знает.
+func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient string, consents []byte, ip, ua string) (*LoginResult, error) {
+	return nil, fmt.Errorf("создание аккаунта по ссылке входа ещё не реализовано")
 }

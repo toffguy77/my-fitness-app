@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
@@ -270,6 +271,57 @@ func (h *Handler) RequestMagicLink(c *gin.Context) {
 
 	response.SuccessWithMessage(c, http.StatusOK,
 		"Если такой адрес существует, мы отправили на него ссылку для входа", nil)
+}
+
+// ConsumeMagicLink handles POST /api/v1/auth/magic-link/consume.
+//
+// Истёкшая, уже погашенная и поддельная ссылка обязаны отвечать одинаково —
+// тем же кодом и тем же телом, — иначе разница сказала бы, что такой токен
+// когда-то существовал. См. Service.ConsumeMagicLink для того, как это
+// устроено на уровне запроса к базе.
+func (h *Handler) ConsumeMagicLink(c *gin.Context) {
+	var req struct {
+		Token     string `json:"token" binding:"required"`
+		LeadToken string `json:"lead_token"`
+		VisitorID string `json:"visitor_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Ссылка не подходит — запросите новую")
+		return
+	}
+
+	result, created, err := h.service.ConsumeMagicLink(c.Request.Context(), req.Token,
+		c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrTokenInvalid):
+		response.Error(c, http.StatusBadRequest, "Ссылка не подходит — запросите новую")
+		return
+	default:
+		h.log.Errorw("Failed to consume magic link", "error", err)
+		response.InternalError(c, "Не удалось войти")
+		return
+	}
+
+	// Перенос заявки живёт здесь, а не в сервисе: узкий интерфейс LeadClaimer
+	// существует ровно затем, чтобы auth и leads не зависели от типов друг
+	// друга. Токен заявки мог приехать cookie: путь через внешнего провайдера
+	// уже так делает (см. leadCookie в oauth_handler.go) — переход по ссылке
+	// из письма тот же случай, когда наш JavaScript до перехода не доживает.
+	if created {
+		leadToken := req.LeadToken
+		if leadToken == "" {
+			if fromCookie, err := c.Cookie(leads.LeadCookieName); err == nil {
+				leadToken = fromCookie
+			}
+		}
+		if leadToken != "" {
+			h.claimLead(c, leadToken, result.User.ID)
+		}
+	}
+
+	h.setRefreshCookie(c, result.RefreshToken, false)
+	response.Success(c, http.StatusOK, gin.H{"user": result.User, "created": created})
 }
 
 // WSTicket handles POST /api/v1/auth/ws-ticket.

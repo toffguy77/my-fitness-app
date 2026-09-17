@@ -40,6 +40,7 @@ func setupMagicLinkRouter(t *testing.T, sender MagicLinkSender) (*gin.Engine, sq
 
 	r := gin.New()
 	r.POST("/auth/magic-link/request", handler.RequestMagicLink)
+	r.POST("/auth/magic-link/consume", handler.ConsumeMagicLink)
 
 	return r, mock, cleanup
 }
@@ -130,5 +131,79 @@ func TestRequestMagicLinkWhenEmailDisabled(t *testing.T) {
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 	assert.Contains(t, w.Body.String(), "войдите по паролю")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// expectNoRedeemableLink делает так, что погашающий запрос находит нулевую
+// строку — ровно то, что происходит для истёкшей, уже использованной и
+// поддельной ссылки: WHERE token_hash = $1 AND consumed_at IS NULL AND
+// expires_at > NOW() отбраковывает все три одним и тем же способом, и
+// подмена не может (и не должна) отличить их друг от друга.
+func expectNoRedeemableLink(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(`UPDATE magic_links`).
+		WillReturnRows(sqlmock.NewRows([]string{"email", "user_id", "consents"}))
+}
+
+func TestConsumeMagicLinkRejectsExpired(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+	expectNoRedeemableLink(mock)
+
+	w := post(r, "/auth/magic-link/consume", `{"token":"stale"}`)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "запросите новую")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestConsumeMagicLinkRejectsAlreadyUsed(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+	expectNoRedeemableLink(mock)
+
+	w := post(r, "/auth/magic-link/consume", `{"token":"already-used"}`)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "запросите новую")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Подделанный токен обязан отвечать ровно тем же, чем истёкший: иначе разница
+// говорит, что такой токен когда-то выдавался.
+func TestConsumeMagicLinkForgedLooksLikeExpired(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+	expectNoRedeemableLink(mock)
+	forged := post(r, "/auth/magic-link/consume", `{"token":"forged"}`)
+
+	r2, mock2, cleanup2 := setupMagicLinkRouter(t, nil)
+	defer cleanup2()
+	expectNoRedeemableLink(mock2)
+	expired := post(r2, "/auth/magic-link/consume", `{"token":"stale"}`)
+
+	assert.Equal(t, expired.Code, forged.Code)
+	assert.Equal(t, expired.Body.String(), forged.Body.String())
+}
+
+// Погашение существующей ссылки на существующего пользователя выдаёт сессию
+// тем же способом, что вход через внешнего провайдера (issueTokensForUser).
+func TestConsumeMagicLinkIssuesSessionForExistingUser(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+
+	mock.ExpectQuery(`UPDATE magic_links`).
+		WillReturnRows(sqlmock.NewRows([]string{"email", "user_id", "consents"}).
+			AddRow("known@example.com", int64(7), nil))
+	mock.ExpectQuery("SELECT id, email").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version",
+		}).AddRow(int64(7), "known@example.com", "Кто-то", "client", true, true, nowUTC(), 0))
+	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	w := post(r, "/auth/magic-link/consume", `{"token":"good-token"}`)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"known@example.com"`)
+	assert.Contains(t, w.Body.String(), `"created":false`)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
