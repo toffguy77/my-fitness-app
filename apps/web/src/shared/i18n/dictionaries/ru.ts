@@ -134,6 +134,8 @@ export const ru = {
             modelEstimate: 'Оценка модели: {weight} г',
             useModelEstimate: 'Подставить',
             weightRequiredHint: 'Введите вес каждой позиции, чтобы сохранить запись',
+            liveTotalCalories: 'Итого: {calories} ккал',
+            liveTotalPartial: 'Промежуточный итог — не все веса введены',
             lowConfidence: 'Низкая уверенность в распознавании. Проверьте результат или найдите вручную.',
             searchManually: 'Найти вручную',
             tryAgain: 'Попробовать снова',

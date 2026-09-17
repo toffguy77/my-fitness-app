@@ -265,6 +265,26 @@ export function AIPhotoTab({
     const allWeightsEntered = positions.length > 0
         && positions.every((_, idx) => parseEnteredWeight(enteredWeights[idx]) !== null);
 
+    // Running total from whatever has been typed so far. Shown even before
+    // every position is filled — a blank total looks broken; a partial one,
+    // clearly marked as partial, lets a person see the number move as they
+    // type and catch an implausible figure (85 g vs 250 g of popcorn) before
+    // saving, not just guess at grams in isolation.
+    const liveTotals = positions.reduce(
+        (acc, position, idx) => {
+            const weight = parseEnteredWeight(enteredWeights[idx]);
+            if (weight === null) return acc;
+            const scaled = calculateKBZHU(position.nutritionPer100, weight);
+            return {
+                calories: acc.calories + scaled.calories,
+                protein: acc.protein + scaled.protein,
+                fat: acc.fat + scaled.fat,
+                carbs: acc.carbs + scaled.carbs,
+            };
+        },
+        { calories: 0, protein: 0, fat: 0, carbs: 0 }
+    );
+
     // Get confidence label
     const getConfidenceLabel = (confidence: number): string => {
         if (confidence >= 0.9) return t('foodTracker.photo.confidenceHigh');
@@ -475,6 +495,25 @@ export function AIPhotoTab({
 
                     {/* Action button */}
                     <div className="p-4 border-t border-gray-200">
+                        {positions.length > 0 && (
+                            <div className="mb-3 p-3 bg-gray-50 rounded-xl" aria-live="polite">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {t('foodTracker.photo.liveTotalCalories', { calories: Math.round(liveTotals.calories) })}
+                                    </span>
+                                    <div className="flex gap-2 text-xs text-gray-500">
+                                        <span>{t('macros.proteinShort')}: {Math.round(liveTotals.protein)}{t('units.gram')}</span>
+                                        <span>{t('macros.fatShort')}: {Math.round(liveTotals.fat)}{t('units.gram')}</span>
+                                        <span>{t('macros.carbsShort')}: {Math.round(liveTotals.carbs)}{t('units.gram')}</span>
+                                    </div>
+                                </div>
+                                {!allWeightsEntered && (
+                                    <p className="text-xs text-yellow-600 mt-1">
+                                        {t('foodTracker.photo.liveTotalPartial')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                         {results.length > 0 && !allWeightsEntered && (
                             <p className="text-xs text-gray-500 mb-2 text-center">
                                 {t('foodTracker.photo.weightRequiredHint')}
