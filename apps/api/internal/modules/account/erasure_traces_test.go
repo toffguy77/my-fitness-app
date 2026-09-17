@@ -54,6 +54,12 @@ func TestErasureLeavesNoTraceInTheTablesAddedLast(t *testing.T) {
 		      SELECT id, $1, 'email' FROM notifications WHERE user_id = $1 LIMIT 1`, id)
 		seed(`INSERT INTO ws_tickets (token_hash, user_id, expires_at)
 		      VALUES ('хеш-' || $1::bigint, $1::bigint, NOW() + INTERVAL '1 minute')`, id)
+		// Ссылка входа впускает внутрь так же, как сессия, а удаление аккаунта
+		// здесь — обезличивание на месте: внешний ключ с CASCADE не сработает
+		// никогда, и без явного удаления ссылка открывала бы сессию в
+		// обезличенную оболочку.
+		seed(`INSERT INTO magic_links (token_hash, email, user_id, expires_at)
+		      VALUES ('ссылка-' || $1::bigint, 'адрес@example.test', $1::bigint, NOW() + INTERVAL '15 minutes')`, id)
 		seed(`INSERT INTO analytics_identities (visitor_id, user_id)
 		      VALUES (gen_random_uuid(), $1)`, id)
 		seed(`INSERT INTO analytics_events (name, visitor_id, user_id, platform, properties)
