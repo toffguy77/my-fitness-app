@@ -33,9 +33,8 @@ CREATE TABLE IF NOT EXISTS magic_links (
 CREATE INDEX IF NOT EXISTS idx_magic_links_expires ON magic_links(expires_at);
 CREATE INDEX IF NOT EXISTS idx_magic_links_email ON magic_links(email);
 
--- Аккаунт, созданный по ссылке, живёт без пароля. Существующие аккаунты
--- не затрагиваются: у них хэш есть.
-ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+-- Столбец users.password уже допускает NULL ради аккаунтов через внешнего
+-- провайдера (см. oauth_service.go), отдельного разрешения не требуется.
 
 COMMENT ON TABLE magic_links IS 'Одноразовые ссылки входа, живут 15 минут';
 COMMENT ON COLUMN magic_links.consents IS 'Согласия, данные при запросе; применяются при создании аккаунта';
