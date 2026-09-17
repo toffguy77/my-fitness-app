@@ -457,3 +457,45 @@ func TestMagicLinkAccountConflictWhenAddressTakenDuringRace(t *testing.T) {
 	assert.True(t, errors.Is(err, apperrors.ErrConflict),
 		"отказ обязан быть распознаваемым сентинелом, а не голой ошибкой базы")
 }
+
+// Вставка пользователя и вставка user_settings — одна транзакция: если
+// вторая ломается, первая обязана откатиться. Это не самопроверяющееся на
+// подмене свойство — sqlmock не умеет ответить, что осталось в базе после
+// отката, поэтому здесь настоящий Postgres и настоящая поломка второй
+// вставки (переименование таблицы user_settings делает её INSERT
+// невозможным детерминированно, без гонок с таймингом).
+//
+// Важность: без атомарности несостоявшийся аккаунт не самоисправляется —
+// следующий переход по новой ссылке для того же адреса нашёл бы userID и
+// ушёл прямо в issueTokensForUser, минуя createAccountFromMagicLink и его
+// вставку user_settings и согласий, целиком.
+func TestMagicLinkAccountFailurePartwayLeavesNoUser(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "magiclink_partial")
+	ctx := context.Background()
+	svc := auth.NewService(db.DB, &config.Config{}, logger.New())
+
+	token := seedMagicLinkWithConsents(t, db.DB, auth.NewTokenGenerator(), "partial@example.test",
+		`{"terms_of_service":true,"privacy_policy":true,"data_processing":true}`)
+
+	// Ломаем вторую вставку CHECK-ограничением на локальной таблице этой
+	// тестовой схемы, а не переименованием/удалением таблицы: search_path
+	// здесь — "схема_теста,public", и у "public" в этой базе есть собственная
+	// полноценная копия схемы (используется E2E-сидом). Переименование или
+	// снос user_settings в тестовой схеме заставило бы INSERT найти
+	// "user_settings" через public — то есть записать строку в общую,
+	// используемую вне тестов таблицу. CHECK(false) не убирает таблицу из
+	// схемы, поэтому такого провала через public не происходит: INSERT
+	// находит ровно ту же локальную таблицу и просто ломается на ограничении.
+	_, err := db.ExecContext(ctx,
+		`ALTER TABLE user_settings ADD CONSTRAINT force_test_failure CHECK (false)`)
+	require.NoError(t, err)
+
+	_, _, err = svc.ConsumeMagicLink(ctx, token, "127.0.0.1", "test")
+	require.Error(t, err, "без user_settings вставка обязана провалиться, а не тихо пройти")
+
+	var count int
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM users WHERE email = $1`, "partial@example.test").Scan(&count))
+	assert.Equal(t, 0, count,
+		"падение внутри транзакции не должно оставлять пользователя без строки настроек")
+}

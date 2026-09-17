@@ -176,12 +176,27 @@ func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient stri
 	// регистрация, здесь было бы просьбой доказать то, что человек только
 	// что доказал. Пароля у аккаунта нет — вход только по ссылке или,
 	// позже, через смену пароля из настроек.
+	//
+	// Вставка пользователя и вставка user_settings — одна транзакция, а не
+	// два независимых запроса, как для согласий ниже. Разница не случайна:
+	// без строки user_settings следующий переход по новой ссылке для того же
+	// адреса найдёт userID и пойдёт прямо в issueTokensForUser, минуя эту
+	// функцию целиком — то есть у несостоявшегося аккаунта не будет второй
+	// попытки создаться правильно. Согласия такого свойства не имеют: их
+	// отсутствие не блокирует повторную попытку и не отличается от того, как
+	// Register уже относится к своей записи согласий — best effort, отдельно
+	// от вставки пользователя.
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin account creation: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
 	var userID int64
-	err := s.db.QueryRowContext(ctx, `
+	if err := tx.QueryRowContext(ctx, `
 		INSERT INTO users (email, password, name, role, email_verified, created_at, updated_at)
 		VALUES ($1, NULL, NULL, 'client', true, NOW(), NOW())
-		RETURNING id`, recipient).Scan(&userID)
-	if err != nil {
+		RETURNING id`, recipient).Scan(&userID); err != nil {
 		if isUniqueViolation(err) {
 			// Гонка: между выдачей ссылки и переходом по ней аккаунт на этот
 			// адрес завели другим путём — паролем, второй вкладкой, входом
@@ -201,13 +216,19 @@ func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient stri
 
 	// Тот же вызов, что и в Register: без строки настроек первый же запрос
 	// профиля упадёт.
-	if _, err := s.db.ExecContext(ctx,
+	if _, err := tx.ExecContext(ctx,
 		"INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", userID); err != nil {
 		return nil, fmt.Errorf("create user settings: %w", err)
 	}
 
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit account creation: %w", err)
+	}
+
 	// Тот же метод, что и у обычной регистрации: расхождение здесь означало
-	// бы пользователей без единой записи о согласии.
+	// бы пользователей без единой записи о согласии. Отдельно от транзакции
+	// выше — так же, как Register пишет свои согласия отдельно от вставки
+	// пользователя: отказ здесь не должен стирать уже созданный аккаунт.
 	s.storeConsents(ctx, userID, &parsed, ip, ua)
 
 	return s.issueTokensForUser(ctx, userID, ip, ua)
