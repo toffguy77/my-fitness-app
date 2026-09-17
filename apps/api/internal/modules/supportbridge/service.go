@@ -46,6 +46,9 @@ type Service struct {
 	store      FileStore
 	downloader Downloader
 	platform   PlatformAttacher
+	// members и messenger могут быть nil: без них состав не ведётся.
+	members   Membership
+	messenger Messenger
 }
 
 func NewService(db *sql.DB, sender Sender, log *logger.Logger, groupID int64, appURL string) *Service {

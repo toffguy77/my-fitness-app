@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/burcev/api/internal/config"
-	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
@@ -37,11 +36,17 @@ func (h *Handler) WithAnalytics(recorder EventRecorder) *Handler {
 }
 
 // NewHandler creates a new admin handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB) *Handler {
+// NewHandler принимает службу, а не собирает свою.
+//
+// Собранная здесь была бы другим объектом: ведение состава рабочей группы,
+// подключённое к службе при старте, до этих endpoint'ов не дошло бы — смена
+// роли через панель не звала бы никого в группу и не убирала оттуда. На это
+// есть охранник в scripts/check-codebase-integrity.mjs.
+func NewHandler(cfg *config.Config, log *logger.Logger, service *Service) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(db, log),
+		service: service,
 	}
 }
 

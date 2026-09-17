@@ -72,6 +72,17 @@ type Update struct {
 		} `json:"document"`
 		Caption string `json:"caption"`
 	} `json:"message"`
+	// ChatJoinRequest приходит, когда кто-то просится в группу по ссылке с
+	// заявкой. Это единственная точка, где бот решает, впускать ли.
+	ChatJoinRequest *struct {
+		Chat struct {
+			ID int64 `json:"id"`
+		} `json:"chat"`
+		From struct {
+			ID       int64  `json:"id"`
+			Username string `json:"username"`
+		} `json:"from"`
+	} `json:"chat_join_request"`
 }
 
 // SendMessage delivers a reply to a chat.

@@ -116,3 +116,35 @@ func (s *Service) answerClientInTelegram(ctx context.Context, clientID, curatorI
 	}
 	return s.AnswerAsOperator(ctx, conversationID, curatorID, text)
 }
+
+// GroupMembership — то, что поддержке нужно от состава группы.
+type GroupMembership interface {
+	OnJoinRequest(ctx context.Context, telegramUserID int64, username string) error
+}
+
+// WithMembership подключает решение по заявкам на вступление.
+func (s *Service) WithMembership(members GroupMembership) *Service {
+	s.membership = members
+	return s
+}
+
+// HandleJoinRequest решает судьбу заявки в группу кураторов.
+//
+// Чужая группа игнорируется: бот может состоять в нескольких, и решать за них
+// он не вправе.
+func (s *Service) HandleJoinRequest(ctx context.Context, chatID, telegramUserID int64, username string) error {
+	if s.membership == nil {
+		return nil
+	}
+	if s.groupID != 0 && chatID != s.groupID {
+		s.log.Info("Заявка в постороннюю группу оставлена без решения", "chat_id", chatID)
+		return nil
+	}
+	return s.membership.OnJoinRequest(ctx, telegramUserID, username)
+}
+
+// WithGroup задаёт группу кураторов, заявки которой нас касаются.
+func (s *Service) WithGroup(groupID int64) *Service {
+	s.groupID = groupID
+	return s
+}

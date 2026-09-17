@@ -111,3 +111,41 @@ func TestCuratorAttachmentIsStored(t *testing.T) {
 	assert.Equal(t, 1, media.saved)
 	assert.Equal(t, 1, media.platform, "вложение куратора не попало в переписку платформы")
 }
+
+// Заявка в постороннюю группу не решается.
+//
+// Бот может состоять в нескольких группах, и решать за чужие он не вправе: там
+// свои правила, и наша роль куратора к ним отношения не имеет.
+func TestJoinRequestToAnotherGroupIsIgnored(t *testing.T) {
+	members := &stubMembership{}
+	service := NewService(nil, logger.New(), nil, nil, nil, 0).
+		WithMembership(members).WithGroup(-100390)
+
+	require.NoError(t, service.HandleJoinRequest(context.Background(), -100999, 42, "ник"))
+
+	assert.Zero(t, members.calls, "решили судьбу заявки в чужую группу")
+}
+
+// Заявка в нашу группу передаётся на решение.
+func TestJoinRequestToOurGroupIsDecided(t *testing.T) {
+	members := &stubMembership{}
+	service := NewService(nil, logger.New(), nil, nil, nil, 0).
+		WithMembership(members).WithGroup(-100390)
+
+	require.NoError(t, service.HandleJoinRequest(context.Background(), -100390, 42, "ник"))
+
+	assert.Equal(t, 1, members.calls)
+}
+
+// Без подключённого состава заявки никуда не идут — и это не ошибка.
+func TestJoinRequestWithoutMembershipIsSilent(t *testing.T) {
+	service := NewService(nil, logger.New(), nil, nil, nil, 0)
+	assert.NoError(t, service.HandleJoinRequest(context.Background(), -1, 42, "ник"))
+}
+
+type stubMembership struct{ calls int }
+
+func (s *stubMembership) OnJoinRequest(context.Context, int64, string) error {
+	s.calls++
+	return nil
+}

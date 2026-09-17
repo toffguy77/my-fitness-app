@@ -50,6 +50,19 @@ func (h *Handler) Webhook(c *gin.Context) {
 		return
 	}
 
+	// Заявка на вступление в группу кураторов. Разводится до сообщений: это не
+	// вопрос к поддержке, обращения из него быть не должно.
+	if update.ChatJoinRequest != nil {
+		if err := h.service.HandleJoinRequest(c.Request.Context(),
+			update.ChatJoinRequest.Chat.ID,
+			update.ChatJoinRequest.From.ID,
+			update.ChatJoinRequest.From.Username); err != nil {
+			h.log.Error("Failed to decide a join request", "error", err)
+		}
+		response.Success(c, http.StatusOK, gin.H{"ok": true})
+		return
+	}
+
 	if update.Message == nil {
 		// Присоединения, выходы, служебные обновления: отвечать нечему.
 		response.Success(c, http.StatusOK, gin.H{"ok": true})

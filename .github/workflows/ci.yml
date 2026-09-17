@@ -122,7 +122,10 @@ jobs:
       # -race is mandatory: the WebSocket hub is shared between goroutines and
       # curator analytics fan out through errgroup. Those races appear under
       # production load and not on a laptop.
-      - name: Tests with race detector and coverage gate
+      # Порог покрытия здесь больше не проверяется — он переехал в
+      # «Integration Tests», где прогон видит и тесты против живой базы. Здесь
+      # остаётся быстрая обратная связь: сборка, гонки, падения.
+      - name: Tests with race detector
         working-directory: apps/api
         run: make test-coverage-ci
 
@@ -194,7 +197,13 @@ jobs:
         # No -run filter: the previous "-run Integration" matched no test name
         # and the job passed without executing anything — the same class of
         # empty check this pipeline exists to remove.
-        run: go test -race -tags=integration ./... -count=1 -v
+        #
+        # Порог покрытия держится здесь, а не в «Backend Tests». Этот прогон
+        # гоняет и обычные тесты, и те, что ходят в живую базу, — то есть видит
+        # всё. Прогон без тега видел на четыре пункта меньше, и порог требовал
+        # добирать число обычными тестами там, где код намеренно проверяется
+        # против настоящей схемы, а не против подмен.
+        run: make test-integration-ci
 
   build-images:
     name: Build Images

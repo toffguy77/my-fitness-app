@@ -73,6 +73,9 @@ type Service struct {
 	media MediaBridge
 	// links может быть nil: без привязки /start работает как раньше.
 	links LinkRedeemer
+	// membership и groupID: решение по заявкам в группу кураторов.
+	membership GroupMembership
+	groupID    int64
 
 	// dailyLimit caps model calls across every chat: a public entrance in
 	// front of a paid model needs a ceiling that one abusive chat cannot lift.

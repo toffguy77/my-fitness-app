@@ -69,6 +69,7 @@ GET /api/v1/public/content
 GET /api/v1/public/content/:id
 GET /api/v1/public/leads/resume
 GET /api/v1/public/leads/unsubscribe
+GET /api/v1/users/me/curator-group
 GET /api/v1/users/me/deletion
 GET /api/v1/users/me/export
 GET /api/v1/users/me/export/:id

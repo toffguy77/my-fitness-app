@@ -93,6 +93,7 @@ var strategies = []TableStrategy{
 	// намеренно не удаляется — это решение записано в проектировании.
 	{Table: "support_topics", Column: "client_id", Strategy: StrategyDelete, Reason: "our pointer to the forum topic; the topic itself is closed, not erased"},
 	{Table: "support_relays", Column: "client_id", Strategy: StrategyDelete, Reason: "what we mirrored into the topic and from which channel"},
+	{Table: "curator_group_invites", Column: "user_id", Strategy: StrategyDelete, Reason: "a standing way into the curators group"},
 
 	// Part of a curator's working record.
 	{Table: "messages", Column: "sender_id", Strategy: StrategyAnonymize, Reason: "the curator's conversation must stay readable; the text loses its author"},

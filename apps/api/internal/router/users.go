@@ -36,6 +36,8 @@ func registerUserRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/me/telegram", d.TelegramLink.Status)
 	g.POST("/me/telegram", d.TelegramLink.Connect)
 	g.DELETE("/me/telegram", d.TelegramLink.Disconnect)
+	// Ссылка в рабочую группу — для куратора, не привязавшего Telegram.
+	g.GET("/me/curator-group", d.TelegramLink.GroupInvite)
 }
 
 func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
