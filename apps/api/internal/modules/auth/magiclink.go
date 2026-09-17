@@ -20,9 +20,10 @@ const MagicLinkTTL = 15 * time.Minute
 // RequestMagicLink выдаёт одноразовую ссылку входа на адрес.
 //
 // Ответ не зависит от того, есть ли аккаунт: различие превратило бы эндпоинт в
-// проверялку наличия аккаунта. Различается только текст письма — и пока не
-// различается даже он: один вариант письма для входа и для регистрации, до
-// отдельной задачи, которая напишет два варианта и тест на них.
+// проверялку наличия аккаунта. Различается только текст письма — оно одно
+// из двух: для входа, если адрес уже принадлежит аккаунту, и для создания
+// аккаунта, если нет. Эндпоинту это различие не видно; видит его только тот,
+// у кого есть доступ к самому ящику.
 func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consents *ConsentsInput, ip, ua string) error {
 	if consents == nil || !consents.TermsOfService || !consents.PrivacyPolicy || !consents.DataProcessing {
 		return apperrors.ErrValidation
@@ -108,10 +109,11 @@ func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consen
 	}
 
 	return s.emailService.SendMagicLink(ctx, email.MagicLinkEmailData{
-		UserEmail:    recipient,
-		MagicLinkURL: origin + "/auth/link/consume?token=" + url.QueryEscape(plainToken),
-		ExpiresAt:    expiresAt,
-		SupportEmail: "support@burcev.team",
+		UserEmail:       recipient,
+		MagicLinkURL:    origin + "/auth/link/consume?token=" + url.QueryEscape(plainToken),
+		ExpiresAt:       expiresAt,
+		SupportEmail:    "support@burcev.team",
+		ExistingAccount: userID != nil,
 	})
 }
 

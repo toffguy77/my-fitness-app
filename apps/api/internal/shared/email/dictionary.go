@@ -24,7 +24,11 @@ var subjects = map[string]map[string]string{
 		"onboarding_reminder": "Ваш расчёт КБЖУ сохранён — BURCEV",
 		"email_verification":  "Код подтверждения — BURCEV",
 		"notification_digest": "%s в BURCEV",
-		"magic_link":          "Ссылка для входа - BURCEV",
+		// Two names, not one template with a branch inside: the subject
+		// line is picked by template name, and the two outcomes need
+		// different subjects.
+		"magic_link_signin": "Вход в BURCEV",
+		"magic_link_signup": "Ваш аккаунт в BURCEV",
 	},
 	"en": {},
 }
@@ -38,7 +42,8 @@ var bodies = map[string]map[string]string{
 		"email_verification":  emailVerificationTemplate,
 		"onboarding_reminder": onboardingReminderTemplate,
 		"notification_digest": notificationDigestTemplate,
-		"magic_link":          magicLinkTemplate,
+		"magic_link_signin":   magicLinkSignInTemplate,
+		"magic_link_signup":   magicLinkSignUpTemplate,
 	},
 	"en": {},
 }

@@ -90,10 +90,14 @@ func TestRequestMagicLinkResponseDoesNotRevealAccount(t *testing.T) {
 	assert.Equal(t, known.Code, unknown.Code)
 	assert.Equal(t, known.Body.String(), unknown.Body.String())
 
-	// Письмо при этом уходит на оба адреса — по одному вызову на каждый.
+	// Письмо при этом уходит на оба адреса — по одному вызову на каждый. Само
+	// различие живёт только в письме (ExistingAccount выбирает вариант
+	// текста), а не в ответе, который выше проверен побайтово одинаковым.
 	require.Len(t, sender.calls, 2)
 	assert.Equal(t, "known@example.com", sender.calls[0].UserEmail)
+	assert.True(t, sender.calls[0].ExistingAccount)
 	assert.Equal(t, "stranger@example.com", sender.calls[1].UserEmail)
+	assert.False(t, sender.calls[1].ExistingAccount)
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

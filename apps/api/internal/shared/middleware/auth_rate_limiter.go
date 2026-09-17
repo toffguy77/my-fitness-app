@@ -56,6 +56,12 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// Public endpoint that accepts batches of client errors. A page throwing in
 	// a render loop must not be able to flood our own log pipeline.
 	"client-logs": {maxRequests: 60, window: time.Minute},
+	// Sends an email to an address the caller only claims to own, same abuse
+	// shape as resend-verification: mailer-as-a-service and an unbounded
+	// magic_links table if left open.
+	"magic-link-request": {maxRequests: 5, window: 15 * time.Minute},
+	// Guesses a token, like the other credential-exchange endpoints above.
+	"magic-link-consume": {maxRequests: 10, window: 15 * time.Minute},
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.
