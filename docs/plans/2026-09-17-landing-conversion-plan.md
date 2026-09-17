@@ -1605,7 +1605,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/api/migrations/074_leads_capture_source_up.sql apps/api/migrations/074_leads_capture_source_down.sql apps/api/internal/modules/leads/ apps/web/src/features/onboarding/
+git add apps/api/migrations/ apps/api/internal/modules/leads/ apps/web/src/features/onboarding/
 git commit -m "feat(leads): захват контакта на экране результата расчёта"
 ```
 
