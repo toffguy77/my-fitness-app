@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,9 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type noteLogger struct{ errors int }
+// noteLogger считает записи об ошибках.
+//
+// Счётчик атомарный: пишет его горутина наблюдения, читает тест, и без этого
+// детектор гонок прав — он это и поймал.
+type noteLogger struct{ errors atomic.Int64 }
 
-func (n *noteLogger) Error(string, ...any) { n.errors++ }
+func (n *noteLogger) Error(string, ...any) { n.errors.Add(1) }
 
 // Первое измерение делается сразу, а не через интервал.
 //
@@ -34,7 +39,7 @@ func TestWatchMeasuresImmediately(t *testing.T) {
 		close(done)
 	}()
 
-	require.Eventually(t, func() bool { return log.errors > 0 }, 3*time.Second, 20*time.Millisecond,
+	require.Eventually(t, func() bool { return log.errors.Load() > 0 }, 3*time.Second, 20*time.Millisecond,
 		"за три секунды не было ни одного измерения — значит ждали тикер")
 
 	cancel()
