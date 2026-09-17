@@ -372,9 +372,9 @@ func TestGetCurrentUser(t *testing.T) {
 	// The real middleware sets user_id from JWT claims as int64 — the
 	// handler now asserts that type to call HasPassword, so the test context
 	// must match production rather than a placeholder string.
-	mock.ExpectQuery("SELECT password IS NOT NULL FROM users").
+	mock.ExpectQuery("SELECT password FROM users").
 		WithArgs(int64(123)).
-		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(true))
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow("$2a$10$somehash"))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -410,9 +410,9 @@ func TestGetCurrentUser_ReportsNoPassword(t *testing.T) {
 	handler, mock, cleanup := setupTestHandler(t)
 	defer cleanup()
 
-	mock.ExpectQuery("SELECT password IS NOT NULL FROM users").
+	mock.ExpectQuery("SELECT password FROM users").
 		WithArgs(int64(456)).
-		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(false))
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(nil))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

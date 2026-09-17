@@ -185,6 +185,24 @@ func TestConfirmLinkWithPassword_RefusesAnAccountWithoutAPassword(t *testing.T) 
 	assert.ErrorIs(t, err, apperrors.ErrConflict)
 }
 
+// Before PasswordIsSet, this checked only hash.Valid: an empty string scans
+// as Valid, so this branch used to fall through to bcrypt.CompareHashAndPassword
+// against "" — an error, but the wrong one (ErrInvalidCredentials, "wrong
+// password", instead of ErrConflict, "no password to check"). Same bug shape
+// as HasPassword and RequestDeletion once disagreeing on this exact value.
+func TestConfirmLinkWithPassword_EmptyStoredPasswordIsNotAPassword(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows("user@example.com"))
+	mock.ExpectQuery("SELECT id, password FROM users WHERE email").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), ""))
+
+	_, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "anything", "ip", "ua")
+
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+}
+
 // An attempt nobody came back to finish within the window cannot be resumed by
 // whoever uses the machine next.
 func TestConfirmLinkWithPassword_RefusesAnExpiredAttempt(t *testing.T) {

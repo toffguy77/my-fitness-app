@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
@@ -137,7 +138,7 @@ func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPass
 		return nil, fmt.Errorf("load user: %w", err)
 	}
 
-	if storedHash.Valid && storedHash.String != "" {
+	if auth.PasswordIsSet(storedHash) {
 		if bcrypt.CompareHashAndPassword([]byte(storedHash.String), []byte(currentPassword)) != nil {
 			return nil, fmt.Errorf("password mismatch: %w", apperrors.ErrInvalidCredentials)
 		}
@@ -215,7 +216,7 @@ func (s *Service) RequestDeletionCode(ctx context.Context, userID int64, ip, ua 
 		return fmt.Errorf("load user: %w", err)
 	}
 
-	if storedHash.Valid && storedHash.String != "" {
+	if auth.PasswordIsSet(storedHash) {
 		return fmt.Errorf("account has a password: %w", apperrors.ErrConflict)
 	}
 
