@@ -455,11 +455,27 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 	email, _ := c.Get("user_email")
 	role, _ := c.Get("user_role")
 
+	// has_password is the one field this endpoint cannot answer from the
+	// token alone, which is why it now makes a query instead of staying a
+	// pure token read. Whether a password exists can change after the token
+	// was issued — an account created through a provider or a magic link can
+	// set one later — and the account-deletion form has to know which proof
+	// of identity to ask for, a password or a mailed code, before it draws a
+	// single field. HasPassword is the same lookup the linked-providers
+	// screen already uses for the equivalent question there.
+	hasPassword, err := h.service.HasPassword(c.Request.Context(), userID.(int64))
+	if err != nil {
+		h.log.Errorw("Failed to check password presence", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось получить данные пользователя")
+		return
+	}
+
 	response.Success(c, http.StatusOK, gin.H{
 		"user": gin.H{
-			"id":    userID,
-			"email": email,
-			"role":  role,
+			"id":           userID,
+			"email":        email,
+			"role":         role,
+			"has_password": hasPassword,
 		},
 	})
 }

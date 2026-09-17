@@ -317,7 +317,11 @@ func main() {
 		"chat":           chatS3,
 		"food-photos":    foodPhotosS3,
 		"exports":        dataExportsS3,
-	}).WithNotifier(notificationsSvc)
+	}).WithNotifier(notificationsSvc).
+		// A passwordless account confirms its own deletion with a code
+		// mailed through the same mechanism email verification already
+		// uses — see account.DeletionCodeService for why one is required.
+		WithCodeVerifier(verificationService)
 
 	analyticsService := analytics.NewService(db.DB, log)
 

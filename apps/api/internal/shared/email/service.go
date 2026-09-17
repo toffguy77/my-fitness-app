@@ -108,6 +108,12 @@ type VerificationEmailData struct {
 	UserEmail string
 	Code      string
 	ExpiresAt time.Time
+	// SupportEmail is where a reader who did not request this code should
+	// write. Only account_deletion_code's template uses it — the plain
+	// verification letter has nothing irreversible to warn about — but it
+	// lives here rather than on a second struct, since both letters carry the
+	// same code and expiry.
+	SupportEmail string
 	// Language the recipient reads. Empty means Russian, which is what every
 	// letter was before there was anywhere else to look.
 	Language string
@@ -333,6 +339,59 @@ func (s *Service) SendVerificationEmail(ctx context.Context, data VerificationEm
 
 		lastErr = err
 		s.log.WithError(err).Warn("Failed to send verification email",
+			"email", data.UserEmail,
+			"attempt", attempt,
+			"max_retries", maxRetries,
+		)
+
+		if attempt < maxRetries {
+			backoff := time.Duration(attempt) * time.Second
+			time.Sleep(backoff)
+		}
+	}
+
+	// Считаем отказ: снаружи он почти не виден — ответ намеренно одинаков
+	// независимо от исхода, чтобы по нему нельзя было перебирать адреса.
+	telemetry.Record(telemetry.EventEmailFailed)
+
+	return fmt.Errorf("failed to send email after %d attempts: %w", maxRetries, lastErr)
+}
+
+// SendAccountDeletionCode sends the code that confirms an irreversible
+// account deletion for an account with no password to check instead.
+//
+// Same shape as SendVerificationEmail — same retry, same data — because the
+// mechanism (a 6-digit code, hashed, rate-limited) is identical; only the
+// subject and body must say "удаление", not "вход", so the inbox does not
+// read like a sign-in code that happens to also delete the account.
+func (s *Service) SendAccountDeletionCode(ctx context.Context, data VerificationEmailData) error {
+	if data.SupportEmail == "" {
+		data.SupportEmail = s.fromAddress
+	}
+
+	subject := subjectFor(data.Language, "account_deletion_code")
+
+	body, err := s.renderTemplateIn(data.Language, "account_deletion_code", data)
+	if err != nil {
+		s.log.WithError(err).Error("Failed to render account deletion code email template")
+		return fmt.Errorf("failed to render template: %w", err)
+	}
+
+	maxRetries := 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := s.sendEmail(ctx, data.UserEmail, subject, body)
+		if err == nil {
+			s.log.Info("Account deletion code email sent successfully",
+				"email", data.UserEmail,
+				"attempt", attempt,
+			)
+			return nil
+		}
+
+		lastErr = err
+		s.log.WithError(err).Warn("Failed to send account deletion code email",
 			"email", data.UserEmail,
 			"attempt", attempt,
 			"max_retries", maxRetries,
@@ -578,6 +637,11 @@ func parseTemplates() (*template.Template, error) {
 		return nil, err
 	}
 
+	_, err = tmpl.New("account_deletion_code").Parse(accountDeletionCodeTemplate)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = tmpl.New("notification_digest").Parse(notificationDigestTemplate)
 	if err != nil {
 		return nil, err
@@ -702,6 +766,46 @@ const emailVerificationTemplate = `
 
         <p style="color: #666; font-size: 14px;">
             Если вы не запрашивали этот код, проигнорируйте это письмо.
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">
+            Это автоматическое сообщение от BURCEV. Пожалуйста, не отвечайте на это письмо.
+        </p>
+    </div>
+</body>
+</html>
+`
+
+// accountDeletionCodeTemplate warns explicitly, unlike emailVerificationTemplate:
+// this code deletes the account, so a reader who did not request it must be
+// told to act, not just to "ignore this email".
+const accountDeletionCodeTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подтверждение удаления аккаунта</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+        <h2 style="color: #dc3545; margin-top: 0;">Подтверждение удаления аккаунта</h2>
+
+        <p>Здравствуйте,</p>
+
+        <p>Кто-то запросил удаление вашего аккаунта BURCEV. Чтобы подтвердить, введите этот код:</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2c3e50; background-color: #e9ecef; padding: 15px 30px; border-radius: 8px; display: inline-block;">{{.Code}}</span>
+        </div>
+
+        <p>Код действителен в течение 10 минут. Удаление можно будет отменить в течение 30 дней после подтверждения.</p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+        <p style="color: #dc3545; font-size: 14px;">
+            <strong>Это были не вы?</strong><br>
+            Если вы не запрашивали удаление, никуда этот код не вводите и свяжитесь с нами по адресу {{.SupportEmail}} — возможно, кто-то ещё имеет доступ к вашей почте.
         </p>
 
         <p style="color: #999; font-size: 12px; margin-top: 30px;">

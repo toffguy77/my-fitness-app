@@ -366,15 +366,22 @@ func TestChangePasswordHandler_Unauthenticated(t *testing.T) {
 }
 
 func TestGetCurrentUser(t *testing.T) {
-	handler, _, cleanup := setupTestHandler(t)
+	handler, mock, cleanup := setupTestHandler(t)
 	defer cleanup()
+
+	// The real middleware sets user_id from JWT claims as int64 — the
+	// handler now asserts that type to call HasPassword, so the test context
+	// must match production rather than a placeholder string.
+	mock.ExpectQuery("SELECT password IS NOT NULL FROM users").
+		WithArgs(int64(123)).
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(true))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/auth/me", nil)
 
 	// Set user context (simulating middleware)
-	c.Set("user_id", "user-123")
+	c.Set("user_id", int64(123))
 	c.Set("user_email", "test@example.com")
 	c.Set("user_role", "client")
 
@@ -389,9 +396,40 @@ func TestGetCurrentUser(t *testing.T) {
 	assert.Equal(t, "success", response["status"])
 	data := response["data"].(map[string]interface{})
 	user := data["user"].(map[string]interface{})
-	assert.Equal(t, "user-123", user["id"])
+	assert.Equal(t, float64(123), user["id"])
 	assert.Equal(t, "test@example.com", user["email"])
 	assert.Equal(t, "client", user["role"])
+	assert.Equal(t, true, user["has_password"])
+}
+
+// A passwordless account — signed up through a provider or a magic link —
+// must see that reflected here: the deletion form decides what to ask for
+// from this field, and defaulting it to true would ask everyone for a
+// password that some of them never had.
+func TestGetCurrentUser_ReportsNoPassword(t *testing.T) {
+	handler, mock, cleanup := setupTestHandler(t)
+	defer cleanup()
+
+	mock.ExpectQuery("SELECT password IS NOT NULL FROM users").
+		WithArgs(int64(456)).
+		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(false))
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	c.Set("user_id", int64(456))
+	c.Set("user_email", "passwordless@example.test")
+	c.Set("user_role", "client")
+
+	handler.GetCurrentUser(c)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+	data := response["data"].(map[string]interface{})
+	user := data["user"].(map[string]interface{})
+	assert.Equal(t, false, user["has_password"])
 }
 
 // A session started at an external provider arrives with its refresh token in

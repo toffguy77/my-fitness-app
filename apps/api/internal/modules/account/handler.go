@@ -37,8 +37,13 @@ func (h *Handler) userID(c *gin.Context) (int64, bool) {
 	return id, true
 }
 
+// CurrentPassword and Code are both optional at the binding level: a
+// password account sends the former, a passwordless account the latter, and
+// which is which is decided in the service, not here. Sending neither is
+// still a refusal — see the check right after binding.
 type deletionRequest struct {
-	CurrentPassword string `json:"current_password" binding:"required"`
+	CurrentPassword string `json:"current_password"`
+	Code            string `json:"code"`
 }
 
 // RequestDeletion handles POST /api/v1/users/me/deletion.
@@ -50,15 +55,35 @@ func (h *Handler) RequestDeletion(c *gin.Context) {
 
 	var req deletionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Требуется текущий пароль")
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+	if req.CurrentPassword == "" && req.Code == "" {
+		response.Error(c, http.StatusBadRequest, "Требуется текущий пароль или код подтверждения с почты")
 		return
 	}
 
-	status, err := h.service.RequestDeletion(c.Request.Context(), userID, req.CurrentPassword)
+	status, err := h.service.RequestDeletion(c.Request.Context(), userID, req.CurrentPassword, req.Code)
 	switch {
 	case err == nil:
+	case errors.Is(err, apperrors.ErrTooManyAttempts):
+		// too_many_attempts, not rate_limited: the answer is "ask for a new
+		// code", not "wait and retry this one" — same distinction VerifyEmail
+		// draws for the same sentinel.
+		response.ErrorCode(c, http.StatusTooManyRequests,
+			apperrors.CodeTooManyAttempts, "Слишком много попыток. Запросите новый код.", nil)
+		return
+	case errors.Is(err, apperrors.ErrCodeExpired):
+		response.Error(c, http.StatusBadRequest, "Код истёк. Запросите новый.")
+		return
+	case errors.Is(err, apperrors.ErrValidation):
+		response.Error(c, http.StatusBadRequest, "Нужен код подтверждения с почты")
+		return
+	case errors.Is(err, apperrors.ErrEmailUnavailable):
+		response.FeatureUnavailable(c, "Отправка писем сейчас недоступна")
+		return
 	case errors.Is(err, apperrors.ErrInvalidCredentials):
-		response.Unauthorized(c, "Неверный пароль")
+		response.Unauthorized(c, "Неверный пароль или код подтверждения")
 		return
 	case errors.Is(err, apperrors.ErrConflict):
 		response.Error(c, http.StatusConflict, "Удаление аккаунта уже запрошено")
@@ -73,6 +98,39 @@ func (h *Handler) RequestDeletion(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusAccepted, status)
+}
+
+// RequestDeletionCode handles POST /api/v1/users/me/deletion/code: sends the
+// code a passwordless account confirms its own deletion with.
+func (h *Handler) RequestDeletionCode(c *gin.Context) {
+	userID, ok := h.userID(c)
+	if !ok {
+		return
+	}
+
+	err := h.service.RequestDeletionCode(c.Request.Context(), userID, c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrConflict):
+		response.Error(c, http.StatusConflict, "У этого аккаунта есть пароль: код подтверждения не нужен")
+		return
+	case errors.Is(err, apperrors.ErrTooManyAttempts):
+		response.ErrorCode(c, http.StatusTooManyRequests,
+			apperrors.CodeTooManyAttempts, "Слишком много запросов. Попробуйте позже.", nil)
+		return
+	case errors.Is(err, apperrors.ErrEmailUnavailable):
+		response.FeatureUnavailable(c, "Отправка писем сейчас недоступна")
+		return
+	case errors.Is(err, apperrors.ErrNotFound):
+		response.NotFound(c, "Пользователь не найден")
+		return
+	default:
+		h.log.Error("Failed to send account deletion code", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось отправить код")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"sent": true})
 }
 
 // CancelDeletion handles DELETE /api/v1/users/me/deletion.

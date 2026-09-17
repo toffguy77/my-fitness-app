@@ -138,6 +138,7 @@ POST /api/v1/public/nutrition/calculate
 POST /api/v1/public/support/telegram
 POST /api/v1/users/avatar
 POST /api/v1/users/me/deletion
+POST /api/v1/users/me/deletion/code
 POST /api/v1/users/me/export
 POST /api/v1/users/me/telegram
 PUT /api/v1/content/articles/:id
