@@ -206,11 +206,10 @@ func (h *Handler) Register(c *gin.Context) {
 		switch {
 		case errors.As(err, &policy):
 			response.ErrorCode(c, http.StatusUnprocessableEntity,
-				policy.ForPerson(), apperrors.CodePasswordPolicy, nil)
+				apperrors.CodePasswordPolicy, policy.ForPerson(), nil)
 		case errors.Is(err, apperrors.ErrConflict):
-			response.ErrorCode(c, http.StatusConflict,
-				"Этот адрес уже зарегистрирован. Попробуйте войти или восстановить пароль.",
-				apperrors.CodeConflict, nil)
+			response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+				"Этот адрес уже зарегистрирован. Попробуйте войти или восстановить пароль.", nil)
 		default:
 			h.log.Errorw("Registration failed", "error", err, "email", req.Email)
 			response.Error(c, http.StatusBadRequest, "Не удалось зарегистрировать. Попробуйте позже.")
