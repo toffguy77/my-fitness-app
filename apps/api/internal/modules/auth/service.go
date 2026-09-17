@@ -65,7 +65,7 @@ type Service struct {
 	// today). Optional: when the email capability is off, this is nil, and
 	// that is the normal state in an environment with no SMTP credentials —
 	// not an error.
-	emailService *email.Service
+	emailService MagicLinkSender
 }
 
 // SessionCache is the narrow part of middleware.TokenVersions this service
@@ -86,12 +86,20 @@ func (s *Service) WithSessionCache(cache SessionCache) *Service {
 	return s
 }
 
+// MagicLinkSender is the narrow part of email.Service this service needs,
+// declared here so the auth module does not depend on the whole email
+// package — its SMTP configuration and its five other letters — for the one
+// method a magic link needs to send. *email.Service satisfies it on its own.
+type MagicLinkSender interface {
+	SendMagicLink(ctx context.Context, data email.MagicLinkEmailData) error
+}
+
 // WithEmailService supplies the sender for letters this service triggers.
 // Separate from the constructor for the same reason as WithSessionCache: the
 // service is built at startup before the email capability's availability is
 // known, and the two would otherwise have to agree on construction order.
-func (s *Service) WithEmailService(emailService *email.Service) *Service {
-	s.emailService = emailService
+func (s *Service) WithEmailService(sender MagicLinkSender) *Service {
+	s.emailService = sender
 	return s
 }
 
