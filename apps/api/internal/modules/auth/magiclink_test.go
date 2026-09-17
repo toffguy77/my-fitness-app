@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -65,7 +64,7 @@ func TestRequestMagicLinkResponseDoesNotRevealAccount(t *testing.T) {
 	r, mock, cleanup := setupMagicLinkRouter(t, sender)
 	defer cleanup()
 
-	mock.ExpectQuery(`SELECT id FROM users WHERE email`).
+	mock.ExpectQuery(`SELECT id FROM users WHERE LOWER`).
 		WithArgs("known@example.com").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(7)))
 	mock.ExpectExec(`INSERT INTO magic_links`).
@@ -74,9 +73,9 @@ func TestRequestMagicLinkResponseDoesNotRevealAccount(t *testing.T) {
 	known := post(r, "/auth/magic-link/request",
 		`{"email":"known@example.com","consents":{"terms_of_service":true,"privacy_policy":true,"data_processing":true}}`)
 
-	mock.ExpectQuery(`SELECT id FROM users WHERE email`).
+	mock.ExpectQuery(`SELECT id FROM users WHERE LOWER`).
 		WithArgs("stranger@example.com").
-		WillReturnError(sql.ErrNoRows)
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectExec(`INSERT INTO magic_links`).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -120,9 +119,9 @@ func TestRequestMagicLinkWhenEmailDisabled(t *testing.T) {
 	r, mock, cleanup := setupMagicLinkRouter(t, nil)
 	defer cleanup()
 
-	mock.ExpectQuery(`SELECT id FROM users WHERE email`).
+	mock.ExpectQuery(`SELECT id FROM users WHERE LOWER`).
 		WithArgs("a@example.com").
-		WillReturnError(sql.ErrNoRows)
+		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectExec(`INSERT INTO magic_links`).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 

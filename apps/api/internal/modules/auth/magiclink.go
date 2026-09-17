@@ -2,9 +2,7 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"time"
@@ -28,16 +26,47 @@ func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consen
 		return apperrors.ErrValidation
 	}
 
-	var userID *int64
-	var existing int64
-	switch err := s.db.QueryRowContext(ctx,
-		`SELECT id FROM users WHERE email = $1`, recipient).Scan(&existing); {
-	case err == nil:
-		userID = &existing
-	case errors.Is(err, sql.ErrNoRows):
-		// Аккаунта нет — переход по ссылке его создаст.
-	default:
+	// LOWER(email) = LOWER($1): email в базе регистрозависим (TEXT UNIQUE, не
+	// CITEXT), а человек может набрать адрес не в том регистре, в каком
+	// регистрировался — особенно на телефоне, где автоподстановка ставит
+	// заглавную первую букву. Ищем без учёта регистра, чтобы не завести
+	// такому человеку второй аккаунт на тот же почтовый ящик.
+	//
+	// Читаем через QueryContext и считаем строки, а не QueryRowContext: схема
+	// уже сегодня допускает пару аккаунтов, различающихся только регистром
+	// письма. Если совпало больше одного, QueryRowContext молча вернул бы
+	// один из них произвольно — то есть выдал бы ссылку входа в аккаунт,
+	// который, возможно, не тот, о ком речь. Это хуже, чем не найти вовсе, и
+	// угадывать здесь нельзя: при неоднозначности отказываемся, не пишем
+	// строку и не шлём письмо, но отвечаем вызывающему тем же nil, что и при
+	// обычном успехе — иначе ответ выдал бы существование двойника.
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id FROM users WHERE LOWER(email) = LOWER($1)`, recipient)
+	if err != nil {
 		return fmt.Errorf("look up account: %w", err)
+	}
+	var matches []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return fmt.Errorf("look up account: %w", err)
+		}
+		matches = append(matches, id)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("look up account: %w", err)
+	}
+	rows.Close()
+
+	var userID *int64
+	switch len(matches) {
+	case 0:
+		// Аккаунта нет — переход по ссылке его создаст.
+	case 1:
+		userID = &matches[0]
+	default:
+		return nil
 	}
 
 	plainToken, hashedToken, err := s.tokens.GenerateToken()
@@ -55,6 +84,8 @@ func (s *Service) RequestMagicLink(ctx context.Context, recipient string, consen
 		}
 	}
 
+	// recipient — как человек его набрал, без приведения регистра: нормализация
+	// нужна только для поиска аккаунта, а не для того, что хранится.
 	expiresAt := time.Now().Add(MagicLinkTTL)
 	if _, err := s.db.ExecContext(ctx,
 		`INSERT INTO magic_links (token_hash, email, user_id, consents, expires_at, ip_address, user_agent)
