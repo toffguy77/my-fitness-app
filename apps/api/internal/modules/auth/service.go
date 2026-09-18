@@ -571,7 +571,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 	// conflict, not an internal error and not a silent skip that would let
 	// anyone with a live session set a password on someone else's provider-only
 	// account.
-	if !storedHash.Valid || storedHash.String == "" {
+	if !PasswordIsSet(storedHash) {
 		return fmt.Errorf("аккаунт без пароля: нечего менять: %w", apperrors.ErrConflict)
 	}
 

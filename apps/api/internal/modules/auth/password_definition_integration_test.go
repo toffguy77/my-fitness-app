@@ -18,22 +18,24 @@ import (
 )
 
 // Проверяется на живой базе намеренно: sqlmock отдаёт ровно то значение,
-// которое ему велят вернуть, для любого запроса — то есть пять разных
-// SQL-запросов на подмене могли бы "согласиться" друг с другом просто
-// потому, что тест сам вписал одинаковый ответ в каждое место отдельно.
-// Живая база — одна настоящая строка в users.password = ” (плюс одна
-// строка в external_identities для UnlinkProvider), и пять разных вызовов
-// читают её сами, каждый своим запросом.
+// которое ему велят вернуть, для любого запроса — то есть шесть разных
+// SQL-запросов на подмене могли бы согласиться друг с другом просто потому,
+// что тест сам вписал одинаковый ответ в каждое место отдельно. Живая база —
+// одна настоящая строка в users.password (пустая строка, не NULL), плюс одна
+// строка в external_identities для UnlinkProvider и одна в oauth_pending_links
+// для ConfirmLinkWithPassword, и шесть разных вызовов читают эти строки сами,
+// каждый своим запросом.
 //
-// До PasswordIsSet "есть пароль" было выражено пятью разными способами:
-// HasPassword, ConfirmLinkWithPassword и UnlinkProvider считали пустую
-// строку паролем; RequestDeletion и Login — не считали. Для аккаунта с
-// password = ” и одной привязкой провайдера это означало: /auth/me отдаёт
-// has_password: true, форма никогда не покажет код для удаления, а отвязка
-// последнего способа входа проходит без отказа — человек запирает себя
-// снаружи навсегда. Login был написан верно и до этой правки, но пятым
-// параллельным выражением того же правила — именно параллельность и
-// породила расхождения в трёх других местах.
+// До PasswordIsSet "есть пароль" было выражено шестью разными способами:
+// HasPassword, ConfirmLinkWithPassword и UnlinkProvider считали пустую строку
+// паролем; RequestDeletion, Login и ChangePassword — не считали. Для
+// аккаунта с пустой строкой в password и одной привязкой провайдера это
+// означало: /auth/me отдаёт has_password: true, форма никогда не покажет код
+// для удаления, а отвязка последнего способа входа проходит без отказа —
+// человек запирает себя снаружи навсегда. Login и ChangePassword были
+// написаны верно и до этой правки, но параллельным выражением того же
+// правила — именно параллельность и породила расхождения в трёх других
+// местах.
 func TestPasswordDefinitionAgreesAcrossEveryCaller(t *testing.T) {
 	db := testsupport.SchemaWithMigrations(t, "password_definition")
 	ctx := context.Background()
@@ -72,6 +74,16 @@ func TestPasswordDefinitionAgreesAcrossEveryCaller(t *testing.T) {
 			"пустой пароль не должен уходить в bcrypt-сравнение так, будто это настоящий хэш: %v", err)
 	})
 
+	t.Run("ChangePassword refuses instead of comparing bcrypt", func(t *testing.T) {
+		err := authSvc.ChangePassword(ctx, userID, "anything", "NewPassword2@", &auth.LoginResult{})
+		require.Error(t, err)
+		// ErrConflict ("нечего менять"). ErrInvalidCredentials здесь означало
+		// бы, что bcrypt.CompareHashAndPassword уже позвали на пустую строку —
+		// тот же неверный ответ, что чинили в остальных пяти местах.
+		assert.True(t, errors.Is(err, apperrors.ErrConflict),
+			"пустая строка должна отказать до сравнения bcrypt: %v", err)
+	})
+
 	t.Run("ConfirmLinkWithPassword refuses instead of comparing bcrypt", func(t *testing.T) {
 		var pendingID string
 		require.NoError(t, db.QueryRowContext(ctx,
@@ -100,6 +112,6 @@ func TestPasswordDefinitionAgreesAcrossEveryCaller(t *testing.T) {
 		require.Error(t, unlinkErr,
 			"единственная привязка провайдера у аккаунта без пароля не должна сниматься")
 		assert.True(t, errors.Is(unlinkErr, apperrors.ErrConflict),
-			"пустая строка должна означать «нет пароля», а не молча пропустить проверку: %v", unlinkErr)
+			"пустая строка должна означать отсутствие пароля, а не молча пропустить проверку: %v", unlinkErr)
 	})
 }
