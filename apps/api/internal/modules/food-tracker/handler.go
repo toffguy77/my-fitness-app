@@ -3,6 +3,7 @@ package foodtracker
 import (
 	"bytes"
 	"context"
+	"errors"
 	"github.com/burcev/api/internal/shared/upload"
 	"net/http"
 	"strings"
@@ -394,6 +395,18 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 			response.Error(c, http.StatusTooManyRequests, errMsg)
 			return
 		}
+		// Модель ответила, но сказать ей оказалось нечего, либо ответ не
+		// уместился в отведённый предел. И то и другое — не вина фотографии,
+		// и человеку честнее это сказать, чем показать внутреннюю ошибку:
+		// иначе он будет переснимать тарелку, пока не сдастся.
+		if errors.Is(err, llm.ErrEmptyModelAnswer) || errors.Is(err, llm.ErrAnswerTruncated) {
+			h.log.Warn("Food recognition returned nothing usable", "error", err, "user_id", userID)
+			telemetry.Record(telemetry.EventModelCallFailed)
+			response.Error(c, http.StatusUnprocessableEntity,
+				"Не удалось разобрать это фото — попробуйте снять ближе или добавьте еду вручную")
+			return
+		}
+
 		h.log.Error("Food recognition failed", "error", err, "user_id", userID)
 		// Отдельный счётчик: этот отказ виден в доле 5xx, но неотличим там от
 		// всех прочих. Когда кончаются средства у провайдера модели, ломается

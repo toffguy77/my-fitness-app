@@ -11,9 +11,10 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Camera, Image, Upload, AlertCircle, X, Search } from 'lucide-react';
-import type { FoodItem, RecognizedFood } from '../types';
+import type { FoodItem, KBZHU, RecognizedFood } from '../types';
 import { EVENTS, track } from '@/shared/analytics';
 import { t } from '@/shared/i18n';
+import { calculateKBZHU, roundToOneDecimal } from '../utils/kbzhuCalculator';
 
 // ============================================================================
 // Types
@@ -47,12 +48,90 @@ export interface RecognitionResult {
 export type PhotoSource = 'camera' | 'gallery';
 export type ProcessingStatus = 'idle' | 'selecting' | 'processing' | 'results' | 'error';
 
+/**
+ * A recognized position whose weight a human must confirm before it can be
+ * saved. The model's own estimate travels along as `estimatedWeight` — a
+ * hint, never a value the field starts filled with (see design decision 7 in
+ * openspec/changes/enable-food-recognition/design.md).
+ */
+interface WeighablePosition {
+    name: string;
+    estimatedWeight: number;
+    nutritionPer100: KBZHU;
+}
+
 // ============================================================================
 // Constants
 // ============================================================================
 
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.7;
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
+
+// Five kilograms is well past any single portion — a bowl of soup, a whole
+// watermelon — so this catches a typo (a stray zero, a stuck digit), never
+// real food. It exists to stop a mistyped weight from silently wrecking a
+// day's total, not to second-guess a plausible one.
+const MAX_POSITION_WEIGHT_GRAMS = 5000;
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * The positions a person needs to confirm the weight of for one recognition
+ * result. When the model broke the dish into a composition, each ingredient
+ * is its own position; otherwise the dish itself is the only position.
+ */
+function getWeighablePositions(result: RecognitionResult): WeighablePosition[] {
+    if (result.composition && result.composition.length > 0) {
+        return result.composition.map((item) => ({
+            name: item.name,
+            estimatedWeight: item.estimatedWeight ?? item.estimated_weight ?? 0,
+            nutritionPer100: item.nutrition,
+        }));
+    }
+    return [
+        {
+            name: result.food.name,
+            estimatedWeight: result.food.servingSize,
+            nutritionPer100: result.food.nutritionPer100,
+        },
+    ];
+}
+
+/**
+ * Validates a weight a human typed, one field at a time. An empty field
+ * (or one with only whitespace) is not an error — it just has no value yet,
+ * and is reported the same way whether it was never touched or cleared.
+ * Anything actually typed that isn't a usable weight — not a number, zero
+ * or negative, or past the sanity ceiling — gets a specific reason, so a
+ * "0" or a stray extra digit doesn't look identical to an empty field.
+ */
+function validateEnteredWeight(raw: string | undefined): { value: number | null; error: string | null } {
+    if (raw === undefined) return { value: null, error: null };
+    const trimmed = raw.trim();
+    if (trimmed === '') return { value: null, error: null };
+
+    const value = Number(trimmed);
+    if (!Number.isFinite(value)) {
+        return { value: null, error: t('foodTracker.photo.weightNotANumber') };
+    }
+    if (value <= 0) {
+        return { value: null, error: t('foodTracker.photo.weightNotPositive') };
+    }
+    if (value > MAX_POSITION_WEIGHT_GRAMS) {
+        return {
+            value: null,
+            error: t('foodTracker.photo.weightTooLarge', { max: MAX_POSITION_WEIGHT_GRAMS }),
+        };
+    }
+    return { value, error: null };
+}
+
+/** A weight a human actually typed — not empty, not zero, not too large, not garbage. */
+function parseEnteredWeight(raw: string | undefined): number | null {
+    return validateEnteredWeight(raw).value;
+}
 
 // ============================================================================
 // Component
@@ -70,6 +149,9 @@ export function AIPhotoTab({
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [results, setResults] = useState<RecognitionResult[]>([]);
     const [error, setError] = useState<string | null>(null);
+    // Weight entered by the human, keyed by position index. Starts empty for
+    // every position — the model's estimate is shown only as a hint.
+    const [enteredWeights, setEnteredWeights] = useState<Record<number, string>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +188,7 @@ export function AIPhotoTab({
         setStatus('processing');
         setError(null);
         setResults([]);
+        setEnteredWeights({});
 
         // Process with AI
         try {
@@ -131,12 +214,60 @@ export function AIPhotoTab({
         e.target.value = '';
     }, [onRecognize]);
 
-    // Confirm selection — add the single combined dish
+    // Record a human-entered weight for one position.
+    const handleWeightChange = useCallback((index: number, value: string) => {
+        setEnteredWeights((prev) => ({ ...prev, [index]: value }));
+    }, []);
+
+    // Accept the model's own estimate for one position, on demand — never
+    // the default, only something a person opts into.
+    const handleUseModelEstimate = useCallback((index: number, estimatedWeight: number) => {
+        setEnteredWeights((prev) => ({ ...prev, [index]: String(Math.round(estimatedWeight)) }));
+    }, []);
+
+    // Confirm selection — add the single combined dish, with weight and
+    // calories taken from what the human entered, not from the model.
     const handleConfirmSelection = useCallback(() => {
-        if (results.length > 0) {
-            onSelectFoods([results[0].food]);
-        }
-    }, [results, onSelectFoods]);
+        if (results.length === 0) return;
+
+        const combined = results[0];
+        const positions = getWeighablePositions(combined);
+        const weights = positions.map((_, idx) => parseEnteredWeight(enteredWeights[idx]));
+        if (weights.some((weight) => weight === null)) return;
+
+        const totals = positions.reduce(
+            (acc, position, idx) => {
+                const weight = weights[idx] as number;
+                const scaled = calculateKBZHU(position.nutritionPer100, weight);
+                return {
+                    weight: acc.weight + weight,
+                    calories: acc.calories + scaled.calories,
+                    protein: acc.protein + scaled.protein,
+                    fat: acc.fat + scaled.fat,
+                    carbs: acc.carbs + scaled.carbs,
+                };
+            },
+            { weight: 0, calories: 0, protein: 0, fat: 0, carbs: 0 }
+        );
+
+        // `weights` all passed the null check above, and getWeighablePositions
+        // always returns at least one position, so totals.weight is always > 0
+        // here — there is no zero-weight case left to branch on.
+        const nutritionPer100: KBZHU = {
+            calories: roundToOneDecimal((totals.calories / totals.weight) * 100),
+            protein: roundToOneDecimal((totals.protein / totals.weight) * 100),
+            fat: roundToOneDecimal((totals.fat / totals.weight) * 100),
+            carbs: roundToOneDecimal((totals.carbs / totals.weight) * 100),
+        };
+
+        onSelectFoods([
+            {
+                ...combined.food,
+                servingSize: totals.weight,
+                nutritionPer100,
+            },
+        ]);
+    }, [results, enteredWeights, onSelectFoods]);
 
     // Reset and try again
     const handleReset = useCallback(() => {
@@ -145,6 +276,7 @@ export function AIPhotoTab({
         setPhotoPreview(null);
         setResults([]);
         setError(null);
+        setEnteredWeights({});
     }, []);
 
     // Handle manual search fallback
@@ -155,6 +287,33 @@ export function AIPhotoTab({
     // Check if any results have low confidence
     const hasLowConfidenceResults = results.some(
         r => r.confidence < confidenceThreshold && r.confidence >= LOW_CONFIDENCE_THRESHOLD
+    );
+
+    // Positions whose weight the human must confirm before saving.
+    const hasComposition = results.length > 0
+        && !!results[0].composition && results[0].composition.length > 0;
+    const positions = results.length > 0 ? getWeighablePositions(results[0]) : [];
+    const allWeightsEntered = positions.length > 0
+        && positions.every((_, idx) => parseEnteredWeight(enteredWeights[idx]) !== null);
+
+    // Running total from whatever has been typed so far. Shown even before
+    // every position is filled — a blank total looks broken; a partial one,
+    // clearly marked as partial, lets a person see the number move as they
+    // type and catch an implausible figure (85 g vs 250 g of popcorn) before
+    // saving, not just guess at grams in isolation.
+    const liveTotals = positions.reduce(
+        (acc, position, idx) => {
+            const weight = parseEnteredWeight(enteredWeights[idx]);
+            if (weight === null) return acc;
+            const scaled = calculateKBZHU(position.nutritionPer100, weight);
+            return {
+                calories: acc.calories + scaled.calories,
+                protein: acc.protein + scaled.protein,
+                fat: acc.fat + scaled.fat,
+                carbs: acc.carbs + scaled.carbs,
+            };
+        },
+        { calories: 0, protein: 0, fat: 0, carbs: 0 }
     );
 
     // Get confidence label
@@ -257,8 +416,6 @@ export function AIPhotoTab({
                                                 {results[0].food.name}
                                             </p>
                                             <p className="text-sm text-gray-500">
-                                                {Math.round(results[0].food.servingSize)} {t('units.gram')}
-                                                {' \u2022 '}
                                                 {t('foodTracker.photo.per100Calories', { calories: Math.round(results[0].food.nutritionPer100.calories) })}
                                             </p>
                                         </div>
@@ -273,26 +430,83 @@ export function AIPhotoTab({
                                     </div>
                                 </div>
 
-                                {/* Composition breakdown */}
-                                {results[0].composition && results[0].composition.length > 0 && (
+                                {/* Weight confirmation \u2014 the model names the product and gives
+                                    per-100g values reliably; the weight it estimated is only a
+                                    hint, and a human must type the real number before it can be
+                                    saved (openspec design decision 7). */}
+                                {positions.length > 0 && (
                                     <div className="mb-3">
                                         <h4 className="text-sm font-medium text-gray-500 mb-2">
-                                            {t('foodTracker.photo.composition')}
+                                            {hasComposition
+                                                ? t('foodTracker.photo.composition')
+                                                : t('foodTracker.photo.portionWeight')}
                                         </h4>
-                                        <ul className="space-y-1" aria-label={t('foodTracker.photo.compositionAria')}>
-                                            {results[0].composition.map((item, idx) => (
+                                        <ul
+                                            className="space-y-2"
+                                            aria-label={
+                                                hasComposition
+                                                    ? t('foodTracker.photo.compositionAria')
+                                                    : t('foodTracker.photo.portionWeightAria')
+                                            }
+                                        >
+                                            {positions.map((position, idx) => {
+                                                const weightValidation = validateEnteredWeight(enteredWeights[idx]);
+                                                return (
                                                 <li
                                                     key={idx}
-                                                    className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
+                                                    className="p-2 bg-gray-50 rounded-lg text-sm"
                                                 >
-                                                    <span className="text-gray-700">
-                                                        {t('foodTracker.photo.itemWeight', { name: item.name, weight: Math.round(item.estimatedWeight ?? item.estimated_weight ?? 0) })}
-                                                    </span>
-                                                    <span className="text-gray-400">
-                                                        {t('foodTracker.photo.itemCalories', { calories: Math.round(item.nutrition.calories) })}
-                                                    </span>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        {/* In the single-position case the dish name above
+                                                            already names it — repeating it here would make
+                                                            the text ambiguous to find, not just redundant. */}
+                                                        {hasComposition && (
+                                                            <span className="text-gray-700 font-medium">
+                                                                {position.name}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-gray-400">
+                                                            {t('foodTracker.photo.itemCalories', { calories: Math.round(position.nutritionPer100.calories) })}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <input
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            min="0"
+                                                            max={MAX_POSITION_WEIGHT_GRAMS}
+                                                            step="1"
+                                                            value={enteredWeights[idx] ?? ''}
+                                                            onChange={(e) => handleWeightChange(idx, e.target.value)}
+                                                            placeholder={t('foodTracker.photo.weightPlaceholder')}
+                                                            aria-label={t('foodTracker.photo.weightInputLabel', { name: position.name })}
+                                                            aria-invalid={weightValidation.error !== null}
+                                                            className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        />
+                                                        <span className="text-gray-500 text-xs">{t('units.gram')}</span>
+                                                        <span className="text-gray-400 text-xs">
+                                                            {t('foodTracker.photo.modelEstimate', { weight: Math.round(position.estimatedWeight) })}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleUseModelEstimate(idx, position.estimatedWeight)}
+                                                            aria-label={t('foodTracker.photo.useModelEstimateAria', { name: position.name })}
+                                                            className="text-xs text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
+                                                        >
+                                                            {t('foodTracker.photo.useModelEstimate')}
+                                                        </button>
+                                                    </div>
+                                                    {/* What's wrong with what was typed, not a repeat of the
+                                                        generic "enter a weight" hint — a "0" or an extra digit
+                                                        must not look the same as an untouched field. */}
+                                                    {weightValidation.error && (
+                                                        <p className="text-xs text-red-600 mt-1">
+                                                            {weightValidation.error}
+                                                        </p>
+                                                    )}
                                                 </li>
-                                            ))}
+                                                );
+                                            })}
                                         </ul>
                                     </div>
                                 )}
@@ -326,10 +540,34 @@ export function AIPhotoTab({
 
                     {/* Action button */}
                     <div className="p-4 border-t border-gray-200">
+                        {positions.length > 0 && (
+                            <div className="mb-3 p-3 bg-gray-50 rounded-xl" aria-live="polite">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {t('foodTracker.photo.liveTotalCalories', { calories: Math.round(liveTotals.calories) })}
+                                    </span>
+                                    <div className="flex gap-2 text-xs text-gray-500">
+                                        <span>{t('macros.proteinShort')}: {Math.round(liveTotals.protein)}{t('units.gram')}</span>
+                                        <span>{t('macros.fatShort')}: {Math.round(liveTotals.fat)}{t('units.gram')}</span>
+                                        <span>{t('macros.carbsShort')}: {Math.round(liveTotals.carbs)}{t('units.gram')}</span>
+                                    </div>
+                                </div>
+                                {!allWeightsEntered && (
+                                    <p className="text-xs text-yellow-600 mt-1">
+                                        {t('foodTracker.photo.liveTotalPartial')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        {results.length > 0 && !allWeightsEntered && (
+                            <p className="text-xs text-gray-500 mb-2 text-center">
+                                {t('foodTracker.photo.weightRequiredHint')}
+                            </p>
+                        )}
                         <button
                             type="button"
                             onClick={handleConfirmSelection}
-                            disabled={results.length === 0}
+                            disabled={results.length === 0 || !allWeightsEntered}
                             className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
                             {t('common.add')}
