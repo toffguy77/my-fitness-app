@@ -914,10 +914,10 @@ describe('AIPhotoTab', () => {
 
         // The daily ceiling is not the same problem as an outage or a network
         // hiccup — it needs its own text, not "Ошибка при распознавании фото".
-        it('shows the daily-limit text on a 429 with daily_limit_reached, not the generic failure text', async () => {
+        it('shows the daily-limit text on a 429 with recognition_daily_limit, not the generic failure text', async () => {
             const onRecognize = jest.fn().mockRejectedValue(
                 new ApiError(429, {
-                    code: 'daily_limit_reached',
+                    code: 'recognition_daily_limit',
                     message: 'лимит распознаваний исчерпан на сегодня',
                 })
             );
@@ -934,6 +934,32 @@ describe('AIPhotoTab', () => {
 
             await waitFor(() => {
                 expect(screen.getByText(/завтра/i)).toBeInTheDocument();
+            });
+            expect(screen.queryByText(/ошибка при распознавании фото/i)).not.toBeInTheDocument();
+        });
+
+        // A genuine failure is not the photo's fault and not the day's quota —
+        // it should offer to wait, not the generic photo-tab sentence.
+        it('shows the try-again text on a 500 with recognition_failed, not the generic failure text', async () => {
+            const onRecognize = jest.fn().mockRejectedValue(
+                new ApiError(500, {
+                    code: 'recognition_failed',
+                    message: 'Не удалось распознать фото — попробуйте ещё раз через минуту или добавьте эту еду вручную',
+                })
+            );
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText(/минуту/i)).toBeInTheDocument();
             });
             expect(screen.queryByText(/ошибка при распознавании фото/i)).not.toBeInTheDocument();
         });
