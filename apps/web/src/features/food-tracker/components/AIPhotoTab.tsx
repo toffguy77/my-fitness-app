@@ -14,6 +14,7 @@ import { Camera, Image, Upload, AlertCircle, X, Search } from 'lucide-react';
 import type { FoodItem, KBZHU, RecognizedFood } from '../types';
 import { EVENTS, track } from '@/shared/analytics';
 import { t } from '@/shared/i18n';
+import { messageFor, isApiError, isNetworkError } from '@/shared/errors/apiErrors';
 import { calculateKBZHU, roundToOneDecimal } from '../utils/kbzhuCalculator';
 
 // ============================================================================
@@ -204,9 +205,18 @@ export function AIPhotoTab({
                 setError(t('foodTracker.photo.serviceUnavailable'));
                 setStatus('error');
             }
-        } catch {
+        } catch (err) {
             track(EVENTS.foodRecognition, { outcome: 'failed' });
-            setError(t('foodTracker.photo.failed'));
+            // The server already tells a daily ceiling apart from "could not
+            // parse this photo" apart from an outage, and messageFor knows how
+            // to say each of those. foodTracker.photo.failed stays the fallback
+            // for whatever isn't a recognised API/network failure — an
+            // unexpected exception, not something the server explained.
+            setError(
+                isApiError(err) || isNetworkError(err)
+                    ? messageFor(err)
+                    : t('foodTracker.photo.failed')
+            );
             setStatus('error');
         }
 

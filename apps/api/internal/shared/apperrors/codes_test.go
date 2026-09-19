@@ -39,7 +39,7 @@ func TestEverySentinelHasACode(t *testing.T) {
 		ErrNotFound, ErrUnauthorized, ErrForbidden, ErrInvalidCredentials,
 		ErrTokenInvalid, ErrTokenExpired, ErrCodeExpired, ErrTooManyAttempts,
 		ErrRateLimited, ErrUnsupportedMedia, ErrPasswordPolicy, ErrPasswordUnchanged,
-		ErrEmailUnavailable, ErrConflict, ErrGone, ErrValidation,
+		ErrEmailUnavailable, ErrConflict, ErrGone, ErrValidation, ErrDailyLimitReached,
 	}
 
 	for _, sentinel := range sentinels {

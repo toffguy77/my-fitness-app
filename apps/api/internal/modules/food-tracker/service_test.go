@@ -3,10 +3,12 @@ package foodtracker
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/google/uuid"
@@ -619,6 +621,36 @@ func TestCheckRecognitionLimit_NoUsageToday(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 20, remaining)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// RecognizeFood used to return a bare fmt.Errorf whose only identity was its
+// Russian sentence — rephrase it in service.go and the handler's
+// strings.Contains check would silently stop matching, turning a 429 into a
+// 500. errors.Is on a real sentinel does not have that failure mode, and this
+// pins the dailyLimit value flowing into the message rather than a literal 3.
+func TestRecognizeFood_DailyLimitReached(t *testing.T) {
+	ctx := context.Background()
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	const dailyLimit = 7
+	rows := sqlmock.NewRows([]string{"count"}).AddRow(dailyLimit)
+	mock.ExpectQuery(`SELECT COUNT`).
+		WithArgs(int64(1)).
+		WillReturnRows(rows)
+
+	_, err := service.RecognizeFood(ctx, int64(1), []byte("photo"), "image/png", "", dailyLimit, nil)
+
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, apperrors.ErrDailyLimitReached),
+		"RecognizeFood must wrap apperrors.ErrDailyLimitReached, not a bare fmt.Errorf")
+	// The exact wording, not just the number: this is recognitionDailyLimitMessage,
+	// the same function handler.go calls for the response. If a future edit
+	// starts formatting the log-facing text inline here instead of calling the
+	// shared helper, this fails even though "7" would still appear somewhere.
+	assert.Contains(t, err.Error(), recognitionDailyLimitMessage(dailyLimit),
+		"the wrapped error must carry the same text the handler shows a person — one source, not two")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
