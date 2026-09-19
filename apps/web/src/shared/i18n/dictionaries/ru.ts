@@ -1612,6 +1612,7 @@ export const ru = {
             choose: 'Выберите...',
             goal: 'Цель',
             recalculated: 'Нормы пересчитаны',
+            recalculateFailed: 'Не удалось пересчитать нормы',
         },
         activity: {
             sedentary: 'Сидячий образ жизни',
