@@ -56,6 +56,13 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// Public endpoint that accepts batches of client errors. A page throwing in
 	// a render loop must not be able to flood our own log pipeline.
 	"client-logs": {maxRequests: 60, window: time.Minute},
+	// The link at the bottom of a digest email. A person clicks it once — a
+	// handful of requests covers a double click or a refresh. The token is an
+	// HMAC over "<user id>.<expiry>", so guessing one is not realistically
+	// feasible at any request rate; the limit exists so the endpoint (public,
+	// unauthenticated, and it writes to the database on every success) cannot
+	// be hammered by a script the way a person never would.
+	"unsubscribe": {maxRequests: 5, window: 15 * time.Minute},
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.
@@ -77,13 +84,27 @@ func NewAuthRateLimiter() *AuthRateLimiter {
 	return rl
 }
 
-// Limit returns a Gin middleware that enforces rate limiting for the given endpoint.
-// Supported endpoints: "login", "register".
+// Limit returns a Gin middleware that enforces rate limiting for the given
+// endpoint. endpoint must be a key of authLimitConfigs — see that map for the
+// full, current list ("login", "register", "oauth-link", "guest-calculate",
+// "lead-create", "analytics", "ws-ticket", "resend-verification",
+// "client-logs", "unsubscribe", and whatever has been added since).
+//
+// Limit is called while routes are being registered, before the server
+// starts accepting traffic, so it panics on an unrecognized name instead of
+// returning a middleware that silently passes every request through. That
+// used to be the behaviour: a typo or a forgotten entry here produced a
+// route that looked protected — the middleware was on it, the call read
+// correctly — while enforcing nothing, and nothing short of reading this
+// function noticed. A startup crash naming the bad endpoint is a strictly
+// better failure than a rate limit that quietly does not apply; it is also
+// caught earlier, by TestEveryRouterLimitCallHasAConfig, which fails the
+// build before the binary is ever run.
 func (rl *AuthRateLimiter) Limit(endpoint string) gin.HandlerFunc {
 	cfg, ok := authLimitConfigs[endpoint]
 	if !ok {
-		// Unknown endpoint – pass through without limiting.
-		return func(c *gin.Context) { c.Next() }
+		panic("middleware: no rate limit configured for endpoint " + strconv.Quote(endpoint) +
+			" — add an entry to authLimitConfigs in auth_rate_limiter.go")
 	}
 	cfg.maxRequests *= authLimitScale
 

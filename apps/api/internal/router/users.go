@@ -60,8 +60,11 @@ func registerNotificationRoutes(v1 *gin.RouterGroup, d Deps) {
 // registerUnsubscribeRoute exposes the link at the bottom of a digest.
 //
 // It sits outside the authenticated group on purpose: an unsubscribe that
-// demands a password is not an unsubscribe. The signed token names one account,
-// and the rate limiter keeps the endpoint from being used to guess tokens.
+// demands a password is not an unsubscribe. The signed token names one
+// account, and its HMAC is what makes forging one infeasible; the rate
+// limit ("unsubscribe" in authLimitConfigs) is the second layer, keeping a
+// script from hammering this public, unauthenticated, database-writing
+// endpoint the way no person clicking an email link ever would.
 func registerUnsubscribeRoute(v1 *gin.RouterGroup, d Deps) {
 	v1.POST("/notifications/unsubscribe",
 		d.AuthRateLimiter.Limit("unsubscribe"), d.Notifications.Unsubscribe)
