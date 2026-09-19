@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { curatorApi, type Lead } from '../api/curatorApi'
+import { isApiError, messageFor } from '@/shared/errors/apiErrors'
 
 import { t } from '@/shared/i18n'
 /**
@@ -45,8 +46,8 @@ export function LeadList() {
         async function loadInitial() {
             try {
                 await load()
-            } catch {
-                toast.error(t('curator.leads.loadFailed'))
+            } catch (err) {
+                toast.error(isApiError(err) ? messageFor(err) : t('curator.leads.loadFailed'))
             } finally {
                 setLoading(false)
             }
@@ -63,8 +64,13 @@ export function LeadList() {
                     item.id === lead.id ? { ...item, handled_at: new Date().toISOString() } : item
                 )
             )
-        } catch {
-            toast.error(t('curator.leads.markFailed'))
+        } catch (err) {
+            // A lead somebody else already claimed answers 409
+            // lead_already_claimed — the one piece of information that tells
+            // the curator not to write to this person again. A blind catch
+            // threw that code away and left "Не удалось отметить заявку" in
+            // its place, which reads exactly like a dropped network request.
+            toast.error(isApiError(err) ? messageFor(err) : t('curator.leads.markFailed'))
         } finally {
             setBusy(null)
         }

@@ -39,6 +39,25 @@ const baseConfig: NextConfig = {
       },
     ];
   },
+  // Leads and support moved from /admin to /curator: the pages are gone, not
+  // aliased — no route here answers the old address. This redirect carries
+  // no body and decides nothing about access; it exists only so a stale
+  // bookmark, a lingering escalation notification, or muscle memory lands
+  // somewhere real instead of a bare 404. The one and only role check stays
+  // where it has always lived, in apps/web/src/app/curator/layout.tsx — a
+  // super-admin who is denied there is denied after the redirect exactly as
+  // before it.
+  //
+  // Deliberately not the same move as a second API path to the same data:
+  // that duplication is what loses a role check somewhere along the way.
+  // scripts/check-api-contract.mjs governs API paths and does not see this —
+  // it is an interface-only redirect, not a second door into the backend.
+  async redirects() {
+    return [
+      { source: '/admin/leads', destination: '/curator/leads', permanent: true },
+      { source: '/admin/support', destination: '/curator/support', permanent: true },
+    ];
+  },
 };
 
 let nextConfig: NextConfig;

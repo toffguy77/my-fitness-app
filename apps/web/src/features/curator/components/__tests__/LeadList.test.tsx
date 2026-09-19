@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LeadList } from '../LeadList'
 import { curatorApi, type Lead } from '../../api/curatorApi'
+import { ApiError } from '@/shared/errors/apiErrors'
 
 jest.mock('../../api/curatorApi', () => ({
     curatorApi: { getLeads: jest.fn(), markLeadHandled: jest.fn() },
@@ -98,5 +99,28 @@ describe('LeadList', () => {
         render(<LeadList />)
 
         expect(await screen.findByText('Заявок пока нет')).toBeInTheDocument()
+    })
+
+    // A lead somebody else already claimed answers 409 lead_already_claimed —
+    // the one fact that tells the curator not to write to this person again.
+    // A bare `catch` throws the server's code away and shows the generic
+    // "не удалось отметить" instead, which reads exactly like a dropped
+    // request and hides that someone is already talking to them.
+    it('says a lead was already claimed, not just that marking it failed', async () => {
+        respondWith([makeLead()])
+        ;(api.markLeadHandled as jest.Mock).mockRejectedValue(
+            new ApiError(409, { code: 'lead_already_claimed', message: 'Заявка уже отмечена обработанной' })
+        )
+        const toast = (await import('react-hot-toast')).default
+
+        render(<LeadList />)
+        await userEvent.click(await screen.findByRole('button', { name: 'Отметить обработанной' }))
+
+        await waitFor(() =>
+            expect(toast.error).toHaveBeenCalledWith('Заявка уже отмечена обработанной')
+        )
+        // Not the generic fallback: that would mean the code never reached
+        // the screen, the exact regression this test exists to catch.
+        expect(toast.error).not.toHaveBeenCalledWith('Не удалось отметить заявку')
     })
 })

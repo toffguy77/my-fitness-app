@@ -15,9 +15,11 @@ import CuratorAppLayout from '../curator/layout'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
 const mockPush = jest.fn()
+let mockPathname = '/curator'
 
 jest.mock('next/navigation', () => ({
     useRouter: () => ({ push: mockPush, replace: jest.fn(), prefetch: jest.fn() }),
+    usePathname: () => mockPathname,
 }))
 
 jest.mock('@/shared/hooks/useCurrentUser', () => ({
@@ -38,7 +40,10 @@ jest.mock('@/features/curator', () => ({
 
 const currentUser = useCurrentUser as jest.Mock
 
-beforeEach(() => jest.clearAllMocks())
+beforeEach(() => {
+    jest.clearAllMocks()
+    mockPathname = '/curator'
+})
 
 describe('the administrative section', () => {
     it('renders for an administrator', () => {
@@ -128,5 +133,44 @@ describe('the curator section', () => {
         render(<CuratorAppLayout><div>inside</div></CuratorAppLayout>)
 
         expect(screen.getByTestId('curator-layout')).toHaveAttribute('data-user', 'Просто Имя')
+    })
+
+    // Leads and support are the two routes the backend guards with
+    // RequireRole("coordinator", "super_admin") (internal/router/leads.go,
+    // support.go) — the same escalation notification that used to send a
+    // super-admin to /admin/support now sends them to /curator/support, and
+    // this is the only door left standing for that role.
+    it.each(['/curator/leads', '/curator/support'])(
+        'lets a super-administrator into %s',
+        (pathname) => {
+            currentUser.mockReturnValue({
+                user: { id: '3', email: 'a@b.c', full_name: 'Admin', role: 'super_admin' },
+                state: 'ready',
+            })
+            mockPathname = pathname
+
+            render(<CuratorAppLayout><div>inside</div></CuratorAppLayout>)
+
+            expect(screen.getByTestId('curator-layout')).toBeInTheDocument()
+            expect(screen.getByText('inside')).toBeInTheDocument()
+            expect(mockPush).not.toHaveBeenCalled()
+        }
+    )
+
+    // Everywhere else in the section is coordinator-only on the backend too
+    // (RequireRole("coordinator") in internal/router/curator.go) — widening
+    // the frontend gate for the whole section would let a super-admin land
+    // on a client list the backend then answers with 403 on every request.
+    it('still turns a super-administrator away from the rest of the section', async () => {
+        currentUser.mockReturnValue({
+            user: { id: '3', email: 'a@b.c', role: 'super_admin' },
+            state: 'ready',
+        })
+        mockPathname = '/curator'
+
+        render(<CuratorAppLayout><div>inside</div></CuratorAppLayout>)
+
+        await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+        expect(screen.queryByText('inside')).not.toBeInTheDocument()
     })
 })

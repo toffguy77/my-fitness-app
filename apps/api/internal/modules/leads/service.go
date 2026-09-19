@@ -236,15 +236,19 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 	// should not deny a curator their data, just stop it short of the point
 	// where a single request can tie up a database core.
 	//
-	// The correlated per-lead conversation lookup below used to make a large
-	// offset expensive on its own: nothing indexed support_conversations by
-	// lead_id, so every row the database produced before discarding it for
-	// the offset still ran a sequential scan. Migration 075
-	// (idx_support_conversations_lead_recency) fixes the dominant cost —
-	// measured 34.8s at offset 40,000 on 50k leads before it, 7ms after — but
-	// Postgres still has to walk `offset` index entries on leads.created_at
-	// to get there, so the clamp stays as a second, cheap ceiling rather than
-	// trusting the index alone.
+	// This clamp is not what turns a catastrophic query into a cheap one —
+	// that was migration 075 (idx_support_conversations_lead_recency), which
+	// removed a sequential scan of support_conversations run once per row on
+	// the way to a large offset (order of tens of seconds at a 40k offset on
+	// 50k leads, down to double-digit milliseconds; see that migration's
+	// comment for the remeasured numbers). Pushing pagination ahead of the
+	// correlated subquery, below, took the subquery's cost out of the offset
+	// entirely: it now runs exactly `limit` times regardless of offset,
+	// instead of `offset+limit`. What is left for this clamp to bound is
+	// smaller and genuinely second-order: Postgres still has to walk
+	// `offset` entries of the index-only scan on leads.created_at to reach
+	// the page, and that residual — tens of milliseconds at offset ~100k on
+	// 150k leads, not tens of seconds — is what stays unbounded without it.
 	if offset > maxQueueOffset {
 		offset = maxQueueOffset
 	}
@@ -266,20 +270,42 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 	// (a person can reopen the bot with a new chat_id), and a JOIN would
 	// duplicate the lead row for each. Only the most recently active
 	// conversation is a reasonable transition target.
+	//
+	// That subquery sits outside the paged subquery on purpose. Written as a
+	// single flat SELECT with LIMIT/OFFSET, Postgres evaluates a correlated
+	// subquery once per row the sort produces *before* OFFSET discards
+	// anything — offset+limit evaluations, growing with the offset even
+	// though the offset itself does no useful work once idx_leads_created_at
+	// and idx_support_conversations_lead_recency both exist. Pushing
+	// WHERE/ORDER/LIMIT/OFFSET into `page` first means only the page's own
+	// rows — exactly `limit`, regardless of offset — ever reach the
+	// correlated subquery. Measured on a 150k-lead, 60k-conversation table at
+	// offset 99,999 with both indexes present: ~239ms flat vs. ~17ms paged
+	// first, and the subquery's loop count drops from offset+limit (100,019)
+	// to exactly limit (20).
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT l.id, l.email, COALESCE(l.name, ''), COALESCE(l.sex, ''), l.birth_date,
-		       l.height_cm, l.weight_kg, COALESCE(l.activity_level, ''), COALESCE(l.goal, ''),
-		       l.calories, l.protein, l.fat, l.carbs, l.water_glasses,
-		       l.last_step, COALESCE(l.source, ''), l.data_consent, l.contact_consent,
-		       l.handled_at, l.created_at, l.updated_at,
-		       EXTRACT(DAY FROM NOW() - l.created_at)::int,
-		       l.reminder_sent_at IS NOT NULL,
+		SELECT page.id, page.email, page.name, page.sex, page.birth_date,
+		       page.height_cm, page.weight_kg, page.activity_level, page.goal,
+		       page.calories, page.protein, page.fat, page.carbs, page.water_glasses,
+		       page.last_step, page.source, page.data_consent, page.contact_consent,
+		       page.handled_at, page.created_at, page.updated_at,
+		       EXTRACT(DAY FROM NOW() - page.created_at)::int,
+		       page.reminder_sent_at IS NOT NULL,
 		       (SELECT c.id::text FROM support_conversations c
-		          WHERE c.lead_id = l.id ORDER BY c.last_message_at DESC LIMIT 1)
-		FROM leads l
-		WHERE ($1::boolean OR l.handled_at IS NULL)
-		ORDER BY l.created_at ASC, l.id ASC
-		LIMIT $2 OFFSET $3`,
+		          WHERE c.lead_id = page.id ORDER BY c.last_message_at DESC LIMIT 1)
+		FROM (
+		    SELECT l.id, l.email, COALESCE(l.name, '') AS name, COALESCE(l.sex, '') AS sex,
+		           l.birth_date, l.height_cm, l.weight_kg,
+		           COALESCE(l.activity_level, '') AS activity_level, COALESCE(l.goal, '') AS goal,
+		           l.calories, l.protein, l.fat, l.carbs, l.water_glasses,
+		           l.last_step, COALESCE(l.source, '') AS source, l.data_consent, l.contact_consent,
+		           l.handled_at, l.created_at, l.updated_at, l.reminder_sent_at
+		    FROM leads l
+		    WHERE ($1::boolean OR l.handled_at IS NULL)
+		    ORDER BY l.created_at ASC, l.id ASC
+		    LIMIT $2 OFFSET $3
+		) page
+		ORDER BY page.created_at ASC, page.id ASC`,
 		includeHandled, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list lead queue: %w", err)

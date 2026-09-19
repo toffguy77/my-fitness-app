@@ -12,8 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Handler exposes the lead endpoints: two public ones the guest wizard uses,
-// and two behind the administrative section.
+// Handler exposes the lead endpoints: four public ones the guest wizard
+// uses (Create, UpdateStep, Resume, Unsubscribe), and two behind the
+// curator workspace (List, MarkHandled) — open to coordinator and
+// super_admin alike, not the administrative section alone.
 type Handler struct {
 	service *Service
 	log     *logger.Logger
@@ -158,6 +160,15 @@ func (h *Handler) Unsubscribe(c *gin.Context) {
 // dealt with, for whoever wants the full picture.
 func (h *Handler) List(c *gin.Context) {
 	page := response.ParsePage(c)
+	// Queue clamps its own offset before it reaches the database — but that
+	// clamp is invisible here unless the same bound is applied before page
+	// is echoed back. Left alone, the response would claim an offset the
+	// query never actually used, and a curator paging past the clamp would
+	// see the same handful of rows forever under a climbing offset number
+	// that no longer means anything.
+	if page.Offset > maxQueueOffset {
+		page.Offset = maxQueueOffset
+	}
 	includeHandled := parseIncludeHandled(c)
 
 	entries, total, err := h.service.Queue(c.Request.Context(), includeHandled, page.Limit, page.Offset)

@@ -133,6 +133,38 @@ func TestUnsubscribe_AlwaysReportsDeletion(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "deleted")
 }
 
+// ParsePage leaves Offset unclamped — only Queue's own internal clamp keeps
+// an absurd offset from reaching the database. That clamp is invisible from
+// here: `page` still carries the caller's raw offset when it is handed to
+// response.Paginated, so the echoed "offset" in the JSON body used to be the
+// number the client asked for, not the one Queue actually used. A curator
+// paging past maxQueueOffset would see the same handful of rows forever
+// under a climbing offset that never matches what produced them.
+func TestList_ClampsTheOffsetItEchoesBack(t *testing.T) {
+	r, _, mock := setupHandler(t)
+
+	mock.ExpectQuery("SELECT COUNT").WithArgs(false).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	// The clamped value must be what reaches the database too — this would
+	// fail on an sqlmock argument mismatch if the handler forgot to pass the
+	// clamped offset down to Queue.
+	mock.ExpectQuery("FROM leads l").WithArgs(false, 20, int(maxQueueOffset)).
+		WillReturnRows(queueRow("lead-1", 2, false, ""))
+
+	req := httptest.NewRequest(http.MethodGet, "/curator/leads?offset=999999999", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data struct {
+			Offset int `json:"offset"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, maxQueueOffset, body.Data.Offset)
+}
+
 func TestList_ReturnsAPageWithATotal(t *testing.T) {
 	r, _, mock := setupHandler(t)
 
@@ -234,13 +266,19 @@ func TestMarkHandled_MissingLeadIsNotFound(t *testing.T) {
 // curator who lost the race has no way to know someone else is already
 // talking to this person.
 //
-// The client renders the code over the server's own sentence (see
+// The i18n layer prefers the code over the server's own sentence (see
 // apps/web/src/shared/i18n/__tests__/i18n.test.ts, "prefers the code over the
 // server's own sentence") — so response.Error's generic 409 code ("conflict",
 // which the dictionary shows as "Действие невозможно в текущем состоянии")
 // would have reached the curator instead of this message, no matter how
 // carefully the message itself was worded. Asserting the code, not just the
 // body text, is what would have caught that.
+//
+// That machinery only pays off if the caller reaches it. LeadList.tsx used to
+// swallow the response in a bare `catch`, so the code above never reached a
+// screen — fixed, with its own test:
+// apps/web/src/features/curator/components/__tests__/LeadList.test.tsx,
+// "says a lead was already claimed, not just that marking it failed".
 func TestMarkHandled_AlreadyClaimedIsConflict(t *testing.T) {
 	r, _, mock := setupHandler(t)
 
