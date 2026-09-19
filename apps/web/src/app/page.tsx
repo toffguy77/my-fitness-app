@@ -52,7 +52,7 @@ const organizationJsonLd = {
     name: 'BURCEV',
     url: 'https://burcev.team',
     logo: 'https://burcev.team/logo.svg',
-    description: 'Персональный трекер питания и фитнеса с куратором',
+    description: t('landing.meta.organizationDescription'),
 }
 
 const webAppJsonLd = {
