@@ -1062,6 +1062,7 @@ export const ru = {
             result: 'увидел расчёт',
             contact: 'оставил контакт',
             registration: 'форма регистрации',
+            bot: 'писал боту',
         },
         leadGoals: {
             loss: 'снизить вес',
@@ -1083,6 +1084,14 @@ export const ru = {
             noParameters: 'Параметры не заполнены',
             noConsent: 'Согласия на связь нет — писать нельзя',
             heading: 'Заявки',
+            waiting: 'Ждёт {count} {noun}',
+            dayOne: 'день',
+            dayFew: 'дня',
+            dayMany: 'дней',
+            reminderSent: 'Напоминание отправлено',
+            write: 'Написать',
+            openConversation: 'Открыть переписку',
+            showHandled: 'Показывать обработанные',
         },
         support: {
             escalated: 'Ждёт ответа',

@@ -67,11 +67,18 @@ export const curatorApi = {
     getBenchmark: (weeks: number) =>
         apiClient.get<BenchmarkData>(`${BASE}/analytics/benchmark?weeks=${weeks}`),
 
-    // Onboarding attempts that stopped short of registration. The contact and
-    // the step they stopped at are the whole point: without them there is
-    // nothing to follow up on.
-    getLeads: (page?: PageRequest) =>
-        apiClient.get<Page<Lead>>(`${BASE}/leads${pageQuery(page)}`),
+    // Onboarding attempts that stopped short of registration, as a work
+    // queue: the backend orders them longest-waiting-first among the
+    // unhandled ones and clamps its own offset (task 3) — this only adds the
+    // include_handled flag onto the same pagination query string.
+    getLeads: (options?: PageRequest & { includeHandled?: boolean }) => {
+        const { includeHandled, ...page } = options ?? {}
+        const query = pageQuery(page)
+        const separator = query ? '&' : '?'
+        return apiClient.get<Page<Lead>>(
+            `${BASE}/leads${query}${includeHandled ? `${separator}include_handled=true` : ''}`
+        )
+    },
 
     markLeadHandled: (leadId: string) =>
         apiClient.post<{ handled: boolean }>(`${BASE}/leads/${leadId}/handled`, {}),
@@ -132,7 +139,11 @@ export interface SupportThread {
     }
 }
 
-/** An onboarding attempt saved before registration. */
+/**
+ * An onboarding attempt saved before registration, as the curator queue
+ * returns it: task 3's `/curator/leads` always answers with these fields
+ * alongside the lead itself, never the bare record.
+ */
 export interface Lead {
     id: string
     email: string
@@ -157,6 +168,25 @@ export interface Lead {
     consents: { data_processing: boolean; contact: boolean }
     handled_at?: string
     created_at: string
+    /** How many days the person has waited, computed server-side. */
+    age_days: number
+    /** Whether the one automatic reminder has already gone out. */
+    reminder_sent: boolean
+    /**
+     * Whether writing to this person is allowed at all (migration 051's
+     * separate contact consent). A lead can be in the queue — it says
+     * something about the funnel — without permission to write to them; a
+     * human follow-up must not become a loophole around a withheld consent.
+     */
+    contact_allowed: boolean
+    /**
+     * The support conversation opened from this lead's resume link, when the
+     * person also talked to the bot. Absent for most leads until the
+     * public-support-widget plan starts linking conversations widely — the
+     * queue must not offer a transition to a conversation that does not
+     * exist.
+     */
+    conversation_id?: string
 }
 
 /** One channel's outcome for a notification. */

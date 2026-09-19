@@ -243,6 +243,34 @@ describe('curatorApi', () => {
         })
     })
 
+    describe('getLeads', () => {
+        it('calls GET with no query when nothing is asked for', async () => {
+            mockApiClient.get.mockResolvedValue({ items: [], total: 0, limit: 50, offset: 0 })
+
+            await curatorApi.getLeads()
+
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/curator/leads')
+        })
+
+        it('combines pagination and include_handled onto one query string', async () => {
+            mockApiClient.get.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 10 })
+
+            await curatorApi.getLeads({ limit: 20, offset: 10, includeHandled: true })
+
+            expect(mockApiClient.get).toHaveBeenCalledWith(
+                '/api/v1/curator/leads?limit=20&offset=10&include_handled=true'
+            )
+        })
+
+        it('omits include_handled when not asked for, even with pagination', async () => {
+            mockApiClient.get.mockResolvedValue({ items: [], total: 0, limit: 20, offset: 0 })
+
+            await curatorApi.getLeads({ limit: 20, includeHandled: false })
+
+            expect(mockApiClient.get).toHaveBeenCalledWith('/api/v1/curator/leads?limit=20')
+        })
+    })
+
     describe('getAnalytics', () => {
         it('calls GET /api/v1/curator/analytics', async () => {
             const analytics = { total_clients: 10 }

@@ -1,18 +1,22 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { curatorApi, type Lead } from '../api/curatorApi'
 import { isApiError, messageFor } from '@/shared/errors/apiErrors'
 
-import { t } from '@/shared/i18n'
+import { t, plural } from '@/shared/i18n'
 /**
- * People who worked out their numbers and stopped short of registering.
+ * The work queue for people who worked out their numbers and stopped short
+ * of registering.
  *
- * Before the wizard saved anything, these were invisible: the funnel simply
- * lost them. What makes the screen worth opening is the step they stopped at —
- * it says what to talk to them about.
+ * Before this existed, they left no trace at all. Before this screen became
+ * a queue, it was a timeline: every lead ever saved, oldest first, with no
+ * hint which one to act on next. This shows only what is unhandled — the
+ * longest-waiting lead first, exactly as the backend orders it (task 3) — and
+ * for each one, the reason to talk to them, not just an address to write to.
  */
 
 const stepLabels: Record<string, string> = {
@@ -22,6 +26,7 @@ const stepLabels: Record<string, string> = {
     result: t('curator.leadSteps.result'),
     contact: t('curator.leadSteps.contact'),
     registration: t('curator.leadSteps.registration'),
+    bot: t('curator.leadSteps.bot'),
 }
 
 const goalLabels: Record<string, string> = {
@@ -30,14 +35,26 @@ const goalLabels: Record<string, string> = {
     gain: t('curator.leadGoals.gain'),
 }
 
+function ageLabel(ageDays: number): string {
+    return t('curator.leads.waiting', {
+        count: ageDays,
+        noun: plural(ageDays, {
+            one: t('curator.leads.dayOne'),
+            few: t('curator.leads.dayFew'),
+            many: t('curator.leads.dayMany'),
+        }),
+    })
+}
+
 export function LeadList() {
     const [leads, setLeads] = useState<Lead[]>([])
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [busy, setBusy] = useState<string | null>(null)
+    const [includeHandled, setIncludeHandled] = useState(false)
 
-    const load = useCallback(async () => {
-        const page = await curatorApi.getLeads({ limit: 50 })
+    const load = useCallback(async (withHandled: boolean) => {
+        const page = await curatorApi.getLeads({ limit: 50, includeHandled: withHandled })
         setLeads(page.items)
         setTotal(page.total)
     }, [])
@@ -45,7 +62,7 @@ export function LeadList() {
     useEffect(() => {
         async function loadInitial() {
             try {
-                await load()
+                await load(includeHandled)
             } catch (err) {
                 toast.error(isApiError(err) ? messageFor(err) : t('curator.leads.loadFailed'))
             } finally {
@@ -53,7 +70,23 @@ export function LeadList() {
             }
         }
         loadInitial()
-    }, [load])
+        // Re-runs whenever the toggle changes; `load` itself never changes
+        // identity, only `includeHandled` does.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [includeHandled])
+
+    const handleToggleIncludeHandled = async () => {
+        const next = !includeHandled
+        setIncludeHandled(next)
+        setLoading(true)
+        try {
+            await load(next)
+        } catch (err) {
+            toast.error(isApiError(err) ? messageFor(err) : t('curator.leads.loadFailed'))
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const handleMarkHandled = async (lead: Lead) => {
         setBusy(lead.id)
@@ -84,71 +117,112 @@ export function LeadList() {
         )
     }
 
-    if (leads.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('curator.leads.empty')}</p>
-    }
-
     return (
         <div>
-            <p className="mb-3 text-sm text-gray-600">{t('curator.leads.total', { count: total })}</p>
+            <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-gray-600">{t('curator.leads.total', { count: total })}</p>
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                    <input
+                        type="checkbox"
+                        checked={includeHandled}
+                        onChange={handleToggleIncludeHandled}
+                    />
+                    {t('curator.leads.showHandled')}
+                </label>
+            </div>
 
-            <ul className="space-y-3">
-                {leads.map((lead) => (
-                    <li
-                        key={lead.id}
-                        className="rounded-xl border border-gray-200 bg-white p-4"
-                        data-testid="lead-card"
-                    >
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <p className="text-sm font-semibold text-gray-900">
-                                    {lead.name || t('curator.leads.noName')}
-                                </p>
-                                <a
-                                    href={`mailto:${lead.email}`}
-                                    className="text-sm text-blue-600 hover:underline"
-                                >
-                                    {lead.email}
-                                </a>
+            {leads.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-500">{t('curator.leads.empty')}</p>
+            ) : (
+                <ul className="space-y-3">
+                    {/* Server order, not re-sorted: this is what makes it a queue
+                        rather than a list the curator has to scan for who has
+                        waited longest. */}
+                    {leads.map((lead) => (
+                        <li
+                            key={lead.id}
+                            className="rounded-xl border border-gray-200 bg-white p-4"
+                            data-testid="lead-card"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                        {lead.name || t('curator.leads.noName')}
+                                    </p>
+                                    {/* Identifies who this is about, regardless of
+                                        consent — withheld consent hides the ability
+                                        to write to them, not who they are. */}
+                                    <p className="text-sm text-gray-700">{lead.email}</p>
+                                </div>
+                                {lead.handled_at ? (
+                                    <span className="text-xs text-gray-500">{t('curator.leads.handled')}</span>
+                                ) : (
+                                    <button
+                                        onClick={() => handleMarkHandled(lead)}
+                                        disabled={busy === lead.id}
+                                        className="text-sm font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-300"
+                                    >
+                                        {t('curator.leads.markHandled')}
+                                    </button>
+                                )}
                             </div>
-                            {lead.handled_at ? (
-                                <span className="text-xs text-gray-500">{t('curator.leads.handled')}</span>
-                            ) : (
-                                <button
-                                    onClick={() => handleMarkHandled(lead)}
-                                    disabled={busy === lead.id}
-                                    className="text-sm font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-300"
-                                >
-                                    {t('curator.leads.markHandled')}
-                                </button>
-                            )}
-                        </div>
 
-                        <p className="mt-2 text-xs text-gray-600">
-                            {t('curator.leads.stoppedAt', { step: stepLabels[lead.last_step] ?? lead.last_step })}
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-600">
-                            {[
-                                lead.parameters.goal && goalLabels[lead.parameters.goal],
-                                lead.parameters.height_cm && t('curator.leads.heightCm', { value: lead.parameters.height_cm }),
-                                lead.parameters.weight_kg && t('curator.leads.weightKg', { value: lead.parameters.weight_kg }),
-                                lead.result && t('curator.leads.calories', { value: Math.round(lead.result.calories) }),
-                            ]
-                                .filter(Boolean)
-                                .join(' · ') || t('curator.leads.noParameters')}
-                        </p>
-
-                        {/* Whether we may write to them at all is not a detail:
-                            it decides what anyone looking at this list can do. */}
-                        {!lead.consents.contact && (
-                            <p className="mt-2 text-xs text-amber-600">
-                                {t('curator.leads.noConsent')}
+                            <p className="mt-2 text-xs text-gray-600">
+                                {t('curator.leads.stoppedAt', { step: stepLabels[lead.last_step] ?? lead.last_step })}
                             </p>
-                        )}
-                    </li>
-                ))}
-            </ul>
+
+                            <p className="mt-1 text-xs text-gray-600">
+                                {[
+                                    lead.parameters.goal && goalLabels[lead.parameters.goal],
+                                    lead.parameters.height_cm && t('curator.leads.heightCm', { value: lead.parameters.height_cm }),
+                                    lead.parameters.weight_kg && t('curator.leads.weightKg', { value: lead.parameters.weight_kg }),
+                                    lead.result && t('curator.leads.calories', { value: Math.round(lead.result.calories) }),
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ') || t('curator.leads.noParameters')}
+                            </p>
+
+                            <p className="mt-1 text-xs text-gray-500">
+                                {ageLabel(lead.age_days)}
+                                {lead.reminder_sent && ` · ${t('curator.leads.reminderSent')}`}
+                            </p>
+
+                            {/* Whether we may write to them at all is not a detail:
+                                it decides what anyone looking at this card can do.
+                                No consent means no "Написать" action at all — not a
+                                disabled one, which would read as a temporary
+                                obstacle rather than a rule. */}
+                            {!lead.contact_allowed && (
+                                <p className="mt-2 text-xs font-medium text-amber-600">
+                                    {t('curator.leads.noConsent')}
+                                </p>
+                            )}
+
+                            <div className="mt-3 flex gap-4">
+                                {lead.contact_allowed && (
+                                    <a
+                                        href={`mailto:${lead.email}`}
+                                        className="text-sm text-blue-600 hover:underline"
+                                    >
+                                        {t('curator.leads.write')}
+                                    </a>
+                                )}
+                                {/* Stays nil until the public-support-widget plan
+                                    starts linking conversations widely — absent
+                                    rather than a disabled link to nowhere. */}
+                                {lead.conversation_id && (
+                                    <Link
+                                        href={`/curator/support/${lead.conversation_id}`}
+                                        className="text-sm text-blue-600 hover:underline"
+                                    >
+                                        {t('curator.leads.openConversation')}
+                                    </Link>
+                                )}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     )
 }
