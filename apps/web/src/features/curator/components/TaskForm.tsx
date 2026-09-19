@@ -7,6 +7,7 @@ import { curatorApi } from '../api/curatorApi'
 import type { TaskView, TaskType, TaskRecurrence } from '../types'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 const TYPE_OPTIONS: { value: TaskType; label: string }[] = [
     { value: 'nutrition', label: t('curator.task.typeNutrition') },
     { value: 'workout', label: t('curator.task.typeWorkout') },
@@ -87,8 +88,8 @@ export function TaskForm({ clientId, onClose, onSaved, existingTask }: TaskFormP
                 })
             }
             onSaved(task)
-        } catch {
-            setError(isEdit ? t('curator.task.updateFailed') : t('curator.task.createFailed'))
+        } catch (err) {
+            setError(messageForOr(err, isEdit ? t('curator.task.updateFailed') : t('curator.task.createFailed')))
         } finally {
             setSaving(false)
         }

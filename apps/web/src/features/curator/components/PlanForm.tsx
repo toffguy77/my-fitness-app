@@ -6,6 +6,7 @@ import { curatorApi } from '../api/curatorApi'
 import type { WeeklyPlanView } from '../types'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 function getMonday(d: Date): string {
     const date = new Date(d)
     const day = date.getDay()
@@ -80,8 +81,10 @@ export function PlanForm({ clientId, existingPlan, onClose, onSaved }: PlanFormP
                 })
             }
             onSaved(plan)
-        } catch {
-            setError(t('curator.plan.saveFailed'))
+        } catch (err) {
+            // «План на эту неделю уже есть» и «клиент больше не ваш» —
+            // разные поводы, и оба сервер называет.
+            setError(messageForOr(err, t('curator.plan.saveFailed')))
         } finally {
             setSaving(false)
         }
