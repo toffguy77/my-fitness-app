@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
@@ -2383,7 +2384,14 @@ func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []b
 		return nil, err
 	}
 	if remaining <= 0 {
-		return nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня")
+		// Сентинел, а не голый текст: handler.go отличает эту причину через
+		// errors.Is, и перефразировка ниже не сможет молча превратить 429 в
+		// 500. dailyLimit берётся из конфигурации, а не зашивается числом —
+		// потолок это умолчание, а не константа.
+		return nil, fmt.Errorf(
+			"%w: на сегодня доступно %d распознаваний фото, они закончились — добавьте эту еду вручную, новый снимок можно будет сделать завтра",
+			apperrors.ErrDailyLimitReached, dailyLimit,
+		)
 	}
 
 	// Call OpenRouter for food recognition

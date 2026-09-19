@@ -36,6 +36,14 @@ const (
 	// signs people out whenever a token simply aged.
 	CodeSessionEnded = "session_ended"
 	CodeInternal     = "internal"
+	// CodeDailyLimitReached: distinct from rate_limited — waiting a moment
+	// will not help, the ceiling resets tomorrow, not in a few seconds.
+	CodeDailyLimitReached = "daily_limit_reached"
+	// CodeRecognitionUnclear: the model answered but had nothing usable to
+	// say about the photo. Not the client's fault and not a server failure —
+	// distinct from both so the client can suggest a retake instead of
+	// showing a generic "something broke".
+	CodeRecognitionUnclear = "recognition_unclear"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -59,6 +67,7 @@ var codes = map[error]string{
 	ErrConflict:           CodeConflict,
 	ErrGone:               CodeGone,
 	ErrValidation:         CodeValidation,
+	ErrDailyLimitReached:  CodeDailyLimitReached,
 }
 
 // CodeFor returns the code for an error, following wrapping.
@@ -81,5 +90,7 @@ func AllCodes() []string {
 	// Эти коды ставятся ответами напрямую, без ошибки-сентинела.
 	// CodeFeatureUnavailable здесь больше нет: у него появился сентинел
 	// apperrors.ErrFeatureUnavailable, и он приходит из карты выше.
-	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded)
+	// CodeRecognitionUnclear тоже без сентинела: обработчик распознаёт
+	// причину через errors.Is на ошибках пакета llm, а не через apperrors.
+	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded, CodeRecognitionUnclear)
 }

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/burcev/api/internal/shared/upload"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
@@ -390,20 +392,31 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 	// Call service
 	result, err := h.extras.RecognizeFood(c.Request.Context(), userID, uploaded.Data, uploaded.ContentType(), s3PhotoURL, h.cfg.FoodRecognitionDailyLimit, h.orClient)
 	if err != nil {
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "лимит распознаваний") {
-			response.Error(c, http.StatusTooManyRequests, errMsg)
+		// errors.Is на сентинеле, не strings.Contains на тексте: перефразировка
+		// сообщения в service.go раньше могла молча превратить 429 в 500 без
+		// единого падающего теста.
+		if errors.Is(err, apperrors.ErrDailyLimitReached) {
+			response.ErrorCode(c, http.StatusTooManyRequests, apperrors.CodeDailyLimitReached,
+				fmt.Sprintf(
+					"На сегодня доступно %d распознаваний фото, и они закончились — добавьте эту еду вручную. Новый снимок можно будет сделать завтра.",
+					h.cfg.FoodRecognitionDailyLimit,
+				), nil)
 			return
 		}
 		// Модель ответила, но сказать ей оказалось нечего, либо ответ не
 		// уместился в отведённый предел. И то и другое — не вина фотографии,
 		// и человеку честнее это сказать, чем показать внутреннюю ошибку:
 		// иначе он будет переснимать тарелку, пока не сдастся.
+		//
+		// response.Error(422, ...) отдал бы code "internal" — codeForStatus не
+		// знает про 422, и на клиенте messageFor показал бы «Сервис временно
+		// недоступен» вместо совета переснять фото. response.ErrorCode с
+		// собственным кодом называет причину явно.
 		if errors.Is(err, llm.ErrEmptyModelAnswer) || errors.Is(err, llm.ErrAnswerTruncated) {
 			h.log.Warn("Food recognition returned nothing usable", "error", err, "user_id", userID)
 			telemetry.Record(telemetry.EventModelCallFailed)
-			response.Error(c, http.StatusUnprocessableEntity,
-				"Не удалось разобрать это фото — попробуйте снять ближе или добавьте еду вручную")
+			response.ErrorCode(c, http.StatusUnprocessableEntity, apperrors.CodeRecognitionUnclear,
+				"Не удалось разобрать это фото — попробуйте снять ближе или добавьте еду вручную", nil)
 			return
 		}
 

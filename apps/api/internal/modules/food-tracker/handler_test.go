@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/gin-gonic/gin"
@@ -585,7 +586,7 @@ func TestRecognizeFood_LimitExceeded(t *testing.T) {
 	imageData := testPNG(t)
 
 	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
-		Return(nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня"))
+		Return(nil, fmt.Errorf("%w: на сегодня доступно 20 распознаваний фото", apperrors.ErrDailyLimitReached))
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
 
@@ -601,7 +602,39 @@ func TestRecognizeFood_LimitExceeded(t *testing.T) {
 	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Contains(t, resp["message"], "лимит распознаваний")
+	assert.Equal(t, apperrors.CodeDailyLimitReached, resp["code"])
+	assert.Contains(t, resp["message"], "вручную",
+		"человеку нужно понимать, что делать прямо сейчас, а не только что лимит исчерпан")
+	assert.Contains(t, resp["message"], "завтра",
+		"дневной потолок — не то же самое, что частота запросов: ждать нужно до завтра")
+
+	mockService.AssertExpectations(t)
+}
+
+// Раньше отличие 429 от 500 держалось на strings.Contains(err.Error(), "лимит
+// распознаваний") — перефразируй текст в service.go, и проверка молча
+// перестанет совпадать. errors.Is на сентинеле так не ломается: ошибка без
+// apperrors.ErrDailyLimitReached обязана остаться пятисоткой, даже если в её
+// тексте те же слова.
+func TestRecognizeFood_ErrorMentioningLimitButNotWrappingSentinel_Is500(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	imageData := testPNG(t)
+
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
+		Return(nil, fmt.Errorf("лимит распознаваний временно не проверяется из-за сбоя"))
+
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code,
+		"текст ошибки похож на дневной потолок, но сентинела нет — это не он")
 
 	mockService.AssertExpectations(t)
 }
@@ -684,6 +717,14 @@ func TestRecognizeFood_ModelSaidNothingUsable(t *testing.T) {
 				"это не внутренняя ошибка: сервер отработал, а разобрать нечего")
 			assert.Contains(t, w.Body.String(), "вручную",
 				"человеку нужен выход, а не констатация неудачи")
+
+			var resp map[string]any
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+			// response.Error(422, ...) раньше молча получал code "internal" —
+			// codeForStatus не знает про 422, и messageFor на клиенте показал бы
+			// «Сервис временно недоступен» вместо совета переснять фото.
+			assert.Equal(t, apperrors.CodeRecognitionUnclear, resp["code"])
+
 			mockService.AssertExpectations(t)
 		})
 	}
