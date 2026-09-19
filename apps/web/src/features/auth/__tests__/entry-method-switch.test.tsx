@@ -47,7 +47,7 @@ describe('Switching between the magic-link and password forms', () => {
         await user.type(screen.getByLabelText(/почт/i), 'saved@example.com')
 
         await user.click(screen.getByRole('button', { name: 'Войти по паролю' }))
-        expect(screen.getByLabelText('Email address')).toBeInTheDocument()
+        expect(screen.getByLabelText('Электронная почта')).toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: 'Войти по ссылке' }))
 

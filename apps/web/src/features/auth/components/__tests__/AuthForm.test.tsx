@@ -36,7 +36,7 @@ describe('AuthForm', () => {
         it('should render email input with correct attributes', () => {
             render(<AuthForm {...defaultProps} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
+            const emailInput = screen.getByLabelText(/почт/i);
             expect(emailInput).toBeInTheDocument();
             expect(emailInput).toHaveAttribute('type', 'email');
             expect(emailInput).toHaveAttribute('placeholder', 'user@example.com');
@@ -69,7 +69,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithEmail} />);
 
-            const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+            const emailInput = screen.getByLabelText(/почт/i) as HTMLInputElement;
             expect(emailInput.value).toBe('test@example.com');
         });
 
@@ -90,7 +90,7 @@ describe('AuthForm', () => {
         it('should call setFormData when email changes', async () => {
             render(<AuthForm {...defaultProps} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
+            const emailInput = screen.getByLabelText(/почт/i);
             await userEvent.type(emailInput, 'a');
 
             expect(mockSetFormData).toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe('AuthForm', () => {
         it('should call onEmailBlur when email input loses focus', () => {
             render(<AuthForm {...defaultProps} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
+            const emailInput = screen.getByLabelText(/почт/i);
             fireEvent.blur(emailInput);
 
             expect(mockOnEmailBlur).toHaveBeenCalledTimes(1);
@@ -137,7 +137,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithPassword} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
+            const emailInput = screen.getByLabelText(/почт/i);
             await userEvent.type(emailInput, 'new@example.com');
 
             // Verify that password is preserved in setFormData calls
@@ -212,8 +212,8 @@ describe('AuthForm', () => {
         it('should have aria-label on email input', () => {
             render(<AuthForm {...defaultProps} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
-            expect(emailInput).toHaveAttribute('aria-label', 'Email address');
+            const emailInput = screen.getByLabelText(/почт/i);
+            expect(emailInput).toHaveAttribute('aria-label', 'Электронная почта');
         });
 
         it('should have aria-label on password input', () => {
@@ -231,7 +231,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithError} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
+            const emailInput = screen.getByLabelText(/почт/i);
             expect(emailInput).toHaveAttribute('aria-invalid', 'true');
         });
 
@@ -250,7 +250,7 @@ describe('AuthForm', () => {
         it('should have aria-required on both inputs', () => {
             render(<AuthForm {...defaultProps} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
+            const emailInput = screen.getByLabelText(/почт/i);
             const passwordInput = screen.getByLabelText(/password/i);
 
             expect(emailInput).toHaveAttribute('aria-required', 'true');
@@ -262,7 +262,7 @@ describe('AuthForm', () => {
         it('should handle rapid typing in email field', async () => {
             render(<AuthForm {...defaultProps} />);
 
-            const emailInput = screen.getByLabelText(/email/i);
+            const emailInput = screen.getByLabelText(/почт/i);
             await userEvent.type(emailInput, 'test@example.com', { delay: 1 });
 
             expect(mockSetFormData).toHaveBeenCalled();
@@ -285,7 +285,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithEmptyValues} />);
 
-            const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+            const emailInput = screen.getByLabelText(/почт/i) as HTMLInputElement;
             const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
 
             expect(emailInput.value).toBe('');
@@ -301,7 +301,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithLongEmail} />);
 
-            const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+            const emailInput = screen.getByLabelText(/почт/i) as HTMLInputElement;
             expect(emailInput.value).toBe(longEmail);
         });
 

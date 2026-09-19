@@ -24,29 +24,24 @@ import { t } from '@/shared/i18n'
 export interface AuthScreenProps {
     /**
      * С каким режимом открылся экран — из `?mode=register` на `/auth`
-     * (задача 9, посадочная страница). По умолчанию 'login': экран
-     * открывается на входе по ссылке, как и раньше.
+     * (задача 9, посадочная страница). По умолчанию 'login'.
      *
-     * MagicLinkForm сама по себе не различает вход и регистрацию — один и
-     * тот же адрес и то же согласие работают для обоих, а её тексты
-     * («Получить ссылку для входа», «Войти по паролю») говорят только про
-     * вход. Поэтому 'register' не просто меняет `mode`: он ещё и сразу
-     * открывает форму пароля (`entryMethod: 'password'`) в её
-     * register-варианте — там, где кнопка подписана «Зарегистрироваться» и
-     * видна ConsentSection. Человек, пришедший за аккаунтом, не должен
-     * упереться в экран, весь текст которого — про вход.
+     * Не меняет, какой способ входа открыт первым: вход по ссылке остаётся
+     * первым и для регистрации — второй, обходной, регистрации по ссылке нет
+     * (человек просто вводит почту, задача 9 ruling). Меняет только текст
+     * внутри MagicLinkForm (`intent`) — заголовок, пояснение и подпись
+     * кнопки — и то, какой вариант пароль-формы открыт, если человек всё же
+     * переключится на неё через «Войти по паролю».
      */
     initialMode?: AuthMode;
 }
 
 export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
-    // Вход по ссылке — то, что видно первым для входа; форма пароля не третий
-    // режим, а второй способ войти тем же mode, раскрываемый без перезагрузки
-    // страницы. Регистрация — исключение: у неё нет отдельного признака в
-    // MagicLinkForm, поэтому она сразу открывает форму пароля.
-    const [entryMethod, setEntryMethod] = useState<'link' | 'password'>(
-        initialMode === 'register' ? 'password' : 'link'
-    );
+    // Вход по ссылке — то, что видно первым всегда, для входа и для
+    // регистрации одинаково: отдельной регистрации по ссылке нет, разница —
+    // только в тексте (MagicLinkForm.intent). Форма пароля — второй способ,
+    // раскрываемый без перезагрузки страницы, в каком бы режиме ни начали.
+    const [entryMethod, setEntryMethod] = useState<'link' | 'password'>('link');
     const [mode, setMode] = useState<AuthMode>(initialMode);
     const [formData, setFormData] = useState<AuthFormData>({
         email: '',
@@ -147,6 +142,7 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
                         */}
                         <div hidden={entryMethod !== 'link'}>
                             <MagicLinkForm
+                                intent={mode}
                                 onSwitchToPassword={() => setEntryMethod('password')}
                             />
                         </div>
@@ -189,18 +185,25 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
                                     />
                                 )}
 
-                                {/* Action Buttons */}
+                                {/* Action Buttons. In register mode the login button is not
+                                    rendered at all — not just demoted: a person here to make an
+                                    account must not be able to fire off a login attempt with a
+                                    password nobody has set yet, and "Зарегистрироваться" is the
+                                    button that is meant to be primary. Going back to signing in
+                                    is still one click away, via haveAccountSignIn below. */}
                                 <div className="mt-6 space-y-3">
-                                    <Button
-                                        onClick={handleLogin}
-                                        disabled={!isFormValid || isLoading}
-                                        isLoading={isLoading && mode === 'login'}
-                                        variant="primary"
-                                        className="w-full"
-                                        aria-label="Log in to your account"
-                                    >
-                                        {isLoading && mode === 'login' ? t('auth.signingIn') : t('auth.signIn')}
-                                    </Button>
+                                    {mode === 'login' && (
+                                        <Button
+                                            onClick={handleLogin}
+                                            disabled={!isFormValid || isLoading}
+                                            isLoading={isLoading}
+                                            variant="primary"
+                                            className="w-full"
+                                            aria-label={t('auth.signIn')}
+                                        >
+                                            {isLoading ? t('auth.signingIn') : t('auth.signIn')}
+                                        </Button>
+                                    )}
 
                                     <Button
                                         onClick={() => {
@@ -213,9 +216,9 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
                                         }}
                                         disabled={(mode === 'register' && !isRegisterValid) || isLoading}
                                         isLoading={isLoading && mode === 'register'}
-                                        variant="outline"
+                                        variant={mode === 'register' ? 'primary' : 'outline'}
                                         className="w-full"
-                                        aria-label="Register a new account"
+                                        aria-label={t('auth.register')}
                                     >
                                         {mode === 'register'
                                             ? isLoading

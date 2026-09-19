@@ -1,5 +1,10 @@
 /**
- * Форма запроса одноразовой ссылки для входа.
+ * Форма запроса одноразовой ссылки — одна и та же для входа и регистрации.
+ * Отдельной регистрации по ссылке нет: человек вводит почту, и сервер сам
+ * решает, завести аккаунт или впустить в существующий (задача 9, ruling
+ * по разведению регистрации и входа). `intent` не меняет поведение формы —
+ * только заголовок, пояснение и подпись кнопки, чтобы экран не молчал о том,
+ * зачем он открыт человеку, который пришёл заводить аккаунт.
  *
  * Согласия те же, что и у обычной регистрации (ConsentSection, ConsentState):
  * обработка данных начинается здесь, с отправки письма на указанный адрес, а
@@ -10,7 +15,8 @@
  * сервера. Сервер отвечает одним и тем же текстом для существующего и
  * несуществующего адреса, чтобы эндпоинт нельзя было использовать как
  * проверку наличия аккаунта — здесь важно не добавить ничего, что выдало бы
- * это различие.
+ * это различие. По той же причине текст после отправки не зависит от
+ * `intent`: он про то, что сделал сервер, а не про то, зачем открывали форму.
  */
 
 'use client';
@@ -27,9 +33,14 @@ import { t } from '@/shared/i18n';
 export interface MagicLinkFormProps {
     /** Раскрывает форму пароля — второй способ входа, на том же экране. */
     onSwitchToPassword: () => void;
+    /**
+     * С каким намерением открыт экран — определяет только текст (заголовок,
+     * пояснение, подпись кнопки), не поведение формы. По умолчанию 'login'.
+     */
+    intent?: 'login' | 'register';
 }
 
-export function MagicLinkForm({ onSwitchToPassword }: MagicLinkFormProps) {
+export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLinkFormProps) {
     const [email, setEmail] = useState('');
     const [consents, setConsents] = useState<ConsentState>({
         terms_of_service: false,
@@ -115,8 +126,17 @@ export function MagicLinkForm({ onSwitchToPassword }: MagicLinkFormProps) {
         );
     }
 
+    const heading = t(`auth.magicLink.intent.${intent}.heading`)
+    const explanation = t(`auth.magicLink.intent.${intent}.explanation`)
+    const submitLabel = t(`auth.magicLink.intent.${intent}.submit`)
+
     return (
         <div className="space-y-4">
+            <div>
+                <h2 className="text-lg font-semibold text-gray-900">{heading}</h2>
+                <p className="mt-1 text-sm text-gray-600">{explanation}</p>
+            </div>
+
             <Input
                 type="email"
                 label={t('auth.magicLink.emailLabel')}
@@ -143,9 +163,9 @@ export function MagicLinkForm({ onSwitchToPassword }: MagicLinkFormProps) {
                     isLoading={isSubmitting}
                     variant="primary"
                     className="w-full"
-                    aria-label={t('auth.magicLink.submit')}
+                    aria-label={submitLabel}
                 >
-                    {isSubmitting ? t('auth.magicLink.submitting') : t('auth.magicLink.submit')}
+                    {isSubmitting ? t('auth.magicLink.submitting') : submitLabel}
                 </Button>
 
                 <button

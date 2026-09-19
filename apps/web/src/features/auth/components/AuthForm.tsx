@@ -34,14 +34,14 @@ export function AuthForm({
         <div className="space-y-4">
             <Input
                 type="email"
-                label="Email"
+                label={t('auth.emailLabel')}
                 placeholder="user@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 onBlur={onEmailBlur}
                 error={errors.email}
                 required
-                aria-label="Email address"
+                aria-label={t('auth.emailLabel')}
             />
 
             <PasswordInput

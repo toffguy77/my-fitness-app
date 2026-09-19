@@ -36,9 +36,9 @@ async function openPasswordForm() {
 
 async function signIn(email: string, password: string) {
     await openPasswordForm()
-    await userEvent.type(screen.getByLabelText('Email address'), email)
+    await userEvent.type(screen.getByLabelText('Электронная почта'), email)
     await userEvent.type(screen.getByLabelText('Password'), password)
-    await userEvent.click(screen.getByLabelText('Log in to your account'))
+    await userEvent.click(screen.getByLabelText('Войти'))
 }
 
 describe('Signing in', () => {
@@ -69,8 +69,8 @@ describe('Signing in', () => {
 
     it('refuses to send an empty password', async () => {
         await openPasswordForm()
-        await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com')
-        await userEvent.click(screen.getByLabelText('Log in to your account'))
+        await userEvent.type(screen.getByLabelText('Электронная почта'), 'user@example.com')
+        await userEvent.click(screen.getByLabelText('Войти'))
 
         expect(apiClient.post).not.toHaveBeenCalled()
     })
@@ -98,7 +98,7 @@ describe('Signing in', () => {
     // Registration is where the rules apply, and where saying them early helps.
     it('still explains the rules while registering', async () => {
         await openPasswordForm()
-        await userEvent.click(screen.getByLabelText('Register a new account'))
+        await userEvent.click(screen.getByLabelText('Зарегистрироваться'))
 
         await userEvent.type(screen.getByLabelText('Password'), 'oldpass')
         await userEvent.tab()
