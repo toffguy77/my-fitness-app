@@ -2,12 +2,14 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -187,6 +189,28 @@ func TestConsumeMagicLinkForgedLooksLikeExpired(t *testing.T) {
 
 	assert.Equal(t, expired.Code, forged.Code)
 	assert.Equal(t, expired.Body.String(), forged.Body.String())
+}
+
+// Раньше отказ шёл через response.Error, и codeForStatus(400) молча
+// подставлял общий code "validation" — тот же код, что и у, например, отказа
+// формы регистрации по несовпадающему паролю. На клиенте messageFor различает
+// причины по code, а не по message (см. apiErrors.ts): с общим "validation"
+// он показывал «Проверьте введённые данные» человеку, который просто перешёл
+// по письму — вводить ему было нечего. Код должен называть причину явно, и
+// словарь на обеих сторонах уже знает "token_invalid" — заводить новый не
+// нужно.
+func TestConsumeMagicLinkRejectsExpiredWithNamedCode(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+	expectNoRedeemableLink(mock)
+
+	w := post(r, "/auth/magic-link/consume", `{"token":"stale"}`)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, apperrors.CodeTokenInvalid, resp["code"],
+		"code должен называть причину (token_invalid), а не общий codeForStatus(400)")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 // Погашение существующей ссылки на существующего пользователя выдаёт сессию

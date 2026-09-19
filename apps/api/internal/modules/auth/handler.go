@@ -294,7 +294,13 @@ func (h *Handler) ConsumeMagicLink(c *gin.Context) {
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrTokenInvalid):
-		response.Error(c, http.StatusBadRequest, "Ссылка не подходит — запросите новую")
+		// response.Error здесь раньше отдавал code "validation" —
+		// codeForStatus(400) не знает про эту причину, и messageFor на
+		// клиенте показывал общее «Проверьте введённые данные» человеку,
+		// который просто перешёл по письму: вводить ему было нечего.
+		// response.Fail называет причину явно кодом, который словарь уже
+		// знает (apperrors.CodeTokenInvalid → "Ссылка недействительна").
+		response.Fail(c, http.StatusBadRequest, err, "Ссылка не подходит — запросите новую")
 		return
 	case errors.Is(err, apperrors.ErrConflict):
 		// Гонка на создании аккаунта — см. createAccountFromMagicLink.
