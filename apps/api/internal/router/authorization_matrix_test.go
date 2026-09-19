@@ -127,12 +127,11 @@ var protectedRoutes = map[string]protection{
 	// чтобы с человеком поговорили, а разговаривают кураторы.
 	"POST /api/v1/curator/leads/:id/handled": protRole,
 
-	// Support conversations. :id is a conversation, and every route touching
-	// one is behind the administrative role — the person on the other end of
-	// the chat reaches it through Telegram, never through these.
-	"GET /api/v1/admin/support/conversations/:id":        protRole,
-	"POST /api/v1/admin/support/conversations/:id/reply": protRole,
-	"POST /api/v1/admin/support/conversations/:id/close": protRole,
+	// Разговоры поддержки. :id — разговор; собеседник приходит в него из
+	// Telegram или из виджета, но никогда через эти маршруты. Защита — роль.
+	"GET /api/v1/curator/support/conversations/:id":        protRole,
+	"POST /api/v1/curator/support/conversations/:id/reply": protRole,
+	"POST /api/v1/curator/support/conversations/:id/close": protRole,
 }
 
 // nonResourceParams are path parameters that address a value rather than

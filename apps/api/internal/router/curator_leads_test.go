@@ -68,3 +68,36 @@ func TestOldAdminLeadPathIsGone(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
+
+// Разговоры поддержки: та же пара «доступ / отказ», что и у заявок.
+// Утверждение на StatusUnauthorized обязательно — первая редакция теста на
+// заявки проверяла только «не 403 и не 404», и отказ по аутентификации
+// (401) проходил незамеченным, оставляя раздел недоступным той самой роли,
+// ради которой задача делается.
+func TestCuratorSupportRoutesAllowCoordinatorAndAdmin(t *testing.T) {
+	r := testEngine(t)
+
+	for _, role := range []string{"coordinator", "super_admin"} {
+		w := getAs(t, r, "/api/v1/curator/support/conversations", role)
+		assert.NotEqual(t, http.StatusForbidden, w.Code, "роль %q обязана проходить", role)
+		assert.NotEqual(t, http.StatusUnauthorized, w.Code, "роль %q обязана проходить", role)
+		assert.NotEqual(t, http.StatusNotFound, w.Code, "роль %q обязана проходить", role)
+	}
+}
+
+func TestCuratorSupportRoutesDenyEveryoneElse(t *testing.T) {
+	r := testEngine(t)
+
+	for _, role := range []string{"user", "client", ""} {
+		w := getAs(t, r, "/api/v1/curator/support/conversations", role)
+		assert.Equal(t, http.StatusForbidden, w.Code, "роль %q не должна проходить", role)
+	}
+}
+
+func TestOldAdminSupportPathIsGone(t *testing.T) {
+	r := testEngine(t)
+
+	w := getAs(t, r, "/api/v1/admin/support/conversations", "super_admin")
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
