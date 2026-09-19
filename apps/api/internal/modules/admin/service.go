@@ -39,6 +39,31 @@ type Service struct {
 	log *logger.Logger
 	// groupMembers может быть nil: без группы состав не ведётся.
 	groupMembers GroupMembership
+	// sessions lets a role change invalidate tokens already issued under the
+	// old role, the same way a password change does. Required: a role change
+	// without it would change the role and leave the old token working.
+	sessions SessionCache
+}
+
+// SessionCache is the narrow part of middleware.TokenVersions this service
+// needs, declared here so the admin module does not depend on the middleware
+// package for one method.
+//
+// A role carried in a JWT is read from the token, not the database
+// (middleware.RequireRole), so revoking a role only takes effect once the
+// token that named the old role stops being accepted. Bumping the version and
+// changing the role happen in the same transaction as each other: a role
+// changed with the token left valid is worse than a role that did not change
+// at all.
+type SessionCache interface {
+	BumpVersion(ctx context.Context, tx *sql.Tx, userID int64) error
+}
+
+// WithSessionCache supplies the cache to invalidate when a role change makes
+// an already-issued token stale.
+func (s *Service) WithSessionCache(cache SessionCache) *Service {
+	s.sessions = cache
+	return s
 }
 
 // NewService creates a new admin service
@@ -262,15 +287,36 @@ func (s *Service) ChangeRole(ctx context.Context, userID int64, newRole string) 
 		return fmt.Errorf("cannot change super_admin role: %w", apperrors.ErrForbidden)
 	}
 
+	// Loud rather than silent: without this a role change would go through
+	// while the token it is meant to invalidate keeps working.
+	if s.sessions == nil {
+		return fmt.Errorf("role change needs a token-version cache: %w", apperrors.ErrValidation)
+	}
+
 	// If demoting coordinator -> client, handle client reassignment in a transaction
 	if currentRole == "coordinator" && newRole == "client" {
 		return s.demoteCurator(ctx, userID)
 	}
 
-	// Simple role change (client -> coordinator)
-	_, err = s.db.ExecContext(ctx, `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2`, newRole, userID)
+	// Simple role change (client -> coordinator). Still needs a transaction:
+	// the role update and the token-version bump must land together, or a
+	// role that changed with the old token still valid is possible.
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err = tx.ExecContext(ctx, `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2`, newRole, userID); err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
+	}
+
+	if err := s.sessions.BumpVersion(ctx, tx, userID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	s.log.LogBusinessEvent("role_changed", map[string]interface{}{
@@ -383,6 +429,15 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 	`, curatorID)
 	if err != nil {
 		return fmt.Errorf("failed to update role: %w", err)
+	}
+
+	// 3a. Invalidate tokens minted while this account still held the
+	// coordinator role. Without this a demoted curator keeps reading
+	// clients' personal data and support conversations — reassigned to
+	// someone else on the database side already — until their token expires
+	// on its own.
+	if err := s.sessions.BumpVersion(ctx, tx, curatorID); err != nil {
+		return err
 	}
 
 	// 4. Reassign orphaned clients

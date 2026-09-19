@@ -359,3 +359,65 @@ describe('concurrent refreshes', () => {
         expect(refreshes).toBe(2)
     })
 })
+
+describe('parked requests when the in-flight refresh fails', () => {
+    beforeEach(() => {
+        global.fetch = jest.fn()
+    })
+
+    afterEach(() => {
+        jest.restoreAllMocks()
+    })
+
+    // Three requests hit an expired token at once. The first one drives the
+    // refresh; the other two are parked as subscribers waiting for it. When
+    // the refresh itself fails, every parked request must settle — reject,
+    // specifically — instead of sitting forever with no then, no catch, no
+    // finally. A caller's `finally { setLoading(false) }` depends on that.
+    it('rejects every parked request, not just the one driving the refresh', async () => {
+        let refreshCalls = 0
+
+        ;(global.fetch as jest.Mock).mockImplementation(async (url: string) => {
+            if (String(url).includes('/auth/refresh')) {
+                refreshCalls += 1
+                return {
+                    ok: false,
+                    status: 401,
+                    headers: new Headers(),
+                    json: async () => ({ message: 'Invalid refresh token' }),
+                }
+            }
+            // Every ordinary request looks like an expired session.
+            return {
+                ok: false,
+                status: 401,
+                headers: new Headers(),
+                json: async () => ({ message: 'Unauthorized' }),
+            }
+        })
+
+        const settled = await Promise.allSettled([
+            apiClient.get('http://localhost:4000/api/dashboard/a'),
+            apiClient.get('http://localhost:4000/api/dashboard/b'),
+            apiClient.get('http://localhost:4000/api/dashboard/c'),
+        ])
+
+        // Single-flight held: three expired requests produced one refresh
+        // attempt, not three (that is the whole reason the queue exists).
+        expect(refreshCalls).toBe(1)
+
+        // Every one of the three settles — none hangs forever — and each
+        // rejects with the actual reason the refresh failed, not silence and
+        // not a synthesized generic error.
+        expect(settled).toHaveLength(3)
+        for (const outcome of settled) {
+            expect(outcome.status).toBe('rejected')
+            const reason = (outcome as PromiseRejectedResult).reason
+            expect(reason).toBeInstanceOf(Error)
+            expect((reason as Error).message).toBe('Refresh rejected')
+        }
+
+        // The session is torn down once, not once per parked request.
+        expect(tokenStorage.clearAuth).toHaveBeenCalledTimes(1)
+    }, 10000)
+})
