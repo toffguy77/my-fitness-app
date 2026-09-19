@@ -84,6 +84,7 @@ export default defineConfig<SessionOptions>({
         'tests/workout-logging.spec.ts',
         'tests/food-tracker-nav.spec.ts',
         'tests/settings-apple-health.spec.ts',
+        'tests/food-recognition.spec.ts',
       ],
     },
     {
