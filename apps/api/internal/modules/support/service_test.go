@@ -61,8 +61,8 @@ func setupSupport(t *testing.T, answerer *fakeAnswerer) (*Service, *fakeSender, 
 // expectConversation stands in for the upsert every incoming message performs.
 func expectConversation(mock sqlmock.Sqlmock, status string) {
 	mock.ExpectQuery("INSERT INTO support_conversations").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "chat_id", "lead_id", "user_id", "status"}).
-			AddRow("conv-1", int64(555), nil, nil, status))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "chat_id", "lead_id", "user_id", "status", "channel"}).
+			AddRow("conv-1", int64(555), nil, nil, status, ChannelTelegram))
 }
 
 func expectRecordedMessage(mock sqlmock.Sqlmock) {

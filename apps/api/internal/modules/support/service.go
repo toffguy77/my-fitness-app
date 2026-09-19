@@ -514,10 +514,10 @@ func (s *Service) conversationFor(ctx context.Context, in IncomingMessage) (*Con
 			-- A closed conversation reopens when the person writes again.
 			status = CASE WHEN support_conversations.status = 'closed' THEN 'open'
 			              ELSE support_conversations.status END
-		RETURNING id, chat_id, lead_id, user_id, status`,
+		RETURNING id, chat_id, lead_id, user_id, status, channel`,
 		in.ChatID, in.Username, in.Name).
 		Scan(&conversation.ID, &conversation.ChatID, &conversation.LeadID,
-			&conversation.UserID, &conversation.Status)
+			&conversation.UserID, &conversation.Status, &conversation.Channel)
 	if err != nil {
 		return nil, fmt.Errorf("open support conversation: %w", err)
 	}
@@ -527,10 +527,10 @@ func (s *Service) conversationFor(ctx context.Context, in IncomingMessage) (*Con
 func (s *Service) byID(ctx context.Context, conversationID string) (*Conversation, error) {
 	var conversation Conversation
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, chat_id, lead_id, user_id, status FROM support_conversations WHERE id = $1`,
+		`SELECT id, chat_id, lead_id, user_id, status, channel FROM support_conversations WHERE id = $1`,
 		conversationID).
 		Scan(&conversation.ID, &conversation.ChatID, &conversation.LeadID,
-			&conversation.UserID, &conversation.Status)
+			&conversation.UserID, &conversation.Status, &conversation.Channel)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
 	}

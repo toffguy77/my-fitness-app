@@ -10,9 +10,16 @@ type IncomingMessage struct {
 	Text     string
 }
 
+// Каналы разговора. Их два, и это исчерпывающий список.
+const (
+	ChannelTelegram = "telegram"
+	ChannelWeb      = "web"
+)
+
 // Conversation is a support chat.
 type Conversation struct {
 	ID       string  `json:"id"`
+	Channel  string  `json:"channel"`
 	ChatID   int64   `json:"chat_id"`
 	LeadID   *string `json:"lead_id,omitempty"`
 	UserID   *int64  `json:"user_id,omitempty"`
