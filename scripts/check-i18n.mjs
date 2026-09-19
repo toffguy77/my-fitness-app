@@ -143,6 +143,23 @@ function stripComments(source) {
     return out
 }
 
+// Запись, указывающая в пустоту, — это выключенная охрана, а не пустая
+// работа. `walk` молча пропускает несуществующий путь, поэтому переименование
+// или перенос охраняемого файла превращает проверку в зелёный отчёт при
+// русском литерале внутри — ровно в тот момент, когда охрана нужнее всего.
+// Проверено мутацией: перенос посадочной страницы в группу маршрутов давал
+// «i18n OK» с литералом в файле.
+const missing = TRANSLATED.filter((entry) => !existsSync(entry))
+if (missing.length > 0) {
+    console.error('Записи в TRANSLATED указывают в пустоту:\n')
+    for (const entry of missing) console.error(`  ${entry}`)
+    console.error(
+        '\nПуть переименовали или перенесли — охрана молча выключилась.\n' +
+            'Поправьте путь либо уберите запись осознанно.',
+    )
+    process.exit(1)
+}
+
 const files = TRANSLATED.flatMap((dir) => walk(dir))
 
 // --- Rule 1: no Cyrillic literal in a translated directory ------------------
