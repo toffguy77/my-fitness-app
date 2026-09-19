@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { adminApi, type Lead } from '../api/adminApi'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 /**
  * People who worked out their numbers and stopped short of registering.
  *
@@ -45,8 +46,8 @@ export function LeadList() {
         async function loadInitial() {
             try {
                 await load()
-            } catch {
-                toast.error(t('admin.leads.loadFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('admin.leads.loadFailed')))
             } finally {
                 setLoading(false)
             }
@@ -63,8 +64,10 @@ export function LeadList() {
                     item.id === lead.id ? { ...item, handled_at: new Date().toISOString() } : item
                 )
             )
-        } catch {
-            toast.error(t('admin.leads.markFailed'))
+        } catch (err) {
+            // «Уже отмечена кем-то другим» читается иначе, чем «не удалось»:
+            // в первом случае повторять нечего.
+            toast.error(messageForOr(err, t('admin.leads.markFailed')))
         } finally {
             setBusy(null)
         }

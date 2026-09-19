@@ -8,6 +8,7 @@ import { adminApi } from '../api/adminApi'
 import type { AdminConversation } from '../types'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 export function AdminConversationList() {
     const router = useRouter()
     const [conversations, setConversations] = useState<AdminConversation[]>([])
@@ -19,8 +20,8 @@ export function AdminConversationList() {
             try {
                 const page = await adminApi.getConversations()
                 setConversations(page.items)
-            } catch {
-                setError(t('admin.chats.loadFailed'))
+            } catch (err) {
+                setError(messageForOr(err, t('admin.chats.loadFailed')))
             } finally {
                 setLoading(false)
             }
