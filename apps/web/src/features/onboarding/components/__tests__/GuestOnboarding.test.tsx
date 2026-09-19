@@ -23,6 +23,13 @@ jest.mock('react-hot-toast', () => ({
     default: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }))
 
+const trackSpy = jest.fn()
+
+jest.mock('@/shared/analytics', () => ({
+    ...jest.requireActual('@/shared/analytics'),
+    track: (...args: unknown[]) => trackSpy(...args),
+}))
+
 const push = jest.fn()
 let searchParams = new URLSearchParams()
 jest.mock('next/navigation', () => ({
@@ -181,6 +188,21 @@ describe('The guest onboarding', () => {
             expect(api.createLead).not.toHaveBeenCalled()
             expect(push).toHaveBeenCalledWith('/auth?mode=register')
         })
+
+        // Событие говорит только, что шаг случился, и откуда — не кто его
+        // сделал. Ни адреса, ни имени, введённых на этом самом экране, в
+        // полезной нагрузке быть не должно.
+        it('отправляет событие захвата контакта с источником contact_step', async () => {
+            api.createLead.mockResolvedValue({ token: 't', lead: { id: 'l' } as never })
+
+            render(<GuestOnboarding />)
+            await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+            await userEvent.click(screen.getByRole('checkbox', { name: /обработку моих данных/ }))
+            await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            expect(trackSpy).toHaveBeenCalledWith('contact_captured', { source: 'contact_step' })
+        })
     })
 
     // The whole premise of this screen: somebody who is not going to sit
@@ -241,6 +263,36 @@ describe('The guest onboarding', () => {
                     'Расчёт отправлен на почту — он останется там, даже если вы закроете вкладку.'
                 )
             ).toBeInTheDocument()
+        })
+
+        it('отправляет событие захвата контакта с источником', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+            await saveFromResultScreen('e@example.com')
+
+            expect(trackSpy).toHaveBeenCalledWith('contact_captured', { source: 'result' })
+        })
+
+        // Утверждение «личных данных нет» истинно вырожденно на пустом
+        // наборе — поэтому здесь сначала доказывается, что событие вообще
+        // было отправлено, и только потом проверяется его состав.
+        it('в событии захвата контакта нет ни адреса, ни имени, ни цифр расчёта', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+            await saveFromResultScreen('result@example.com')
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+
+            const captureCalls = trackSpy.mock.calls.filter(([name]) => name === 'contact_captured')
+            expect(captureCalls.length).toBeGreaterThan(0)
+            for (const [, properties] of captureCalls) {
+                expect(properties).toEqual({ source: 'result' })
+            }
         })
 
         it('не создаёт вторую заявку, когда гость всё равно доходит до шага контакта', async () => {

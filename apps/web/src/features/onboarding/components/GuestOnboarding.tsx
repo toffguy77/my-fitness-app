@@ -410,6 +410,9 @@ function GuestResultCapture() {
             })
             rememberLeadToken(token)
             track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'result' })
+            // Факт «контакт оставили», без адреса и без цифр расчёта —
+            // отдельно от EVENTS.leadSaved, который несёт свойства для CRM-нужд.
+            track(EVENTS.contactCaptured, { source: 'result' })
             setSent(true)
         } catch {
             toast.error(t('onboarding.guest.resultCapture.failed'))
@@ -502,6 +505,7 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
             // already something to carry on.
             if (leadToken()) {
                 track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'contact_step' })
+                track(EVENTS.contactCaptured, { source: 'contact_step' })
                 toast.success(t('onboarding.guest.saved'))
                 onSaved()
                 return
@@ -519,6 +523,7 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
             })
             rememberLeadToken(token)
             track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'contact_step' })
+            track(EVENTS.contactCaptured, { source: 'contact_step' })
             toast.success(t('onboarding.guest.saved'))
             onSaved()
         } catch {

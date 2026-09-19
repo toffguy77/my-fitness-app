@@ -52,6 +52,13 @@ jest.mock('@/shared/utils/token-storage', () => ({
     setUser: (...args: unknown[]) => mockSetUser(...args),
 }))
 
+const trackSpy = jest.fn()
+
+jest.mock('@/shared/analytics', () => ({
+    ...jest.requireActual('@/shared/analytics'),
+    track: (...args: unknown[]) => trackSpy(...args),
+}))
+
 function user(overrides: Partial<AuthResponse['user']> = {}): AuthResponse['user'] {
     return {
         id: '42',
@@ -112,6 +119,45 @@ describe('MagicLinkConsume', () => {
         await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/onboarding'))
         expect(mockReplace).not.toHaveBeenCalledWith('/dashboard')
         expect(mockConsume).toHaveBeenCalledWith('fresh', 'lead-abc')
+    })
+
+    // Событие несёт факт («что случилось на этом переходе»), а не то, кто
+    // именно вошёл: outcome — единственное свойство, и оно не содержит ни
+    // адреса, ни идентификатора пользователя.
+    it('отправляет событие о переходе с outcome=created для нового аккаунта', async () => {
+        mockLeadToken.mockReturnValue('lead-abc')
+        mockConsume.mockResolvedValueOnce({
+            user: user({ onboarding_completed: false }),
+            created: true,
+        })
+
+        render(<MagicLinkConsume token="fresh" />)
+
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/onboarding'))
+        expect(trackSpy).toHaveBeenCalledWith('magic_link_consumed', { outcome: 'created' })
+    })
+
+    it('отправляет событие о переходе с outcome=signed_in для существующего аккаунта', async () => {
+        mockConsume.mockResolvedValueOnce({
+            user: user({ onboarding_completed: true }),
+            created: false,
+        })
+
+        render(<MagicLinkConsume token="good" />)
+
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/dashboard'))
+        expect(trackSpy).toHaveBeenCalledWith('magic_link_consumed', { outcome: 'signed_in' })
+    })
+
+    // Отказ (ссылка истекла, погашена или подделана) не сообщает, вошёл ли
+    // кто-нибудь — событие о переходе фиксируется только при успехе.
+    it('не отправляет событие о переходе при отказе сервера', async () => {
+        mockConsume.mockRejectedValueOnce(new ApiError(400, { code: 'token_invalid' }))
+
+        render(<MagicLinkConsume token="stale" />)
+
+        await screen.findByRole('alert')
+        expect(trackSpy).not.toHaveBeenCalledWith('magic_link_consumed', expect.anything())
     })
 
     // Сервер переносит заявку на аккаунт только когда переход его создал (см.

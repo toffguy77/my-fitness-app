@@ -26,6 +26,7 @@ import { destinationFor } from '@/features/auth/utils/session'
 import { setUser } from '@/shared/utils/token-storage'
 import { isNetworkError, messageFor } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
+import { EVENTS, track } from '@/shared/analytics'
 import { MagicLinkFailure } from './MagicLinkFailure'
 
 export function MagicLinkConsume({ token }: { token: string }) {
@@ -56,6 +57,9 @@ export function MagicLinkConsume({ token }: { token: string }) {
         magicLinkApi
             .consume(tokenRef.current, leadToken())
             .then(({ user, created }) => {
+                // Факт, а не личные данные: outcome говорит, что произошло с
+                // этим переходом, а не кто им воспользовался.
+                track(EVENTS.magicLinkConsumed, { outcome: created ? 'created' : 'signed_in' })
                 // Тем же ключом, что и `storeSession` при обычном входе —
                 // часть экранов приложения читает localStorage напрямую, не
                 // дожидаясь собственного запроса за профилем. В отличие от

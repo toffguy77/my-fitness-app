@@ -29,6 +29,7 @@ import { magicLinkApi } from '@/features/auth/api/magicLink';
 import { isApiError, messageFor } from '@/shared/errors/apiErrors';
 import type { ConsentState } from '@/features/auth/types';
 import { t } from '@/shared/i18n';
+import { EVENTS, track } from '@/shared/analytics';
 
 export interface MagicLinkFormProps {
     /** Раскрывает форму пароля — второй способ входа, на том же экране. */
@@ -91,6 +92,10 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
         setIsSubmitting(true);
         try {
             await magicLinkApi.request(trimmed, consents);
+            // No property here on purpose: the server answers the same way
+            // for an address with an account and one without, and the event
+            // must not carry a distinction the response itself does not.
+            track(EVENTS.magicLinkRequested);
             setSent(true);
         } catch (err) {
             if (isApiError(err) && err.status === 503) {

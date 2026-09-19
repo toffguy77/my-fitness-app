@@ -28,6 +28,13 @@ jest.mock('@/features/auth/api/magicLink', () => ({
     },
 }))
 
+const trackSpy = jest.fn()
+
+jest.mock('@/shared/analytics', () => ({
+    ...jest.requireActual('@/shared/analytics'),
+    track: (...args: unknown[]) => trackSpy(...args),
+}))
+
 // Порядок ConsentSection: условия(0), конфиденциальность(1), обработка данных(2), маркетинг(3).
 const TERMS = 0
 const PRIVACY = 1
@@ -102,6 +109,68 @@ describe('MagicLinkForm', () => {
         const textAfterUnknown = second.container.textContent
 
         expect(textAfterKnown).toBe(textAfterUnknown)
+    })
+
+    // То же самое отдельно про событие, а не про экран: по отправленным
+    // событиям тоже нельзя узнать, существует ли аккаунт на введённый адрес.
+    // Оба вызова обязаны быть побайтово одинаковыми — не просто "оба
+    // случились", а с одними и теми же (пустыми) свойствами.
+    it('событие запроса ссылки одинаково для известного и неизвестного адреса', async () => {
+        mockRequest.mockResolvedValue(undefined)
+
+        const user1 = userEvent.setup()
+        const first = render(<MagicLinkForm onSwitchToPassword={onSwitchToPassword} />)
+        await user1.type(screen.getByLabelText(/почт/i), 'known@example.com')
+        await fillRequiredConsents(user1)
+        await user1.click(screen.getByRole('button', { name: /ссылк/i }))
+        await screen.findByText(/мы отправили на него ссылку/i)
+        first.unmount()
+
+        const callsAfterKnown = trackSpy.mock.calls.filter(([name]) => name === 'magic_link_requested')
+        expect(callsAfterKnown.length).toBeGreaterThan(0)
+        trackSpy.mockClear()
+
+        const user2 = userEvent.setup()
+        render(<MagicLinkForm onSwitchToPassword={onSwitchToPassword} />)
+        await user2.type(screen.getByLabelText(/почт/i), 'nobody-has-this-address@example.com')
+        await fillRequiredConsents(user2)
+        await user2.click(screen.getByRole('button', { name: /ссылк/i }))
+        await screen.findByText(/мы отправили на него ссылку/i)
+
+        const callsAfterUnknown = trackSpy.mock.calls.filter(([name]) => name === 'magic_link_requested')
+        expect(callsAfterUnknown.length).toBeGreaterThan(0)
+        expect(callsAfterKnown).toEqual(callsAfterUnknown)
+    })
+
+    // Событие фиксирует, что шаг случился — не результат: сервер отвечает
+    // одним и тем же успехом для существующего и несуществующего адреса, и
+    // событие не должно завести различие, которого нет в ответе.
+    it('отправляет событие запроса ссылки после успешного ответа', async () => {
+        mockRequest.mockResolvedValueOnce(undefined)
+        const user = userEvent.setup()
+        render(<MagicLinkForm onSwitchToPassword={onSwitchToPassword} />)
+
+        await user.type(screen.getByLabelText(/почт/i), 'known@example.com')
+        await fillRequiredConsents(user)
+        await user.click(screen.getByRole('button', { name: /ссылк/i }))
+
+        await screen.findByText(/мы отправили на него ссылку/i)
+        expect(trackSpy).toHaveBeenCalledWith('magic_link_requested')
+    })
+
+    // Отказ не должен ничего сообщить о том, существует ли адрес — событие
+    // о запросе фиксируется только при успехе, никогда при отказе.
+    it('не отправляет событие запроса ссылки при отказе сервера', async () => {
+        mockRequest.mockRejectedValueOnce(new ApiError(400, { code: 'validation' }))
+        const user = userEvent.setup()
+        render(<MagicLinkForm onSwitchToPassword={onSwitchToPassword} />)
+
+        await user.type(screen.getByLabelText(/почт/i), 'someone@example.com')
+        await fillRequiredConsents(user)
+        await user.click(screen.getByRole('button', { name: /ссылк/i }))
+
+        await screen.findByRole('alert')
+        expect(trackSpy).not.toHaveBeenCalledWith('magic_link_requested')
     })
 
     // Ровно два отказа получают собственный текст в этом компоненте (503 —
