@@ -183,6 +183,86 @@ describe('The guest onboarding', () => {
         })
     })
 
+    // The whole premise of this screen: somebody who is not going to sit
+    // through the contact step can still leave a contact, right where they
+    // are, and get it back later.
+    describe('capturing the contact on the result screen', () => {
+        function renderAtResultStep() {
+            answerEverything()
+            useGuestOnboardingStore.setState({ step: GUEST_STEPS.result, result })
+            return render(<GuestOnboarding />)
+        }
+
+        async function saveFromResultScreen(email: string) {
+            await userEvent.type(screen.getByLabelText(/почт/i), email)
+            await userEvent.click(screen.getByLabelText(/обработку/i))
+            await userEvent.click(screen.getByRole('button', { name: /прислать расчёт/i }))
+        }
+
+        // Storing body measurements because somebody typed an address is not a
+        // basis here either — the same guard as the contact step.
+        it('cannot be sent without the data-processing consent', async () => {
+            renderAtResultStep()
+
+            await userEvent.type(screen.getByLabelText(/почт/i), 'result@example.com')
+
+            expect(screen.getByRole('button', { name: /прислать расчёт/i })).toBeDisabled()
+        })
+
+        it('сохраняет расчёт с экрана результата, не проходя шаг контакта', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await saveFromResultScreen('result@example.com')
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            const [input] = api.createLead.mock.calls[0]
+            expect(input.email).toBe('result@example.com')
+            expect(input.capture_source).toBe('result')
+            expect(input.last_step).toBe('result')
+            // The whole point of capturing here: the calculation must not be
+            // lost along with the address. A request with an empty result
+            // would pass every check above and still fail this one.
+            expect(input.result).toMatchObject({
+                calories: result.calories,
+                protein: result.protein,
+                fat: result.fat,
+                carbs: result.carbs,
+            })
+
+            expect(leadToken()).toBe('result-token')
+            // Человек остаётся там же и может продолжить мастер.
+            expect(screen.getByTestId('guest-calories')).toBeInTheDocument()
+            expect(
+                screen.getByText(
+                    'Расчёт отправлен на почту — он останется там, даже если вы закроете вкладку.'
+                )
+            ).toBeInTheDocument()
+        })
+
+        it('не создаёт вторую заявку, когда гость всё равно доходит до шага контакта', async () => {
+            api.createLead.mockResolvedValueOnce({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await saveFromResultScreen('result@example.com')
+            await waitFor(() => expect(api.createLead).toHaveBeenCalledTimes(1))
+
+            await userEvent.click(screen.getByRole('button', { name: 'Сохранить результат' }))
+            await userEvent.type(screen.getByLabelText('Email'), 'result@example.com')
+            await userEvent.click(screen.getByRole('checkbox', { name: /обработку моих данных/ }))
+            await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
+
+            await waitFor(() => expect(push).toHaveBeenCalledWith('/auth?mode=register'))
+            expect(api.createLead).toHaveBeenCalledTimes(1)
+        })
+    })
+
     // The link in the reminder opens their own answers rather than a blank form.
     it('restores a saved attempt from the link in the reminder', async () => {
         searchParams = new URLSearchParams({ resume: 'signed-token' })
