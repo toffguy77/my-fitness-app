@@ -172,10 +172,28 @@ func TestMarkHandled_MissingLeadIsNotFound(t *testing.T) {
 	r, _, mock := setupHandler(t)
 
 	mock.ExpectExec("UPDATE leads SET handled_at").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery("SELECT EXISTS").WillReturnRows(
+		sqlmock.NewRows([]string{"exists"}).AddRow(false))
 
 	w := post(r, "/curator/leads/lead-1/handled", "")
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// A lead somebody else has already claimed must not read as success, or the
+// curator who lost the race has no way to know someone else is already
+// talking to this person.
+func TestMarkHandled_AlreadyClaimedIsConflict(t *testing.T) {
+	r, _, mock := setupHandler(t)
+
+	mock.ExpectExec("UPDATE leads SET handled_at").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery("SELECT EXISTS").WillReturnRows(
+		sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	w := post(r, "/curator/leads/lead-1/handled", "")
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+	assert.Contains(t, w.Body.String(), "уже взял")
 }
 
 // Registering through an external provider never returns to our JavaScript, so

@@ -182,6 +182,9 @@ func (h *Handler) MarkHandled(c *gin.Context) {
 	case errors.Is(err, apperrors.ErrNotFound):
 		response.NotFound(c, "Заявка не найдена")
 		return
+	case errors.Is(err, apperrors.ErrConflict):
+		response.Error(c, http.StatusConflict, "Эту заявку уже взял другой куратор")
+		return
 	default:
 		h.log.Error("Failed to mark lead handled", "error", err)
 		response.InternalError(c, "Не удалось отметить заявку")

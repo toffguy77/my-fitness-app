@@ -299,17 +299,45 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 }
 
 // MarkHandled records that somebody has dealt with this person.
+//
+// The queue is shared: two coordinators can open the same lead within
+// moments of each other. Losing that race costs one extra conversation, not
+// a lost person — but the record of who claimed it first must not be
+// overwritten, or nobody can tell who actually spoke to them. The condition
+// lives in the UPDATE itself, not in a check beforehand: two coordinators
+// clicking at the same instant have to be split apart by the database, not
+// by a race in this process.
 func (s *Service) MarkHandled(ctx context.Context, leadID string, byUserID int64) error {
-	result, err := s.db.ExecContext(ctx,
-		`UPDATE leads SET handled_at = NOW(), handled_by = $2, updated_at = NOW() WHERE id = $1`,
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE leads
+		   SET handled_at = NOW(), handled_by = $2, updated_at = NOW()
+		 WHERE id = $1 AND handled_at IS NULL`,
 		leadID, byUserID)
 	if err != nil {
 		return fmt.Errorf("mark lead handled: %w", err)
 	}
-	if affected, _ := result.RowsAffected(); affected == 0 {
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark lead handled: %w", err)
+	}
+	if affected > 0 {
+		return nil
+	}
+
+	// Zero rows affected is ambiguous on its own: the lead may not exist at
+	// all, or it may already be claimed. Those are different answers to the
+	// person asking, so tell them apart with a lookup rather than collapsing
+	// both into one error.
+	var exists bool
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM leads WHERE id = $1)`, leadID,
+	).Scan(&exists); err != nil {
+		return fmt.Errorf("check lead exists: %w", err)
+	}
+	if !exists {
 		return fmt.Errorf("lead not found: %w", apperrors.ErrNotFound)
 	}
-	return nil
+	return fmt.Errorf("lead already handled: %w", apperrors.ErrConflict)
 }
 
 // DueReminders returns leads owed their single reminder.

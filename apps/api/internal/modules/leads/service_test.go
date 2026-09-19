@@ -305,6 +305,25 @@ func TestMarkHandled_RecordsWhoDealtWithIt(t *testing.T) {
 	require.NoError(t, service.MarkHandled(context.Background(), "lead-7", 3))
 }
 
+// A second curator marking an already-handled lead must get told so, not a
+// silent success that overwrites who actually claimed it first.
+func TestMarkHandled_AlreadyHandledIsConflictNotOverwrite(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectExec("UPDATE leads SET handled_at").
+		WithArgs("lead-7", int64(22)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery("SELECT EXISTS").
+		WithArgs("lead-7").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	err := service.MarkHandled(context.Background(), "lead-7", 22)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+	assert.NotErrorIs(t, err, apperrors.ErrNotFound,
+		"заявка существует — это конфликт, а не «не найдена»")
+}
+
 func TestMarkReminded_RecordsTheSend(t *testing.T) {
 	service, mock := setupService(t)
 

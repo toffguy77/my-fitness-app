@@ -8,9 +8,12 @@ package leads
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/testsupport"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -20,6 +23,19 @@ import (
 
 func daysAgo(n int) time.Time {
 	return time.Now().Add(-time.Duration(n) * 24 * time.Hour)
+}
+
+// seedCoordinator creates a user with the coordinator role and returns its id,
+// so handled_by (a foreign key into users) has something real to point at.
+func seedCoordinator(t *testing.T, db *sql.DB, email string) int64 {
+	t.Helper()
+	var id int64
+	require.NoError(t, db.QueryRow(`
+		INSERT INTO users (email, password, name, role)
+		VALUES ($1, 'x', 'Куратор', 'coordinator')
+		RETURNING id`, email,
+	).Scan(&id))
+	return id
 }
 
 func newServiceForTest(t *testing.T, db *sql.DB) *Service {
@@ -152,4 +168,90 @@ func TestQueueEntryWithoutConversationOffersNoTransition(t *testing.T) {
 	require.Len(t, entries, 1)
 
 	assert.Nil(t, entries[0].ConversationID, "без разговора переход в него не должен предлагаться")
+}
+
+// Очередь общая, и двое кураторов могут открыть одну и ту же заявку почти
+// одновременно. Цена — один лишний разговор, а не потерянный человек; но
+// запись о том, кто взял её первым, перезаписывать нельзя, иначе непонятно,
+// кто на самом деле говорил с этим человеком.
+func TestMarkHandledKeepsFirstClaim(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "leads_mark_handled")
+	svc := newServiceForTest(t, db.DB)
+	ctx := context.Background()
+
+	first := seedCoordinator(t, db.DB, "first-coordinator@example.test")
+	second := seedCoordinator(t, db.DB, "second-coordinator@example.test")
+	id := seedLead(t, db.DB, "contested@example.com", daysAgo(1))
+
+	require.NoError(t, svc.MarkHandled(ctx, id, first))
+	err := svc.MarkHandled(ctx, id, second)
+	require.Error(t, err, "вторая отметка обязана сообщить, что заявку уже взяли")
+	assert.ErrorIs(t, err, apperrors.ErrConflict, "второй куратор должен получить именно конфликт, а не тихий успех")
+
+	var by int64
+	require.NoError(t, db.QueryRow(
+		`SELECT handled_by FROM leads WHERE id = $1`, id).Scan(&by))
+	assert.Equal(t, first, by, "первая отметка не перезаписывается")
+}
+
+// Отдельно от предыдущего теста: там вызовы идут по очереди, и порядок
+// решает Go, а не база. Здесь оба вызова уходят одновременно — только
+// проверка в самом UPDATE (WHERE handled_at IS NULL) может развести двух
+// кураторов, не защита на уровне процесса, которой здесь нет и быть не может:
+// *sql.DB общий, но это две независимых горутины.
+func TestMarkHandledRaceHasExactlyOneWinner(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "leads_mark_race")
+	svc := newServiceForTest(t, db.DB)
+	ctx := context.Background()
+
+	first := seedCoordinator(t, db.DB, "race-first@example.test")
+	second := seedCoordinator(t, db.DB, "race-second@example.test")
+	id := seedLead(t, db.DB, "race@example.com", daysAgo(1))
+
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		errs[0] = svc.MarkHandled(ctx, id, first)
+	}()
+	go func() {
+		defer wg.Done()
+		errs[1] = svc.MarkHandled(ctx, id, second)
+	}()
+	wg.Wait()
+
+	successes, conflicts := 0, 0
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, apperrors.ErrConflict):
+			conflicts++
+		default:
+			t.Fatalf("неожиданная ошибка гонки: %v", err)
+		}
+	}
+	assert.Equal(t, 1, successes, "ровно один куратор должен выиграть гонку")
+	assert.Equal(t, 1, conflicts, "второй обязан получить конфликт, а не тихий успех")
+
+	var by int64
+	require.NoError(t, db.QueryRow(
+		`SELECT handled_by FROM leads WHERE id = $1`, id).Scan(&by))
+	assert.Contains(t, []int64{first, second}, by,
+		"записан должен быть ровно один из двух — не оба разом и не никто")
+}
+
+// Отдельно от предыдущего: заявка, которую никто ещё не отметил, не должна
+// молча проходить проверку «первая отметка сохранилась» — такое утверждение
+// на пустом поле истинно вырожденно (handled_by = NULL никогда не равен
+// ожидаемому curator id).
+func TestMarkHandledUnclaimedLeadHasNoHandler(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "leads_mark_unclaimed")
+	id := seedLead(t, db.DB, "untouched@example.com", daysAgo(1))
+
+	var by sql.NullInt64
+	require.NoError(t, db.QueryRow(
+		`SELECT handled_by FROM leads WHERE id = $1`, id).Scan(&by))
+	assert.False(t, by.Valid, "непосещённая заявка не должна иметь handled_by")
 }
