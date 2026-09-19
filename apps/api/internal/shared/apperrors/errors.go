@@ -24,4 +24,8 @@ var (
 	ErrConflict           = errors.New("conflicting state")
 	ErrGone               = errors.New("no longer available")
 	ErrValidation         = errors.New("invalid input")
+	// ErrDailyLimitReached: снимков на сегодня больше нет. Отличается от
+	// ErrRateLimited не только текстом — "попробуйте через секунду" тут не
+	// поможет и подталкивает нажать ещё раз без толку, ждать нужно до завтра.
+	ErrDailyLimitReached = errors.New("daily limit reached")
 )
