@@ -27,8 +27,8 @@ func setupHandler(t *testing.T) (*gin.Engine, *Service, sqlmock.Sqlmock) {
 	r.POST("/leads/step", h.UpdateStep)
 	r.GET("/leads/resume", h.Resume)
 	r.GET("/leads/unsubscribe", h.Unsubscribe)
-	r.GET("/admin/leads", h.List)
-	r.POST("/admin/leads/:id/handled", func(c *gin.Context) {
+	r.GET("/curator/leads", h.List)
+	r.POST("/curator/leads/:id/handled", func(c *gin.Context) {
 		c.Set("user_id", int64(1))
 		h.MarkHandled(c)
 	})
@@ -139,7 +139,7 @@ func TestList_ReturnsAPageWithATotal(t *testing.T) {
 	mock.ExpectQuery("SELECT COUNT").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 	mock.ExpectQuery("FROM leads ORDER BY").WillReturnRows(leadRow("lead-1"))
 
-	req := httptest.NewRequest(http.MethodGet, "/admin/leads", nil)
+	req := httptest.NewRequest(http.MethodGet, "/curator/leads", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -153,7 +153,7 @@ func TestMarkHandled_MissingLeadIsNotFound(t *testing.T) {
 
 	mock.ExpectExec("UPDATE leads SET handled_at").WillReturnResult(sqlmock.NewResult(0, 0))
 
-	w := post(r, "/admin/leads/lead-1/handled", "")
+	w := post(r, "/curator/leads/lead-1/handled", "")
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }

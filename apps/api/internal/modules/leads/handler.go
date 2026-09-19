@@ -148,7 +148,7 @@ func (h *Handler) Unsubscribe(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"deleted": true})
 }
 
-// List handles GET /api/v1/admin/leads.
+// List handles GET /api/v1/curator/leads.
 func (h *Handler) List(c *gin.Context) {
 	page := response.ParsePage(c)
 
@@ -162,7 +162,7 @@ func (h *Handler) List(c *gin.Context) {
 	response.Success(c, http.StatusOK, response.Paginated(leads, total, page))
 }
 
-// MarkHandled handles POST /api/v1/admin/leads/:id/handled.
+// MarkHandled handles POST /api/v1/curator/leads/:id/handled.
 func (h *Handler) MarkHandled(c *gin.Context) {
 	userID, ok := c.Get("user_id")
 	if !ok {
