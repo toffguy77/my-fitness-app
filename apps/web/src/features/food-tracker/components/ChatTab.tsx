@@ -12,7 +12,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Send, Image, Clock, CheckCircle, User, Bot, Plus } from 'lucide-react';
 import type { FoodItem } from '../types';
-import { t } from '@/shared/i18n';
+import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors';
 
 // ============================================================================
 // Types
@@ -162,11 +163,13 @@ export function ChatTab({
 
                 setMessages(prev => [...prev, mockMessage]);
             }
-        } catch {
+        } catch (err) {
             const errorMessage: ChatMessage = {
                 id: `system-${Date.now()}`,
                 type: 'system',
-                content: t('foodTracker.chat.sendFailed'),
+                // «Попробуйте снова» бесполезно, когда сервер сказал «подождите
+                // до завтра» или «слишком часто»: человек жмёт ещё раз впустую.
+                content: messageForOr(err, t('foodTracker.chat.sendFailed')),
                 timestamp: new Date(),
             };
 

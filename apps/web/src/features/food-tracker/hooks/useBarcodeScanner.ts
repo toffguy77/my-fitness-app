@@ -200,6 +200,9 @@ export function useBarcodeScanner(): UseBarcodeScanner {
                         log('unmount: scanner cleared (was not scanning)');
                     }
                 } catch {
+                    // Молчим намеренно: это уборка камеры при уходе с экрана.
+                    // Показывать уже некому — компонента нет, — а ссылку всё
+                    // равно надо отпустить, иначе камера останется занятой.
                     scannerRef.current = null;
                 }
             }

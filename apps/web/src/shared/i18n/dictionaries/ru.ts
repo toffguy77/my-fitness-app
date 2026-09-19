@@ -277,6 +277,7 @@ export const ru = {
         search: {
             placeholder: 'Поиск блюд и продуктов',
             nothingFound: 'Ничего не найдено',
+            failed: 'Не удалось выполнить поиск',
             recent: 'Недавние',
             popular: 'Популярные',
             listAria: 'Список продуктов',

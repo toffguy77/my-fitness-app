@@ -139,7 +139,9 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
             const response = await apiClient.get<{ items: FoodItem[] }>(url);
             setRecentFoods(response.items);
         } catch {
-            // Silently fail - recent foods are not critical
+            // Молчим намеренно: «недавние» — это список-подсказка над пустым
+            // полем поиска, фоновая подгрузка, а не действие человека. Поиск
+            // работает целиком без неё, и отказ здесь незачем нести на экран.
             setRecentFoods([]);
         } finally {
             setIsLoadingRecent(false);
@@ -284,7 +286,8 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
             const response = await apiClient.get<{ items: FoodItem[] }>(url);
             setFavoriteFoods(response.items);
         } catch {
-            // Silently fail - favorites are not critical
+            // То же самое, что и с «недавними»: подсказка, а не результат
+            // запроса человека.
             setFavoriteFoods([]);
         }
     }, []);
