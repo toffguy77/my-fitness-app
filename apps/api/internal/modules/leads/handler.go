@@ -3,6 +3,8 @@ package leads
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
@@ -156,7 +158,7 @@ func (h *Handler) Unsubscribe(c *gin.Context) {
 // dealt with, for whoever wants the full picture.
 func (h *Handler) List(c *gin.Context) {
 	page := response.ParsePage(c)
-	includeHandled := c.Query("include_handled") == "true"
+	includeHandled := parseIncludeHandled(c)
 
 	entries, total, err := h.service.Queue(c.Request.Context(), includeHandled, page.Limit, page.Offset)
 	if err != nil {
@@ -166,6 +168,25 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, response.Paginated(entries, total, page))
+}
+
+// parseIncludeHandled reads include_handled the way response.ParsePage reads
+// limit and offset: leniently. An exact-match "== \"true\"" made "=1",
+// "=TRUE", "=on" and a bare flag with no value at all fall back to false —
+// silently, and indistinguishably from "there are no handled leads at all".
+// A curator staring at an empty history has no way to tell those apart.
+func parseIncludeHandled(c *gin.Context) bool {
+	raw, present := c.GetQuery("include_handled")
+	if raw == "" {
+		// Absent (present == false) means "not asked for", the default.
+		// Present with no value (?include_handled) is the common flag
+		// shorthand and means "yes".
+		return present
+	}
+	if value, err := strconv.ParseBool(raw); err == nil {
+		return value
+	}
+	return strings.EqualFold(raw, "on")
 }
 
 // MarkHandled handles POST /api/v1/curator/leads/:id/handled.
@@ -183,7 +204,15 @@ func (h *Handler) MarkHandled(c *gin.Context) {
 		response.NotFound(c, "Заявка не найдена")
 		return
 	case errors.Is(err, apperrors.ErrConflict):
-		response.Error(c, http.StatusConflict, "Эту заявку уже взял другой куратор")
+		// Not response.Error: on a 409 that falls back to CodeConflict, which
+		// the dictionary renders as "Действие невозможно в текущем
+		// состоянии" — true but useless, since it drops the one thing the
+		// server actually knew (who marked it, and that it was already
+		// marked). Worded to hold regardless of who got there first: it may
+		// be the same coordinator retrying after a dropped response, not
+		// necessarily "another" one, so the text does not claim that.
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeLeadAlreadyClaimed,
+			"Заявка уже отмечена обработанной", nil)
 		return
 	default:
 		h.log.Error("Failed to mark lead handled", "error", err)

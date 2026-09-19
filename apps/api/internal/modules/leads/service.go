@@ -20,6 +20,10 @@ const Retention = 90 * 24 * time.Hour
 // ReminderDelay is how long after the attempt the single reminder goes out.
 const ReminderDelay = 24 * time.Hour
 
+// maxQueueOffset bounds how far a single Queue request can page into the
+// list. See the comment on Queue for why this exists alongside migration 075.
+const maxQueueOffset = 100_000
+
 // Service stores and follows up on onboarding leads.
 type Service struct {
 	db     *sql.DB
@@ -219,12 +223,32 @@ func (s *Service) LeadIDForToken(ctx context.Context, token string) (string, err
 // Queue returns leads in the order a curator should work them: whoever has
 // waited longest, among those nobody has yet marked handled. AgeDays,
 // ReminderSent and ConversationID are read alongside the lead itself, so a
-// curator opening the queue does not have to cross-reference three tables by
-// hand.
+// curator opening the queue does not have to cross-reference two tables (leads,
+// support_conversations) by hand.
 //
 // includeHandled adds back everyone already dealt with, oldest first as well,
 // for whoever wants the full history rather than the work still open.
 func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset int) ([]QueueEntry, int, error) {
+	// include_handled=true never shrinks the list, so an offset reachable by
+	// ordinary scrolling is unbounded — response.ParsePage caps Limit at 100
+	// but leaves Offset alone. Clamped rather than rejected, the same
+	// philosophy as the Limit cap: a stray zero on the end of a page request
+	// should not deny a curator their data, just stop it short of the point
+	// where a single request can tie up a database core.
+	//
+	// The correlated per-lead conversation lookup below used to make a large
+	// offset expensive on its own: nothing indexed support_conversations by
+	// lead_id, so every row the database produced before discarding it for
+	// the offset still ran a sequential scan. Migration 075
+	// (idx_support_conversations_lead_recency) fixes the dominant cost —
+	// measured 34.8s at offset 40,000 on 50k leads before it, 7ms after — but
+	// Postgres still has to walk `offset` index entries on leads.created_at
+	// to get there, so the clamp stays as a second, cheap ceiling rather than
+	// trusting the index alone.
+	if offset > maxQueueOffset {
+		offset = maxQueueOffset
+	}
+
 	var total int
 	if err := s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM leads WHERE ($1::boolean OR handled_at IS NULL)`,
@@ -254,7 +278,7 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 		          WHERE c.lead_id = l.id ORDER BY c.last_message_at DESC LIMIT 1)
 		FROM leads l
 		WHERE ($1::boolean OR l.handled_at IS NULL)
-		ORDER BY l.created_at ASC
+		ORDER BY l.created_at ASC, l.id ASC
 		LIMIT $2 OFFSET $3`,
 		includeHandled, limit, offset)
 	if err != nil {
@@ -265,24 +289,19 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 	entries := make([]QueueEntry, 0, limit)
 	for rows.Next() {
 		var e QueueEntry
-		var birthDate sql.NullTime
-		var height, weight, calories, protein, fat, carbs sql.NullFloat64
-		var water sql.NullInt64
-		var handledAt sql.NullTime
 		var conversationID sql.NullString
 
-		if err := rows.Scan(
-			&e.ID, &e.Email, &e.Name, &e.Parameters.Sex, &birthDate,
-			&height, &weight, &e.Parameters.ActivityLevel, &e.Parameters.Goal,
-			&calories, &protein, &fat, &carbs, &water,
-			&e.LastStep, &e.Source, &e.Consents.DataProcessing, &e.Consents.Contact,
-			&handledAt, &e.CreatedAt, &e.UpdatedAt,
-			&e.AgeDays, &e.ReminderSent, &conversationID,
-		); err != nil {
+		// The base 21 columns share scanLead's destination order with byID
+		// and DueReminders, instead of repeating it a third time here: a
+		// column added to one query and not the other used to be a silent
+		// field-shift (each Scan call still succeeds — dest count and types
+		// line up, values just land one field over). The three extra columns
+		// Queue alone reads are appended after them in the same Scan call.
+		lead, err := scanLead(rows, &e.AgeDays, &e.ReminderSent, &conversationID)
+		if err != nil {
 			return nil, 0, fmt.Errorf("scan lead queue entry: %w", err)
 		}
-
-		fillLeadOptionalFields(&e.Lead, birthDate, height, weight, calories, protein, fat, carbs, water, handledAt)
+		e.Lead = *lead
 		e.ContactAllowed = e.Consents.Contact
 		// Left nil unless a conversation actually links here: a curator must
 		// never be offered a transition to a conversation that does not
@@ -412,21 +431,30 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-func scanLead(row scanner) (*Lead, error) {
+// scanLead reads the 21 columns every lead query selects, in the one order
+// they are declared here. extra takes destinations for whatever additional
+// columns a caller's own SELECT appends after those 21 (Queue's AgeDays,
+// ReminderSent and conversation id) — appended to the same Scan call, not a
+// second one: database/sql requires every call to Scan to supply a
+// destination for every column the row actually has, so a caller cannot
+// scan the base 21 here and the rest itself.
+func scanLead(row scanner, extra ...any) (*Lead, error) {
 	var lead Lead
 	var birthDate sql.NullTime
 	var height, weight, calories, protein, fat, carbs sql.NullFloat64
 	var water sql.NullInt64
 	var handledAt sql.NullTime
 
-	err := row.Scan(
+	dest := []any{
 		&lead.ID, &lead.Email, &lead.Name, &lead.Parameters.Sex, &birthDate,
 		&height, &weight, &lead.Parameters.ActivityLevel, &lead.Parameters.Goal,
 		&calories, &protein, &fat, &carbs, &water,
 		&lead.LastStep, &lead.Source, &lead.Consents.DataProcessing, &lead.Consents.Contact,
 		&handledAt, &lead.CreatedAt, &lead.UpdatedAt,
-	)
-	if err != nil {
+	}
+	dest = append(dest, extra...)
+
+	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
 

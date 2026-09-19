@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -72,18 +73,33 @@ func markReminded(t *testing.T, db *sql.DB, leadID string) {
 	require.NoError(t, err)
 }
 
+// chatIDSeq keeps seedWebConversationForLeadAt's synthetic chat_id unique
+// even when a test seeds two conversations back to back: chat_id is NOT NULL
+// UNIQUE, and two calls close enough in time could otherwise collide on the
+// same nanosecond.
+var chatIDSeq int64
+
 // seedWebConversationForLead links a support conversation to a lead the way
 // migration 052 allows today. chat_id stays NOT NULL UNIQUE until the
 // public-support-widget plan changes it; the negative, time-derived value
 // here is only to avoid colliding with a real Telegram chat id.
 func seedWebConversationForLead(t *testing.T, db *sql.DB, leadID string) string {
 	t.Helper()
+	return seedWebConversationForLeadAt(t, db, leadID, time.Now())
+}
+
+// seedWebConversationForLeadAt is seedWebConversationForLead with an explicit
+// last_message_at, for tests that need to control which of several
+// conversations on the same lead is the freshest.
+func seedWebConversationForLeadAt(t *testing.T, db *sql.DB, leadID string, lastMessageAt time.Time) string {
+	t.Helper()
 	var id string
+	chatID := -(time.Now().UnixNano() + atomic.AddInt64(&chatIDSeq, 1))
 	require.NoError(t, db.QueryRow(`
-		INSERT INTO support_conversations (chat_id, lead_id, status)
-		VALUES ($1, $2, 'open')
+		INSERT INTO support_conversations (chat_id, lead_id, status, last_message_at)
+		VALUES ($1, $2, 'open', $3)
 		RETURNING id`,
-		-time.Now().UnixNano(), leadID,
+		chatID, leadID, lastMessageAt,
 	).Scan(&id))
 	return id
 }
@@ -136,6 +152,35 @@ func TestQueueEntryCarriesGroundsForConversation(t *testing.T) {
 	assert.True(t, e.ContactAllowed)
 	require.NotNil(t, e.ConversationID)
 	assert.Equal(t, conversationID, *e.ConversationID)
+}
+
+// Человек мог переоткрыть бота новым chat_id — миграция 052 не запрещает
+// вторую запись support_conversations на ту же заявку. Комментарий над
+// коррелированным подзапросом в Queue обещает две вещи: строка заявки не
+// размножается на JOIN, и куратор попадёт именно в последний разговор.
+// Раньше это не проверял ни один тест: мутация ORDER BY ... DESC → ASC
+// оставляла весь пакет зелёным, потому что все существующие тесты сеяли не
+// больше одной переписки на заявку.
+func TestQueueEntryConversationIsTheFreshestOne(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "leads_queue_freshest")
+	svc := newServiceForTest(t, db.DB)
+
+	id := seedLead(t, db.DB, "reopened@example.com", daysAgo(2))
+	older := seedWebConversationForLeadAt(t, db.DB, id, daysAgo(1))
+	newer := seedWebConversationForLeadAt(t, db.DB, id, time.Now())
+
+	entries, _, err := svc.Queue(context.Background(), false, 20, 0)
+	require.NoError(t, err)
+
+	// Отдельно от свежести: JOIN на две переписки размножил бы строку заявки
+	// на выдаче, и эта проверка должна отличить «одна заявка» от «повезло с
+	// порядком двух строк».
+	require.Len(t, entries, 1, "одна заявка — одна строка в очереди, а не по одной на переписку")
+
+	require.NotNil(t, entries[0].ConversationID)
+	assert.Equal(t, newer, *entries[0].ConversationID,
+		"переход должен вести в последний разговор, а не в первый попавшийся")
+	assert.NotEqual(t, older, *entries[0].ConversationID)
 }
 
 func TestQueueEntryWithoutConsentIsMarked(t *testing.T) {

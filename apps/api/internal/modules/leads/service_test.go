@@ -380,3 +380,28 @@ func TestQueue_WithoutAConversationLeavesTheFieldNil(t *testing.T) {
 	require.Len(t, entries, 1)
 	assert.Nil(t, entries[0].ConversationID)
 }
+
+// include_handled=true never shrinks the queue, so a curator (or a script
+// hitting the endpoint directly) can reach an offset far past anything a
+// reasonable page turn produces. The clamp caps what actually reaches the
+// database — this asserts the clamped value, not the one the caller passed.
+func TestQueue_ClampsAnAbsurdOffset(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectQuery("SELECT COUNT").
+		WithArgs(true).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery("FROM leads l").
+		WithArgs(true, 50, int(maxQueueOffset)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "sex", "birth_date", "height_cm", "weight_kg",
+			"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
+			"last_step", "source", "data_consent", "contact_consent",
+			"handled_at", "created_at", "updated_at", "age_days", "reminder_sent", "conversation_id",
+		}))
+
+	_, _, err := service.Queue(context.Background(), true, 50, maxQueueOffset*10)
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet(), "запрос должен уйти в базу с обрезанным сдвигом, а не с тем, что передал вызывающий")
+}

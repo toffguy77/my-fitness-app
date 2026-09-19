@@ -168,6 +168,56 @@ func TestList_IncludeHandledChangesTheQuery(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"total":2`)
 }
 
+// ParsePage already falls back to a default rather than denying data on a
+// mistyped limit or offset. include_handled asks the same leniency of a
+// query string boolean: an exact "== \"true\"" read every one of these as
+// false, and false here reads exactly like "there are no handled leads",
+// not like "you asked wrong".
+func TestList_IncludeHandledParsesLeniently(t *testing.T) {
+	cases := []struct {
+		name  string
+		query string
+		want  bool
+	}{
+		{"the exact literal", "include_handled=true", true},
+		{"a bare 1", "include_handled=1", true},
+		{"uppercase", "include_handled=TRUE", true},
+		{"the HTML checkbox value", "include_handled=on", true},
+		{"a flag with no value at all", "include_handled", true},
+		{"absent entirely", "", false},
+		{"explicit false", "include_handled=false", false},
+		{"gibberish falls back to the default, not to true", "include_handled=maybe", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, _, mock := setupHandler(t)
+
+			mock.ExpectQuery("SELECT COUNT").WithArgs(tc.want).
+				WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+			mock.ExpectQuery("FROM leads l").WithArgs(tc.want, 20, 0).
+				WillReturnRows(sqlmock.NewRows([]string{
+					"id", "email", "name", "sex", "birth_date", "height_cm", "weight_kg",
+					"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
+					"last_step", "source", "data_consent", "contact_consent",
+					"handled_at", "created_at", "updated_at", "age_days", "reminder_sent", "conversation_id",
+				}))
+
+			url := "/curator/leads"
+			if tc.query != "" {
+				url += "?" + tc.query
+			}
+			req := httptest.NewRequest(http.MethodGet, url, nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusOK, w.Code)
+			assert.NoError(t, mock.ExpectationsWereMet(),
+				"include_handled=%v должен был дойти до Queue как %v", tc.query, tc.want)
+		})
+	}
+}
+
 func TestMarkHandled_MissingLeadIsNotFound(t *testing.T) {
 	r, _, mock := setupHandler(t)
 
@@ -183,6 +233,14 @@ func TestMarkHandled_MissingLeadIsNotFound(t *testing.T) {
 // A lead somebody else has already claimed must not read as success, or the
 // curator who lost the race has no way to know someone else is already
 // talking to this person.
+//
+// The client renders the code over the server's own sentence (see
+// apps/web/src/shared/i18n/__tests__/i18n.test.ts, "prefers the code over the
+// server's own sentence") — so response.Error's generic 409 code ("conflict",
+// which the dictionary shows as "Действие невозможно в текущем состоянии")
+// would have reached the curator instead of this message, no matter how
+// carefully the message itself was worded. Asserting the code, not just the
+// body text, is what would have caught that.
 func TestMarkHandled_AlreadyClaimedIsConflict(t *testing.T) {
 	r, _, mock := setupHandler(t)
 
@@ -193,7 +251,22 @@ func TestMarkHandled_AlreadyClaimedIsConflict(t *testing.T) {
 	w := post(r, "/curator/leads/lead-1/handled", "")
 
 	assert.Equal(t, http.StatusConflict, w.Code)
-	assert.Contains(t, w.Body.String(), "уже взял")
+	assert.Equal(t, "lead_already_claimed", leadsResponseCode(t, w))
+	assert.Contains(t, w.Body.String(), "уже отмечена обработанной")
+	// Не "другой куратор": вторая отметка может прийти от того же самого
+	// куратора, повторившего запрос после сорвавшегося ответа.
+	assert.NotContains(t, w.Body.String(), "другой куратор")
+}
+
+// leadsResponseCode reads the machine-readable code out of a JSON response
+// body, the same shape apps/web/src/shared/errors/apiErrors.ts reads.
+func leadsResponseCode(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	var body struct {
+		Code string `json:"code"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	return body.Code
 }
 
 // Registering through an external provider never returns to our JavaScript, so
