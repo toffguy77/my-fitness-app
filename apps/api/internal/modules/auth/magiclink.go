@@ -151,7 +151,25 @@ func (s *Service) ConsumeMagicLink(ctx context.Context, token, ip, ua string) (*
 
 	if userID != nil {
 		result, err := s.issueTokensForUser(ctx, *userID, ip, ua)
-		return result, false, err
+		if err != nil {
+			return result, false, err
+		}
+		// Переход по ссылке из письма — доказательство владения ящиком не
+		// слабее кода подтверждения: если аккаунт зарегистрировался паролем
+		// и ещё не подтвердил почту, issueTokensForUser не поднимает
+		// email_verified сам (это общий путь и для входа через внешний
+		// провайдера), а destinationFor на клиенте смотрит именно на этот
+		// признак — без обновления здесь человека отправило бы подтверждать
+		// адрес, который он только что подтвердил этим самым переходом.
+		if result.User != nil && !result.User.EmailVerified {
+			if _, err := s.db.ExecContext(ctx,
+				`UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = $1`,
+				result.User.ID); err != nil {
+				return nil, false, fmt.Errorf("mark email verified after magic link: %w", err)
+			}
+			result.User.EmailVerified = true
+		}
+		return result, false, nil
 	}
 
 	result, err := s.createAccountFromMagicLink(ctx, recipient, consents, ip, ua)

@@ -12,6 +12,7 @@ import (
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -213,6 +214,53 @@ func TestConsumeMagicLinkRejectsExpiredWithNamedCode(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// Тело без "token" (или вовсе не JSON) шло через response.Error и получало
+// тот же общий code "validation", что и раньше просроченная ссылка — хотя
+// текст ответа дословно совпадает с веткой ErrTokenInvalid чуть ниже. Любой
+// клиент, различающий отказы по code (не только эта страница), получал бы
+// неверное объяснение на входные данные, которые ему нечем было заполнить.
+func TestConsumeMagicLinkMalformedBodyNamesTheSameCode(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+
+	w := post(r, "/auth/magic-link/consume", `{}`)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, apperrors.CodeTokenInvalid, resp["code"])
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Гонка регистрации во время перехода по ссылке отвечала общим code
+// "conflict" — тем же, что и десяток других случаев в этом пакете
+// (`account has no password`, `deletion already requested` и так далее), у
+// которых на клиенте один и тот же обобщённый перевод "Действие невозможно в
+// текущем состоянии". Человек, у которого просто уже есть аккаунт на этот
+// адрес, не поймёт, что делать. Код здесь свой — magic_link_account_exists —
+// и не переиспользует общий CodeConflict, который остаётся как есть для
+// остальных мест.
+func TestConsumeMagicLinkConflictNamesItsOwnCode(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+
+	mock.ExpectQuery(`UPDATE magic_links`).
+		WillReturnRows(sqlmock.NewRows([]string{"email", "user_id", "consents"}).
+			AddRow("known@example.com", nil, nil))
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO users`).
+		WillReturnError(&pgconn.PgError{Code: "23505"})
+	mock.ExpectRollback()
+
+	w := post(r, "/auth/magic-link/consume", `{"token":"good-token"}`)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, apperrors.CodeMagicLinkAccountExists, resp["code"])
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 // Погашение существующей ссылки на существующего пользователя выдаёт сессию
 // тем же способом, что вход через внешнего провайдера (issueTokensForUser).
 func TestConsumeMagicLinkIssuesSessionForExistingUser(t *testing.T) {
@@ -233,5 +281,37 @@ func TestConsumeMagicLinkIssuesSessionForExistingUser(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"known@example.com"`)
 	assert.Contains(t, w.Body.String(), `"created":false`)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Кто-то зарегистрировался паролем, не подтвердил почту и потом вошёл по
+// ссылке из письма, присланного на тот же адрес. issueTokensForUser не
+// поднимает email_verified существующему аккаунту — destinationFor на
+// клиенте смотрит именно на этот признак и отправил бы такого человека
+// подтверждать адрес, который он только что подтвердил самим переходом по
+// ссылке. Переход — не более слабое доказательство владения ящиком, чем код
+// из письма; ConsumeMagicLink обязан поднять признак тут же, при выдаче
+// сессии по ссылке.
+func TestConsumeMagicLinkVerifiesEmailForExistingUnverifiedAccount(t *testing.T) {
+	r, mock, cleanup := setupMagicLinkRouter(t, nil)
+	defer cleanup()
+
+	mock.ExpectQuery(`UPDATE magic_links`).
+		WillReturnRows(sqlmock.NewRows([]string{"email", "user_id", "consents"}).
+			AddRow("known@example.com", int64(7), nil))
+	mock.ExpectQuery("SELECT id, email").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "role", "email_verified", "onboarding_completed", "created_at", "token_version",
+		}).AddRow(int64(7), "known@example.com", "Кто-то", "client", false, true, nowUTC(), 0))
+	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`UPDATE users`).
+		WithArgs(int64(7)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	w := post(r, "/auth/magic-link/consume", `{"token":"good-token"}`)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"email_verified":true`,
+		"переход по ссылке из письма доказывает владение ящиком не слабее кода подтверждения")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

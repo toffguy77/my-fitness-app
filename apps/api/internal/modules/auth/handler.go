@@ -285,7 +285,10 @@ func (h *Handler) ConsumeMagicLink(c *gin.Context) {
 		VisitorID string `json:"visitor_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Ссылка не подходит — запросите новую")
+		// Тот же текст, что и у ErrTokenInvalid ниже — тело без "token" не
+		// более пригодно к употреблению, чем просроченная ссылка, — так
+		// пусть несёт и тот же код, а не общий codeForStatus(400).
+		response.Fail(c, http.StatusBadRequest, apperrors.ErrTokenInvalid, "Ссылка не подходит — запросите новую")
 		return
 	}
 
@@ -306,7 +309,11 @@ func (h *Handler) ConsumeMagicLink(c *gin.Context) {
 		// Гонка на создании аккаунта — см. createAccountFromMagicLink.
 		// Ссылка уже погашена и не сработает второй раз, но обычный вход
 		// теперь найдёт аккаунт: подсказываем запросить ссылку заново.
-		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+		//
+		// Код свой (CodeMagicLinkAccountExists), не общий CodeConflict: тот
+		// на клиенте переводится обобщённо ("Действие невозможно в текущем
+		// состоянии") — человек не поймёт, что адрес уже занят.
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeMagicLinkAccountExists,
 			"Этот адрес уже зарегистрирован. Запросите ссылку для входа ещё раз.", nil)
 		return
 	default:

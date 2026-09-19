@@ -36,6 +36,12 @@ const (
 	// signs people out whenever a token simply aged.
 	CodeSessionEnded = "session_ended"
 	CodeInternal     = "internal"
+	// CodeMagicLinkAccountExists: гонка при переходе по ссылке из письма —
+	// адрес завели другим путём между выдачей ссылки и переходом по ней.
+	// Отдельный код, а не общий CodeConflict: обобщённый перевод последнего
+	// ("Действие невозможно в текущем состоянии") не говорит человеку, что
+	// адрес уже занят и что делать — запросить ссылку для входа заново.
+	CodeMagicLinkAccountExists = "magic_link_account_exists"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -81,5 +87,8 @@ func AllCodes() []string {
 	// Эти коды ставятся ответами напрямую, без ошибки-сентинела.
 	// CodeFeatureUnavailable здесь больше нет: у него появился сентинел
 	// apperrors.ErrFeatureUnavailable, и он приходит из карты выше.
-	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded)
+	// CodeMagicLinkAccountExists тоже без сентинела: ConsumeMagicLink
+	// продолжает различать причину через errors.Is на общем ErrConflict, а
+	// код в ответе называет её отдельно — только для этого места.
+	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded, CodeMagicLinkAccountExists)
 }

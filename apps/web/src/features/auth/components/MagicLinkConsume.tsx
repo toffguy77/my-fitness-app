@@ -20,12 +20,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { magicLinkApi } from '@/features/auth/api/magicLink'
 import { leadToken, forgetLeadToken } from '@/features/onboarding/api/guest'
 import { destinationFor } from '@/features/auth/utils/session'
+import { setUser } from '@/shared/utils/token-storage'
 import { messageFor } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
+import { MagicLinkFailure } from './MagicLinkFailure'
 
 export function MagicLinkConsume({ token }: { token: string }) {
     const router = useRouter()
@@ -39,19 +40,34 @@ export function MagicLinkConsume({ token }: { token: string }) {
         if (started.current) return
         started.current = true
 
+        // Токен из адреса не должен задержаться там дольше первого рендера:
+        // Яндекс.Метрика (веб-визор в layout.tsx) фиксирует текущий URL, и
+        // при сетевом отказе обмена — не при отказе сервера, тогда ссылка
+        // уже погашена — токен остаётся действительным ещё пятнадцать минут.
+        // Строка ниже убирает его из адресной строки, не трогая историю:
+        // назад со страницы уводит туда же, откуда пришли.
+        if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', window.location.pathname)
+        }
+
         magicLinkApi
             .consume(token, leadToken())
             .then(({ user, created }) => {
-                // Тот же след, что оставляет обычный вход (см. storeSession):
+                // Тем же ключом, что и `storeSession` при обычном входе —
                 // часть экранов приложения читает localStorage напрямую, не
-                // дожидаясь собственного запроса за профилем.
-                if (typeof window !== 'undefined') {
-                    localStorage.setItem('user', JSON.stringify(user))
-                }
+                // дожидаясь собственного запроса за профилем. В отличие от
+                // storeSession это не полный след обычного входа: токена в
+                // ответе нет по контракту этой ручки (сессия — HttpOnly
+                // cookie), поэтому apiClient.setToken здесь не зовётся и
+                // подписчики on-session-change не оповещаются — следующий
+                // защищённый запрос сам обменяет cookie на токен через
+                // обычный 401→refresh.
+                setUser(user)
                 // Заявку гостя сервер переносит на аккаунт только когда
                 // переход его создал (см. `if created` в handler.go) — если
-                // аккаунт уже существовал, заявка ещё не занята и забывать её
-                // рано.
+                // аккаунт уже существовал, заявка ещё не занята сервером, и
+                // забывать её раньше времени значило бы потерять расчёт
+                // безвозвратно.
                 if (created) {
                     forgetLeadToken()
                 }
@@ -63,23 +79,12 @@ export function MagicLinkConsume({ token }: { token: string }) {
     }, [token, router])
 
     if (errorMessage) {
-        return (
-            <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-                <p role="alert" className="text-sm text-gray-900">
-                    {errorMessage}
-                </p>
-                <Link
-                    href="/auth"
-                    className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                    {t('auth.oauth.backToSignIn')}
-                </Link>
-            </main>
-        )
+        return <MagicLinkFailure message={errorMessage} />
     }
 
     return (
-        <main className="flex min-h-screen items-center justify-center" aria-busy="true">
+        <main className="flex min-h-screen flex-col items-center justify-center gap-2" aria-busy="true">
+            <h1 className="text-lg font-semibold text-gray-900">{t('auth.magicLink.consume.title')}</h1>
             <p role="status" className="text-sm text-gray-600">
                 {t('auth.magicLink.consume.loading')}
             </p>

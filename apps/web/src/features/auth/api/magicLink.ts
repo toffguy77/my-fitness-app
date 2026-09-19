@@ -57,6 +57,9 @@ export const magicLinkApi = {
             { token, lead_token: leadToken ?? undefined }
         )
         if (!data?.user) {
+            // i18n-exempt: internal diagnostic for a guard that should never fire —
+            // never rendered as-is; a caller that catches it shows messageFor's
+            // generic fallback text instead ("Что-то пошло не так...").
             throw new Error('magic link consume: ответ сервера пуст или не содержит пользователя')
         }
         return { user: data.user, created: Boolean(data.created) }

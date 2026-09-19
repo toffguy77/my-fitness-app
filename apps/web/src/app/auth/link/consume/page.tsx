@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { MagicLinkConsume } from '@/features/auth/components/MagicLinkConsume'
+import { MagicLinkFailure } from '@/features/auth/components/MagicLinkFailure'
 import { t } from '@/shared/i18n'
 
 // Ссылка с одноразовым токеном в адресе не должна попадать в поисковый
@@ -17,19 +17,7 @@ export default async function MagicLinkConsumePage({
     const { token } = await searchParams
 
     if (!token) {
-        return (
-            <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-                <p role="alert" className="text-sm text-gray-900">
-                    {t('auth.magicLink.consume.noToken')}
-                </p>
-                <Link
-                    href="/auth"
-                    className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                    {t('auth.oauth.backToSignIn')}
-                </Link>
-            </main>
-        )
+        return <MagicLinkFailure message={t('auth.magicLink.consume.noToken')} />
     }
 
     return <MagicLinkConsume token={token} />
