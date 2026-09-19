@@ -123,3 +123,53 @@ test('an API_BASE that falls back to an empty string does not create a false ala
     assert.equal(result.status, 0, `expected the script to pass:\n${result.stdout}${result.stderr}`)
     assert.match(result.stdout, /API contract OK/)
 })
+
+/**
+ * A nested template literal inside an interpolation used to end the outer
+ * literal as far as the scan was concerned, and the path vanished. Found in
+ * the wild: `getSupportConversations` built its query this way, so it went
+ * unchecked while its three siblings in the same file were checked — the one
+ * call able to drift unnoticed was the one nobody could see.
+ */
+test('a path whose query is built with a nested template literal is detected when missing', () => {
+    const result = runAgainst({
+        goldenLines: GOLDEN,
+        sourceFile: 'features/admin/api/adminApi.ts',
+        sourceText: [
+            "const BASE = '/api/v1/admin'",
+            'export const adminApi = {',
+            '    list: (status, page) => {',
+            '        const query = pageQuery(page)',
+            "        const separator = query ? '&' : '?'",
+            '        return apiClient.get(',
+            "            `${BASE}/does-not-exist${query}${status ? `${separator}status=${status}` : ''}`",
+            '        )',
+            '    },',
+            '}',
+            '',
+        ].join('\n'),
+    })
+    assert.equal(result.status, 1, `expected the script to fail:\n${result.stdout}${result.stderr}`)
+    assert.match(result.stderr, /\/api\/v1\/admin\/does-not-exist/)
+})
+
+test('a nested-template path that exists is not flagged', () => {
+    const result = runAgainst({
+        goldenLines: GOLDEN,
+        sourceFile: 'features/admin/api/adminApi.ts',
+        sourceText: [
+            "const BASE = '/api/v1/admin'",
+            'export const adminApi = {',
+            '    list: (status, page) => {',
+            '        const query = pageQuery(page)',
+            "        const separator = query ? '&' : '?'",
+            '        return apiClient.get(',
+            "            `${BASE}/leads${query}${status ? `${separator}status=${status}` : ''}`",
+            '        )',
+            '    },',
+            '}',
+            '',
+        ].join('\n'),
+    })
+    assert.equal(result.status, 0, `expected the script to pass:\n${result.stdout}${result.stderr}`)
+})
