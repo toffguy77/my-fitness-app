@@ -162,6 +162,38 @@ for (const name of unlisted) {
 }
 
 
+// --- Адрес API в локальном окружении обязан быть относительным ---
+//
+// Каждый вызывающий читает его как `process.env.NEXT_PUBLIC_API_URL || ''`, и
+// пустое значение означает относительные пути: браузер спрашивает тот же
+// источник, что отдал страницу, а локально это прокси на 3070. Абсолютное
+// значение уводит браузер прямо в API, мимо прокси, — и Set-Cookie этой дороги
+// не переживает. Ровно то, ради чего прокси и заведён (CLAUDE.md, «Routing:
+// локально и в тестах через прокси»).
+//
+// Проверка нужна потому, что промах здесь не шумит: страницы открываются,
+// запросы уходят, не работает только сессия. Файл держал `http://localhost:4000`
+// достаточно долго, чтобы CI оброс обходом (.github/workflows/e2e.yml задаёт
+// NEXT_PUBLIC_API_URL: ''), — то есть кто-то на это уже напоролся и обошёл
+// вместо того, чтобы починить.
+const envLocalPath = 'apps/web/.env.local'
+if (existsSync(envLocalPath)) {
+    const envLocal = readFileSync(envLocalPath, 'utf8')
+    for (const line of envLocal.split('\n')) {
+        const m = line.match(/^\s*NEXT_PUBLIC_API_URL\s*=\s*(\S.*)$/)
+        if (m) {
+            problems.push(
+                `NEXT_PUBLIC_API_URL is set to ${m[1].trim()} in ${envLocalPath}\n` +
+                    `  An absolute address sends the browser past the dev proxy on 3070,\n` +
+                    `  and Set-Cookie does not survive that trip: pages load, requests go out,\n` +
+                    `  and only the session quietly stops working.\n` +
+                    `  Leave it empty so paths stay relative.`,
+            )
+        }
+    }
+}
+
+
 // --- Каждое объявленное событие аналитики должен кто-то отправлять ---
 //
 // Словарь объявлен дважды — в Go и в TypeScript — и сервер отказывает всему,
