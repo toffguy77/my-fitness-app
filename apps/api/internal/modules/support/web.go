@@ -84,3 +84,26 @@ func (s *Service) byWebTokenHash(ctx context.Context, hash string) (*Conversatio
 	}
 	return &conversation, nil
 }
+
+// enforceWebMessageCap bounds how long one web conversation may run — not
+// abuse of a single request (MaxWebMessageRunes and the route's rate limiter
+// cover that), but a conversation kept alive well past any question it could
+// plausibly still be asking. Every turn is a paid model call, and the token
+// stays valid for as long as the caller wants to hold onto it.
+//
+// apperrors.ErrRateLimited is reused deliberately, following the precedent in
+// account/export.go: this is not "wait a second and retry" so much as "this
+// conversation has reached its ceiling", but the client-facing shape (429,
+// try something else) is the same one the codebase already has a name for.
+func (s *Service) enforceWebMessageCap(ctx context.Context, conversationID string) error {
+	var count int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM support_messages WHERE conversation_id = $1`,
+		conversationID).Scan(&count); err != nil {
+		return fmt.Errorf("count web conversation messages: %w", err)
+	}
+	if count >= MaxWebMessagesPerConversation {
+		return apperrors.ErrRateLimited
+	}
+	return nil
+}

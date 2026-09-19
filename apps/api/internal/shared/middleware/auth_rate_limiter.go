@@ -56,6 +56,17 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// Public endpoint that accepts batches of client errors. A page throwing in
 	// a render loop must not be able to flood our own log pipeline.
 	"client-logs": {maxRequests: 60, window: time.Minute},
+	// Web support widget: public, no session, and every message costs a model
+	// call. Per-IP is the first of three ceilings (the other two live in the
+	// support module itself: MaxWebMessageRunes bounds one question's size,
+	// MaxWebMessagesPerConversation bounds how long one conversation runs) —
+	// none of the three alone is enough, since an IP is shared and a token can
+	// outlive its window.
+	"support-web-start":   {maxRequests: 10, window: time.Minute},
+	"support-web-message": {maxRequests: 20, window: time.Minute},
+	// Read-only polling for new messages; cheaper than a model call and needs
+	// a looser ceiling so a chat window left open does not start failing.
+	"support-web-read": {maxRequests: 60, window: time.Minute},
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.

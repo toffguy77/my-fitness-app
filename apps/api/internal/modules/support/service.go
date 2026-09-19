@@ -150,6 +150,17 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 		return err
 	}
 
+	// Потолок на длину веб-разговора: HTTP-лимитер на маршруте сдерживает
+	// частоту запросов с одного адреса, а этот — число сообщений в одном
+	// разговоре, который посетитель мог бы держать открытым сколь угодно
+	// долго с одного и того же токена, обходя лимитер по IP через VPN или
+	// просто время. Каждое сообщение — оплаченный вызов модели.
+	if conversation.Channel == ChannelWeb {
+		if err := s.enforceWebMessageCap(ctx, conversation.ID); err != nil {
+			return err
+		}
+	}
+
 	text := strings.TrimSpace(in.Text)
 	if _, err := s.recordMessage(ctx, conversation.ID, "user", text, nil); err != nil {
 		return err
@@ -175,7 +186,12 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 		return s.escalate(ctx, conversation, "по просьбе пользователя")
 	}
 
-	if !s.allowChat(in.ChatID) {
+	// allowChat throttles by chat_id, a Telegram concept: every web
+	// conversation would otherwise share chat_id's zero value and throttle
+	// each other. The web channel is bounded instead by the route's own
+	// rate limiter (per IP) and by enforceWebMessageCap above (per
+	// conversation), both already applied by this point.
+	if conversation.Channel != ChannelWeb && !s.allowChat(in.ChatID) {
 		return s.reply(ctx, conversation, rateLimitedReply)
 	}
 	if !s.allowModelCall() {
@@ -528,6 +544,13 @@ func (s *Service) recordMessage(ctx context.Context, conversationID, author, tex
 }
 
 func (s *Service) conversationFor(ctx context.Context, in IncomingMessage) (*Conversation, error) {
+	// Веб-разговор уже найден по токену — второй запрос за той же строкой
+	// был бы лишним обращением к базе и ещё одним местом, где NULL chat_id
+	// пришлось бы разбирать заново.
+	if in.Conversation != nil {
+		return in.Conversation, nil
+	}
+
 	var conversation Conversation
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO support_conversations (chat_id, telegram_username, telegram_name)
@@ -577,6 +600,11 @@ func (s *Service) byID(ctx context.Context, conversationID string) (*Conversatio
 
 // ListConversations returns the operator's queue: escalated first, then by
 // recency, so the thing somebody is waiting for is at the top.
+//
+// chat_id сканируется через sql.NullInt64, а не напрямую в Conversation.ChatID
+// — как в byID и byWebTokenHash: у веб-разговора он NULL с миграции 076, и с
+// публичными маршрутами (задача 4) веб-разговоры попадают в этот список наравне
+// с телеграмными.
 func (s *Service) ListConversations(ctx context.Context, status string, limit, offset int) ([]Conversation, int, error) {
 	where := ""
 	args := []any{limit, offset}
@@ -611,11 +639,15 @@ func (s *Service) ListConversations(ctx context.Context, status string, limit, o
 	conversations := make([]Conversation, 0, limit)
 	for rows.Next() {
 		var c Conversation
+		var chatID sql.NullInt64
 		var escalatedAt sql.NullTime
-		if err := rows.Scan(&c.ID, &c.ChatID, &c.LeadID, &c.UserID, &c.Status,
+		if err := rows.Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status,
 			&c.Username, &c.Name, &c.EscalationReason, &escalatedAt,
 			&c.LastMessageAt, &c.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scan support conversation: %w", err)
+		}
+		if chatID.Valid {
+			c.ChatID = chatID.Int64
 		}
 		if escalatedAt.Valid {
 			c.EscalatedAt = &escalatedAt.Time
@@ -627,21 +659,30 @@ func (s *Service) ListConversations(ctx context.Context, status string, limit, o
 
 // Thread returns one conversation with its messages and, when the chat came
 // from a saved onboarding attempt, what that attempt held.
+//
+// chat_id сканируется через sql.NullInt64, а не напрямую в Conversation.ChatID
+// — как в byID, byWebTokenHash и ListConversations: у веб-разговора он NULL с
+// миграции 076, и это тот самый путь, которым оператор открывает разговор из
+// очереди.
 func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversation, []Message, *LeadSummary, error) {
 	var c Conversation
+	var chatID sql.NullInt64
 	var escalatedAt sql.NullTime
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, chat_id, lead_id, user_id, status,
 		       COALESCE(telegram_username, ''), COALESCE(telegram_name, ''),
 		       COALESCE(escalation_reason, ''), escalated_at, last_message_at, created_at
 		FROM support_conversations WHERE id = $1`, conversationID).
-		Scan(&c.ID, &c.ChatID, &c.LeadID, &c.UserID, &c.Status, &c.Username, &c.Name,
+		Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status, &c.Username, &c.Name,
 			&c.EscalationReason, &escalatedAt, &c.LastMessageAt, &c.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil, nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
 	}
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("load support conversation: %w", err)
+	}
+	if chatID.Valid {
+		c.ChatID = chatID.Int64
 	}
 	if escalatedAt.Valid {
 		c.EscalatedAt = &escalatedAt.Time

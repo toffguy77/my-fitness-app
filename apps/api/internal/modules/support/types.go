@@ -2,12 +2,19 @@ package support
 
 import "time"
 
-// IncomingMessage is one message from Telegram, reduced to what matters here.
+// IncomingMessage is one message from Telegram, reduced to what matters here —
+// or one message from the web widget, which already knows its conversation.
 type IncomingMessage struct {
 	ChatID   int64
 	Username string
 	Name     string
 	Text     string
+
+	// Conversation, when set, names a conversation that already exists — the
+	// web channel's entry point, resolved earlier from the visitor's token, so
+	// HandleMessage does not look it up again by an id nobody supplied. Nil
+	// for Telegram, whose conversation is found (or opened) by chat id below.
+	Conversation *Conversation
 }
 
 // Каналы разговора. Их два, и это исчерпывающий список.
