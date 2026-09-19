@@ -18,40 +18,43 @@
  * попасть на него, а не в дашборд как обычный клиент.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { magicLinkApi } from '@/features/auth/api/magicLink'
 import { leadToken, forgetLeadToken } from '@/features/onboarding/api/guest'
 import { destinationFor } from '@/features/auth/utils/session'
 import { setUser } from '@/shared/utils/token-storage'
-import { messageFor } from '@/shared/errors/apiErrors'
+import { isNetworkError, messageFor } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
 import { MagicLinkFailure } from './MagicLinkFailure'
 
 export function MagicLinkConsume({ token }: { token: string }) {
     const router = useRouter()
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    // Сетевой отказ (не дозвонились до сервера) не гасит ссылку — в отличие
+    // от отказа сервера, который уже виден в теле ответа. Только для него
+    // есть смысл предлагать повтор.
+    const [canRetry, setCanRetry] = useState(false)
+
+    // Токен запоминается здесь же, при монтировании — раньше, чем адрес
+    // будет вычищен эффектом ниже. Без этого повтор при сетевом отказе был
+    // бы нечем делать: `token` — проп, он не меняется, но явный снимок в ref
+    // говорит прямо, что значение намеренно переживает чистку адреса.
+    const tokenRef = useRef(token)
+
     // React вызывает эффекты дважды в разработке; второй обмен потратил бы
     // одноразовый токен впустую, и человек, который на самом деле вошёл,
-    // увидел бы отказ вместо своего дашборда.
+    // увидел бы отказ вместо своего дашборда. Кнопки «Повторить» это не
+    // касается: это отдельный, осознанный вызов, а не повторный запуск
+    // эффекта монтирования.
     const started = useRef(false)
 
-    useEffect(() => {
-        if (started.current) return
-        started.current = true
-
-        // Токен из адреса не должен задержаться там дольше первого рендера:
-        // Яндекс.Метрика (веб-визор в layout.tsx) фиксирует текущий URL, и
-        // при сетевом отказе обмена — не при отказе сервера, тогда ссылка
-        // уже погашена — токен остаётся действительным ещё пятнадцать минут.
-        // Строка ниже убирает его из адресной строки, не трогая историю:
-        // назад со страницы уводит туда же, откуда пришли.
-        if (typeof window !== 'undefined') {
-            window.history.replaceState({}, '', window.location.pathname)
-        }
+    const attempt = useCallback(() => {
+        setErrorMessage(null)
+        setCanRetry(false)
 
         magicLinkApi
-            .consume(token, leadToken())
+            .consume(tokenRef.current, leadToken())
             .then(({ user, created }) => {
                 // Тем же ключом, что и `storeSession` при обычном входе —
                 // часть экранов приложения читает localStorage напрямую, не
@@ -75,11 +78,33 @@ export function MagicLinkConsume({ token }: { token: string }) {
             })
             .catch((err: unknown) => {
                 setErrorMessage(messageFor(err))
+                setCanRetry(isNetworkError(err))
             })
-    }, [token, router])
+    }, [router])
+
+    useEffect(() => {
+        if (started.current) return
+        started.current = true
+
+        // Токен из адреса не должен задержаться там дольше первого рендера:
+        // Яндекс.Метрика (веб-визор в layout.tsx) фиксирует текущий URL, и
+        // при сетевом отказе обмена токен остаётся действительным ещё
+        // пятнадцать минут. tokenRef выше уже снял с него копию — строка
+        // ниже ничего не отбирает у возможного повтора.
+        if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', window.location.pathname)
+        }
+
+        attempt()
+    }, [attempt])
 
     if (errorMessage) {
-        return <MagicLinkFailure message={errorMessage} />
+        return (
+            <MagicLinkFailure
+                message={errorMessage}
+                onRetry={canRetry ? attempt : undefined}
+            />
+        )
     }
 
     return (

@@ -12,9 +12,9 @@
  */
 
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MagicLinkConsume } from '../MagicLinkConsume'
-import { ApiError, messageFor } from '@/shared/errors/apiErrors'
+import { ApiError, NetworkError, messageFor } from '@/shared/errors/apiErrors'
 import type { AuthResponse } from '@/features/auth/types'
 
 jest.mock('next/link', () => ({
@@ -76,6 +76,7 @@ describe('MagicLinkConsume', () => {
 
     afterEach(() => {
         replaceStateSpy.mockRestore()
+        window.history.replaceState({}, '', '/')
     })
 
     it('входит и уводит в приложение', async () => {
@@ -163,7 +164,12 @@ describe('MagicLinkConsume', () => {
     // моменту токен уже погашен, но при сетевом отказе обмена он остаётся
     // действительным ещё пятнадцать минут — адрес с ним не должен провисеть
     // в истории/URL дольше первого рендера.
+    //
+    // Адрес стенда сам по себе без query — без явного `?token=abc` здесь
+    // спор был бы не виден: replaceState(..., window.location.pathname) с
+    // самим собой ничего не убирает, если убирать и так было нечего.
     it('убирает токен из адреса при монтировании', async () => {
+        window.history.pushState({}, '', '/auth/link/consume?token=abc')
         mockConsume.mockResolvedValueOnce({
             user: user({ onboarding_completed: true }),
             created: false,
@@ -172,7 +178,8 @@ describe('MagicLinkConsume', () => {
         render(<MagicLinkConsume token="good" />)
 
         await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/dashboard'))
-        expect(replaceStateSpy).toHaveBeenCalledWith({}, '', window.location.pathname)
+        expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/auth/link/consume')
+        expect(window.location.search).toBe('')
     })
 
     // Тело в точности то, что теперь отдаёт ConsumeMagicLink для просроченной,
@@ -206,10 +213,45 @@ describe('MagicLinkConsume', () => {
         expect(mockReplace).not.toHaveBeenCalled()
 
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Вход по ссылке')
+
+        // Ссылка уже погашена (или никогда не существовала) — повторный обмен
+        // тем же токеном не сработает иначе, и кнопка «Повторить» здесь была
+        // бы жестом в никуда. Путь ко входу выше уже есть.
+        expect(screen.queryByRole('button', { name: /повторить/i })).not.toBeInTheDocument()
+    })
+
+    // До replaceState перезагрузка страницы повторяла обмен сама — токен был
+    // в адресе. После него в адресе токена больше нет, и без кнопки повтора
+    // человек с временным сбоем сети упёрся бы в тупик: сообщение и без того
+    // предлагает попробовать снова, а токен уже вычищен из URL — повторить
+    // нечем. Ссылка на самом деле ещё жива (обмен не состоялся вовсе), так
+    // что повтор — не пустой жест, в отличие от отказа сервера выше.
+    it('сетевой отказ обмена предлагает повторить, а не только сообщает о нём', async () => {
+        mockConsume.mockRejectedValueOnce(new NetworkError())
+        mockConsume.mockResolvedValueOnce({
+            user: user({ onboarding_completed: true }),
+            created: false,
+        })
+
+        render(<MagicLinkConsume token="good" />)
+
+        const alert = await screen.findByRole('alert')
+        expect(alert).toHaveTextContent(messageFor(new NetworkError()))
+
+        // Путь ко входу остаётся рядом — повтор его не подменяет.
+        expect(screen.getByRole('link', { name: /вход/i })).toHaveAttribute('href', '/auth')
+
+        const retryButton = screen.getByRole('button', { name: /повторить/i })
+        fireEvent.click(retryButton)
+
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/dashboard'))
+        expect(mockConsume).toHaveBeenNthCalledWith(1, 'good', null)
+        expect(mockConsume).toHaveBeenNthCalledWith(2, 'good', null)
+        expect(mockConsume).toHaveBeenCalledTimes(2)
     })
 
     it('заголовок есть и на экране загрузки', () => {
-        mockConsume.mockReturnValue(new Promise(() => {})) // висит — экран не должен продвинуться дальше загрузки
+        mockConsume.mockReturnValueOnce(new Promise(() => {})) // висит — экран не должен продвинуться дальше загрузки
 
         render(<MagicLinkConsume token="good" />)
 
