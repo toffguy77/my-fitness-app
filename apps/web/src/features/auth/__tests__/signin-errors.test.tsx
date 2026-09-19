@@ -28,8 +28,14 @@ function rejectionFor(status: number, data: unknown = {}) {
     return error
 }
 
-async function signIn(email: string, password: string) {
+/** The magic-link form is what a fresh screen shows; password is reached from there. */
+async function openPasswordForm() {
     render(<AuthScreen />)
+    await userEvent.click(screen.getByRole('button', { name: /войти по паролю/i }))
+}
+
+async function signIn(email: string, password: string) {
+    await openPasswordForm()
     await userEvent.type(screen.getByLabelText('Email address'), email)
     await userEvent.type(screen.getByLabelText('Password'), password)
     await userEvent.click(screen.getByLabelText('Log in to your account'))
@@ -62,7 +68,7 @@ describe('Signing in', () => {
     })
 
     it('refuses to send an empty password', async () => {
-        render(<AuthScreen />)
+        await openPasswordForm()
         await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com')
         await userEvent.click(screen.getByLabelText('Log in to your account'))
 
@@ -81,7 +87,7 @@ describe('Signing in', () => {
     // click meant to submit — inserting a line above the button and moving it
     // out from under the pointer.
     it('does not judge the password against the complexity rules', async () => {
-        render(<AuthScreen />)
+        await openPasswordForm()
 
         await userEvent.type(screen.getByLabelText('Password'), 'oldpass')
         await userEvent.tab()
@@ -91,7 +97,7 @@ describe('Signing in', () => {
 
     // Registration is where the rules apply, and where saying them early helps.
     it('still explains the rules while registering', async () => {
-        render(<AuthScreen />)
+        await openPasswordForm()
         await userEvent.click(screen.getByLabelText('Register a new account'))
 
         await userEvent.type(screen.getByLabelText('Password'), 'oldpass')

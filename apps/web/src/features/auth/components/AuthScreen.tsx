@@ -16,11 +16,15 @@ import { ConsentSection } from './ConsentSection';
 import { AuthFooter } from './AuthFooter';
 import { ProviderButtons } from './ProviderButtons';
 import { AccountRecoveryScreen } from './AccountRecoveryScreen';
+import { MagicLinkForm } from './MagicLinkForm';
 import { EVENTS, track } from '@/shared/analytics';
 import type { AuthMode, AuthFormData, ConsentState } from '@/features/auth/types';
 import { t } from '@/shared/i18n'
 
 export function AuthScreen() {
+    // Вход по ссылке — то, что видно первым; форма пароля не третий режим, а
+    // второй способ войти тем же mode, раскрываемый без перезагрузки страницы.
+    const [entryMethod, setEntryMethod] = useState<'link' | 'password'>('link');
     const [mode, setMode] = useState<AuthMode>('login');
     const [formData, setFormData] = useState<AuthFormData>({
         email: '',
@@ -110,89 +114,104 @@ export function AuthScreen() {
             <main className="flex-1 py-8">
                 <div className="max-w-md mx-auto px-6">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <AuthForm
-                            formData={formData}
-                            setFormData={setFormData}
-                            errors={errors}
-                            onEmailBlur={handleEmailBlur}
-                            onPasswordBlur={handlePasswordBlur}
-                            mode={mode}
-                        />
-
-                        {/* Remember Me (Login only) */}
-                        {mode === 'login' && (
-                            <div className="mt-4">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.rememberMe ?? false}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, rememberMe: e.target.checked })
-                                        }
-                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span className="text-sm text-gray-600">
-                                        {t('auth.rememberMe')}
-                                    </span>
-                                </label>
-                            </div>
-                        )}
-
-                        {/* Consent Section (Registration only) */}
-                        {mode === 'register' && (
-                            <ConsentSection
-                                consents={consents}
-                                setConsents={setConsents}
-                                error={errors.consents}
+                        {entryMethod === 'link' ? (
+                            <MagicLinkForm
+                                onSwitchToPassword={() => setEntryMethod('password')}
                             />
+                        ) : (
+                            <>
+                                <AuthForm
+                                    formData={formData}
+                                    setFormData={setFormData}
+                                    errors={errors}
+                                    onEmailBlur={handleEmailBlur}
+                                    onPasswordBlur={handlePasswordBlur}
+                                    mode={mode}
+                                />
+
+                                {/* Remember Me (Login only) */}
+                                {mode === 'login' && (
+                                    <div className="mt-4">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.rememberMe ?? false}
+                                                onChange={(e) =>
+                                                    setFormData({ ...formData, rememberMe: e.target.checked })
+                                                }
+                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm text-gray-600">
+                                                {t('auth.rememberMe')}
+                                            </span>
+                                        </label>
+                                    </div>
+                                )}
+
+                                {/* Consent Section (Registration only) */}
+                                {mode === 'register' && (
+                                    <ConsentSection
+                                        consents={consents}
+                                        setConsents={setConsents}
+                                        error={errors.consents}
+                                    />
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="mt-6 space-y-3">
+                                    <Button
+                                        onClick={handleLogin}
+                                        disabled={!isFormValid || isLoading}
+                                        isLoading={isLoading && mode === 'login'}
+                                        variant="primary"
+                                        className="w-full"
+                                        aria-label="Log in to your account"
+                                    >
+                                        {isLoading && mode === 'login' ? t('auth.signingIn') : t('auth.signIn')}
+                                    </Button>
+
+                                    <Button
+                                        onClick={() => {
+                                            if (mode === 'login') {
+                                                track(EVENTS.registrationOpened, { method: 'password' });
+                                                setMode('register');
+                                            } else {
+                                                handleRegister();
+                                            }
+                                        }}
+                                        disabled={(mode === 'register' && !isRegisterValid) || isLoading}
+                                        isLoading={isLoading && mode === 'register'}
+                                        variant="outline"
+                                        className="w-full"
+                                        aria-label="Register a new account"
+                                    >
+                                        {mode === 'register'
+                                            ? isLoading
+                                                ? t('auth.registering')
+                                                : t('auth.register')
+                                            : t('auth.createAccount')}
+                                    </Button>
+
+                                    {mode === 'register' && (
+                                        <button
+                                            onClick={() => setMode('login')}
+                                            className="w-full text-sm text-gray-600 hover:text-gray-900"
+                                        >
+                                            {t('auth.haveAccountSignIn')}
+                                        </button>
+                                    )}
+
+                                    <button
+                                        onClick={() => setEntryMethod('link')}
+                                        className="w-full text-sm text-gray-600 hover:text-gray-900"
+                                    >
+                                        {t('auth.magicLink.switchToLink')}
+                                    </button>
+                                </div>
+
+                                <ProviderButtons mode={mode} />
+                            </>
                         )}
-
-                        {/* Action Buttons */}
-                        <div className="mt-6 space-y-3">
-                            <Button
-                                onClick={handleLogin}
-                                disabled={!isFormValid || isLoading}
-                                isLoading={isLoading && mode === 'login'}
-                                variant="primary"
-                                className="w-full"
-                                aria-label="Log in to your account"
-                            >
-                                {isLoading && mode === 'login' ? t('auth.signingIn') : t('auth.signIn')}
-                            </Button>
-
-                            <Button
-                                onClick={() => {
-                                    if (mode === 'login') {
-                                        track(EVENTS.registrationOpened, { method: 'password' });
-                                        setMode('register');
-                                    } else {
-                                        handleRegister();
-                                    }
-                                }}
-                                disabled={(mode === 'register' && !isRegisterValid) || isLoading}
-                                isLoading={isLoading && mode === 'register'}
-                                variant="outline"
-                                className="w-full"
-                                aria-label="Register a new account"
-                            >
-                                {mode === 'register'
-                                    ? isLoading
-                                        ? t('auth.registering')
-                                        : t('auth.register')
-                                    : t('auth.createAccount')}
-                            </Button>
-
-                            {mode === 'register' && (
-                                <button
-                                    onClick={() => setMode('login')}
-                                    className="w-full text-sm text-gray-600 hover:text-gray-900"
-                                >
-                                    {t('auth.haveAccountSignIn')}
-                                </button>
-                            )}
-                        </div>
-
-                        <ProviderButtons mode={mode} />
                     </div>
 
                     <AuthFooter />
