@@ -209,10 +209,17 @@ export function LeadList() {
                                 )}
                                 {/* Stays nil until the public-support-widget plan
                                     starts linking conversations widely — absent
-                                    rather than a disabled link to nowhere. */}
+                                    rather than a disabled link to nowhere.
+
+                                    Points at the query string, not a path segment:
+                                    there is no /curator/support/[id] route — the
+                                    queue opens a thread by component state, not by
+                                    URL — so this used to 404. SupportQueue reads
+                                    ?conversation= on mount and opens that thread
+                                    the same way a click on it would. */}
                                 {lead.conversation_id && (
                                     <Link
-                                        href={`/curator/support/${lead.conversation_id}`}
+                                        href={`/curator/support?conversation=${lead.conversation_id}`}
                                         className="text-sm text-blue-600 hover:underline"
                                     >
                                         {t('curator.leads.openConversation')}

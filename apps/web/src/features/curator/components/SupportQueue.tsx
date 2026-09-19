@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -16,6 +17,9 @@ import { t } from '@/shared/i18n'
  * The bot refuses rather than inventing an answer about money or health data,
  * which is only a good trade if somebody is actually reading what it refused.
  */
+
+/** Query param name the lead queue's "Открыть переписку" link sets. */
+const CONVERSATION_PARAM = 'conversation'
 
 const statusLabels: Record<SupportConversation['status'], string> = {
     escalated: t('curator.support.escalated'),
@@ -39,15 +43,39 @@ export function SupportQueue() {
     const [sending, setSending] = useState(false)
     const [reply, setReply] = useState('')
 
+    // Set by the lead queue's "Открыть переписку" link
+    // (/curator/support?conversation=<id>): there is no /curator/support/[id]
+    // route — a specific thread is opened by state, not by path — so the id
+    // has to arrive as a query param and be turned into the same setSelected
+    // call a click on the list would make.
+    const conversationId = useSearchParams().get(CONVERSATION_PARAM)
+
     const load = useCallback(async () => {
         const page = await curatorApi.getSupportConversations()
         setConversations(page.items)
+    }, [])
+
+    // A person opening a thread by id that a click never happened for must
+    // still land somewhere legible if it is wrong: a stale link, a typo, a
+    // conversation somebody already closed and that has since aged out. The
+    // same catch as a normal click uses — a toast, list stays visible — beats
+    // a blank screen, which is what a route that does not exist would give
+    // instead.
+    const openThreadById = useCallback(async (id: string) => {
+        try {
+            setSelected(await curatorApi.getSupportThread(id))
+        } catch {
+            toast.error(t('curator.support.openFailed'))
+        }
     }, [])
 
     useEffect(() => {
         async function loadInitial() {
             try {
                 await load()
+                if (conversationId) {
+                    await openThreadById(conversationId)
+                }
             } catch {
                 toast.error(t('curator.support.loadFailed'))
             } finally {
@@ -55,15 +83,12 @@ export function SupportQueue() {
             }
         }
         loadInitial()
+        // Runs once for the id the URL carried at mount, exactly like the
+        // onboarding resume link this mirrors.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load])
 
-    const openThread = async (conversation: SupportConversation) => {
-        try {
-            setSelected(await curatorApi.getSupportThread(conversation.id))
-        } catch {
-            toast.error(t('curator.support.openFailed'))
-        }
-    }
+    const openThread = (conversation: SupportConversation) => openThreadById(conversation.id)
 
     const handleReply = async () => {
         if (!selected || !reply.trim()) return

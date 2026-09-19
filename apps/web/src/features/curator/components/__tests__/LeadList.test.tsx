@@ -105,7 +105,7 @@ describe('LeadList (очередь заявок)', () => {
 
         expect(await screen.findByRole('link', { name: /переписк/i })).toHaveAttribute(
             'href',
-            '/curator/support/conv-1'
+            '/curator/support?conversation=conv-1'
         )
     })
 
