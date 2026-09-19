@@ -257,3 +257,42 @@ func TestRelationshipRoutesRejectForeignClient(t *testing.T) {
 
 	require.NotZero(t, checked, "no relationship-protected routes found — registry is broken")
 }
+
+// protRole in the registry is a claim, not a check: nothing before this test
+// walked the engine and confirmed that every route labelled protRole actually
+// sits behind RequireAuth. A route pulled out of its group keeps the same
+// path and method, so routes.golden does not change, the registry key does
+// not change, and TestCuratorSupportRoutesAllowCoordinatorAndAdmin-style tests
+// never reach it because they only exercise the paths their own feature
+// added. Only a live, unauthenticated request against the real engine catches
+// this — which is what this test sends, for every protRole route the
+// registry knows about, not just the four this change happens to touch.
+//
+// Handlers are nil here on purpose, same as the relationship test above: a
+// route that slipped out of RequireAuth reaches a nil handler, which panics
+// and gets turned into a 500 by the recovery middleware — never a silent
+// pass, and never confused with the 401 a correctly wired route returns.
+func TestRoleProtectedRoutesRequireAuthentication(t *testing.T) {
+	checked := 0
+	for key, kind := range protectedRoutes {
+		if kind != protRole {
+			continue
+		}
+		parts := strings.SplitN(key, " ", 2)
+		method, pattern := parts[0], parts[1]
+
+		t.Run(key, func(t *testing.T) {
+			engine := testEngine(t)
+
+			req := httptest.NewRequest(method, concreteURL(pattern), nil)
+			w := httptest.NewRecorder()
+			engine.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusUnauthorized, w.Code,
+				fmt.Sprintf("%s must require authentication", key))
+		})
+		checked++
+	}
+
+	require.NotZero(t, checked, "no role-protected routes found — registry is broken")
+}

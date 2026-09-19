@@ -16,7 +16,15 @@ import (
 // the role check, not the authentication check.
 func getAs(t *testing.T, engine *gin.Engine, path, role string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, path, nil)
+	return requestAs(t, engine, http.MethodGet, path, role)
+}
+
+// requestAs is getAs generalized over the HTTP method, for routes that only
+// answer to POST/PUT/DELETE — a test that only ever calls getAs on such a
+// group tests nothing about its id-carrying routes at all.
+func requestAs(t *testing.T, engine *gin.Engine, method, path, role string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, path, nil)
 	req.Header.Set("Authorization", "Bearer "+signedToken(t, 1, role))
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
@@ -69,6 +77,20 @@ func TestOldAdminLeadPathIsGone(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
+// Четыре маршрута очереди разговоров: список, тред, ответ, закрытие. Проверка
+// только списка проверяла бы саму группу лишь косвенно — три маршрута с :id
+// делят с ней тот же RequireRole, но отдельным утверждением никто не
+// прошёлся ни по одному из них.
+var supportConversationRoutes = []struct {
+	method string
+	path   string
+}{
+	{http.MethodGet, "/api/v1/curator/support/conversations"},
+	{http.MethodGet, "/api/v1/curator/support/conversations/1"},
+	{http.MethodPost, "/api/v1/curator/support/conversations/1/reply"},
+	{http.MethodPost, "/api/v1/curator/support/conversations/1/close"},
+}
+
 // Разговоры поддержки: та же пара «доступ / отказ», что и у заявок.
 // Утверждение на StatusUnauthorized обязательно — первая редакция теста на
 // заявки проверяла только «не 403 и не 404», и отказ по аутентификации
@@ -77,21 +99,36 @@ func TestOldAdminLeadPathIsGone(t *testing.T) {
 func TestCuratorSupportRoutesAllowCoordinatorAndAdmin(t *testing.T) {
 	r := testEngine(t)
 
-	for _, role := range []string{"coordinator", "super_admin"} {
-		w := getAs(t, r, "/api/v1/curator/support/conversations", role)
-		assert.NotEqual(t, http.StatusForbidden, w.Code, "роль %q обязана проходить", role)
-		assert.NotEqual(t, http.StatusUnauthorized, w.Code, "роль %q обязана проходить", role)
-		assert.NotEqual(t, http.StatusNotFound, w.Code, "роль %q обязана проходить", role)
+	for _, route := range supportConversationRoutes {
+		for _, role := range []string{"coordinator", "super_admin"} {
+			w := requestAs(t, r, route.method, route.path, role)
+			assert.NotEqual(t, http.StatusForbidden, w.Code, "%s %s: роль %q обязана проходить", route.method, route.path, role)
+			assert.NotEqual(t, http.StatusUnauthorized, w.Code, "%s %s: роль %q обязана проходить", route.method, route.path, role)
+			assert.NotEqual(t, http.StatusNotFound, w.Code, "%s %s: роль %q обязана проходить", route.method, route.path, role)
+		}
 	}
 }
 
 func TestCuratorSupportRoutesDenyEveryoneElse(t *testing.T) {
 	r := testEngine(t)
 
-	for _, role := range []string{"user", "client", ""} {
-		w := getAs(t, r, "/api/v1/curator/support/conversations", role)
-		assert.Equal(t, http.StatusForbidden, w.Code, "роль %q не должна проходить", role)
+	for _, route := range supportConversationRoutes {
+		for _, role := range []string{"user", "client", ""} {
+			w := requestAs(t, r, route.method, route.path, role)
+			assert.Equal(t, http.StatusForbidden, w.Code, "%s %s: роль %q не должна проходить", route.method, route.path, role)
+		}
 	}
+}
+
+// Список разговоров не несёт :id и потому не входит в реестр protectedRoutes
+// — TestRoleProtectedRoutesRequireAuthentication его не видит. Явная проверка
+// здесь — то же самое место, что у заявок закрывает TestLeadRoutesRequireAuthentication.
+func TestSupportConversationsListRequiresAuthentication(t *testing.T) {
+	r := testEngine(t)
+
+	w := get(r, "/api/v1/curator/support/conversations")
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
 func TestOldAdminSupportPathIsGone(t *testing.T) {

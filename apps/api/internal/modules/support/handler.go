@@ -143,7 +143,7 @@ func (h *Handler) Webhook(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"ok": true})
 }
 
-// List handles GET /api/v1/admin/support/conversations.
+// List handles GET /api/v1/curator/support/conversations.
 func (h *Handler) List(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
@@ -162,7 +162,7 @@ func (h *Handler) List(c *gin.Context) {
 	response.Success(c, http.StatusOK, response.Paginated(conversations, total, page))
 }
 
-// Messages handles GET /api/v1/admin/support/conversations/:id.
+// Messages handles GET /api/v1/curator/support/conversations/:id.
 func (h *Handler) Messages(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
@@ -190,7 +190,7 @@ func (h *Handler) Messages(c *gin.Context) {
 	})
 }
 
-// Reply handles POST /api/v1/admin/support/conversations/:id/reply.
+// Reply handles POST /api/v1/curator/support/conversations/:id/reply.
 func (h *Handler) Reply(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
@@ -226,7 +226,7 @@ func (h *Handler) Reply(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"sent": true})
 }
 
-// CloseConversation handles POST /api/v1/admin/support/conversations/:id/close.
+// CloseConversation handles POST /api/v1/curator/support/conversations/:id/close.
 func (h *Handler) CloseConversation(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
