@@ -44,13 +44,39 @@ function sourceFiles(dir) {
 }
 
 /**
+ * Finds `const NAME = '/api/...'` (and `const NAME = process.env.X || '...'`,
+ * whose real value in a normal setup is the fallback literal) declared in a
+ * single file, so template literals built as `${NAME}/rest` can be resolved
+ * to a real path before matching. This is deliberately file-local and
+ * single-level — no project-wide TypeScript parsing.
+ */
+function localConstants(text) {
+    const consts = new Map()
+    const re = /^[ \t]*const\s+(\w+)\s*=\s*(?:process\.env\.\w+\s*\|\|\s*)?['"`]([^'"`]*)['"`]/gm
+    for (const m of text.matchAll(re)) consts.set(m[1], m[2])
+    return consts
+}
+
+/**
+ * Replaces a template literal's leading `${NAME}` with NAME's resolved value
+ * when NAME is a local constant, so calls like `` `${BASE}/leads` `` (a
+ * widespread pattern in this codebase) are visible to the scan below instead
+ * of silently skipped because the literal does not start with `/api/`.
+ */
+function resolveLocalBases(text) {
+    const consts = localConstants(text)
+    if (consts.size === 0) return text
+    return text.replace(/`\$\{(\w+)\}/g, (whole, name) => (consts.has(name) ? '`' + consts.get(name) : whole))
+}
+
+/**
  * Collects `/api/...` literals, turning `${expr}` interpolations into a
  * placeholder segment so they line up with the backend's `:param` patterns.
  */
 function frontendCalls(files) {
     const found = new Map()
     for (const file of files) {
-        const text = readFileSync(file, 'utf8')
+        const text = resolveLocalBases(readFileSync(file, 'utf8'))
         for (const m of text.matchAll(/['"`](\/api\/[^'"`\s]*)['"`]/g)) {
             const raw = m[1]
             const normalized = raw
