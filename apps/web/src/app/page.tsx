@@ -9,6 +9,18 @@ import { t } from '@/shared/i18n'
 
 const API_URL = process.env.INTERNAL_API_URL || 'http://api:4000'
 
+// Сколько ждать /ready, прежде чем рендерить лендинг без утверждений о
+// способностях. Тот же приём, что у ARTICLE_FETCH_TIMEOUT_MS в
+// apps/web/src/app/sitemap.ts:7 — граница на ожидание, а не зависание.
+// Этот лендинг динамический (корневой layout зовёт headers() ради nonce),
+// значит рендерится заново на каждый заход: не ограничь мы /ready сроком,
+// зависший ответ (сеть есть, ответа нет — ровно как в инциденте с DNS)
+// задержал бы каждого посетителя, а не только сборку.
+//
+// Экспортирована ради теста ниже (page.test.tsx) — тест сверяется с
+// реальным значением, а не дублирует магическое число рядом.
+export const READY_TIMEOUT_MS = 2000
+
 /**
  * Способности этого развёртывания, по мнению самого API.
  *
@@ -23,7 +35,7 @@ async function enabledFeatures(): Promise<Record<string, boolean>> {
     try {
         const res = await fetch(`${API_URL}/ready`, {
             next: { revalidate: 60 },
-            signal: AbortSignal.timeout(2000),
+            signal: AbortSignal.timeout(READY_TIMEOUT_MS),
         })
         if (!res.ok) return {}
         const data = await res.json()
@@ -92,10 +104,15 @@ export default async function Home({
             <AuthRedirect />
             <TrackView event={EVENTS.landingViewed} />
             <div className="min-h-screen bg-white">
-                {/* Шапка: вход и регистрация — два разных действия, оба без прокрутки. */}
-                <header className="relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-emerald-50" />
-                    <nav className="relative mx-auto flex max-w-5xl items-center justify-between px-6 pt-8">
+                {/* Шапка: только логотип и два действия — вход и регистрация,
+                    оба без прокрутки. Герой (h1, основное действие) — уже
+                    внутри <main>, не здесь: иначе обход по ориентирам минует
+                    и главный заголовок, и главную кнопку. */}
+                <header className="relative bg-gradient-to-b from-blue-50 to-white">
+                    <nav
+                        aria-label={t('landing.nav.ariaLabel')}
+                        className="relative mx-auto flex max-w-5xl items-center justify-between px-6 py-8"
+                    >
                         <Logo width={140} height={42} className="text-gray-900" />
                         <div className="flex items-center gap-6">
                             <Link
@@ -112,37 +129,45 @@ export default async function Home({
                             </Link>
                         </div>
                     </nav>
-
-                    {/* Герой: расчёт остаётся основным действием — он не требует аккаунта. */}
-                    <div className="relative mx-auto max-w-5xl px-6 pt-16 pb-24 text-center">
-                        <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
-                            {t('landing.hero.title')}
-                        </h1>
-                        <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 sm:text-xl">
-                            {t('landing.hero.subtitle')}
-                        </p>
-                        <div className="mt-10 flex flex-col items-center gap-4">
-                            <Link
-                                href="/onboarding"
-                                className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-                            >
-                                {t('landing.hero.cta')}
-                            </Link>
-                            <Link
-                                href="/auth"
-                                className="text-sm font-medium text-gray-500 hover:text-gray-700"
-                            >
-                                {t('landing.hero.haveAccount')}
-                            </Link>
-                        </div>
-                    </div>
                 </header>
 
                 <main>
-                    {/* Четыре утверждения вместо шести карточек возможностей. photoFood
-                        рендерится только когда API подтвердил food_recognition. */}
+                    {/* Герой: расчёт остаётся основным действием — он не требует аккаунта. */}
+                    <div className="relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-emerald-50" />
+                        <div className="relative mx-auto max-w-5xl px-6 pt-8 pb-24 text-center">
+                            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
+                                {t('landing.hero.title')}
+                            </h1>
+                            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 sm:text-xl">
+                                {t('landing.hero.subtitle')}
+                            </p>
+                            <div className="mt-10 flex flex-col items-center gap-4">
+                                <Link
+                                    href="/onboarding"
+                                    className="inline-flex h-12 items-center justify-center rounded-lg bg-blue-600 px-8 text-lg font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                                >
+                                    {t('landing.hero.cta')}
+                                </Link>
+                                <Link
+                                    href="/auth"
+                                    className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                                >
+                                    {t('landing.hero.haveAccount')}
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* До четырёх тезисов вместо шести карточек возможностей
+                        (три, когда food_recognition выключена — см. ниже).
+                        photoFood рендерится только когда API подтвердил
+                        способность. */}
                     <section className="mx-auto max-w-5xl px-6 py-20">
-                        <div className="grid gap-8 sm:grid-cols-2">
+                        <h2 className="text-center text-3xl font-bold text-gray-900">
+                            {t('landing.claims.heading')}
+                        </h2>
+                        <div className="mt-12 grid gap-8 sm:grid-cols-2">
                             <ClaimCard
                                 title={t('landing.claims.instantNorm.title')}
                                 description={t('landing.claims.instantNorm.description')}
@@ -228,7 +253,10 @@ export default async function Home({
                 <footer className="border-t border-gray-200 px-6 py-8">
                     <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 sm:flex-row sm:justify-between">
                         <Logo width={120} height={36} className="text-gray-400" />
-                        <nav className="flex gap-6 text-sm text-gray-500">
+                        <nav
+                            aria-label={t('landing.footer.ariaLabel')}
+                            className="flex gap-6 text-sm text-gray-500"
+                        >
                             <SupportLink className="hover:text-gray-700" />
                             <Link href="/content" className="hover:text-gray-700">
                                 {t('landing.footer.articles')}

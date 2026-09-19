@@ -21,11 +21,33 @@ import { EVENTS, track } from '@/shared/analytics';
 import type { AuthMode, AuthFormData, ConsentState } from '@/features/auth/types';
 import { t } from '@/shared/i18n'
 
-export function AuthScreen() {
-    // Вход по ссылке — то, что видно первым; форма пароля не третий режим, а
-    // второй способ войти тем же mode, раскрываемый без перезагрузки страницы.
-    const [entryMethod, setEntryMethod] = useState<'link' | 'password'>('link');
-    const [mode, setMode] = useState<AuthMode>('login');
+export interface AuthScreenProps {
+    /**
+     * С каким режимом открылся экран — из `?mode=register` на `/auth`
+     * (задача 9, посадочная страница). По умолчанию 'login': экран
+     * открывается на входе по ссылке, как и раньше.
+     *
+     * MagicLinkForm сама по себе не различает вход и регистрацию — один и
+     * тот же адрес и то же согласие работают для обоих, а её тексты
+     * («Получить ссылку для входа», «Войти по паролю») говорят только про
+     * вход. Поэтому 'register' не просто меняет `mode`: он ещё и сразу
+     * открывает форму пароля (`entryMethod: 'password'`) в её
+     * register-варианте — там, где кнопка подписана «Зарегистрироваться» и
+     * видна ConsentSection. Человек, пришедший за аккаунтом, не должен
+     * упереться в экран, весь текст которого — про вход.
+     */
+    initialMode?: AuthMode;
+}
+
+export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
+    // Вход по ссылке — то, что видно первым для входа; форма пароля не третий
+    // режим, а второй способ войти тем же mode, раскрываемый без перезагрузки
+    // страницы. Регистрация — исключение: у неё нет отдельного признака в
+    // MagicLinkForm, поэтому она сразу открывает форму пароля.
+    const [entryMethod, setEntryMethod] = useState<'link' | 'password'>(
+        initialMode === 'register' ? 'password' : 'link'
+    );
+    const [mode, setMode] = useState<AuthMode>(initialMode);
     const [formData, setFormData] = useState<AuthFormData>({
         email: '',
         password: '',

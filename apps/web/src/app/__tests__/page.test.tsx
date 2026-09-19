@@ -12,10 +12,9 @@
  * поломанный ответ проверяются по-настоящему, а не эквивалентом.
  */
 
-import React from 'react'
 import { render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import Home from '../page'
+import Home, { READY_TIMEOUT_MS } from '../page'
 
 jest.mock('@/shared/components/JsonLd', () => ({
     JsonLd: () => null,
@@ -100,6 +99,47 @@ describe('Посадочная страница', () => {
         render(await Home({ features: { food_recognition: true } }))
         expect(screen.getByText(/по фото/i)).toBeInTheDocument()
     })
+
+    // Обход по ориентирам не должен миновать главный заголовок и главное
+    // действие: у старой версии страницы оба были внутри <header>, роль
+    // которого — banner, а не содержимое экрана. h1 и герой обязаны быть
+    // внутри <main>.
+    it('держит главный заголовок и главное действие внутри main, а не в шапке', async () => {
+        render(await Home({ features: {} }))
+
+        const header = screen.getByRole('banner')
+        const main = screen.getByRole('main')
+
+        expect(within(header).queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+        expect(within(main).getByRole('heading', { level: 1 })).toBeInTheDocument()
+        expect(
+            within(main).getByRole('link', { name: /рассчитать мою норму/i }),
+        ).toBeInTheDocument()
+    })
+
+    // Заголовок раздела тезисов — иначе обход по заголовкам идёт h1 → h3 без
+    // объясняющего h2 между ними, и порядок нарушается ещё и на кураторском
+    // h2 сразу следом.
+    it('даёт разделу тезисов собственный h2, не только h1 героя и h3 карточек', async () => {
+        render(await Home({ features: {} }))
+
+        const headings = screen.getAllByRole('heading').map((h) => h.tagName)
+        // h1 (герой), затем h2 (тезисы), и нигде h3 не идёт раньше своего h2.
+        expect(headings[0]).toBe('H1')
+        expect(headings[1]).toBe('H2')
+    })
+
+    // Два <nav> на странице (шапка и подвал) обязаны различаться для
+    // скринридера — иначе оба безымянны в списке ориентиров.
+    it('различает навигацию шапки и подвала подписями для скринридера', async () => {
+        render(await Home({ features: {} }))
+
+        const navs = screen.getAllByRole('navigation')
+        expect(navs).toHaveLength(2)
+        const labels = navs.map((nav) => nav.getAttribute('aria-label'))
+        expect(labels.every(Boolean)).toBe(true)
+        expect(new Set(labels).size).toBe(2)
+    })
 })
 
 // Настоящий путь enabledFeatures(): без props.features страница сама зовёт
@@ -146,4 +186,34 @@ describe('enabledFeatures() — что печатает страница по о
 
         expect(screen.getByText(/по фото/i)).toBeInTheDocument()
     })
+
+    // Лендинг динамический (корневой layout зовёт headers() ради nonce) —
+    // рендерится на каждый заход. Подвисший /ready (сеть есть, ответа нет)
+    // без границы на ожидание задержал бы каждого посетителя, ровно как в
+    // инциденте с DNS. fetch здесь никогда не resolve сам — только по сигналу
+    // отмены, который AbortSignal.timeout(READY_TIMEOUT_MS) обязан прислать.
+    it(
+        'не ждёт /ready дольше READY_TIMEOUT_MS и рендерится без утверждения',
+        async () => {
+            ;(global.fetch as jest.Mock).mockImplementation(
+                (_url: string, opts: { signal?: AbortSignal }) =>
+                    new Promise((_resolve, reject) => {
+                        opts.signal?.addEventListener('abort', () => {
+                            reject(new DOMException('The operation was aborted', 'AbortError'))
+                        })
+                        // Намеренно никогда не resolve сама по себе — только через сигнал.
+                    }),
+            )
+
+            const startedAt = Date.now()
+            render(await Home())
+            const elapsedMs = Date.now() - startedAt
+
+            // Запас на планировщик, не на логику: сама граница — READY_TIMEOUT_MS.
+            expect(elapsedMs).toBeLessThan(READY_TIMEOUT_MS + 2000)
+            expect(screen.queryByText(/по фото/i)).not.toBeInTheDocument()
+            expect(screen.getByText(/куратор видит дневник/i)).toBeInTheDocument()
+        },
+        READY_TIMEOUT_MS + 5000,
+    )
 })

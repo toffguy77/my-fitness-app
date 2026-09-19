@@ -338,4 +338,30 @@ describe('AuthScreen', () => {
     expect(screen.getByLabelText('Log in to your account')).toBeDisabled()
     expect(screen.getByLabelText('Register a new account')).toBeDisabled()
   })
+
+  // Задача 9: посадочная страница ведёт «Регистрация» на /auth?mode=register.
+  // MagicLinkForm не различает вход и регистрацию, а её тексты — только про
+  // вход («Получить ссылку для входа»), поэтому initialMode='register'
+  // обязан открыть форму пароля сразу в её register-варианте, а не отдать
+  // человека экрану, целиком написанному про вход.
+  it('opens straight into registration when initialMode is register, without an extra click', () => {
+    render(<AuthScreen initialMode="register" />)
+
+    // Не форма входа по ссылке — сразу форма пароля, и сразу в register.
+    // MagicLinkForm остаётся смонтированной (своё состояние не теряется при
+    // переключении — см. AuthScreen.tsx), но скрыта `hidden`, а не показана.
+    expect(screen.getByTestId('magic-link-form')).not.toBeVisible()
+    expect(screen.getByTestId('auth-form')).toBeInTheDocument()
+    expect(screen.getByTestId('consent-section')).toBeInTheDocument()
+    expect(screen.getByLabelText('Register a new account')).toHaveTextContent(
+      'Зарегистрироваться'
+    )
+  })
+
+  it('still opens into the link form when initialMode is login (default, unchanged)', () => {
+    render(<AuthScreen initialMode="login" />)
+
+    expect(screen.getByTestId('magic-link-form')).toBeInTheDocument()
+    expect(screen.queryByTestId('auth-form')).not.toBeInTheDocument()
+  })
 })
