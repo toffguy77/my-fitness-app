@@ -11,6 +11,7 @@ import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import { AIPhotoTab, RecognitionResult } from '../AIPhotoTab';
 import type { FoodItem } from '../../types';
+import { ApiError } from '@/shared/errors/apiErrors';
 
 // ============================================================================
 // Test Data
@@ -881,6 +882,60 @@ describe('AIPhotoTab', () => {
             await waitFor(() => {
                 expect(screen.getByRole('button', { name: /найти вручную/i })).toBeInTheDocument();
             });
+        });
+
+        // Server tells the model-couldn't-parse-it case apart from a daily
+        // ceiling apart from an outage — the empty catch used to erase all
+        // three into one generic sentence, and the 422 case is the one that
+        // sends someone off retaking the same photo forever.
+        it('shows the retake-closer suggestion on a 422, not the generic failure text', async () => {
+            const onRecognize = jest.fn().mockRejectedValue(
+                new ApiError(422, {
+                    code: 'recognition_unclear',
+                    message: 'Не удалось разобрать это фото — попробуйте снять ближе или добавьте еду вручную',
+                })
+            );
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText(/снять ближе/i)).toBeInTheDocument();
+            });
+            expect(screen.queryByText(/ошибка при распознавании фото/i)).not.toBeInTheDocument();
+        });
+
+        // The daily ceiling is not the same problem as an outage or a network
+        // hiccup — it needs its own text, not "Ошибка при распознавании фото".
+        it('shows the daily-limit text on a 429 with daily_limit_reached, not the generic failure text', async () => {
+            const onRecognize = jest.fn().mockRejectedValue(
+                new ApiError(429, {
+                    code: 'daily_limit_reached',
+                    message: 'лимит распознаваний исчерпан на сегодня',
+                })
+            );
+
+            render(
+                <AIPhotoTab
+                    onSelectFoods={jest.fn()}
+                    onRecognize={onRecognize}
+                />
+            );
+
+            const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+            fireEvent.change(fileInput, { target: { files: [createMockFile()] } });
+
+            await waitFor(() => {
+                expect(screen.getByText(/завтра/i)).toBeInTheDocument();
+            });
+            expect(screen.queryByText(/ошибка при распознавании фото/i)).not.toBeInTheDocument();
         });
     });
 
