@@ -61,7 +61,10 @@ func (h *Handler) RequestDeletion(c *gin.Context) {
 		response.Unauthorized(c, "Неверный пароль")
 		return
 	case errors.Is(err, apperrors.ErrConflict):
-		response.Error(c, http.StatusConflict, "Удаление аккаунта уже запрошено")
+		// Свой код, а не общий conflict: человек должен прочитать, что
+		// удаление уже идёт и его можно отменить, а не «действие невозможно».
+		response.ErrorCode(c, http.StatusConflict,
+			apperrors.CodeDeletionAlreadyRequested, "Удаление аккаунта уже запрошено", nil)
 		return
 	case errors.Is(err, apperrors.ErrNotFound):
 		response.NotFound(c, "Пользователь не найден")
@@ -123,7 +126,9 @@ func (h *Handler) RequestExport(c *gin.Context) {
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrConflict):
-		response.Error(c, http.StatusConflict, "Выгрузка уже готовится")
+		// «Уже готовится» значит «дождитесь», а не «нельзя».
+		response.ErrorCode(c, http.StatusConflict,
+			apperrors.CodeExportAlreadyPending, "Выгрузка уже готовится", nil)
 		return
 	case errors.Is(err, apperrors.ErrRateLimited):
 		response.Error(c, http.StatusTooManyRequests, "Выгрузку можно запрашивать не чаще раза в сутки")

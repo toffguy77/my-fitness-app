@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/jobs"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
@@ -100,7 +101,10 @@ func (h *JobsHandler) Run(c *gin.Context) {
 		return
 	}
 	if running {
-		response.Error(c, http.StatusConflict, "Задача уже выполняется")
+		// «Уже выполняется» — это «подождите и посмотрите результат», а не
+		// «действие невозможно в текущем состоянии».
+		response.ErrorCode(c, http.StatusConflict,
+			apperrors.CodeJobAlreadyRunning, "Задача уже выполняется", nil)
 		return
 	}
 

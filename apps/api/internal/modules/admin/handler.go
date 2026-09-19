@@ -116,17 +116,25 @@ func (h *Handler) ChangeRole(c *gin.Context) {
 	if err := h.service.ChangeRole(c.Request.Context(), userID, req.Role); err != nil {
 		h.log.Error("Failed to change role", "error", err, "user_id", userID, "new_role", req.Role)
 
-		switch err.Error() {
-		case "user not found":
+		// Раньше здесь сравнивали err.Error() с тремя строками. Сервис их не
+		// возвращает — он оборачивает сентинелы, и текст выходит другой
+		// («ChangeRole: not found»). Две ветки из трёх не срабатывали ни разу:
+		// и ненайденный пользователь, и супер-администратор уезжали в 500
+		// «Не удалось изменить роль». Третья срабатывала по префиксу и
+		// показывала администратору внутреннюю английскую строку.
+		switch {
+		case errors.Is(err, apperrors.ErrNotFound):
 			response.NotFound(c, "Пользователь не найден")
-		case "cannot change super_admin role":
+		case errors.Is(err, ErrLastCurator):
+			// Раньше сюда же по префиксу попадала внутренняя строка целиком.
+			// Проверяется до ErrForbidden: последний куратор оборачивает его.
+			response.ErrorCode(c, http.StatusConflict, apperrors.CodeLastCurator,
+				"Это последний куратор — его клиентов некому передать. "+
+					"Сначала назначьте ещё одного куратора.", nil)
+		case errors.Is(err, apperrors.ErrForbidden):
 			response.Forbidden(c, "Нельзя изменить роль супер-администратора")
 		default:
-			if len(err.Error()) > 15 && err.Error()[:15] == "cannot demote: " {
-				response.Error(c, http.StatusConflict, err.Error())
-			} else {
-				response.InternalError(c, "Не удалось изменить роль")
-			}
+			response.InternalError(c, "Не удалось изменить роль")
 		}
 		return
 	}
