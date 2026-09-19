@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { LeadList } from '../LeadList'
-import { adminApi, type Lead } from '../../api/adminApi'
+import { curatorApi, type Lead } from '../../api/curatorApi'
 
-jest.mock('../../api/adminApi', () => ({
-    adminApi: { getLeads: jest.fn(), markLeadHandled: jest.fn() },
+jest.mock('../../api/curatorApi', () => ({
+    curatorApi: { getLeads: jest.fn(), markLeadHandled: jest.fn() },
 }))
 
 jest.mock('react-hot-toast', () => ({
@@ -12,7 +12,7 @@ jest.mock('react-hot-toast', () => ({
     default: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }))
 
-const api = adminApi as jest.Mocked<typeof adminApi>
+const api = curatorApi as jest.Mocked<typeof curatorApi>
 
 function makeLead(overrides: Partial<Lead> = {}): Lead {
     return {

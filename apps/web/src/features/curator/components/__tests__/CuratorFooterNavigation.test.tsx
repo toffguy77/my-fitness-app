@@ -15,12 +15,30 @@ describe('CuratorFooterNavigation', () => {
         jest.clearAllMocks()
     })
 
-    it('renders 3 navigation items', () => {
+    it('renders 5 navigation items', () => {
         render(<CuratorFooterNavigation />)
 
         expect(screen.getByText('Клиенты')).toBeInTheDocument()
         expect(screen.getByText('Чаты')).toBeInTheDocument()
         expect(screen.getByText('Контент')).toBeInTheDocument()
+        expect(screen.getByText('Заявки')).toBeInTheDocument()
+        expect(screen.getByText('Обращения')).toBeInTheDocument()
+    })
+
+    // Leads and support used to be administrator-only screens reachable at
+    // /admin/leads and /admin/support. The curator workspace is the only
+    // place they exist now, so their nav entries have to point there.
+    it('sends the curator to /curator/leads and /curator/support', () => {
+        const onNavigate = jest.fn()
+        render(<CuratorFooterNavigation onNavigate={onNavigate} />)
+
+        fireEvent.click(screen.getByTestId('nav-item-leads'))
+        expect(onNavigate).toHaveBeenCalledWith('leads')
+        expect(mockPush).toHaveBeenCalledWith('/curator/leads')
+
+        fireEvent.click(screen.getByTestId('nav-item-support'))
+        expect(onNavigate).toHaveBeenCalledWith('support')
+        expect(mockPush).toHaveBeenCalledWith('/curator/support')
     })
 
     it('has aria-label on nav element', () => {
@@ -84,6 +102,8 @@ describe('CuratorFooterNavigation', () => {
         expect(screen.getByLabelText('Клиенты')).toBeInTheDocument()
         expect(screen.getByLabelText('Чаты')).toBeInTheDocument()
         expect(screen.getByLabelText('Контент')).toBeInTheDocument()
+        expect(screen.getByLabelText('Заявки')).toBeInTheDocument()
+        expect(screen.getByLabelText('Обращения')).toBeInTheDocument()
     })
 
     it('renders with data-testid on the nav container', () => {

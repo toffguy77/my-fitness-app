@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportQueue } from '../SupportQueue'
-import { adminApi, type SupportConversation, type SupportThread } from '../../api/adminApi'
+import { curatorApi, type SupportConversation, type SupportThread } from '../../api/curatorApi'
 
-jest.mock('../../api/adminApi', () => ({
-    adminApi: {
+jest.mock('../../api/curatorApi', () => ({
+    curatorApi: {
         getSupportConversations: jest.fn(),
         getSupportThread: jest.fn(),
         replyToSupport: jest.fn(),
@@ -17,7 +17,7 @@ jest.mock('react-hot-toast', () => ({
     default: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }))
 
-const api = adminApi as jest.Mocked<typeof adminApi>
+const api = curatorApi as jest.Mocked<typeof curatorApi>
 
 function conversation(overrides: Partial<SupportConversation> = {}): SupportConversation {
     return {
