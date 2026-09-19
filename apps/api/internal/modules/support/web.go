@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 )
 
@@ -83,6 +84,49 @@ func (s *Service) byWebTokenHash(ctx context.Context, hash string) (*Conversatio
 		conversation.ChatID = chatID.Int64
 	}
 	return &conversation, nil
+}
+
+// SaveWebContact сохраняет контакт, оставленный в разговоре, как заявку — ту
+// же, что заводит контактный шаг мастера, а не вторую сущность рядом с ней.
+//
+// Отдельной таблицы «контакт из бота» нет намеренно: правила согласий, срок
+// хранения и отписка у заявки уже есть, и второй их набор неизбежно разошёлся
+// бы с первым — ровно то, чего добивается общий leads.Service.Create.
+//
+// Согласие не проверяется здесь отдельно: leads.Service.Create уже отказывает
+// без DataProcessing, и повторная проверка была бы вторым местом, которое
+// можно забыть привести в соответствие с первым, если правило изменится.
+func (s *Service) SaveWebContact(
+	ctx context.Context, token, email string, consents leads.Consents, ip, ua string,
+) (string, error) {
+	conversation, err := s.WebConversationByToken(ctx, token)
+	if err != nil {
+		return "", err
+	}
+
+	// Заявка уже есть — повторно контакт не берём, иначе один посетитель
+	// оставил бы в очереди куратора два следа вместо одного.
+	if conversation.LeadID != nil {
+		return "", apperrors.ErrConflict
+	}
+
+	lead, leadToken, err := s.leads.Create(ctx, leads.CreateInput{
+		Email:         email,
+		LastStep:      "bot",
+		CaptureSource: "bot",
+		Consents:      consents,
+	}, ip, ua)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE support_conversations SET lead_id = $2 WHERE id = $1`,
+		conversation.ID, lead.ID); err != nil {
+		return "", fmt.Errorf("attach lead to web conversation: %w", err)
+	}
+
+	return leadToken, nil
 }
 
 // enforceWebMessageCap bounds how long one web conversation may run — not

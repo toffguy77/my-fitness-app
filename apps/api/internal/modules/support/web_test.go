@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -242,7 +243,35 @@ func setupHandler(t *testing.T) (*gin.Engine, *Service, sqlmock.Sqlmock) {
 	r.POST("/public/support/web", h.StartWeb)
 	r.POST("/public/support/web/message", h.WebMessage)
 	r.GET("/public/support/web/messages", h.WebMessages)
+	r.POST("/public/support/web/contact", h.WebContact)
 	return r, service, mock
+}
+
+// setupContactHandler is setupHandler with control over the leads writer:
+// the /contact tests need to force a consent refusal or inspect exactly what
+// was asked to be saved, which the shared fakeLeads in setupHandler does not
+// allow.
+func setupContactHandler(t *testing.T, fake *fakeLeads) (*gin.Engine, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	service := NewService(db, logger.New(), &fakeAnswerer{}, &fakeSender{}, fake, 100)
+	h := NewHandler(&config.Config{}, logger.New(), service)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.POST("/public/support/web/contact", h.WebContact)
+	return r, mock
+}
+
+// expectFindableWebConversation mocks a valid, findable web conversation with
+// no lead attached yet — the state SaveWebContact needs to proceed.
+func expectFindableWebConversation(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(`FROM support_conversations WHERE web_token_hash`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "chat_id", "lead_id", "user_id", "status", "channel"}).
+			AddRow("conv-1", nil, nil, nil, "open", ChannelWeb))
 }
 
 func post(r http.Handler, path, body string) *httptest.ResponseRecorder {
@@ -415,6 +444,125 @@ func TestWebMessageIsRateLimited(t *testing.T) {
 	var last *httptest.ResponseRecorder
 	for i := 0; i < 40; i++ {
 		last = post(r, "/api/v1/public/support/web/message", `{"token":"t","text":"вопрос"}`)
+	}
+
+	assert.Equal(t, http.StatusTooManyRequests, last.Code)
+}
+
+// ---------------------------------------------------------------------------
+// Контакт из разговора (handler.go, web.go): WebContact / SaveWebContact.
+// ---------------------------------------------------------------------------
+
+// Оставленный контакт становится заявкой: тот же email и те же согласия,
+// какие принёс запрос, доходят до leads.Service.Create с CaptureSource="bot"
+// — проверяется тем, что fakeLeads.Create записывает, чем его действительно
+// вызвали, а не просто соглашается на любой аргумент.
+func TestWebContact_SavesLeadAndAttachesConversation(t *testing.T) {
+	fake := &fakeLeads{createToken: "lead-token-1"}
+	r, mock := setupContactHandler(t, fake)
+	expectFindableWebConversation(mock)
+	mock.ExpectExec(`UPDATE support_conversations SET lead_id`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	w := post(r, "/public/support/web/contact",
+		`{"token":"good","email":"bot@example.com","consents":{"data_processing":true,"contact":true}}`)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	var body struct {
+		Data struct {
+			Token string `json:"token"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "lead-token-1", body.Data.Token)
+
+	require.Equal(t, 1, fake.createCalls)
+	assert.Equal(t, "bot@example.com", fake.createIn.Email)
+	assert.Equal(t, "bot", fake.createIn.CaptureSource, "источник заявки обязан отличать разговор от контактного шага мастера")
+	assert.Equal(t, "bot", fake.createIn.LastStep)
+	assert.True(t, fake.createIn.Consents.DataProcessing)
+	assert.True(t, fake.createIn.Consents.Contact)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Без согласия на обработку заявка не должна была создаться: leads.Service
+// отказывает, и обработчик обязан вернуть понятный отказ, а не 500 и уж тем
+// более не тихий успех.
+func TestWebContact_RefusesWithoutConsent(t *testing.T) {
+	fake := &fakeLeads{createErr: fmt.Errorf("data processing consent is required: %w", apperrors.ErrValidation)}
+	r, mock := setupContactHandler(t, fake)
+	expectFindableWebConversation(mock)
+
+	w := post(r, "/public/support/web/contact",
+		`{"token":"good","email":"bot@example.com","consents":{"data_processing":false}}`)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Нужно согласие на обработку персональных данных")
+	require.Equal(t, 1, fake.createCalls,
+		"согласие обязано быть действительно передано и проверено, а не отвергнуто заранее без попытки")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Поддельный, чужой и удалённый токен отвечают тем же 404, что и остальные
+// веб-маршруты — перебор токенов не должен быть наблюдаем.
+func TestWebContact_UnknownTokenIsNotFound(t *testing.T) {
+	fake := &fakeLeads{}
+	r, mock := setupContactHandler(t, fake)
+	mock.ExpectQuery(`FROM support_conversations`).WillReturnError(sql.ErrNoRows)
+
+	w := post(r, "/public/support/web/contact",
+		`{"token":"forged","email":"bot@example.com","consents":{"data_processing":true}}`)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Equal(t, 0, fake.createCalls, "разговор не найден — заявка не должна была даже пытаться создаться")
+}
+
+// Второй контакт в разговоре, у которого заявка уже есть, отказывает без
+// повторного создания — иначе один посетитель оставил бы в очереди куратора
+// два следа вместо одного.
+func TestWebContact_ConflictWhenConversationAlreadyHasALead(t *testing.T) {
+	fake := &fakeLeads{}
+	r, mock := setupContactHandler(t, fake)
+	existingLeadID := "existing-lead"
+	mock.ExpectQuery(`FROM support_conversations WHERE web_token_hash`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "chat_id", "lead_id", "user_id", "status", "channel"}).
+			AddRow("conv-1", nil, existingLeadID, nil, "open", ChannelWeb))
+
+	w := post(r, "/public/support/web/contact",
+		`{"token":"good","email":"bot@example.com","consents":{"data_processing":true,"contact":true}}`)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+	assert.Equal(t, 0, fake.createCalls, "заявка уже есть — второй раз создавать не нужно")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Некорректный email отклоняется до обращения к сервису.
+func TestWebContact_RejectsInvalidEmail(t *testing.T) {
+	fake := &fakeLeads{}
+	r, _ := setupContactHandler(t, fake)
+
+	w := post(r, "/public/support/web/contact", `{"token":"good","email":"not-an-email"}`)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, 0, fake.createCalls)
+}
+
+// На этой ветке дважды находили, что Limit(имя) молча пропускает запрос без
+// ограничения, если настроек с таким именем нет — единственное доказательство
+// того, что "support-web-contact" объявлен в authLimitConfigs, это реальный
+// лимитер, действительно упёршийся в потолок.
+func TestWebContactIsRateLimited(t *testing.T) {
+	h := NewHandler(&config.Config{}, logger.New(), nil)
+
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	rl := middleware.NewAuthRateLimiter()
+	r.POST("/api/v1/public/support/web/contact", rl.Limit("support-web-contact"), h.WebContact)
+
+	var last *httptest.ResponseRecorder
+	for i := 0; i < 40; i++ {
+		last = post(r, "/api/v1/public/support/web/contact",
+			`{"token":"t","email":"a@example.com","consents":{"data_processing":true}}`)
 	}
 
 	assert.Equal(t, http.StatusTooManyRequests, last.Code)

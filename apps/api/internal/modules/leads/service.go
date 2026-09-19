@@ -46,6 +46,13 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 	if step == "" {
 		step = "contact"
 	}
+	// The contact step is the only place a lead was ever created before this
+	// field existed, so an old or unaware client defaults there rather than
+	// writing an empty source.
+	captureSource := in.CaptureSource
+	if captureSource == "" {
+		captureSource = "contact_step"
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -67,8 +74,8 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 		INSERT INTO leads (
 			email, name, sex, birth_date, height_cm, weight_kg, activity_level, goal,
 			calories, protein, fat, carbs, water_glasses,
-			last_step, source, data_consent, contact_consent
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+			last_step, source, data_consent, contact_consent, capture_source
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 		RETURNING id, created_at, updated_at`,
 		email, nullIfEmpty(in.Name),
 		nullIfEmpty(in.Parameters.Sex), nullIfEmpty(in.Parameters.BirthDate),
@@ -79,7 +86,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 		resultField(in.Result, func(r *Result) any { return r.Fat }),
 		resultField(in.Result, func(r *Result) any { return r.Carbs }),
 		resultField(in.Result, func(r *Result) any { return r.WaterGlasses }),
-		step, nullIfEmpty(in.Source), in.Consents.DataProcessing, in.Consents.Contact,
+		step, nullIfEmpty(in.Source), in.Consents.DataProcessing, in.Consents.Contact, captureSource,
 	).Scan(&lead.ID, &lead.CreatedAt, &lead.UpdatedAt)
 	if err != nil {
 		return nil, "", fmt.Errorf("create lead: %w", err)

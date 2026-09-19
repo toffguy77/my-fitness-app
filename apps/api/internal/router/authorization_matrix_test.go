@@ -148,6 +148,7 @@ var protectedRoutes = map[string]protection{
 	"POST /api/v1/public/support/web/message": protPublic,
 	"GET /api/v1/public/support/web/messages": protPublic,
 	"POST /api/v1/public/support/web/human":   protPublic,
+	"POST /api/v1/public/support/web/contact": protPublic,
 }
 
 // nonResourceParams are path parameters that address a value rather than

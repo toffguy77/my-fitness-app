@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
@@ -29,12 +30,20 @@ const (
 	perChatLimit  = 5
 )
 
-// LeadResolver turns the payload of a deep link into the lead it names.
+// LeadResolver turns the payload of a deep link into the lead it names, and —
+// since Task 6 — saves a contact left mid-conversation as a lead of its own.
 //
-// Only the identifier crosses the boundary: what the lead holds is read from
-// the database here, so the two modules share a string rather than a type.
+// One interface, not two: the bot needing to write is the same boundary as
+// the bot needing to read, and a second interface for the same dependency
+// would only be a second place the two modules' contract could drift apart.
 type LeadResolver interface {
 	LeadIDForToken(ctx context.Context, token string) (string, error)
+
+	// Create saves a contact as a lead, exactly as the onboarding wizard's
+	// contact step does — same consents, same retention, same reminder and
+	// unsubscribe. A second, bot-only contact table would inevitably grow a
+	// second set of those rules that drifts from the first.
+	Create(ctx context.Context, in leads.CreateInput, ip, ua string) (*leads.Lead, string, error)
 }
 
 // LeadSummary is what an operator needs to see: who, and where they stopped.

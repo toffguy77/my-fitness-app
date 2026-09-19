@@ -109,6 +109,74 @@ func TestCreate_SavesTheLeadWithoutTheContactConsent(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// A contact can now be left in three places: the wizard's contact step, the
+// result screen (feat/landing-conversion), and the support bot (this
+// branch). Without recording where, the three cannot be compared.
+func TestCreate_StoresCaptureSource(t *testing.T) {
+	service, mock := setupService(t)
+
+	in := validInput()
+	in.CaptureSource = "bot"
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO leads").
+		WithArgs(
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), "bot",
+		).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("lead-9", time.Now(), time.Now()))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-9", "data_processing", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-9", "contact", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	_, _, err := service.Create(context.Background(), in, "ip", "ua")
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// An old client that has never heard of capture_source must not write an
+// empty one: the contact step is the only place a lead was ever created
+// before this, so that is the correct default, not a guess.
+func TestCreate_DefaultsCaptureSourceToContactStep(t *testing.T) {
+	service, mock := setupService(t)
+
+	in := validInput()
+	in.CaptureSource = ""
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO leads").
+		WithArgs(
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), "contact_step",
+		).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("lead-10", time.Now(), time.Now()))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-10", "data_processing", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-10", "contact", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	_, _, err := service.Create(context.Background(), in, "ip", "ua")
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 // The step is a hint for whoever follows up, not the visitor's data — and a
 // request anyone can make must not be able to name a lead directly.
 func TestUpdateStep_RefusesAnUnsignedIdentifier(t *testing.T) {

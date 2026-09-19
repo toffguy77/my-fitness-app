@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/stretchr/testify/assert"
@@ -41,10 +42,36 @@ func (f *fakeSender) SendMessage(_ context.Context, _ int64, text string) error 
 type fakeLeads struct {
 	id  string
 	err error
+
+	// Create records what it was asked to save, so a test can assert the
+	// consents and capture source actually reached it, and returns
+	// createErr/createLead/createToken configured below.
+	createIn    leads.CreateInput
+	createErr   error
+	createLead  *leads.Lead
+	createToken string
+	createCalls int
 }
 
 func (f *fakeLeads) LeadIDForToken(context.Context, string) (string, error) {
 	return f.id, f.err
+}
+
+func (f *fakeLeads) Create(_ context.Context, in leads.CreateInput, _, _ string) (*leads.Lead, string, error) {
+	f.createCalls++
+	f.createIn = in
+	if f.createErr != nil {
+		return nil, "", f.createErr
+	}
+	lead := f.createLead
+	if lead == nil {
+		lead = &leads.Lead{ID: "lead-new"}
+	}
+	token := f.createToken
+	if token == "" {
+		token = "lead-token"
+	}
+	return lead, token, nil
 }
 
 func setupSupport(t *testing.T, answerer *fakeAnswerer) (*Service, *fakeSender, sqlmock.Sqlmock) {

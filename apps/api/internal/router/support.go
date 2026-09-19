@@ -27,6 +27,11 @@ func registerSupportRoutes(v1 *gin.RouterGroup, d Deps) {
 	// равно за токеном, который посетитель мог бы перебирать так же, как у
 	// остальных трёх маршрутов, поэтому и он под тем же лимитером.
 	web.POST("/human", d.AuthRateLimiter.Limit("support-web-human"), d.Support.WebHuman)
+	// Контакт из разговора — то же самое, что POST /public/leads: пишет
+	// строку в leads. Отдельное имя лимита, а не переиспользование
+	// support-web-message, — иначе посетитель, исчерпавший лимит на вопросы,
+	// не смог бы уже и оставить контакт.
+	web.POST("/contact", d.AuthRateLimiter.Limit("support-web-contact"), d.Support.WebContact)
 
 	g := v1.Group("/admin/support")
 	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))

@@ -384,6 +384,7 @@ job_runs.status text NOT NULL
 leads.activity_level text
 leads.birth_date date
 leads.calories numeric
+leads.capture_source text
 leads.carbs numeric
 leads.contact_consent boolean NOT NULL DEFAULT false
 leads.created_at timestamp with time zone NOT NULL DEFAULT now()

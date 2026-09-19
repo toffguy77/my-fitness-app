@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
@@ -290,6 +291,58 @@ func (h *Handler) WebHuman(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, nil)
+}
+
+// WebContact handles POST /api/v1/public/support/web/contact.
+//
+// «Оставить контакт» из виджета: разговор становится заявкой в той же
+// кураторской очереди, что и контактный шаг мастера (SaveWebContact,
+// web.go) — не вторым, ботовым, местом для контактов.
+//
+// Почта нигде здесь не логируется и не попадает в ответ на отказ — только в
+// саму заявку, куда ей и положено.
+//
+// Поддельный, чужой и удалённый токен отвечают тем же 404, что и остальные
+// веб-маршруты.
+func (h *Handler) WebContact(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	var req struct {
+		Token    string         `json:"token" binding:"required"`
+		Email    string         `json:"email" binding:"required,email"`
+		Consents leads.Consents `json:"consents"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Проверьте адрес почты")
+		return
+	}
+
+	leadToken, err := h.service.SaveWebContact(c.Request.Context(),
+		req.Token, req.Email, req.Consents, c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrValidation):
+		response.Error(c, http.StatusBadRequest,
+			"Нужно согласие на обработку персональных данных")
+		return
+	case errors.Is(err, apperrors.ErrNotFound):
+		// Поддельный, чужой и удалённый токен неразличимы наружу.
+		response.NotFound(c, "Чат не найден — откройте его заново")
+		return
+	case errors.Is(err, apperrors.ErrConflict):
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+			"Контакт для этого разговора уже сохранён", nil)
+		return
+	default:
+		h.log.Error("Failed to save web contact", "error", err)
+		response.InternalError(c, "Не удалось сохранить контакт")
+		return
+	}
+
+	response.Success(c, http.StatusCreated, gin.H{"token": leadToken})
 }
 
 // List handles GET /api/v1/admin/support/conversations.

@@ -136,6 +136,7 @@ POST /api/v1/public/leads/step
 POST /api/v1/public/nutrition/calculate
 POST /api/v1/public/support/telegram
 POST /api/v1/public/support/web
+POST /api/v1/public/support/web/contact
 POST /api/v1/public/support/web/human
 POST /api/v1/public/support/web/message
 POST /api/v1/users/avatar

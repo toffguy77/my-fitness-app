@@ -71,6 +71,10 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// the same bearer token as the other three, and the token is the thing an
 	// IP could enumerate — same order of magnitude as support-web-message.
 	"support-web-human": {maxRequests: 20, window: time.Minute},
+	// Leaving a contact writes a row in leads, same as lead-create — kept
+	// tight rather than reused from support-web-message so a visitor who has
+	// exhausted their question budget can still leave a contact.
+	"support-web-contact": {maxRequests: 5, window: time.Hour},
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.
