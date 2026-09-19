@@ -172,3 +172,46 @@ export class SettingsSocialPage {
     await expect(this.heading).toBeVisible({ timeout: 15000 })
   }
 }
+
+export class SettingsPrivacyPage {
+  constructor(public page: Page) {}
+
+  get deleteHeading() {
+    return this.page.getByRole('heading', { name: 'Удалить аккаунт' })
+  }
+
+  /** Opens the form. Same accessible name as the confirm button below, but
+   * only one of the two is ever mounted at a time. */
+  get openFormButton() {
+    return this.page.getByRole('button', { name: 'Удалить аккаунт' })
+  }
+
+  get passwordInput() {
+    return this.page.getByLabel('Текущий пароль')
+  }
+
+  get confirmPhraseInput() {
+    return this.page.getByLabel('Введите «УДАЛИТЬ», чтобы подтвердить')
+  }
+
+  get confirmDeleteButton() {
+    return this.page.getByRole('button', { name: 'Удалить аккаунт' })
+  }
+
+  get cancelFormButton() {
+    return this.page.getByRole('button', { name: 'Отмена' })
+  }
+
+  async goto() {
+    await this.page.goto('/settings/privacy')
+  }
+
+  async expectLoaded() {
+    await expect(this.deleteHeading).toBeVisible({ timeout: 15000 })
+  }
+
+  async openDeleteForm() {
+    await this.openFormButton.click()
+    await expect(this.passwordInput).toBeVisible()
+  }
+}

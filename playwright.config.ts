@@ -85,6 +85,7 @@ export default defineConfig<SessionOptions>({
         'tests/food-tracker-nav.spec.ts',
         'tests/settings-apple-health.spec.ts',
         'tests/food-recognition.spec.ts',
+        'tests/account-deletion.spec.ts',
       ],
     },
     {
