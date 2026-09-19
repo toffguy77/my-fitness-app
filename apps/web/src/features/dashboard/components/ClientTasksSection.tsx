@@ -31,6 +31,8 @@ import { cn } from '@/shared/utils/cn'
 import { formatLocalDate } from '@/shared/utils/format'
 import type { ClientTaskView, ClientTaskType } from '../types'
 import { t } from '@/shared/i18n'
+import toast from 'react-hot-toast'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 const DAY_LABELS = [
     t('weekdays.short.sun'),
@@ -231,11 +233,18 @@ export const ClientTasksSection = memo(function ClientTasksSection({
                 const todayDate = formatLocalDate(new Date())
                 useDashboardStore.getState().refreshDailyData(new Date(todayDate))
             }
-        } catch {
+        } catch (err) {
+            // Галочка уже стояла и сейчас отскочит обратно. Без причины это
+            // читается как «не нажалось», и человек жмёт ещё раз.
+            toast.error(messageForOr(err, t('dashboard.tasks.completeFailed')))
             dashboardApi
                 .getMyTasks()
                 .then((data) => setTasks(data.tasks || []))
-                .catch(() => {})
+                .catch(() => {
+                    // Молчим намеренно: это попытка вернуть достоверный
+                    // список после уже показанного отказа. Второй тост про
+                    // то же самое действие ничего не добавит.
+                })
         }
     }, [])
 

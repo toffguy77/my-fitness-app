@@ -20,6 +20,7 @@ import { getProfile } from '@/features/settings/api/settings'
 import { apiClient } from '@/shared/utils/api-client'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 interface WeightTrendPoint {
     date: Date
@@ -169,7 +170,10 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                     setTargetWeight(profile.settings.target_weight)
                 }
             })
-            .catch(() => {})
+            .catch(() => {
+                // Молчим намеренно: целевой вес — подпись на графике, а не
+                // то, за чем сюда пришли. Без него раздел работает целиком.
+            })
 
         apiClient
             .get<{ weight_trend: Array<{ date: string; weight: number }>; target_weight: number | null }>(
@@ -183,7 +187,10 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                     setTargetWeight(raw.target_weight)
                 }
             })
-            .catch(() => {})
+            .catch(() => {
+                // То же самое: тренд — фоновая подгрузка к уже показанному
+                // сегодняшнему весу, и её отказ не мешает записать вес.
+            })
     }, [])
 
     const currentWeight = dayData?.weight
@@ -230,8 +237,8 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
             setInputValue('')
             setIsEditing(false)
             toast.success(t('dashboard.weight.saved'))
-        } catch {
-            setValidationError(t('dashboard.weight.saveFailed'))
+        } catch (err) {
+            setValidationError(messageForOr(err, t('dashboard.weight.saveFailed')))
         } finally {
             setIsSaving(false)
         }

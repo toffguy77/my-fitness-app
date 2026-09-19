@@ -15,6 +15,7 @@ import { cn } from '@/shared/utils/cn'
 import { apiClient } from '@/shared/utils/api-client'
 import type { ProgressData } from '../types'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 /**
  * Props for ProgressSection component
@@ -131,6 +132,10 @@ const InsufficientDataPlaceholder = memo(function InsufficientDataPlaceholder() 
 export const ProgressSection = memo(function ProgressSection({ className }: ProgressSectionProps) {
     const [progressData, setProgressData] = useState<ProgressData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    // Отдельно от «данных нет»: «недостаточно записей» — утверждение о том,
+    // как человек вёл дневник, и говорить его, когда запрос упал, значит
+    // врать ему про его же записи.
+    const [loadError, setLoadError] = useState<string | null>(null)
 
     useEffect(() => {
         const fetchProgressData = async () => {
@@ -142,6 +147,7 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                     target_weight: number | null
                 }>('/api/v1/dashboard/progress?weeks=4')
 
+                setLoadError(null)
                 setProgressData({
                     weightTrend: (raw.weight_trend || []).map(p => ({
                         date: new Date(p.date),
@@ -151,8 +157,9 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                     achievements: [],
                     targetWeight: raw.target_weight,
                 })
-            } catch {
+            } catch (err) {
                 setProgressData(null)
+                setLoadError(messageForOr(err, t('dashboard.progress.loadFailed')))
             } finally {
                 setIsLoading(false)
             }
@@ -183,6 +190,8 @@ export const ProgressSection = memo(function ProgressSection({ className }: Prog
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" aria-hidden="true" />
                         <span className="sr-only">{t('common.loading')}</span>
                     </div>
+                ) : loadError ? (
+                    <p className="py-8 text-center text-sm text-red-500" role="status">{loadError}</p>
                 ) : !hasSufficientData || !progressData ? (
                     <InsufficientDataPlaceholder />
                 ) : (
