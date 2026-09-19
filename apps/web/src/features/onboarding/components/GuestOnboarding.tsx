@@ -422,9 +422,15 @@ function GuestResultCapture() {
     }
 
     if (sent) {
+        // Confirmation must not promise a letter that was never scheduled: the
+        // reminder only ever goes out to somebody who checked guest.reminder
+        // (contactConsent) — without it, createLead still saves the lead, but
+        // nothing sends anything.
         return (
             <p className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-                {t('onboarding.guest.resultCapture.success')}
+                {contactConsent
+                    ? t('onboarding.guest.resultCapture.successWithReminder')
+                    : t('onboarding.guest.resultCapture.success')}
             </p>
         )
     }

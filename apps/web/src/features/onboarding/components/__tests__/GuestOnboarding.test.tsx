@@ -218,7 +218,7 @@ describe('The guest onboarding', () => {
         async function saveFromResultScreen(email: string) {
             await userEvent.type(screen.getByLabelText(/почт/i), email)
             await userEvent.click(screen.getByLabelText(/обработку/i))
-            await userEvent.click(screen.getByRole('button', { name: /прислать расчёт/i }))
+            await userEvent.click(screen.getByRole('button', { name: /сохранить расчёт/i }))
         }
 
         // Storing body measurements because somebody typed an address is not a
@@ -228,7 +228,7 @@ describe('The guest onboarding', () => {
 
             await userEvent.type(screen.getByLabelText(/почт/i), 'result@example.com')
 
-            expect(screen.getByRole('button', { name: /прислать расчёт/i })).toBeDisabled()
+            expect(screen.getByRole('button', { name: /сохранить расчёт/i })).toBeDisabled()
         })
 
         it('сохраняет расчёт с экрана результата, не проходя шаг контакта', async () => {
@@ -258,9 +258,51 @@ describe('The guest onboarding', () => {
             expect(leadToken()).toBe('result-token')
             // Человек остаётся там же и может продолжить мастер.
             expect(screen.getByTestId('guest-calories')).toBeInTheDocument()
+            // saveFromResultScreen отмечает только согласие на обработку
+            // данных, не на напоминание — значит письма не будет, и
+            // подтверждение обязано сказать именно это, а не обещать письмо.
+            expect(screen.getByText('Расчёт сохранён на этой почте.')).toBeInTheDocument()
+        })
+
+        // Кнопка и подтверждение раньше обещали письмо безусловно — «Пришлём
+        // расчёт на почту» / «Расчёт отправлен на почту» — хотя реальное
+        // письмо уходит отдельной задачей только тем, кто отметил согласие
+        // на напоминание (guest.reminder / contactConsent), причём не сразу,
+        // а через сутки, и только с калориями. Без этого согласия createLead
+        // всё равно сохраняет заявку, но ничего никому не пришлют.
+        it('без согласия на напоминание подтверждение не обещает письмо', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await saveFromResultScreen('result@example.com')
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            expect(screen.getByText('Расчёт сохранён на этой почте.')).toBeInTheDocument()
+            expect(screen.queryByText(/придёт одно письмо/i)).not.toBeInTheDocument()
+            expect(screen.queryByText(/пришлём/i)).not.toBeInTheDocument()
+        })
+
+        it('обещает письмо, только если отмечено согласие на напоминание', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await userEvent.type(screen.getByLabelText(/почт/i), 'result@example.com')
+            await userEvent.click(screen.getByLabelText(/обработку/i))
+            await userEvent.click(screen.getByLabelText(/письмо-напоминание/i))
+            await userEvent.click(screen.getByRole('button', { name: /сохранить расчёт/i }))
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            const [input] = api.createLead.mock.calls[0]
+            expect(input.consents).toEqual({ data_processing: true, contact: true })
             expect(
                 screen.getByText(
-                    'Расчёт отправлен на почту — он останется там, даже если вы закроете вкладку.'
+                    'Расчёт сохранён. Не закончишь регистрацию сегодня — завтра придёт одно письмо с калориями и ссылкой, чтобы вернуться.'
                 )
             ).toBeInTheDocument()
         })
