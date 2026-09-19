@@ -136,8 +136,10 @@ func TestUnsubscribe_AlwaysReportsDeletion(t *testing.T) {
 func TestList_ReturnsAPageWithATotal(t *testing.T) {
 	r, _, mock := setupHandler(t)
 
-	mock.ExpectQuery("SELECT COUNT").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
-	mock.ExpectQuery("FROM leads ORDER BY").WillReturnRows(leadRow("lead-1"))
+	mock.ExpectQuery("SELECT COUNT").WithArgs(false).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery("FROM leads l").WithArgs(false, 20, 0).
+		WillReturnRows(queueRow("lead-1", 2, false, ""))
 
 	req := httptest.NewRequest(http.MethodGet, "/curator/leads", nil)
 	w := httptest.NewRecorder()
@@ -146,6 +148,24 @@ func TestList_ReturnsAPageWithATotal(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "guest@example.com")
 	assert.Contains(t, w.Body.String(), `"total":1`)
+}
+
+// The default view is the open queue; asking for the handled ones too must
+// actually change which query runs, not just get ignored.
+func TestList_IncludeHandledChangesTheQuery(t *testing.T) {
+	r, _, mock := setupHandler(t)
+
+	mock.ExpectQuery("SELECT COUNT").WithArgs(true).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	mock.ExpectQuery("FROM leads l").WithArgs(true, 20, 0).
+		WillReturnRows(queueRow("lead-1", 2, false, ""))
+
+	req := httptest.NewRequest(http.MethodGet, "/curator/leads?include_handled=true", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"total":2`)
 }
 
 func TestMarkHandled_MissingLeadIsNotFound(t *testing.T) {

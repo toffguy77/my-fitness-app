@@ -149,17 +149,23 @@ func (h *Handler) Unsubscribe(c *gin.Context) {
 }
 
 // List handles GET /api/v1/curator/leads.
+//
+// This is a work queue, not a history: by default it holds only what nobody
+// has marked handled, oldest first — a curator should see who to pick up next,
+// not scroll a timeline. ?include_handled=true adds back everyone already
+// dealt with, for whoever wants the full picture.
 func (h *Handler) List(c *gin.Context) {
 	page := response.ParsePage(c)
+	includeHandled := c.Query("include_handled") == "true"
 
-	leads, total, err := h.service.List(c.Request.Context(), page.Limit, page.Offset)
+	entries, total, err := h.service.Queue(c.Request.Context(), includeHandled, page.Limit, page.Offset)
 	if err != nil {
-		h.log.Error("Failed to list leads", "error", err)
+		h.log.Error("Failed to list lead queue", "error", err)
 		response.InternalError(c, "Не удалось загрузить заявки")
 		return
 	}
 
-	response.Success(c, http.StatusOK, response.Paginated(leads, total, page))
+	response.Success(c, http.StatusOK, response.Paginated(entries, total, page))
 }
 
 // MarkHandled handles POST /api/v1/curator/leads/:id/handled.

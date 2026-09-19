@@ -216,34 +216,86 @@ func (s *Service) LeadIDForToken(ctx context.Context, token string) (string, err
 	return lead.ID, nil
 }
 
-// List returns leads for the administrative section, newest first.
-func (s *Service) List(ctx context.Context, limit, offset int) ([]Lead, int, error) {
+// Queue returns leads in the order a curator should work them: whoever has
+// waited longest, among those nobody has yet marked handled. AgeDays,
+// ReminderSent and ConversationID are read alongside the lead itself, so a
+// curator opening the queue does not have to cross-reference three tables by
+// hand.
+//
+// includeHandled adds back everyone already dealt with, oldest first as well,
+// for whoever wants the full history rather than the work still open.
+func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset int) ([]QueueEntry, int, error) {
 	var total int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM leads`).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count leads: %w", err)
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM leads WHERE ($1::boolean OR handled_at IS NULL)`,
+		includeHandled,
+	).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count lead queue: %w", err)
 	}
 
+	// AgeDays is computed here, not in Go, so it comes from the same clock as
+	// created_at itself rather than whichever timezone a curator's browser
+	// happens to be in.
+	//
+	// The conversation is a correlated subquery rather than a LEFT JOIN: a
+	// lead could in principle have more than one support_conversations row
+	// (a person can reopen the bot with a new chat_id), and a JOIN would
+	// duplicate the lead row for each. Only the most recently active
+	// conversation is a reasonable transition target.
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, email, COALESCE(name, ''), COALESCE(sex, ''), birth_date,
-		       height_cm, weight_kg, COALESCE(activity_level, ''), COALESCE(goal, ''),
-		       calories, protein, fat, carbs, water_glasses,
-		       last_step, COALESCE(source, ''), data_consent, contact_consent,
-		       handled_at, created_at, updated_at
-		FROM leads ORDER BY created_at DESC LIMIT $1 OFFSET $2`, limit, offset)
+		SELECT l.id, l.email, COALESCE(l.name, ''), COALESCE(l.sex, ''), l.birth_date,
+		       l.height_cm, l.weight_kg, COALESCE(l.activity_level, ''), COALESCE(l.goal, ''),
+		       l.calories, l.protein, l.fat, l.carbs, l.water_glasses,
+		       l.last_step, COALESCE(l.source, ''), l.data_consent, l.contact_consent,
+		       l.handled_at, l.created_at, l.updated_at,
+		       EXTRACT(DAY FROM NOW() - l.created_at)::int,
+		       l.reminder_sent_at IS NOT NULL,
+		       (SELECT c.id::text FROM support_conversations c
+		          WHERE c.lead_id = l.id ORDER BY c.last_message_at DESC LIMIT 1)
+		FROM leads l
+		WHERE ($1::boolean OR l.handled_at IS NULL)
+		ORDER BY l.created_at ASC
+		LIMIT $2 OFFSET $3`,
+		includeHandled, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list leads: %w", err)
+		return nil, 0, fmt.Errorf("list lead queue: %w", err)
 	}
 	defer rows.Close()
 
-	leads := make([]Lead, 0, limit)
+	entries := make([]QueueEntry, 0, limit)
 	for rows.Next() {
-		lead, err := scanLead(rows)
-		if err != nil {
-			return nil, 0, err
+		var e QueueEntry
+		var birthDate sql.NullTime
+		var height, weight, calories, protein, fat, carbs sql.NullFloat64
+		var water sql.NullInt64
+		var handledAt sql.NullTime
+		var conversationID sql.NullString
+
+		if err := rows.Scan(
+			&e.ID, &e.Email, &e.Name, &e.Parameters.Sex, &birthDate,
+			&height, &weight, &e.Parameters.ActivityLevel, &e.Parameters.Goal,
+			&calories, &protein, &fat, &carbs, &water,
+			&e.LastStep, &e.Source, &e.Consents.DataProcessing, &e.Consents.Contact,
+			&handledAt, &e.CreatedAt, &e.UpdatedAt,
+			&e.AgeDays, &e.ReminderSent, &conversationID,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan lead queue entry: %w", err)
 		}
-		leads = append(leads, *lead)
+
+		fillLeadOptionalFields(&e.Lead, birthDate, height, weight, calories, protein, fat, carbs, water, handledAt)
+		e.ContactAllowed = e.Consents.Contact
+		// Left nil unless a conversation actually links here: a curator must
+		// never be offered a transition to a conversation that does not
+		// exist, whether because the person never reached the bot or because
+		// the widget plan that fills this column widely has not shipped yet.
+		if conversationID.Valid {
+			id := conversationID.String
+			e.ConversationID = &id
+		}
+
+		entries = append(entries, e)
 	}
-	return leads, total, rows.Err()
+	return entries, total, rows.Err()
 }
 
 // MarkHandled records that somebody has dealt with this person.
@@ -350,6 +402,20 @@ func scanLead(row scanner) (*Lead, error) {
 		return nil, err
 	}
 
+	fillLeadOptionalFields(&lead, birthDate, height, weight, calories, protein, fat, carbs, water, handledAt)
+	return &lead, nil
+}
+
+// fillLeadOptionalFields applies the nullable columns shared by every query
+// that reads a lead row, so Queue's extra columns do not duplicate this
+// parsing.
+func fillLeadOptionalFields(
+	lead *Lead,
+	birthDate sql.NullTime,
+	height, weight, calories, protein, fat, carbs sql.NullFloat64,
+	water sql.NullInt64,
+	handledAt sql.NullTime,
+) {
 	if birthDate.Valid {
 		lead.Parameters.BirthDate = birthDate.Time.Format("2006-01-02")
 	}
@@ -371,7 +437,6 @@ func scanLead(row scanner) (*Lead, error) {
 	if handledAt.Valid {
 		lead.HandledAt = &handledAt.Time
 	}
-	return &lead, nil
 }
 
 func recordConsent(ctx context.Context, tx *sql.Tx, leadID, consentType string, granted bool, ip, ua string) error {
