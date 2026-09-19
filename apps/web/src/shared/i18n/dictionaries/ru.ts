@@ -936,6 +936,8 @@ export const ru = {
             kilograms: '{value} кг',
             targetLabel: 'Цель:',
             setValue: 'Установить',
+            targetSaveFailed: 'Не удалось сохранить целевой вес',
+            waterGoalSaveFailed: 'Не удалось сохранить норму воды',
             waterGoal: 'Цель по воде',
             glassesPerDay: 'Стаканов в день:',
             glassesValue: '{count} стаканов',
