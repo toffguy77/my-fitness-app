@@ -111,5 +111,27 @@ describe('magicLinkApi', () => {
 
             expect(result).toEqual({ user, created: false })
         })
+
+        // A 204, a truncated proxy response, or any other empty body on a
+        // 200 OK is not an HTTP error status — apiClient does not throw for
+        // it, so consume() has to guard for itself. Without the guard the
+        // next line (`data.user`) throws a bare TypeError and the redeem
+        // page (task 8) would show a blank screen instead of "Ссылка не
+        // подходит — запросите новую".
+        it('throws a clear error instead of crashing when the body is empty', async () => {
+            mockApiClient.post.mockResolvedValueOnce(undefined)
+
+            await expect(magicLinkApi.consume('plain-token', null)).rejects.toThrow(
+                /пуст|не содержит пользователя/
+            )
+        })
+
+        it('throws a clear error when the body has no user', async () => {
+            mockApiClient.post.mockResolvedValueOnce({ created: true })
+
+            await expect(magicLinkApi.consume('plain-token', null)).rejects.toThrow(
+                /пуст|не содержит пользователя/
+            )
+        })
     })
 })
