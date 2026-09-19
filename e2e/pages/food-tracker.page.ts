@@ -123,8 +123,11 @@ export class FoodTrackerPage {
     return this.page.getByLabel(`Подставить оценку модели: ${positionName}`)
   }
 
-  weightError(positionName: string) {
-    return this.positionRow(positionName).locator('p.text-red-600')
+  /** The invalid-weight message for one position, found by its own text —
+   * not by the paragraph's class. `aria-invalid` on `weightInput()` is the
+   * honest anchor for the *state*; this is only for the message's wording. */
+  weightErrorText(positionName: string, pattern: RegExp) {
+    return this.positionRow(positionName).getByText(pattern)
   }
 
   /** The "Добавить" button inside the photo tab's results screen — distinct
@@ -142,7 +145,9 @@ export class FoodTrackerPage {
     return this.page.getByText('Промежуточный итог — не все веса введены')
   }
 
+  /** Scoped to the modal: the same word ("Итого:") also labels a meal
+   * slot's subtotal elsewhere on the page. */
   get photoLiveTotal() {
-    return this.page.getByText(/Итого: \d+ ккал/)
+    return this.foodModal.getByText(/Итого: \d+ ккал/)
   }
 }
