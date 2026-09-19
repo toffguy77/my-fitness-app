@@ -271,23 +271,33 @@ func (s *Service) escalate(ctx context.Context, conversation *Conversation, reas
 	return s.reply(ctx, conversation, message)
 }
 
-// reply records what the bot said and sends it.
+// reply records what the bot said and delivers it the way its channel can.
 //
-// Отметка о доставке ставится по факту, как и у оператора: бот, принимающий
-// сообщения и не способный ответить, — это то, что уже случалось на проде, и
-// переписка не должна выглядеть исправной, когда человек ничего не получил.
+// В Telegram ответ отправляется, и отметка о доставке ставится по факту, как и
+// у оператора: бот, принимающий сообщения и не способный ответить, — это то,
+// что уже случалось на проде, и переписка не должна выглядеть исправной, когда
+// человек ничего не получил.
+//
+// В браузер отправлять некуда: посетитель не держит открытое соединение —
+// клиент сам придёт за сообщениями со своим токеном, и доставкой считается
+// факт записи, а не приём транспортом. delivered_at поэтому остаётся NULL, как
+// у входящих сообщений: это не "не доставлено", а "неприменимо" — ставить сюда
+// true означало бы утверждать то, чего код не проверял.
 func (s *Service) reply(ctx context.Context, conversation *Conversation, text string) error {
 	messageID, err := s.recordMessage(ctx, conversation.ID, "bot", text, nil)
 	if err != nil {
 		return err
 	}
-	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
-		return err
+
+	if conversation.Channel != ChannelWeb {
+		if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
+			return err
+		}
 	}
 
 	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
 	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
-	// неотличимо от забытого.
+	// неотличимо от забытого. Это верно для обоих каналов: бот дал ответ.
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
 		  WHERE id = $1::uuid`, conversation.ID); err != nil {
@@ -295,6 +305,9 @@ func (s *Service) reply(ctx context.Context, conversation *Conversation, text st
 			"conversation_id", conversation.ID, "error", err)
 	}
 
+	if conversation.Channel == ChannelWeb {
+		return nil
+	}
 	return s.markDelivered(ctx, messageID)
 }
 
@@ -327,13 +340,19 @@ func (s *Service) answerAs(ctx context.Context, conversationID string, operatorI
 	// набранного текста. Но и отметку о доставке ставим только по факту — иначе
 	// следующий оператор, открыв переписку, увидит обычное сообщение и решит,
 	// что человеку ответили, хотя тот ничего не получил.
-	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
-		return err
+	//
+	// В веб-разговор оператор отвечает через тот же эндпоинт, что и в
+	// телеграмный: список обращений не различает канал. Отправлять там некуда —
+	// посетитель заберёт ответ сам, своим токеном.
+	if conversation.Channel != ChannelWeb {
+		if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
+			return err
+		}
 	}
 
 	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
 	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
-	// неотличимо от забытого.
+	// неотличимо от забытого. Верно для обоих каналов: оператор ответил.
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
 		  WHERE id = $1::uuid`, conversation.ID); err != nil {
@@ -341,6 +360,11 @@ func (s *Service) answerAs(ctx context.Context, conversationID string, operatorI
 			"conversation_id", conversation.ID, "error", err)
 	}
 
+	if conversation.Channel == ChannelWeb {
+		// Как и у бота: delivered_at остаётся NULL — "неприменимо", а не
+		// "не доставлено". Транспорта, который мог бы отказать, здесь нет.
+		return nil
+	}
 	return s.markDelivered(ctx, messageID)
 }
 
@@ -524,18 +548,29 @@ func (s *Service) conversationFor(ctx context.Context, in IncomingMessage) (*Con
 	return &conversation, nil
 }
 
+// byID читает разговор по идентификатору — путь, которым в него попадает
+// ответ оператора (answerAs), телеграмный или веб-разговор одинаково: список
+// обращений не различает канал, значит и этот запрос обязан пережить оба.
+//
+// chat_id сканируется через sql.NullInt64, а не напрямую в Conversation.ChatID
+// — как и в byWebTokenHash: у веб-разговора он NULL с миграции 076, и прямое
+// сканирование в int64 падает на первом же таком разговоре.
 func (s *Service) byID(ctx context.Context, conversationID string) (*Conversation, error) {
 	var conversation Conversation
+	var chatID sql.NullInt64
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, chat_id, lead_id, user_id, status, channel FROM support_conversations WHERE id = $1`,
 		conversationID).
-		Scan(&conversation.ID, &conversation.ChatID, &conversation.LeadID,
+		Scan(&conversation.ID, &chatID, &conversation.LeadID,
 			&conversation.UserID, &conversation.Status, &conversation.Channel)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("load support conversation: %w", err)
+	}
+	if chatID.Valid {
+		conversation.ChatID = chatID.Int64
 	}
 	return &conversation, nil
 }
@@ -651,6 +686,36 @@ func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversat
 	}
 
 	return &c, messages, lead, nil
+}
+
+// MessagesFor отдаёт переписку разговора в порядке появления — без сведений о
+// заявке: посетителю с предъявительским токеном они не нужны и не должны быть
+// доступны.
+func (s *Service) MessagesFor(ctx context.Context, conversationID string) ([]Message, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, author, text, created_at, delivered_at FROM support_messages
+		 WHERE conversation_id = $1 ORDER BY created_at ASC`, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("load support messages: %w", err)
+	}
+	defer rows.Close()
+
+	messages := make([]Message, 0)
+	for rows.Next() {
+		var m Message
+		var deliveredAt sql.NullTime
+		if err := rows.Scan(&m.ID, &m.Author, &m.Text, &m.CreatedAt, &deliveredAt); err != nil {
+			return nil, fmt.Errorf("scan support message: %w", err)
+		}
+		// Про входящее говорить о доставке нечего, а про исходящее — говорить
+		// обязательно, в том числе когда ответа нет: именно это и есть новость.
+		if m.Author != "user" {
+			delivered := deliveredAt.Valid
+			m.Delivered = &delivered
+		}
+		messages = append(messages, m)
+	}
+	return messages, rows.Err()
 }
 
 func (s *Service) leadSummary(ctx context.Context, leadID string) (*LeadSummary, error) {

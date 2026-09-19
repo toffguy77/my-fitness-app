@@ -96,3 +96,34 @@ func TestWebConversationByTokenRejectsForeignTokenAmongRealConversations(t *test
 
 	assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 }
+
+// В браузер постучаться некуда. Ответ оператора обязан быть записан и
+// прочитан по токену, а не отправлен — и попытки отправки быть не должно
+// вовсе, иначе отказ несуществующего адресата попадёт в логи как ошибка
+// доставки.
+//
+// Проверяется на живой базе намеренно: у веб-разговора chat_id — NULL
+// (миграция 076), и byID до этой задачи сканировал его прямо в int64 —
+// на sqlmock подмена вернула бы что угодно, что ей скажут, а здесь
+// сканирование настоящей NULL-колонки либо падает, либо нет.
+func TestWebReplyIsNotSentAnywhere(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "support_web_reply_channel")
+	ctx := context.Background()
+
+	sender := &countingSender{}
+	svc := NewService(db.DB, logger.New(), nil, sender, nil, 100)
+
+	id, token, err := svc.StartWebConversation(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, svc.AnswerAsOperator(ctx, id, 1, "Отвечаю"))
+
+	assert.Empty(t, sender.sent, "в веб-канале отправлять некуда")
+
+	conversation, err := svc.WebConversationByToken(ctx, token)
+	require.NoError(t, err)
+	messages, err := svc.MessagesFor(ctx, conversation.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, messages)
+	assert.Equal(t, "Отвечаю", messages[len(messages)-1].Text)
+}
