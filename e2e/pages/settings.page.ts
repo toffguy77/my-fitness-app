@@ -202,6 +202,17 @@ export class SettingsPrivacyPage {
     return this.page.getByRole('button', { name: 'Отмена' })
   }
 
+  /** Shown once deletion is scheduled: "Аккаунт будет удалён безвозвратно
+   * {date}. До этого момента вы можете передумать." — matched on the
+   * fixed prose, not the formatted date. */
+  get scheduledNotice() {
+    return this.page.getByText(/Аккаунт будет удалён безвозвратно/)
+  }
+
+  get cancelDeletionButton() {
+    return this.page.getByRole('button', { name: 'Отменить удаление' })
+  }
+
   async goto() {
     await this.page.goto('/settings/privacy')
   }
