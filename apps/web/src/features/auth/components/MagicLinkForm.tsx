@@ -15,7 +15,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Input } from '@/shared/components/ui';
 import { ConsentSection } from './ConsentSection';
 import { useFormValidation } from '@/features/auth/hooks/useFormValidation';
@@ -42,6 +42,17 @@ export function MagicLinkForm({ onSwitchToPassword }: MagicLinkFormProps) {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const { errors, validateEmail } = useFormValidation();
+
+    // The button that had focus vanishes the moment the form is replaced by
+    // the confirmation — without this, focus falls back to <body> and a
+    // screen-reader user hears nothing, so they press "Получить ссылку"
+    // again and burn one of five attempts in fifteen minutes for no reason.
+    const sentMessageRef = useRef<HTMLParagraphElement>(null);
+    useEffect(() => {
+        if (sent) {
+            sentMessageRef.current?.focus();
+        }
+    }, [sent]);
 
     const handleEmailBlur = () => {
         const trimmed = email.trim();
@@ -86,7 +97,14 @@ export function MagicLinkForm({ onSwitchToPassword }: MagicLinkFormProps) {
     if (sent) {
         return (
             <div className="space-y-4">
-                <p className="text-sm text-gray-700">{t('auth.magicLink.sent')}</p>
+                <p
+                    ref={sentMessageRef}
+                    tabIndex={-1}
+                    role="status"
+                    className="text-sm text-gray-700 focus:outline-none"
+                >
+                    {t('auth.magicLink.sent')}
+                </p>
                 <button
                     onClick={onSwitchToPassword}
                     className="w-full text-sm text-gray-600 hover:text-gray-900"

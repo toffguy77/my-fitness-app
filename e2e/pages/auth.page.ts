@@ -21,6 +21,10 @@ export class AuthPage {
 
   async goto() {
     await this.page.goto('/auth')
+    // The screen shows the magic-link form first; every test in this object
+    // exercises the password form, so it switches to it the same way a real
+    // visitor would — a click, not a reload.
+    await this.page.getByRole('button', { name: 'Войти по паролю' }).click()
   }
 
   async login(email: string, password: string) {

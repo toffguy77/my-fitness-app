@@ -79,6 +79,8 @@ test.describe('Change password, end to end', () => {
 
   async function signIn(page: Page, email: string, password: string) {
     await page.goto('/auth')
+    // The magic-link form is what a fresh screen shows; password is a click away.
+    await page.getByRole('button', { name: 'Войти по паролю' }).click()
     await page.getByLabel('Email address').fill(email)
     await page.getByLabel('Password').fill(password)
     await page.getByLabel('Log in to your account').click()
@@ -132,6 +134,7 @@ test.describe('Change password, end to end', () => {
     // The old password is refused.
     await page.context().clearCookies()
     await page.goto('/auth')
+    await page.getByRole('button', { name: 'Войти по паролю' }).click()
     await page.getByLabel('Email address').fill(account.email)
     await page.getByLabel('Password').fill(account.password)
     await page.getByLabel('Log in to your account').click()

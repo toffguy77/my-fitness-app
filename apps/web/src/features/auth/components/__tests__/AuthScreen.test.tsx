@@ -168,7 +168,10 @@ describe('AuthScreen', () => {
     await switchToPasswordMode(user)
 
     expect(screen.getByTestId('auth-form')).toBeInTheDocument()
-    expect(screen.queryByTestId('magic-link-form')).not.toBeInTheDocument()
+    // Hidden, not unmounted: MagicLinkForm keeps its own state (typed email,
+    // consents, a completed "sent") across the switch, so it stays in the
+    // tree — see AuthScreen.tsx for why.
+    expect(screen.getByTestId('magic-link-form')).not.toBeVisible()
     expect(screen.getByLabelText('Log in to your account')).toBeInTheDocument()
     expect(screen.getByLabelText('Register a new account')).toBeInTheDocument()
   })

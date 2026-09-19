@@ -114,11 +114,21 @@ export function AuthScreen() {
             <main className="flex-1 py-8">
                 <div className="max-w-md mx-auto px-6">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        {entryMethod === 'link' ? (
+                        {/*
+                            MagicLinkForm stays mounted even while the password
+                            form is showing — `hidden`, not a conditional
+                            unmount. It holds its own email/consents/"sent"
+                            state; unmounting it on every switch threw that
+                            away, so coming back from the password form always
+                            showed a blank form, and coming back after a
+                            successful send invited a second one.
+                        */}
+                        <div hidden={entryMethod !== 'link'}>
                             <MagicLinkForm
                                 onSwitchToPassword={() => setEntryMethod('password')}
                             />
-                        ) : (
+                        </div>
+                        {entryMethod === 'password' && (
                             <>
                                 <AuthForm
                                     formData={formData}
