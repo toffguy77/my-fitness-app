@@ -30,7 +30,13 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
                 try {
                     const user = JSON.parse(userStr)
                     return user.name || user.email || ''
-                } catch { /* ignore */ }
+                } catch {
+                    // Молчим намеренно: это не отказ сервера, а испорченный
+                    // локальный слепок профиля. Показывать причину нечему —
+                    // причина в самом браузере, — а запасной путь работает:
+                    // ниже вернётся пустое имя, и настоящий профиль приедет
+                    // с сервера через useSettings.
+                }
             }
         }
         return ''

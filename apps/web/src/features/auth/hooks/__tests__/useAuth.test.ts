@@ -553,6 +553,11 @@ describe('useAuth', () => {
             expect(tokenStorage.clearAuth).toHaveBeenCalled();
             expect(apiClient.clearToken).toHaveBeenCalled();
             expect(mockPush).toHaveBeenCalledWith('/auth');
+
+            // Молчание здесь — решение, а не забывчивость: человек попросил
+            // выйти и вышел. Красная строка на экране входа рассказывала бы
+            // ему про чужую неудачу за удавшееся действие.
+            expect(toast.error).not.toHaveBeenCalled();
         });
 
         it('signs out even when this browser holds nothing to send', async () => {

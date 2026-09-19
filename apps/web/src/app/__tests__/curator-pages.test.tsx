@@ -5,6 +5,14 @@
 
 import React, { Suspense } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import toast from 'react-hot-toast'
+import { ApiError } from '@/shared/errors/apiErrors'
+
+jest.mock('react-hot-toast', () => ({
+    __esModule: true,
+    default: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
+}))
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -91,6 +99,9 @@ jest.mock('@/features/curator/api/curatorApi', () => ({
         getAttentionList: jest.fn().mockResolvedValue([]),
         getClients: jest.fn().mockResolvedValue([]),
         getBenchmark: jest.fn().mockResolvedValue({ own_snapshots: [], platform_benchmarks: [] }),
+        // Страница рисует уведомления клиента: без этой подмены она падает,
+        // как только загрузка детали доезжает до рендера.
+        getClientNotices: jest.fn().mockResolvedValue([]),
     },
 }))
 
@@ -274,6 +285,38 @@ describe('Curator Pages', () => {
         it('renders without crashing and shows loader initially', () => {
             render(<ClientDetailPage />)
             expect(screen.getByTestId('loader')).toBeInTheDocument()
+        })
+
+        // Три отказа на этой странице раньше ловились пустым catch с
+        // комментарием «silently fail for now». Куратор вводил целевой вес,
+        // жал галочку, поле оставалось открытым с тем же числом — и ничего
+        // не говорило, сохранилось оно или нет.
+        it('says why the target weight was not saved', async () => {
+            const { curatorApi } = jest.requireMock('@/features/curator/api/curatorApi')
+            curatorApi.getClientDetail.mockResolvedValueOnce({
+                name: 'Test Client',
+                days: [],
+                alerts: [],
+                photos: [],
+                weight_history: [],
+                last_weight: 80,
+                target_weight: null,
+            })
+            curatorApi.setTargetWeight.mockRejectedValueOnce(
+                new ApiError(403, { code: 'forbidden', message: 'серверная проза' }),
+            )
+
+            render(<ClientDetailPage />)
+
+            // «Установить» есть и у целевого веса, и у нормы воды; вес идёт
+            // первым.
+            const [openTarget] = await screen.findAllByRole('button', { name: 'Установить' }, { timeout: 2000 })
+            await userEvent.click(openTarget)
+            await userEvent.type(screen.getByRole('spinbutton'), '75')
+            const save = screen.getAllByRole('button').find((b) => b.textContent === 'Check')!
+            await userEvent.click(save)
+
+            await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Нет доступа'), { timeout: 2000 })
         })
     })
 })

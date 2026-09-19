@@ -13,6 +13,15 @@ import (
 	"github.com/burcev/api/internal/shared/logger"
 )
 
+// ErrLastCurator: разжаловать последнего куратора нельзя — клиентов некому
+// передать.
+//
+// Собственный сентинел, а не просто apperrors.ErrForbidden: под ним же лежит
+// «нельзя менять роль супер-администратора», а это разные ответы человеку и
+// разные коды состояния. Отличить их через errors.Is можно только так —
+// сравнивать текст ошибки обработчик не должен и не будет.
+var ErrLastCurator = fmt.Errorf("cannot demote the last curator: %w", apperrors.ErrForbidden)
+
 // ServiceInterface defines the contract for the admin service
 type ServiceInterface interface {
 	GetUsers(ctx context.Context, page response.Page) ([]AdminUser, int, error)
@@ -443,7 +452,7 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 		}
 
 		if remainingCount == 0 {
-			return fmt.Errorf("cannot demote: no remaining curators to reassign %d clients: %w", len(orphanedClients), apperrors.ErrForbidden)
+			return fmt.Errorf("%w: %d clients have nobody to go to", ErrLastCurator, len(orphanedClients))
 		}
 
 		for _, clientID := range orphanedClients {

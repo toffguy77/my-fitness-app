@@ -86,3 +86,23 @@ export function messageFor(error: unknown): string {
     }
     return 'Что-то пошло не так. Попробуйте повторить.'
 }
+
+/**
+ * The server's own reason when it gave one, the caller's own sentence when it
+ * did not.
+ *
+ * Nearly every failing action has two quite different causes behind it. One is
+ * a refusal the server explained — "этот адрес уже зарегистрирован", "срок
+ * действия ссылки истёк" — and repeating it is the whole point of the code the
+ * server sent. The other is anything else that threw: a bug in this component,
+ * a broken mock, something with no `code` at all. There the caller's own
+ * sentence is the honest thing to show, because nothing was explained.
+ *
+ * Passing the fallback in rather than defaulting to a generic apology keeps the
+ * sentence in the caller's own vocabulary ("не удалось сохранить вес"), which
+ * is more use to the reader than "что-то пошло не так" when the server was
+ * silent.
+ */
+export function messageForOr(error: unknown, fallback: string): string {
+    return isApiError(error) || isNetworkError(error) ? messageFor(error) : fallback
+}

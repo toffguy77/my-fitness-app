@@ -29,6 +29,8 @@ import type { ClientDetail, WeightHistoryPoint } from '@/features/curator/types'
 import type { TabId } from '@/features/curator/components/ClientDetailTabs'
 
 import { t } from '@/shared/i18n'
+import toast from 'react-hot-toast'
+import { messageForOr } from '@/shared/errors/apiErrors'
 const RECENT_DAYS_COUNT = 3
 
 function calcAge(birthDate: string): number | null {
@@ -246,8 +248,12 @@ function WeightSection({ detail, clientId }: { detail: ClientDetail; clientId: n
             await curatorApi.setTargetWeight(clientId, val)
             setCurrentTarget(val)
             setEditing(false)
-        } catch {
-            // silently fail for now
+        } catch (err) {
+            // Раньше здесь молчали, и комментарий это признавал прямым
+            // текстом: поле оставалось открытым с введённым числом, и куратор
+            // не знал, сохранилось оно или нет. Поле остаётся открытым и
+            // теперь — но с причиной, по которой стоит повторить или не стоит.
+            toast.error(messageForOr(err, t('curator.client.targetSaveFailed')))
         } finally {
             setSaving(false)
         }
@@ -315,8 +321,8 @@ function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId
             await curatorApi.setWaterGoal(clientId, val)
             setCurrentGoal(val)
             setEditing(false)
-        } catch {
-            // silently fail for now
+        } catch (err) {
+            toast.error(messageForOr(err, t('curator.client.waterGoalSaveFailed')))
         } finally {
             setSaving(false)
         }
@@ -328,8 +334,8 @@ function WaterGoalSection({ detail, clientId }: { detail: ClientDetail; clientId
             await curatorApi.setWaterGoal(clientId, null)
             setCurrentGoal(null)
             setEditing(false)
-        } catch {
-            // silently fail for now
+        } catch (err) {
+            toast.error(messageForOr(err, t('curator.client.waterGoalSaveFailed')))
         } finally {
             setSaving(false)
         }

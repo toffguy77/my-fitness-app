@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { getPushKey, subscribeToPush, unsubscribeFromPush } from '../api/deliveryApi'
+import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 export type PushState =
     /** Still working out what this browser can do. */
@@ -82,6 +84,15 @@ function needsHomeScreenInstall(): boolean {
 export function usePushSubscription() {
     const [state, setState] = useState<PushState>('unknown')
     const [busy, setBusy] = useState(false)
+    /**
+     * Почему не вышло включить или выключить push.
+     *
+     * Отдельно от состояния: состояние описывает, что этот браузер умеет, а
+     * это — что случилось с последней попыткой. Без него нажатие на «Включить»
+     * заканчивалось возвратом кнопки на место и полным молчанием, что со
+     * стороны неотличимо от неработающей кнопки.
+     */
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         let cancelled = false
@@ -109,6 +120,11 @@ export function usePushSubscription() {
                 if (cancelled) return
                 setState(existing ? 'subscribed' : 'available')
             } catch {
+                // Молчим намеренно: на этом шаге регистрация воркера — это и
+                // есть проверка, умеет ли браузер push. Отличить «не умеет» от
+                // «не получилось сейчас» здесь нечем, а выход для человека в
+                // обоих случаях один и тот же — письма, — и он уже написан в
+                // тексте про неподдерживаемый браузер.
                 if (!cancelled) setState('unsupported')
             }
         }
@@ -122,6 +138,7 @@ export function usePushSubscription() {
     /** Asks for permission and registers this browser. Call it from a click. */
     const enable = useCallback(async (): Promise<boolean> => {
         setBusy(true)
+        setError(null)
         try {
             const permission = await Notification.requestPermission()
             if (permission !== 'granted') {
@@ -144,8 +161,9 @@ export function usePushSubscription() {
 
             setState('subscribed')
             return true
-        } catch {
+        } catch (err) {
             setState('available')
+            setError(messageForOr(err, t('notifications.push.enableFailed')))
             return false
         } finally {
             setBusy(false)
@@ -154,6 +172,7 @@ export function usePushSubscription() {
 
     const disable = useCallback(async (): Promise<void> => {
         setBusy(true)
+        setError(null)
         try {
             const registration = await pushWorker()
             const subscription = await registration.pushManager.getSubscription()
@@ -164,12 +183,15 @@ export function usePushSubscription() {
                 await subscription.unsubscribe()
             }
             setState('available')
-        } catch {
-            // Leave the state alone: we no longer know what it is.
+        } catch (err) {
+            // Состояние не трогаем: мы больше не знаем, какое оно. А вот
+            // промолчать нельзя — человек нажал «Выключить», и без причины
+            // это выглядит как неработающая кнопка.
+            setError(messageForOr(err, t('notifications.push.disableFailed')))
         } finally {
             setBusy(false)
         }
     }, [])
 
-    return { state, busy, enable, disable }
+    return { state, busy, error, enable, disable }
 }

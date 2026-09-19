@@ -8,6 +8,7 @@ import {
 } from '@/features/notifications/api/preferencesApi'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 function Toggle({
     checked,
@@ -54,8 +55,8 @@ export function SettingsNotifications() {
                 setMuted(prefs.muted)
                 setMutedCategories(new Set(prefs.mutedCategories))
             })
-            .catch(() => {
-                toast.error(t('settings.notifications.loadFailed'))
+            .catch((err) => {
+                toast.error(messageForOr(err, t('settings.notifications.loadFailed')))
             })
             .finally(() => setLoading(false))
     }, [])
@@ -67,8 +68,11 @@ export function SettingsNotifications() {
                     muted: newMuted,
                     mutedCategories: Array.from(newMutedCategories),
                 })
-            } catch {
-                toast.error(t('settings.notifications.saveFailed'))
+            } catch (err) {
+                // Переключатель уже сдвинулся: если сервер отказал, человек
+                // должен прочитать почему, иначе экран показывает состояние,
+                // которого на сервере нет.
+                toast.error(messageForOr(err, t('settings.notifications.saveFailed')))
             }
         },
         []

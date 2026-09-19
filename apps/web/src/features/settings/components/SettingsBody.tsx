@@ -7,6 +7,7 @@ import { recalculate } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { FullProfile } from '../api/settings'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 const ACTIVITY_LEVELS = [
     'sedentary',
@@ -85,11 +86,19 @@ function BodyForm({
             try {
                 await recalculate()
                 toast.success(t('settings.body.recalculated'))
-            } catch {
-                // recalculate may fail if not all fields are filled — that's ok
+            } catch (err) {
+                // Раньше здесь молчали с объяснением «профиль мог быть заполнен
+                // не полностью — это нормально». Объяснение неверное: на
+                // незаполненный профиль сервер отвечает 200 и {targets: null},
+                // отказа не происходит. Значит, сюда попадает только настоящий
+                // сбой — и молчать о нём означает показать «Сохранено» человеку,
+                // у которого нормы остались прежними.
+                toast.error(messageForOr(err, t('settings.body.recalculateFailed')))
             }
         } catch {
-            // saveSettings already shows a toast on error
+            // Молчим намеренно: saveSettings сам показывает причину отказа и
+            // пробрасывает ошибку дальше только чтобы снять состояние
+            // «сохраняем». Второй тост сказал бы то же самое дважды.
         } finally {
             setSaving(false)
         }

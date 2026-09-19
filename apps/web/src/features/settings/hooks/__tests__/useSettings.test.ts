@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useSettings } from '../useSettings'
+import { ApiError } from '@/shared/errors/apiErrors'
 import {
   getProfile,
   updateProfile,
@@ -75,6 +76,36 @@ describe('useSettings', () => {
 
     expect(toast.error).toHaveBeenCalledWith('Не удалось загрузить профиль')
     expect(result.current.profile).toBeNull()
+  })
+
+  // Сервер объясняет отказ кодом; заготовка «не удалось загрузить профиль»
+  // одинаково звучала и там, где человека просто разлогинило.
+  it('shows the reason the server gave instead of the stock phrase', async () => {
+    mockGetProfile.mockRejectedValueOnce(new ApiError(401, { code: 'session_ended' }))
+
+    const { result } = renderHook(() => useSettings())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('Сессия завершена, войдите заново')
+  })
+
+  it('saveName shows the reason the server gave', async () => {
+    mockUpdateProfile.mockRejectedValueOnce(new ApiError(400, { code: 'validation' }))
+
+    const { result } = renderHook(() => useSettings())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.saveName('')
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('Проверьте введённые данные')
   })
 
   it('saveName calls updateProfile and shows success toast', async () => {

@@ -53,6 +53,21 @@ const (
 	// in a minute" instead of "retake the photo", while still offering the
 	// same manual-entry escape hatch.
 	CodeRecognitionFailed = "recognition_failed"
+	// Отказы, которые раньше отвечали общим CodeConflict.
+	//
+	// «conflict» переводится как «Действие невозможно в текущем состоянии» —
+	// фраза, из которой нельзя понять, что делать дальше. Сервер каждый раз
+	// знал точную причину и писал её в message, но клиент предпочитает код и
+	// прозу выбрасывает. Так объяснение и терялось по дороге.
+	//
+	// Каждый из этих кодов отвечает на «и что теперь»: задайте пароль,
+	// войдите через другой сервис, подождите готовую выгрузку.
+	CodeProviderOnlyWayIn        = "provider_only_way_in"
+	CodePasswordNotSet           = "password_not_set"
+	CodeDeletionAlreadyRequested = "deletion_already_requested"
+	CodeExportAlreadyPending     = "export_already_pending"
+	CodeLastCurator              = "last_curator"
+	CodeJobAlreadyRunning        = "job_already_running"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -102,6 +117,12 @@ func AllCodes() []string {
 	// CodeRecognitionUnclear и CodeRecognitionFailed тоже без сентинела:
 	// обработчик распознаёт причину через errors.Is на ошибках пакета llm
 	// (или её отсутствие), а не через apperrors.
+	// Ставятся обработчиками напрямую: сентинел у всех шести один и тот же
+	// (ErrConflict, а у последнего куратора — свой, оборачивающий
+	// ErrForbidden), а ответ человеку — разный, и решает это обработчик,
+	// который знает, о каком именно отказе речь.
 	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded,
-		CodeRecognitionUnclear, CodeRecognitionFailed)
+		CodeRecognitionUnclear, CodeRecognitionFailed,
+		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
+		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning)
 }

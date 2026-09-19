@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { telegramApi, type TelegramLinkState } from '@/features/settings/api/telegram'
-import { isApiError } from '@/shared/errors/apiErrors'
+import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
 
 /**
@@ -28,8 +28,8 @@ export function SettingsTelegram() {
         async function load() {
             try {
                 setState(await telegramApi.status())
-            } catch {
-                toast.error(t('settings.telegram.loadFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('settings.telegram.loadFailed')))
             } finally {
                 setLoading(false)
             }
@@ -60,8 +60,8 @@ export function SettingsTelegram() {
         try {
             setState(await telegramApi.disconnect())
             toast.success(t('settings.telegram.disconnected'))
-        } catch {
-            toast.error(t('settings.telegram.disconnectFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('settings.telegram.disconnectFailed')))
         } finally {
             setBusy(false)
         }

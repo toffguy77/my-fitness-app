@@ -31,6 +31,7 @@ import { StepIndicator } from './StepIndicator'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { EVENTS, track, TrackView } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 const goals: FitnessGoal[] = ['loss', 'maintain', 'gain']
 
@@ -94,8 +95,10 @@ export function GuestOnboarding() {
             state.setResult(result)
             state.setStep(GUEST_STEPS.result)
             recordStep(GUEST_STEPS.result)
-        } catch {
-            toast.error(t('onboarding.guest.calcFailed'))
+        } catch (err) {
+            // «Подождите немного» — указание, что делать дальше. Заготовка
+            // «проверьте параметры» посылала проверять то, что в порядке.
+            toast.error(messageForOr(err, t('onboarding.guest.calcFailed')))
         } finally {
             setCalculating(false)
         }
@@ -406,8 +409,11 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
             track(EVENTS.leadSaved, { contact_consent: contactConsent })
             toast.success(t('onboarding.guest.saved'))
             onSaved()
-        } catch {
-            toast.error(t('onboarding.guest.saveFailed'))
+        } catch (err) {
+            // Ручка публичная и про зарегистрированный адрес ничего не знает:
+            // ответ одинаков для любого адреса, так что показать причину
+            // безопасно — оракулом существования аккаунта форма не станет.
+            toast.error(messageForOr(err, t('onboarding.guest.saveFailed')))
         } finally {
             setSaving(false)
         }
