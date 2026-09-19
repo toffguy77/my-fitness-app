@@ -13,7 +13,6 @@ GET /api/v1/admin/conversations
 GET /api/v1/admin/conversations/:id/messages
 GET /api/v1/admin/curators
 GET /api/v1/admin/jobs
-GET /api/v1/admin/leads
 GET /api/v1/admin/support/conversations
 GET /api/v1/admin/support/conversations/:id
 GET /api/v1/admin/users
@@ -42,6 +41,7 @@ GET /api/v1/curator/clients/:id/targets/history
 GET /api/v1/curator/clients/:id/tasks
 GET /api/v1/curator/clients/:id/weekly-plans
 GET /api/v1/curator/clients/:id/weekly-reports
+GET /api/v1/curator/leads
 GET /api/v1/dashboard/daily/:date
 GET /api/v1/dashboard/progress
 GET /api/v1/dashboard/tasks
@@ -80,7 +80,6 @@ GET /ready
 GET /ws
 POST /api/v1/admin/assignments
 POST /api/v1/admin/jobs/:name/run
-POST /api/v1/admin/leads/:id/handled
 POST /api/v1/admin/support/conversations/:id/close
 POST /api/v1/admin/support/conversations/:id/reply
 POST /api/v1/admin/users/:id/role
@@ -110,6 +109,7 @@ POST /api/v1/conversations/:id/read
 POST /api/v1/conversations/:id/upload
 POST /api/v1/curator/clients/:id/tasks
 POST /api/v1/curator/clients/:id/weekly-plan
+POST /api/v1/curator/leads/:id/handled
 POST /api/v1/dashboard/daily
 POST /api/v1/dashboard/photo-upload
 POST /api/v1/dashboard/tasks

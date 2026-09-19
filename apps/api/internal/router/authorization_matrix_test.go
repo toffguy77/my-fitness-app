@@ -121,11 +121,11 @@ var protectedRoutes = map[string]protection{
 	// Public by design — drives SEO for published articles.
 	"GET /api/v1/public/content/:id": protPublic,
 
-	// The guest onboarding. :id here is a lead — but the only route carrying
-	// one requires the administrative role, and every public route in this
-	// group addresses its lead by a signed token instead, precisely so a
-	// stranger cannot walk the table and read somebody's body measurements.
-	"POST /api/v1/admin/leads/:id/handled": protRole,
+	// Заявки. :id — заявка, у которой нет владельца-клиента: она существует
+	// ровно до того, как человек им станет. Поэтому защита здесь — роль, а не
+	// отношение, и роль намеренно видит чужие записи: смысл заявки в том,
+	// чтобы с человеком поговорили, а разговаривают кураторы.
+	"POST /api/v1/curator/leads/:id/handled": protRole,
 
 	// Support conversations. :id is a conversation, and every route touching
 	// one is behind the administrative role — the person on the other end of
