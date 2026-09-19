@@ -2376,6 +2376,23 @@ func (s *Service) RecordRecognitionUsage(ctx context.Context, userID int64, phot
 	return nil
 }
 
+// recognitionDailyLimitMessage is the one place that puts the daily-ceiling
+// wording into words. service.go wraps it into the sentinel error (so it
+// reaches the logs even where nobody catches the sentinel specifically),
+// handler.go reuses this exact string for the response — the two cannot
+// drift apart or disagree on the number, because there is only one string.
+//
+// No declined noun after the number on purpose: "N распознаваний" needs
+// "распознавание/распознавания/распознаваний" depending on N, and this
+// project has no pluralisation helper for Go strings. Phrasing the limit as
+// "лимит — N" sidesteps the agreement instead of getting it wrong for N=1.
+func recognitionDailyLimitMessage(dailyLimit int) string {
+	return fmt.Sprintf(
+		"Дневной лимит распознаваний фото — %d, и он на сегодня исчерпан. Добавьте эту еду вручную — новый снимок можно будет сделать завтра.",
+		dailyLimit,
+	)
+}
+
 // RecognizeFood orchestrates AI food recognition: check limit, call OpenRouter, map results, record usage
 func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []byte, contentType string, s3PhotoURL string, dailyLimit int, orClient *llm.Client) (*AIRecognitionResponse, error) {
 	// Check daily limit
@@ -2388,10 +2405,7 @@ func (s *Service) RecognizeFood(ctx context.Context, userID int64, imageData []b
 		// errors.Is, и перефразировка ниже не сможет молча превратить 429 в
 		// 500. dailyLimit берётся из конфигурации, а не зашивается числом —
 		// потолок это умолчание, а не константа.
-		return nil, fmt.Errorf(
-			"%w: на сегодня доступно %d распознаваний фото, они закончились — добавьте эту еду вручную, новый снимок можно будет сделать завтра",
-			apperrors.ErrDailyLimitReached, dailyLimit,
-		)
+		return nil, fmt.Errorf("%w: %s", apperrors.ErrDailyLimitReached, recognitionDailyLimitMessage(dailyLimit))
 	}
 
 	// Call OpenRouter for food recognition

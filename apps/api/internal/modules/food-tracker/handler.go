@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"github.com/burcev/api/internal/shared/upload"
 	"net/http"
 	"strings"
@@ -394,13 +393,12 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 	if err != nil {
 		// errors.Is на сентинеле, не strings.Contains на тексте: перефразировка
 		// сообщения в service.go раньше могла молча превратить 429 в 500 без
-		// единого падающего теста.
+		// единого падающего теста. Текст — recognitionDailyLimitMessage, та же
+		// функция, что оборачивает сентинел в service.go: два места не могут
+		// разойтись в формулировке или в числе, потому что строка одна.
 		if errors.Is(err, apperrors.ErrDailyLimitReached) {
-			response.ErrorCode(c, http.StatusTooManyRequests, apperrors.CodeDailyLimitReached,
-				fmt.Sprintf(
-					"На сегодня доступно %d распознаваний фото, и они закончились — добавьте эту еду вручную. Новый снимок можно будет сделать завтра.",
-					h.cfg.FoodRecognitionDailyLimit,
-				), nil)
+			response.ErrorCode(c, http.StatusTooManyRequests, apperrors.CodeRecognitionDailyLimit,
+				recognitionDailyLimitMessage(h.cfg.FoodRecognitionDailyLimit), nil)
 			return
 		}
 		// Модель ответила, но сказать ей оказалось нечего, либо ответ не
@@ -425,7 +423,11 @@ func (h *Handler) RecognizeFood(c *gin.Context) {
 		// всех прочих. Когда кончаются средства у провайдера модели, ломается
 		// именно он — и знать это заранее дешевле, чем разбираться по логам.
 		telemetry.Record(telemetry.EventModelCallFailed)
-		response.InternalError(c, "Не удалось распознать еду")
+		// Настоящий сбой — не вина фотографии и не вина человека, поэтому
+		// текст, в отличие от 422/429, предлагает подождать, а не переснимать.
+		// Ручной ввод остаётся тем же выходом, что и у двух других случаев.
+		response.ErrorCode(c, http.StatusInternalServerError, apperrors.CodeRecognitionFailed,
+			"Не удалось распознать фото — попробуйте ещё раз через минуту или добавьте эту еду вручную", nil)
 		return
 	}
 

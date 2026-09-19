@@ -645,8 +645,12 @@ func TestRecognizeFood_DailyLimitReached(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, apperrors.ErrDailyLimitReached),
 		"RecognizeFood must wrap apperrors.ErrDailyLimitReached, not a bare fmt.Errorf")
-	assert.Contains(t, err.Error(), "7",
-		"the daily limit in the message must come from dailyLimit, not a hardcoded number")
+	// The exact wording, not just the number: this is recognitionDailyLimitMessage,
+	// the same function handler.go calls for the response. If a future edit
+	// starts formatting the log-facing text inline here instead of calling the
+	// shared helper, this fails even though "7" would still appear somewhere.
+	assert.Contains(t, err.Error(), recognitionDailyLimitMessage(dailyLimit),
+		"the wrapped error must carry the same text the handler shows a person — one source, not two")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 

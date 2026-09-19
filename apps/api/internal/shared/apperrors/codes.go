@@ -36,14 +36,23 @@ const (
 	// signs people out whenever a token simply aged.
 	CodeSessionEnded = "session_ended"
 	CodeInternal     = "internal"
-	// CodeDailyLimitReached: distinct from rate_limited — waiting a moment
-	// will not help, the ceiling resets tomorrow, not in a few seconds.
-	CodeDailyLimitReached = "daily_limit_reached"
+	// CodeRecognitionDailyLimit: distinct from rate_limited — waiting a moment
+	// will not help, the ceiling resets tomorrow, not in a few seconds. Named
+	// for the domain, not the sentinel: ErrDailyLimitReached is reusable for
+	// any daily quota, but the code is what the client shows, and a client
+	// reusing the sentinel for, say, a curator-message quota must not inherit
+	// a translation about photos.
+	CodeRecognitionDailyLimit = "recognition_daily_limit"
 	// CodeRecognitionUnclear: the model answered but had nothing usable to
 	// say about the photo. Not the client's fault and not a server failure —
 	// distinct from both so the client can suggest a retake instead of
 	// showing a generic "something broke".
 	CodeRecognitionUnclear = "recognition_unclear"
+	// CodeRecognitionFailed: a genuine failure (provider outage, timeout) —
+	// distinct from CodeRecognitionUnclear so the client can say "try again
+	// in a minute" instead of "retake the photo", while still offering the
+	// same manual-entry escape hatch.
+	CodeRecognitionFailed = "recognition_failed"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -67,7 +76,7 @@ var codes = map[error]string{
 	ErrConflict:           CodeConflict,
 	ErrGone:               CodeGone,
 	ErrValidation:         CodeValidation,
-	ErrDailyLimitReached:  CodeDailyLimitReached,
+	ErrDailyLimitReached:  CodeRecognitionDailyLimit,
 }
 
 // CodeFor returns the code for an error, following wrapping.
@@ -90,7 +99,9 @@ func AllCodes() []string {
 	// Эти коды ставятся ответами напрямую, без ошибки-сентинела.
 	// CodeFeatureUnavailable здесь больше нет: у него появился сентинел
 	// apperrors.ErrFeatureUnavailable, и он приходит из карты выше.
-	// CodeRecognitionUnclear тоже без сентинела: обработчик распознаёт
-	// причину через errors.Is на ошибках пакета llm, а не через apperrors.
-	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded, CodeRecognitionUnclear)
+	// CodeRecognitionUnclear и CodeRecognitionFailed тоже без сентинела:
+	// обработчик распознаёт причину через errors.Is на ошибках пакета llm
+	// (или её отсутствие), а не через apperrors.
+	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded,
+		CodeRecognitionUnclear, CodeRecognitionFailed)
 }

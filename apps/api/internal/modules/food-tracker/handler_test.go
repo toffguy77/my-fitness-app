@@ -602,11 +602,14 @@ func TestRecognizeFood_LimitExceeded(t *testing.T) {
 	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Equal(t, apperrors.CodeDailyLimitReached, resp["code"])
-	assert.Contains(t, resp["message"], "вручную",
-		"человеку нужно понимать, что делать прямо сейчас, а не только что лимит исчерпан")
-	assert.Contains(t, resp["message"], "завтра",
-		"дневной потолок — не то же самое, что частота запросов: ждать нужно до завтра")
+	assert.Equal(t, apperrors.CodeRecognitionDailyLimit, resp["code"])
+	// Точное равенство с recognitionDailyLimitMessage(20), а не Contains: cfg в
+	// этом тесте задаёт лимит 20 (см. setupTestHandlerWithMock), а обработчик
+	// раньше мог форматировать число сам — литерал 3 вместо
+	// h.cfg.FoodRecognitionDailyLimit прошёл бы незамеченным ни одним из
+	// прежних Contains-проверок. Равенство также держит текст handler.go и
+	// service.go на одной строке: разойдись они — тест увидит несовпадение.
+	assert.Equal(t, recognitionDailyLimitMessage(20), resp["message"])
 
 	mockService.AssertExpectations(t)
 }
@@ -728,4 +731,37 @@ func TestRecognizeFood_ModelSaidNothingUsable(t *testing.T) {
 			mockService.AssertExpectations(t)
 		})
 	}
+}
+
+// A genuine failure (provider outage, timeout, anything not named above) is
+// not the photo's fault and not the day's quota — it gets its own code and a
+// message that offers to wait, matching the manual-entry escape hatch the
+// other two cases already have, instead of the bare "Не удалось распознать
+// еду" that used to leave with no code of its own.
+func TestRecognizeFood_GenuineFailure(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
+		Return((*AIRecognitionResponse)(nil), fmt.Errorf("openrouter: connection refused"))
+
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", testPNG(t))
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, apperrors.CodeRecognitionFailed, resp["code"])
+	assert.Contains(t, resp["message"], "вручную",
+		"тот же выход, что у двух других случаев отказа")
+	assert.Contains(t, resp["message"], "минуту",
+		"это не «снять ближе»: тут вина не фотографии, а сервиса")
+
+	mockService.AssertExpectations(t)
 }
