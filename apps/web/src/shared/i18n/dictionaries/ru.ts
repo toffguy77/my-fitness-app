@@ -878,6 +878,8 @@ export const ru = {
             enabled: 'Push включён на этом устройстве. На других устройствах его нужно включить отдельно.',
             disabling: 'Выключаем...',
             disable: 'Выключить',
+            enableFailed: 'Не удалось включить push',
+            disableFailed: 'Не удалось выключить push',
         },
         storeErrors: {
             offline: 'Нет подключения к интернету',

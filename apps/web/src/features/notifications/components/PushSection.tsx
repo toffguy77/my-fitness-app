@@ -13,13 +13,15 @@ import { usePushSubscription } from '../hooks/usePushSubscription'
 import { t } from '@/shared/i18n'
 
 export function PushSection() {
-    const { state, busy, enable, disable } = usePushSubscription()
+    const { state, busy, error, enable, disable } = usePushSubscription()
 
     if (state === 'unknown') return null
 
     return (
         <div className="rounded-2xl bg-white p-4 shadow-sm" data-testid="push-section">
             <p className="mb-1 text-sm font-medium text-gray-500">{t('notifications.push.heading')}</p>
+
+            {error && <p className="py-2 text-sm text-red-500">{error}</p>}
 
             {state === 'unsupported' && (
                 <p className="py-2 text-sm text-gray-500">
