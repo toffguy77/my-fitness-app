@@ -220,6 +220,87 @@ func TestAllowModelCall_StopsAtTheDailyCeiling(t *testing.T) {
 	assert.True(t, service.allowModelCall())
 }
 
+// setupServiceWithDailyLimit builds a service against a mocked database with
+// a chosen daily ceiling — the one thing TestWebCallsExhaustSharedModelCeiling
+// and TestWebAnswersHonestlyWhenCeilingExhausted need to vary.
+func setupServiceWithDailyLimit(t *testing.T, limit int) (*Service, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	service := NewService(db, logger.New(), &fakeAnswerer{}, &fakeSender{}, nil, limit)
+	return service, mock
+}
+
+// Потолок защищает счёт, а счёт один. Веб-канал не имеет собственного лимита
+// вызовов модели — allowModelCall не принимает канал вовсе, поэтому обращение
+// с виджета тратит тот же бюджет, что и телеграмное. Тест красится прямо на
+// числе разрешённых вызовов, а не через текст ответа: подмена ceiling-логики
+// отдельным веб-лимитом не пройдёт мимо этой проверки, даже если текст ответа
+// останется прежним.
+func TestWebCallsExhaustSharedModelCeiling(t *testing.T) {
+	svc, _ := setupServiceWithDailyLimit(t, 2)
+
+	assert.True(t, svc.allowModelCall())
+	assert.True(t, svc.allowModelCall())
+	assert.False(t, svc.allowModelCall(), "третий вызов обязан быть отклонён независимо от канала")
+}
+
+// expectWebConversation задаёт ожидания на один проход HandleMessage по
+// веб-разговору с исчерпанным потолком: вопрос посетителя записывается,
+// потолок отворачивает модель, и честный отказ записывается и помечается
+// отвеченным — никуда не отправляясь, потому что в веб-канале отправлять
+// некуда.
+func expectWebConversation(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM support_messages`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`INSERT INTO support_messages`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("msg-user"))
+	mock.ExpectExec(`UPDATE support_conversations SET last_message_at`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE support_conversations`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`INSERT INTO support_messages`).
+		WithArgs("11111111-1111-1111-1111-111111111111", "bot", escalationReply, nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("msg-bot"))
+	mock.ExpectExec(`UPDATE support_conversations SET last_message_at`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE support_conversations SET answered_at`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+// Существующая ветка "if !s.allowModelCall()" (service.go) уже отвечает
+// человеку и зовёт оператора в Telegram; этот тест доказывает, что для
+// веб-разговора она ведёт себя так же — а не молча зовёт модель мимо
+// исчерпанного потолка, потому что канал другой.
+//
+// Потолок исчерпывается настоящим вызовом allowModelCall, а не лимитом 0:
+// в этом коде dailyLimit == 0 значит "без ограничения" (service.go:
+// `s.dailyLimit > 0 && s.callCount >= s.dailyLimit`), а не "ничего не разрешено" —
+// лимит 0 сделал бы тест вырожденно зелёным по неверной причине.
+func TestWebAnswersHonestlyWhenCeilingExhausted(t *testing.T) {
+	svc, mock := setupServiceWithDailyLimit(t, 1)
+	require.True(t, svc.allowModelCall(), "потолок должен пропустить единственный разрешённый вызов")
+
+	expectWebConversation(mock)
+
+	err := svc.HandleMessage(context.Background(), IncomingMessage{
+		Conversation: &Conversation{
+			ID:      "11111111-1111-1111-1111-111111111111",
+			Channel: ChannelWeb,
+		},
+		Text: "вопрос",
+	})
+
+	require.NoError(t, err)
+
+	// Красится на числе обращений к модели, а не косвенно на тексте ответа.
+	answerer := svc.answerer.(*fakeAnswerer)
+	assert.Zero(t, answerer.calls, "модель не должна была вызываться — потолок исчерпан")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestPurgeOld_DeletesByLastMessage(t *testing.T) {
 	service, _, mock := setupSupport(t, &fakeAnswerer{})
 

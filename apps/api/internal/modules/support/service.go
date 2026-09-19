@@ -261,6 +261,25 @@ func wantsHuman(text string) bool {
 	return humanRequest.MatchString(trimmed)
 }
 
+// EscalateWeb — «позвать человека» из виджета.
+//
+// Посетитель мог закрыть вкладку до того, как кто-то ответит — эскалация в
+// веб-канале не «позвать и ждать», а «позвать и оставить след»: разговор
+// уходит в ту же очередь, что и телеграмный (escalate ниже общий для обоих
+// каналов), а ответ оператора посетитель заберёт сам, своим токеном, когда
+// вернётся — reply/answerAs уже пишут его в базу и никуда не пытаются
+// отправить для веб-канала (web.go, service.go:reply).
+//
+// Отдельный метод нужен только чтобы найти разговор по токену: дальше идёт тот
+// же escalate, что и в Telegram, и разговор попадает в ту же очередь.
+func (s *Service) EscalateWeb(ctx context.Context, token string) error {
+	conversation, err := s.WebConversationByToken(ctx, token)
+	if err != nil {
+		return err
+	}
+	return s.escalate(ctx, conversation, "посетитель попросил человека")
+}
+
 // escalate marks the conversation for a person and tells the user so.
 func (s *Service) escalate(ctx context.Context, conversation *Conversation, reason string) error {
 	result, err := s.db.ExecContext(ctx, `
@@ -605,6 +624,10 @@ func (s *Service) byID(ctx context.Context, conversationID string) (*Conversatio
 // — как в byID и byWebTokenHash: у веб-разговора он NULL с миграции 076, и с
 // публичными маршрутами (задача 4) веб-разговоры попадают в этот список наравне
 // с телеграмными.
+//
+// channel выбирается и сканируется явно (задача 5): без него оператор не
+// отличил бы в общей очереди веб-разговор от телеграмного, и очередь,
+// объявленная общей, на самом деле не показывала бы, откуда пришло обращение.
 func (s *Service) ListConversations(ctx context.Context, status string, limit, offset int) ([]Conversation, int, error) {
 	where := ""
 	args := []any{limit, offset}
@@ -625,7 +648,7 @@ func (s *Service) ListConversations(ctx context.Context, status string, limit, o
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, chat_id, lead_id, user_id, status,
+		SELECT id, chat_id, lead_id, user_id, status, channel,
 		       COALESCE(telegram_username, ''), COALESCE(telegram_name, ''),
 		       COALESCE(escalation_reason, ''), escalated_at, last_message_at, created_at
 		FROM support_conversations `+where+`
@@ -641,7 +664,7 @@ func (s *Service) ListConversations(ctx context.Context, status string, limit, o
 		var c Conversation
 		var chatID sql.NullInt64
 		var escalatedAt sql.NullTime
-		if err := rows.Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status,
+		if err := rows.Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status, &c.Channel,
 			&c.Username, &c.Name, &c.EscalationReason, &escalatedAt,
 			&c.LastMessageAt, &c.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scan support conversation: %w", err)

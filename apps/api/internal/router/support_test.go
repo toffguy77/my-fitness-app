@@ -51,6 +51,7 @@ func TestPublicSupportWebRoutesAreRateLimited(t *testing.T) {
 	}{
 		{"start", "/api/v1/public/support/web", `{}`},
 		{"message", "/api/v1/public/support/web/message", `{"token":"t","text":"вопрос"}`},
+		{"human", "/api/v1/public/support/web/human", `{"token":"t"}`},
 	}
 
 	for _, tc := range cases {

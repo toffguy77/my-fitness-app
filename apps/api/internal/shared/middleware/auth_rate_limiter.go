@@ -67,6 +67,10 @@ var authLimitConfigs = map[string]authLimitConfig{
 	// Read-only polling for new messages; cheaper than a model call and needs
 	// a looser ceiling so a chat window left open does not start failing.
 	"support-web-read": {maxRequests: 60, window: time.Minute},
+	// «Позвать человека» costs no model call, but it is still a write behind
+	// the same bearer token as the other three, and the token is the thing an
+	// IP could enumerate — same order of magnitude as support-web-message.
+	"support-web-human": {maxRequests: 20, window: time.Minute},
 }
 
 // AuthRateLimiter is an in-memory sliding window rate limiter for auth endpoints.

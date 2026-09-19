@@ -179,10 +179,10 @@ func TestListConversationsHandlesWebConversationWithNullChatID(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 	mock.ExpectQuery(`FROM support_conversations`).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "chat_id", "lead_id", "user_id", "status",
+			"id", "chat_id", "lead_id", "user_id", "status", "channel",
 			"telegram_username", "telegram_name", "escalation_reason",
 			"escalated_at", "last_message_at", "created_at",
-		}).AddRow("conv-web-1", nil, nil, nil, "open", "", "", "", nil, time.Now(), time.Now()))
+		}).AddRow("conv-web-1", nil, nil, nil, "open", ChannelWeb, "", "", "", nil, time.Now(), time.Now()))
 
 	conversations, total, err := svc.ListConversations(context.Background(), "", 20, 0)
 
@@ -190,6 +190,7 @@ func TestListConversationsHandlesWebConversationWithNullChatID(t *testing.T) {
 	assert.Equal(t, 1, total)
 	require.Len(t, conversations, 1)
 	assert.Equal(t, int64(0), conversations[0].ChatID)
+	assert.Equal(t, ChannelWeb, conversations[0].Channel, "очередь обязана знать канал разговора")
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

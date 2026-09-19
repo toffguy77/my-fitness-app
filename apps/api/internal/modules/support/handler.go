@@ -254,6 +254,44 @@ func (h *Handler) WebMessages(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"messages": messages, "status": conversation.Status})
 }
 
+// WebHuman handles POST /api/v1/public/support/web/human.
+//
+// «Позвать человека» из виджета: тот же жест, что и /human в Telegram —
+// сразу, без вопроса модели, и не требует, чтобы посетитель дожидался
+// ответа на месте. Разговор уходит в общую операторскую очередь, а ответ
+// посетитель заберёт своим токеном, когда вернётся (EscalateWeb, service.go).
+//
+// Поддельный, чужой и удалённый токен отвечают тем же 404, что и остальные
+// веб-маршруты — не давая постороннему отличить их перебором.
+func (h *Handler) WebHuman(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	err := h.service.EscalateWeb(c.Request.Context(), req.Token)
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrNotFound):
+		response.NotFound(c, "Чат не найден — откройте его заново")
+		return
+	default:
+		h.log.Error("Failed to escalate web conversation", "error", err)
+		response.InternalError(c, "Не удалось позвать человека")
+		return
+	}
+
+	response.Success(c, http.StatusOK, nil)
+}
+
 // List handles GET /api/v1/admin/support/conversations.
 func (h *Handler) List(c *gin.Context) {
 	if h.service == nil {

@@ -15,12 +15,18 @@ func registerSupportRoutes(v1 *gin.RouterGroup, d Deps) {
 	v1.POST("/public/support/telegram", d.Support.Webhook)
 
 	// Разговор из браузера. Это единственные эндпоинты поддержки, которые
-	// посетитель без аккаунта зовёт со своим телом, и каждый из них тратит
-	// деньги на модель — поэтому лимит по адресу на всех трёх.
+	// посетитель без аккаунта зовёт со своим телом — большинство тратит
+	// деньги на модель, а «позвать человека» ниже нет, но токен, за которым
+	// они все стоят, посторонний мог бы перебирать одинаково у любого из
+	// них, поэтому лимит по адресу общий на все четыре.
 	web := v1.Group("/public/support/web")
 	web.POST("", d.AuthRateLimiter.Limit("support-web-start"), d.Support.StartWeb)
 	web.POST("/message", d.AuthRateLimiter.Limit("support-web-message"), d.Support.WebMessage)
 	web.GET("/messages", d.AuthRateLimiter.Limit("support-web-read"), d.Support.WebMessages)
+	// «Позвать человека» тратит операторское внимание, а не модель — но всё
+	// равно за токеном, который посетитель мог бы перебирать так же, как у
+	// остальных трёх маршрутов, поэтому и он под тем же лимитером.
+	web.POST("/human", d.AuthRateLimiter.Limit("support-web-human"), d.Support.WebHuman)
 
 	g := v1.Group("/admin/support")
 	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
