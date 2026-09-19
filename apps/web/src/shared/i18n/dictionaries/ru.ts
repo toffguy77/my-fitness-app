@@ -822,6 +822,7 @@ export const ru = {
         downloadFile: 'Скачать файл',
         loadMore: 'Загрузить ещё',
         loadingMessages: 'Загрузка сообщений...',
+        loadFailed: 'Не удалось загрузить переписку',
         typing: 'печатает',
         loadingChat: 'Загружаем переписку...',
         noCurator: 'Куратор пока не назначен',
