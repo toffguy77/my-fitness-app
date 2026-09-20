@@ -29,6 +29,7 @@ import {
 } from '../store/guestOnboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { SupportLink } from '@/shared/components/SupportLink'
+import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { EVENTS, track, TrackView } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
@@ -123,7 +124,18 @@ export function GuestOnboarding() {
     }
 
     return (
-        <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-8">
+        // pb-24 (96px), not the pt-8's matching 32px: SupportWidget floats
+        // fixed at bottom-6/right-6 with a 48px-tall collapsed button, so its
+        // footprint reaches ~72px above the viewport bottom. On the goal/body/
+        // activity steps the "mt-8 flex-1" block above absorbs all spare
+        // height in this min-h-screen column, pinning the "Далее"/"Показать
+        // мою норму" button flush to this padding — with the old 32px it sat
+        // inside the widget's footprint and the corner was unreachable
+        // (arithmetic: button spans ~32-80px from the bottom, bubble spans
+        // 24-72px). 96px clears it with margin. Guarded by
+        // e2e/tests/guest-onboarding.spec.ts ("не даёт плавающему виджету
+        // перекрыть кнопку продолжения").
+        <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-8 pb-24">
             <TrackView event={EVENTS.onboardingStarted} />
             <StepIndicator
                 currentStep={Math.min(state.step, stepCount - 1)}
@@ -321,6 +333,8 @@ export function GuestOnboarding() {
             <p className="mt-3 text-center">
                 <SupportLink />
             </p>
+
+            <SupportWidget />
         </main>
     )
 }

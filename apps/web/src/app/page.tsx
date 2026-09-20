@@ -4,6 +4,7 @@ import { Logo } from '@/shared/components/ui'
 import { JsonLd } from '@/shared/components/JsonLd'
 import { AuthRedirect } from './_components/AuthRedirect'
 import { SupportLink } from '@/shared/components/SupportLink'
+import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { TrackView, EVENTS } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
 
@@ -274,6 +275,11 @@ export default async function Home({
                     </div>
                 </footer>
             </div>
+
+            {/* Клиентский остров: своя ошибка не должна перерисовывать
+                серверный лендинг, а её отсутствие в разметке не должно
+                мешать роботам читать саму страницу. */}
+            <SupportWidget />
         </>
     )
 }

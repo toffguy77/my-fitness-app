@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
@@ -29,12 +30,20 @@ const (
 	perChatLimit  = 5
 )
 
-// LeadResolver turns the payload of a deep link into the lead it names.
+// LeadResolver turns the payload of a deep link into the lead it names, and —
+// since Task 6 — saves a contact left mid-conversation as a lead of its own.
 //
-// Only the identifier crosses the boundary: what the lead holds is read from
-// the database here, so the two modules share a string rather than a type.
+// One interface, not two: the bot needing to write is the same boundary as
+// the bot needing to read, and a second interface for the same dependency
+// would only be a second place the two modules' contract could drift apart.
 type LeadResolver interface {
 	LeadIDForToken(ctx context.Context, token string) (string, error)
+
+	// Create saves a contact as a lead, exactly as the onboarding wizard's
+	// contact step does — same consents, same retention, same reminder and
+	// unsubscribe. A second, bot-only contact table would inevitably grow a
+	// second set of those rules that drifts from the first.
+	Create(ctx context.Context, in leads.CreateInput, ip, ua string) (*leads.Lead, string, error)
 }
 
 // LeadSummary is what an operator needs to see: who, and where they stopped.
@@ -150,6 +159,17 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 		return err
 	}
 
+	// Потолок на длину веб-разговора: HTTP-лимитер на маршруте сдерживает
+	// частоту запросов с одного адреса, а этот — число сообщений в одном
+	// разговоре, который посетитель мог бы держать открытым сколь угодно
+	// долго с одного и того же токена, обходя лимитер по IP через VPN или
+	// просто время. Каждое сообщение — оплаченный вызов модели.
+	if conversation.Channel == ChannelWeb {
+		if err := s.enforceWebMessageCap(ctx, conversation.ID); err != nil {
+			return err
+		}
+	}
+
 	text := strings.TrimSpace(in.Text)
 	if _, err := s.recordMessage(ctx, conversation.ID, "user", text, nil); err != nil {
 		return err
@@ -175,7 +195,12 @@ func (s *Service) HandleMessage(ctx context.Context, in IncomingMessage) error {
 		return s.escalate(ctx, conversation, "по просьбе пользователя")
 	}
 
-	if !s.allowChat(in.ChatID) {
+	// allowChat throttles by chat_id, a Telegram concept: every web
+	// conversation would otherwise share chat_id's zero value and throttle
+	// each other. The web channel is bounded instead by the route's own
+	// rate limiter (per IP) and by enforceWebMessageCap above (per
+	// conversation), both already applied by this point.
+	if conversation.Channel != ChannelWeb && !s.allowChat(in.ChatID) {
 		return s.reply(ctx, conversation, rateLimitedReply)
 	}
 	if !s.allowModelCall() {
@@ -245,6 +270,25 @@ func wantsHuman(text string) bool {
 	return humanRequest.MatchString(trimmed)
 }
 
+// EscalateWeb — «позвать человека» из виджета.
+//
+// Посетитель мог закрыть вкладку до того, как кто-то ответит — эскалация в
+// веб-канале не «позвать и ждать», а «позвать и оставить след»: разговор
+// уходит в ту же очередь, что и телеграмный (escalate ниже общий для обоих
+// каналов), а ответ оператора посетитель заберёт сам, своим токеном, когда
+// вернётся — reply/answerAs уже пишут его в базу и никуда не пытаются
+// отправить для веб-канала (web.go, service.go:reply).
+//
+// Отдельный метод нужен только чтобы найти разговор по токену: дальше идёт тот
+// же escalate, что и в Telegram, и разговор попадает в ту же очередь.
+func (s *Service) EscalateWeb(ctx context.Context, token string) error {
+	conversation, err := s.WebConversationByToken(ctx, token)
+	if err != nil {
+		return err
+	}
+	return s.escalate(ctx, conversation, "посетитель попросил человека")
+}
+
 // escalate marks the conversation for a person and tells the user so.
 func (s *Service) escalate(ctx context.Context, conversation *Conversation, reason string) error {
 	result, err := s.db.ExecContext(ctx, `
@@ -271,23 +315,33 @@ func (s *Service) escalate(ctx context.Context, conversation *Conversation, reas
 	return s.reply(ctx, conversation, message)
 }
 
-// reply records what the bot said and sends it.
+// reply records what the bot said and delivers it the way its channel can.
 //
-// Отметка о доставке ставится по факту, как и у оператора: бот, принимающий
-// сообщения и не способный ответить, — это то, что уже случалось на проде, и
-// переписка не должна выглядеть исправной, когда человек ничего не получил.
+// В Telegram ответ отправляется, и отметка о доставке ставится по факту, как и
+// у оператора: бот, принимающий сообщения и не способный ответить, — это то,
+// что уже случалось на проде, и переписка не должна выглядеть исправной, когда
+// человек ничего не получил.
+//
+// В браузер отправлять некуда: посетитель не держит открытое соединение —
+// клиент сам придёт за сообщениями со своим токеном, и доставкой считается
+// факт записи, а не приём транспортом. delivered_at поэтому остаётся NULL, как
+// у входящих сообщений: это не "не доставлено", а "неприменимо" — ставить сюда
+// true означало бы утверждать то, чего код не проверял.
 func (s *Service) reply(ctx context.Context, conversation *Conversation, text string) error {
 	messageID, err := s.recordMessage(ctx, conversation.ID, "bot", text, nil)
 	if err != nil {
 		return err
 	}
-	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
-		return err
+
+	if conversation.Channel != ChannelWeb {
+		if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
+			return err
+		}
 	}
 
 	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
 	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
-	// неотличимо от забытого.
+	// неотличимо от забытого. Это верно для обоих каналов: бот дал ответ.
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
 		  WHERE id = $1::uuid`, conversation.ID); err != nil {
@@ -295,6 +349,9 @@ func (s *Service) reply(ctx context.Context, conversation *Conversation, text st
 			"conversation_id", conversation.ID, "error", err)
 	}
 
+	if conversation.Channel == ChannelWeb {
+		return nil
+	}
 	return s.markDelivered(ctx, messageID)
 }
 
@@ -327,13 +384,19 @@ func (s *Service) answerAs(ctx context.Context, conversationID string, operatorI
 	// набранного текста. Но и отметку о доставке ставим только по факту — иначе
 	// следующий оператор, открыв переписку, увидит обычное сообщение и решит,
 	// что человеку ответили, хотя тот ничего не получил.
-	if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
-		return err
+	//
+	// В веб-разговор оператор отвечает через тот же эндпоинт, что и в
+	// телеграмный: список обращений не различает канал. Отправлять там некуда —
+	// посетитель заберёт ответ сам, своим токеном.
+	if conversation.Channel != ChannelWeb {
+		if err := s.sender.SendMessage(ctx, conversation.ChatID, text); err != nil {
+			return err
+		}
 	}
 
 	// Подключением считается отправленный ответ, а не открытая очередь: просмотр
 	// клиенту ничего не сообщает, и обращение, на которое «посмотрели», для него
-	// неотличимо от забытого.
+	// неотличимо от забытого. Верно для обоих каналов: оператор ответил.
 	if _, err := s.db.ExecContext(ctx,
 		`UPDATE support_conversations SET answered_at = COALESCE(answered_at, NOW())
 		  WHERE id = $1::uuid`, conversation.ID); err != nil {
@@ -341,6 +404,11 @@ func (s *Service) answerAs(ctx context.Context, conversationID string, operatorI
 			"conversation_id", conversation.ID, "error", err)
 	}
 
+	if conversation.Channel == ChannelWeb {
+		// Как и у бота: delivered_at остаётся NULL — "неприменимо", а не
+		// "не доставлено". Транспорта, который мог бы отказать, здесь нет.
+		return nil
+	}
 	return s.markDelivered(ctx, messageID)
 }
 
@@ -504,6 +572,13 @@ func (s *Service) recordMessage(ctx context.Context, conversationID, author, tex
 }
 
 func (s *Service) conversationFor(ctx context.Context, in IncomingMessage) (*Conversation, error) {
+	// Веб-разговор уже найден по токену — второй запрос за той же строкой
+	// был бы лишним обращением к базе и ещё одним местом, где NULL chat_id
+	// пришлось бы разбирать заново.
+	if in.Conversation != nil {
+		return in.Conversation, nil
+	}
+
 	var conversation Conversation
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO support_conversations (chat_id, telegram_username, telegram_name)
@@ -514,34 +589,54 @@ func (s *Service) conversationFor(ctx context.Context, in IncomingMessage) (*Con
 			-- A closed conversation reopens when the person writes again.
 			status = CASE WHEN support_conversations.status = 'closed' THEN 'open'
 			              ELSE support_conversations.status END
-		RETURNING id, chat_id, lead_id, user_id, status`,
+		RETURNING id, chat_id, lead_id, user_id, status, channel`,
 		in.ChatID, in.Username, in.Name).
 		Scan(&conversation.ID, &conversation.ChatID, &conversation.LeadID,
-			&conversation.UserID, &conversation.Status)
+			&conversation.UserID, &conversation.Status, &conversation.Channel)
 	if err != nil {
 		return nil, fmt.Errorf("open support conversation: %w", err)
 	}
 	return &conversation, nil
 }
 
+// byID читает разговор по идентификатору — путь, которым в него попадает
+// ответ оператора (answerAs), телеграмный или веб-разговор одинаково: список
+// обращений не различает канал, значит и этот запрос обязан пережить оба.
+//
+// chat_id сканируется через sql.NullInt64, а не напрямую в Conversation.ChatID
+// — как и в byWebTokenHash: у веб-разговора он NULL с миграции 076, и прямое
+// сканирование в int64 падает на первом же таком разговоре.
 func (s *Service) byID(ctx context.Context, conversationID string) (*Conversation, error) {
 	var conversation Conversation
+	var chatID sql.NullInt64
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, chat_id, lead_id, user_id, status FROM support_conversations WHERE id = $1`,
+		`SELECT id, chat_id, lead_id, user_id, status, channel FROM support_conversations WHERE id = $1`,
 		conversationID).
-		Scan(&conversation.ID, &conversation.ChatID, &conversation.LeadID,
-			&conversation.UserID, &conversation.Status)
+		Scan(&conversation.ID, &chatID, &conversation.LeadID,
+			&conversation.UserID, &conversation.Status, &conversation.Channel)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("load support conversation: %w", err)
 	}
+	if chatID.Valid {
+		conversation.ChatID = chatID.Int64
+	}
 	return &conversation, nil
 }
 
 // ListConversations returns the operator's queue: escalated first, then by
 // recency, so the thing somebody is waiting for is at the top.
+//
+// chat_id сканируется через sql.NullInt64, а не напрямую в Conversation.ChatID
+// — как в byID и byWebTokenHash: у веб-разговора он NULL с миграции 076, и с
+// публичными маршрутами (задача 4) веб-разговоры попадают в этот список наравне
+// с телеграмными.
+//
+// channel выбирается и сканируется явно (задача 5): без него оператор не
+// отличил бы в общей очереди веб-разговор от телеграмного, и очередь,
+// объявленная общей, на самом деле не показывала бы, откуда пришло обращение.
 func (s *Service) ListConversations(ctx context.Context, status string, limit, offset int) ([]Conversation, int, error) {
 	where := ""
 	args := []any{limit, offset}
@@ -562,7 +657,7 @@ func (s *Service) ListConversations(ctx context.Context, status string, limit, o
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, chat_id, lead_id, user_id, status,
+		SELECT id, chat_id, lead_id, user_id, status, channel,
 		       COALESCE(telegram_username, ''), COALESCE(telegram_name, ''),
 		       COALESCE(escalation_reason, ''), escalated_at, last_message_at, created_at
 		FROM support_conversations `+where+`
@@ -576,11 +671,15 @@ func (s *Service) ListConversations(ctx context.Context, status string, limit, o
 	conversations := make([]Conversation, 0, limit)
 	for rows.Next() {
 		var c Conversation
+		var chatID sql.NullInt64
 		var escalatedAt sql.NullTime
-		if err := rows.Scan(&c.ID, &c.ChatID, &c.LeadID, &c.UserID, &c.Status,
+		if err := rows.Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status, &c.Channel,
 			&c.Username, &c.Name, &c.EscalationReason, &escalatedAt,
 			&c.LastMessageAt, &c.CreatedAt); err != nil {
 			return nil, 0, fmt.Errorf("scan support conversation: %w", err)
+		}
+		if chatID.Valid {
+			c.ChatID = chatID.Int64
 		}
 		if escalatedAt.Valid {
 			c.EscalatedAt = &escalatedAt.Time
@@ -592,21 +691,30 @@ func (s *Service) ListConversations(ctx context.Context, status string, limit, o
 
 // Thread returns one conversation with its messages and, when the chat came
 // from a saved onboarding attempt, what that attempt held.
+//
+// chat_id сканируется через sql.NullInt64, а не напрямую в Conversation.ChatID
+// — как в byID, byWebTokenHash и ListConversations: у веб-разговора он NULL с
+// миграции 076, и это тот самый путь, которым оператор открывает разговор из
+// очереди.
 func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversation, []Message, *LeadSummary, error) {
 	var c Conversation
+	var chatID sql.NullInt64
 	var escalatedAt sql.NullTime
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, chat_id, lead_id, user_id, status,
 		       COALESCE(telegram_username, ''), COALESCE(telegram_name, ''),
 		       COALESCE(escalation_reason, ''), escalated_at, last_message_at, created_at
 		FROM support_conversations WHERE id = $1`, conversationID).
-		Scan(&c.ID, &c.ChatID, &c.LeadID, &c.UserID, &c.Status, &c.Username, &c.Name,
+		Scan(&c.ID, &chatID, &c.LeadID, &c.UserID, &c.Status, &c.Username, &c.Name,
 			&c.EscalationReason, &escalatedAt, &c.LastMessageAt, &c.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil, nil, fmt.Errorf("conversation not found: %w", apperrors.ErrNotFound)
 	}
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("load support conversation: %w", err)
+	}
+	if chatID.Valid {
+		c.ChatID = chatID.Int64
 	}
 	if escalatedAt.Valid {
 		c.EscalatedAt = &escalatedAt.Time
@@ -651,6 +759,36 @@ func (s *Service) Thread(ctx context.Context, conversationID string) (*Conversat
 	}
 
 	return &c, messages, lead, nil
+}
+
+// MessagesFor отдаёт переписку разговора в порядке появления — без сведений о
+// заявке: посетителю с предъявительским токеном они не нужны и не должны быть
+// доступны.
+func (s *Service) MessagesFor(ctx context.Context, conversationID string) ([]Message, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, author, text, created_at, delivered_at FROM support_messages
+		 WHERE conversation_id = $1 ORDER BY created_at ASC`, conversationID)
+	if err != nil {
+		return nil, fmt.Errorf("load support messages: %w", err)
+	}
+	defer rows.Close()
+
+	messages := make([]Message, 0)
+	for rows.Next() {
+		var m Message
+		var deliveredAt sql.NullTime
+		if err := rows.Scan(&m.ID, &m.Author, &m.Text, &m.CreatedAt, &deliveredAt); err != nil {
+			return nil, fmt.Errorf("scan support message: %w", err)
+		}
+		// Про входящее говорить о доставке нечего, а про исходящее — говорить
+		// обязательно, в том числе когда ответа нет: именно это и есть новость.
+		if m.Author != "user" {
+			delivered := deliveredAt.Valid
+			m.Delivered = &delivered
+		}
+		messages = append(messages, m)
+	}
+	return messages, rows.Err()
 }
 
 func (s *Service) leadSummary(ctx context.Context, leadID string) (*LeadSummary, error) {

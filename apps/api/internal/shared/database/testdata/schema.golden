@@ -130,11 +130,13 @@ INDEX reset_tokens idx_reset_tokens_user_id btree (user_id)
 INDEX reset_tokens reset_tokens_pkey btree (id)
 INDEX reset_tokens reset_tokens_token_hash_key btree (token_hash)
 INDEX schema_migrations schema_migrations_pkey btree (version)
+INDEX support_conversations idx_support_conversations_channel btree (channel, status)
 INDEX support_conversations idx_support_conversations_last_message btree (last_message_at)
 INDEX support_conversations idx_support_conversations_lead_recency btree (lead_id, last_message_at DESC)
 INDEX support_conversations idx_support_conversations_status btree (status, escalated_at)
 INDEX support_conversations support_conversations_chat_id_key btree (chat_id)
 INDEX support_conversations support_conversations_pkey btree (id)
+INDEX support_conversations support_conversations_web_token_hash_key btree (web_token_hash)
 INDEX support_messages idx_support_messages_conversation btree (conversation_id, created_at)
 INDEX support_messages support_messages_pkey btree (id)
 INDEX support_relays idx_support_relays_client btree (client_id, created_at DESC)
@@ -560,7 +562,8 @@ schema_migrations.applied_at timestamp with time zone NOT NULL DEFAULT now()
 schema_migrations.name text NOT NULL
 schema_migrations.version integer NOT NULL
 support_conversations.answered_at timestamp with time zone
-support_conversations.chat_id bigint NOT NULL
+support_conversations.channel text NOT NULL DEFAULT 'telegram'
+support_conversations.chat_id bigint
 support_conversations.closed_at timestamp with time zone
 support_conversations.closed_by bigint
 support_conversations.created_at timestamp with time zone NOT NULL DEFAULT now()
@@ -574,6 +577,7 @@ support_conversations.status text NOT NULL DEFAULT 'open'
 support_conversations.telegram_name text
 support_conversations.telegram_username text
 support_conversations.user_id bigint
+support_conversations.web_token_hash text
 support_messages.author text NOT NULL
 support_messages.conversation_id uuid NOT NULL
 support_messages.created_at timestamp with time zone NOT NULL DEFAULT now()

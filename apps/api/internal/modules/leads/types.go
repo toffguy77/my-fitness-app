@@ -75,9 +75,8 @@ type QueueEntry struct {
 	ConversationID *string `json:"conversation_id,omitempty"`
 }
 
-// CreateInput is what the contact step submits.
-
-// CreateInput is what the contact step, and now the result screen, submits.
+// CreateInput is what the contact step, the result screen and the support
+// bot submit.
 type CreateInput struct {
 	Email      string     `json:"email" binding:"required,email"`
 	Name       string     `json:"name"`

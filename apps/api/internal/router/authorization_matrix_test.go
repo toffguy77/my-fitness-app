@@ -132,6 +132,22 @@ var protectedRoutes = map[string]protection{
 	"GET /api/v1/curator/support/conversations/:id":        protRole,
 	"POST /api/v1/curator/support/conversations/:id/reply": protRole,
 	"POST /api/v1/curator/support/conversations/:id/close": protRole,
+
+	// Веб-виджет поддержки. Ни один из трёх маршрутов не несёт :id в пути —
+	// routeHasResourceParam их не потребует — но занесены сюда намеренно,
+	// тем же жестом, что и остальная таблица: разговор адресуется токеном в
+	// теле или строке запроса, а не идентификатором в пути, именно для того,
+	// чтобы посторонний не мог перебрать чужие разговоры инкрементом id.
+	// protPublic здесь — не "проверка не нужна", а "проверка — сам токен":
+	// поддельный, чужой и удалённый неразличимы наружу (web.go,
+	// WebConversationByToken), и это доказано интеграционным тестом на живой
+	// базе (TestWebConversationByTokenRejectsForeignTokenAmongRealConversations),
+	// а не только на пустой таблице, где отказ был бы бесплатным.
+	"POST /api/v1/public/support/web":         protPublic,
+	"POST /api/v1/public/support/web/message": protPublic,
+	"GET /api/v1/public/support/web/messages": protPublic,
+	"POST /api/v1/public/support/web/human":   protPublic,
+	"POST /api/v1/public/support/web/contact": protPublic,
 }
 
 // nonResourceParams are path parameters that address a value rather than

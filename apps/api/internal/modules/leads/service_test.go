@@ -110,38 +110,43 @@ func TestCreate_SavesTheLeadWithoutTheContactConsent(t *testing.T) {
 }
 
 // A contact can now be left in three places: the wizard's contact step, the
-// result screen, and the bot. Without recording where, the three cannot be
-// compared. Every arg but the last is a don't-care: only the position the
-// capture source lands in is under test.
+// result screen (feat/landing-conversion), and the support bot (this
+// branch). Without recording where, the three cannot be compared. Every arg
+// but the last is a don't-care: only the position the capture source lands
+// in is under test.
 func TestCreate_StoresCaptureSource(t *testing.T) {
-	service, mock := setupService(t)
+	for _, source := range []string{"result", "bot"} {
+		t.Run(source, func(t *testing.T) {
+			service, mock := setupService(t)
 
-	in := validInput()
-	in.CaptureSource = "result"
+			in := validInput()
+			in.CaptureSource = source
 
-	mock.ExpectBegin()
-	mock.ExpectQuery("INSERT INTO leads").
-		WithArgs(
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-			sqlmock.AnyArg(), "result",
-		).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
-			AddRow("lead-9", time.Now(), time.Now()))
-	mock.ExpectExec("INSERT INTO user_consents").
-		WithArgs("lead-9", "data_processing", true, "ip", "ua").
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec("INSERT INTO user_consents").
-		WithArgs("lead-9", "contact", true, "ip", "ua").
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectCommit()
+			mock.ExpectBegin()
+			mock.ExpectQuery("INSERT INTO leads").
+				WithArgs(
+					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sqlmock.AnyArg(), source,
+				).
+				WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+					AddRow("lead-9", time.Now(), time.Now()))
+			mock.ExpectExec("INSERT INTO user_consents").
+				WithArgs("lead-9", "data_processing", true, "ip", "ua").
+				WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectExec("INSERT INTO user_consents").
+				WithArgs("lead-9", "contact", true, "ip", "ua").
+				WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectCommit()
 
-	_, _, err := service.Create(context.Background(), in, "ip", "ua")
+			_, _, err := service.Create(context.Background(), in, "ip", "ua")
 
-	require.NoError(t, err)
-	assert.NoError(t, mock.ExpectationsWereMet())
+			require.NoError(t, err)
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
 }
 
 // An old client that has never heard of capture_source must not write an

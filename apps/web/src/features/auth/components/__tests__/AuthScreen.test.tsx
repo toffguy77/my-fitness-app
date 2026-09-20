@@ -2,11 +2,23 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuthScreen } from '../AuthScreen'
+import { providersApi } from '@/features/auth/api/providers'
 
 const mockLogin = jest.fn()
 const mockRegister = jest.fn()
 
 let mockIsLoading = false
+
+// ProviderButtons fetches its own list of providers; the real endpoint has
+// no MSW handler in this suite (an unmocked call just fails and the
+// component renders nothing), so tests that need the buttons on screen
+// control the list explicitly.
+jest.mock('@/features/auth/api/providers', () => {
+  const actual = jest.requireActual('@/features/auth/api/providers')
+  return { ...actual, providersApi: { ...actual.providersApi, list: jest.fn() } }
+})
+
+const listProviders = providersApi.list as jest.Mock
 
 jest.mock('@/features/auth/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -157,6 +169,9 @@ describe('AuthScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockIsLoading = false
+    // Default: no provider credentials configured, so ProviderButtons
+    // renders nothing unless a test opts in with its own list.
+    listProviders.mockResolvedValue([])
   })
 
   it('shows the magic-link form by default, not the password form', () => {
@@ -378,5 +393,48 @@ describe('AuthScreen', () => {
 
     expect(screen.queryByLabelText('Войти')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Зарегистрироваться')).toBeInTheDocument()
+  })
+
+  // Regression: sign-in via an external provider is a third, independent
+  // entry method — not a sub-case of the password form. It must render (and
+  // be visible, not merely present under a `hidden` ancestor) no matter
+  // which entryMethod is on screen and in both login/register mode.
+  describe('provider sign-in (third entry method, independent of link/password)', () => {
+    it('is visible on the default magic-link screen', async () => {
+      listProviders.mockResolvedValue(['yandex'])
+      render(<AuthScreen />)
+
+      expect(await screen.findByTestId('oauth-yandex')).toBeVisible()
+    })
+
+    it('is visible after switching to the password entry method', async () => {
+      listProviders.mockResolvedValue(['yandex'])
+      const user = userEvent.setup()
+      render(<AuthScreen />)
+      await switchToPasswordMode(user)
+
+      expect(await screen.findByTestId('oauth-yandex')).toBeVisible()
+    })
+
+    it('is visible on the link screen opened with ?mode=register', async () => {
+      listProviders.mockResolvedValue(['yandex'])
+      render(<AuthScreen initialMode="register" />)
+
+      expect(await screen.findByTestId('oauth-yandex')).toBeVisible()
+    })
+
+    it('labels itself for signing in on the login-mode link screen', async () => {
+      listProviders.mockResolvedValue(['yandex'])
+      render(<AuthScreen />)
+
+      expect(await screen.findByText('или войдите через')).toBeVisible()
+    })
+
+    it('labels itself for registering on the register-mode link screen', async () => {
+      listProviders.mockResolvedValue(['yandex'])
+      render(<AuthScreen initialMode="register" />)
+
+      expect(await screen.findByText('или зарегистрируйтесь через')).toBeVisible()
+    })
   })
 })

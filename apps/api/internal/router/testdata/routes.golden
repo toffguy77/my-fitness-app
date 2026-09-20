@@ -69,6 +69,7 @@ GET /api/v1/public/content
 GET /api/v1/public/content/:id
 GET /api/v1/public/leads/resume
 GET /api/v1/public/leads/unsubscribe
+GET /api/v1/public/support/web/messages
 GET /api/v1/users/me/curator-group
 GET /api/v1/users/me/deletion
 GET /api/v1/users/me/export
@@ -136,6 +137,10 @@ POST /api/v1/public/leads
 POST /api/v1/public/leads/step
 POST /api/v1/public/nutrition/calculate
 POST /api/v1/public/support/telegram
+POST /api/v1/public/support/web
+POST /api/v1/public/support/web/contact
+POST /api/v1/public/support/web/human
+POST /api/v1/public/support/web/message
 POST /api/v1/users/avatar
 POST /api/v1/users/me/deletion
 POST /api/v1/users/me/deletion/code

@@ -130,6 +130,10 @@ export default defineConfig<SessionOptions>({
         'tests/curator-leads.spec.ts',
         // Вход по одноразовой ссылке целиком: запрос, письмо, переход, сессия.
         'tests/magic-link.spec.ts',
+        // Гость без аккаунта — виджет поддержки живёт своим токеном в
+        // localStorage, а не сессией, и один из сценариев подписывается
+        // куратором отдельно, посреди теста, через свой собственный signIn.
+        'tests/support-widget.spec.ts',
       ],
     },
   ],

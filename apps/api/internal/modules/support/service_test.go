@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/stretchr/testify/assert"
@@ -41,10 +42,36 @@ func (f *fakeSender) SendMessage(_ context.Context, _ int64, text string) error 
 type fakeLeads struct {
 	id  string
 	err error
+
+	// Create records what it was asked to save, so a test can assert the
+	// consents and capture source actually reached it, and returns
+	// createErr/createLead/createToken configured below.
+	createIn    leads.CreateInput
+	createErr   error
+	createLead  *leads.Lead
+	createToken string
+	createCalls int
 }
 
 func (f *fakeLeads) LeadIDForToken(context.Context, string) (string, error) {
 	return f.id, f.err
+}
+
+func (f *fakeLeads) Create(_ context.Context, in leads.CreateInput, _, _ string) (*leads.Lead, string, error) {
+	f.createCalls++
+	f.createIn = in
+	if f.createErr != nil {
+		return nil, "", f.createErr
+	}
+	lead := f.createLead
+	if lead == nil {
+		lead = &leads.Lead{ID: "lead-new"}
+	}
+	token := f.createToken
+	if token == "" {
+		token = "lead-token"
+	}
+	return lead, token, nil
 }
 
 func setupSupport(t *testing.T, answerer *fakeAnswerer) (*Service, *fakeSender, sqlmock.Sqlmock) {
@@ -61,8 +88,8 @@ func setupSupport(t *testing.T, answerer *fakeAnswerer) (*Service, *fakeSender, 
 // expectConversation stands in for the upsert every incoming message performs.
 func expectConversation(mock sqlmock.Sqlmock, status string) {
 	mock.ExpectQuery("INSERT INTO support_conversations").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "chat_id", "lead_id", "user_id", "status"}).
-			AddRow("conv-1", int64(555), nil, nil, status))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "chat_id", "lead_id", "user_id", "status", "channel"}).
+			AddRow("conv-1", int64(555), nil, nil, status, ChannelTelegram))
 }
 
 func expectRecordedMessage(mock sqlmock.Sqlmock) {
@@ -218,6 +245,87 @@ func TestAllowModelCall_StopsAtTheDailyCeiling(t *testing.T) {
 	// A new day starts a new budget.
 	service.callsDay = time.Now().UTC().Add(-48 * time.Hour).Truncate(24 * time.Hour)
 	assert.True(t, service.allowModelCall())
+}
+
+// setupServiceWithDailyLimit builds a service against a mocked database with
+// a chosen daily ceiling — the one thing TestWebCallsExhaustSharedModelCeiling
+// and TestWebAnswersHonestlyWhenCeilingExhausted need to vary.
+func setupServiceWithDailyLimit(t *testing.T, limit int) (*Service, sqlmock.Sqlmock) {
+	t.Helper()
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	service := NewService(db, logger.New(), &fakeAnswerer{}, &fakeSender{}, nil, limit)
+	return service, mock
+}
+
+// Потолок защищает счёт, а счёт один. Веб-канал не имеет собственного лимита
+// вызовов модели — allowModelCall не принимает канал вовсе, поэтому обращение
+// с виджета тратит тот же бюджет, что и телеграмное. Тест красится прямо на
+// числе разрешённых вызовов, а не через текст ответа: подмена ceiling-логики
+// отдельным веб-лимитом не пройдёт мимо этой проверки, даже если текст ответа
+// останется прежним.
+func TestWebCallsExhaustSharedModelCeiling(t *testing.T) {
+	svc, _ := setupServiceWithDailyLimit(t, 2)
+
+	assert.True(t, svc.allowModelCall())
+	assert.True(t, svc.allowModelCall())
+	assert.False(t, svc.allowModelCall(), "третий вызов обязан быть отклонён независимо от канала")
+}
+
+// expectWebConversation задаёт ожидания на один проход HandleMessage по
+// веб-разговору с исчерпанным потолком: вопрос посетителя записывается,
+// потолок отворачивает модель, и честный отказ записывается и помечается
+// отвеченным — никуда не отправляясь, потому что в веб-канале отправлять
+// некуда.
+func expectWebConversation(mock sqlmock.Sqlmock) {
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM support_messages`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`INSERT INTO support_messages`).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("msg-user"))
+	mock.ExpectExec(`UPDATE support_conversations SET last_message_at`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE support_conversations`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery(`INSERT INTO support_messages`).
+		WithArgs("11111111-1111-1111-1111-111111111111", "bot", escalationReply, nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("msg-bot"))
+	mock.ExpectExec(`UPDATE support_conversations SET last_message_at`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`UPDATE support_conversations SET answered_at`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+}
+
+// Существующая ветка "if !s.allowModelCall()" (service.go) уже отвечает
+// человеку и зовёт оператора в Telegram; этот тест доказывает, что для
+// веб-разговора она ведёт себя так же — а не молча зовёт модель мимо
+// исчерпанного потолка, потому что канал другой.
+//
+// Потолок исчерпывается настоящим вызовом allowModelCall, а не лимитом 0:
+// в этом коде dailyLimit == 0 значит "без ограничения" (service.go:
+// `s.dailyLimit > 0 && s.callCount >= s.dailyLimit`), а не "ничего не разрешено" —
+// лимит 0 сделал бы тест вырожденно зелёным по неверной причине.
+func TestWebAnswersHonestlyWhenCeilingExhausted(t *testing.T) {
+	svc, mock := setupServiceWithDailyLimit(t, 1)
+	require.True(t, svc.allowModelCall(), "потолок должен пропустить единственный разрешённый вызов")
+
+	expectWebConversation(mock)
+
+	err := svc.HandleMessage(context.Background(), IncomingMessage{
+		Conversation: &Conversation{
+			ID:      "11111111-1111-1111-1111-111111111111",
+			Channel: ChannelWeb,
+		},
+		Text: "вопрос",
+	})
+
+	require.NoError(t, err)
+
+	// Красится на числе обращений к модели, а не косвенно на тексте ответа.
+	answerer := svc.answerer.(*fakeAnswerer)
+	assert.Zero(t, answerer.calls, "модель не должна была вызываться — потолок исчерпан")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestPurgeOld_DeletesByLastMessage(t *testing.T) {
