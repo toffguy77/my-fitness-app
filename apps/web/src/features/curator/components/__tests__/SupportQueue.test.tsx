@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportQueue } from '../SupportQueue'
-import { adminApi, type SupportConversation, type SupportThread } from '../../api/adminApi'
+import { curatorApi, type SupportConversation, type SupportThread } from '../../api/curatorApi'
 
-jest.mock('../../api/adminApi', () => ({
-    adminApi: {
+jest.mock('../../api/curatorApi', () => ({
+    curatorApi: {
         getSupportConversations: jest.fn(),
         getSupportThread: jest.fn(),
         replyToSupport: jest.fn(),
@@ -17,7 +17,15 @@ jest.mock('react-hot-toast', () => ({
     default: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }))
 
-const api = adminApi as jest.Mocked<typeof adminApi>
+// Mirrors the mock GuestOnboarding.test.tsx uses for the same reason: the
+// lead queue's "Открыть переписку" link carries the conversation id as
+// ?conversation=, and jsdom has no App Router to read it from otherwise.
+let searchParams = new URLSearchParams()
+jest.mock('next/navigation', () => ({
+    useSearchParams: () => searchParams,
+}))
+
+const api = curatorApi as jest.Mocked<typeof curatorApi>
 
 function conversation(overrides: Partial<SupportConversation> = {}): SupportConversation {
     return {
@@ -53,7 +61,10 @@ function listReturns(conversations: SupportConversation[]) {
 }
 
 describe('SupportQueue', () => {
-    beforeEach(() => jest.clearAllMocks())
+    beforeEach(() => {
+        jest.clearAllMocks()
+        searchParams = new URLSearchParams()
+    })
 
     // The bot refusing to invent an answer is only a good trade if somebody
     // reads what it refused, so a waiting chat has to be visibly waiting.
@@ -202,5 +213,34 @@ describe('SupportQueue', () => {
         render(<SupportQueue />)
 
         expect(await screen.findByText('Отвечает бот')).toBeInTheDocument()
+    })
+
+    // The lead queue's "Открыть переписку" link points at
+    // /curator/support?conversation=<id> — there is no /curator/support/[id]
+    // route, so this is the only way a specific thread opens without a click.
+    it('opens the conversation named in the URL, no click needed', async () => {
+        searchParams = new URLSearchParams('conversation=conv-1')
+        listReturns([conversation()])
+        ;(api.getSupportThread as jest.Mock).mockResolvedValue(thread())
+
+        render(<SupportQueue />)
+
+        expect(await screen.findByText('сколько стоит куратор?')).toBeInTheDocument()
+        expect(api.getSupportThread).toHaveBeenCalledWith('conv-1')
+    })
+
+    // A stale or mistyped id in the URL must not leave the curator staring at
+    // a blank screen — the same rejection a doomed click gets, and the queue
+    // underneath stays reachable rather than disappearing along with it.
+    it('says so when the URL names a conversation that no longer exists, and keeps the queue visible', async () => {
+        searchParams = new URLSearchParams('conversation=gone')
+        listReturns([conversation()])
+        ;(api.getSupportThread as jest.Mock).mockRejectedValue(new Error('not found'))
+        const toast = (await import('react-hot-toast')).default
+
+        render(<SupportQueue />)
+
+        await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Не удалось открыть обращение'))
+        expect(await screen.findByTestId('support-conversation')).toBeInTheDocument()
     })
 })

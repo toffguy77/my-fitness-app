@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +46,35 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 	}
 
 	return service, mock, cleanup
+}
+
+// expectUserRow sets up the sqlmock expectation for Login's user lookup
+// query, with the given stored password: nil for a NULL column (external
+// provider or magic-link account), or a pointer to a string for a stored
+// value (possibly empty). Columns and their order are taken from the actual
+// query in Login, not invented.
+func expectUserRow(mock sqlmock.Sqlmock, email string, password *string) {
+	var passwordArg any
+	if password != nil {
+		passwordArg = *password
+	}
+	mock.ExpectQuery("SELECT id, email").
+		WithArgs(email).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "password", "role", "email_verified",
+			"onboarding_completed", "created_at", "deletion_requested_at", "token_version",
+		}).AddRow(1, email, "Test User", passwordArg, "client", true, true, time.Now(), nil, 0))
+}
+
+// strPtr is a small helper for building *string literals inline in tests.
+func strPtr(s string) *string { return &s }
+
+// bcryptOf hashes a password for use as a stored value in test fixtures.
+func bcryptOf(t *testing.T, password string) string {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	require.NoError(t, err)
+	return string(hash)
 }
 
 func TestRegisterService(t *testing.T) {
@@ -471,4 +502,80 @@ func TestLogin_SaysNothingWhenNothingIsPending(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Nil(t, result.PendingDeletion)
+}
+
+// Аккаунт без пароля не должен выдавать себя ответом: иначе вход по паролю
+// становится способом узнать, каким образом человек регистрировался. Таких
+// аккаунтов в системе уже два вида — заведённые внешним провайдером и, после
+// этого изменения, заведённые по ссылке входа.
+func TestLoginIntoPasswordlessAccountLooksLikeWrongPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	expectUserRow(mock, "passwordless@example.com", nil)
+	_, errNoPassword := svc.Login(context.Background(),
+		"passwordless@example.com", "guess", "ip", "ua", false)
+
+	expectUserRow(mock, "withpass@example.com", strPtr(bcryptOf(t, "correct horse")))
+	_, errWrongPassword := svc.Login(context.Background(),
+		"withpass@example.com", "guess", "ip", "ua", false)
+
+	require.Error(t, errNoPassword)
+	require.Error(t, errWrongPassword)
+	assert.True(t, errors.Is(errNoPassword, apperrors.ErrInvalidCredentials),
+		"беспарольный аккаунт обязан отвечать тем же, чем неверный пароль, получено: %v", errNoPassword)
+	assert.True(t, errors.Is(errWrongPassword, apperrors.ErrInvalidCredentials))
+}
+
+// Пустая строка в базе не пароль, а отсутствие пароля. Ветка миграции
+// plaintext-пароля в bcrypt сравнивает сохранённое значение с присланным
+// напрямую, и на двух пустых строках это сравнение истинно — то есть вход
+// удаётся без пароля вовсе.
+func TestLoginRefusesEmptyStoredPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+	empty := ""
+	expectUserRow(mock, "empty@example.com", &empty)
+	_, errEmptyGuess := svc.Login(context.Background(), "empty@example.com", "", "ip", "ua", false)
+
+	expectUserRow(mock, "empty@example.com", &empty)
+	_, errAnyGuess := svc.Login(context.Background(), "empty@example.com", "что угодно", "ip", "ua", false)
+
+	assert.True(t, errors.Is(errEmptyGuess, apperrors.ErrInvalidCredentials),
+		"пустой пароль к пустому сохранённому значению обязан быть отказом, получено: %v", errEmptyGuess)
+	assert.True(t, errors.Is(errAnyGuess, apperrors.ErrInvalidCredentials))
+}
+
+// Миграция настоящего plaintext-пароля должна продолжать работать: этот тест
+// охраняет починку от того, чтобы она заодно сломала легаси-вход.
+func TestLoginStillMigratesRealPlaintextPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	stored := "legacy-plaintext"
+	expectUserRow(mock, "legacy@example.com", &stored)
+	mock.ExpectExec(`UPDATE users SET password`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("INSERT INTO refresh_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	result, err := svc.Login(context.Background(), "legacy@example.com", "legacy-plaintext", "ip", "ua", false)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// dummyBcryptHash нужен только затем, чтобы отказ беспарольному аккаунту
+// стоил процессору столько же, сколько настоящее сравнение bcrypt: разница во
+// времени ответа сообщила бы то же самое, что разница в тексте. Измерять само
+// время в тесте не годится — такая проверка шатается на загруженной машине и
+// начнёт мигать без всякой регрессии. Вместо этого сравниваем "стоимость",
+// которую bcrypt сам закодировал в хэш: если кто-то заменит константу на хэш
+// с меньшей стоимостью (например, скопирует чужой bcrypt.MinCost для тестов),
+// сравнение всё ещё "успешно" провалится по паролю, но перестанет стоить
+// нужного количества раундов — и этот тест поймает именно это, детерминированно.
+func TestDummyBcryptHashCostMatchesRealHashes(t *testing.T) {
+	cost, err := bcrypt.Cost([]byte(dummyBcryptHash))
+	require.NoError(t, err)
+	assert.Equal(t, bcrypt.DefaultCost, cost,
+		"dummyBcryptHash должен стоить процессору столько же, сколько настоящий хэш с bcrypt.DefaultCost, иначе отказ беспарольному аккаунту выдаёт себя скоростью")
 }

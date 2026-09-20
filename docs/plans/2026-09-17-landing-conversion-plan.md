@@ -21,8 +21,20 @@
 - `scripts/check-codebase-integrity.mjs`: никаких неиспользуемых `NEXT_PUBLIC_*`; объявлять переменную только вместе с читающим её кодом.
 - Локально и в E2E ходить через `scripts/dev-proxy.mjs` на **3070**. Открывать `:3069` напрямую — остаться без сессии.
 - Порог покрытия: branches 79 %, functions 85 %, lines 87 %, statements 84 %.
+- **Тест, вызывающий сбой базы, ломает операцию, а не убирает объект из схемы.** Изоляция через отдельную схему (`internal/testsupport`) не защищает от переименования или удаления таблицы: `search_path` проваливается в `public`, где лежат фикстуры `cmd/seed-e2e`, и запись уходит туда — молча и против чужих данных. Так уже случилось на задаче 4. Годный способ вызвать отказ вставки: `ALTER TABLE <таблица> ADD CONSTRAINT <имя> CHECK (false)` — операция падает, объект остаётся на месте.
+- **Интеграционный набор прогоняется целиком, а не по правленым пакетам.** В проекте есть сторожа, срабатывающие на появление новой таблицы, и живут они в чужих пакетах: `TestErasureCoversSchema` (`internal/modules/account`) требует, чтобы таблица попала в стратегии удаления аккаунта, `TestSchemaMatchesGolden` (`internal/shared/database`) — чтобы снимок схемы знал о ней. Оба падали три задачи подряд незамеченными, потому что прогонялись только правленые пакеты. После любой миграции:
+  ```
+  export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable'
+  cd apps/api && go test -tags=integration ./...
+  ```
+  Снимок схемы обновляется `UPDATE_GOLDEN=1 go test -tags=integration ./internal/shared/database/`, диff просматривается.
 - Пороговые значения и формулировки согласий проверяет `consentWording.test.ts`: текст обязан называть параметры тела и упоминать сведения о здоровье, согласие на связь остаётся отдельным.
 - Подмены скрывают дефекты: там, где проверка касается того, что попало в базу, писать интеграционный тест на живой базе (`//go:build integration`, `internal/testsupport`), а не sqlmock.
+- **Интеграционный тест требует двух вещей сразу: тега и базы.** Без `-tags=integration` файл не попадает в сборку; без `TEST_DATABASE_URL` тест делает `t.Skip` (`internal/testsupport/schema.go:34`) — и `go test` в обоих случаях печатает `ok`. Пропущенный тест не является пройденным: отчёт обязан показывать строку `--- PASS: <имя теста>`, а не только `ok <пакет>`. Команда целиком:
+  ```
+  export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable'
+  cd apps/api && go test -tags=integration ./<пакет>/ -run <Тест> -v
+  ```
 
 ---
 
@@ -99,8 +111,8 @@ ALTER TABLE users ALTER COLUMN password_hash SET NOT NULL;
 
 - [ ] **Step 3: Прогнать миграции на чистой базе**
 
-Run: `cd apps/api && go test ./internal/shared/database/`
-Expected: PASS — миграция 073 применяется в общем прогоне.
+Run: `export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable' && cd apps/api && go test -tags=integration ./internal/shared/database/ -v`
+Expected: PASS с видимыми строками `--- PASS: TestMigrationsApplyToCleanDatabase` и `--- PASS: TestMigrationsRollBackInReverse` — они и прогоняют мигратор через файлы 073. Без тега эти тесты в сборку не попадают, и `go test` печатает `ok`, ничего не проверив.
 
 - [ ] **Step 4: Проверить откат вручную**
 
@@ -632,83 +644,359 @@ git commit -m "feat(auth): аккаунт по ссылке пишет согл�
 ```
 
 ---
-### Task 5: Вход по паролю в беспарольный аккаунт неотличим от неверного пароля
+### Task 5: Вход по паролю не выдаёт беспарольный аккаунт и не пускает по пустой строке
 
 **Files:**
 - Modify: `apps/api/internal/modules/auth/service.go` (метод `Login`)
 - Modify: `apps/api/internal/modules/auth/service_test.go`
+- Create: `apps/api/internal/modules/auth/login_passwordless_integration_test.go`
 
 **Interfaces:**
-- Consumes: `users.password_hash` теперь NULL-допустим (задача 1).
-- Produces: поведение `Login` при `password_hash IS NULL`; новых имён не вводит.
+- Consumes: столбец `users.password` — он уже NULL-допустим с миграции 049 (внешние провайдеры создают аккаунт с `password = NULL`, `oauth_service.go:126-128`). Миграция для этого **не нужна**.
+- Produces: поведение `Login` при пустом и отсутствующем сохранённом пароле. Новых имён не вводит.
 
-- [ ] **Step 1: Написать падающий тест на неразличимость**
+**Что здесь на самом деле** (план изначально описывал это неверно, механизм установлен по коду и проверен на живой базе):
+
+`Login` читает пароль так:
 
 ```go
-// Аккаунт без пароля не должен выдавать себя ответом: иначе вход по паролю
-// становится способом узнать, каким образом человек регистрировался.
-func TestLoginIntoPasswordlessAccountLooksLikeWrongPassword(t *testing.T) {
-	svc, mock := setupService(t)
+var hashedPassword string
+err := s.db.QueryRowContext(ctx, query, email).Scan(..., &hashedPassword, ...)
+```
 
-	mock.ExpectQuery(`FROM users WHERE email`).
-		WithArgs("passwordless@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "password_hash"}).
-			AddRow(int64(7), "passwordless@example.com", nil))
-	_, errNoHash := svc.Login(context.Background(), "passwordless@example.com", "guess", "ip", "ua")
+Дальше идёт ветка миграции старых plaintext-паролей в bcrypt:
 
-	mock.ExpectQuery(`FROM users WHERE email`).
-		WithArgs("withpass@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "email", "password_hash"}).
-			AddRow(int64(8), "withpass@example.com", "$2a$10$notarealhashnotarealhashnotare"))
-	_, errWrongPass := svc.Login(context.Background(), "withpass@example.com", "guess", "ip", "ua")
-
-	require.Error(t, errNoHash)
-	require.Error(t, errWrongPass)
-	assert.Equal(t, errWrongPass.Error(), errNoHash.Error())
-	assert.True(t, errors.Is(errNoHash, apperrors.ErrInvalidCredentials))
+```go
+if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+    if strings.HasPrefix(hashedPassword, "$2") {
+        return nil, ErrInvalidCredentials
+    }
+    if hashedPassword != password {
+        return nil, ErrInvalidCredentials
+    }
+    // сюда — значит вход удался, пароль мигрируется в bcrypt
 }
 ```
 
-- [ ] **Step 2: Запустить тест и убедиться, что он падает**
+Отсюда два дефекта.
 
-Run: `cd apps/api && go test ./internal/modules/auth/ -run TestLoginIntoPasswordlessAccount -v`
-Expected: FAIL — скорее всего паникой на разыменовании `nil`, либо отличающимся текстом ошибки.
+**Дефект A — пустая строка пускает внутрь.** При `password = ''` в базе: bcrypt падает, префикса `$2` нет, `'' != ''` ложно — управление проваливается вниз, в «успех». Любой, кто пришлёт пустой пароль на такой аккаунт, войдёт. Сегодня недостижимо: пустую строку не пишет ни один из трёх путей записи (`reset_service.go:313`, `service.go:284`, `service.go:522`) — проверено. Но это мина: любая будущая миграция или правка, положившая пустую строку, превращает её в живой обход.
 
-- [ ] **Step 3: Реализовать**
+**Дефект B — NULL даёт не тот класс ответа.** `Scan` NULL в `string` возвращает `converting NULL to string is unsupported` (проверено на живой базе). `Login` возвращает обёрнутую ошибку, не `ErrInvalidCredentials`, — то есть внутреннюю ошибку вместо «неверный пароль». По коду ответа посторонний отличает беспарольный аккаунт от обычного. После этого плана таких аккаунтов станет много: их создаёт вход по ссылке.
+
+- [ ] **Step 1: Написать падающий тест на дефект B**
 
 ```go
-	// Аккаунт без пароля: заведён по ссылке входа и пароля не имеет. Отвечаем
-	// тем же отказом, что и на неверный пароль, и тратим то же время — разница
-	// в скорости сообщила бы то же самое, что разница в тексте.
-	if user.PasswordHash == nil {
-		bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
-		return nil, apperrors.ErrInvalidCredentials
+// Аккаунт без пароля не должен выдавать себя ответом: иначе вход по паролю
+// становится способом узнать, каким образом человек регистрировался. Таких
+// аккаунтов в системе уже два вида — заведённые внешним провайдером и, после
+// этого изменения, заведённые по ссылке входа.
+func TestLoginIntoPasswordlessAccountLooksLikeWrongPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	expectUserRow(mock, "passwordless@example.com", nil)
+	_, errNoPassword := svc.Login(context.Background(),
+		"passwordless@example.com", "guess", "ip", "ua", false)
+
+	expectUserRow(mock, "withpass@example.com", strPtr(bcryptOf(t, "correct horse")))
+	_, errWrongPassword := svc.Login(context.Background(),
+		"withpass@example.com", "guess", "ip", "ua", false)
+
+	require.Error(t, errNoPassword)
+	require.Error(t, errWrongPassword)
+	assert.True(t, errors.Is(errNoPassword, apperrors.ErrInvalidCredentials),
+		"беспарольный аккаунт обязан отвечать тем же, чем неверный пароль, получено: %v", errNoPassword)
+	assert.True(t, errors.Is(errWrongPassword, apperrors.ErrInvalidCredentials))
+}
+```
+
+`expectUserRow` — вспомогательная функция теста: ставит ожидание запроса пользователя, отдавая `password` как `nil` или как значение. Столбцы и их порядок взять из настоящего запроса в `Login`, не выдумывать.
+
+- [ ] **Step 2: Написать падающий тест на дефект A**
+
+```go
+// Пустая строка в базе не пароль, а отсутствие пароля. Ветка миграции
+// plaintext-пароля в bcrypt сравнивает сохранённое значение с присланным
+// напрямую, и на двух пустых строках это сравнение истинно — то есть вход
+// удаётся без пароля вовсе.
+func TestLoginRefusesEmptyStoredPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	empty := ""
+
+	expectUserRow(mock, "empty@example.com", &empty)
+	_, errEmptyGuess := svc.Login(context.Background(), "empty@example.com", "", "ip", "ua", false)
+
+	expectUserRow(mock, "empty@example.com", &empty)
+	_, errAnyGuess := svc.Login(context.Background(), "empty@example.com", "что угодно", "ip", "ua", false)
+
+	assert.True(t, errors.Is(errEmptyGuess, apperrors.ErrInvalidCredentials),
+		"пустой пароль к пустому сохранённому значению обязан быть отказом, получено: %v", errEmptyGuess)
+	assert.True(t, errors.Is(errAnyGuess, apperrors.ErrInvalidCredentials))
+}
+
+// Миграция настоящего plaintext-пароля должна продолжать работать: этот тест
+// охраняет починку от того, чтобы она заодно сломала легаси-вход.
+func TestLoginStillMigratesRealPlaintextPassword(t *testing.T) {
+	svc, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	stored := "legacy-plaintext"
+	expectUserRow(mock, "legacy@example.com", &stored)
+	mock.ExpectExec(`UPDATE users SET password`).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	result, err := svc.Login(context.Background(), "legacy@example.com", "legacy-plaintext", "ip", "ua", false)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+```
+
+- [ ] **Step 3: Запустить тесты и убедиться, что они падают**
+
+Run: `cd apps/api && go test ./internal/modules/auth/ -run 'TestLoginIntoPasswordlessAccount|TestLoginRefusesEmptyStoredPassword|TestLoginStillMigratesRealPlaintextPassword' -v`
+Expected: первые два FAIL (дефект B — падение `Scan`; дефект A — вход удаётся и ошибки нет), третий PASS.
+
+- [ ] **Step 4: Читать пароль как значение, которого может не быть**
+
+```go
+	var storedPassword sql.NullString
+```
+
+и в `Scan` передавать `&storedPassword` вместо `&hashedPassword`.
+
+- [ ] **Step 5: Отказывать до сравнения, когда сравнивать не с чем**
+
+Сразу после `Scan` и до всякой проверки пароля:
+
+```go
+	// Пароля нет вовсе (аккаунт заведён внешним провайдером или ссылкой входа)
+	// либо сохранена пустая строка. И то и другое — не пароль, а его
+	// отсутствие, и отвечать на это надо тем же, чем на неверный пароль:
+	// разница в ответе сообщила бы, каким способом человек регистрировался.
+	//
+	// Сравнение с фиктивным хэшем — чтобы отказ стоил столько же времени,
+	// сколько неверный пароль; разница в скорости говорит то же самое, что
+	// разница в тексте.
+	if !storedPassword.Valid || storedPassword.String == "" {
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
+		return nil, fmt.Errorf("Login.NoPassword: %w", apperrors.ErrInvalidCredentials)
 	}
 ```
 
-Где `dummyBcryptHash` — константа с настоящим bcrypt-хэшем произвольной строки, объявленная рядом:
+Константу объявить рядом с методом:
 
 ```go
-// Хэш, с которым сравнивают, когда сравнивать не с чем. Нужен, чтобы отказ
-// беспарольному аккаунту стоил столько же времени, сколько неверный пароль.
+// Хэш, с которым сравнивают, когда сравнивать не с чем: он нужен только
+// затем, чтобы отказ беспарольному аккаунту занимал столько же времени,
+// сколько неверный пароль.
 const dummyBcryptHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
 ```
 
-- [ ] **Step 4: Запустить тест**
+- [ ] **Step 6: Закрыть саму ветку миграции от пустых значений**
 
-Run: `cd apps/api && go test ./internal/modules/auth/ -run TestLoginIntoPasswordlessAccount -v`
-Expected: PASS.
+Дальше по методу заменить обращения к `hashedPassword` на `storedPassword.String`. Ветка миграции plaintext после шага 5 уже недостижима с пустым сохранённым значением, но присланный пустой пароль в ней сравнивается с непустым сохранённым и честно не совпадёт. Убедись, что условие `strings.HasPrefix(storedPassword.String, "$2")` сохранено: оно и отделяет настоящий bcrypt-хэш от легаси-значения.
 
-- [ ] **Step 5: Прогнать весь модуль**
+- [ ] **Step 7: Запустить тесты**
+
+Run: `cd apps/api && go test ./internal/modules/auth/ -run TestLogin -v`
+Expected: PASS все три, включая тест миграции legacy-пароля.
+
+- [ ] **Step 8: Написать интеграционный тест на живой базе**
+
+```go
+//go:build integration
+
+// Проверяется на живой базе намеренно: оба дефекта — про то, что приходит из
+// базы, а sqlmock отдаёт ровно то, что ему сказали отдать, и про NULL в
+// столбце не знает ничего. Дефект B и обнаружился только на живой базе.
+func TestLoginAgainstRealPasswordlessRows(t *testing.T) {
+	db := testsupport.DB(t)
+	svc := newServiceForTest(t, db)
+
+	nullID := seedUser(t, db, "null@example.com", nil)
+	emptyID := seedUser(t, db, "empty@example.com", strPtr(""))
+	require.NotZero(t, nullID)
+	require.NotZero(t, emptyID)
+
+	_, errNull := svc.Login(context.Background(), "null@example.com", "", "ip", "ua", false)
+	_, errEmpty := svc.Login(context.Background(), "empty@example.com", "", "ip", "ua", false)
+
+	assert.True(t, errors.Is(errNull, apperrors.ErrInvalidCredentials),
+		"NULL-пароль обязан давать отказ, а не внутреннюю ошибку: %v", errNull)
+	assert.True(t, errors.Is(errEmpty, apperrors.ErrInvalidCredentials),
+		"пустой пароль обязан давать отказ, а не вход: %v", errEmpty)
+}
+```
+
+- [ ] **Step 9: Прогнать интеграционный тест**
+
+Run:
+```
+export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable'
+cd apps/api && go test -tags=integration ./internal/modules/auth/ -run TestLoginAgainstRealPasswordlessRows -v
+```
+Expected: `--- PASS: TestLoginAgainstRealPasswordlessRows`. Без тега и без переменной тест не выполняется, а `go test` всё равно печатает `ok` — в отчёте должна быть строка `--- PASS:`, а не `ok`.
+
+- [ ] **Step 10: Прогнать весь модуль**
 
 Run: `cd apps/api && go test ./internal/modules/auth/`
-Expected: PASS — существующий вход по паролю не затронут.
+Expected: PASS — существующий вход по паролю и вход через внешнего провайдера не затронуты.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add apps/api/internal/modules/auth/service.go apps/api/internal/modules/auth/service_test.go
-git commit -m "fix(auth): беспарольный аккаунт не выдаёт себя ответом на вход по паролю"
+git add apps/api/internal/modules/auth/
+git commit -m "fix(auth): пустой и отсутствующий пароль дают отказ, а не вход
+
+Login читал пароль в string, поэтому NULL ронял Scan и возвращал
+внутреннюю ошибку вместо неверных учётных данных — по классу ответа
+беспарольный аккаунт был отличим от обычного.
+
+Хуже: ветка миграции plaintext-пароля сравнивала сохранённое значение с
+присланным напрямую, и на двух пустых строках сравнение истинно. Аккаунт
+с пустой строкой в password пускал внутрь по пустому паролю. Сегодня
+недостижимо — пустую строку не пишет ни один путь, — но вход по ссылке
+добавляет беспарольные аккаунты, и мину надо снять до этого."
+```
+
+---
+
+### Task 5а: Беспарольный пользователь может удалить свой аккаунт
+
+**Files:**
+- Modify: `apps/api/internal/modules/account/service.go` (`RequestDeletion`)
+- Modify: `apps/api/internal/modules/account/handler.go`
+- Modify: `apps/api/internal/modules/auth/handler.go` (отдать признак наличия пароля)
+- Modify: `apps/web/src/features/settings/components/SettingsPrivacy.tsx`
+- Test: `apps/api/internal/modules/account/deletion_passwordless_integration_test.go`, `apps/web/src/features/settings/components/__tests__/SettingsPrivacy.test.tsx`
+
+**Почему эта задача существует.** Задача 5 починила `RequestDeletion` так, что он больше не падает на беспарольном аккаунте. Но форма удаления держит кнопку заблокированной условием `!password` (`SettingsPrivacy.tsx:212`), а пароля у такого человека нет. То есть удаление данных для него по-прежнему недоступно — сломано не пятисоткой, а неактивной кнопкой.
+
+Владелец продукта выбрал: **необратимое действие подтверждается кодом с почты**, а не одной действующей сессией. Причина — асимметрия, которую нашло ревью: для аккаунта с паролем угнанной сессии мало, а для беспарольного её хватало бы.
+
+**Почему код, а не ссылка.** Человек стоит в настройках и уже ввёл подтверждающую фразу. Ссылка выкинула бы его на другую страницу и потеряла контекст; код оставляет на месте. Для входа решение обратное — там оставлена ссылка, потому что человек ещё никуда не пришёл.
+
+**Interfaces:**
+- Consumes: существующий `VerificationService` (`auth/verification_service.go`) — шестизначные коды, срок 10 минут, не более 5 попыток, коды хранятся хэшами, повторная отправка ограничена; таблица `email_verification_codes` (миграция 027). Подходит целиком: при удалении пользователь всегда есть, а `user_id` в таблице объявлен `NOT NULL`.
+- Produces: признак наличия пароля в ответе о текущем пользователе; подтверждение удаления кодом.
+
+- [ ] **Step 1: Написать падающий тест — форма не даёт удалиться без пароля**
+
+```tsx
+it('даёт удалиться аккаунту без пароля — подтверждением с почты', async () => {
+    renderPrivacy({ hasPassword: false })
+
+    await userEvent.type(screen.getByLabelText(/подтвержд/i), CONFIRM_PHRASE)
+
+    // Поля пароля быть не должно: его неоткуда взять.
+    expect(screen.queryByLabelText(/пароль/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /удалить/i })).toBeEnabled()
+})
+
+it('аккаунту с паролем по-прежнему нужен пароль', async () => {
+    renderPrivacy({ hasPassword: true })
+
+    await userEvent.type(screen.getByLabelText(/подтвержд/i), CONFIRM_PHRASE)
+
+    expect(screen.getByLabelText(/пароль/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /удалить/i })).toBeDisabled()
+})
+```
+
+- [ ] **Step 2: Написать падающий тест на подтверждение кодом**
+
+```go
+//go:build integration
+
+// Необратимое действие для беспарольного аккаунта подтверждается кодом с
+// почты, а не одной действующей сессией: для аккаунта с паролем угнанной
+// сессии мало, и беспарольный не должен защищаться слабее.
+func TestPasswordlessDeletionRequiresEmailedCode(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_code")
+	svc := newAccountServiceForTest(t, db)
+
+	userID := seedPasswordlessUser(t, db, "nopass@example.test")
+
+	// Без кода — отказ, и аккаунт не помечен к удалению.
+	err := svc.RequestDeletion(context.Background(), userID, "", "")
+	require.Error(t, err)
+	assertNotScheduledForDeletion(t, db, userID)
+
+	code := requestDeletionCode(t, svc, userID)
+
+	require.NoError(t, svc.RequestDeletion(context.Background(), userID, "", code))
+	assertScheduledForDeletion(t, db, userID)
+}
+
+// Перебор шести цифр закрывается счётчиком попыток, как у подтверждения почты.
+func TestPasswordlessDeletionCodeIsRateLimited(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_code_bruteforce")
+	svc := newAccountServiceForTest(t, db)
+
+	userID := seedPasswordlessUser(t, db, "brute@example.test")
+	requestDeletionCode(t, svc, userID)
+
+	var lastErr error
+	for i := 0; i < 6; i++ {
+		lastErr = svc.RequestDeletion(context.Background(), userID, "", "000000")
+	}
+
+	assert.True(t, errors.Is(lastErr, apperrors.ErrTooManyAttempts))
+	assertNotScheduledForDeletion(t, db, userID)
+}
+
+// Аккаунт с паролем не меняет поведения: код ему не нужен и не спрашивается.
+func TestDeletionWithPasswordIsUnchanged(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "deletion_with_password")
+	svc := newAccountServiceForTest(t, db)
+
+	userID := seedUserWithPassword(t, db, "haspass@example.test", "верный пароль")
+
+	require.NoError(t, svc.RequestDeletion(context.Background(), userID, "верный пароль", ""))
+	assertScheduledForDeletion(t, db, userID)
+}
+```
+
+- [ ] **Step 3: Запустить и убедиться, что падают**
+
+Run:
+```
+export TEST_DATABASE_URL='postgres://burcev:burcev@localhost:5432/burcev_test?sslmode=disable'
+cd apps/api && go test -tags=integration ./internal/modules/account/ -run 'TestPasswordlessDeletion|TestDeletionWithPassword' -v
+```
+Expected: первые два FAIL, третий PASS — он охраняет неизменность пути с паролем.
+
+- [ ] **Step 4: Отдать признак наличия пароля клиенту**
+
+`GetCurrentUser` (`auth/handler.go:453`) сейчас отвечает из токена и в базу не ходит. Добавь `has_password` — это один запрос по первичному ключу. В комментарии объясни, почему эндпоинт перестал быть чисто токенным: форма удаления обязана знать, что спрашивать, а вывести это из токена нельзя — пароль могли завести уже после его выдачи.
+
+- [ ] **Step 5: Принимать код в `RequestDeletion`**
+
+Для аккаунта с паролем — прежняя проверка, без изменений. Для беспарольного — проверка кода через существующий `VerificationService`. Отсутствие и того и другого — отказ, а не пропуск.
+
+- [ ] **Step 6: Добавить отправку кода подтверждения удаления**
+
+Отдельная тема письма: человек должен видеть в заголовке, что подтверждает удаление, а не вход. Тема и шаблон регистрируются в `email/dictionary.go`, как все остальные.
+
+- [ ] **Step 7: Переделать форму**
+
+Аккаунту с паролем — как сейчас. Беспарольному — кнопка «Прислать код», поле для шести цифр, и кнопка удаления,活ная при заполненной фразе и введённом коде. Поля пароля у него нет вовсе.
+
+- [ ] **Step 8: Прогнать всё**
+
+Run: `cd apps/api && go test -tags=integration ./... && go test ./...`
+Run: `cd apps/web && npx jest src/features/settings/`
+Expected: зелено; тест неизменности пути с паролем проходит.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add apps/api/internal/modules/account/ apps/api/internal/modules/auth/ apps/api/internal/shared/email/ apps/web/src/features/settings/
+git commit -m "feat(account): беспарольный пользователь удаляет аккаунт по коду с почты"
 ```
 
 ---
@@ -1084,8 +1372,37 @@ git commit -m "feat(auth): страница перехода по ссылке �
 - Create: `apps/web/src/app/__tests__/page.test.tsx` (или дополнить существующий в этом каталоге)
 
 **Interfaces:**
-- Consumes: `magicLinkApi` не нужен — страница остаётся серверной; признак включённых способностей приходит из существующего источника, определённого в задаче 1.3 предложения.
+- Consumes: `INTERNAL_API_URL` (умолчание `http://api:4000`) — серверный путь к API, которым уже пользуются `src/app/sitemap.ts:4` и `src/app/content/[id]/page.tsx:5`.
 - Produces: ничего для других задач.
+
+**Откуда страница узнаёт о способностях** (вопрос, оставленный открытым в предложении, решён так):
+
+Лендинг — серверный компонент, поэтому он спрашивает у API его собственное мнение о себе:
+
+```ts
+const API_URL = process.env.INTERNAL_API_URL || 'http://api:4000'
+
+async function enabledFeatures(): Promise<Record<string, boolean>> {
+    try {
+        const res = await fetch(`${API_URL}/ready`, {
+            next: { revalidate: 60 },
+            signal: AbortSignal.timeout(2000),
+        })
+        if (!res.ok) return {}
+        const data = await res.json()
+        return data?.features || {}
+    } catch {
+        // Обещание, которое нельзя подтвердить, не даётся: при недоступном
+        // API страница рендерится без утверждений о способностях, а не с
+        // ними. Лендинг при этом открывается — он и без тезиса работает.
+        return {}
+    }
+}
+```
+
+*Почему `/ready`, а не переменная сборки:* способность выводится из наличия учётных данных у API (`config.Features`), и второй источник правды разошёлся бы с первым молча. `/ready` отдаёт `features` (`internal/router/router.go:195`) — заметь, именно `/ready`, а не `/health`: в `CLAUDE.md` написано иначе, и это ошибка документации.
+
+*Почему пустой объект при отказе:* все утверждения о способностях исчезают. Это честнее, чем показать обещание, которое некому подтвердить.
 
 - [ ] **Step 1: Написать падающие тесты на структуру**
 
@@ -1181,8 +1498,10 @@ git commit -m "feat(web): переписать посадочную страни
 - Modify: `apps/web/src/features/onboarding/api/guest.ts`
 - Modify: `apps/web/src/features/onboarding/components/__tests__/GuestOnboarding.test.tsx`
 - Modify: `apps/api/internal/modules/leads/service.go` (сохранение источника)
-- Create: `apps/api/migrations/074_leads_capture_source_up.sql`
-- Create: `apps/api/migrations/074_leads_capture_source_down.sql`
+- Create: `apps/api/migrations/<следующий свободный номер>_leads_capture_source_up.sql`
+- Create: `apps/api/migrations/<следующий свободный номер>_leads_capture_source_down.sql`
+
+**Номер бери фактический,** а не записанный здесь: пока план писался, 073 и 074 заняли ссылки входа и назначение кода подтверждения. Посмотри `ls apps/api/migrations/` и возьми следующий свободный.
 
 **Interfaces:**
 - Consumes: `guestApi.saveLead` и `rememberLeadToken` — существующие (`features/onboarding/api/guest.ts`); `leads.CreateInput` (`modules/leads/types.go`).
@@ -1192,7 +1511,7 @@ git commit -m "feat(web): переписать посадочную страни
 
 ```sql
 -- Migration: Lead capture source
--- Version: 074
+-- Version: <следующий свободный>
 --
 -- Контакт теперь берётся в трёх местах: шаг контакта в мастере, экран
 -- результата и разговор с ботом. Без отметки источника сравнить их между собой
@@ -1286,7 +1605,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/api/migrations/074_leads_capture_source_up.sql apps/api/migrations/074_leads_capture_source_down.sql apps/api/internal/modules/leads/ apps/web/src/features/onboarding/
+git add apps/api/migrations/ apps/api/internal/modules/leads/ apps/web/src/features/onboarding/
 git commit -m "feat(leads): захват контакта на экране результата расчёта"
 ```
 
@@ -1378,6 +1697,77 @@ Expected: PASS.
 ```bash
 git add apps/web/src/shared/analytics/events.ts apps/api/internal/modules/analytics/ apps/web/src/features/
 git commit -m "feat(analytics): события входа по ссылке и захвата контакта"
+```
+
+---
+
+### Task 11а: Руководство пользователя и база знаний бота
+
+**Files:**
+- Modify: `docs/user-guide/01-начало-работы.md`
+- Modify: `apps/api/internal/modules/support/knowledge/` (через `make sync-knowledge`)
+- Test: `apps/api/internal/modules/support/knowledge_test.go` (существующий `TestKnowledgeMatchesUserGuide`)
+
+**Почему эта задача существует.** `docs/user-guide/` — не только документация: Telegram-бот и веб-виджет отвечают **строго по ней** и отказываются от всего, чего в ней нет. Сейчас руководство говорит: «Придумай пароль: минимум 8 символов…» при регистрации и «Введи email и пароль» при входе.
+
+После этого изменения оба утверждения станут неправдой. Человек, спросивший бота «можно ли войти без пароля», получит отказ — бот честно скажет, что не знает, потому что в руководстве этого нет. А человек, прочитавший руководство, решит, что пароль обязателен.
+
+`CLAUDE.md` требует этого прямо: при изменении поведения продукта обновить `docs/user-guide/` и прогнать `make sync-knowledge`. `TestKnowledgeMatchesUserGuide` роняет сборку, если встроенная копия разошлась с файлами.
+
+- [ ] **Step 1: Написать падающий тест на покрытие нового способа входа**
+
+```go
+// Бот отвечает строго по руководству. Пока в нём нет входа по ссылке,
+// на вопрос «можно ли войти без пароля» бот честно откажется — и человек
+// решит, что нельзя.
+func TestKnowledgeCoversSignInByLink(t *testing.T) {
+	kb, err := LoadKnowledge()
+	require.NoError(t, err)
+
+	text := strings.ToLower(kb.Text())
+
+	assert.Contains(t, text, "ссылк")
+	assert.Contains(t, text, "без пароля")
+}
+```
+
+Имя загрузчика и метода сверь с `support/knowledge.go` — здесь они названы по смыслу.
+
+- [ ] **Step 2: Запустить и убедиться, что падает**
+
+Run: `cd apps/api && go test ./internal/modules/support/ -run TestKnowledgeCoversSignInByLink -v`
+Expected: FAIL.
+
+- [ ] **Step 3: Переписать раздел о регистрации и входе**
+
+В `01-начало-работы.md`:
+
+- **Регистрация**: пароль перестаёт быть обязательным. Описать оба пути — по ссылке и с паролем — и сказать, что пароль можно завести позже в настройках или не заводить вовсе.
+- **Вход**: описать вход по ссылке. Прямо назвать срок — 15 минут — и то, что ссылка срабатывает один раз. Человек, у которого она перестала работать, должен понимать почему, а не думать, что сломалось.
+- **Отдельно сказать то, что неочевидно**: ссылка открывает сессию на том устройстве, где её открыли. Запросил на компьютере, открыл на телефоне — вошёл телефон. Это частый вопрос, и лучше ответить на него в руководстве, чем в поддержке.
+- **Восстановление пароля**: оставить, но отметить, что человеку без пароля восстанавливать нечего — он входит по ссылке.
+
+Писать как руководство, а не как рекламу: файл читают и люди, и бот.
+
+- [ ] **Step 4: Синхронизировать встроенную копию**
+
+Run: `cd apps/api && make sync-knowledge`
+Expected: файлы в `internal/modules/support/knowledge/` обновлены.
+
+- [ ] **Step 5: Прогнать тесты**
+
+Run: `cd apps/api && go test ./internal/modules/support/ -v`
+Expected: PASS, включая `TestKnowledgeMatchesUserGuide` — он падает, если копия разошлась с источником.
+
+- [ ] **Step 6: Проверить, что бот действительно отвечает**
+
+Задать боту вопрос «можно ли войти без пароля» и приложить ответ к PR. Ответ должен опираться на новый текст и не содержать выдумок.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add docs/user-guide/ apps/api/internal/modules/support/knowledge/
+git commit -m "docs(user-guide): вход по ссылке без пароля"
 ```
 
 ---

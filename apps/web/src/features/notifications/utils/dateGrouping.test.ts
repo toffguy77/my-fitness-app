@@ -188,11 +188,15 @@ describe('groupNotificationsByDate', () => {
     });
 
     it('should sort notifications within each group by createdAt (newest first)', () => {
-        // Use times guaranteed to be within today (minutes ago, not hours)
+        // Anchor all three times to today's calendar date explicitly, rather
+        // than subtracting minutes from "now": "60 minutes ago" rolls into
+        // yesterday whenever the test runs within the first hour after local
+        // midnight, which made this test fail both alone and in company
+        // depending only on the wall-clock minute it happened to run.
         const now = new Date();
-        const notification1 = createNotificationWithDate('1', new Date(now.getTime() - 10 * 60 * 1000)); // 10 min ago
-        const notification2 = createNotificationWithDate('2', new Date(now.getTime() - 30 * 60 * 1000)); // 30 min ago
-        const notification3 = createNotificationWithDate('3', new Date(now.getTime() - 60 * 60 * 1000)); // 60 min ago
+        const notification1 = createNotificationWithDate('1', new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 30, 0)); // later
+        const notification2 = createNotificationWithDate('2', new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 10, 0)); // middle
+        const notification3 = createNotificationWithDate('3', new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11, 30, 0)); // earlier
         const notifications = [notification1, notification2, notification3];
 
         const result = groupNotificationsByDate(notifications);

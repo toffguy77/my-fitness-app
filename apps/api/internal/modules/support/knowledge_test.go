@@ -87,6 +87,19 @@ func TestPrefix_CarriesTheRulesAndTheWholeCorpus(t *testing.T) {
 		strings.Index(prefix, "=== 01"))
 }
 
+// Бот отвечает строго по руководству. Пока в нём нет входа по ссылке,
+// на вопрос «можно ли войти без пароля» бот честно откажется — и человек
+// решит, что нельзя.
+func TestKnowledgeCoversSignInByLink(t *testing.T) {
+	prefix, err := buildPrefix()
+	require.NoError(t, err)
+
+	text := strings.ToLower(prefix)
+
+	assert.Contains(t, text, "ссылк")
+	assert.Contains(t, text, "без пароля")
+}
+
 // Выгрузка префикса для замеров вне Go: `PREFIX_OUT=/tmp/prefix.txt go test ...`.
 //
 // Замер кэширования у провайдера делается curl'ом, и ему нужен тот же самый

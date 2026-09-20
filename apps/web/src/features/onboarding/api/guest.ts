@@ -64,6 +64,12 @@ export const guestApi = {
         result: GuestResult | null
         last_step: string
         source?: string
+        /**
+         * Where the contact was left: contact_step | result | bot. Left
+         * unset, the server assumes contact_step — the only place a lead
+         * was ever created before the result screen could capture one too.
+         */
+        capture_source?: string
         consents: LeadConsents
     }): Promise<{ token: string; lead: SavedLead }> {
         return apiClient.post('/api/v1/public/leads', input)

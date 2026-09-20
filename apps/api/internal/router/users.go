@@ -21,6 +21,9 @@ func registerUserRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/me/deletion", d.Account.RequestDeletion)
 	g.DELETE("/me/deletion", d.Account.CancelDeletion)
 	g.GET("/me/deletion", d.Account.GetDeletionStatus)
+	// A passwordless account has no current_password to send with
+	// RequestDeletion above, so it gets a code mailed to it first.
+	g.POST("/me/deletion/code", d.Account.RequestDeletionCode)
 	g.POST("/me/export", d.Account.RequestExport)
 	g.GET("/me/export", d.Account.ListExports)
 	g.GET("/me/export/:id", d.Account.DownloadExport)

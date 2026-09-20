@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
@@ -31,6 +32,35 @@ type Service struct {
 	notifier Notifier
 	// topics may be nil: без моста закрывать нечего.
 	topics TopicCloser
+	// deletionCoder may be nil; without it a passwordless account cannot
+	// complete RequestDeletion (there is nothing else to check instead of a
+	// password), but every other call in this service is unaffected.
+	deletionCoder DeletionCodeService
+}
+
+// DeletionCodeService proves control of a passwordless account's mailbox for
+// the one action that needs it: deleting the account. Declared here as the
+// narrowest thing this module needs from auth.VerificationService, so account
+// does not depend on auth's types — same reason as Notifier above.
+//
+// Why a code at all: RequestDeletion used to accept a passwordless account on
+// the strength of its session alone, because there was nothing else to check.
+// Review found the asymmetry that leaves — a hijacked session is not enough to
+// delete an account that has a password, but was enough for one that does
+// not — so the product decision is a code mailed to the account's own
+// address, proving something the session by itself does not.
+type DeletionCodeService interface {
+	SendDeletionCode(ctx context.Context, userID int64, userEmail, ip, ua string) error
+	VerifyDeletionCode(ctx context.Context, userID int64, code string) error
+}
+
+// WithCodeVerifier attaches the service used to send and check a passwordless
+// account's deletion code. Without it, RequestDeletionCode answers
+// ErrEmailUnavailable and a passwordless RequestDeletion can never succeed —
+// the same "absent capability, not a broken one" shape as WithNotifier.
+func (s *Service) WithCodeVerifier(coder DeletionCodeService) *Service {
+	s.deletionCoder = coder
+	return s
 }
 
 // Notifier tells somebody that something happened. Declared here as the
@@ -87,8 +117,16 @@ type DeletionStatus struct {
 //
 // The current password is required: this is the most destructive action the
 // product offers, and an unattended session must not be enough to trigger it.
-func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPassword string) (*DeletionStatus, error) {
-	var storedHash string
+//
+// An account created through an external provider or a magic link has no
+// password (password = NULL) to check currentPassword against. It used to be
+// accepted on the session alone — the only proof available at the time — but
+// review found the asymmetry that leaves: a hijacked session is not enough to
+// delete a password account, yet was enough for a passwordless one. The
+// product decision is a code mailed to the account's own address instead
+// (code), verified through DeletionCodeService — see its doc comment.
+func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPassword, code string) (*DeletionStatus, error) {
+	var storedHash sql.NullString
 	var alreadyRequested sql.NullTime
 	err := s.db.QueryRowContext(ctx,
 		`SELECT password, deletion_requested_at FROM users WHERE id = $1`, userID).
@@ -100,8 +138,31 @@ func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPass
 		return nil, fmt.Errorf("load user: %w", err)
 	}
 
-	if bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)) != nil {
-		return nil, fmt.Errorf("password mismatch: %w", apperrors.ErrInvalidCredentials)
+	if auth.PasswordIsSet(storedHash) {
+		if bcrypt.CompareHashAndPassword([]byte(storedHash.String), []byte(currentPassword)) != nil {
+			return nil, fmt.Errorf("password mismatch: %w", apperrors.ErrInvalidCredentials)
+		}
+	} else {
+		// Nothing to prove identity with but the code: absence of both a
+		// password and a code is a refusal, not something to wave through
+		// because currentPassword ends up empty either way.
+		if code == "" {
+			return nil, fmt.Errorf("deletion code required: %w", apperrors.ErrValidation)
+		}
+		if s.deletionCoder == nil {
+			return nil, fmt.Errorf("deletion confirmation requires email: %w", apperrors.ErrEmailUnavailable)
+		}
+		if err := s.deletionCoder.VerifyDeletionCode(ctx, userID, code); err != nil {
+			// A rate limit or an expired code get their own sentinel, so the
+			// client can tell "ask for a new code" from "just retry" — the
+			// distinction VerifyEmail's handler already makes for the same
+			// codes. Everything else (wrong digits, no code ever sent) is the
+			// same refusal shape as a wrong password.
+			if errors.Is(err, apperrors.ErrTooManyAttempts) || errors.Is(err, apperrors.ErrCodeExpired) {
+				return nil, err
+			}
+			return nil, fmt.Errorf("code mismatch: %w", apperrors.ErrInvalidCredentials)
+		}
 	}
 
 	if alreadyRequested.Valid {
@@ -133,6 +194,37 @@ func (s *Service) RequestDeletion(ctx context.Context, userID int64, currentPass
 
 	scheduled := requestedAt.Add(CancellationWindow)
 	return &DeletionStatus{Requested: true, RequestedAt: &requestedAt, ScheduledFor: &scheduled}, nil
+}
+
+// RequestDeletionCode sends the code a passwordless account needs to confirm
+// its own deletion — see RequestDeletion and DeletionCodeService for why one
+// is required at all.
+//
+// Refuses for an account that has a password: that account confirms with the
+// password it already has, and a code it never asked for would just be a
+// second, unused way to spend its rate limit.
+func (s *Service) RequestDeletionCode(ctx context.Context, userID int64, ip, ua string) error {
+	var userEmail string
+	var storedHash sql.NullString
+	err := s.db.QueryRowContext(ctx,
+		`SELECT email, password FROM users WHERE id = $1`, userID).
+		Scan(&userEmail, &storedHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("user not found: %w", apperrors.ErrNotFound)
+	}
+	if err != nil {
+		return fmt.Errorf("load user: %w", err)
+	}
+
+	if auth.PasswordIsSet(storedHash) {
+		return fmt.Errorf("account has a password: %w", apperrors.ErrConflict)
+	}
+
+	if s.deletionCoder == nil {
+		return fmt.Errorf("deletion confirmation requires email: %w", apperrors.ErrEmailUnavailable)
+	}
+
+	return s.deletionCoder.SendDeletionCode(ctx, userID, userEmail, ip, ua)
 }
 
 // CancelDeletion restores an account still inside its window.

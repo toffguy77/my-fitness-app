@@ -35,6 +35,10 @@ const TRANSLATED = [
     'apps/web/src/app/curator',
     'apps/web/src/features/admin',
     'apps/web/src/app/admin',
+    // Посадочная страница: тексты переехали в словарь задачей 9, значит с этого
+    // момента её можно стеречь. Соседи по каталогу ещё не переехали, поэтому
+    // назван файл, а не каталог.
+    'apps/web/src/app/page.tsx',
 ]
 
 const DICTIONARY = 'apps/web/src/shared/i18n/dictionaries/ru.ts'
@@ -53,6 +57,14 @@ const problems = []
 
 function walk(dir, out = []) {
     if (!existsSync(dir)) return out
+    // A single file is a legitimate entry: a directory may hold both migrated
+    // and not-yet-migrated screens, and naming the migrated file is how a
+    // section gets guarded the day it becomes ready instead of the day its
+    // last neighbour does.
+    if (!statSync(dir).isDirectory()) {
+        if (['.ts', '.tsx'].includes(extname(dir)) && !dir.includes('.test.')) out.push(dir)
+        return out
+    }
     for (const entry of readdirSync(dir)) {
         const full = join(dir, entry)
         if (statSync(full).isDirectory()) {
@@ -129,6 +141,23 @@ function stripComments(source) {
     }
 
     return out
+}
+
+// Запись, указывающая в пустоту, — это выключенная охрана, а не пустая
+// работа. `walk` молча пропускает несуществующий путь, поэтому переименование
+// или перенос охраняемого файла превращает проверку в зелёный отчёт при
+// русском литерале внутри — ровно в тот момент, когда охрана нужнее всего.
+// Проверено мутацией: перенос посадочной страницы в группу маршрутов давал
+// «i18n OK» с литералом в файле.
+const missing = TRANSLATED.filter((entry) => !existsSync(entry))
+if (missing.length > 0) {
+    console.error('Записи в TRANSLATED указывают в пустоту:\n')
+    for (const entry of missing) console.error(`  ${entry}`)
+    console.error(
+        '\nПуть переименовали или перенесли — охрана молча выключилась.\n' +
+            'Поправьте путь либо уберите запись осознанно.',
+    )
+    process.exit(1)
 }
 
 const files = TRANSLATED.flatMap((dir) => walk(dir))

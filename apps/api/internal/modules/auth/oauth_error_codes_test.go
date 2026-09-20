@@ -47,8 +47,12 @@ func oauthHandlerWithService(t *testing.T) (*OAuthHandler, sqlmock.Sqlmock) {
 func TestUnlink_NamesTheOnlyWayIn(t *testing.T) {
 	handler, mock := oauthHandlerWithService(t)
 
-	mock.ExpectQuery("SELECT u.password IS NOT NULL").
-		WillReturnRows(sqlmock.NewRows([]string{"has_password", "link_count"}).AddRow(false, 1))
+	// Запрос переписан веткой landing-conversion: предикат «пароль задан»
+	// жил в шести местах и в двух был неверен, поэтому теперь наружу отдаётся
+	// сам пароль, а решение принимает единственный PasswordIsSet. Подмена
+	// обязана повторять нынешний запрос, иначе тест проверяет вчерашний код.
+	mock.ExpectQuery("SELECT u.password,").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "link_count"}).AddRow(nil, 1))
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

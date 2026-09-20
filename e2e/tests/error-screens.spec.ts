@@ -22,9 +22,12 @@ test.describe('Error screens', () => {
     await page.goto('/')
 
     // The page itself does not depend on the API, and must not disappear
-    // because a widget on it could not load.
+    // because a widget on it could not load. Heading text updated to match
+    // the landing rewrite (task 9 of the landing-conversion plan) — this
+    // assertion still held the pre-rewrite h1 and had been silently stale
+    // since then, the same class of drift landing.spec.ts already had fixed.
     await expect(
-      page.getByRole('heading', { name: 'Трекер питания и фитнеса' })
+      page.getByRole('heading', { level: 1, name: /норма КБЖУ за минуту/i })
     ).toBeVisible({ timeout: 15000 })
   })
 
