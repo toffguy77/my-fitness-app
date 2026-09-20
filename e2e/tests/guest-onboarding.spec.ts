@@ -104,6 +104,13 @@ test.describe('Guest onboarding', () => {
     await expect(continueButton).toBeVisible({ timeout: 15000 })
     await expect(widgetButton).toBeVisible()
 
+    // «Далее» стоит задизаблено, пока цель не выбрана (см. соседние тесты
+    // этого файла) — без выбора клик в конце теста бил бы по кнопке, которая
+    // никогда не станет активной, независимо от того, перекрывает её виджет
+    // или нет. Сам выбор геометрию не меняет: кнопка занимает то же место
+    // задизабленной и активной.
+    await page.getByRole('button', { name: /Снизить вес/ }).click()
+
     const continueBox = await continueButton.boundingBox()
     const widgetBox = await widgetButton.boundingBox()
     expect(continueBox).not.toBeNull()
