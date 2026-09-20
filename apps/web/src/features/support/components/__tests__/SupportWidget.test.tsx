@@ -5,6 +5,16 @@ import { SupportWidget } from '../SupportWidget'
 import { useWidgetStore } from '../../store/widgetStore'
 import { widgetApi, widgetToken } from '../../api/widget'
 import { ApiError } from '@/shared/errors/apiErrors'
+import { t } from '@/shared/i18n'
+
+// The exact dictionary value, not a substring pattern: the consent checkbox
+// right below this field spells out what it covers ("...введённых данных...")
+// and a regex like /почт/i would match both — this field's <label> AND that
+// checkbox's, since getByLabelText reads a wrapping <label>'s full nested
+// text. Matching the field's own label exactly keeps this query decoupled
+// from consent wording — the consent text can change to anything without
+// this selector becoming ambiguous.
+const EMAIL_LABEL = t('supportWidget.emailLabel')
 
 // widgetErrorMessage is deliberately NOT mocked: several tests here exist to
 // pin that the widget shows the server's own sentence, not a generic one —
@@ -92,7 +102,7 @@ describe('SupportWidget', () => {
         await userEvent.click(screen.getByRole('button', { name: /задать вопрос/i }))
         await screen.findByRole('textbox', { name: /вопрос/i })
 
-        expect(screen.queryByLabelText(/почт/i)).not.toBeInTheDocument()
+        expect(screen.queryByLabelText(EMAIL_LABEL, { exact: true })).not.toBeInTheDocument()
     })
 
     it('предлагает оставить контакт, когда разговор ушёл к человеку', async () => {
@@ -103,7 +113,7 @@ describe('SupportWidget', () => {
         render(<SupportWidget />)
         await openAndAsk('вопрос')
 
-        expect(await screen.findByLabelText(/почт/i)).toBeInTheDocument()
+        expect(await screen.findByLabelText(EMAIL_LABEL, { exact: true })).toBeInTheDocument()
     })
 
     it('не предлагает Telegram, когда бот не настроен', async () => {
@@ -216,7 +226,7 @@ describe('SupportWidget', () => {
         render(<SupportWidget />)
         await openAndAsk('вопрос про оплату')
 
-        const emailInput = await screen.findByLabelText(/почт/i)
+        const emailInput = await screen.findByLabelText(EMAIL_LABEL, { exact: true })
         await userEvent.type(emailInput, 'visitor@example.com')
         await userEvent.click(screen.getByLabelText(/обработку введённых данных/i))
         await userEvent.click(screen.getByRole('button', { name: /сохранить контакт/i }))
@@ -239,7 +249,7 @@ describe('SupportWidget', () => {
         render(<SupportWidget />)
         await openAndAsk('вопрос')
 
-        const emailInput = await screen.findByLabelText(/почт/i)
+        const emailInput = await screen.findByLabelText(EMAIL_LABEL, { exact: true })
         await userEvent.type(emailInput, 'visitor@example.com')
 
         expect(screen.getByRole('button', { name: /сохранить контакт/i })).toBeDisabled()

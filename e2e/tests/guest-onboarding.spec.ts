@@ -76,4 +76,50 @@ test.describe('Guest onboarding', () => {
 
     await expect(page).toHaveURL(/\/auth/)
   })
+
+  /**
+   * The support widget (задача 8) floats `fixed`, `bottom-6 right-6`, over
+   * every step of this wizard. On a narrow phone viewport the goal/body/
+   * activity steps pin their "Далее"/"Показать мою норму" button flush to
+   * the bottom of a `min-h-screen` column (a `flex-1` sibling above it
+   * absorbs all the spare height), so the two were close enough to trade
+   * pixels: with the wizard's old `pb-8` (32px), the button's box (roughly
+   * 32–80px above the viewport bottom, full width) overlapped the widget's
+   * collapsed bubble (24–72px above the bottom, ~24–164px from the right) —
+   * the exact class of bug already found once in the curator section, a
+   * button hidden under a layer that sits above it. `pb-24` (96px) was the
+   * fix; this pins it down geometrically rather than trusting the arithmetic
+   * to still hold after the next layout tweak.
+   */
+  test('не даёт плавающему виджету перекрыть кнопку продолжения на узком экране', async ({
+    page,
+  }) => {
+    // iPhone SE width — the tightest common viewport, and where the overlap
+    // was reproducible before the fix.
+    await page.setViewportSize({ width: 375, height: 667 })
+
+    const continueButton = page.getByRole('button', { name: 'Далее', exact: true })
+    const widgetButton = page.getByRole('button', { name: 'Задать вопрос' })
+
+    await expect(continueButton).toBeVisible({ timeout: 15000 })
+    await expect(widgetButton).toBeVisible()
+
+    const continueBox = await continueButton.boundingBox()
+    const widgetBox = await widgetButton.boundingBox()
+    expect(continueBox).not.toBeNull()
+    expect(widgetBox).not.toBeNull()
+
+    const overlaps =
+      continueBox!.x < widgetBox!.x + widgetBox!.width &&
+      continueBox!.x + continueBox!.width > widgetBox!.x &&
+      continueBox!.y < widgetBox!.y + widgetBox!.height &&
+      continueBox!.y + continueBox!.height > widgetBox!.y
+
+    expect(overlaps).toBe(false)
+
+    // Not just geometry: a tap in the button's own box has to reach the
+    // button, not a `fixed`, higher-stacking-context element sitting over it.
+    await continueButton.click()
+    await expect(page.getByText('Ваши параметры')).toBeVisible({ timeout: 15000 })
+  })
 })
