@@ -121,6 +121,8 @@ export default defineConfig<SessionOptions>({
         'tests/uploads.spec.ts',
         // Заводит свои учётные записи сама — тем самым путём, которым их заводит человек.
         'tests/registration.spec.ts',
+        // Вход по одноразовой ссылке целиком: запрос, письмо, переход, сессия.
+        'tests/magic-link.spec.ts',
       ],
     },
   ],
