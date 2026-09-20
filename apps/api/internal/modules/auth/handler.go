@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
@@ -108,6 +109,12 @@ type ConsentsInput struct {
 	Marketing      bool `json:"marketing"`
 }
 
+// MagicLinkRequest represents a request for a one-time sign-in link.
+type MagicLinkRequest struct {
+	Email    string         `json:"email" binding:"required,email"`
+	Consents *ConsentsInput `json:"consents"`
+}
+
 // LoginRequest represents login request
 type LoginRequest struct {
 	Email      string `json:"email" binding:"required,email"`
@@ -199,11 +206,10 @@ func (h *Handler) Register(c *gin.Context) {
 		switch {
 		case errors.As(err, &policy):
 			response.ErrorCode(c, http.StatusUnprocessableEntity,
-				policy.ForPerson(), apperrors.CodePasswordPolicy, nil)
+				apperrors.CodePasswordPolicy, policy.ForPerson(), nil)
 		case errors.Is(err, apperrors.ErrConflict):
-			response.ErrorCode(c, http.StatusConflict,
-				"Этот адрес уже зарегистрирован. Попробуйте войти или восстановить пароль.",
-				apperrors.CodeConflict, nil)
+			response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+				"Этот адрес уже зарегистрирован. Попробуйте войти или восстановить пароль.", nil)
 		default:
 			h.log.Errorw("Registration failed", "error", err, "email", req.Email)
 			response.Error(c, http.StatusBadRequest, "Не удалось зарегистрировать. Попробуйте позже.")
@@ -230,6 +236,111 @@ func (h *Handler) Register(c *gin.Context) {
 
 	h.setRefreshCookie(c, result.RefreshToken, false)
 	response.Success(c, http.StatusCreated, result)
+}
+
+// RequestMagicLink handles POST /api/v1/auth/magic-link/request.
+//
+// The response is the same whether or not an account exists for the address:
+// see Service.RequestMagicLink for why.
+func (h *Handler) RequestMagicLink(c *gin.Context) {
+	var req MagicLinkRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Проверьте адрес почты")
+		return
+	}
+
+	err := h.service.RequestMagicLink(c.Request.Context(), req.Email, req.Consents,
+		c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+		// Ничего сверх общего ответа: см. Service.RequestMagicLink.
+	case errors.Is(err, apperrors.ErrValidation):
+		response.Error(c, http.StatusBadRequest,
+			"Нужно согласие на условия, политику конфиденциальности и обработку данных")
+		return
+	case errors.Is(err, apperrors.ErrEmailUnavailable):
+		response.Fail(c, http.StatusServiceUnavailable, err,
+			"Отправка почты сейчас недоступна — войдите по паролю")
+		return
+	default:
+		h.log.Errorw("Failed to issue magic link", "error", err)
+		response.InternalError(c, "Не удалось отправить ссылку")
+		return
+	}
+
+	response.SuccessWithMessage(c, http.StatusOK,
+		"Если такой адрес существует, мы отправили на него ссылку для входа", nil)
+}
+
+// ConsumeMagicLink handles POST /api/v1/auth/magic-link/consume.
+//
+// Истёкшая, уже погашенная и поддельная ссылка обязаны отвечать одинаково —
+// тем же кодом и тем же телом, — иначе разница сказала бы, что такой токен
+// когда-то существовал. См. Service.ConsumeMagicLink для того, как это
+// устроено на уровне запроса к базе.
+func (h *Handler) ConsumeMagicLink(c *gin.Context) {
+	var req struct {
+		Token     string `json:"token" binding:"required"`
+		LeadToken string `json:"lead_token"`
+		VisitorID string `json:"visitor_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// Тот же текст, что и у ErrTokenInvalid ниже — тело без "token" не
+		// более пригодно к употреблению, чем просроченная ссылка, — так
+		// пусть несёт и тот же код, а не общий codeForStatus(400).
+		response.Fail(c, http.StatusBadRequest, apperrors.ErrTokenInvalid, "Ссылка не подходит — запросите новую")
+		return
+	}
+
+	result, created, err := h.service.ConsumeMagicLink(c.Request.Context(), req.Token,
+		c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrTokenInvalid):
+		// response.Error здесь раньше отдавал code "validation" —
+		// codeForStatus(400) не знает про эту причину, и messageFor на
+		// клиенте показывал общее «Проверьте введённые данные» человеку,
+		// который просто перешёл по письму: вводить ему было нечего.
+		// response.Fail называет причину явно кодом, который словарь уже
+		// знает (apperrors.CodeTokenInvalid → "Ссылка недействительна").
+		response.Fail(c, http.StatusBadRequest, err, "Ссылка не подходит — запросите новую")
+		return
+	case errors.Is(err, apperrors.ErrConflict):
+		// Гонка на создании аккаунта — см. createAccountFromMagicLink.
+		// Ссылка уже погашена и не сработает второй раз, но обычный вход
+		// теперь найдёт аккаунт: подсказываем запросить ссылку заново.
+		//
+		// Код свой (CodeMagicLinkAccountExists), не общий CodeConflict: тот
+		// на клиенте переводится обобщённо ("Действие невозможно в текущем
+		// состоянии") — человек не поймёт, что адрес уже занят.
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeMagicLinkAccountExists,
+			"Этот адрес уже зарегистрирован. Запросите ссылку для входа ещё раз.", nil)
+		return
+	default:
+		h.log.Errorw("Failed to consume magic link", "error", err)
+		response.InternalError(c, "Не удалось войти")
+		return
+	}
+
+	// Перенос заявки живёт здесь, а не в сервисе: узкий интерфейс LeadClaimer
+	// существует ровно затем, чтобы auth и leads не зависели от типов друг
+	// друга. Токен заявки мог приехать cookie: путь через внешнего провайдера
+	// уже так делает (см. leadCookie в oauth_handler.go) — переход по ссылке
+	// из письма тот же случай, когда наш JavaScript до перехода не доживает.
+	if created {
+		leadToken := req.LeadToken
+		if leadToken == "" {
+			if fromCookie, err := c.Cookie(leads.LeadCookieName); err == nil {
+				leadToken = fromCookie
+			}
+		}
+		if leadToken != "" {
+			h.claimLead(c, leadToken, result.User.ID)
+		}
+	}
+
+	h.setRefreshCookie(c, result.RefreshToken, false)
+	response.Success(c, http.StatusOK, gin.H{"user": result.User, "created": created})
 }
 
 // WSTicket handles POST /api/v1/auth/ws-ticket.
@@ -357,11 +468,27 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 	email, _ := c.Get("user_email")
 	role, _ := c.Get("user_role")
 
+	// has_password is the one field this endpoint cannot answer from the
+	// token alone, which is why it now makes a query instead of staying a
+	// pure token read. Whether a password exists can change after the token
+	// was issued — an account created through a provider or a magic link can
+	// set one later — and the account-deletion form has to know which proof
+	// of identity to ask for, a password or a mailed code, before it draws a
+	// single field. HasPassword is the same lookup the linked-providers
+	// screen already uses for the equivalent question there.
+	hasPassword, err := h.service.HasPassword(c.Request.Context(), userID.(int64))
+	if err != nil {
+		h.log.Errorw("Failed to check password presence", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось получить данные пользователя")
+		return
+	}
+
 	response.Success(c, http.StatusOK, gin.H{
 		"user": gin.H{
-			"id":    userID,
-			"email": email,
-			"role":  role,
+			"id":           userID,
+			"email":        email,
+			"role":         role,
+			"has_password": hasPassword,
 		},
 	})
 }
@@ -398,6 +525,11 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 			// tell the three apart.
 			response.ErrorCode(c, http.StatusUnauthorized,
 				apperrors.CodePasswordIncorrect, "Неверный текущий пароль", nil)
+		case errors.Is(err, apperrors.ErrConflict):
+			// Аккаунт заведён через внешнего провайдера или по ссылке входа и
+			// пароля не имеет вовсе — менять нечего.
+			response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+				"У этого аккаунта нет пароля: вход выполняется через внешний сервис или по ссылке.", nil)
 		case errors.Is(err, apperrors.ErrPasswordUnchanged):
 			response.Error(c, http.StatusUnprocessableEntity, err.Error())
 		case errors.Is(err, apperrors.ErrPasswordPolicy):

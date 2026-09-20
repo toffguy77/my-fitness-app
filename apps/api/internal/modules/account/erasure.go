@@ -64,6 +64,12 @@ var strategies = []TableStrategy{
 	{Table: "content_notification_mute", Column: "user_id", Strategy: StrategyDelete, Reason: "their mute choices"},
 	{Table: "refresh_tokens", Column: "user_id", Strategy: StrategyDelete, Reason: "their sessions"},
 	{Table: "reset_tokens", Column: "user_id", Strategy: StrategyDelete, Reason: "password recovery tokens"},
+	// Удаление аккаунта — обезличивание на месте, а не DELETE FROM users, и
+	// строка пользователя остаётся с тем же id. Поэтому ON DELETE CASCADE у
+	// magic_links не срабатывает никогда, и выданная раньше ссылка входа
+	// продолжала бы открывать сессию в обезличенную оболочку удалённого
+	// аккаунта. Удаляем явно, как и прочие впускающие внутрь токены.
+	{Table: "magic_links", Column: "user_id", Strategy: StrategyDelete, Reason: "sign-in links"},
 	{Table: "email_verification_codes", Column: "user_id", Strategy: StrategyDelete, Reason: "verification codes"},
 	{Table: "food_recognition_usage", Column: "user_id", Strategy: StrategyDelete, Reason: "their daily quota counters"},
 	{Table: "data_exports", Column: "user_id", Strategy: StrategyDelete, Reason: "archives of their own data"},

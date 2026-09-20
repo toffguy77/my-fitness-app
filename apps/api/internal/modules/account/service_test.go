@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -41,7 +42,7 @@ func TestRequestDeletion_RequiresTheCurrentPassword(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).
 			AddRow(hash(t, "correct-password"), nil))
 
-	_, err := service.RequestDeletion(context.Background(), 1, "wrong-password")
+	_, err := service.RequestDeletion(context.Background(), 1, "wrong-password", "")
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrInvalidCredentials)
@@ -60,7 +61,7 @@ func TestRequestDeletion_StartsTheWindowAndEndsSessions(t *testing.T) {
 	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
 		WillReturnResult(sqlmock.NewResult(0, 2))
 
-	status, err := service.RequestDeletion(context.Background(), 1, "right")
+	status, err := service.RequestDeletion(context.Background(), 1, "right", "")
 
 	require.NoError(t, err)
 	assert.True(t, status.Requested)
@@ -78,10 +79,146 @@ func TestRequestDeletion_DoesNotExtendAnExistingWindow(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).
 			AddRow(hash(t, "right"), time.Now().Add(-time.Hour)))
 
-	_, err := service.RequestDeletion(context.Background(), 1, "right")
+	_, err := service.RequestDeletion(context.Background(), 1, "right", "")
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrConflict)
+}
+
+// fakeDeletionCoder stands in for auth.VerificationService in unit tests: the
+// real hashing/rate-limit/attempt mechanism is proven against a real database
+// in the integration suite (deletion_passwordless_integration_test.go); these
+// tests only need to prove that RequestDeletion asks it the right question
+// and translates its answer correctly.
+type fakeDeletionCoder struct {
+	verifyErr error
+	sendErr   error
+	sentTo    []int64
+}
+
+func (f *fakeDeletionCoder) SendDeletionCode(_ context.Context, userID int64, _, _, _ string) error {
+	f.sentTo = append(f.sentTo, userID)
+	return f.sendErr
+}
+
+func (f *fakeDeletionCoder) VerifyDeletionCode(context.Context, int64, string) error {
+	return f.verifyErr
+}
+
+// Absence of both a password and a code is a refusal, not something to wave
+// through because a passwordless account has no password to check anyway.
+func TestRequestDeletion_PasswordlessRequiresACode(t *testing.T) {
+	service, mock := fixture(t)
+
+	mock.ExpectQuery("SELECT password, deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).AddRow(nil, nil))
+
+	_, err := service.RequestDeletion(context.Background(), 1, "", "")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrValidation)
+}
+
+// Without a DeletionCodeService configured, a passwordless account has
+// nothing to check a code against — the same "absent capability" shape as
+// every other optional dependency here, not an internal error.
+func TestRequestDeletion_PasswordlessWithoutCoderConfigured(t *testing.T) {
+	service, mock := fixture(t)
+
+	mock.ExpectQuery("SELECT password, deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).AddRow(nil, nil))
+
+	_, err := service.RequestDeletion(context.Background(), 1, "", "123456")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrEmailUnavailable)
+}
+
+// The whole point of the code: it stands in for the password check for an
+// account that has none, and a correct one starts the window exactly like a
+// correct password does.
+func TestRequestDeletion_PasswordlessWithValidCodeSucceeds(t *testing.T) {
+	service, mock := fixture(t)
+	service.WithCodeVerifier(&fakeDeletionCoder{})
+
+	mock.ExpectQuery("SELECT password, deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).AddRow(nil, nil))
+	mock.ExpectQuery("UPDATE users SET deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"deletion_requested_at"}).AddRow(time.Now()))
+	mock.ExpectExec("UPDATE refresh_tokens SET revoked_at").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	status, err := service.RequestDeletion(context.Background(), 1, "", "123456")
+
+	require.NoError(t, err)
+	assert.True(t, status.Requested)
+}
+
+// A wrong code is the same refusal shape as a wrong password: 401, via
+// ErrInvalidCredentials, not a 500 leaking the underlying "invalid code"
+// error text.
+func TestRequestDeletion_PasswordlessWrongCodeIsInvalidCredentials(t *testing.T) {
+	service, mock := fixture(t)
+	service.WithCodeVerifier(&fakeDeletionCoder{verifyErr: errors.New("invalid code")})
+
+	mock.ExpectQuery("SELECT password, deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).AddRow(nil, nil))
+
+	_, err := service.RequestDeletion(context.Background(), 1, "", "000000")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidCredentials)
+}
+
+// Unlike a plain wrong code, a rate limit or an expired code keep their own
+// sentinel through RequestDeletion: the client needs to tell "request a new
+// code" apart from "just try again".
+func TestRequestDeletion_PasswordlessTooManyAttemptsKeepsItsSentinel(t *testing.T) {
+	service, mock := fixture(t)
+	service.WithCodeVerifier(&fakeDeletionCoder{verifyErr: fmt.Errorf("too many: %w", apperrors.ErrTooManyAttempts)})
+
+	mock.ExpectQuery("SELECT password, deletion_requested_at").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "deletion_requested_at"}).AddRow(nil, nil))
+
+	_, err := service.RequestDeletion(context.Background(), 1, "", "000000")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrTooManyAttempts)
+}
+
+// A password account never touches the code path at all, even when one is
+// wired up — RequestDeletionCode refuses it, but nothing stops the caller
+// from configuring the coder anyway, so RequestDeletion itself must not lean
+// on it once a password is found.
+func TestRequestDeletionCode_SendsForPasswordlessAccount(t *testing.T) {
+	service, mock := fixture(t)
+	coder := &fakeDeletionCoder{}
+	service.WithCodeVerifier(coder)
+
+	mock.ExpectQuery("SELECT email, password FROM users").
+		WillReturnRows(sqlmock.NewRows([]string{"email", "password"}).AddRow("nopass@example.test", nil))
+
+	err := service.RequestDeletionCode(context.Background(), 1, "127.0.0.1", "test")
+
+	require.NoError(t, err)
+	assert.Equal(t, []int64{1}, coder.sentTo)
+}
+
+// A code is not needed for an account that can already confirm with its
+// password — sending one anyway would just spend its rate limit on nothing.
+func TestRequestDeletionCode_RefusesForAccountWithPassword(t *testing.T) {
+	service, mock := fixture(t)
+	coder := &fakeDeletionCoder{}
+	service.WithCodeVerifier(coder)
+
+	mock.ExpectQuery("SELECT email, password FROM users").
+		WillReturnRows(sqlmock.NewRows([]string{"email", "password"}).AddRow("haspass@example.test", hash(t, "x")))
+
+	err := service.RequestDeletionCode(context.Background(), 1, "127.0.0.1", "test")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+	assert.Empty(t, coder.sentTo)
 }
 
 func TestCancelDeletion_RestoresTheAccount(t *testing.T) {
@@ -297,7 +434,7 @@ func TestRequestDeletion_TellsTheCurator(t *testing.T) {
 		WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{"curator_id"}).AddRow(int64(10)))
 
-	_, err := service.RequestDeletion(context.Background(), 1, "Password123!")
+	_, err := service.RequestDeletion(context.Background(), 1, "Password123!", "")
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"10:client_left"}, notifier.sent)
@@ -319,7 +456,7 @@ func TestRequestDeletion_SucceedsWithoutACurator(t *testing.T) {
 	mock.ExpectQuery("SELECT curator_id FROM curator_client_relationships").
 		WillReturnError(sql.ErrNoRows)
 
-	_, err := service.RequestDeletion(context.Background(), 1, "Password123!")
+	_, err := service.RequestDeletion(context.Background(), 1, "Password123!", "")
 
 	require.NoError(t, err)
 	assert.Empty(t, notifier.sent)

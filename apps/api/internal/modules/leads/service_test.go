@@ -109,6 +109,75 @@ func TestCreate_SavesTheLeadWithoutTheContactConsent(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+// A contact can now be left in three places: the wizard's contact step, the
+// result screen, and the bot. Without recording where, the three cannot be
+// compared. Every arg but the last is a don't-care: only the position the
+// capture source lands in is under test.
+func TestCreate_StoresCaptureSource(t *testing.T) {
+	service, mock := setupService(t)
+
+	in := validInput()
+	in.CaptureSource = "result"
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO leads").
+		WithArgs(
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), "result",
+		).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("lead-9", time.Now(), time.Now()))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-9", "data_processing", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-9", "contact", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	_, _, err := service.Create(context.Background(), in, "ip", "ua")
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// An old client that has never heard of capture_source must not write an
+// empty one: the contact step is the only place a lead was ever created
+// before this, so that is the correct default, not a guess.
+func TestCreate_DefaultsCaptureSourceToContactStep(t *testing.T) {
+	service, mock := setupService(t)
+
+	in := validInput()
+	in.CaptureSource = ""
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO leads").
+		WithArgs(
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), "contact_step",
+		).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("lead-10", time.Now(), time.Now()))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-10", "data_processing", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO user_consents").
+		WithArgs("lead-10", "contact", true, "ip", "ua").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	_, _, err := service.Create(context.Background(), in, "ip", "ua")
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
 // The step is a hint for whoever follows up, not the visitor's data — and a
 // request anyone can make must not be able to name a lead directly.
 func TestUpdateStep_RefusesAnUnsignedIdentifier(t *testing.T) {
@@ -239,6 +308,29 @@ func leadRow(id string) *sqlmock.Rows {
 	)
 }
 
+// queueRow mirrors Queue's SELECT: the base lead columns plus age_days,
+// reminder_sent and conversation_id. An empty conversationID scans as NULL,
+// the shape a lead with no support conversation actually returns.
+func queueRow(id string, ageDays int, reminderSent bool, conversationID string) *sqlmock.Rows {
+	rows := sqlmock.NewRows([]string{
+		"id", "email", "name", "sex", "birth_date", "height_cm", "weight_kg",
+		"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
+		"last_step", "source", "data_consent", "contact_consent",
+		"handled_at", "created_at", "updated_at",
+		"age_days", "reminder_sent", "conversation_id",
+	})
+	var conv any
+	if conversationID != "" {
+		conv = conversationID
+	}
+	return rows.AddRow(
+		id, "guest@example.com", "Гость", "female", time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC),
+		175.0, 70.0, "moderate", "loss", 1800.0, 120.0, 50.0, 200.0, 8,
+		"contact", "landing", true, true, nil, time.Now(), time.Now(),
+		ageDays, reminderSent, conv,
+	)
+}
+
 // The whole point of the token: the auth module hands over a string it cannot
 // forge, and gets back the lead it names.
 func TestLeadIDForToken_AcceptsOnlyWhatWeMinted(t *testing.T) {
@@ -282,6 +374,25 @@ func TestMarkHandled_RecordsWhoDealtWithIt(t *testing.T) {
 	require.NoError(t, service.MarkHandled(context.Background(), "lead-7", 3))
 }
 
+// A second curator marking an already-handled lead must get told so, not a
+// silent success that overwrites who actually claimed it first.
+func TestMarkHandled_AlreadyHandledIsConflictNotOverwrite(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectExec("UPDATE leads SET handled_at").
+		WithArgs("lead-7", int64(22)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery("SELECT EXISTS").
+		WithArgs("lead-7").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+	err := service.MarkHandled(context.Background(), "lead-7", 22)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+	assert.NotErrorIs(t, err, apperrors.ErrNotFound,
+		"заявка существует — это конфликт, а не «не найдена»")
+}
+
 func TestMarkReminded_RecordsTheSend(t *testing.T) {
 	service, mock := setupService(t)
 
@@ -292,16 +403,74 @@ func TestMarkReminded_RecordsTheSend(t *testing.T) {
 	require.NoError(t, service.MarkReminded(context.Background(), "lead-7"))
 }
 
-func TestList_CountsAndReturns(t *testing.T) {
+// The mock proves only that Queue plumbs each column into the right field —
+// it cannot prove ORDER BY does what the comment says, or that a JOIN does
+// not duplicate a row. Those need a real database: see
+// queue_integration_test.go.
+func TestQueue_CountsAndCarriesGroundsPerEntry(t *testing.T) {
 	service, mock := setupService(t)
 
-	mock.ExpectQuery("SELECT COUNT").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
-	mock.ExpectQuery("FROM leads ORDER BY").WillReturnRows(leadRow("lead-7"))
+	mock.ExpectQuery("SELECT COUNT").
+		WithArgs(false).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	mock.ExpectQuery("FROM leads l").
+		WithArgs(false, 50, 0).
+		WillReturnRows(queueRow("lead-7", 3, true, "conv-1"))
 
-	leads, total, err := service.List(context.Background(), 50, 0)
+	entries, total, err := service.Queue(context.Background(), false, 50, 0)
 
 	require.NoError(t, err)
 	assert.Equal(t, 2, total)
-	require.Len(t, leads, 1)
-	assert.Equal(t, "guest@example.com", leads[0].Email)
+	require.Len(t, entries, 1)
+	e := entries[0]
+	assert.Equal(t, "guest@example.com", e.Email)
+	assert.Equal(t, 3, e.AgeDays)
+	assert.True(t, e.ReminderSent)
+	assert.True(t, e.ContactAllowed)
+	require.NotNil(t, e.ConversationID)
+	assert.Equal(t, "conv-1", *e.ConversationID)
+}
+
+// A lead nobody has written to since, and who never talked to the bot: the
+// queue must not invent a conversation to open.
+func TestQueue_WithoutAConversationLeavesTheFieldNil(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectQuery("SELECT COUNT").
+		WithArgs(false).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery("FROM leads l").
+		WithArgs(false, 50, 0).
+		WillReturnRows(queueRow("lead-8", 0, false, ""))
+
+	entries, _, err := service.Queue(context.Background(), false, 50, 0)
+
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Nil(t, entries[0].ConversationID)
+}
+
+// include_handled=true never shrinks the queue, so a curator (or a script
+// hitting the endpoint directly) can reach an offset far past anything a
+// reasonable page turn produces. The clamp caps what actually reaches the
+// database — this asserts the clamped value, not the one the caller passed.
+func TestQueue_ClampsAnAbsurdOffset(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectQuery("SELECT COUNT").
+		WithArgs(true).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery("FROM leads l").
+		WithArgs(true, 50, int(maxQueueOffset)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "email", "name", "sex", "birth_date", "height_cm", "weight_kg",
+			"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
+			"last_step", "source", "data_consent", "contact_consent",
+			"handled_at", "created_at", "updated_at", "age_days", "reminder_sent", "conversation_id",
+		}))
+
+	_, _, err := service.Queue(context.Background(), true, 50, maxQueueOffset*10)
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet(), "запрос должен уйти в базу с обрезанным сдвигом, а не с тем, что передал вызывающий")
 }

@@ -23,7 +23,17 @@ var subjects = map[string]map[string]string{
 		"password_changed":    "Пароль изменен - BURCEV",
 		"onboarding_reminder": "Ваш расчёт КБЖУ сохранён — BURCEV",
 		"email_verification":  "Код подтверждения — BURCEV",
-		"notification_digest": "%s в BURCEV",
+		// Deliberately its own subject, distinct from email_verification: a
+		// passwordless account confirms deletion with a mailed code instead
+		// of a password, and the inbox has to say what is being confirmed —
+		// deleting the account, not signing in — before the message is opened.
+		"account_deletion_code": "Код подтверждения удаления аккаунта — BURCEV",
+		"notification_digest":   "%s в BURCEV",
+		// Two names, not one template with a branch inside: the subject
+		// line is picked by template name, and the two outcomes need
+		// different subjects.
+		"magic_link_signin": "Вход в BURCEV",
+		"magic_link_signup": "Ваш аккаунт в BURCEV",
 	},
 	"en": {},
 }
@@ -32,11 +42,14 @@ var subjects = map[string]map[string]string{
 // body reuses the Russian one, so a half-translated letter is still a letter.
 var bodies = map[string]map[string]string{
 	LanguageRU: {
-		"password_reset":      passwordResetTemplate,
-		"password_changed":    passwordChangedTemplate,
-		"email_verification":  emailVerificationTemplate,
-		"onboarding_reminder": onboardingReminderTemplate,
-		"notification_digest": notificationDigestTemplate,
+		"password_reset":        passwordResetTemplate,
+		"password_changed":      passwordChangedTemplate,
+		"email_verification":    emailVerificationTemplate,
+		"account_deletion_code": accountDeletionCodeTemplate,
+		"onboarding_reminder":   onboardingReminderTemplate,
+		"notification_digest":   notificationDigestTemplate,
+		"magic_link_signin":     magicLinkSignInTemplate,
+		"magic_link_signup":     magicLinkSignUpTemplate,
 	},
 	"en": {},
 }

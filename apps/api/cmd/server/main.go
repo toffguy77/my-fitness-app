@@ -317,7 +317,11 @@ func main() {
 		"chat":           chatS3,
 		"food-photos":    foodPhotosS3,
 		"exports":        dataExportsS3,
-	}).WithNotifier(notificationsSvc)
+	}).WithNotifier(notificationsSvc).
+		// A passwordless account confirms its own deletion with a code
+		// mailed through the same mechanism email verification already
+		// uses — see account.DeletionCodeService for why one is required.
+		WithCodeVerifier(verificationService)
 
 	analyticsService := analytics.NewService(db.DB, log)
 
@@ -539,6 +543,17 @@ func main() {
 	// token, so revoking a role only takes effect once the token naming the
 	// old role stops being accepted.
 	adminService.WithSessionCache(tokenVersions)
+
+	// Magic-link sign-in needs a sender to deliver the letter it issues.
+	// emailService is nil when the email capability is off (no SMTP
+	// credentials) — leaving authService's sender nil too, not a typed-nil
+	// interface, is what makes RequestMagicLink's own nil check answer 503
+	// instead of panicking or silently swallowing the send. Guarding here,
+	// the same way emailService is guarded everywhere else it is handed to
+	// something that takes an interface, not the concrete *email.Service.
+	if emailService != nil {
+		authService.WithEmailService(emailService)
+	}
 
 	router := router.New(router.Deps{
 		Cfg:             cfg,

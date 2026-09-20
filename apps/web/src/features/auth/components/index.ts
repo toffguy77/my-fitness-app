@@ -7,3 +7,4 @@ export * from './AuthForm';
 export * from './ConsentSection';
 export * from './AuthFooter';
 export * from './LoginForm';
+export * from './MagicLinkForm';
