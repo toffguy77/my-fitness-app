@@ -10,6 +10,7 @@ import {
 } from '../api/adminApi'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 /**
  * Questions the bot could not answer.
  *
@@ -48,8 +49,8 @@ export function SupportQueue() {
         async function loadInitial() {
             try {
                 await load()
-            } catch {
-                toast.error(t('admin.support.loadFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('admin.support.loadFailed')))
             } finally {
                 setLoading(false)
             }
@@ -60,8 +61,8 @@ export function SupportQueue() {
     const openThread = async (conversation: SupportConversation) => {
         try {
             setSelected(await adminApi.getSupportThread(conversation.id))
-        } catch {
-            toast.error(t('admin.support.openFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('admin.support.openFailed')))
         }
     }
 
@@ -73,8 +74,10 @@ export function SupportQueue() {
             await adminApi.replyToSupport(selected.conversation.id, reply.trim())
             setReply('')
             setSelected(await adminApi.getSupportThread(selected.conversation.id))
-        } catch {
-            toast.error(t('admin.support.sendFailed'))
+        } catch (err) {
+            // «Бот не настроен» и «сессия ушла» — разные поводы. Первый значит
+            // «не пиши, отвечать нечем», второй — «войди и повтори».
+            toast.error(messageForOr(err, t('admin.support.sendFailed')))
         } finally {
             setSending(false)
         }
@@ -86,8 +89,8 @@ export function SupportQueue() {
             await adminApi.closeSupport(selected.conversation.id)
             setSelected(null)
             await load()
-        } catch {
-            toast.error(t('admin.support.closeFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('admin.support.closeFailed')))
         }
     }
 

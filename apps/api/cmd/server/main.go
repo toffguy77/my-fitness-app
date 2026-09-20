@@ -539,6 +539,11 @@ func main() {
 	// The same for password reset: it ends every session too, and it is the
 	// flow where a session that outlives the password matters most.
 	resetService.WithSessionCache(tokenVersions)
+	// And for a role change: middleware.RequireRole reads the role out of the
+	// token, so revoking a role only takes effect once the token naming the
+	// old role stops being accepted.
+	adminService.WithSessionCache(tokenVersions)
+
 	// Magic-link sign-in needs a sender to deliver the letter it issues.
 	// emailService is nil when the email capability is off (no SMTP
 	// credentials) — leaving authService's sender nil too, not a typed-nil

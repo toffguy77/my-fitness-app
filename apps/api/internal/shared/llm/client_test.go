@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,11 +25,7 @@ func newTestClient(serverURL string) *Client {
 
 func TestRecognizeFood_Success(t *testing.T) {
 	response := chatResponse{
-		Choices: []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		}{
+		Choices: []chatChoice{
 			{Message: struct {
 				Content string `json:"content"`
 			}{
@@ -80,11 +77,7 @@ func TestRecognizeFood_Success(t *testing.T) {
 
 func TestRecognizeFood_MultipleItems(t *testing.T) {
 	response := chatResponse{
-		Choices: []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		}{
+		Choices: []chatChoice{
 			{Message: struct {
 				Content string `json:"content"`
 			}{
@@ -133,11 +126,7 @@ func TestRecognizeFood_MarkdownCodeFences(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			response := chatResponse{
-				Choices: []struct {
-					Message struct {
-						Content string `json:"content"`
-					} `json:"message"`
-				}{
+				Choices: []chatChoice{
 					{Message: struct {
 						Content string `json:"content"`
 					}{Content: tt.content}},
@@ -162,11 +151,7 @@ func TestRecognizeFood_MarkdownCodeFences(t *testing.T) {
 
 func TestRecognizeFood_InvalidJSON(t *testing.T) {
 	response := chatResponse{
-		Choices: []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		}{
+		Choices: []chatChoice{
 			{Message: struct {
 				Content string `json:"content"`
 			}{Content: "This is not JSON at all"}},
@@ -235,11 +220,7 @@ func TestRecognizeFood_APIError(t *testing.T) {
 
 func TestRecognizeFood_EmptyChoices(t *testing.T) {
 	response := chatResponse{
-		Choices: []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		}{},
+		Choices: []chatChoice{},
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -306,4 +287,157 @@ func TestStripMarkdownCodeFences(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+// Модель со зрением в каталоге Яндекса — рассуждающая: она складывает
+// размышление в reasoning_content и оставляет content пустым, пока не
+// закончит. На живой проверке с бюджетом в 2000 токенов размышление заняло
+// весь бюджет, и ответа так и не появилось. Отключается это единственным
+// способом: chat_template_kwargs с enable_thinking=false. Родной яндексовый
+// reasoning_options на OpenAI-совместимом эндпоинте отвергается.
+func TestRecognizeFood_DisablesThinkingAndBoundsTheAnswer(t *testing.T) {
+	var body map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"items\":[]}"}}]}`))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
+	require.NoError(t, err)
+
+	kwargs, ok := body["chat_template_kwargs"].(map[string]any)
+	require.True(t, ok, "запрос распознавания обязан нести chat_template_kwargs, получено: %v", body)
+	assert.Equal(t, false, kwargs["enable_thinking"],
+		"без этого модель сжигает бюджет на размышление и возвращает пустой content")
+
+	limit, ok := body["max_tokens"].(float64)
+	require.True(t, ok, "запрос без предела длины — это счёт без потолка")
+	assert.Positive(t, limit)
+}
+
+// Бот поддержки работает на другой модели, и его путь этой правкой не
+// затрагивается: скрытое поведение, включённое для обоих потребителей клиента,
+// однажды сломает того, кого не проверяли.
+func TestAsk_DoesNotDisableThinking(t *testing.T) {
+	var body map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"ответ"}}]}`))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.Ask(context.Background(), "префикс", "вопрос", nil)
+	require.NoError(t, err)
+
+	_, present := body["chat_template_kwargs"]
+	assert.False(t, present, "путь бота не должен нести параметры шаблона: %v", body)
+}
+
+// Пустой content и сейчас не проходит молча — разбор пустой строки падает. Но
+// падает он сообщением про испорченный ответ, хотя ответа не было вовсе, и
+// разбираться по такому сообщению пришлось бы с нуля.
+func TestRecognizeFood_EmptyContentSaysTheModelReturnedNothing(t *testing.T) {
+	cases := map[string]string{
+		"content null":          `{"choices":[{"message":{"content":null}}]}`,
+		"content пустая строка": `{"choices":[{"message":{"content":""}}]}`,
+		"бюджет исчерпан":       `{"choices":[{"finish_reason":"length","message":{"content":null,"reasoning_content":"долго думал"}}]}`,
+	}
+
+	for name, response := range cases {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(response))
+			}))
+			defer server.Close()
+
+			client := newTestClient(server.URL)
+			_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
+
+			require.Error(t, err)
+			assert.True(t, errors.Is(err, ErrEmptyModelAnswer),
+				"пустой ответ обязан быть отличим от испорченного, получено: %v", err)
+		})
+	}
+}
+
+// Охраняет разделение: испорченный ответ — это другая ошибка, и она не должна
+// схлопнуться в «модель ничего не вернула» вместе с пустым.
+func TestRecognizeFood_MalformedContentIsNotTheEmptyError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"это не json"}}]}`))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
+
+	require.Error(t, err)
+	assert.False(t, errors.Is(err, ErrEmptyModelAnswer))
+}
+
+// Обрезанный ответ ломается на разборе JSON, и сообщение уводит искать дефект
+// в модели или промпте — тогда как чинится это пределом длины. Найдено живой
+// проверкой: снимок с десятком продуктов обрывался на середине поля.
+func TestRecognizeFood_TruncatedAnswerSaysSo(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"length","message":{"content":"{\"items\":[{\"name\":\"Творог\",\"fat_per"}}]}`))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
+
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrAnswerTruncated),
+		"обрыв по пределу обязан быть отличим от испорченного ответа, получено: %v", err)
+}
+
+// Модель периодически называет то, что едой не является, и ставит такому
+// нулевой вес — на живой проверке так пришёл чайный пакетик с пометкой
+// «неингредиент». В дневнике это строка, которая ничего не весит и ничего не
+// добавляет, но требует от человека решения, что с ней делать.
+func TestRecognizeFood_DropsWeightlessItems(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"stop","message":{"content":"{\"items\":[` +
+			`{\"name\":\"Гречка\",\"estimated_weight_grams\":150,\"calories_per_100\":110},` +
+			`{\"name\":\"Чай пакетированный\",\"estimated_weight_grams\":0,\"calories_per_100\":0},` +
+			`{\"name\":\"Салфетка\",\"estimated_weight_grams\":-5,\"calories_per_100\":0}` +
+			`]}"}}]}`))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	result, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
+
+	require.NoError(t, err)
+	require.Len(t, result.Items, 1, "невесомое в дневник не попадает")
+	assert.Equal(t, "Гречка", result.Items[0].Name)
+}
+
+// Если весит только несъедобное, результат пуст — но это не ошибка: человеку
+// честнее увидеть «ничего не распознали», чем список из ничего.
+func TestRecognizeFood_AllWeightlessLeavesEmptyResult(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"stop","message":{"content":"{\"items\":[` +
+			`{\"name\":\"Вилка\",\"estimated_weight_grams\":0}]}"}}]}`))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	result, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
+
+	require.NoError(t, err)
+	assert.Empty(t, result.Items)
 }

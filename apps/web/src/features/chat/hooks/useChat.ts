@@ -10,6 +10,9 @@ import { chatApi } from '../api/chatApi'
 import { useWebSocket } from './useWebSocket'
 import type { Message, WebSocketEvent } from '../types'
 import { EVENTS, track } from '@/shared/analytics'
+import toast from 'react-hot-toast'
+import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 /**
  * Custom hook for managing a single conversation's messages and interactions.
@@ -43,8 +46,13 @@ export function useChat(conversationId: string | null) {
                     setIsLoading(false)
                 }
             })
-            .catch(() => {
+            .catch((err) => {
                 if (!cancelled) {
+                    // Раньше здесь только снимали «загружаем»: человек видел
+                    // пустую переписку и решал, что ему никто не писал. Пустой
+                    // экран и непрочитанная переписка выглядят одинаково —
+                    // поэтому разницу называем словами.
+                    toast.error(messageForOr(err, t('chat.loadFailed')))
                     setIsLoading(false)
                 }
             })

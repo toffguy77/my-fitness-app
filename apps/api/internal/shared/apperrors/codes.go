@@ -36,6 +36,39 @@ const (
 	// signs people out whenever a token simply aged.
 	CodeSessionEnded = "session_ended"
 	CodeInternal     = "internal"
+	// CodeRecognitionDailyLimit: distinct from rate_limited — waiting a moment
+	// will not help, the ceiling resets tomorrow, not in a few seconds. Named
+	// for the domain, not the sentinel: ErrDailyLimitReached is reusable for
+	// any daily quota, but the code is what the client shows, and a client
+	// reusing the sentinel for, say, a curator-message quota must not inherit
+	// a translation about photos.
+	CodeRecognitionDailyLimit = "recognition_daily_limit"
+	// CodeRecognitionUnclear: the model answered but had nothing usable to
+	// say about the photo. Not the client's fault and not a server failure —
+	// distinct from both so the client can suggest a retake instead of
+	// showing a generic "something broke".
+	CodeRecognitionUnclear = "recognition_unclear"
+	// CodeRecognitionFailed: a genuine failure (provider outage, timeout) —
+	// distinct from CodeRecognitionUnclear so the client can say "try again
+	// in a minute" instead of "retake the photo", while still offering the
+	// same manual-entry escape hatch.
+	CodeRecognitionFailed = "recognition_failed"
+	// Отказы, которые раньше отвечали общим CodeConflict.
+	//
+	// «conflict» переводится как «Действие невозможно в текущем состоянии» —
+	// фраза, из которой нельзя понять, что делать дальше. Сервер каждый раз
+	// знал точную причину и писал её в message, но клиент предпочитает код и
+	// прозу выбрасывает. Так объяснение и терялось по дороге.
+	//
+	// Каждый из этих кодов отвечает на «и что теперь»: задайте пароль,
+	// войдите через другой сервис, подождите готовую выгрузку.
+	CodeProviderOnlyWayIn        = "provider_only_way_in"
+	CodePasswordNotSet           = "password_not_set"
+	CodeDeletionAlreadyRequested = "deletion_already_requested"
+	CodeExportAlreadyPending     = "export_already_pending"
+	CodeLastCurator              = "last_curator"
+	CodeJobAlreadyRunning        = "job_already_running"
+
 	// CodeMagicLinkAccountExists: гонка при переходе по ссылке из письма —
 	// адрес завели другим путём между выдачей ссылки и переходом по ней.
 	// Отдельный код, а не общий CodeConflict: обобщённый перевод последнего
@@ -65,6 +98,7 @@ var codes = map[error]string{
 	ErrConflict:           CodeConflict,
 	ErrGone:               CodeGone,
 	ErrValidation:         CodeValidation,
+	ErrDailyLimitReached:  CodeRecognitionDailyLimit,
 }
 
 // CodeFor returns the code for an error, following wrapping.
@@ -87,8 +121,19 @@ func AllCodes() []string {
 	// Эти коды ставятся ответами напрямую, без ошибки-сентинела.
 	// CodeFeatureUnavailable здесь больше нет: у него появился сентинел
 	// apperrors.ErrFeatureUnavailable, и он приходит из карты выше.
-	// CodeMagicLinkAccountExists тоже без сентинела: ConsumeMagicLink
-	// продолжает различать причину через errors.Is на общем ErrConflict, а
-	// код в ответе называет её отдельно — только для этого места.
-	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded, CodeMagicLinkAccountExists)
+	// CodeMagicLinkAccountExists — из того же ряда: ConsumeMagicLink
+	// различает причину через errors.Is на общем ErrConflict, а код в ответе
+	// называет её отдельно.
+	// CodeRecognitionUnclear и CodeRecognitionFailed тоже без сентинела:
+	// обработчик распознаёт причину через errors.Is на ошибках пакета llm
+	// (или её отсутствие), а не через apperrors.
+	// Ставятся обработчиками напрямую: сентинел у всех шести один и тот же
+	// (ErrConflict, а у последнего куратора — свой, оборачивающий
+	// ErrForbidden), а ответ человеку — разный, и решает это обработчик,
+	// который знает, о каком именно отказе речь.
+	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded,
+		CodeRecognitionUnclear, CodeRecognitionFailed,
+		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
+		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning,
+		CodeMagicLinkAccountExists)
 }

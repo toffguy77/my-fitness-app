@@ -3,6 +3,8 @@ package users
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
@@ -89,14 +91,21 @@ func getUserID(c *gin.Context) int64 {
 	return userID
 }
 
-// UpdateSettingsRequest represents settings update request
+// UpdateSettingsRequest represents settings update request.
+//
+// Every field is a pointer, including the six that used to be plain string
+// or bool. That is not enough by itself to tell "the caller left this out"
+// from "the caller sent it as null" — Go's encoding/json sets a pointer
+// field to nil either way — so UpdateSettings also re-parses the raw body
+// into a presence set (see updateSettingsPresentKeys) and only trusts a
+// pointer's nil-ness once presence confirms the key was actually there.
 type UpdateSettingsRequest struct {
-	Language           string   `json:"language"`
-	Units              string   `json:"units"`
-	Timezone           string   `json:"timezone"`
-	TelegramUsername   string   `json:"telegram_username"`
-	InstagramUsername  string   `json:"instagram_username"`
-	AppleHealthEnabled bool     `json:"apple_health_enabled"`
+	Language           *string  `json:"language"`
+	Units              *string  `json:"units"`
+	Timezone           *string  `json:"timezone"`
+	TelegramUsername   *string  `json:"telegram_username"`
+	InstagramUsername  *string  `json:"instagram_username"`
+	AppleHealthEnabled *bool    `json:"apple_health_enabled"`
 	TargetWeight       *float64 `json:"target_weight"`
 	Height             *float64 `json:"height"`
 	BirthDate          *string  `json:"birth_date"`
@@ -105,19 +114,59 @@ type UpdateSettingsRequest struct {
 	FitnessGoal        *string  `json:"fitness_goal"`
 }
 
+// updateSettingsPresentKeys reports which top-level JSON keys the request
+// body actually contained, independent of what they held. A key that maps
+// to JSON null is present; a key the body never mentioned is not — and only
+// this distinguishes the two once both have unmarshalled to a nil pointer.
+func updateSettingsPresentKeys(raw []byte) map[string]bool {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	present := make(map[string]bool, len(m))
+	for k := range m {
+		present[k] = true
+	}
+	return present
+}
+
 // UpdateSettings updates user settings
 func (h *Handler) UpdateSettings(c *gin.Context) {
 	userID := getUserID(c)
 
-	var req UpdateSettingsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	raw, err := io.ReadAll(c.Request.Body)
+	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
 		return
 	}
 
+	var req UpdateSettingsRequest
+	if err := json.Unmarshal(raw, &req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+	present := updateSettingsPresentKeys(raw)
+
+	// language/units/timezone are NOT NULL in the database (migrations
+	// 014/022): a present key with a null value has no column to land in and
+	// must be rejected here rather than surfacing as a 500 from a constraint
+	// violation.
+	if present["language"] && req.Language == nil {
+		response.Error(c, http.StatusBadRequest, "Язык не может быть пустым")
+		return
+	}
+	if present["units"] && req.Units == nil {
+		response.Error(c, http.StatusBadRequest, "Единицы измерения не могут быть пустыми")
+		return
+	}
+	if present["timezone"] && req.Timezone == nil {
+		response.Error(c, http.StatusBadRequest, "Часовой пояс не может быть пустым")
+		return
+	}
+
 	// Validate timezone if provided
-	if req.Timezone != "" {
-		if _, err := time.LoadLocation(req.Timezone); err != nil {
+	if req.Timezone != nil && *req.Timezone != "" {
+		if _, err := time.LoadLocation(*req.Timezone); err != nil {
 			response.Error(c, http.StatusBadRequest, "Неверный часовой пояс")
 			return
 		}
@@ -163,43 +212,83 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 	}
 
-	// Sanitize social usernames
-	req.TelegramUsername = sanitizeUsername(req.TelegramUsername)
-	req.InstagramUsername = sanitizeUsername(req.InstagramUsername)
+	// Sanitize and verify social usernames — but only the ones actually in
+	// the request. An update that never mentions telegram_username (the
+	// Apple Health toggle, for instance) must not re-run username
+	// verification, let alone risk validation failing on a field the caller
+	// never touched.
+	var telegramUsername, instagramUsername string
+	if req.TelegramUsername != nil {
+		telegramUsername = *req.TelegramUsername
+	}
+	if req.InstagramUsername != nil {
+		instagramUsername = *req.InstagramUsername
+	}
+	telegramUsername = sanitizeUsername(telegramUsername)
+	instagramUsername = sanitizeUsername(instagramUsername)
 
-	// Validate format
-	if err := validateUsernameFormat(req.TelegramUsername); err != nil {
-		response.Error(c, http.StatusBadRequest, "Telegram: "+err.Error())
-		return
+	if present["telegram_username"] {
+		if err := validateUsernameFormat(telegramUsername); err != nil {
+			response.Error(c, http.StatusBadRequest, "Telegram: "+err.Error())
+			return
+		}
+		if err := verifyUsernameExists(c.Request.Context(), "telegram", telegramUsername); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
-	if err := validateUsernameFormat(req.InstagramUsername); err != nil {
-		response.Error(c, http.StatusBadRequest, "Instagram: "+err.Error())
-		return
+	if present["instagram_username"] {
+		if err := validateUsernameFormat(instagramUsername); err != nil {
+			response.Error(c, http.StatusBadRequest, "Instagram: "+err.Error())
+			return
+		}
+		if err := verifyUsernameExists(c.Request.Context(), "instagram", instagramUsername); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 
-	// Verify accounts exist
-	if err := verifyUsernameExists(c.Request.Context(), "telegram", req.TelegramUsername); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
-		return
+	var language, units, timezone string
+	if req.Language != nil {
+		language = *req.Language
 	}
-	if err := verifyUsernameExists(c.Request.Context(), "instagram", req.InstagramUsername); err != nil {
-		response.Error(c, http.StatusBadRequest, err.Error())
-		return
+	if req.Units != nil {
+		units = *req.Units
+	}
+	if req.Timezone != nil {
+		timezone = *req.Timezone
+	}
+	var appleHealthEnabled bool
+	if req.AppleHealthEnabled != nil {
+		appleHealthEnabled = *req.AppleHealthEnabled
 	}
 
 	settings, err := h.service.UpdateSettings(c.Request.Context(), userID, Settings{
-		Language:           req.Language,
-		Units:              req.Units,
-		Timezone:           req.Timezone,
-		TelegramUsername:   req.TelegramUsername,
-		InstagramUsername:  req.InstagramUsername,
-		AppleHealthEnabled: req.AppleHealthEnabled,
+		Language:           language,
+		Units:              units,
+		Timezone:           timezone,
+		TelegramUsername:   telegramUsername,
+		InstagramUsername:  instagramUsername,
+		AppleHealthEnabled: appleHealthEnabled,
 		TargetWeight:       req.TargetWeight,
 		Height:             req.Height,
 		BirthDate:          req.BirthDate,
 		BiologicalSex:      req.BiologicalSex,
 		ActivityLevel:      req.ActivityLevel,
 		FitnessGoal:        req.FitnessGoal,
+	}, SettingsProvided{
+		Language:           present["language"],
+		Units:              present["units"],
+		Timezone:           present["timezone"],
+		TelegramUsername:   present["telegram_username"],
+		InstagramUsername:  present["instagram_username"],
+		AppleHealthEnabled: present["apple_health_enabled"],
+		TargetWeight:       present["target_weight"],
+		Height:             present["height"],
+		BirthDate:          present["birth_date"],
+		BiologicalSex:      present["biological_sex"],
+		ActivityLevel:      present["activity_level"],
+		FitnessGoal:        present["fitness_goal"],
 	})
 	if err != nil {
 		h.log.Errorw("Не удалось обновить настройки", "error", err, "user_id", userID)

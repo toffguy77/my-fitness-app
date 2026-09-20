@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { accountApi, type DataExport, type DeletionStatus } from '../api/account'
-import { isApiError, messageFor } from '@/shared/errors/apiErrors'
+import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
@@ -57,8 +57,8 @@ export function SettingsPrivacy() {
         async function loadInitial() {
             try {
                 await refresh()
-            } catch {
-                toast.error(t('settings.privacy.stateLoadFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('settings.privacy.stateLoadFailed')))
             } finally {
                 setLoading(false)
             }
@@ -73,7 +73,7 @@ export function SettingsPrivacy() {
             toast.success(t('settings.privacy.exportRequested'))
             await refresh()
         } catch (err) {
-            toast.error(isApiError(err) ? messageFor(err) : t('settings.privacy.exportFailed'))
+            toast.error(messageForOr(err, t('settings.privacy.exportFailed')))
         } finally {
             setBusy(false)
         }
@@ -86,7 +86,7 @@ export function SettingsPrivacy() {
             setCodeSent(true)
             toast.success(t('settings.privacy.codeSent'))
         } catch (err) {
-            toast.error(isApiError(err) ? messageFor(err) : t('settings.privacy.codeSendFailed'))
+            toast.error(messageForOr(err, t('settings.privacy.codeSendFailed')))
         } finally {
             setSendingCode(false)
         }
@@ -118,8 +118,10 @@ export function SettingsPrivacy() {
             await accountApi.cancelDeletion()
             toast.success(t('settings.privacy.deletionCancelled'))
             await refresh()
-        } catch {
-            toast.error(t('settings.privacy.cancelFailed'))
+        } catch (err) {
+            // «Удаление уже состоялось» и «нет связи» — разные новости для
+            // того, кто передумал удалять аккаунт.
+            toast.error(messageForOr(err, t('settings.privacy.cancelFailed')))
         } finally {
             setBusy(false)
         }

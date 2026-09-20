@@ -8,6 +8,8 @@ import type { WeeklyPlanView } from '../types'
 import { PlanForm } from './PlanForm'
 
 import { t } from '@/shared/i18n'
+import toast from 'react-hot-toast'
+import { messageForOr } from '@/shared/errors/apiErrors'
 function formatDateRu(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00')
     if (isNaN(d.getTime())) return dateStr
@@ -38,9 +40,9 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     setLoading(false)
                 }
             })
-            .catch(() => {
+            .catch((err) => {
                 if (!cancelled) {
-                    setError(t('curator.plan.loadFailed'))
+                    setError(messageForOr(err, t('curator.plan.loadFailed')))
                     setLoading(false)
                 }
             })
@@ -71,8 +73,11 @@ export function PlanTab({ clientId }: PlanTabProps) {
         try {
             await curatorApi.deleteWeeklyPlan(clientId, planId)
             setPlans((prev) => prev.filter((p) => p.id !== planId))
-        } catch {
-            // silently fail
+        } catch (err) {
+            // Раньше здесь молчали («silently fail»): куратор жал «удалить»,
+            // план оставался на месте, и экран не говорил почему. Строка
+            // действительно остаётся — но теперь вместе с причиной.
+            toast.error(messageForOr(err, t('curator.plan.deleteFailed')))
         }
     }
 

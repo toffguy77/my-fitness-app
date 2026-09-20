@@ -12,6 +12,7 @@ import {
 } from '@/features/content/types'
 import type { ParsedArticle } from '@/features/content/utils/parseFrontmatter'
 import { contentApi } from '@/features/content/api/contentApi'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 // ============================================================================
 // Types
@@ -68,8 +69,10 @@ export function ArticleForm({
         try {
             const result = await contentApi.uploadCoverImage(file)
             setCoverImageUrl(result.url)
-        } catch {
-            setCoverImageError('Не удалось загрузить изображение. Попробуйте ещё раз.')
+        } catch (err) {
+            // «Попробуйте ещё раз» не поможет, когда сервер сказал «такой файл
+            // загрузить нельзя» или «хранилище не настроено».
+            setCoverImageError(messageForOr(err, 'Не удалось загрузить изображение. Попробуйте ещё раз.'))
         } finally {
             setCoverUploading(false)
             if (coverInputRef.current) coverInputRef.current.value = ''

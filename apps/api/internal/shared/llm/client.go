@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -123,6 +124,10 @@ type chatRequest struct {
 	// отклоняется целиком, если на счёте меньше, чем этот резерв, даже когда
 	// настоящий ответ стоил бы копейки.
 	MaxTokens int `json:"max_tokens,omitempty"`
+	// ChatTemplateKwargs передаётся поставщику как есть. Нужен распознаванию,
+	// чтобы отключить размышление модели; путь бота его не задаёт, и поведение
+	// там не меняется.
+	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs,omitempty"`
 }
 
 // supportAnswerLimit — потолок ответа бота поддержки.
@@ -132,6 +137,36 @@ type chatRequest struct {
 // на раздел документации и при этом не заставляет резервировать средства под
 // ответ, которого никогда не будет.
 const supportAnswerLimit = 1000
+
+// recognitionAnswerLimit — потолок ответа распознавания еды.
+//
+// Раньше предела не было вовсе, и его брал поставщик — у разных поставщиков он
+// разный и может быть очень большим. Запрос без потолка — это счёт без потолка.
+//
+// Значение выбрано по живой проверке, а не на глаз: на тысяче ответ про
+// снимок с десятком продуктов обрывался на полуслове и разваливал разбор
+// JSON. Каждое блюдо занимает около сотни токенов вместе с КБЖУ, так что
+// этого хватает на витрину еды, не то что на тарелку.
+const recognitionAnswerLimit = 3000
+
+// finishReasonLength — поставщик оборвал ответ по пределу длины.
+const finishReasonLength = "length"
+
+// ErrEmptyModelAnswer — модель ответила, но без содержания.
+//
+// Отдельная ошибка, потому что раньше этот случай попадал в разбор JSON и
+// выходил сообщением про испорченный ответ, хотя ответа не было вовсе. Так
+// ведёт себя рассуждающая модель, у которой размышление съело весь бюджет:
+// content пуст, finish_reason — length, и виновата не фотография человека.
+var ErrEmptyModelAnswer = errors.New("model returned no content")
+
+// ErrAnswerTruncated — модель не уместила ответ в отведённый предел.
+//
+// Отдельно от разбора JSON намеренно: обрезанный ответ ломается именно там, но
+// сообщение про испорченный JSON уводит искать дефект в модели или в промпте,
+// тогда как чинится это пределом. Найдено живой проверкой — снимок с десятком
+// продуктов обрывался на середине поля.
+var ErrAnswerTruncated = errors.New("model answer hit the length limit")
 
 type chatMessage struct {
 	Role    string        `json:"role"`
@@ -157,13 +192,21 @@ type imageURL struct {
 }
 
 // chatResponse is the OpenRouter chat completion response.
+// chatChoice — один вариант ответа. Назван, а не оставлен анонимным: у
+// анонимной структуры каждое новое поле ломает всякий литерал в тестах, и
+// добавление finish_reason упёрлось ровно в это.
+type chatChoice struct {
+	Message struct {
+		Content string `json:"content"`
+	} `json:"message"`
+	// FinishReason отличает законченный ответ от обрезанного. Без него обрыв
+	// виден только как испорченный JSON.
+	FinishReason string `json:"finish_reason"`
+}
+
 type chatResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-	Error *struct {
+	Choices []chatChoice `json:"choices"`
+	Error   *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 	Usage *struct {
@@ -231,6 +274,13 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 				},
 			},
 		},
+		MaxTokens: recognitionAnswerLimit,
+		// Модель со зрением в каталоге — рассуждающая: она складывает
+		// размышление в отдельное поле и оставляет содержание пустым, пока не
+		// закончит. На проверке с бюджетом в 2000 токенов размышление заняло
+		// весь бюджет, и ответа не появилось. Это единственный способ его
+		// отключить: родной reasoning_options эндпоинт отвергает.
+		ChatTemplateKwargs: map[string]any{"enable_thinking": false},
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)
@@ -281,14 +331,40 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
 	}
 
 	content := chatResp.Choices[0].Message.Content
+	if strings.TrimSpace(content) == "" {
+		return nil, ErrEmptyModelAnswer
+	}
 	jsonStr := stripMarkdownCodeFences(content)
 
 	var result RecognitionResponse
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		// Разбираем прежде, чем судить по finish_reason: ответ, оборванный по
+		// пределу, до валидного JSON не дотягивает почти никогда, но если
+		// модель успела закрыть структуру последним разрешённым токеном,
+		// выбрасывать годный результат не за что.
+		if chatResp.Choices[0].FinishReason == finishReasonLength {
+			return nil, ErrAnswerTruncated
+		}
 		return nil, fmt.Errorf("failed to parse recognition result: %w (content: %s)", err, content)
 	}
 
-	c.log.Info("food recognition completed", "items_count", len(result.Items), "model", c.model)
+	// Модель иногда называет то, что едой не является, и сама ставит такому
+	// нулевой вес — на живой проверке это был чайный пакетик с пометкой
+	// «неингредиент». Ноль граммов не еда: в дневнике это строка, которая
+	// ничего не весит и ничего не добавляет, но требует от человека решения,
+	// что с ней делать. Выбрасываем здесь, а не в интерфейсе, чтобы решение
+	// было одно на всех потребителей.
+	kept := result.Items[:0]
+	for _, item := range result.Items {
+		if item.EstimatedWeight > 0 {
+			kept = append(kept, item)
+		}
+	}
+	dropped := len(result.Items) - len(kept)
+	result.Items = kept
+
+	c.log.Info("food recognition completed",
+		"items_count", len(result.Items), "dropped_weightless", dropped, "model", c.model)
 
 	return &result, nil
 }

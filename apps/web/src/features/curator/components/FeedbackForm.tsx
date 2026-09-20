@@ -7,6 +7,7 @@ import { curatorApi } from '../api/curatorApi'
 import type { RatingLevel, CategoryRating } from '../types'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 const RATING_OPTIONS: { value: RatingLevel; label: string; color: string; selectedBg: string }[] = [
     { value: 'excellent', label: t('curator.feedback.excellent'), color: 'border-green-500 text-green-700', selectedBg: 'bg-green-500 text-white border-green-500' },
     { value: 'good', label: t('curator.feedback.good'), color: 'border-yellow-500 text-yellow-700', selectedBg: 'bg-yellow-500 text-white border-yellow-500' },
@@ -86,8 +87,8 @@ export function FeedbackForm({ clientId, reportId, onClose, onSaved }: FeedbackF
                 recommendations: recommendations.trim() || undefined,
             })
             onSaved()
-        } catch {
-            setError(t('curator.feedback.saveFailed'))
+        } catch (err) {
+            setError(messageForOr(err, t('curator.feedback.saveFailed')))
         } finally {
             setSaving(false)
         }

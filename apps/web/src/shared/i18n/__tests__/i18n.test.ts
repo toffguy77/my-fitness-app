@@ -94,6 +94,18 @@ describe('Turning a failed request into something to read', () => {
     it('still distinguishes a failed request from a failed response', () => {
         expect(messageFor(new NetworkError(new Error('offline')))).toContain('Нет связи')
     })
+
+    // rate_limited talks about waiting "a little" — true for request frequency,
+    // false for a daily ceiling that only resets tomorrow. Falling back to the
+    // 429 status branch would say the wrong thing, so the code must win here.
+    it('tells a daily ceiling apart from ordinary rate limiting', () => {
+        const error = new ApiError(429, { code: 'recognition_daily_limit', message: 'лимит распознаваний исчерпан на сегодня' })
+
+        const message = messageFor(error)
+
+        expect(message).toContain('завтра')
+        expect(message).not.toBe('Слишком много запросов. Подождите немного и попробуйте снова.')
+    })
 })
 
 describe('Formatting for a reader', () => {

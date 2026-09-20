@@ -17,20 +17,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
+// fakeSessionCache stands in for middleware.TokenVersions: it records which
+// accounts had their token version bumped, without touching the database, so
+// tests that don't care about invalidation don't need to script it into the
+// sqlmock expectations of every UPDATE.
+type fakeSessionCache struct {
+	bumped []int64
+}
+
+func (f *fakeSessionCache) BumpVersion(_ context.Context, _ *sql.Tx, userID int64) error {
+	f.bumped = append(f.bumped, userID)
+	return nil
+}
+
+func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, *fakeSessionCache, func()) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 
 	log := logger.New()
 	wrappedDB := &database.DB{DB: db}
-	service := NewService(wrappedDB, log)
+	sessions := &fakeSessionCache{}
+	service := NewService(wrappedDB, log).WithSessionCache(sessions)
 
-	return service, mock, func() { db.Close() }
+	return service, mock, sessions, func() { db.Close() }
 }
 
 func TestGetUsers(t *testing.T) {
 	t.Run("returns user list", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -79,7 +93,7 @@ func TestGetUsers(t *testing.T) {
 	})
 
 	t.Run("returns empty list when no users", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -101,7 +115,7 @@ func TestGetUsers(t *testing.T) {
 	})
 
 	t.Run("returns error on query failure", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -119,7 +133,7 @@ func TestGetUsers(t *testing.T) {
 
 func TestGetCurators(t *testing.T) {
 	t.Run("returns curator list", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -143,7 +157,7 @@ func TestGetCurators(t *testing.T) {
 	})
 
 	t.Run("returns empty list when no curators", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -157,7 +171,7 @@ func TestGetCurators(t *testing.T) {
 	})
 
 	t.Run("returns error on query failure", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -171,8 +185,8 @@ func TestGetCurators(t *testing.T) {
 }
 
 func TestChangeRole(t *testing.T) {
-	t.Run("promotes client to coordinator", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+	t.Run("promotes client to coordinator and bumps the token version", func(t *testing.T) {
+		service, mock, sessions, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -180,16 +194,20 @@ func TestChangeRole(t *testing.T) {
 			WithArgs(int64(1)).
 			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
 
+		mock.ExpectBegin()
 		mock.ExpectExec("UPDATE users SET role").
 			WithArgs("coordinator", int64(1)).
 			WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectCommit()
 
 		err := service.ChangeRole(ctx, 1, "coordinator")
 		assert.NoError(t, err)
+		assert.Equal(t, []int64{1}, sessions.bumped,
+			"a promotion that does not bump the token version leaves the old, unprivileged token as the only one that keeps working")
 	})
 
 	t.Run("no-op when role is the same", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, sessions, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -199,10 +217,11 @@ func TestChangeRole(t *testing.T) {
 
 		err := service.ChangeRole(ctx, 1, "client")
 		assert.NoError(t, err)
+		assert.Empty(t, sessions.bumped, "a no-op role change must not invalidate anyone's session")
 	})
 
 	t.Run("returns error for super_admin", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -216,7 +235,7 @@ func TestChangeRole(t *testing.T) {
 	})
 
 	t.Run("returns error when user not found", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -229,8 +248,24 @@ func TestChangeRole(t *testing.T) {
 		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 	})
 
-	t.Run("demotes coordinator to client with no active clients", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+	t.Run("refuses to change a role without a way to invalidate the old token", func(t *testing.T) {
+		db, mock, err := sqlmock.New()
+		require.NoError(t, err)
+		defer db.Close()
+
+		service := NewService(&database.DB{DB: db}, logger.New())
+
+		mock.ExpectQuery("SELECT role FROM users WHERE id").
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
+
+		err = service.ChangeRole(context.Background(), 1, "coordinator")
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, apperrors.ErrValidation))
+	})
+
+	t.Run("demotes coordinator to client, bumping the token version, with no active clients", func(t *testing.T) {
+		service, mock, sessions, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -260,10 +295,12 @@ func TestChangeRole(t *testing.T) {
 
 		err := service.ChangeRole(ctx, 1, "client")
 		assert.NoError(t, err)
+		assert.Equal(t, []int64{1}, sessions.bumped,
+			"a demoted curator whose token version was not bumped keeps their coordinator-level token working")
 	})
 
 	t.Run("demotes coordinator fails when no remaining curators", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -298,12 +335,16 @@ func TestChangeRole(t *testing.T) {
 		err := service.ChangeRole(ctx, 1, "client")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "cannot demote")
+		// Whether BumpVersion was called before the rollback is not
+		// meaningful here: it runs inside the same *sql.Tx as the role
+		// update, so a real rollback discards both together. That atomicity
+		// is exercised against a real database in the integration test.
 	})
 }
 
 func TestAssignCurator(t *testing.T) {
 	t.Run("successful assignment", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -337,7 +378,7 @@ func TestAssignCurator(t *testing.T) {
 	})
 
 	t.Run("client not found", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -351,7 +392,7 @@ func TestAssignCurator(t *testing.T) {
 	})
 
 	t.Run("curator not found", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -369,7 +410,7 @@ func TestAssignCurator(t *testing.T) {
 	})
 
 	t.Run("user is not a client", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -383,7 +424,7 @@ func TestAssignCurator(t *testing.T) {
 	})
 
 	t.Run("user is not a coordinator", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -403,7 +444,7 @@ func TestAssignCurator(t *testing.T) {
 
 func TestGetConversations(t *testing.T) {
 	t.Run("returns conversation list", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -437,7 +478,7 @@ func TestGetConversations(t *testing.T) {
 	})
 
 	t.Run("returns empty list when no conversations", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -458,7 +499,7 @@ func TestGetConversations(t *testing.T) {
 	})
 
 	t.Run("returns error on query failure", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -475,7 +516,7 @@ func TestGetConversations(t *testing.T) {
 
 func TestGetConversationMessages(t *testing.T) {
 	t.Run("returns messages without cursor", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -514,7 +555,7 @@ func TestGetConversationMessages(t *testing.T) {
 	})
 
 	t.Run("returns messages with cursor", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -540,7 +581,7 @@ func TestGetConversationMessages(t *testing.T) {
 	})
 
 	t.Run("conversation not found", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -555,7 +596,7 @@ func TestGetConversationMessages(t *testing.T) {
 	})
 
 	t.Run("clamps limit", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 
@@ -577,7 +618,7 @@ func TestGetConversationMessages(t *testing.T) {
 	})
 
 	t.Run("defaults limit when zero", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, _, cleanup := setupTestService(t)
 		defer cleanup()
 		ctx := context.Background()
 

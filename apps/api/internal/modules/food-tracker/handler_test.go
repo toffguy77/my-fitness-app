@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/llm"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/gin-gonic/gin"
@@ -585,7 +586,7 @@ func TestRecognizeFood_LimitExceeded(t *testing.T) {
 	imageData := testPNG(t)
 
 	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
-		Return(nil, fmt.Errorf("лимит распознаваний исчерпан на сегодня"))
+		Return(nil, fmt.Errorf("%w: на сегодня доступно 20 распознаваний фото", apperrors.ErrDailyLimitReached))
 
 	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
 
@@ -601,7 +602,42 @@ func TestRecognizeFood_LimitExceeded(t *testing.T) {
 	var resp map[string]any
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
-	assert.Contains(t, resp["message"], "лимит распознаваний")
+	assert.Equal(t, apperrors.CodeRecognitionDailyLimit, resp["code"])
+	// Точное равенство с recognitionDailyLimitMessage(20), а не Contains: cfg в
+	// этом тесте задаёт лимит 20 (см. setupTestHandlerWithMock), а обработчик
+	// раньше мог форматировать число сам — литерал 3 вместо
+	// h.cfg.FoodRecognitionDailyLimit прошёл бы незамеченным ни одним из
+	// прежних Contains-проверок. Равенство также держит текст handler.go и
+	// service.go на одной строке: разойдись они — тест увидит несовпадение.
+	assert.Equal(t, recognitionDailyLimitMessage(20), resp["message"])
+
+	mockService.AssertExpectations(t)
+}
+
+// Раньше отличие 429 от 500 держалось на strings.Contains(err.Error(), "лимит
+// распознаваний") — перефразируй текст в service.go, и проверка молча
+// перестанет совпадать. errors.Is на сентинеле так не ломается: ошибка без
+// apperrors.ErrDailyLimitReached обязана остаться пятисоткой, даже если в её
+// тексте те же слова.
+func TestRecognizeFood_ErrorMentioningLimitButNotWrappingSentinel_Is500(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	imageData := testPNG(t)
+
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
+		Return(nil, fmt.Errorf("лимит распознаваний временно не проверяется из-за сбоя"))
+
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", imageData)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code,
+		"текст ошибки похож на дневной потолок, но сентинела нет — это не он")
 
 	mockService.AssertExpectations(t)
 }
@@ -652,4 +688,80 @@ func TestSearchFoodsHandler_ContextCanceled(t *testing.T) {
 
 	assert.Equal(t, 499, w.Code, "handler should return 499 for canceled requests, not 500")
 	mockSvc.AssertExpectations(t)
+}
+
+// Модель ответила, но сказать ей оказалось нечего, либо ответ не уместился в
+// отведённый предел. И то и другое — не вина фотографии, и человеку честнее
+// это сказать: иначе он будет переснимать тарелку, пока не сдастся. Раньше оба
+// случая выходили наружу пятисоткой «Не удалось распознать еду».
+func TestRecognizeFood_ModelSaidNothingUsable(t *testing.T) {
+	cases := map[string]error{
+		"модель ничего не вернула": llm.ErrEmptyModelAnswer,
+		"ответ оборван по пределу": llm.ErrAnswerTruncated,
+	}
+
+	for name, cause := range cases {
+		t.Run(name, func(t *testing.T) {
+			handler, mockService := setupTestHandlerWithMock()
+
+			mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
+				Return((*AIRecognitionResponse)(nil), fmt.Errorf("ошибка при распознавании еды: %w", cause))
+
+			req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", testPNG(t))
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Set("user_id", int64(1))
+			c.Request = req
+
+			handler.RecognizeFood(c)
+
+			assert.Equal(t, http.StatusUnprocessableEntity, w.Code,
+				"это не внутренняя ошибка: сервер отработал, а разобрать нечего")
+			assert.Contains(t, w.Body.String(), "вручную",
+				"человеку нужен выход, а не констатация неудачи")
+
+			var resp map[string]any
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+			// response.Error(422, ...) раньше молча получал code "internal" —
+			// codeForStatus не знает про 422, и messageFor на клиенте показал бы
+			// «Сервис временно недоступен» вместо совета переснять фото.
+			assert.Equal(t, apperrors.CodeRecognitionUnclear, resp["code"])
+
+			mockService.AssertExpectations(t)
+		})
+	}
+}
+
+// A genuine failure (provider outage, timeout, anything not named above) is
+// not the photo's fault and not the day's quota — it gets its own code and a
+// message that offers to wait, matching the manual-entry escape hatch the
+// other two cases already have, instead of the bare "Не удалось распознать
+// еду" that used to leave with no code of its own.
+func TestRecognizeFood_GenuineFailure(t *testing.T) {
+	handler, mockService := setupTestHandlerWithMock()
+
+	mockService.On("RecognizeFood", mock.Anything, int64(1), mock.AnythingOfType("[]uint8"), "image/png", "", 20, mock.AnythingOfType("*llm.Client")).
+		Return((*AIRecognitionResponse)(nil), fmt.Errorf("openrouter: connection refused"))
+
+	req := createMultipartRequest(t, "photo", "test.jpg", "image/jpeg", testPNG(t))
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", int64(1))
+	c.Request = req
+
+	handler.RecognizeFood(c)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, apperrors.CodeRecognitionFailed, resp["code"])
+	assert.Contains(t, resp["message"], "вручную",
+		"тот же выход, что у двух других случаев отказа")
+	assert.Contains(t, resp["message"], "минуту",
+		"это не «снять ближе»: тут вина не фотографии, а сервиса")
+
+	mockService.AssertExpectations(t)
 }

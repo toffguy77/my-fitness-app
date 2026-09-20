@@ -86,4 +86,68 @@ export class FoodTrackerPage {
   async submitFoodEntry() {
     await this.page.getByRole('button', { name: /Добавить/ }).click()
   }
+
+  // --- AI photo recognition tab ---
+
+  get photoTab() {
+    return this.page.getByRole('tab', { name: 'Фото еды' })
+  }
+
+  /** Hidden file input behind "Галерея" — Playwright can fill it without a click. */
+  get photoGalleryInput() {
+    return this.page.getByLabel('Выбрать фото из галереи')
+  }
+
+  async openPhotoTab() {
+    await this.photoTab.click()
+  }
+
+  async uploadPhoto(buffer: Buffer, name = 'meal.png', mimeType = 'image/png') {
+    await this.photoGalleryInput.setInputFiles({ name, mimeType, buffer })
+  }
+
+  /** The <li> for one recognized position, found by its visible name. */
+  positionRow(positionName: string) {
+    return this.page.getByRole('listitem').filter({ hasText: positionName })
+  }
+
+  weightInput(positionName: string) {
+    return this.page.getByLabel(`Вес порции: ${positionName}`)
+  }
+
+  modelEstimateText(positionName: string) {
+    return this.positionRow(positionName).getByText(/Оценка модели: \d+ г/)
+  }
+
+  useModelEstimateButton(positionName: string) {
+    return this.page.getByLabel(`Подставить оценку модели: ${positionName}`)
+  }
+
+  /** The invalid-weight message for one position, found by its own text —
+   * not by the paragraph's class. `aria-invalid` on `weightInput()` is the
+   * honest anchor for the *state*; this is only for the message's wording. */
+  weightErrorText(positionName: string, pattern: RegExp) {
+    return this.positionRow(positionName).getByText(pattern)
+  }
+
+  /** The "Добавить" button inside the photo tab's results screen — distinct
+   * from the meal-slot "Добавить в …" buttons and from the final save button
+   * on the portion step, both of which live outside this screen at any time. */
+  get photoConfirmButton() {
+    return this.foodModal.getByRole('button', { name: 'Добавить', exact: true })
+  }
+
+  get photoWeightRequiredHint() {
+    return this.page.getByText('Введите вес каждой позиции, чтобы сохранить запись')
+  }
+
+  get photoLiveTotalPartial() {
+    return this.page.getByText('Промежуточный итог — не все веса введены')
+  }
+
+  /** Scoped to the modal: the same word ("Итого:") also labels a meal
+   * slot's subtotal elsewhere on the page. */
+  get photoLiveTotal() {
+    return this.foodModal.getByText(/Итого: \d+ ккал/)
+  }
 }

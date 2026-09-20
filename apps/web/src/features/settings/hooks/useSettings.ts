@@ -5,6 +5,7 @@ import { getProfile, updateProfile, updateSettings, uploadAvatar, deleteAvatar }
 import type { FullProfile, UserSettings } from '../api/settings'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 export function useSettings() {
     const [profile, setProfile] = useState<FullProfile | null>(null)
@@ -15,8 +16,12 @@ export function useSettings() {
             setIsLoading(true)
             const data = await getProfile()
             setProfile(data)
-        } catch {
-            toast.error(t('settings.profileLoadFailed'))
+        } catch (err) {
+            // Профиль не прочитался по разным причинам, и человеку они разные:
+            // «сессия завершена» значит «войдите заново», а «нет доступа» —
+            // «это не ваш аккаунт». Одна фраза на оба случая заставляла жать
+            // обновление там, где обновление не помогает.
+            toast.error(messageForOr(err, t('settings.profileLoadFailed')))
         } finally {
             setIsLoading(false)
         }
@@ -48,8 +53,10 @@ export function useSettings() {
             const updated = await updateProfile({ name })
             setProfile(prev => prev ? { ...prev, name: updated.name } : null)
             toast.success(t('settings.nameUpdated'))
-        } catch {
-            toast.error(t('settings.nameUpdateFailed'))
+        } catch (err) {
+            // Сервер объясняет отказ — слишком длинное имя, запрещённые
+            // символы. Без этого человек правит имя вслепую.
+            toast.error(messageForOr(err, t('settings.nameUpdateFailed')))
         }
     }, [])
 

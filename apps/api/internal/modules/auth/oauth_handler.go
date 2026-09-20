@@ -283,8 +283,11 @@ func (h *OAuthHandler) Unlink(c *gin.Context) {
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrConflict):
-		response.Error(c, http.StatusConflict,
-			"Это единственный способ входа. Сначала задайте пароль.")
+		// Следующий шаг назван прямо: задать пароль. Общий conflict вместо
+		// этого сообщал, что «действие невозможно», и не говорил, чем это
+		// можно поправить.
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeProviderOnlyWayIn,
+			"Это единственный способ входа. Сначала задайте пароль.", nil)
 		return
 	case errors.Is(err, apperrors.ErrNotFound):
 		response.NotFound(c, "Такая привязка не найдена")
@@ -411,8 +414,10 @@ func (h *OAuthHandler) ConfirmLink(c *gin.Context) {
 		response.Error(c, http.StatusBadRequest, "Попытка входа истекла. Начните заново.")
 		return
 	case errors.Is(err, apperrors.ErrConflict):
-		response.Error(c, http.StatusConflict,
-			"У этого аккаунта нет пароля. Войдите через сервис, который к нему уже привязан.")
+		// Подтверждать владение нечем: пароля у аккаунта нет. Войти можно
+		// через уже привязанный сервис — и это надо сказать словами.
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodePasswordNotSet,
+			"У этого аккаунта нет пароля. Войдите через сервис, который к нему уже привязан.", nil)
 		return
 	default:
 		h.log.Error("Failed to confirm external link", "error", err)

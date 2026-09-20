@@ -15,6 +15,7 @@ import { NutritionBlock } from '../components/NutritionBlock'
 import { StepsBlock } from '../components/StepsBlock'
 import { WorkoutBlock } from '../components/WorkoutBlock'
 import { useDashboardStore } from '../store/dashboardStore'
+import { formatLocalDate } from '@/shared/utils/format'
 import type { DailyMetrics } from '../types'
 
 // Mock the store
@@ -29,9 +30,18 @@ jest.mock('react-hot-toast', () => ({
     },
 }))
 
-// Helper to create a date string
+// Helper to create a date string.
+//
+// Must match the *local*-date keying that WeightBlock/NutritionBlock/
+// StepsBlock/WorkoutBlock use internally (`formatLocalDate`, based on
+// getFullYear/getMonth/getDate) rather than the UTC day from
+// `toISOString()`. Those disagree for part of every day in any timezone
+// ahead of UTC (e.g. 00:00-03:00 in Moscow, UTC+3): a notification/metric
+// keyed by the test's UTC date would miss the component's local-date
+// lookup, making "today" data look unlogged and firing a spurious
+// attention indicator (or hiding the real one for past/future dates).
 function toDateStr(date: Date): string {
-    return date.toISOString().split('T')[0]
+    return formatLocalDate(date)
 }
 
 // Helper to check if date is today
