@@ -29,6 +29,7 @@ import {
 } from '../store/guestOnboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { SupportLink } from '@/shared/components/SupportLink'
+import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { EVENTS, track, TrackView } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
@@ -321,6 +322,8 @@ export function GuestOnboarding() {
             <p className="mt-3 text-center">
                 <SupportLink />
             </p>
+
+            <SupportWidget />
         </main>
     )
 }
