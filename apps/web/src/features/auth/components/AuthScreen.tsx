@@ -243,10 +243,24 @@ export function AuthScreen({ initialMode = 'login' }: AuthScreenProps = {}) {
                                         {t('auth.magicLink.switchToLink')}
                                     </button>
                                 </div>
-
-                                <ProviderButtons mode={mode} />
                             </>
                         )}
+
+                        {/*
+                            Provider sign-in is a third, independent entry
+                            method — not a sub-case of the password form, so
+                            it renders here regardless of entryMethod (and,
+                            unlike the small text links above it, stays out
+                            of both `entryMethod` branches so it is visible
+                            whichever one is on screen). ProviderButtons
+                            itself decides mode's wording ("войдите через" vs
+                            "зарегистрируйтесь через") and already sets it
+                            apart with a labelled divider and full-width
+                            bordered buttons, matching the weight of the
+                            primary actions above rather than reading as a
+                            footnote to them.
+                        */}
+                        <ProviderButtons mode={mode} />
                     </div>
 
                     <AuthFooter />
