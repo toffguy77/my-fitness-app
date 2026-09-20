@@ -53,7 +53,7 @@ export function AuthForm({
                 error={errors.password}
                 showRequirements={mode === 'register'}
                 required
-                aria-label="Password"
+                aria-label={t('auth.password')}
             />
 
             <div className="text-right">

@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures/session'
 import { type Page } from '@playwright/test'
 import { getAccount } from '../fixtures/test-accounts'
+import { AuthPage } from '../pages/auth.page'
 
 /**
  * Changing a password.
@@ -78,12 +79,13 @@ test.describe('Change password, end to end', () => {
   const NEW_PASSWORD = 'Rotated!Password#2026'
 
   async function signIn(page: Page, email: string, password: string) {
-    await page.goto('/auth')
-    // The magic-link form is what a fresh screen shows; password is a click away.
-    await page.getByRole('button', { name: 'Войти по паролю' }).click()
-    await page.getByLabel('Email address').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByLabel('Log in to your account').click()
+    // e2e/pages/auth.page.ts было сломано (доступные имена перевели на
+    // русский третьим кругом правок задачи 9, а этот файл держал свою копию
+    // тех же устаревших английских строк) — сейчас использует общий
+    // page-объект, читающий имена из словаря.
+    const authPage = new AuthPage(page)
+    await authPage.goto()
+    await authPage.login(email, password)
     await page.waitForURL('**/dashboard**', { timeout: 15000 })
   }
 
@@ -133,11 +135,9 @@ test.describe('Change password, end to end', () => {
 
     // The old password is refused.
     await page.context().clearCookies()
-    await page.goto('/auth')
-    await page.getByRole('button', { name: 'Войти по паролю' }).click()
-    await page.getByLabel('Email address').fill(account.email)
-    await page.getByLabel('Password').fill(account.password)
-    await page.getByLabel('Log in to your account').click()
+    const authPage = new AuthPage(page)
+    await authPage.goto()
+    await authPage.login(account.email, account.password)
     await expect(page.getByText('Неверный логин или пароль')).toBeVisible({ timeout: 15000 })
 
     // The new one works.

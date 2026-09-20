@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures/session'
 import type { Page, APIRequestContext, BrowserContext } from '@playwright/test'
 import { getAccount } from '../fixtures/test-accounts'
+import { AuthPage } from '../pages/auth.page'
 
 /**
  * Вход по одноразовой ссылке — целиком: запрос, письмо, переход, сессия.
@@ -308,27 +309,13 @@ test.describe('Вход по одноразовой ссылке', () => {
         expect(consumed.status(), await consumed.text()).toBe(200)
 
         await page.context().clearCookies()
-        await page.goto('/auth')
-        // Кнопка серверно отрендерена до гидратации: один клик может в неё
-        // не попасть. Тот же приём, что и в auth.page.ts — retry кликом, а
-        // не только ожиданием после него.
-        //
-        // НЕ используется e2e/pages/auth.page.ts: его геттеры сейчас не
-        // находят ничего на реальном /auth. `auth.emailLabel` стал
-        // «Электронная почта» ещё в 53e57626 (задолго до задачи 7), кнопка
-        // входа — `aria-label={t('auth.signIn')}` = «Войти», а не
-        // «Log in to your account»/«Email address» из page-объекта. Живой
-        // прогон auth.spec.ts на этой же сборке подтверждает: все пять его
-        // тестов падают на этом же locator. Не чиню (вне списка файлов
-        // задачи 12) — см. отчёт задачи 12, это блокирует часть «прогнать
-        // полный набор тестов», а не что-то, что вносит эта ветка.
-        await expect(async () => {
-            await page.getByRole('button', { name: 'Войти по паролю' }).click()
-            await expect(page.getByLabel('Электронная почта')).toBeVisible({ timeout: 2000 })
-        }).toPass({ timeout: 15000 })
-        await page.getByLabel('Электронная почта').fill(address)
-        await page.getByLabel('Password').fill('AnyGuess!1234')
-        await page.getByRole('button', { name: 'Войти', exact: true }).click()
+        // e2e/pages/auth.page.ts — было сломано (доступные имена перевели
+        // на русский третьим кругом правок задачи 9, объект остался с
+        // английскими строками), починено в этой же задаче: имена теперь
+        // берутся из словаря, а не вписаны литералом.
+        const authPage = new AuthPage(page)
+        await authPage.goto()
+        await authPage.login(address, 'AnyGuess!1234')
 
         // Тот же текст, что и обычный неверный пароль (change-password.spec.ts)
         // — не различить снаружи, что у аккаунта вообще нет пароля.

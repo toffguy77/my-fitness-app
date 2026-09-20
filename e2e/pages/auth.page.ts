@@ -1,22 +1,28 @@
 import { type Page, expect } from '@playwright/test'
+import { ru } from '../../apps/web/src/shared/i18n/dictionaries/ru'
 
+// Доступные имена берутся из того же словаря, что и разметка (AuthForm.tsx,
+// AuthScreen.tsx) — раньше они были вписаны здесь строками и разошлись со
+// словарём в третьем круге правок задачи 9, когда подписи перевели на
+// русский. Импорт из словаря делает расхождение невозможным: сборка упадёт
+// раньше, чем спек покраснеет молча.
 export class AuthPage {
   constructor(private page: Page) {}
 
   get emailInput() {
-    return this.page.getByLabel('Email address')
+    return this.page.getByLabel(ru.auth.emailLabel, { exact: true })
   }
 
   get passwordInput() {
-    return this.page.getByLabel('Password')
+    return this.page.getByLabel(ru.auth.password, { exact: true })
   }
 
   get loginButton() {
-    return this.page.getByLabel('Log in to your account')
+    return this.page.getByLabel(ru.auth.signIn, { exact: true })
   }
 
   get registerButton() {
-    return this.page.getByLabel('Register a new account')
+    return this.page.getByLabel(ru.auth.register, { exact: true })
   }
 
   async goto() {

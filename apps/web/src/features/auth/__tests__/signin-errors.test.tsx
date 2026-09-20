@@ -37,7 +37,7 @@ async function openPasswordForm() {
 async function signIn(email: string, password: string) {
     await openPasswordForm()
     await userEvent.type(screen.getByLabelText('Электронная почта'), email)
-    await userEvent.type(screen.getByLabelText('Password'), password)
+    await userEvent.type(screen.getByLabelText('Пароль'), password)
     await userEvent.click(screen.getByLabelText('Войти'))
 }
 
@@ -89,7 +89,7 @@ describe('Signing in', () => {
     it('does not judge the password against the complexity rules', async () => {
         await openPasswordForm()
 
-        await userEvent.type(screen.getByLabelText('Password'), 'oldpass')
+        await userEvent.type(screen.getByLabelText('Пароль'), 'oldpass')
         await userEvent.tab()
 
         expect(screen.queryByText(/заглавную букву/)).not.toBeInTheDocument()
@@ -100,7 +100,7 @@ describe('Signing in', () => {
         await openPasswordForm()
         await userEvent.click(screen.getByLabelText('Зарегистрироваться'))
 
-        await userEvent.type(screen.getByLabelText('Password'), 'oldpass')
+        await userEvent.type(screen.getByLabelText('Пароль'), 'oldpass')
         await userEvent.tab()
 
         expect(await screen.findByText(/заглавную букву/)).toBeInTheDocument()

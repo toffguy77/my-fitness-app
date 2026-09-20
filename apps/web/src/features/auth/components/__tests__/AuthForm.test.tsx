@@ -46,7 +46,7 @@ describe('AuthForm', () => {
         it('should render password input with correct attributes', () => {
             render(<AuthForm {...defaultProps} />);
 
-            const passwordInput = screen.getByLabelText(/password/i);
+            const passwordInput = screen.getByLabelText('Пароль');
             expect(passwordInput).toBeInTheDocument();
             expect(passwordInput).toHaveAttribute('type', 'password');
             expect(passwordInput).toHaveAttribute('placeholder', 'Минимум 8 символов');
@@ -81,7 +81,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithPassword} />);
 
-            const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+            const passwordInput = screen.getByLabelText('Пароль') as HTMLInputElement;
             expect(passwordInput.value).toBe('mypassword');
         });
     });
@@ -102,7 +102,7 @@ describe('AuthForm', () => {
         it('should call setFormData when password changes', async () => {
             render(<AuthForm {...defaultProps} />);
 
-            const passwordInput = screen.getByLabelText(/password/i);
+            const passwordInput = screen.getByLabelText('Пароль');
             await userEvent.type(passwordInput, 'p');
 
             expect(mockSetFormData).toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe('AuthForm', () => {
         it('should call onPasswordBlur when password input loses focus', () => {
             render(<AuthForm {...defaultProps} />);
 
-            const passwordInput = screen.getByLabelText(/password/i);
+            const passwordInput = screen.getByLabelText('Пароль');
             fireEvent.blur(passwordInput);
 
             expect(mockOnPasswordBlur).toHaveBeenCalledTimes(1);
@@ -153,7 +153,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithEmail} />);
 
-            const passwordInput = screen.getByLabelText(/password/i);
+            const passwordInput = screen.getByLabelText('Пароль');
             await userEvent.type(passwordInput, 'newpassword');
 
             // Verify that email is preserved in setFormData calls
@@ -219,8 +219,8 @@ describe('AuthForm', () => {
         it('should have aria-label on password input', () => {
             render(<AuthForm {...defaultProps} />);
 
-            const passwordInput = screen.getByLabelText(/password/i);
-            expect(passwordInput).toHaveAttribute('aria-label', 'Password');
+            const passwordInput = screen.getByLabelText('Пароль', { exact: true });
+            expect(passwordInput).toHaveAttribute('aria-label', 'Пароль');
         });
 
         it('should set aria-invalid to true on email input when error exists', () => {
@@ -243,7 +243,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithError} />);
 
-            const passwordInput = screen.getByLabelText(/password/i);
+            const passwordInput = screen.getByLabelText('Пароль');
             expect(passwordInput).toHaveAttribute('aria-invalid', 'true');
         });
 
@@ -251,7 +251,7 @@ describe('AuthForm', () => {
             render(<AuthForm {...defaultProps} />);
 
             const emailInput = screen.getByLabelText(/почт/i);
-            const passwordInput = screen.getByLabelText(/password/i);
+            const passwordInput = screen.getByLabelText('Пароль');
 
             expect(emailInput).toHaveAttribute('aria-required', 'true');
             expect(passwordInput).toHaveAttribute('aria-required', 'true');
@@ -271,7 +271,7 @@ describe('AuthForm', () => {
         it('should handle rapid typing in password field', async () => {
             render(<AuthForm {...defaultProps} />);
 
-            const passwordInput = screen.getByLabelText(/password/i);
+            const passwordInput = screen.getByLabelText('Пароль');
             await userEvent.type(passwordInput, 'password123', { delay: 1 });
 
             expect(mockSetFormData).toHaveBeenCalled();
@@ -286,7 +286,7 @@ describe('AuthForm', () => {
             render(<AuthForm {...propsWithEmptyValues} />);
 
             const emailInput = screen.getByLabelText(/почт/i) as HTMLInputElement;
-            const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+            const passwordInput = screen.getByLabelText('Пароль') as HTMLInputElement;
 
             expect(emailInput.value).toBe('');
             expect(passwordInput.value).toBe('');
@@ -314,7 +314,7 @@ describe('AuthForm', () => {
 
             render(<AuthForm {...propsWithLongPassword} />);
 
-            const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+            const passwordInput = screen.getByLabelText('Пароль') as HTMLInputElement;
             expect(passwordInput.value).toBe(longPassword);
         });
     });
