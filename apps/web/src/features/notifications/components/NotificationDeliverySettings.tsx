@@ -21,6 +21,7 @@ import {
 } from '../api/deliveryApi'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
 function hourLabel(hour: number): string {
@@ -66,7 +67,7 @@ export function NotificationDeliverySettings() {
     useEffect(() => {
         getDeliveryPreferences()
             .then(setPrefs)
-            .catch(() => toast.error(t('notifications.delivery.loadFailed')))
+            .catch((err) => toast.error(messageForOr(err, t('notifications.delivery.loadFailed'))))
             .finally(() => setLoading(false))
     }, [])
 
@@ -79,8 +80,10 @@ export function NotificationDeliverySettings() {
                 quietHoursEnd: next.quietHoursEnd,
                 emailUnsubscribed: next.emailUnsubscribed,
             })
-        } catch {
-            toast.error(t('notifications.delivery.saveFailed'))
+        } catch (err) {
+            // Переключатель уже сдвинулся (setPrefs выше): без причины экран
+            // показывает состояние, которого на сервере нет.
+            toast.error(messageForOr(err, t('notifications.delivery.saveFailed')))
         }
     }, [])
 

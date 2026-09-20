@@ -7,7 +7,7 @@ import {
     providerLabel,
     type LinkedProvider,
 } from '@/features/auth/api/providers'
-import { isApiError } from '@/shared/errors/apiErrors'
+import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { SettingsPageLayout } from './SettingsPageLayout'
 import { t } from '@/shared/i18n'
 
@@ -39,8 +39,8 @@ export function SettingsProviders() {
         async function loadInitial() {
             try {
                 await refresh()
-            } catch {
-                toast.error(t('settings.providers.loadFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('settings.providers.loadFailed')))
             } finally {
                 setLoading(false)
             }

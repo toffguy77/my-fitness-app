@@ -11,6 +11,7 @@ import {
 } from '../api/curatorApi'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 /**
  * Questions the bot could not answer.
  *
@@ -64,8 +65,8 @@ export function SupportQueue() {
     const openThreadById = useCallback(async (id: string) => {
         try {
             setSelected(await curatorApi.getSupportThread(id))
-        } catch {
-            toast.error(t('curator.support.openFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('curator.support.openFailed')))
         }
     }, [])
 
@@ -76,8 +77,8 @@ export function SupportQueue() {
                 if (conversationId) {
                     await openThreadById(conversationId)
                 }
-            } catch {
-                toast.error(t('curator.support.loadFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('curator.support.loadFailed')))
             } finally {
                 setLoading(false)
             }
@@ -98,8 +99,10 @@ export function SupportQueue() {
             await curatorApi.replyToSupport(selected.conversation.id, reply.trim())
             setReply('')
             setSelected(await curatorApi.getSupportThread(selected.conversation.id))
-        } catch {
-            toast.error(t('curator.support.sendFailed'))
+        } catch (err) {
+            // «Бот не настроен» и «сессия ушла» — разные поводы. Первый значит
+            // «не пиши, отвечать нечем», второй — «войди и повтори».
+            toast.error(messageForOr(err, t('curator.support.sendFailed')))
         } finally {
             setSending(false)
         }
@@ -111,8 +114,8 @@ export function SupportQueue() {
             await curatorApi.closeSupport(selected.conversation.id)
             setSelected(null)
             await load()
-        } catch {
-            toast.error(t('curator.support.closeFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('curator.support.closeFailed')))
         }
     }
 

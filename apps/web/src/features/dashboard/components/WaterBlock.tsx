@@ -10,6 +10,7 @@ import { apiClient } from '@/shared/utils/api-client'
 import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 export interface WaterBlockProps {
     date: Date
@@ -87,9 +88,11 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
             )
             setGlasses(result.glasses)
             toast.success(t('dashboard.water.added'))
-        } catch {
+        } catch (err) {
             setGlasses(prevGlasses)
-            toast.error(t('dashboard.water.addFailed'))
+            // Счётчик уже откатился назад: без причины это выглядит как
+            // «кнопка не сработала», хотя сервер сказал, почему не принял.
+            toast.error(messageForOr(err, t('dashboard.water.addFailed')))
         } finally {
             setIsAdding(false)
         }
@@ -105,7 +108,12 @@ export const WaterBlock = memo(function WaterBlock({ date, className }: WaterBlo
                 setGlassSize(data.glass_size)
                 setEnabled(data.enabled)
             })
-            .catch(() => {})
+            .catch(() => {
+                // Молчим намеренно: это фоновая подгрузка необязательного
+                // блока, а не действие человека. Не прочиталось — блок не
+                // появляется; тост про воду поверх дневника в момент открытия
+                // сообщал бы о том, чего никто не делал.
+            })
     }, [dateStr])
 
     if (enabled === false) return null

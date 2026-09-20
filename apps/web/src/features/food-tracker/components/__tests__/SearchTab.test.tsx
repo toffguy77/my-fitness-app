@@ -472,7 +472,11 @@ describe('SearchTab', () => {
     });
 
     describe('Error Handling', () => {
-        it('handles search error gracefully', async () => {
+        // Этот тест раньше требовал показать «Ничего не найдено» при упавшем
+        // поиске — то есть закреплял утверждение о базе продуктов, которого
+        // никто не проверял. Человек после такого заводит руками продукт,
+        // который в базе есть.
+        it('does not pass a failed search off as a missing product', async () => {
             const user = userEvent.setup();
             const onSearch = jest.fn().mockRejectedValue(new Error('Network error'));
 
@@ -486,10 +490,10 @@ describe('SearchTab', () => {
             const input = screen.getByRole('textbox', { name: /поиск/i });
             await user.type(input, 'яблоко');
 
-            // Should show empty state after error
             await waitFor(() => {
-                expect(screen.getByText('Ничего не найдено')).toBeInTheDocument();
+                expect(screen.getByText('Не удалось выполнить поиск')).toBeInTheDocument();
             });
+            expect(screen.queryByText('Ничего не найдено')).not.toBeInTheDocument();
         });
     });
 });

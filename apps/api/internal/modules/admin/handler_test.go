@@ -218,11 +218,16 @@ func TestHandlerChangeRole(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
+	// Подмена теперь возвращает то же, что возвращает сервис: обёрнутый
+	// сентинел. Раньше здесь лежала голая строка "user not found", которой
+	// сервис не отдаёт никогда — обработчик сравнивал текст, тест подавал
+	// текст, и оба сходились на том, чего в проде не бывает. Ветка не
+	// срабатывала ни разу, и ненайденный пользователь уезжал в 500.
 	t.Run("user not found", func(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
 		mock.changeRoleFunc = func(ctx context.Context, userID int64, newRole string) error {
-			return fmt.Errorf("user not found")
+			return fmt.Errorf("ChangeRole: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -241,7 +246,7 @@ func TestHandlerChangeRole(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
 		mock.changeRoleFunc = func(ctx context.Context, userID int64, newRole string) error {
-			return fmt.Errorf("cannot change super_admin role")
+			return fmt.Errorf("cannot change super_admin role: %w", apperrors.ErrForbidden)
 		}
 
 		w := httptest.NewRecorder()
@@ -260,7 +265,7 @@ func TestHandlerChangeRole(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
 		mock.changeRoleFunc = func(ctx context.Context, userID int64, newRole string) error {
-			return fmt.Errorf("cannot demote: no remaining curators to reassign 3 clients")
+			return fmt.Errorf("%w: 3 clients have nobody to go to", ErrLastCurator)
 		}
 
 		w := httptest.NewRecorder()

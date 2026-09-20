@@ -70,13 +70,55 @@ function resolveLocalBases(text) {
 }
 
 /**
+ * Collapses every `${…}` interpolation to a bare `${}`, matching braces so a
+ * nested template literal inside one disappears with it.
+ *
+ * Without this, a backtick inside an interpolation ends the literal as far as
+ * the scan below is concerned, and the path is lost. That is not academic:
+ * `${BASE}/support/conversations${query}${status ? `${sep}status=${status}` : ''}`
+ * went unchecked while its three siblings in the same file were checked —
+ * the one call able to drift unnoticed was the one nobody could see.
+ *
+ * The shape `/${…}/` survives as `/${}/`, so the path-parameter rule below
+ * still recognises it.
+ */
+function collapseInterpolations(text) {
+    let out = ''
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] !== '$' || text[i + 1] !== '{') {
+            out += text[i]
+            continue
+        }
+        // Walk to the matching brace, counting nesting. A nested template
+        // literal contributes its own braces, and they balance the same way.
+        let depth = 0
+        let j = i + 1
+        for (; j < text.length; j++) {
+            if (text[j] === '{') depth++
+            else if (text[j] === '}') {
+                depth--
+                if (depth === 0) break
+            }
+        }
+        // An unbalanced `${` is not ours to interpret — leave it be.
+        if (j >= text.length) {
+            out += text.slice(i)
+            break
+        }
+        out += '${}'
+        i = j
+    }
+    return out
+}
+
+/**
  * Collects `/api/...` literals, turning `${expr}` interpolations into a
  * placeholder segment so they line up with the backend's `:param` patterns.
  */
 function frontendCalls(files) {
     const found = new Map()
     for (const file of files) {
-        const text = resolveLocalBases(readFileSync(file, 'utf8'))
+        const text = collapseInterpolations(resolveLocalBases(readFileSync(file, 'utf8')))
         for (const m of text.matchAll(/['"`](\/api\/[^'"`\s]*)['"`]/g)) {
             const raw = m[1]
             const normalized = raw

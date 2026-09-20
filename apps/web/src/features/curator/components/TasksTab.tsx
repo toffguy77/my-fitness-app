@@ -9,6 +9,8 @@ import { TaskCard } from './TaskCard'
 import { TaskForm } from './TaskForm'
 
 import { t } from '@/shared/i18n'
+import toast from 'react-hot-toast'
+import { messageForOr } from '@/shared/errors/apiErrors'
 const FILTERS: { id: TaskStatus; label: string }[] = [
     { id: 'active', label: t('curator.tasksTab.active') },
     { id: 'completed', label: t('curator.tasksTab.completed') },
@@ -39,9 +41,9 @@ export function TasksTab({ clientId }: TasksTabProps) {
                     setLoading(false)
                 }
             })
-            .catch(() => {
+            .catch((err) => {
                 if (!cancelled) {
-                    setError(t('curator.tasksTab.loadFailed'))
+                    setError(messageForOr(err, t('curator.tasksTab.loadFailed')))
                     setLoading(false)
                 }
             })
@@ -55,8 +57,10 @@ export function TasksTab({ clientId }: TasksTabProps) {
         try {
             await curatorApi.deleteTask(clientId, taskId)
             setTasks((prev) => prev.filter((t) => t.id !== taskId))
-        } catch {
-            // silently fail
+        } catch (err) {
+            // То же, что и с планом: молчание превращало отказ в «ничего не
+            // произошло», а задача при этом оставалась у клиента.
+            toast.error(messageForOr(err, t('curator.tasksTab.deleteFailed')))
         }
     }
 

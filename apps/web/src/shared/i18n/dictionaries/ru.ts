@@ -277,6 +277,7 @@ export const ru = {
         search: {
             placeholder: 'Поиск блюд и продуктов',
             nothingFound: 'Ничего не найдено',
+            failed: 'Не удалось выполнить поиск',
             recent: 'Недавние',
             popular: 'Популярные',
             listAria: 'Список продуктов',
@@ -567,6 +568,7 @@ export const ru = {
             typeMeasurement: 'Замеры',
             fromCurator: 'Задачи от куратора',
             fromCuratorAria: 'Список задач от куратора',
+            completeFailed: 'Не удалось отметить задачу',
             statusDone: 'Выполнена',
             statusOverdue: 'Просрочена',
             statusActive: 'Активна',
@@ -710,6 +712,7 @@ export const ru = {
             needsAttention: 'Требует внимания',
             adherence: 'Соблюдение плана питания',
             adherenceAria: 'Соблюдение плана питания: {percentage}%',
+            loadFailed: 'Не удалось загрузить прогресс',
             notEnoughData: 'Недостаточно данных',
             notEnoughDataHint: 'Продолжайте отслеживать свой прогресс, чтобы увидеть статистику',
             title: 'Прогресс',
@@ -822,6 +825,7 @@ export const ru = {
         downloadFile: 'Скачать файл',
         loadMore: 'Загрузить ещё',
         loadingMessages: 'Загрузка сообщений...',
+        loadFailed: 'Не удалось загрузить переписку',
         typing: 'печатает',
         loadingChat: 'Загружаем переписку...',
         noCurator: 'Куратор пока не назначен',
@@ -874,6 +878,8 @@ export const ru = {
             enabled: 'Push включён на этом устройстве. На других устройствах его нужно включить отдельно.',
             disabling: 'Выключаем...',
             disable: 'Выключить',
+            enableFailed: 'Не удалось включить push',
+            disableFailed: 'Не удалось выключить push',
         },
         storeErrors: {
             offline: 'Нет подключения к интернету',
@@ -930,6 +936,8 @@ export const ru = {
             kilograms: '{value} кг',
             targetLabel: 'Цель:',
             setValue: 'Установить',
+            targetSaveFailed: 'Не удалось сохранить целевой вес',
+            waterGoalSaveFailed: 'Не удалось сохранить норму воды',
             waterGoal: 'Цель по воде',
             glassesPerDay: 'Стаканов в день:',
             glassesValue: '{count} стаканов',
@@ -1162,6 +1170,7 @@ export const ru = {
             editAria: 'Редактировать план',
             deleteConfirm: 'Удалить активный план?',
             deleteAria: 'Удалить план',
+            deleteFailed: 'Не удалось удалить план',
             period: 'Период',
             none: 'Активный план не задан',
             createAria: 'Создать план',
@@ -1193,6 +1202,7 @@ export const ru = {
             completed: 'Завершённые',
             overdue: 'Просроченные',
             loadFailed: 'Не удалось загрузить задачи',
+            deleteFailed: 'Не удалось удалить задачу',
             empty: 'Нет задач',
             create: 'Создать задачу',
         },
@@ -1346,6 +1356,16 @@ export const ru = {
         password_incorrect: 'Неверный текущий пароль',
         email_unavailable: 'Отправка писем сейчас недоступна',
         conflict: 'Действие невозможно в текущем состоянии',
+        // Шесть кодов ниже раньше были этим самым conflict. Фраза про
+        // «текущее состояние» верна и ничего не даёт: из неё не следует ни
+        // что случилось, ни что делать дальше. Сервер каждый раз знал точную
+        // причину — messageFor предпочитает код, и прозу выбрасывало.
+        provider_only_way_in: 'Это единственный способ входа. Сначала задайте пароль.',
+        password_not_set: 'У этого аккаунта нет пароля. Войдите через сервис, который к нему уже привязан.',
+        deletion_already_requested: 'Удаление аккаунта уже запрошено — его ещё можно отменить.',
+        export_already_pending: 'Выгрузка уже готовится. Мы пришлём уведомление, когда она будет готова.',
+        last_curator: 'Это последний куратор — его клиентов некому передать. Сначала назначьте ещё одного.',
+        job_already_running: 'Задача уже выполняется — дождитесь, пока она закончится.',
         gone: 'Больше недоступно',
         validation: 'Проверьте введённые данные',
         // Distinct from token_expired: refreshing will not help, because the
@@ -1626,6 +1646,7 @@ export const ru = {
             choose: 'Выберите...',
             goal: 'Цель',
             recalculated: 'Нормы пересчитаны',
+            recalculateFailed: 'Не удалось пересчитать нормы',
         },
         activity: {
             sedentary: 'Сидячий образ жизни',
