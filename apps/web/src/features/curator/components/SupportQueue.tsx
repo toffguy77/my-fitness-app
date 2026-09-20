@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
-    adminApi,
+    curatorApi,
     type SupportConversation,
     type SupportThread,
-} from '../api/adminApi'
+} from '../api/curatorApi'
 
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
@@ -18,19 +19,22 @@ import { messageForOr } from '@/shared/errors/apiErrors'
  * which is only a good trade if somebody is actually reading what it refused.
  */
 
+/** Query param name the lead queue's "Открыть переписку" link sets. */
+const CONVERSATION_PARAM = 'conversation'
+
 const statusLabels: Record<SupportConversation['status'], string> = {
-    escalated: t('admin.support.escalated'),
-    open: t('admin.support.open'),
-    closed: t('admin.support.closed'),
+    escalated: t('curator.support.escalated'),
+    open: t('curator.support.open'),
+    closed: t('curator.support.closed'),
 }
 
 const stepLabels: Record<string, string> = {
-    goal: t('admin.leadSteps.goal'),
-    body: t('admin.leadSteps.body'),
-    activity: t('admin.leadSteps.activity'),
-    result: t('admin.leadSteps.result'),
-    contact: t('admin.leadSteps.contact'),
-    registration: t('admin.leadSteps.registration'),
+    goal: t('curator.leadSteps.goal'),
+    body: t('curator.leadSteps.body'),
+    activity: t('curator.leadSteps.activity'),
+    result: t('curator.leadSteps.result'),
+    contact: t('curator.leadSteps.contact'),
+    registration: t('curator.leadSteps.registration'),
 }
 
 export function SupportQueue() {
@@ -40,44 +44,65 @@ export function SupportQueue() {
     const [sending, setSending] = useState(false)
     const [reply, setReply] = useState('')
 
+    // Set by the lead queue's "Открыть переписку" link
+    // (/curator/support?conversation=<id>): there is no /curator/support/[id]
+    // route — a specific thread is opened by state, not by path — so the id
+    // has to arrive as a query param and be turned into the same setSelected
+    // call a click on the list would make.
+    const conversationId = useSearchParams().get(CONVERSATION_PARAM)
+
     const load = useCallback(async () => {
-        const page = await adminApi.getSupportConversations()
+        const page = await curatorApi.getSupportConversations()
         setConversations(page.items)
+    }, [])
+
+    // A person opening a thread by id that a click never happened for must
+    // still land somewhere legible if it is wrong: a stale link, a typo, a
+    // conversation somebody already closed and that has since aged out. The
+    // same catch as a normal click uses — a toast, list stays visible — beats
+    // a blank screen, which is what a route that does not exist would give
+    // instead.
+    const openThreadById = useCallback(async (id: string) => {
+        try {
+            setSelected(await curatorApi.getSupportThread(id))
+        } catch (err) {
+            toast.error(messageForOr(err, t('curator.support.openFailed')))
+        }
     }, [])
 
     useEffect(() => {
         async function loadInitial() {
             try {
                 await load()
+                if (conversationId) {
+                    await openThreadById(conversationId)
+                }
             } catch (err) {
-                toast.error(messageForOr(err, t('admin.support.loadFailed')))
+                toast.error(messageForOr(err, t('curator.support.loadFailed')))
             } finally {
                 setLoading(false)
             }
         }
         loadInitial()
+        // Runs once for the id the URL carried at mount, exactly like the
+        // onboarding resume link this mirrors.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load])
 
-    const openThread = async (conversation: SupportConversation) => {
-        try {
-            setSelected(await adminApi.getSupportThread(conversation.id))
-        } catch (err) {
-            toast.error(messageForOr(err, t('admin.support.openFailed')))
-        }
-    }
+    const openThread = (conversation: SupportConversation) => openThreadById(conversation.id)
 
     const handleReply = async () => {
         if (!selected || !reply.trim()) return
 
         setSending(true)
         try {
-            await adminApi.replyToSupport(selected.conversation.id, reply.trim())
+            await curatorApi.replyToSupport(selected.conversation.id, reply.trim())
             setReply('')
-            setSelected(await adminApi.getSupportThread(selected.conversation.id))
+            setSelected(await curatorApi.getSupportThread(selected.conversation.id))
         } catch (err) {
             // «Бот не настроен» и «сессия ушла» — разные поводы. Первый значит
             // «не пиши, отвечать нечем», второй — «войди и повтори».
-            toast.error(messageForOr(err, t('admin.support.sendFailed')))
+            toast.error(messageForOr(err, t('curator.support.sendFailed')))
         } finally {
             setSending(false)
         }
@@ -86,11 +111,11 @@ export function SupportQueue() {
     const handleClose = async () => {
         if (!selected) return
         try {
-            await adminApi.closeSupport(selected.conversation.id)
+            await curatorApi.closeSupport(selected.conversation.id)
             setSelected(null)
             await load()
         } catch (err) {
-            toast.error(messageForOr(err, t('admin.support.closeFailed')))
+            toast.error(messageForOr(err, t('curator.support.closeFailed')))
         }
     }
 
@@ -109,7 +134,7 @@ export function SupportQueue() {
                     onClick={() => setSelected(null)}
                     className="text-sm text-gray-600 hover:text-gray-900"
                 >
-                    {t('admin.support.backToList')}
+                    {t('curator.support.backToList')}
                 </button>
 
                 {/* What they were doing when they got stuck, so nobody has to
@@ -118,7 +143,7 @@ export function SupportQueue() {
                     <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <p className="text-sm font-medium text-gray-900">{selected.lead.email}</p>
                         <p className="text-xs text-gray-600">
-                            {t('admin.leads.stoppedAt', { step: stepLabels[selected.lead.last_step] ?? selected.lead.last_step })}
+                            {t('curator.leads.stoppedAt', { step: stepLabels[selected.lead.last_step] ?? selected.lead.last_step })}
                             {selected.lead.summary && ` · ${selected.lead.summary}`}
                         </p>
                     </div>
@@ -138,10 +163,10 @@ export function SupportQueue() {
                         >
                             <p className="mb-1 text-xs text-gray-500">
                                 {message.author === 'user'
-                                    ? t('admin.support.authorUser')
+                                    ? t('curator.support.authorUser')
                                     : message.author === 'operator'
-                                      ? t('admin.support.authorOperator')
-                                      : t('admin.support.authorBot')}
+                                      ? t('curator.support.authorOperator')
+                                      : t('curator.support.authorBot')}
                             </p>
                             {message.text}
                         </li>
@@ -150,7 +175,7 @@ export function SupportQueue() {
 
                 <div className="mt-4">
                     <label htmlFor="support-reply" className="block text-sm font-medium text-gray-900">
-                        {t('admin.support.reply')}
+                        {t('curator.support.reply')}
                     </label>
                     <textarea
                         id="support-reply"
@@ -165,13 +190,13 @@ export function SupportQueue() {
                             disabled={!reply.trim() || sending}
                             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {sending ? t('admin.support.sending') : t('admin.support.sendToTelegram')}
+                            {sending ? t('curator.support.sending') : t('curator.support.sendToTelegram')}
                         </button>
                         <button
                             onClick={handleClose}
                             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50"
                         >
-                            {t('admin.support.close')}
+                            {t('curator.support.close')}
                         </button>
                     </div>
                 </div>
@@ -180,7 +205,7 @@ export function SupportQueue() {
     }
 
     if (conversations.length === 0) {
-        return <p className="py-8 text-center text-sm text-gray-500">{t('admin.support.empty')}</p>
+        return <p className="py-8 text-center text-sm text-gray-500">{t('curator.support.empty')}</p>
     }
 
     return (
@@ -194,7 +219,7 @@ export function SupportQueue() {
                     >
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-semibold text-gray-900">
-                                {conversation.telegram_name || conversation.telegram_username || t('admin.support.noName')}
+                                {conversation.telegram_name || conversation.telegram_username || t('curator.support.noName')}
                             </span>
                             <span
                                 className={`text-xs ${
@@ -208,7 +233,7 @@ export function SupportQueue() {
                         </div>
                         {conversation.escalation_reason && (
                             <p className="mt-1 text-xs text-gray-600">
-                                {t('admin.support.reason', { reason: conversation.escalation_reason })}
+                                {t('curator.support.reason', { reason: conversation.escalation_reason })}
                             </p>
                         )}
                     </button>

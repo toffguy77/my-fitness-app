@@ -20,6 +20,18 @@ describe('AdminFooterNavigation', () => {
         expect(screen.getByText('Чаты')).toBeInTheDocument()
     })
 
+    // Leads and support moved to the curator workspace and no longer exist
+    // at /admin/leads or /admin/support. A leftover entry here would point a
+    // super-admin at a dead route.
+    it('no longer offers leads or support — they moved to the curator workspace', () => {
+        render(<AdminFooterNavigation />)
+
+        expect(screen.queryByText('Заявки')).not.toBeInTheDocument()
+        expect(screen.queryByText('Обращения')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('nav-item-leads')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('nav-item-support')).not.toBeInTheDocument()
+    })
+
     it('has aria-label on nav element', () => {
         render(<AdminFooterNavigation />)
 

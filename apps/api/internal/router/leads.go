@@ -23,11 +23,16 @@ func registerLeadRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/leads/unsubscribe", d.Leads.Unsubscribe)
 }
 
-// registerAdminLeadRoutes wires the administrative view of leads.
-func registerAdminLeadRoutes(v1 *gin.RouterGroup, d Deps) {
-	g := v1.Group("/admin/leads")
+// registerCuratorLeadRoutes wires the lead queue.
+//
+// Deliberately NOT inside /curator/clients/:id: that group is guarded by
+// RequireClientRelationship, and a lead has no client by definition — it
+// exists precisely until the person becomes one. The protection here is the
+// role, as it was under /admin, and only the list of roles widens.
+func registerCuratorLeadRoutes(v1 *gin.RouterGroup, d Deps) {
+	g := v1.Group("/curator/leads")
 	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
-	g.Use(middleware.RequireRole("super_admin"))
+	g.Use(middleware.RequireRole("coordinator", "super_admin"))
 
 	g.GET("", d.Leads.List)
 	g.POST("/:id/handled", d.Leads.MarkHandled)

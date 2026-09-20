@@ -68,6 +68,16 @@ const (
 	CodeExportAlreadyPending     = "export_already_pending"
 	CodeLastCurator              = "last_curator"
 	CodeJobAlreadyRunning        = "job_already_running"
+
+	// CodeLeadAlreadyClaimed: the lead queue is shared between coordinators,
+	// and marking an already-claimed lead used to answer with the same
+	// generic "conflict" as any other clash — a code that translates as
+	// "action impossible in the current state" and says nothing about what
+	// happened. The sentinel behind it is still the shared ErrConflict
+	// (leads.Service.MarkHandled), so this code is not in the map below: the
+	// handler, which knows exactly which conflict it is answering, attaches
+	// this code directly rather than letting CodeFor pick the generic one.
+	CodeLeadAlreadyClaimed = "lead_already_claimed"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -117,12 +127,15 @@ func AllCodes() []string {
 	// CodeRecognitionUnclear и CodeRecognitionFailed тоже без сентинела:
 	// обработчик распознаёт причину через errors.Is на ошибках пакета llm
 	// (или её отсутствие), а не через apperrors.
-	// Ставятся обработчиками напрямую: сентинел у всех шести один и тот же
+	// Ставятся обработчиками напрямую: сентинел у них один и тот же
 	// (ErrConflict, а у последнего куратора — свой, оборачивающий
 	// ErrForbidden), а ответ человеку — разный, и решает это обработчик,
-	// который знает, о каком именно отказе речь.
+	// который знает, о каком именно отказе речь. CodeLeadAlreadyClaimed —
+	// из того же ряда: очередь заявок общая, и «её уже взяли» читается
+	// иначе, чем «не удалось».
 	return append(all, CodeInternal, CodePasswordIncorrect, CodeSessionEnded,
 		CodeRecognitionUnclear, CodeRecognitionFailed,
 		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
-		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning)
+		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning,
+		CodeLeadAlreadyClaimed)
 }

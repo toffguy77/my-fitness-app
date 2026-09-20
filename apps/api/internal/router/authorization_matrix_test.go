@@ -121,18 +121,17 @@ var protectedRoutes = map[string]protection{
 	// Public by design — drives SEO for published articles.
 	"GET /api/v1/public/content/:id": protPublic,
 
-	// The guest onboarding. :id here is a lead — but the only route carrying
-	// one requires the administrative role, and every public route in this
-	// group addresses its lead by a signed token instead, precisely so a
-	// stranger cannot walk the table and read somebody's body measurements.
-	"POST /api/v1/admin/leads/:id/handled": protRole,
+	// Заявки. :id — заявка, у которой нет владельца-клиента: она существует
+	// ровно до того, как человек им станет. Поэтому защита здесь — роль, а не
+	// отношение, и роль намеренно видит чужие записи: смысл заявки в том,
+	// чтобы с человеком поговорили, а разговаривают кураторы.
+	"POST /api/v1/curator/leads/:id/handled": protRole,
 
-	// Support conversations. :id is a conversation, and every route touching
-	// one is behind the administrative role — the person on the other end of
-	// the chat reaches it through Telegram, never through these.
-	"GET /api/v1/admin/support/conversations/:id":        protRole,
-	"POST /api/v1/admin/support/conversations/:id/reply": protRole,
-	"POST /api/v1/admin/support/conversations/:id/close": protRole,
+	// Разговоры поддержки. :id — разговор; собеседник приходит в него из
+	// Telegram или из виджета, но никогда через эти маршруты. Защита — роль.
+	"GET /api/v1/curator/support/conversations/:id":        protRole,
+	"POST /api/v1/curator/support/conversations/:id/reply": protRole,
+	"POST /api/v1/curator/support/conversations/:id/close": protRole,
 }
 
 // nonResourceParams are path parameters that address a value rather than
@@ -257,4 +256,86 @@ func TestRelationshipRoutesRejectForeignClient(t *testing.T) {
 	}
 
 	require.NotZero(t, checked, "no relationship-protected routes found — registry is broken")
+}
+
+// protRole in the registry is a claim, not a check: nothing before this test
+// walked the engine and confirmed that every route labelled protRole actually
+// sits behind RequireAuth and RequireRole. A route pulled out of its group
+// keeps the same path and method, so routes.golden does not change, the
+// registry key does not change, and TestCuratorSupportRoutesAllowCoordinatorAndAdmin
+// -style tests never reach it because they only exercise the paths their own
+// feature added. Only a live request against the real engine catches this.
+//
+// The decisive check here is 403 for a signed-in but non-privileged role
+// ("client"): in this engine only RequireRole ever returns 403, so seeing it
+// proves RequireRole ran. 401 without a token is NOT that proof — it reads
+// as "auth is missing" but is not reliable evidence that it is *checked*.
+// Handlers are nil in this engine, and several of them read c.Get("user_id")
+// before touching anything else and answer 401 themselves when it is absent
+// (Leads.MarkHandled among them); others dereference the nil receiver first
+// and get turned into a 500 by the recovery middleware. Both are real,
+// current behaviours of specific handlers — seven of the fifteen protRole
+// routes answer an unauthenticated request with something other than 401 for
+// this reason — so a route that slipped out of RequireAuth can still produce
+// 401, and this test kept the unauthenticated check only because it gives a
+// clearer message in the common case, never as the thing that proves
+// protection.
+func TestRoleProtectedRoutesRequireAuthentication(t *testing.T) {
+	checked := 0
+	for key, kind := range protectedRoutes {
+		if kind != protRole {
+			continue
+		}
+		parts := strings.SplitN(key, " ", 2)
+		method, pattern := parts[0], parts[1]
+
+		t.Run(key, func(t *testing.T) {
+			engine := testEngine(t)
+
+			req := httptest.NewRequest(method, concreteURL(pattern), nil)
+			w := httptest.NewRecorder()
+			engine.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusUnauthorized, w.Code,
+				fmt.Sprintf("%s must require authentication", key))
+		})
+		checked++
+	}
+
+	require.NotZero(t, checked, "no role-protected routes found — registry is broken")
+}
+
+// The check that actually proves RequireRole is still wired: a signed-in but
+// non-privileged role ("client") must get exactly 403. In this engine no
+// handler ever returns 403 on its own — TestRoleProtectedRoutesRequireAuthentication's
+// own comment explains why 401 alone cannot be trusted for that; 403 has no
+// such escape hatch, which is why this is the test that must never go green
+// on a route pulled out of its group.
+//
+// No request body: RequireRole runs before body parsing on every POST route
+// in this registry, so an empty body cannot mask the check running.
+func TestRoleProtectedRoutesRefuseNonPrivilegedRole(t *testing.T) {
+	checked := 0
+	for key, kind := range protectedRoutes {
+		if kind != protRole {
+			continue
+		}
+		parts := strings.SplitN(key, " ", 2)
+		method, pattern := parts[0], parts[1]
+
+		t.Run(key, func(t *testing.T) {
+			engine := testEngine(t)
+
+			req := httptest.NewRequest(method, concreteURL(pattern), nil)
+			req.Header.Set("Authorization", "Bearer "+signedToken(t, 1, "client"))
+			w := httptest.NewRecorder()
+			engine.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusForbidden, w.Code,
+				fmt.Sprintf("%s must refuse a non-privileged role", key))
+		})
+		checked++
+	}
+
+	require.NotZero(t, checked, "no role-protected routes found — registry is broken")
 }

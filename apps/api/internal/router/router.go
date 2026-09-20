@@ -137,7 +137,7 @@ func New(d Deps) *gin.Engine {
 	registerAdminRoutes(v1, d)
 	registerContentRoutes(v1, d)
 	registerLeadRoutes(v1, d)
-	registerAdminLeadRoutes(v1, d)
+	registerCuratorLeadRoutes(v1, d)
 	registerSupportRoutes(v1, d)
 	registerAnalyticsRoutes(v1, d)
 
