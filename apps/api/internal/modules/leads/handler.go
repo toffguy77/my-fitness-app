@@ -3,6 +3,8 @@ package leads
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
@@ -10,8 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Handler exposes the lead endpoints: two public ones the guest wizard uses,
-// and two behind the administrative section.
+// Handler exposes the lead endpoints: four public ones the guest wizard
+// uses (Create, UpdateStep, Resume, Unsubscribe), and two behind the
+// curator workspace (List, MarkHandled) — open to coordinator and
+// super_admin alike, not the administrative section alone.
 type Handler struct {
 	service *Service
 	log     *logger.Logger
@@ -148,21 +152,55 @@ func (h *Handler) Unsubscribe(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"deleted": true})
 }
 
-// List handles GET /api/v1/admin/leads.
+// List handles GET /api/v1/curator/leads.
+//
+// This is a work queue, not a history: by default it holds only what nobody
+// has marked handled, oldest first — a curator should see who to pick up next,
+// not scroll a timeline. ?include_handled=true adds back everyone already
+// dealt with, for whoever wants the full picture.
 func (h *Handler) List(c *gin.Context) {
 	page := response.ParsePage(c)
+	// Queue clamps its own offset before it reaches the database — but that
+	// clamp is invisible here unless the same bound is applied before page
+	// is echoed back. Left alone, the response would claim an offset the
+	// query never actually used, and a curator paging past the clamp would
+	// see the same handful of rows forever under a climbing offset number
+	// that no longer means anything.
+	if page.Offset > maxQueueOffset {
+		page.Offset = maxQueueOffset
+	}
+	includeHandled := parseIncludeHandled(c)
 
-	leads, total, err := h.service.List(c.Request.Context(), page.Limit, page.Offset)
+	entries, total, err := h.service.Queue(c.Request.Context(), includeHandled, page.Limit, page.Offset)
 	if err != nil {
-		h.log.Error("Failed to list leads", "error", err)
+		h.log.Error("Failed to list lead queue", "error", err)
 		response.InternalError(c, "Не удалось загрузить заявки")
 		return
 	}
 
-	response.Success(c, http.StatusOK, response.Paginated(leads, total, page))
+	response.Success(c, http.StatusOK, response.Paginated(entries, total, page))
 }
 
-// MarkHandled handles POST /api/v1/admin/leads/:id/handled.
+// parseIncludeHandled reads include_handled the way response.ParsePage reads
+// limit and offset: leniently. An exact-match "== \"true\"" made "=1",
+// "=TRUE", "=on" and a bare flag with no value at all fall back to false —
+// silently, and indistinguishably from "there are no handled leads at all".
+// A curator staring at an empty history has no way to tell those apart.
+func parseIncludeHandled(c *gin.Context) bool {
+	raw, present := c.GetQuery("include_handled")
+	if raw == "" {
+		// Absent (present == false) means "not asked for", the default.
+		// Present with no value (?include_handled) is the common flag
+		// shorthand and means "yes".
+		return present
+	}
+	if value, err := strconv.ParseBool(raw); err == nil {
+		return value
+	}
+	return strings.EqualFold(raw, "on")
+}
+
+// MarkHandled handles POST /api/v1/curator/leads/:id/handled.
 func (h *Handler) MarkHandled(c *gin.Context) {
 	userID, ok := c.Get("user_id")
 	if !ok {
@@ -175,6 +213,17 @@ func (h *Handler) MarkHandled(c *gin.Context) {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrNotFound):
 		response.NotFound(c, "Заявка не найдена")
+		return
+	case errors.Is(err, apperrors.ErrConflict):
+		// Not response.Error: on a 409 that falls back to CodeConflict, which
+		// the dictionary renders as "Действие невозможно в текущем
+		// состоянии" — true but useless, since it drops the one thing the
+		// server actually knew (who marked it, and that it was already
+		// marked). Worded to hold regardless of who got there first: it may
+		// be the same coordinator retrying after a dropped response, not
+		// necessarily "another" one, so the text does not claim that.
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeLeadAlreadyClaimed,
+			"Заявка уже отмечена обработанной", nil)
 		return
 	default:
 		h.log.Error("Failed to mark lead handled", "error", err)

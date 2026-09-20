@@ -49,6 +49,34 @@ type Lead struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
+// QueueEntry is a lead together with what a curator needs to act on it: how
+// long it has waited, whether the one automatic reminder already went out,
+// whether writing to the person is even allowed, and — when they also talked
+// to the support bot — the conversation that explains what they asked.
+type QueueEntry struct {
+	Lead
+	// AgeDays is how many days the person has waited. Computed in SQL, not
+	// Go: a curator's browser and the database do not share a timezone, and
+	// "three days" must not depend on which one counts.
+	AgeDays int `json:"age_days"`
+	// ReminderSent says whether the single automatic reminder has already
+	// gone out, so a curator does not repeat by hand what already happened.
+	ReminderSent bool `json:"reminder_sent"`
+	// ContactAllowed mirrors the separate contact consent (migration 051): a
+	// lead can belong in the queue — it says something about the funnel —
+	// without permission to write to the person. A human follow-up cannot be
+	// a loophole around a consent that was withheld.
+	ContactAllowed bool `json:"contact_allowed"`
+	// ConversationID names the support conversation opened from this lead's
+	// resume link, when the person also went through the bot. It stays nil
+	// for most leads until the public-support-widget plan starts linking
+	// conversations widely — the queue must not offer a transition where
+	// there is nothing to transition to.
+	ConversationID *string `json:"conversation_id,omitempty"`
+}
+
+// CreateInput is what the contact step submits.
+
 // CreateInput is what the contact step, and now the result screen, submits.
 type CreateInput struct {
 	Email      string     `json:"email" binding:"required,email"`

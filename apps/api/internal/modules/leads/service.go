@@ -20,6 +20,10 @@ const Retention = 90 * 24 * time.Hour
 // ReminderDelay is how long after the attempt the single reminder goes out.
 const ReminderDelay = 24 * time.Hour
 
+// maxQueueOffset bounds how far a single Queue request can page into the
+// list. See the comment on Queue for why this exists alongside migration 075.
+const maxQueueOffset = 100_000
+
 // Service stores and follows up on onboarding leads.
 type Service struct {
 	db     *sql.DB
@@ -223,48 +227,169 @@ func (s *Service) LeadIDForToken(ctx context.Context, token string) (string, err
 	return lead.ID, nil
 }
 
-// List returns leads for the administrative section, newest first.
-func (s *Service) List(ctx context.Context, limit, offset int) ([]Lead, int, error) {
-	var total int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM leads`).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count leads: %w", err)
+// Queue returns leads in the order a curator should work them: whoever has
+// waited longest, among those nobody has yet marked handled. AgeDays,
+// ReminderSent and ConversationID are read alongside the lead itself, so a
+// curator opening the queue does not have to cross-reference two tables (leads,
+// support_conversations) by hand.
+//
+// includeHandled adds back everyone already dealt with, oldest first as well,
+// for whoever wants the full history rather than the work still open.
+func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset int) ([]QueueEntry, int, error) {
+	// include_handled=true never shrinks the list, so an offset reachable by
+	// ordinary scrolling is unbounded — response.ParsePage caps Limit at 100
+	// but leaves Offset alone. Clamped rather than rejected, the same
+	// philosophy as the Limit cap: a stray zero on the end of a page request
+	// should not deny a curator their data, just stop it short of the point
+	// where a single request can tie up a database core.
+	//
+	// This clamp is not what turns a catastrophic query into a cheap one —
+	// that was migration 075 (idx_support_conversations_lead_recency), which
+	// removed a sequential scan of support_conversations run once per row on
+	// the way to a large offset (order of tens of seconds at a 40k offset on
+	// 50k leads, down to double-digit milliseconds; see that migration's
+	// comment for the remeasured numbers). Pushing pagination ahead of the
+	// correlated subquery, below, took the subquery's cost out of the offset
+	// entirely: it now runs exactly `limit` times regardless of offset,
+	// instead of `offset+limit`. What is left for this clamp to bound is
+	// smaller and genuinely second-order: Postgres still has to walk
+	// `offset` entries of the index-only scan on leads.created_at to reach
+	// the page, and that residual — tens of milliseconds at offset ~100k on
+	// 150k leads, not tens of seconds — is what stays unbounded without it.
+	if offset > maxQueueOffset {
+		offset = maxQueueOffset
 	}
 
+	var total int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM leads WHERE ($1::boolean OR handled_at IS NULL)`,
+		includeHandled,
+	).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count lead queue: %w", err)
+	}
+
+	// AgeDays is computed here, not in Go, so it comes from the same clock as
+	// created_at itself rather than whichever timezone a curator's browser
+	// happens to be in.
+	//
+	// The conversation is a correlated subquery rather than a LEFT JOIN: a
+	// lead could in principle have more than one support_conversations row
+	// (a person can reopen the bot with a new chat_id), and a JOIN would
+	// duplicate the lead row for each. Only the most recently active
+	// conversation is a reasonable transition target.
+	//
+	// That subquery sits outside the paged subquery on purpose. Written as a
+	// single flat SELECT with LIMIT/OFFSET, Postgres evaluates a correlated
+	// subquery once per row the sort produces *before* OFFSET discards
+	// anything — offset+limit evaluations, growing with the offset even
+	// though the offset itself does no useful work once idx_leads_created_at
+	// and idx_support_conversations_lead_recency both exist. Pushing
+	// WHERE/ORDER/LIMIT/OFFSET into `page` first means only the page's own
+	// rows — exactly `limit`, regardless of offset — ever reach the
+	// correlated subquery. Measured on a 150k-lead, 60k-conversation table at
+	// offset 99,999 with both indexes present: ~239ms flat vs. ~17ms paged
+	// first, and the subquery's loop count drops from offset+limit (100,019)
+	// to exactly limit (20).
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, email, COALESCE(name, ''), COALESCE(sex, ''), birth_date,
-		       height_cm, weight_kg, COALESCE(activity_level, ''), COALESCE(goal, ''),
-		       calories, protein, fat, carbs, water_glasses,
-		       last_step, COALESCE(source, ''), data_consent, contact_consent,
-		       handled_at, created_at, updated_at
-		FROM leads ORDER BY created_at DESC LIMIT $1 OFFSET $2`, limit, offset)
+		SELECT page.id, page.email, page.name, page.sex, page.birth_date,
+		       page.height_cm, page.weight_kg, page.activity_level, page.goal,
+		       page.calories, page.protein, page.fat, page.carbs, page.water_glasses,
+		       page.last_step, page.source, page.data_consent, page.contact_consent,
+		       page.handled_at, page.created_at, page.updated_at,
+		       EXTRACT(DAY FROM NOW() - page.created_at)::int,
+		       page.reminder_sent_at IS NOT NULL,
+		       (SELECT c.id::text FROM support_conversations c
+		          WHERE c.lead_id = page.id ORDER BY c.last_message_at DESC LIMIT 1)
+		FROM (
+		    SELECT l.id, l.email, COALESCE(l.name, '') AS name, COALESCE(l.sex, '') AS sex,
+		           l.birth_date, l.height_cm, l.weight_kg,
+		           COALESCE(l.activity_level, '') AS activity_level, COALESCE(l.goal, '') AS goal,
+		           l.calories, l.protein, l.fat, l.carbs, l.water_glasses,
+		           l.last_step, COALESCE(l.source, '') AS source, l.data_consent, l.contact_consent,
+		           l.handled_at, l.created_at, l.updated_at, l.reminder_sent_at
+		    FROM leads l
+		    WHERE ($1::boolean OR l.handled_at IS NULL)
+		    ORDER BY l.created_at ASC, l.id ASC
+		    LIMIT $2 OFFSET $3
+		) page
+		ORDER BY page.created_at ASC, page.id ASC`,
+		includeHandled, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list leads: %w", err)
+		return nil, 0, fmt.Errorf("list lead queue: %w", err)
 	}
 	defer rows.Close()
 
-	leads := make([]Lead, 0, limit)
+	entries := make([]QueueEntry, 0, limit)
 	for rows.Next() {
-		lead, err := scanLead(rows)
+		var e QueueEntry
+		var conversationID sql.NullString
+
+		// The base 21 columns share scanLead's destination order with byID
+		// and DueReminders, instead of repeating it a third time here: a
+		// column added to one query and not the other used to be a silent
+		// field-shift (each Scan call still succeeds — dest count and types
+		// line up, values just land one field over). The three extra columns
+		// Queue alone reads are appended after them in the same Scan call.
+		lead, err := scanLead(rows, &e.AgeDays, &e.ReminderSent, &conversationID)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("scan lead queue entry: %w", err)
 		}
-		leads = append(leads, *lead)
+		e.Lead = *lead
+		e.ContactAllowed = e.Consents.Contact
+		// Left nil unless a conversation actually links here: a curator must
+		// never be offered a transition to a conversation that does not
+		// exist, whether because the person never reached the bot or because
+		// the widget plan that fills this column widely has not shipped yet.
+		if conversationID.Valid {
+			id := conversationID.String
+			e.ConversationID = &id
+		}
+
+		entries = append(entries, e)
 	}
-	return leads, total, rows.Err()
+	return entries, total, rows.Err()
 }
 
 // MarkHandled records that somebody has dealt with this person.
+//
+// The queue is shared: two coordinators can open the same lead within
+// moments of each other. Losing that race costs one extra conversation, not
+// a lost person — but the record of who claimed it first must not be
+// overwritten, or nobody can tell who actually spoke to them. The condition
+// lives in the UPDATE itself, not in a check beforehand: two coordinators
+// clicking at the same instant have to be split apart by the database, not
+// by a race in this process.
 func (s *Service) MarkHandled(ctx context.Context, leadID string, byUserID int64) error {
-	result, err := s.db.ExecContext(ctx,
-		`UPDATE leads SET handled_at = NOW(), handled_by = $2, updated_at = NOW() WHERE id = $1`,
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE leads
+		   SET handled_at = NOW(), handled_by = $2, updated_at = NOW()
+		 WHERE id = $1 AND handled_at IS NULL`,
 		leadID, byUserID)
 	if err != nil {
 		return fmt.Errorf("mark lead handled: %w", err)
 	}
-	if affected, _ := result.RowsAffected(); affected == 0 {
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("mark lead handled: %w", err)
+	}
+	if affected > 0 {
+		return nil
+	}
+
+	// Zero rows affected is ambiguous on its own: the lead may not exist at
+	// all, or it may already be claimed. Those are different answers to the
+	// person asking, so tell them apart with a lookup rather than collapsing
+	// both into one error.
+	var exists bool
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM leads WHERE id = $1)`, leadID,
+	).Scan(&exists); err != nil {
+		return fmt.Errorf("check lead exists: %w", err)
+	}
+	if !exists {
 		return fmt.Errorf("lead not found: %w", apperrors.ErrNotFound)
 	}
-	return nil
+	return fmt.Errorf("lead already handled: %w", apperrors.ErrConflict)
 }
 
 // DueReminders returns leads owed their single reminder.
@@ -339,24 +464,47 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-func scanLead(row scanner) (*Lead, error) {
+// scanLead reads the 21 columns every lead query selects, in the one order
+// they are declared here. extra takes destinations for whatever additional
+// columns a caller's own SELECT appends after those 21 (Queue's AgeDays,
+// ReminderSent and conversation id) — appended to the same Scan call, not a
+// second one: database/sql requires every call to Scan to supply a
+// destination for every column the row actually has, so a caller cannot
+// scan the base 21 here and the rest itself.
+func scanLead(row scanner, extra ...any) (*Lead, error) {
 	var lead Lead
 	var birthDate sql.NullTime
 	var height, weight, calories, protein, fat, carbs sql.NullFloat64
 	var water sql.NullInt64
 	var handledAt sql.NullTime
 
-	err := row.Scan(
+	dest := []any{
 		&lead.ID, &lead.Email, &lead.Name, &lead.Parameters.Sex, &birthDate,
 		&height, &weight, &lead.Parameters.ActivityLevel, &lead.Parameters.Goal,
 		&calories, &protein, &fat, &carbs, &water,
 		&lead.LastStep, &lead.Source, &lead.Consents.DataProcessing, &lead.Consents.Contact,
 		&handledAt, &lead.CreatedAt, &lead.UpdatedAt,
-	)
-	if err != nil {
+	}
+	dest = append(dest, extra...)
+
+	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
 
+	fillLeadOptionalFields(&lead, birthDate, height, weight, calories, protein, fat, carbs, water, handledAt)
+	return &lead, nil
+}
+
+// fillLeadOptionalFields applies the nullable columns shared by every query
+// that reads a lead row, so Queue's extra columns do not duplicate this
+// parsing.
+func fillLeadOptionalFields(
+	lead *Lead,
+	birthDate sql.NullTime,
+	height, weight, calories, protein, fat, carbs sql.NullFloat64,
+	water sql.NullInt64,
+	handledAt sql.NullTime,
+) {
 	if birthDate.Valid {
 		lead.Parameters.BirthDate = birthDate.Time.Format("2006-01-02")
 	}
@@ -378,7 +526,6 @@ func scanLead(row scanner) (*Lead, error) {
 	if handledAt.Valid {
 		lead.HandledAt = &handledAt.Time
 	}
-	return &lead, nil
 }
 
 func recordConsent(ctx context.Context, tx *sql.Tx, leadID, consentType string, granted bool, ip, ua string) error {

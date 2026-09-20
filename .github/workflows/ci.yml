@@ -37,6 +37,13 @@ jobs:
       - name: Check frontend/backend API contract
         run: node scripts/check-api-contract.mjs
 
+      # Catches an internal href/router.push target the App Router has no
+      # page.tsx for — check-api-contract.mjs only looks at /api/... calls,
+      # so LeadList linking /curator/support/${id} (curator-lead-workspace
+      # task 7) lived a whole review cycle before anyone clicked it.
+      - name: Check internal links resolve to real pages
+        run: node scripts/check-internal-links.mjs
+
       # Catches unused public env vars, secrets with a public prefix, duplicate
       # build configs and unimplemented handlers behind registered routes.
       - name: Check codebase integrity
