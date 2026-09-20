@@ -86,6 +86,8 @@ POST /api/v1/auth/change-password
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
+POST /api/v1/auth/magic-link/consume
+POST /api/v1/auth/magic-link/request
 POST /api/v1/auth/oauth/email
 POST /api/v1/auth/oauth/link
 POST /api/v1/auth/refresh
@@ -136,6 +138,7 @@ POST /api/v1/public/nutrition/calculate
 POST /api/v1/public/support/telegram
 POST /api/v1/users/avatar
 POST /api/v1/users/me/deletion
+POST /api/v1/users/me/deletion/code
 POST /api/v1/users/me/export
 POST /api/v1/users/me/telegram
 PUT /api/v1/content/articles/:id

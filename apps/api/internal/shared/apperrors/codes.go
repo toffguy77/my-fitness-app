@@ -78,6 +78,13 @@ const (
 	// handler, which knows exactly which conflict it is answering, attaches
 	// this code directly rather than letting CodeFor pick the generic one.
 	CodeLeadAlreadyClaimed = "lead_already_claimed"
+
+	// CodeMagicLinkAccountExists: гонка при переходе по ссылке из письма —
+	// адрес завели другим путём между выдачей ссылки и переходом по ней.
+	// Отдельный код, а не общий CodeConflict: обобщённый перевод последнего
+	// ("Действие невозможно в текущем состоянии") не говорит человеку, что
+	// адрес уже занят и что делать — запросить ссылку для входа заново.
+	CodeMagicLinkAccountExists = "magic_link_account_exists"
 )
 
 // codes maps each declared error to its code. A sentinel absent from this map
@@ -124,6 +131,9 @@ func AllCodes() []string {
 	// Эти коды ставятся ответами напрямую, без ошибки-сентинела.
 	// CodeFeatureUnavailable здесь больше нет: у него появился сентинел
 	// apperrors.ErrFeatureUnavailable, и он приходит из карты выше.
+	// CodeMagicLinkAccountExists — из того же ряда: ConsumeMagicLink
+	// различает причину через errors.Is на общем ErrConflict, а код в ответе
+	// называет её отдельно.
 	// CodeRecognitionUnclear и CodeRecognitionFailed тоже без сентинела:
 	// обработчик распознаёт причину через errors.Is на ошибках пакета llm
 	// (или её отсутствие), а не через apperrors.
@@ -137,5 +147,5 @@ func AllCodes() []string {
 		CodeRecognitionUnclear, CodeRecognitionFailed,
 		CodeProviderOnlyWayIn, CodePasswordNotSet, CodeDeletionAlreadyRequested,
 		CodeExportAlreadyPending, CodeLastCurator, CodeJobAlreadyRunning,
-		CodeLeadAlreadyClaimed)
+		CodeLeadAlreadyClaimed, CodeMagicLinkAccountExists)
 }

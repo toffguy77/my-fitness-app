@@ -167,3 +167,39 @@ func TestConcurrentRotationKeepsTheGracePeriod(t *testing.T) {
 	require.NoError(t, err, "a slow second tab is not a thief")
 	require.NotEmpty(t, second.RefreshToken)
 }
+
+// storeConsents была вынесена из Register при работе над входом по ссылке
+// (createAccountFromMagicLink). Юнит-тесты Register (sqlmock) этот путь не
+// упражняют вовсе: оба его подтеста зовут Register с consents == nil, так что
+// ни до выноса, ни после они не могли заметить регрессию в записи согласий.
+// Этот тест — настоящее покрытие: register() выше передаёт непустые
+// согласия, и здесь проверяется, что все четыре типа действительно попали в
+// user_consents с ожидаемыми значениями, включая отказ (Marketing не задан —
+// то есть false).
+func TestRegister_RecordsConsents(t *testing.T) {
+	service, _, db := newSessionServiceWithDB(t)
+	ctx := context.Background()
+
+	result := register(t, service, "consenting@example.test")
+
+	rows, err := db.QueryContext(ctx,
+		`SELECT consent_type, granted FROM user_consents WHERE user_id = $1 ORDER BY consent_type`,
+		result.User.ID)
+	require.NoError(t, err)
+	defer rows.Close()
+
+	granted := map[string]bool{}
+	for rows.Next() {
+		var ctype string
+		var ok bool
+		require.NoError(t, rows.Scan(&ctype, &ok))
+		granted[ctype] = ok
+	}
+	require.NoError(t, rows.Err())
+
+	assert.Len(t, granted, 4, "должны быть записаны все четыре типа согласия")
+	assert.True(t, granted["terms_of_service"])
+	assert.True(t, granted["privacy_policy"])
+	assert.True(t, granted["data_processing"])
+	assert.False(t, granted["marketing"], "Marketing не задан в register() — должен записаться как отказ, а не пропасть")
+}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -60,6 +61,11 @@ type Service struct {
 	// middleware's cache TTL. Optional: without it the revocation is still
 	// correct, just up to half a minute late.
 	sessions SessionCache
+	// emailService sends the letters this service triggers (magic links
+	// today). Optional: when the email capability is off, this is nil, and
+	// that is the normal state in an environment with no SMTP credentials —
+	// not an error.
+	emailService MagicLinkSender
 }
 
 // SessionCache is the narrow part of middleware.TokenVersions this service
@@ -77,6 +83,23 @@ type SessionCache interface {
 // WithSessionCache supplies the cache to invalidate on a revocation.
 func (s *Service) WithSessionCache(cache SessionCache) *Service {
 	s.sessions = cache
+	return s
+}
+
+// MagicLinkSender is the narrow part of email.Service this service needs,
+// declared here so the auth module does not depend on the whole email
+// package — its SMTP configuration and its five other letters — for the one
+// method a magic link needs to send. *email.Service satisfies it on its own.
+type MagicLinkSender interface {
+	SendMagicLink(ctx context.Context, data email.MagicLinkEmailData) error
+}
+
+// WithEmailService supplies the sender for letters this service triggers.
+// Separate from the constructor for the same reason as WithSessionCache: the
+// service is built at startup before the email capability's availability is
+// known, and the two would otherwise have to agree on construction order.
+func (s *Service) WithEmailService(sender MagicLinkSender) *Service {
+	s.emailService = sender
 	return s
 }
 
@@ -198,27 +221,7 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	_, _ = s.db.ExecContext(ctx, "INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", user.ID)
 
 	// Store consents
-	if consents != nil {
-		consentTypes := []struct {
-			ctype   string
-			granted bool
-		}{
-			{"terms_of_service", consents.TermsOfService},
-			{"privacy_policy", consents.PrivacyPolicy},
-			{"data_processing", consents.DataProcessing},
-			{"marketing", consents.Marketing},
-		}
-		for _, c := range consentTypes {
-			_, err := s.db.ExecContext(ctx,
-				`INSERT INTO user_consents (user_id, consent_type, granted, granted_at, ip_address, user_agent)
-				 VALUES ($1, $2, $3, NOW(), $4::inet, $5)`,
-				user.ID, c.ctype, c.granted, ip, ua,
-			)
-			if err != nil {
-				s.log.Warnw("Failed to store consent", "user_id", user.ID, "type", c.ctype, "error", err)
-			}
-		}
-	}
+	s.storeConsents(ctx, user.ID, consents, ip, ua)
 
 	// Auto-assign curator (coordinator with fewest active clients)
 	s.assignCurator(ctx, user.ID)
@@ -242,6 +245,46 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	}, nil
 }
 
+// storeConsents records each consent flag as its own row.
+//
+// Extracted out of Register so the magic-link account path (createAccountFromMagicLink)
+// writes consents the exact same way: a divergence here would mean some
+// accounts have no record of what they agreed to, invisible on a mock that
+// does not keep rows.
+//
+// Best effort, as Register always treated it: a row failing to write is
+// logged, not fatal — the account is real either way, and refusing it over a
+// consent log entry would be a strange kind of protection.
+func (s *Service) storeConsents(ctx context.Context, userID int64, consents *ConsentsInput, ip, ua string) {
+	if consents == nil {
+		return
+	}
+	consentTypes := []struct {
+		ctype   string
+		granted bool
+	}{
+		{"terms_of_service", consents.TermsOfService},
+		{"privacy_policy", consents.PrivacyPolicy},
+		{"data_processing", consents.DataProcessing},
+		{"marketing", consents.Marketing},
+	}
+	for _, c := range consentTypes {
+		_, err := s.db.ExecContext(ctx,
+			`INSERT INTO user_consents (user_id, consent_type, granted, granted_at, ip_address, user_agent)
+			 VALUES ($1, $2, $3, NOW(), $4::inet, $5)`,
+			userID, c.ctype, c.granted, ip, ua,
+		)
+		if err != nil {
+			s.log.Warnw("Failed to store consent", "user_id", userID, "type", c.ctype, "error", err)
+		}
+	}
+}
+
+// dummyBcryptHash: хэш, с которым сравнивают, когда сравнивать не с чем: он
+// нужен только затем, чтобы отказ беспарольному аккаунту занимал столько же
+// времени, сколько неверный пароль.
+const dummyBcryptHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+
 // Login authenticates a user
 func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rememberMe bool) (*LoginResult, error) {
 	s.log.Infow("User login", "email", email)
@@ -254,11 +297,11 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 	`
 
 	var user User
-	var hashedPassword string
+	var storedPassword sql.NullString
 	var deletionRequestedAt sql.NullTime
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID, &user.Email, &user.Name, &hashedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &deletionRequestedAt, &user.TokenVersion,
+		&user.ID, &user.Email, &user.Name, &storedPassword, &user.Role, &user.EmailVerified, &user.OnboardingCompleted, &user.CreatedAt, &deletionRequestedAt, &user.TokenVersion,
 	)
 	s.log.LogDatabaseQuery("Login.LookupUser", time.Since(startTime), err, map[string]any{"email": email})
 	if err != nil {
@@ -268,14 +311,33 @@ func (s *Service) Login(ctx context.Context, email, password, ip, ua string, rem
 		return nil, fmt.Errorf("ошибка при входе: %w", err)
 	}
 
+	// Пароля нет вовсе (аккаунт заведён внешним провайдером или ссылкой входа)
+	// либо сохранена пустая строка. И то и другое — не пароль, а его
+	// отсутствие, и отвечать на это надо тем же, чем на неверный пароль:
+	// разница в ответе сообщила бы, каким способом человек регистрировался.
+	// PasswordIsSet, а не проверка на месте: то же самое правило уже было
+	// написано вручную здесь и параллельно расходилось в HasPassword,
+	// ConfirmLinkWithPassword и UnlinkProvider — именно параллельность и
+	// породила расхождения. Здесь оно было верным и до этой правки, но
+	// оставлять его пятым отдельным выражением значит первым, кто исправит
+	// правило в одном месте, забыть про это.
+	//
+	// Сравнение с фиктивным хэшем — чтобы отказ стоил столько же времени,
+	// сколько неверный пароль; разница в скорости говорит то же самое, что
+	// разница в тексте.
+	if !PasswordIsSet(storedPassword) {
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
+		return nil, fmt.Errorf("Login.NoPassword: %w", apperrors.ErrInvalidCredentials)
+	}
+
 	// Verify password
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(storedPassword.String), []byte(password)); err != nil {
 		// If stored password is not a bcrypt hash, try plaintext comparison
 		// and migrate to bcrypt on success
-		if strings.HasPrefix(hashedPassword, "$2") {
+		if strings.HasPrefix(storedPassword.String, "$2") {
 			return nil, fmt.Errorf("Login.VerifyPassword: %w", apperrors.ErrInvalidCredentials)
 		}
-		if hashedPassword != password {
+		if storedPassword.String != password {
 			return nil, fmt.Errorf("Login.VerifyPassword: %w", apperrors.ErrInvalidCredentials)
 		}
 		// Migrate plaintext password to bcrypt
@@ -489,7 +551,7 @@ func (s *Service) handleGracefulReuse(ctx context.Context, oldTokenID, userID in
 // `replacement` is filled with a fresh token pair for the caller's own session:
 // see endAllSessions for why every other one is destroyed and this one is not.
 func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassword, newPassword string, replacement *LoginResult) error {
-	var storedHash string
+	var storedHash sql.NullString
 	startTime := time.Now()
 	err := s.db.QueryRowContext(ctx,
 		`SELECT password FROM users WHERE id = $1`,
@@ -500,11 +562,24 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, currentPassw
 		return fmt.Errorf("ошибка при получении данных пользователя: %w", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(currentPassword)); err != nil {
+	// An account created through an external provider or a magic link has no
+	// password (password = NULL) to change. Unlike RequestDeletion, there is
+	// no fallback proof that would make "change" meaningful here: the form
+	// asks for a *current* password to confirm against, and none exists to
+	// confirm against. The honest answer is the same one already used for the
+	// identical situation in oauth_service.ConfirmLinkWithPassword — a clear
+	// conflict, not an internal error and not a silent skip that would let
+	// anyone with a live session set a password on someone else's provider-only
+	// account.
+	if !PasswordIsSet(storedHash) {
+		return fmt.Errorf("аккаунт без пароля: нечего менять: %w", apperrors.ErrConflict)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash.String), []byte(currentPassword)); err != nil {
 		return fmt.Errorf("ChangePassword.verify: %w", apperrors.ErrInvalidCredentials)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(newPassword)); err == nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(storedHash.String), []byte(newPassword)); err == nil {
 		return fmt.Errorf("новый пароль должен отличаться от текущего: %w", apperrors.ErrPasswordUnchanged)
 	}
 

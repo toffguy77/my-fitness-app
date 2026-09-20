@@ -75,6 +75,10 @@ INDEX leads idx_leads_created_at btree (created_at)
 INDEX leads idx_leads_email btree (email)
 INDEX leads idx_leads_reminder btree (reminder_sent_at, contact_consent)
 INDEX leads leads_pkey btree (id)
+INDEX magic_links idx_magic_links_email btree (email)
+INDEX magic_links idx_magic_links_expires btree (expires_at)
+INDEX magic_links magic_links_pkey btree (id)
+INDEX magic_links magic_links_token_hash_key btree (token_hash)
 INDEX meal_templates idx_meal_templates_meal_type btree (user_id, meal_type)
 INDEX meal_templates idx_meal_templates_user_id btree (user_id)
 INDEX meal_templates meal_templates_pkey btree (id)
@@ -318,6 +322,7 @@ email_verification_codes.created_at timestamp with time zone NOT NULL DEFAULT no
 email_verification_codes.expires_at timestamp with time zone NOT NULL
 email_verification_codes.id bigint NOT NULL DEFAULT nextval('email_verification_codes_id_seq')
 email_verification_codes.ip_address character varying
+email_verification_codes.purpose text NOT NULL DEFAULT 'email_verification'
 email_verification_codes.used_at timestamp with time zone
 email_verification_codes.user_agent text
 email_verification_codes.user_id bigint NOT NULL
@@ -383,6 +388,7 @@ job_runs.status text NOT NULL
 leads.activity_level text
 leads.birth_date date
 leads.calories numeric
+leads.capture_source text
 leads.carbs numeric
 leads.contact_consent boolean NOT NULL DEFAULT false
 leads.created_at timestamp with time zone NOT NULL DEFAULT now()
@@ -403,6 +409,16 @@ leads.source text
 leads.updated_at timestamp with time zone NOT NULL DEFAULT now()
 leads.water_glasses integer
 leads.weight_kg numeric
+magic_links.consents jsonb
+magic_links.consumed_at timestamp with time zone
+magic_links.created_at timestamp with time zone NOT NULL DEFAULT now()
+magic_links.email text NOT NULL
+magic_links.expires_at timestamp with time zone NOT NULL
+magic_links.id uuid NOT NULL DEFAULT gen_random_uuid()
+magic_links.ip_address text
+magic_links.token_hash text NOT NULL
+magic_links.user_agent text
+magic_links.user_id bigint
 meal_templates.created_at timestamp with time zone DEFAULT now()
 meal_templates.entries jsonb NOT NULL
 meal_templates.id uuid NOT NULL DEFAULT gen_random_uuid()

@@ -84,8 +84,25 @@ func TestUnlinkProvider_RefusesToRemoveTheLastSignInMethod(t *testing.T) {
 	service, mock, cleanup := setupTestService(t)
 	defer cleanup()
 
-	mock.ExpectQuery("SELECT u.password IS NOT NULL").
-		WillReturnRows(sqlmock.NewRows([]string{"has_password", "link_count"}).AddRow(false, 1))
+	mock.ExpectQuery("SELECT u.password").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "link_count"}).AddRow(nil, 1))
+
+	err := service.UnlinkProvider(context.Background(), 1, "yandex")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+}
+
+// Same refusal for an empty stored string, not just NULL — before
+// PasswordIsSet this query asked Postgres "password IS NOT NULL" directly,
+// which answered true for an empty string and let the last sign-in method be
+// removed, locking the person out permanently.
+func TestUnlinkProvider_RefusesTheLastMethodWithAnEmptyStoredPassword(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery("SELECT u.password").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "link_count"}).AddRow("", 1))
 
 	err := service.UnlinkProvider(context.Background(), 1, "yandex")
 
@@ -97,8 +114,8 @@ func TestUnlinkProvider_AllowedWhenAPasswordExists(t *testing.T) {
 	service, mock, cleanup := setupTestService(t)
 	defer cleanup()
 
-	mock.ExpectQuery("SELECT u.password IS NOT NULL").
-		WillReturnRows(sqlmock.NewRows([]string{"has_password", "link_count"}).AddRow(true, 1))
+	mock.ExpectQuery("SELECT u.password").
+		WillReturnRows(sqlmock.NewRows([]string{"password", "link_count"}).AddRow("$2a$10$somehash", 1))
 	mock.ExpectExec("DELETE FROM external_identities").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -179,6 +196,24 @@ func TestConfirmLinkWithPassword_RefusesAnAccountWithoutAPassword(t *testing.T) 
 	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows("user@example.com"))
 	mock.ExpectQuery("SELECT id, password FROM users WHERE email").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), nil))
+
+	_, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "anything", "ip", "ua")
+
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+}
+
+// Before PasswordIsSet, this checked only hash.Valid: an empty string scans
+// as Valid, so this branch used to fall through to bcrypt.CompareHashAndPassword
+// against "" — an error, but the wrong one (ErrInvalidCredentials, "wrong
+// password", instead of ErrConflict, "no password to check"). Same bug shape
+// as HasPassword and RequestDeletion once disagreeing on this exact value.
+func TestConfirmLinkWithPassword_EmptyStoredPasswordIsNotAPassword(t *testing.T) {
+	service, mock, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mock.ExpectQuery("FROM oauth_pending_links").WillReturnRows(pendingRows("user@example.com"))
+	mock.ExpectQuery("SELECT id, password FROM users WHERE email").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "password"}).AddRow(int64(7), ""))
 
 	_, err := service.ConfirmLinkWithPassword(context.Background(), "pending-1", "anything", "ip", "ua")
 

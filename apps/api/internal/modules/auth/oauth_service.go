@@ -172,16 +172,16 @@ func (s *Service) LinkProvider(ctx context.Context, userID int64, provider strin
 // Refuses to remove the last way in: a user with no password and one provider
 // would lose access to a year of data with a single click.
 func (s *Service) UnlinkProvider(ctx context.Context, userID int64, provider string) error {
-	var hasPassword bool
+	var password sql.NullString
 	var linkCount int
 	if err := s.db.QueryRowContext(ctx, `
-		SELECT u.password IS NOT NULL,
+		SELECT u.password,
 		       (SELECT COUNT(*) FROM external_identities WHERE user_id = u.id)
-		FROM users u WHERE u.id = $1`, userID).Scan(&hasPassword, &linkCount); err != nil {
+		FROM users u WHERE u.id = $1`, userID).Scan(&password, &linkCount); err != nil {
 		return fmt.Errorf("check sign-in methods: %w", err)
 	}
 
-	if !hasPassword && linkCount <= 1 {
+	if !PasswordIsSet(password) && linkCount <= 1 {
 		return fmt.Errorf("cannot remove the only sign-in method: %w", apperrors.ErrConflict)
 	}
 
@@ -226,12 +226,33 @@ func (s *Service) LinkedProviders(ctx context.Context, userID int64) ([]LinkedPr
 	return linked, rows.Err()
 }
 
+// PasswordIsSet is the one rule for "does this account have a password" —
+// every place in this codebase that asks the question calls it, so a second,
+// silently different definition cannot appear again.
+//
+// An empty string does not count. That is not a hypothetical: the exact same
+// column held the same trap once before. Login used to read it into a plain
+// string and compare it with bcrypt regardless of whether it was empty, and
+// an empty stored password there meant anyone typing an empty password long
+// enough to reach bcrypt's own confusion signed in — a real production
+// defect, fixed before this one. Nothing here guarantees the column is never
+// empty; this predicate exists so that if it ever is, every caller agrees on
+// what that means, instead of some treating it as "has a password" and
+// others as "does not".
+func PasswordIsSet(password sql.NullString) bool {
+	return password.Valid && password.String != ""
+}
+
 // HasPassword reports whether a user can sign in with a password. The settings
-// screen uses it to explain why unlinking is blocked.
+// screen uses it to explain why unlinking is blocked, and the account
+// deletion form uses it to decide what to ask for instead of a password.
 func (s *Service) HasPassword(ctx context.Context, userID int64) (bool, error) {
-	var has bool
-	err := s.db.QueryRowContext(ctx, `SELECT password IS NOT NULL FROM users WHERE id = $1`, userID).Scan(&has)
-	return has, err
+	var password sql.NullString
+	err := s.db.QueryRowContext(ctx, `SELECT password FROM users WHERE id = $1`, userID).Scan(&password)
+	if err != nil {
+		return false, err
+	}
+	return PasswordIsSet(password), nil
 }
 
 type execer interface {
@@ -424,8 +445,10 @@ func (s *Service) ConfirmLinkWithPassword(ctx context.Context, pendingID, passwo
 
 	// An account created through another provider has no password, so there is
 	// nothing to prove ownership with here. Signing in with the provider that
-	// already owns it is the way in.
-	if !hash.Valid {
+	// already owns it is the way in. PasswordIsSet, not hash.Valid alone: an
+	// empty stored string is not a password either — see PasswordIsSet's
+	// comment for why that used to matter here in a different function.
+	if !PasswordIsSet(hash) {
 		return nil, fmt.Errorf("account has no password: %w", apperrors.ErrConflict)
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(hash.String), []byte(password)); err != nil {

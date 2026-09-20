@@ -372,6 +372,8 @@ function GuestResultView({
                 {t('onboarding.guest.water', { glasses: result.water_glasses })}
             </p>
 
+            <GuestResultCapture />
+
             <button
                 onClick={onSave}
                 className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
@@ -379,6 +381,116 @@ function GuestResultView({
                 {t('onboarding.guest.saveResult')}
             </button>
         </section>
+    )
+}
+
+// The second place a contact can be left: right here, under the numbers,
+// without going anywhere near the contact step. Somebody who only wants the
+// number emailed to them should not have to sit through a form asking for
+// their name too.
+function GuestResultCapture() {
+    const state = useGuestOnboardingStore()
+    const [email, setEmail] = useState('')
+    const [dataConsent, setDataConsent] = useState(false)
+    const [contactConsent, setContactConsent] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [sent, setSent] = useState(false)
+
+    const handleSend = async () => {
+        const parameters = parametersOf(state)
+        if (!parameters || !email || !dataConsent) return
+
+        setSaving(true)
+        try {
+            const { token } = await guestApi.createLead({
+                email,
+                parameters,
+                result: state.result,
+                last_step: 'result',
+                capture_source: 'result',
+                source: typeof document !== 'undefined' ? document.referrer : '',
+                consents: { data_processing: dataConsent, contact: contactConsent },
+            })
+            rememberLeadToken(token)
+            track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'result' })
+            // Факт «контакт оставили», без адреса и без цифр расчёта —
+            // отдельно от EVENTS.leadSaved, который несёт свойства для CRM-нужд.
+            track(EVENTS.contactCaptured, { source: 'result' })
+            setSent(true)
+        } catch {
+            toast.error(t('onboarding.guest.resultCapture.failed'))
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    if (sent) {
+        // Confirmation must not promise a letter that was never scheduled: the
+        // reminder only ever goes out to somebody who checked guest.reminder
+        // (contactConsent) — without it, createLead still saves the lead, but
+        // nothing sends anything.
+        return (
+            <p className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                {contactConsent
+                    ? t('onboarding.guest.resultCapture.successWithReminder')
+                    : t('onboarding.guest.resultCapture.success')}
+            </p>
+        )
+    }
+
+    return (
+        <div className="mt-6 space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+            <p className="text-sm text-gray-600">{t('onboarding.guest.resultCapture.hint')}</p>
+
+            <div>
+                <label htmlFor="guest-result-email" className="block text-sm font-medium text-gray-900">
+                    {t('onboarding.guest.resultCapture.emailLabel')}
+                </label>
+                <input
+                    id="guest-result-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('onboarding.guest.resultCapture.emailPlaceholder')}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                />
+            </div>
+
+            {/* Same two consents as the contact step, the same wording: one
+                set of formulations, not a second one invented for this
+                screen. */}
+            <div className="space-y-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                        type="checkbox"
+                        checked={dataConsent}
+                        onChange={(e) => setDataConsent(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-600">{t('onboarding.guest.consent')}</span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                        type="checkbox"
+                        checked={contactConsent}
+                        onChange={(e) => setContactConsent(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-600">{t('onboarding.guest.reminder')}</span>
+                </label>
+            </div>
+
+            <button
+                onClick={handleSend}
+                disabled={!email || !dataConsent || saving}
+                className="w-full rounded-lg border border-blue-600 py-3 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 disabled:opacity-50"
+            >
+                {saving
+                    ? t('onboarding.guest.resultCapture.sending')
+                    : t('onboarding.guest.resultCapture.submit')}
+            </button>
+        </div>
     )
 }
 
@@ -396,17 +508,31 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
 
         setSaving(true)
         try {
+            // A contact left on the result screen already has a lead behind
+            // it. Creating a second one here would give the same person two
+            // rows instead of one that carries on; the token proves there is
+            // already something to carry on.
+            if (leadToken()) {
+                track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'contact_step' })
+                track(EVENTS.contactCaptured, { source: 'contact_step' })
+                toast.success(t('onboarding.guest.saved'))
+                onSaved()
+                return
+            }
+
             const { token } = await guestApi.createLead({
                 email,
                 name,
                 parameters,
                 result: state.result,
                 last_step: 'contact',
+                capture_source: 'contact_step',
                 source: typeof document !== 'undefined' ? document.referrer : '',
                 consents: { data_processing: dataConsent, contact: contactConsent },
             })
             rememberLeadToken(token)
-            track(EVENTS.leadSaved, { contact_consent: contactConsent })
+            track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'contact_step' })
+            track(EVENTS.contactCaptured, { source: 'contact_step' })
             toast.success(t('onboarding.guest.saved'))
             onSaved()
         } catch (err) {

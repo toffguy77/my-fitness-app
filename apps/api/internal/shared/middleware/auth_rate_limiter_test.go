@@ -89,6 +89,48 @@ func TestRegisterRateLimit_BlocksAfterMaxRequests(t *testing.T) {
 	}
 }
 
+// TestMagicLinkRequestRateLimit_BlocksAfterMaxRequests fires 6 requests and
+// asserts the 6th is rejected (magic-link-request limit is 5 per 15
+// minutes). Without an entry in authLimitConfigs, Limit passes every
+// endpoint it does not recognise straight through — this is what would
+// leave the magic-link endpoint free to send mail at any address, unlimited.
+func TestMagicLinkRequestRateLimit_BlocksAfterMaxRequests(t *testing.T) {
+	router := newTestRouter("magic-link-request")
+	const max = 5
+
+	for i := range max {
+		code := fireRequest(router, "192.168.2.1")
+		if code != http.StatusOK {
+			t.Fatalf("request %d: expected 200 got %d", i+1, code)
+		}
+	}
+
+	code := fireRequest(router, "192.168.2.1")
+	if code != http.StatusTooManyRequests {
+		t.Fatalf("request 6: expected 429 got %d", code)
+	}
+}
+
+// TestMagicLinkConsumeRateLimit_BlocksAfterMaxRequests fires 11 requests and
+// asserts the 11th is rejected (magic-link-consume limit is 10 per 15
+// minutes, the same shape as the other credential-exchange endpoints).
+func TestMagicLinkConsumeRateLimit_BlocksAfterMaxRequests(t *testing.T) {
+	router := newTestRouter("magic-link-consume")
+	const max = 10
+
+	for i := range max {
+		code := fireRequest(router, "192.168.2.2")
+		if code != http.StatusOK {
+			t.Fatalf("request %d: expected 200 got %d", i+1, code)
+		}
+	}
+
+	code := fireRequest(router, "192.168.2.2")
+	if code != http.StatusTooManyRequests {
+		t.Fatalf("request 11: expected 429 got %d", code)
+	}
+}
+
 // The scale exists for environments where a whole test suite arrives from one
 // address and would otherwise be throttled as if it were one person guessing
 // passwords. It must never make the limit weaker by accident.

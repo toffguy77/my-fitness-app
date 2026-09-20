@@ -76,6 +76,8 @@ type QueueEntry struct {
 }
 
 // CreateInput is what the contact step submits.
+
+// CreateInput is what the contact step, and now the result screen, submits.
 type CreateInput struct {
 	Email      string     `json:"email" binding:"required,email"`
 	Name       string     `json:"name"`
@@ -83,5 +85,9 @@ type CreateInput struct {
 	Result     *Result    `json:"result"`
 	LastStep   string     `json:"last_step"`
 	Source     string     `json:"source"`
-	Consents   Consents   `json:"consents"`
+	// Which screen the contact was left on: contact_step | result | bot.
+	// Empty defaults to contact_step in Service.Create — that was the only
+	// place a lead was ever created before this field existed.
+	CaptureSource string   `json:"capture_source"`
+	Consents      Consents `json:"consents"`
 }
