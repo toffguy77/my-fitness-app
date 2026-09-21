@@ -57,6 +57,14 @@ jobs:
       - name: Check E2E cleanup covers every test account
         run: node scripts/check-e2e-cleanup-covers-accounts.mjs
 
+      # Same requirement from the other end: an address a spec types into a
+      # form that matches none of the cleanup's guest patterns leaves its lead
+      # — and the web conversation attached to it — on the server for good.
+      # support-widget.spec.ts used widget-e2e@example.com, one hyphen away
+      # from the pattern that would have covered it.
+      - name: Check E2E guest emails are cleanable
+        run: node scripts/check-e2e-guest-emails.mjs
+
       # Catches a Russian sentence written inline in a section that has been
       # translated, and a t() key the dictionary does not have.
       - name: Check translations
