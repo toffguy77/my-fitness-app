@@ -45,8 +45,15 @@ test.describe('Error screens', () => {
     await page.getByRole('button', { name: /Умеренная активность/ }).click()
     await page.getByRole('button', { name: 'Показать мою норму' }).click()
 
-    // Told what happened, and still holding their answers.
-    await expect(page.getByText(/Не удалось выполнить расчёт/)).toBeVisible({ timeout: 15000 })
+    // Told what happened, and still holding their answers. `route.abort`
+    // simulates a transport failure, not a server refusal, so since
+    // 937589ab ("причина отказа доезжает до человека") the toast is the
+    // specific NetworkError sentence (apiErrors.ts, messageFor) rather than
+    // the generic onboarding.guest.calcFailed fallback — that fallback fires
+    // only for an error with no recognizable kind, which this is not.
+    await expect(
+        page.getByText(/Нет связи с сервером\. Проверьте интернет-соединение и попробуйте снова\./)
+    ).toBeVisible({ timeout: 15000 })
     await expect(page.getByRole('button', { name: 'Показать мою норму' })).toBeEnabled()
   })
 })
