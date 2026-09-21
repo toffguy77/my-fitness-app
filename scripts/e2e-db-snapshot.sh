@@ -38,6 +38,8 @@
 #   E2E_CLIENT_EMAIL=e2e-client@burcev.team \
 #   E2E_CURATOR_EMAIL=e2e-curator@burcev.team \
 #   E2E_ADMIN_EMAIL=e2e-admin@burcev.team \
+#   E2E_OTHER_CURATOR_EMAIL=e2e-curator-2@burcev.team \
+#   E2E_PASSWORD_EMAIL=e2e-password@burcev.team \
 #   scripts/e2e-db-snapshot.sh [путь-к-файлу-слепка]
 #
 # Печатает путь к файлу слепка последней строкой в stdout (и ничего похожего
@@ -62,12 +64,22 @@ done
     exit 1
 }
 
-# --- три учётки прогона ------------------------------------------------------
+# --- учётки прогона ----------------------------------------------------------
+# Перечень обязан совпадать с объявленным в e2e/fixtures/test-accounts.ts:
+# учётка, под которой прогон ходит, но которой нет здесь, останется на
+# сервере вместе со всем, что на неё ссылается, — и зачистка отчитается об
+# успехе, потому что про эту учётку её никто не спрашивал. Совпадение
+# сторожит scripts/check-e2e-cleanup-covers-accounts.mjs (в CI).
+#
+# Пять, а не три: кроме client/curator/admin набор держит второго куратора
+# (проверки обращения к чужому клиенту) и отдельную учётку для смены пароля —
+# тот сценарий рвёт все сессии учётки и увёл бы из-под остальных тестов их
+# собственную.
 if [ -n "${ACCOUNT_EMAILS:-}" ]; then
     IFS=',' read -r -a ACCOUNTS <<<"$ACCOUNT_EMAILS"
 else
     ACCOUNTS=()
-    for var in E2E_CLIENT_EMAIL E2E_CURATOR_EMAIL E2E_ADMIN_EMAIL; do
+    for var in E2E_CLIENT_EMAIL E2E_CURATOR_EMAIL E2E_ADMIN_EMAIL E2E_OTHER_CURATOR_EMAIL E2E_PASSWORD_EMAIL; do
         val="${!var:-}"
         if [ -z "$val" ]; then
             echo "предупреждение: $var не задан — слепок пойдёт без этой учётки" >&2
@@ -78,7 +90,7 @@ else
 fi
 
 if [ "${#ACCOUNTS[@]}" -eq 0 ]; then
-    echo "ни одна из трёх учётных записей не задана (E2E_CLIENT_EMAIL / E2E_CURATOR_EMAIL / E2E_ADMIN_EMAIL / ACCOUNT_EMAILS)" >&2
+    echo "ни одна учётная запись прогона не задана (E2E_CLIENT_EMAIL / E2E_CURATOR_EMAIL / E2E_ADMIN_EMAIL / E2E_OTHER_CURATOR_EMAIL / E2E_PASSWORD_EMAIL / ACCOUNT_EMAILS)" >&2
     exit 1
 fi
 
