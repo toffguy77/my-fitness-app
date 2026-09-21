@@ -1,6 +1,10 @@
 import { test, expect } from '../fixtures/session'
 import { SettingsPrivacyPage } from '../pages/settings.page'
 import { waitForLetter, codeFromLetter, freshAddress } from '../fixtures/mail'
+import { AuthPage } from '../pages/auth.page'
+// Подписи — из того же словаря, что и разметка: вписанные сюда строками, они
+// разошлись бы с ним при первой правке текста (см. комментарий в auth.page.ts).
+import { ru } from '../../apps/web/src/shared/i18n/dictionaries/ru'
 
 /**
  * Удаление аккаунта — по-настоящему, от регистрации до отмены.
@@ -24,6 +28,14 @@ import { waitForLetter, codeFromLetter, freshAddress } from '../fixtures/mail'
  * этот срок отменяет. Данные при этом не гибнут ни на секунду, а адрес на
  * `burcev.test` подпадает под шаблоны зачистки.
  *
+ * Первая версия этого файла ждала, что страница настроек переживёт
+ * перезагрузку, — и покраснела. Красным был тест: запрос удаления по замыслу
+ * обрывает все сессии учётки («аккаунт с этого момента деактивирован, а
+ * действующий токен этому противоречил бы» — account/service.go), так что
+ * человека выкидывает, и дорога назад у него одна — войти заново и отменить
+ * удаление с экрана возвращения. Подмена в соседнем файле скрывала не дефект,
+ * а целый кусок замысла, которого не проверял никто.
+ *
  * Требует ловца почты, поэтому живёт рядом с `registration.spec.ts`: на
  * стенде CI он есть, против dev или прода этот файл не запускают.
  */
@@ -34,7 +46,7 @@ const CONFIRMATION = 'УДАЛИТЬ'
 test.use({ role: undefined })
 
 test.describe('Удаление аккаунта без подмен', () => {
-    test('назначается на сервере, переживает перезагрузку и отменяется', async ({
+    test('назначается на сервере, обрывает сессию и отменяется при возвращении', async ({
         page,
         context,
         request,
@@ -97,44 +109,60 @@ test.describe('Удаление аккаунта без подмен', () => {
 
         await expect(privacy.scheduledNotice).toBeVisible()
 
-        // Перезагрузка отделяет состояние сервера от состояния вкладки:
-        // назначенный срок, живущий только в памяти страницы, здесь пропадёт.
-        await page.reload()
-        await privacy.expectLoaded()
-        await expect(privacy.scheduledNotice).toBeVisible()
-
-        // И сервер говорит то же самое, что показывает страница.
+        // Сервер называет срок — и говорит это до того, как сессия кончится.
         const state = await context.request.get(`${baseURL}/api/v1/users/me/deletion`, {
             headers: { Authorization: `Bearer ${token}` },
         })
         expect(state.status(), await state.text()).toBe(200)
-        const scheduledFor = (await state.json())?.data?.scheduled_for
-        expect(scheduledFor, 'сервер не назвал срок удаления').toBeTruthy()
+        expect(
+            (await state.json())?.data?.scheduled_for,
+            'сервер не назвал срок удаления',
+        ).toBeTruthy()
 
-        // Отмена — тоже по-настоящему: иначе учётка ушла бы в удаление,
-        // а тест отчитался бы об успехе.
+        // А теперь то, ради чего этот файл и переписан.
+        //
+        // Запрос удаления по замыслу обрывает ВСЕ сессии учётки: «аккаунт с
+        // этого момента деактивирован, а действующий токен этому противоречил
+        // бы» (account/service.go). Значит перезагрузка страницы настроек
+        // обязана выкинуть человека, а не показать ему ту же страницу.
+        //
+        // Первая версия этого теста ждала обратного — что страница настроек
+        // переживёт перезагрузку, — и покраснела. Красным был тест, а не
+        // продукт: подмена в соседнем файле скрывала не дефект, а целый кусок
+        // замысла, которого никто не проверял.
+        await page.reload()
+        await page.waitForURL(/\/auth/, { timeout: 15000 })
+        await expect(privacy.deleteHeading).toBeHidden()
+
+        // Вернуться можно только войдя заново — и вход показывает дорогу
+        // назад вместо личного кабинета.
+        // Через AuthPage, а не своими кликами: там уже решена ловушка
+        // потерянного клика по «Войти по паролю» — кнопка отрисована сервером
+        // раньше, чем к ней привязан обработчик, и одиночный клик попадает в
+        // это окно и не делает ничего.
+        const auth = new AuthPage(page)
+        await auth.goto()
+        await auth.login(address, PASSWORD)
+
+        await expect(page.getByText(ru.auth.recovery.title)).toBeVisible({ timeout: 15000 })
+
+        // Отмена — по-настоящему: иначе учётка ушла бы в удаление, а тест
+        // отчитался бы об успехе.
         const [cancelled] = await Promise.all([
             page.waitForResponse(
                 (res) =>
                     res.request().method() === 'DELETE' &&
                     new URL(res.url()).pathname === '/api/v1/users/me/deletion',
             ),
-            privacy.cancelDeletionButton.click(),
+            page.getByRole('button', { name: ru.auth.recovery.cancel }).click(),
         ])
         expect(cancelled.status(), await cancelled.text()).toBeLessThan(300)
 
-        await expect(privacy.scheduledNotice).toBeHidden()
-
-        await page.reload()
+        // И человек действительно вернулся: страница настроек снова открыта,
+        // срока на ней нет. Аккаунт, который «отменил удаление», но в который
+        // нельзя войти, — это удалённый аккаунт с вежливой надписью.
+        await privacy.goto()
         await privacy.expectLoaded()
         await expect(privacy.scheduledNotice).toBeHidden()
-
-        // Главное после отмены: вход по-прежнему работает. Аккаунт, который
-        // «отменил удаление», но войти в него нельзя, — это удалённый аккаунт
-        // с вежливой надписью.
-        const afterCancel = await context.request.post(`${baseURL}/api/v1/auth/login`, {
-            data: { email: address, password: PASSWORD },
-        })
-        expect(afterCancel.status(), await afterCancel.text()).toBe(200)
     })
 })
