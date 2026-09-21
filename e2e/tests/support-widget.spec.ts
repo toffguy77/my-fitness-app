@@ -229,7 +229,11 @@ test.describe('Виджет поддержки на посадочной (гос
         // Настоящая эскалация: контактная форма появляется только когда
         // реальный WebHuman действительно перевёл разговор в 'escalated' —
         // не потому, что подмена решила показать её сама.
-        await dialog.getByLabel('Почта').fill('widget-e2e@example.com')
+        // Адрес обязан попадать под шаблоны зачистки (widget-e2e-%): оставленный
+        // контакт заводит заявку и привязывает к ней веб-разговор, и на рабочем
+        // сервере оба останутся навсегда, если адрес ни под один шаблон не
+        // подошёл. Совпадение стережёт scripts/check-e2e-guest-emails.mjs.
+        await dialog.getByLabel('Почта').fill(`widget-e2e-${Date.now()}@burcev.test`)
         await dialog.getByRole('checkbox', { name: /обработку/i }).check()
         await dialog.getByRole('checkbox', { name: /могут написать/i }).check()
 
@@ -279,7 +283,7 @@ test.describe('Виджет поддержки на посадочной (гос
 
         await dialog.getByRole('button', { name: 'Позвать человека' }).click()
 
-        const email = `widget-e2e-${Date.now()}@example.com`
+        const email = `widget-e2e-${Date.now()}@burcev.test`
         await dialog.getByLabel('Почта').fill(email)
         await dialog.getByRole('checkbox', { name: /обработку/i }).check()
         await dialog.getByRole('checkbox', { name: /могут написать/i }).check()
