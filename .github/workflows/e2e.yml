@@ -65,6 +65,30 @@ jobs:
       E2E_OTHER_CURATOR_PASSWORD: E2e!Other#2026
       E2E_PASSWORD_EMAIL: e2e-password@burcev.test
       E2E_PASSWORD_PASSWORD: E2e!Password#2026
+      # support-widget.spec.ts hits the real backend for StartWeb/WebHuman/
+      # WebContact (only WebMessage's model call is intercepted in the
+      # browser — see the spec's own header comment). Without these four,
+      # config.Features.SupportBot stays false and every web/* route answers
+      # 503 "Бот поддержки не настроен", which is exactly why StartWeb's
+      # response carried no `data.conversation_id` and the spec threw
+      # reading it. Placeholders are enough: the model itself is never
+      # really called from this suite, only the capability gate needs to be
+      # open. Real secrets stay in Dokploy, same as everywhere else.
+      LLM_API_KEY: e2e-placeholder-not-a-real-key
+      SUPPORT_MODEL: gpt://e2e-placeholder/yandexgpt/latest
+      TELEGRAM_BOT_TOKEN: '000000:e2e-placeholder-token'
+      TELEGRAM_WEBHOOK_SECRET: e2e-placeholder-secret
+      # Belt, not just braces: support-widget.spec.ts intercepts .../web/message
+      # in the browser, so the model is never meant to be called for real — but
+      # that interception is a Playwright mock, not a server-side guarantee. If
+      # it ever failed to attach (route ordering, the service-worker interaction
+      # task 10 already found once, a spec regression), the request would reach
+      # this real backend, which — now that SUPPORT_BOT is on — would otherwise
+      # dial llm.api.cloud.yandex.net for real with a fake key. Overriding the
+      # provider URL to a loopback port nothing listens on makes that attempt
+      # fail closed (connection refused, no DNS, no egress) instead of quietly
+      # reaching a real third party. cfg.LLMBaseURL / LLM_BASE_URL — config.go.
+      LLM_BASE_URL: http://127.0.0.1:1/e2e-placeholder-must-not-be-dialed
       # The whole suite signs in from one address; without this the auth
       # limiter reads it as one person guessing passwords.
       #
