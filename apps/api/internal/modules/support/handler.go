@@ -12,6 +12,7 @@ import (
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/telegram"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Handler receives Telegram updates and serves the operator's queue — and, for
@@ -364,6 +365,26 @@ func (h *Handler) List(c *gin.Context) {
 	response.Success(c, http.StatusOK, response.Paginated(conversations, total, page))
 }
 
+// conversationID validates the :id URL param as a uuid before it reaches the
+// database, for every curator route addressing one support conversation.
+//
+// support_conversations.id is a uuid column, and Postgres rejects anything
+// else while parsing the query, before it ever gets to look for a row — an
+// error sql.ErrNoRows-handling downstream can't see, so it fell through to a
+// 500. A mistyped or stale link is "no such conversation," the same as a
+// well-formed id nobody used, not a server fault — and dressing it up as one
+// is also a wasted round trip to the database for a request that could never
+// have found anything. Same reasoning as admin.GetConversationMessages and
+// account.DownloadExport.
+func (h *Handler) conversationID(c *gin.Context) (string, bool) {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
+		response.NotFound(c, "Обращение не найдено")
+		return "", false
+	}
+	return id, true
+}
+
 // Messages handles GET /api/v1/curator/support/conversations/:id.
 func (h *Handler) Messages(c *gin.Context) {
 	if h.service == nil {
@@ -371,7 +392,12 @@ func (h *Handler) Messages(c *gin.Context) {
 		return
 	}
 
-	conversation, messages, lead, err := h.service.Thread(c.Request.Context(), c.Param("id"))
+	conversationID, ok := h.conversationID(c)
+	if !ok {
+		return
+	}
+
+	conversation, messages, lead, err := h.service.Thread(c.Request.Context(), conversationID)
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrNotFound):
@@ -405,6 +431,11 @@ func (h *Handler) Reply(c *gin.Context) {
 		return
 	}
 
+	conversationID, ok := h.conversationID(c)
+	if !ok {
+		return
+	}
+
 	var req struct {
 		Text string `json:"text" binding:"required"`
 	}
@@ -413,7 +444,7 @@ func (h *Handler) Reply(c *gin.Context) {
 		return
 	}
 
-	err := h.service.AnswerAsOperator(c.Request.Context(), c.Param("id"), operatorID.(int64), req.Text)
+	err := h.service.AnswerAsOperator(c.Request.Context(), conversationID, operatorID.(int64), req.Text)
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrNotFound):
@@ -441,7 +472,12 @@ func (h *Handler) CloseConversation(c *gin.Context) {
 		return
 	}
 
-	err := h.service.Close(c.Request.Context(), c.Param("id"), operatorID.(int64))
+	conversationID, ok := h.conversationID(c)
+	if !ok {
+		return
+	}
+
+	err := h.service.Close(c.Request.Context(), conversationID, operatorID.(int64))
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrNotFound):
