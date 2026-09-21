@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PasswordInput } from '../PasswordInput'
+import { passwordSchema } from '@/features/auth/utils/validation'
 
 describe('PasswordInput', () => {
     beforeEach(() => {
@@ -62,67 +63,101 @@ describe('PasswordInput', () => {
     })
 
     describe('password requirements', () => {
+        // Пункты проверяются по устойчивому id правила, а не по тексту:
+        // формулировка правила — она же текст ошибки схемы, и привязка к ней
+        // ломала бы этот тест при любой правке словаря, ничего не говоря о
+        // поведении.
+        const ruleIds = ['min', 'max', 'upper', 'lower', 'digit', 'special']
+
+        const rules = () =>
+            ruleIds.map((id) => screen.queryByTestId(`password-rule-${id}`))
+
+        const metIds = () =>
+            ruleIds.filter(
+                (id) => screen.getByTestId(`password-rule-${id}`).dataset.met === 'true',
+            )
+
         it('hides requirement list when value is empty', () => {
             render(<PasswordInput aria-label="Password" showRequirements value="" onChange={jest.fn()} />)
 
-            expect(screen.queryByText('Пароль должен содержать:')).not.toBeInTheDocument()
+            expect(screen.queryByTestId('password-checklist')).not.toBeInTheDocument()
         })
 
         it('shows all six requirement items once user starts typing', () => {
             render(<PasswordInput aria-label="Password" showRequirements value="a" onChange={jest.fn()} />)
 
-            expect(screen.getByText('Пароль должен содержать:')).toBeInTheDocument()
-            expect(screen.getByText('Минимум 8 символов')).toBeInTheDocument()
-            expect(screen.getByText('Не более 128 символов')).toBeInTheDocument()
-            expect(screen.getByText('Одну заглавную букву')).toBeInTheDocument()
-            expect(screen.getByText('Одну строчную букву')).toBeInTheDocument()
-            expect(screen.getByText('Одну цифру')).toBeInTheDocument()
-            expect(screen.getByText('Один специальный символ')).toBeInTheDocument()
+            expect(screen.getByTestId('password-checklist')).toBeInTheDocument()
+            expect(rules().filter(Boolean)).toHaveLength(6)
         })
 
         it('does not show requirements by default', () => {
             render(<PasswordInput aria-label="Password" />)
 
-            expect(screen.queryByText('Пароль должен содержать:')).not.toBeInTheDocument()
+            expect(screen.queryByTestId('password-checklist')).not.toBeInTheDocument()
         })
 
-        it('marks all six rules as met for a fully valid password', async () => {
-            const user = userEvent.setup()
-            const onChange = jest.fn()
-
-            const { rerender } = render(
-                <PasswordInput aria-label="Password" showRequirements value="" onChange={onChange} />
+        it('marks all six rules as met for a fully valid password', () => {
+            render(
+                <PasswordInput aria-label="Password" showRequirements value="Abcdef1!" onChange={jest.fn()} />
             )
 
-            rerender(
-                <PasswordInput aria-label="Password" showRequirements value="Abcdef1!" onChange={onChange} />
-            )
-
-            const input = screen.getByLabelText('Password')
-            await user.type(input, 'x')
-
-            const metIcons = screen.getAllByLabelText('Требование выполнено')
-            expect(metIcons.length).toBe(6)
+            expect(metIds()).toHaveLength(6)
         })
 
-        it('marks max-length rule as unmet for a 129-char password', async () => {
-            const user = userEvent.setup()
-            const onChange = jest.fn()
+        it('marks max-length rule as unmet for a 129-char password', () => {
             const longPw = 'Test123!' + 'a'.repeat(121)
 
-            const { rerender } = render(
-                <PasswordInput aria-label="Password" showRequirements value="" onChange={onChange} />
+            render(
+                <PasswordInput aria-label="Password" showRequirements value={longPw} onChange={jest.fn()} />
             )
+
+            expect(metIds()).not.toContain('max')
+        })
+
+        it('follows a value it was given rather than one typed into it', () => {
+            // Состояние списка раньше жило отдельным useState и обновлялось
+            // только в onChange: значение, пришедшее извне — подстановка
+            // менеджера паролей, сброс формы, начальное значение — список не
+            // трогало, и он показывал требования предыдущего значения.
+            const { rerender } = render(
+                <PasswordInput aria-label="Password" showRequirements value="a" onChange={jest.fn()} />
+            )
+
+            expect(metIds()).toEqual(['max', 'lower'])
 
             rerender(
-                <PasswordInput aria-label="Password" showRequirements value={longPw} onChange={onChange} />
+                <PasswordInput aria-label="Password" showRequirements value="Abcdef1!" onChange={jest.fn()} />
             )
 
-            const input = screen.getByLabelText('Password')
-            await user.type(input, 'x')
+            expect(metIds()).toHaveLength(6)
+        })
 
-            const unmetIcons = screen.getAllByLabelText('Требование не выполнено')
-            expect(unmetIcons.length).toBeGreaterThanOrEqual(1)
+        // Список и схема обязаны говорить одно и то же: разойдясь, они дадут
+        // форму, где пункт зелёный, а отправка отклонена — или наоборот.
+        //
+        // Сверяется вывод компонента с тем, что говорит САМА СХЕМА, а не с
+        // массивом правил: сверка с массивом была бы тавтологией — компонент
+        // из него и рисует, такой тест не упал бы ни при какой правке.
+        it.each([
+            ['min', 'Ab1!'],
+            ['upper', 'abcdef1!'],
+            ['lower', 'ABCDEF1!'],
+            ['digit', 'Abcdefg!'],
+            ['special', 'Abcdefg1'],
+        ])('пункт %s повторяет формулировку схемы', (id, violating) => {
+            const parsed = passwordSchema.safeParse(violating)
+            expect(parsed.success).toBe(false)
+            const issues = parsed.success ? [] : parsed.error.issues
+            // Пароль подобран так, чтобы нарушал ровно одно правило.
+            expect(issues).toHaveLength(1)
+
+            render(
+                <PasswordInput aria-label="Password" showRequirements value={violating} onChange={jest.fn()} />
+            )
+
+            const item = screen.getByTestId(`password-rule-${id}`)
+            expect(item.dataset.met).toBe('false')
+            expect(item).toHaveTextContent(issues[0].message)
         })
     })
 
