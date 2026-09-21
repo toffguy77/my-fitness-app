@@ -208,8 +208,19 @@ test.describe('Виджет поддержки на посадочной (гос
         await dialog.getByRole('textbox', { name: 'Ваш вопрос' }).fill('что даст регистрация?')
         await dialog.getByRole('button', { name: 'Отправить' }).click()
 
-        // Собственный вопрос гостя остался в переписке...
-        await expect(dialog.getByText('что даст регистрация?')).toBeVisible()
+        // Собственный вопрос гостя остался в переписке — скоуп внутри
+        // `role="log"` (не всего диалога), потому что до `setQuestion('')`
+        // тот же текст на мгновение всё ещё сидит и в textarea вопроса:
+        // React обновляет её содержимое как дочерний текстовый узел (так
+        // работает контролируемый `<textarea>`), а очистка поля происходит
+        // отдельным вызовом set state уже после того, как сообщение
+        // появилось в переписке. Без скоупа `getByText` иногда — в узком
+        // окне между этими двумя обновлениями — находил тот же текст
+        // дважды и падал с strict mode violation (мигающий тест в релизном
+        // прогоне). Подтверждено вживую через MutationObserver: второе
+        // совпадение всегда было внутри <textarea>, не второй копией в
+        // переписке.
+        await expect(dialog.getByRole('log').getByText('что даст регистрация?')).toBeVisible()
         // ...и ответ пришёл по базе знаний, а не общей фразой.
         await expect(dialog.getByText(/дневник/i)).toBeVisible()
 
@@ -260,7 +271,11 @@ test.describe('Виджет поддержки на посадочной (гос
 
         await dialog.getByRole('textbox', { name: 'Ваш вопрос' }).fill('как работает дневник?')
         await dialog.getByRole('button', { name: 'Отправить' }).click()
-        await expect(dialog.getByText('как работает дневник?')).toBeVisible()
+        // Скоуп внутри `role="log"` — та же причина, что в первом сценарии
+        // файла (см. комментарий там): текст на мгновение задваивается с
+        // ещё не очищенной textarea вопроса, если не сузить локатор до
+        // самой переписки.
+        await expect(dialog.getByRole('log').getByText('как работает дневник?')).toBeVisible()
 
         await dialog.getByRole('button', { name: 'Позвать человека' }).click()
 

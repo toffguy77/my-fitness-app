@@ -133,6 +133,7 @@ export function SupportWidget() {
             <p className="px-4 pt-3 text-xs text-gray-500">{t('supportWidget.hint')}</p>
 
             <div
+                role="log"
                 aria-live="polite"
                 aria-label={t('supportWidget.title')}
                 className="max-h-64 flex-1 space-y-2 overflow-y-auto px-4 py-3"
