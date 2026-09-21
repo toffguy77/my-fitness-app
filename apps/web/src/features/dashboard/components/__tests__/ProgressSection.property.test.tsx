@@ -9,6 +9,22 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { ProgressSection } from '../ProgressSection'
 import fc from 'fast-check'
 
+// Раньше здесь подмены не было вовсе: компонент ходил в настоящий fetch,
+// запрос падал, и «handles empty data gracefully» на самом деле проверял
+// отказ запроса, а не пустые данные. Тест был зелёным и означал не то, что
+// написано в его названии.
+const mockApiGet = jest.fn()
+jest.mock('@/shared/utils/api-client', () => ({
+    apiClient: {
+        get: (...args: unknown[]) => mockApiGet(...args),
+    },
+}))
+
+beforeEach(() => {
+    jest.clearAllMocks()
+    mockApiGet.mockResolvedValue({ weight_trend: [], nutrition_adherence: 0, target_weight: null })
+})
+
 describe('Property 13: Progress Chart Data Rendering', () => {
     it('Feature: dashboard, Property 13: always renders valid progress data structure', async () => {
         // This test verifies the component handles various data states correctly

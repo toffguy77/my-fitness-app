@@ -1,6 +1,6 @@
 'use client'
 
-import { isApiError } from '@/shared/errors/apiErrors'
+import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
@@ -40,9 +40,12 @@ export function UserDetail({ userId }: UserDetailProps) {
             .catch((err) => {
                 // A missing user is a different situation from a failed load,
                 // and the operator needs to be able to tell them apart.
+                // Ненайденный пользователь — не то же самое, что неудавшаяся
+                // загрузка, и отличить их администратору нужно. Всё остальное
+                // сервер объясняет сам.
                 setError(isApiError(err) && err.status === 404
                     ? t('admin.user.notFound')
-                    : t('admin.user.loadFailed'))
+                    : messageForOr(err, t('admin.user.loadFailed')))
             })
             .finally(() => setLoading(false))
     }, [userId])
@@ -64,8 +67,8 @@ export function UserDetail({ userId }: UserDetailProps) {
             // Refresh data
             setUser(await adminApi.getUser(userId))
             setCurators(await adminApi.getCurators())
-        } catch {
-            toast.error(t('admin.user.roleChangeFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('admin.user.roleChangeFailed')))
         } finally {
             setActionLoading(false)
         }
@@ -80,8 +83,8 @@ export function UserDetail({ userId }: UserDetailProps) {
             toast.success(t('admin.user.curatorAssigned'))
             // Refresh data
             setUser(await adminApi.getUser(userId))
-        } catch {
-            toast.error(t('admin.user.curatorAssignFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('admin.user.curatorAssignFailed')))
         } finally {
             setActionLoading(false)
         }

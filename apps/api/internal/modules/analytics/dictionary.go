@@ -4,6 +4,8 @@
 // synonyms within a month, so the server refuses anything it does not know.
 package analytics
 
+import "sort"
+
 // Event names. Grouped by the question each group answers.
 const (
 	// The way in: landing page to registered account.
@@ -14,6 +16,12 @@ const (
 	EventLeadSaved          = "lead_saved"
 	EventRegistrationOpened = "registration_opened"
 	EventRegistrationFailed = "registration_failed"
+	EventContactCaptured    = "contact_captured"
+
+	// Sign-in by a one-time link: the request and the exchange are two
+	// separate steps, and either can be where somebody drops off.
+	EventMagicLinkRequested = "magic_link_requested"
+	EventMagicLinkConsumed  = "magic_link_consumed"
 
 	// Facts, sent from the server: a client-sent "registered" lies when the
 	// connection drops after a successful request, and disappears entirely
@@ -56,6 +64,19 @@ var Dictionary = map[string]Definition{
 	EventRegistrationOpened: {Optional: []string{"method"}},
 	EventRegistrationFailed: {Required: []string{"reason"}, Optional: []string{"method"}},
 
+	// source says where the contact was left, not who left it: no address,
+	// no name, no number from the calculation.
+	EventContactCaptured: {Required: []string{"source"}},
+
+	// No properties: the response to the request is the same whether the
+	// address has an account or not, and the event must not carry a
+	// difference the response itself does not have.
+	EventMagicLinkRequested: {},
+	// outcome distinguishes an account created by this very link from an
+	// existing one that was signed into — the fact the exchange produced,
+	// not who was behind it.
+	EventMagicLinkConsumed: {Required: []string{"outcome"}},
+
 	// method is required, not optional, on both: an account arrives either by
 	// password or through a named provider, and an event that does not say
 	// which is counted as neither. When it was optional the provider path
@@ -73,6 +94,17 @@ var Dictionary = map[string]Definition{
 
 	EventSupportOpened:    {Optional: []string{"from"}},
 	EventSupportEscalated: {Optional: []string{"reason"}, ServerOnly: true},
+}
+
+// AllEventNames returns every event name in the dictionary, sorted so the
+// order is stable wherever it is compared or printed.
+func AllEventNames() []string {
+	names := make([]string, 0, len(Dictionary))
+	for name := range Dictionary {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // forbiddenProperties never belong in an event, whatever the dictionary says.

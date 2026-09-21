@@ -84,6 +84,9 @@ export default defineConfig<SessionOptions>({
         'tests/workout-logging.spec.ts',
         'tests/food-tracker-nav.spec.ts',
         'tests/settings-apple-health.spec.ts',
+        'tests/food-recognition.spec.ts',
+        'tests/account-deletion.spec.ts',
+        'tests/food-recognition-error-messages.spec.ts',
       ],
     },
     {
@@ -121,6 +124,16 @@ export default defineConfig<SessionOptions>({
         'tests/uploads.spec.ts',
         // Заводит свои учётные записи сама — тем самым путём, которым их заводит человек.
         'tests/registration.spec.ts',
+        // Заводит сессии под несколько ролей за один файл (клиент, два
+        // куратора, супер-администратор), поэтому живёт здесь, а не в
+        // проекте с одной предустановленной ролью.
+        'tests/curator-leads.spec.ts',
+        // Вход по одноразовой ссылке целиком: запрос, письмо, переход, сессия.
+        'tests/magic-link.spec.ts',
+        // Гость без аккаунта — виджет поддержки живёт своим токеном в
+        // localStorage, а не сессией, и один из сценариев подписывается
+        // куратором отдельно, посреди теста, через свой собственный signIn.
+        'tests/support-widget.spec.ts',
       ],
     },
   ],

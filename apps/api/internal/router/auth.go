@@ -45,4 +45,9 @@ func registerAuthRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/forgot-password", d.Reset.ForgotPassword)
 	g.POST("/reset-password", d.Reset.ResetPassword)
 	g.GET("/validate-reset-token", d.Reset.ValidateResetToken)
+
+	// Вход по одноразовой ссылке. Оба эндпоинта ограничены по частоте: первый
+	// шлёт письма на чужой адрес, второй — угадываемая цель.
+	g.POST("/magic-link/request", d.AuthRateLimiter.Limit("magic-link-request"), d.Auth.RequestMagicLink)
+	g.POST("/magic-link/consume", d.AuthRateLimiter.Limit("magic-link-consume"), d.Auth.ConsumeMagicLink)
 }

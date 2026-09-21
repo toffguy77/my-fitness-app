@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_support_conversations_lead_recency;

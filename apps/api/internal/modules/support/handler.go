@@ -3,16 +3,20 @@ package support
 import (
 	"errors"
 	"net/http"
+	"unicode/utf8"
 
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/burcev/api/internal/shared/telegram"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-// Handler receives Telegram updates and serves the operator's queue.
+// Handler receives Telegram updates and serves the operator's queue — and, for
+// the web widget, the anonymous visitor themself.
 type Handler struct {
 	cfg     *config.Config
 	log     *logger.Logger
@@ -24,6 +28,16 @@ type Handler struct {
 func NewHandler(cfg *config.Config, log *logger.Logger, service *Service) *Handler {
 	return &Handler{cfg: cfg, log: log, service: service}
 }
+
+// Пределы публичного разговора. Ни один не защищает в одиночку: маршрутный
+// лимитер (по IP) сдерживает поток запросов, MaxWebMessageRunes — стоимость
+// одного вопроса, MaxWebMessagesPerConversation — число сообщений в
+// разговоре, который ведут не ради ответа, а чтобы удерживать модель на
+// одном и том же токене сколь угодно долго.
+const (
+	MaxWebMessageRunes            = 1000
+	MaxWebMessagesPerConversation = 30
+)
 
 // Webhook handles POST /api/v1/public/support/telegram.
 //
@@ -143,7 +157,196 @@ func (h *Handler) Webhook(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"ok": true})
 }
 
-// List handles GET /api/v1/admin/support/conversations.
+// StartWeb handles POST /api/v1/public/support/web.
+//
+// Public by necessity — a visitor before registration has no session — so the
+// token this mints is the only thing standing between the conversation it
+// opens and anybody who guesses it. It is generated, not chosen, and only its
+// hash is ever stored (web.go).
+func (h *Handler) StartWeb(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	id, token, err := h.service.StartWebConversation(c.Request.Context())
+	if err != nil {
+		h.log.Error("Failed to start web conversation", "error", err)
+		response.InternalError(c, "Не удалось открыть чат")
+		return
+	}
+
+	response.Success(c, http.StatusCreated, gin.H{"token": token, "conversation_id": id})
+}
+
+// WebMessage handles POST /api/v1/public/support/web/message.
+//
+// A forged, foreign or deleted token answers the same 404 as one that never
+// existed: telling them apart would let a stranger learn something about a
+// conversation they cannot open by trying tokens against this endpoint.
+func (h *Handler) WebMessage(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	var req struct {
+		Token string `json:"token" binding:"required"`
+		Text  string `json:"text" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+	if utf8.RuneCountInString(req.Text) > MaxWebMessageRunes {
+		response.Error(c, http.StatusBadRequest, "Вопрос получился длинным — напишите короче")
+		return
+	}
+
+	conversation, err := h.service.WebConversationByToken(c.Request.Context(), req.Token)
+	if err != nil {
+		// Поддельный, чужой и удалённый токен неразличимы наружу.
+		response.NotFound(c, "Чат не найден — откройте его заново")
+		return
+	}
+
+	err = h.service.HandleMessage(c.Request.Context(), IncomingMessage{
+		Conversation: conversation,
+		Text:         req.Text,
+	})
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrRateLimited):
+		response.ErrorCode(c, http.StatusTooManyRequests, apperrors.CodeRateLimited,
+			"В этом чате слишком много сообщений — позовите человека", nil)
+		return
+	default:
+		h.log.Error("Failed to handle web message", "error", err)
+		response.InternalError(c, "Не удалось отправить сообщение")
+		return
+	}
+
+	response.Success(c, http.StatusOK, nil)
+}
+
+// WebMessages handles GET /api/v1/public/support/web/messages.
+//
+// Returns the transcript and the conversation's status — nothing about the
+// lead it may be attached to: a visitor with a bearer token has no business
+// seeing what an operator sees about them.
+func (h *Handler) WebMessages(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	conversation, err := h.service.WebConversationByToken(c.Request.Context(), c.Query("token"))
+	if err != nil {
+		response.NotFound(c, "Чат не найден — откройте его заново")
+		return
+	}
+
+	messages, err := h.service.MessagesFor(c.Request.Context(), conversation.ID)
+	if err != nil {
+		h.log.Error("Failed to load web conversation messages", "error", err)
+		response.InternalError(c, "Не удалось загрузить сообщения")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"messages": messages, "status": conversation.Status})
+}
+
+// WebHuman handles POST /api/v1/public/support/web/human.
+//
+// «Позвать человека» из виджета: тот же жест, что и /human в Telegram —
+// сразу, без вопроса модели, и не требует, чтобы посетитель дожидался
+// ответа на месте. Разговор уходит в общую операторскую очередь, а ответ
+// посетитель заберёт своим токеном, когда вернётся (EscalateWeb, service.go).
+//
+// Поддельный, чужой и удалённый токен отвечают тем же 404, что и остальные
+// веб-маршруты — не давая постороннему отличить их перебором.
+func (h *Handler) WebHuman(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	err := h.service.EscalateWeb(c.Request.Context(), req.Token)
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrNotFound):
+		response.NotFound(c, "Чат не найден — откройте его заново")
+		return
+	default:
+		h.log.Error("Failed to escalate web conversation", "error", err)
+		response.InternalError(c, "Не удалось позвать человека")
+		return
+	}
+
+	response.Success(c, http.StatusOK, nil)
+}
+
+// WebContact handles POST /api/v1/public/support/web/contact.
+//
+// «Оставить контакт» из виджета: разговор становится заявкой в той же
+// кураторской очереди, что и контактный шаг мастера (SaveWebContact,
+// web.go) — не вторым, ботовым, местом для контактов.
+//
+// Почта нигде здесь не логируется и не попадает в ответ на отказ — только в
+// саму заявку, куда ей и положено.
+//
+// Поддельный, чужой и удалённый токен отвечают тем же 404, что и остальные
+// веб-маршруты.
+func (h *Handler) WebContact(c *gin.Context) {
+	if h.service == nil {
+		response.FeatureUnavailable(c, "Бот поддержки не настроен")
+		return
+	}
+
+	var req struct {
+		Token    string         `json:"token" binding:"required"`
+		Email    string         `json:"email" binding:"required,email"`
+		Consents leads.Consents `json:"consents"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Проверьте адрес почты")
+		return
+	}
+
+	leadToken, err := h.service.SaveWebContact(c.Request.Context(),
+		req.Token, req.Email, req.Consents, c.ClientIP(), c.Request.UserAgent())
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrValidation):
+		response.Error(c, http.StatusBadRequest,
+			"Нужно согласие на обработку персональных данных")
+		return
+	case errors.Is(err, apperrors.ErrNotFound):
+		// Поддельный, чужой и удалённый токен неразличимы наружу.
+		response.NotFound(c, "Чат не найден — откройте его заново")
+		return
+	case errors.Is(err, apperrors.ErrConflict):
+		response.ErrorCode(c, http.StatusConflict, apperrors.CodeConflict,
+			"Контакт для этого разговора уже сохранён", nil)
+		return
+	default:
+		h.log.Error("Failed to save web contact", "error", err)
+		response.InternalError(c, "Не удалось сохранить контакт")
+		return
+	}
+
+	response.Success(c, http.StatusCreated, gin.H{"token": leadToken})
+}
+
+// List handles GET /api/v1/curator/support/conversations.
 func (h *Handler) List(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
@@ -162,14 +365,39 @@ func (h *Handler) List(c *gin.Context) {
 	response.Success(c, http.StatusOK, response.Paginated(conversations, total, page))
 }
 
-// Messages handles GET /api/v1/admin/support/conversations/:id.
+// conversationID validates the :id URL param as a uuid before it reaches the
+// database, for every curator route addressing one support conversation.
+//
+// support_conversations.id is a uuid column, and Postgres rejects anything
+// else while parsing the query, before it ever gets to look for a row — an
+// error sql.ErrNoRows-handling downstream can't see, so it fell through to a
+// 500. A mistyped or stale link is "no such conversation," the same as a
+// well-formed id nobody used, not a server fault — and dressing it up as one
+// is also a wasted round trip to the database for a request that could never
+// have found anything. Same reasoning as admin.GetConversationMessages and
+// account.DownloadExport.
+func (h *Handler) conversationID(c *gin.Context) (string, bool) {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
+		response.NotFound(c, "Обращение не найдено")
+		return "", false
+	}
+	return id, true
+}
+
+// Messages handles GET /api/v1/curator/support/conversations/:id.
 func (h *Handler) Messages(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
 		return
 	}
 
-	conversation, messages, lead, err := h.service.Thread(c.Request.Context(), c.Param("id"))
+	conversationID, ok := h.conversationID(c)
+	if !ok {
+		return
+	}
+
+	conversation, messages, lead, err := h.service.Thread(c.Request.Context(), conversationID)
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrNotFound):
@@ -190,7 +418,7 @@ func (h *Handler) Messages(c *gin.Context) {
 	})
 }
 
-// Reply handles POST /api/v1/admin/support/conversations/:id/reply.
+// Reply handles POST /api/v1/curator/support/conversations/:id/reply.
 func (h *Handler) Reply(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
@@ -203,6 +431,11 @@ func (h *Handler) Reply(c *gin.Context) {
 		return
 	}
 
+	conversationID, ok := h.conversationID(c)
+	if !ok {
+		return
+	}
+
 	var req struct {
 		Text string `json:"text" binding:"required"`
 	}
@@ -211,7 +444,7 @@ func (h *Handler) Reply(c *gin.Context) {
 		return
 	}
 
-	err := h.service.AnswerAsOperator(c.Request.Context(), c.Param("id"), operatorID.(int64), req.Text)
+	err := h.service.AnswerAsOperator(c.Request.Context(), conversationID, operatorID.(int64), req.Text)
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrNotFound):
@@ -226,7 +459,7 @@ func (h *Handler) Reply(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"sent": true})
 }
 
-// CloseConversation handles POST /api/v1/admin/support/conversations/:id/close.
+// CloseConversation handles POST /api/v1/curator/support/conversations/:id/close.
 func (h *Handler) CloseConversation(c *gin.Context) {
 	if h.service == nil {
 		response.FeatureUnavailable(c, "Бот поддержки не настроен")
@@ -239,7 +472,12 @@ func (h *Handler) CloseConversation(c *gin.Context) {
 		return
 	}
 
-	err := h.service.Close(c.Request.Context(), c.Param("id"), operatorID.(int64))
+	conversationID, ok := h.conversationID(c)
+	if !ok {
+		return
+	}
+
+	err := h.service.Close(c.Request.Context(), conversationID, operatorID.(int64))
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrNotFound):

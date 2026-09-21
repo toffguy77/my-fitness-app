@@ -28,11 +28,17 @@ function rejectionFor(status: number, data: unknown = {}) {
     return error
 }
 
-async function signIn(email: string, password: string) {
+/** The magic-link form is what a fresh screen shows; password is reached from there. */
+async function openPasswordForm() {
     render(<AuthScreen />)
-    await userEvent.type(screen.getByLabelText('Email address'), email)
-    await userEvent.type(screen.getByLabelText('Password'), password)
-    await userEvent.click(screen.getByLabelText('Log in to your account'))
+    await userEvent.click(screen.getByRole('button', { name: /войти по паролю/i }))
+}
+
+async function signIn(email: string, password: string) {
+    await openPasswordForm()
+    await userEvent.type(screen.getByLabelText('Электронная почта'), email)
+    await userEvent.type(screen.getByLabelText('Пароль'), password)
+    await userEvent.click(screen.getByLabelText('Войти'))
 }
 
 describe('Signing in', () => {
@@ -62,9 +68,9 @@ describe('Signing in', () => {
     })
 
     it('refuses to send an empty password', async () => {
-        render(<AuthScreen />)
-        await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com')
-        await userEvent.click(screen.getByLabelText('Log in to your account'))
+        await openPasswordForm()
+        await userEvent.type(screen.getByLabelText('Электронная почта'), 'user@example.com')
+        await userEvent.click(screen.getByLabelText('Войти'))
 
         expect(apiClient.post).not.toHaveBeenCalled()
     })
@@ -81,9 +87,9 @@ describe('Signing in', () => {
     // click meant to submit — inserting a line above the button and moving it
     // out from under the pointer.
     it('does not judge the password against the complexity rules', async () => {
-        render(<AuthScreen />)
+        await openPasswordForm()
 
-        await userEvent.type(screen.getByLabelText('Password'), 'oldpass')
+        await userEvent.type(screen.getByLabelText('Пароль'), 'oldpass')
         await userEvent.tab()
 
         expect(screen.queryByText(/заглавную букву/)).not.toBeInTheDocument()
@@ -91,10 +97,10 @@ describe('Signing in', () => {
 
     // Registration is where the rules apply, and where saying them early helps.
     it('still explains the rules while registering', async () => {
-        render(<AuthScreen />)
-        await userEvent.click(screen.getByLabelText('Register a new account'))
+        await openPasswordForm()
+        await userEvent.click(screen.getByLabelText('Зарегистрироваться'))
 
-        await userEvent.type(screen.getByLabelText('Password'), 'oldpass')
+        await userEvent.type(screen.getByLabelText('Пароль'), 'oldpass')
         await userEvent.tab()
 
         expect(await screen.findByText(/заглавную букву/)).toBeInTheDocument()

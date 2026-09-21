@@ -31,7 +31,10 @@ function SocialForm({ profile, onSave }: {
                 instagram_username: instagram,
             })
         } catch {
-            // Error already shown via toast in useSettings
+            // Молчим намеренно: onSave — это saveSettings из useSettings, он уже
+            // показал причину отказа и пробросил ошибку только для того, чтобы
+            // здесь сняли состояние «сохраняем». Второй тост повторил бы ту же
+            // фразу.
         } finally {
             setSaving(false)
         }

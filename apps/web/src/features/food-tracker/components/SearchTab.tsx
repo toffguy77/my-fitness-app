@@ -12,7 +12,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Search, Clock, Star, Plus, ChevronRight } from 'lucide-react';
 import type { FoodItem, MealType } from '../types';
-import { t } from '@/shared/i18n';
+import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors';
 
 import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
@@ -71,6 +72,10 @@ export function SearchTab({
     const [internalResults, setInternalResults] = useState<FoodItem[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [hasSearched, setHasSearched] = useState(false);
+    // Отдельно от пустого результата: «Ничего не найдено» — утверждение о базе
+    // продуктов, и на упавшем запросе оно отправляет человека заводить руками
+    // то, что в базе есть.
+    const [searchError, setSearchError] = useState<string | null>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const sentinelRef = useRef<HTMLDivElement>(null);
@@ -114,10 +119,12 @@ export function SearchTab({
                     // Mock search for demo
                     setInternalResults([]);
                 }
+                setSearchError(null);
                 setHasSearched(true);
-            } catch {
+            } catch (err) {
                 setInternalResults([]);
                 setHasSearched(true);
+                setSearchError(messageForOr(err, t('foodTracker.search.failed')));
             } finally {
                 setIsSearching(false);
             }
@@ -179,7 +186,8 @@ export function SearchTab({
 
     // Determine what to show
     const showResults = query.length >= MIN_SEARCH_LENGTH;
-    const showEmptyState = showResults && hasSearched && results.length === 0 && !isSearching;
+    const showFailure = showResults && !!searchError && !isSearching;
+    const showEmptyState = showResults && hasSearched && results.length === 0 && !isSearching && !showFailure;
     const showRecentAndPopular = !showResults && (recentFoods.length > 0 || popularFoods.length > 0);
 
     // Loading state
@@ -206,8 +214,15 @@ export function SearchTab({
                 )}
             </div>
 
+            {/* Поиск не состоялся — это не то же самое, что «такого нет» */}
+            {showFailure && (
+                <div className="flex-1 flex flex-col items-center justify-center py-8">
+                    <p className="text-sm text-red-500">{searchError}</p>
+                </div>
+            )}
+
             {/* Search Results */}
-            {showResults && !showEmptyState && (
+            {showResults && !showEmptyState && !showFailure && (
                 <div className="flex-1 overflow-y-auto">
                     <FoodList
                         foods={results}

@@ -27,6 +27,13 @@ export interface CurrentUser {
     full_name?: string
     role: string
     avatar_url?: string
+    /**
+     * Whether the account can sign in with a password. Absent from the token
+     * itself — a password can be set after the token was issued — so
+     * /api/v1/auth/me answers it with a lookup. The account-deletion form
+     * uses it to decide what to ask for instead of a password.
+     */
+    has_password?: boolean
 }
 
 export type CurrentUserState = 'loading' | 'ready' | 'anonymous'

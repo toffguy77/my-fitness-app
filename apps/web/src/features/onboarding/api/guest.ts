@@ -64,6 +64,12 @@ export const guestApi = {
         result: GuestResult | null
         last_step: string
         source?: string
+        /**
+         * Where the contact was left: contact_step | result | bot. Left
+         * unset, the server assumes contact_step — the only place a lead
+         * was ever created before the result screen could capture one too.
+         */
+        capture_source?: string
         consents: LeadConsents
     }): Promise<{ token: string; lead: SavedLead }> {
         return apiClient.post('/api/v1/public/leads', input)
@@ -105,6 +111,9 @@ export function leadToken(): string | null {
     try {
         return localStorage.getItem(LEAD_TOKEN_KEY)
     } catch {
+        // Молчим намеренно: приватный просмотр отказывает в хранилище, и это
+        // не отказ сервера — показывать нечего. Ответ «токена нет» здесь
+        // верен: дальше по коду он означает «начинаем заново», а не ошибку.
         return null
     }
 }

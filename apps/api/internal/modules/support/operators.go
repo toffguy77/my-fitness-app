@@ -57,7 +57,7 @@ func (s *Service) notifyOperators(ctx context.Context, conversationID string, cl
 		return
 	}
 
-	actionURL := "/admin/support"
+	actionURL := "/curator/support"
 	for _, operatorID := range operatorIDs {
 		title, content := notifications.Text(
 			s.operators.LanguageOf(ctx, operatorID),

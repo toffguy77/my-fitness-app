@@ -12,6 +12,7 @@ import { X } from 'lucide-react'
 import { chatApi } from '../api/chatApi'
 import type { Message, CreateFoodEntryRequest } from '../types'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 // ============================================================================
 // Types
@@ -87,8 +88,8 @@ export function FoodEntryForm({
                 )
                 onSubmit(resultMessage)
                 onClose()
-            } catch {
-                setError(t('chat.createFailed'))
+            } catch (err) {
+                setError(messageForOr(err, t('chat.createFailed')))
             } finally {
                 setIsSubmitting(false)
             }

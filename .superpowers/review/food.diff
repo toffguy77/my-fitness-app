@@ -1,0 +1,1192 @@
+cd802fca fix(llm): не терять ответ на богатом снимке и не пускать невесомое в дневник
+b1a8e234 fix(llm): распознавание еды отключает размышление и ограничивает ответ
+ba9733c2 docs(openspec): уточнить, что пустой ответ не проходит молча
+4999b63e docs(openspec): предложить включение распознавания еды
+ apps/api/.env.example                              |  26 ++-
+ apps/api/internal/config/config.go                 |  14 +-
+ apps/api/internal/config/vision_test.go            |  93 +++++++++++
+ apps/api/internal/shared/llm/client.go             |  86 +++++++++-
+ apps/api/internal/shared/llm/client_test.go        | 184 ++++++++++++++++++---
+ apps/api/internal/shared/llm/vision_live_test.go   |  78 +++++++++
+ .../changes/enable-food-recognition/.openspec.yaml |   2 +
+ openspec/changes/enable-food-recognition/design.md | 102 ++++++++++++
+ .../changes/enable-food-recognition/proposal.md    |  83 ++++++++++
+ .../specs/food-recognition/spec.md                 | 101 +++++++++++
+ openspec/changes/enable-food-recognition/tasks.md  |  32 ++++
+ 11 files changed, 760 insertions(+), 41 deletions(-)
+
+diff --git a/apps/api/.env.example b/apps/api/.env.example
+index 48f030d5..2d2a20ee 100644
+--- a/apps/api/.env.example
++++ b/apps/api/.env.example
+@@ -123,28 +123,40 @@ VK_OAUTH_CLIENT_SECRET=                    # [опциональна]
+ 
+ # ---------------------------------------------------------------------------
+ # OpenRouter — возможность «food_recognition»
+ # ---------------------------------------------------------------------------
+ # Поставщик модели: распознавание еды и бот поддержки.
+ # Сейчас это Yandex Foundation Models — OpenAI-совместимый эндпоинт.
+ LLM_API_KEY=                               # [опциональна] без неё распознавание еды и бот выключены
+ LLM_BASE_URL=                              # [есть дефолт] эндпоинт провайдера
+ LLM_AUTH_SCHEME=                           # [есть дефолт] Api-Key у Яндекса, Bearer у OpenAI-совместимых
+ 
+-# Модель со зрением: распознавание еды по фото. Отдельно от текстовой намеренно.
+-# Ни одна модель в каталоге Yandex Foundation Models не принимает изображения:
+-# запрос проходит с кодом 200, картинка молча игнорируется, ответ строится по
+-# одному тексту. Для распознавания это выдуманный состав блюда вместо отказа.
++# Модель со зрением: распознавание еды по фото.
++#
++# Переменные отдельные от текстовых, но поставщик может быть тем же: в каталоге
++# Yandex Foundation Models есть модель, принимающая изображения, и живёт она на
++# том же эндпоинте. Проверено настоящим запросом — картинка в base64 доходит.
++# Умолчания адреса и схемы поэтому совпадают с текстовым путём; задавать их
++# нужно только для другого поставщика.
++#
++# Ключ намеренно не наследуется от LLM_API_KEY: общий ключ означает общий счёт,
++# и это должно быть решением эксплуатации, а не следствием умолчания.
++#
++# Имя модели включает идентификатор каталога, поэтому умолчания у него нет.
++# Пример для Яндекса: gpt://<folder-id>/qwen3.6-35b-a3b
++#
++# Осторожно: модель со зрением здесь рассуждающая. Размышление отключается в
++# коде распознавания; без этого ответ приходит пустым, а бюджет — потраченным.
+ VISION_API_KEY=                            # [опциональна] без неё распознавание еды выключено
+-VISION_MODEL=                              # [опциональна] имя модели со зрением у выбранного поставщика
+-VISION_BASE_URL=                           # [есть дефолт] эндпоинт поставщика зрения
+-VISION_AUTH_SCHEME=                        # [есть дефолт] Bearer
++VISION_MODEL=                              # [опциональна] gpt://<folder-id>/qwen3.6-35b-a3b
++VISION_BASE_URL=                           # [есть дефолт] тот же эндпоинт, что у текстовой модели
++VISION_AUTH_SCHEME=                        # [есть дефолт] Api-Key
+ OPENROUTER_API_KEY=                        # [опциональна] прежнее имя LLM_API_KEY, принимается как запасное
+ OPENROUTER_MODEL=                          # [опциональна] прежнее имя VISION_MODEL, принимается как запасное
+ FOOD_RECOGNITION_DAILY_LIMIT=3             # [есть дефолт] запросов на пользователя в сутки
+ 
+ # Множитель для ограничений на эндпоинтах аутентификации. Нужен там, где весь
+ # набор тестов приходит с одного адреса и иначе выглядит как подбор пароля.
+ # В проде остаётся 1: эти числа — и есть смысл ограничения.
+ AUTH_RATE_LIMIT_SCALE=1                    # [есть дефолт]
+ 
+ # ---------------------------------------------------------------------------
+diff --git a/apps/api/internal/config/config.go b/apps/api/internal/config/config.go
+index c4d48d50..dd5047aa 100644
+--- a/apps/api/internal/config/config.go
++++ b/apps/api/internal/config/config.go
+@@ -371,22 +371,22 @@ func Load() (*Config, error) {
+ 		LLMBaseURL:    getEnv("LLM_BASE_URL", llm.DefaultBaseURL),
+ 		LLMAuthScheme: getEnv("LLM_AUTH_SCHEME", llm.DefaultAuthScheme),
+ 
+ 		// Зрение — свой поставщик, и это необходимость, а не удобство. Ни одна
+ 		// модель в каталоге поставщика текста не принимает изображения: запрос
+ 		// проходит с кодом 200, картинка молча игнорируется, и ответ строится
+ 		// по одному тексту. Для распознавания еды это выдуманный состав блюда,
+ 		// поданный как результат, — хуже, чем честный отказ.
+ 		VisionAPIKey:     getEnvWithFallback("VISION_API_KEY", "OPENROUTER_API_KEY", ""),
+ 		VisionModel:      getEnvWithFallback("VISION_MODEL", "OPENROUTER_MODEL", ""),
+-		VisionBaseURL:    getEnv("VISION_BASE_URL", "https://openrouter.ai/api/v1/chat/completions"),
+-		VisionAuthScheme: getEnv("VISION_AUTH_SCHEME", "Bearer"),
++		VisionBaseURL:    getEnv("VISION_BASE_URL", llm.DefaultBaseURL),
++		VisionAuthScheme: getEnv("VISION_AUTH_SCHEME", llm.DefaultAuthScheme),
+ 
+ 		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
+ 		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
+ 		VAPIDSubject:              getEnv("VAPID_SUBJECT", ""),
+ 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
+ 		TelegramWebhookSecret:     getEnv("TELEGRAM_WEBHOOK_SECRET", ""),
+ 		TelegramBotUsername:       getEnv("TELEGRAM_BOT_USERNAME", ""),
+ 		TelegramSupportGroupID:    getEnvAsInt64("TELEGRAM_SUPPORT_GROUP_ID", 0),
+ 		SupportModel:              getEnv("SUPPORT_MODEL", ""),
+ 		SupportDailyLimit:         getEnvAsInt("SUPPORT_DAILY_LIMIT", 500),
+@@ -409,20 +409,30 @@ func Load() (*Config, error) {
+ 
+ // deriveFeatures turns the presence of credentials into capability flags.
+ func deriveFeatures(c *Config) Features {
+ 	s3 := func(key, secret string) bool { return key != "" && secret != "" }
+ 	return Features{
+ 		Email: c.SMTPUsername != "" && c.SMTPPassword != "" && c.SMTPFromAddress != "",
+ 		// Ключа мало: у имени модели нет умолчания, потому что оно включает
+ 		// идентификатор каталога и у каждой установки своё. Запрос без имени
+ 		// отклоняется, и возможность, числящаяся включённой по одному ключу,
+ 		// снова врала бы.
++		//
++		// Поставщик зрения больше не отдельный: в каталоге Яндекса есть модель,
++		// принимающая изображения, и живёт она на том же эндпоинте, что и
++		// текстовая. Проверено настоящим запросом — изображение в base64
++		// доходит и описывается. Раньше здесь стояло, что таких моделей в
++		// каталоге нет; это было верно и увело умолчание на OpenRouter,
++		// который здесь не оплачивается (см. llm.DefaultBaseURL).
++		//
++		// У модели есть своя ловушка, и она закрыта в llm.RecognizeFood: без
++		// явного отключения размышления она возвращает пустое содержание.
+ 		FoodRecognition: c.VisionAPIKey != "" && c.VisionModel != "",
+ 		WeeklyPhotos:    s3(c.WeeklyPhotosS3AccessKeyID, c.WeeklyPhotosS3SecretAccessKey),
+ 		ProfileAvatars:  s3(c.ProfilePhotosS3AccessKeyID, c.ProfilePhotosS3SecretAccessKey),
+ 		ChatAttachments: s3(c.ChatS3AccessKeyID, c.ChatS3SecretAccessKey),
+ 		ContentMedia:    s3(c.ContentS3AccessKeyID, c.ContentS3SecretAccessKey),
+ 		DataExports:     s3(c.DataExportsS3AccessKeyID, c.DataExportsS3SecretAccessKey),
+ 		// The bot needs all three: a token to reply with, a secret to tell a
+ 		// genuine update from anybody's POST, and a model to answer with.
+ 		SupportBot: c.TelegramBotToken != "" && c.TelegramWebhookSecret != "" &&
+ 			c.LLMAPIKey != "" && c.SupportModel != "",
+diff --git a/apps/api/internal/config/vision_test.go b/apps/api/internal/config/vision_test.go
+new file mode 100644
+index 00000000..d381bb56
+--- /dev/null
++++ b/apps/api/internal/config/vision_test.go
+@@ -0,0 +1,93 @@
++package config
++
++import (
++	"os"
++	"testing"
++
++	"github.com/burcev/api/internal/shared/llm"
++	"github.com/stretchr/testify/assert"
++	"github.com/stretchr/testify/require"
++)
++
++// clearVisionEnv убирает всё, что влияет на поставщика зрения, чтобы тест
++// видел умолчания, а не окружение разработчика.
++func clearVisionEnv(t *testing.T) {
++	t.Helper()
++	for _, key := range []string{
++		"VISION_API_KEY", "VISION_MODEL", "VISION_BASE_URL", "VISION_AUTH_SCHEME",
++		"OPENROUTER_API_KEY", "OPENROUTER_MODEL",
++	} {
++		t.Setenv(key, "")
++		os.Unsetenv(key)
++	}
++}
++
++// Умолчание поставщика зрения раньше указывало на OpenRouter — туда же, откуда
++// текстовый путь уже уехал, потому что он здесь не оплачивается. Способность
++// из-за этого не включалась ничем, кроме явной перенастройки.
++func TestVisionDefaultsPointAtTheReachableProvider(t *testing.T) {
++	clearConfigEnv(t)
++	clearVisionEnv(t)
++	t.Setenv("JWT_SECRET", "test-secret-value-long-enough-to-pass")
++	t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
++
++	cfg, err := Load()
++	require.NoError(t, err)
++
++	assert.Equal(t, llm.DefaultBaseURL, cfg.VisionBaseURL,
++		"умолчание обязано совпадать с текстовым путём: модель со зрением живёт на том же эндпоинте")
++	assert.Equal(t, llm.DefaultAuthScheme, cfg.VisionAuthScheme)
++	assert.NotContains(t, cfg.VisionBaseURL, "openrouter")
++}
++
++func TestVisionProviderCanBeOverridden(t *testing.T) {
++	clearConfigEnv(t)
++	clearVisionEnv(t)
++	t.Setenv("JWT_SECRET", "test-secret-value-long-enough-to-pass")
++	t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
++	t.Setenv("VISION_BASE_URL", "https://example.test/v1/chat/completions")
++	t.Setenv("VISION_AUTH_SCHEME", "Bearer")
++
++	cfg, err := Load()
++	require.NoError(t, err)
++
++	assert.Equal(t, "https://example.test/v1/chat/completions", cfg.VisionBaseURL)
++	assert.Equal(t, "Bearer", cfg.VisionAuthScheme)
++}
++
++// Ключ не подставляется из настроек текстового поставщика: общий ключ должен
++// быть осознанным решением эксплуатации, а не следствием умолчания.
++func TestFoodRecognitionNeedsBothKeyAndModel(t *testing.T) {
++	cases := []struct {
++		name    string
++		key     string
++		model   string
++		enabled bool
++	}{
++		{"ни ключа, ни модели", "", "", false},
++		{"ключ без модели", "k", "", false},
++		{"модель без ключа", "", "gpt://folder/qwen", false},
++		{"ключ и модель", "k", "gpt://folder/qwen", true},
++	}
++
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			clearConfigEnv(t)
++			clearVisionEnv(t)
++			t.Setenv("JWT_SECRET", "test-secret-value-long-enough-to-pass")
++			t.Setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/testdb")
++			t.Setenv("LLM_API_KEY", "текстовый ключ, зрению не отдаётся")
++			if tc.key != "" {
++				t.Setenv("VISION_API_KEY", tc.key)
++			}
++			if tc.model != "" {
++				t.Setenv("VISION_MODEL", tc.model)
++			}
++
++			cfg, err := Load()
++			require.NoError(t, err)
++
++			assert.Equal(t, tc.enabled, cfg.Features.FoodRecognition)
++		})
++	}
++}
+diff --git a/apps/api/internal/shared/llm/client.go b/apps/api/internal/shared/llm/client.go
+index 17030a06..f8d039a2 100644
+--- a/apps/api/internal/shared/llm/client.go
++++ b/apps/api/internal/shared/llm/client.go
+@@ -1,17 +1,18 @@
+ package llm
+ 
+ import (
+ 	"bytes"
+ 	"context"
+ 	"encoding/base64"
+ 	"encoding/json"
++	"errors"
+ 	"fmt"
+ 	"io"
+ 	"net/http"
+ 	"regexp"
+ 	"strings"
+ 	"time"
+ 
+ 	"github.com/burcev/api/internal/shared/httpx"
+ 	"github.com/burcev/api/internal/shared/logger"
+ )
+@@ -116,30 +117,64 @@ func NewClient(apiKey, model string, log *logger.Logger) *Client {
+ 
+ // chatRequest is the OpenRouter chat completion request body.
+ type chatRequest struct {
+ 	Model    string        `json:"model"`
+ 	Messages []chatMessage `json:"messages"`
+ 	// MaxTokens ограничивает ответ. Без него провайдер берёт предел модели —
+ 	// у нынешней это 65536 — и резервирует под него средства на счёте. Запрос
+ 	// отклоняется целиком, если на счёте меньше, чем этот резерв, даже когда
+ 	// настоящий ответ стоил бы копейки.
+ 	MaxTokens int `json:"max_tokens,omitempty"`
++	// ChatTemplateKwargs передаётся поставщику как есть. Нужен распознаванию,
++	// чтобы отключить размышление модели; путь бота его не задаёт, и поведение
++	// там не меняется.
++	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs,omitempty"`
+ }
+ 
+ // supportAnswerLimit — потолок ответа бота поддержки.
+ //
+ // Инструкция велит отвечать двумя-тремя предложениями, а маркер отказа и вовсе
+ // одна строка. Тысяча токенов оставляет запас на развёрнутый ответ со ссылкой
+ // на раздел документации и при этом не заставляет резервировать средства под
+ // ответ, которого никогда не будет.
+ const supportAnswerLimit = 1000
+ 
++// recognitionAnswerLimit — потолок ответа распознавания еды.
++//
++// Раньше предела не было вовсе, и его брал поставщик — у разных поставщиков он
++// разный и может быть очень большим. Запрос без потолка — это счёт без потолка.
++//
++// Значение выбрано по живой проверке, а не на глаз: на тысяче ответ про
++// снимок с десятком продуктов обрывался на полуслове и разваливал разбор
++// JSON. Каждое блюдо занимает около сотни токенов вместе с КБЖУ, так что
++// этого хватает на витрину еды, не то что на тарелку.
++const recognitionAnswerLimit = 3000
++
++// finishReasonLength — поставщик оборвал ответ по пределу длины.
++const finishReasonLength = "length"
++
++// ErrEmptyModelAnswer — модель ответила, но без содержания.
++//
++// Отдельная ошибка, потому что раньше этот случай попадал в разбор JSON и
++// выходил сообщением про испорченный ответ, хотя ответа не было вовсе. Так
++// ведёт себя рассуждающая модель, у которой размышление съело весь бюджет:
++// content пуст, finish_reason — length, и виновата не фотография человека.
++var ErrEmptyModelAnswer = errors.New("model returned no content")
++
++// ErrAnswerTruncated — модель не уместила ответ в отведённый предел.
++//
++// Отдельно от разбора JSON намеренно: обрезанный ответ ломается именно там, но
++// сообщение про испорченный JSON уводит искать дефект в модели или в промпте,
++// тогда как чинится это пределом. Найдено живой проверкой — снимок с десятком
++// продуктов обрывался на середине поля.
++var ErrAnswerTruncated = errors.New("model answer hit the length limit")
++
+ type chatMessage struct {
+ 	Role    string        `json:"role"`
+ 	Content []contentPart `json:"content"`
+ }
+ 
+ type contentPart struct {
+ 	Type     string    `json:"type"`
+ 	Text     string    `json:"text,omitempty"`
+ 	ImageURL *imageURL `json:"image_url,omitempty"`
+ 	// CacheControl marks a block the provider may keep between requests. The
+@@ -150,27 +185,35 @@ type contentPart struct {
+ 
+ type cacheControl struct {
+ 	Type string `json:"type"`
+ }
+ 
+ type imageURL struct {
+ 	URL string `json:"url"`
+ }
+ 
+ // chatResponse is the OpenRouter chat completion response.
++// chatChoice — один вариант ответа. Назван, а не оставлен анонимным: у
++// анонимной структуры каждое новое поле ломает всякий литерал в тестах, и
++// добавление finish_reason упёрлось ровно в это.
++type chatChoice struct {
++	Message struct {
++		Content string `json:"content"`
++	} `json:"message"`
++	// FinishReason отличает законченный ответ от обрезанного. Без него обрыв
++	// виден только как испорченный JSON.
++	FinishReason string `json:"finish_reason"`
++}
++
+ type chatResponse struct {
+-	Choices []struct {
+-		Message struct {
+-			Content string `json:"content"`
+-		} `json:"message"`
+-	} `json:"choices"`
+-	Error *struct {
++	Choices []chatChoice `json:"choices"`
++	Error   *struct {
+ 		Message string `json:"message"`
+ 	} `json:"error,omitempty"`
+ 	Usage *struct {
+ 		PromptTokens        int `json:"prompt_tokens"`
+ 		PromptTokensDetails *struct {
+ 			CachedTokens int `json:"cached_tokens"`
+ 		} `json:"prompt_tokens_details,omitempty"`
+ 	} `json:"usage,omitempty"`
+ }
+ 
+@@ -224,20 +267,27 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
+ 		Model: c.model,
+ 		Messages: []chatMessage{
+ 			{
+ 				Role: "user",
+ 				Content: []contentPart{
+ 					{Type: "text", Text: systemPrompt},
+ 					{Type: "image_url", ImageURL: &imageURL{URL: dataURL}},
+ 				},
+ 			},
+ 		},
++		MaxTokens: recognitionAnswerLimit,
++		// Модель со зрением в каталоге — рассуждающая: она складывает
++		// размышление в отдельное поле и оставляет содержание пустым, пока не
++		// закончит. На проверке с бюджетом в 2000 токенов размышление заняло
++		// весь бюджет, и ответа не появилось. Это единственный способ его
++		// отключить: родной reasoning_options эндпоинт отвергает.
++		ChatTemplateKwargs: map[string]any{"enable_thinking": false},
+ 	}
+ 
+ 	bodyBytes, err := json.Marshal(reqBody)
+ 	if err != nil {
+ 		return nil, fmt.Errorf("failed to marshal request: %w", err)
+ 	}
+ 
+ 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL, bytes.NewReader(bodyBytes))
+ 	if err != nil {
+ 		return nil, fmt.Errorf("failed to create request: %w", err)
+@@ -274,28 +324,50 @@ func (c *Client) RecognizeFood(ctx context.Context, imageData []byte, contentTyp
+ 
+ 	if chatResp.Error != nil {
+ 		return nil, fmt.Errorf("OpenRouter API error: %s", chatResp.Error.Message)
+ 	}
+ 
+ 	if len(chatResp.Choices) == 0 {
+ 		return nil, fmt.Errorf("no choices in API response")
+ 	}
+ 
+ 	content := chatResp.Choices[0].Message.Content
++	if strings.TrimSpace(content) == "" {
++		return nil, ErrEmptyModelAnswer
++	}
++	if chatResp.Choices[0].FinishReason == finishReasonLength {
++		return nil, ErrAnswerTruncated
++	}
+ 	jsonStr := stripMarkdownCodeFences(content)
+ 
+ 	var result RecognitionResponse
+ 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+ 		return nil, fmt.Errorf("failed to parse recognition result: %w (content: %s)", err, content)
+ 	}
+ 
+-	c.log.Info("food recognition completed", "items_count", len(result.Items), "model", c.model)
++	// Модель иногда называет то, что едой не является, и сама ставит такому
++	// нулевой вес — на живой проверке это был чайный пакетик с пометкой
++	// «неингредиент». Ноль граммов не еда: в дневнике это строка, которая
++	// ничего не весит и ничего не добавляет, но требует от человека решения,
++	// что с ней делать. Выбрасываем здесь, а не в интерфейсе, чтобы решение
++	// было одно на всех потребителей.
++	kept := result.Items[:0]
++	for _, item := range result.Items {
++		if item.EstimatedWeight > 0 {
++			kept = append(kept, item)
++		}
++	}
++	dropped := len(result.Items) - len(kept)
++	result.Items = kept
++
++	c.log.Info("food recognition completed",
++		"items_count", len(result.Items), "dropped_weightless", dropped, "model", c.model)
+ 
+ 	return &result, nil
+ }
+ 
+ // codeBlockRegex matches ```json ... ``` or ``` ... ``` blocks.
+ var codeBlockRegex = regexp.MustCompile("(?s)```(?:json)?\\s*(\\{.*?\\})\\s*```")
+ 
+ // stripMarkdownCodeFences removes markdown code fences from AI response if present.
+ func stripMarkdownCodeFences(s string) string {
+ 	s = strings.TrimSpace(s)
+diff --git a/apps/api/internal/shared/llm/client_test.go b/apps/api/internal/shared/llm/client_test.go
+index b52e4441..faebf5e2 100644
+--- a/apps/api/internal/shared/llm/client_test.go
++++ b/apps/api/internal/shared/llm/client_test.go
+@@ -1,15 +1,16 @@
+ package llm
+ 
+ import (
+ 	"context"
+ 	"encoding/json"
++	"errors"
+ 	"io"
+ 	"net/http"
+ 	"net/http/httptest"
+ 	"strings"
+ 	"testing"
+ 	"time"
+ 
+ 	"github.com/burcev/api/internal/shared/logger"
+ 	"github.com/stretchr/testify/assert"
+ 	"github.com/stretchr/testify/require"
+@@ -17,25 +18,21 @@ import (
+ 
+ func newTestClient(serverURL string) *Client {
+ 	log := logger.New()
+ 	c := NewClient("test-api-key", "test-model", log)
+ 	c.baseURL = serverURL
+ 	return c
+ }
+ 
+ func TestRecognizeFood_Success(t *testing.T) {
+ 	response := chatResponse{
+-		Choices: []struct {
+-			Message struct {
+-				Content string `json:"content"`
+-			} `json:"message"`
+-		}{
++		Choices: []chatChoice{
+ 			{Message: struct {
+ 				Content string `json:"content"`
+ 			}{
+ 				Content: `{"items": [{"name": "Гречка", "estimated_weight_grams": 200, "calories_per_100": 313, "protein_per_100": 12.6, "fat_per_100": 3.3, "carbs_per_100": 62.1, "confidence": 0.92}]}`,
+ 			}},
+ 		},
+ 	}
+ 
+ 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+ 		// Verify request
+@@ -73,25 +70,21 @@ func TestRecognizeFood_Success(t *testing.T) {
+ 	assert.Equal(t, 200.0, result.Items[0].EstimatedWeight)
+ 	assert.Equal(t, 313.0, result.Items[0].CaloriesPer100)
+ 	assert.Equal(t, 12.6, result.Items[0].ProteinPer100)
+ 	assert.Equal(t, 3.3, result.Items[0].FatPer100)
+ 	assert.Equal(t, 62.1, result.Items[0].CarbsPer100)
+ 	assert.Equal(t, 0.92, result.Items[0].Confidence)
+ }
+ 
+ func TestRecognizeFood_MultipleItems(t *testing.T) {
+ 	response := chatResponse{
+-		Choices: []struct {
+-			Message struct {
+-				Content string `json:"content"`
+-			} `json:"message"`
+-		}{
++		Choices: []chatChoice{
+ 			{Message: struct {
+ 				Content string `json:"content"`
+ 			}{
+ 				Content: `{"items": [
+ 					{"name": "Рис", "estimated_weight_grams": 150, "calories_per_100": 130, "protein_per_100": 2.7, "fat_per_100": 0.3, "carbs_per_100": 28, "confidence": 0.95},
+ 					{"name": "Куриная грудка", "estimated_weight_grams": 120, "calories_per_100": 165, "protein_per_100": 31, "fat_per_100": 3.6, "carbs_per_100": 0, "confidence": 0.88}
+ 				]}`,
+ 			}},
+ 		},
+ 	}
+@@ -126,25 +119,21 @@ func TestRecognizeFood_MarkdownCodeFences(t *testing.T) {
+ 		},
+ 		{
+ 			name:    "raw json",
+ 			content: "{\"items\": [{\"name\": \"Яблоко\", \"estimated_weight_grams\": 180, \"calories_per_100\": 52, \"protein_per_100\": 0.3, \"fat_per_100\": 0.2, \"carbs_per_100\": 14, \"confidence\": 0.95}]}",
+ 		},
+ 	}
+ 
+ 	for _, tt := range tests {
+ 		t.Run(tt.name, func(t *testing.T) {
+ 			response := chatResponse{
+-				Choices: []struct {
+-					Message struct {
+-						Content string `json:"content"`
+-					} `json:"message"`
+-				}{
++				Choices: []chatChoice{
+ 					{Message: struct {
+ 						Content string `json:"content"`
+ 					}{Content: tt.content}},
+ 				},
+ 			}
+ 
+ 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+ 				w.Header().Set("Content-Type", "application/json")
+ 				json.NewEncoder(w).Encode(response)
+ 			}))
+@@ -155,25 +144,21 @@ func TestRecognizeFood_MarkdownCodeFences(t *testing.T) {
+ 
+ 			require.NoError(t, err)
+ 			require.Len(t, result.Items, 1)
+ 			assert.Equal(t, "Яблоко", result.Items[0].Name)
+ 		})
+ 	}
+ }
+ 
+ func TestRecognizeFood_InvalidJSON(t *testing.T) {
+ 	response := chatResponse{
+-		Choices: []struct {
+-			Message struct {
+-				Content string `json:"content"`
+-			} `json:"message"`
+-		}{
++		Choices: []chatChoice{
+ 			{Message: struct {
+ 				Content string `json:"content"`
+ 			}{Content: "This is not JSON at all"}},
+ 		},
+ 	}
+ 
+ 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+ 		w.Header().Set("Content-Type", "application/json")
+ 		json.NewEncoder(w).Encode(response)
+ 	}))
+@@ -228,25 +213,21 @@ func TestRecognizeFood_APIError(t *testing.T) {
+ 
+ 	client := newTestClient(server.URL)
+ 	_, err := client.RecognizeFood(context.Background(), []byte("img"), "image/jpeg")
+ 
+ 	require.Error(t, err)
+ 	assert.Contains(t, err.Error(), "insufficient credits")
+ }
+ 
+ func TestRecognizeFood_EmptyChoices(t *testing.T) {
+ 	response := chatResponse{
+-		Choices: []struct {
+-			Message struct {
+-				Content string `json:"content"`
+-			} `json:"message"`
+-		}{},
++		Choices: []chatChoice{},
+ 	}
+ 
+ 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+ 		w.Header().Set("Content-Type", "application/json")
+ 		json.NewEncoder(w).Encode(response)
+ 	}))
+ 	defer server.Close()
+ 
+ 	client := newTestClient(server.URL)
+ 	_, err := client.RecognizeFood(context.Background(), []byte("img"), "image/jpeg")
+@@ -300,10 +281,163 @@ func TestStripMarkdownCodeFences(t *testing.T) {
+ 		{"no fence text", "some text", "some text"},
+ 	}
+ 
+ 	for _, tt := range tests {
+ 		t.Run(tt.name, func(t *testing.T) {
+ 			result := stripMarkdownCodeFences(tt.input)
+ 			assert.Equal(t, tt.expected, result)
+ 		})
+ 	}
+ }
++
++// Модель со зрением в каталоге Яндекса — рассуждающая: она складывает
++// размышление в reasoning_content и оставляет content пустым, пока не
++// закончит. На живой проверке с бюджетом в 2000 токенов размышление заняло
++// весь бюджет, и ответа так и не появилось. Отключается это единственным
++// способом: chat_template_kwargs с enable_thinking=false. Родной яндексовый
++// reasoning_options на OpenAI-совместимом эндпоинте отвергается.
++func TestRecognizeFood_DisablesThinkingAndBoundsTheAnswer(t *testing.T) {
++	var body map[string]any
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
++		w.Header().Set("Content-Type", "application/json")
++		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"items\":[]}"}}]}`))
++	}))
++	defer server.Close()
++
++	client := newTestClient(server.URL)
++	_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
++	require.NoError(t, err)
++
++	kwargs, ok := body["chat_template_kwargs"].(map[string]any)
++	require.True(t, ok, "запрос распознавания обязан нести chat_template_kwargs, получено: %v", body)
++	assert.Equal(t, false, kwargs["enable_thinking"],
++		"без этого модель сжигает бюджет на размышление и возвращает пустой content")
++
++	limit, ok := body["max_tokens"].(float64)
++	require.True(t, ok, "запрос без предела длины — это счёт без потолка")
++	assert.Positive(t, limit)
++}
++
++// Бот поддержки работает на другой модели, и его путь этой правкой не
++// затрагивается: скрытое поведение, включённое для обоих потребителей клиента,
++// однажды сломает того, кого не проверяли.
++func TestAsk_DoesNotDisableThinking(t *testing.T) {
++	var body map[string]any
++
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
++		w.Header().Set("Content-Type", "application/json")
++		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"ответ"}}]}`))
++	}))
++	defer server.Close()
++
++	client := newTestClient(server.URL)
++	_, err := client.Ask(context.Background(), "префикс", "вопрос", nil)
++	require.NoError(t, err)
++
++	_, present := body["chat_template_kwargs"]
++	assert.False(t, present, "путь бота не должен нести параметры шаблона: %v", body)
++}
++
++// Пустой content и сейчас не проходит молча — разбор пустой строки падает. Но
++// падает он сообщением про испорченный ответ, хотя ответа не было вовсе, и
++// разбираться по такому сообщению пришлось бы с нуля.
++func TestRecognizeFood_EmptyContentSaysTheModelReturnedNothing(t *testing.T) {
++	cases := map[string]string{
++		"content null":          `{"choices":[{"message":{"content":null}}]}`,
++		"content пустая строка": `{"choices":[{"message":{"content":""}}]}`,
++		"бюджет исчерпан":       `{"choices":[{"finish_reason":"length","message":{"content":null,"reasoning_content":"долго думал"}}]}`,
++	}
++
++	for name, response := range cases {
++		t.Run(name, func(t *testing.T) {
++			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
++				w.Header().Set("Content-Type", "application/json")
++				_, _ = w.Write([]byte(response))
++			}))
++			defer server.Close()
++
++			client := newTestClient(server.URL)
++			_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
++
++			require.Error(t, err)
++			assert.True(t, errors.Is(err, ErrEmptyModelAnswer),
++				"пустой ответ обязан быть отличим от испорченного, получено: %v", err)
++		})
++	}
++}
++
++// Охраняет разделение: испорченный ответ — это другая ошибка, и она не должна
++// схлопнуться в «модель ничего не вернула» вместе с пустым.
++func TestRecognizeFood_MalformedContentIsNotTheEmptyError(t *testing.T) {
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
++		w.Header().Set("Content-Type", "application/json")
++		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"это не json"}}]}`))
++	}))
++	defer server.Close()
++
++	client := newTestClient(server.URL)
++	_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
++
++	require.Error(t, err)
++	assert.False(t, errors.Is(err, ErrEmptyModelAnswer))
++}
++
++// Обрезанный ответ ломается на разборе JSON, и сообщение уводит искать дефект
++// в модели или промпте — тогда как чинится это пределом длины. Найдено живой
++// проверкой: снимок с десятком продуктов обрывался на середине поля.
++func TestRecognizeFood_TruncatedAnswerSaysSo(t *testing.T) {
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
++		w.Header().Set("Content-Type", "application/json")
++		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"length","message":{"content":"{\"items\":[{\"name\":\"Творог\",\"fat_per"}}]}`))
++	}))
++	defer server.Close()
++
++	client := newTestClient(server.URL)
++	_, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
++
++	require.Error(t, err)
++	assert.True(t, errors.Is(err, ErrAnswerTruncated),
++		"обрыв по пределу обязан быть отличим от испорченного ответа, получено: %v", err)
++}
++
++// Модель периодически называет то, что едой не является, и ставит такому
++// нулевой вес — на живой проверке так пришёл чайный пакетик с пометкой
++// «неингредиент». В дневнике это строка, которая ничего не весит и ничего не
++// добавляет, но требует от человека решения, что с ней делать.
++func TestRecognizeFood_DropsWeightlessItems(t *testing.T) {
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
++		w.Header().Set("Content-Type", "application/json")
++		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"stop","message":{"content":"{\"items\":[` +
++			`{\"name\":\"Гречка\",\"estimated_weight_grams\":150,\"calories_per_100\":110},` +
++			`{\"name\":\"Чай пакетированный\",\"estimated_weight_grams\":0,\"calories_per_100\":0},` +
++			`{\"name\":\"Салфетка\",\"estimated_weight_grams\":-5,\"calories_per_100\":0}` +
++			`]}"}}]}`))
++	}))
++	defer server.Close()
++
++	client := newTestClient(server.URL)
++	result, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
++
++	require.NoError(t, err)
++	require.Len(t, result.Items, 1, "невесомое в дневник не попадает")
++	assert.Equal(t, "Гречка", result.Items[0].Name)
++}
++
++// Если весит только несъедобное, результат пуст — но это не ошибка: человеку
++// честнее увидеть «ничего не распознали», чем список из ничего.
++func TestRecognizeFood_AllWeightlessLeavesEmptyResult(t *testing.T) {
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
++		w.Header().Set("Content-Type", "application/json")
++		_, _ = w.Write([]byte(`{"choices":[{"finish_reason":"stop","message":{"content":"{\"items\":[` +
++			`{\"name\":\"Вилка\",\"estimated_weight_grams\":0}]}"}}]}`))
++	}))
++	defer server.Close()
++
++	client := newTestClient(server.URL)
++	result, err := client.RecognizeFood(context.Background(), []byte("image"), "image/jpeg")
++
++	require.NoError(t, err)
++	assert.Empty(t, result.Items)
++}
+diff --git a/apps/api/internal/shared/llm/vision_live_test.go b/apps/api/internal/shared/llm/vision_live_test.go
+new file mode 100644
+index 00000000..8367b7ab
+--- /dev/null
++++ b/apps/api/internal/shared/llm/vision_live_test.go
+@@ -0,0 +1,78 @@
++//go:build live
++
++package llm
++
++import (
++	"context"
++	"encoding/json"
++	"os"
++	"path/filepath"
++	"testing"
++
++	"github.com/burcev/api/internal/shared/logger"
++	"github.com/stretchr/testify/require"
++)
++
++// Живая проверка распознавания: настоящая модель, настоящая фотография,
++// наш собственный клиент целиком.
++//
++// Отдельный тег сборки, потому что тест тратит деньги и требует доступа к
++// поставщику. Без него всё остальное про распознавание проверяется на
++// подменённом сервере — а подмена не расскажет ни про рассуждающую модель,
++// ни про то, узнаёт ли она еду.
++//
++// Запуск:
++//
++//	VISION_API_KEY=... VISION_MODEL=gpt://<folder>/qwen3.6-35b-a3b \
++//	VISION_AUTH_SCHEME=Api-Key VISION_PHOTOS=<каталог с .jpg> \
++//	go test -tags=live ./internal/shared/llm/ -run TestLiveVision -v
++func TestLiveVisionRecognizesRealPhotos(t *testing.T) {
++	key := os.Getenv("VISION_API_KEY")
++	model := os.Getenv("VISION_MODEL")
++	dir := os.Getenv("VISION_PHOTOS")
++	if key == "" || model == "" || dir == "" {
++		t.Skip("нужны VISION_API_KEY, VISION_MODEL и VISION_PHOTOS")
++	}
++
++	scheme := os.Getenv("VISION_AUTH_SCHEME")
++	if scheme == "" {
++		scheme = DefaultAuthScheme
++	}
++	base := os.Getenv("VISION_BASE_URL")
++	if base == "" {
++		base = DefaultBaseURL
++	}
++
++	photos, err := filepath.Glob(filepath.Join(dir, "*.jpg"))
++	require.NoError(t, err)
++	require.NotEmpty(t, photos, "в каталоге нет фотографий")
++
++	var promptTokens, cachedTokens int
++	client := NewClient(key, model, logger.New()).
++		WithEndpoint(base, scheme).
++		WithUsageObserver(func(prompt, cached int) {
++			promptTokens, cachedTokens = prompt, cached
++		})
++
++	for _, photo := range photos {
++		t.Run(filepath.Base(photo), func(t *testing.T) {
++			data, err := os.ReadFile(photo)
++			require.NoError(t, err)
++
++			result, err := client.RecognizeFood(context.Background(), data, "image/jpeg")
++			require.NoError(t, err, "распознавание не должно падать на настоящей фотографии")
++			require.NotEmpty(t, result.Items, "модель обязана назвать хотя бы одно блюдо")
++
++			// Печатаем состав целиком: качество распознавания оценивает
++			// человек, читающий вывод, а не утверждение в тесте.
++			pretty, _ := json.MarshalIndent(result, "", "  ")
++			t.Logf("%s: блюд %d, промпт %d токенов (из кэша %d)\n%s",
++				filepath.Base(photo), len(result.Items), promptTokens, cachedTokens, pretty)
++
++			for _, item := range result.Items {
++				require.NotEmpty(t, item.Name, "у блюда должно быть название")
++				require.Positive(t, item.EstimatedWeight, "вес должен быть положительным")
++			}
++		})
++	}
++}
+diff --git a/openspec/changes/enable-food-recognition/.openspec.yaml b/openspec/changes/enable-food-recognition/.openspec.yaml
+new file mode 100644
+index 00000000..d28e909f
+--- /dev/null
++++ b/openspec/changes/enable-food-recognition/.openspec.yaml
+@@ -0,0 +1,2 @@
++schema: spec-driven
++created: 2026-09-17
+diff --git a/openspec/changes/enable-food-recognition/design.md b/openspec/changes/enable-food-recognition/design.md
+new file mode 100644
+index 00000000..6e65dcf5
+--- /dev/null
++++ b/openspec/changes/enable-food-recognition/design.md
+@@ -0,0 +1,102 @@
++## Context
++
++Распознавание еды по фотографии — единственное, чем продукт отличается от обычного дневника
++калорий: в трекерах вроде FatSecret и YAZIO еду ищут руками, и именно ручной поиск чаще всего
++заставляет бросить дневник. Способность при этом выключена и не может быть включена, потому что
++умолчание указывает на поставщика, недоступного в стране.
++
++Клиент модели уже написан под смену поставщика: `WithEndpoint(baseURL, authScheme)`
++(`llm/client.go:84`) меняет и адрес, и схему авторизации, а картинка уходит стандартным
++OpenAI-форматом — `content: [{type: text}, {type: image_url, image_url: {url: "data:…;base64,…"}}]`.
++Именно в этом виде яндексовский эндпоинт её и принимает: проверено настоящим запросом, модель
++описала переданное изображение.
++
++Мешает не формат, а природа модели. `qwen3.6-35b-a3b` рассуждает перед ответом и складывает
++рассуждение в отдельное поле `reasoning_content`. Пока рассуждение не закончится, `content`
++остаётся пустым. На проверке с бюджетом в 2000 токенов рассуждение заняло все 2000 и ответа так
++и не появилось.
++
++## Goals / Non-Goals
++
++**Goals:**
++- Распознавание еды получает поставщика, который работает в стране.
++- Модель отвечает составом блюда, а не рассуждением о нём.
++- Пустой ответ модели виден как отказ, а не как «ничего не нашли».
++- Следующий читатель кода не повторит путь на недоступного поставщика.
++
++**Non-Goals:**
++- Не переводим бота поддержки на другую модель — он работает.
++- Не меняем формат запроса и промпт распознавания.
++- Не задаём ключи в этом изменении: значения секретов ставятся в Dokploy, а не в коде.
++- Не строим выбор модели во время работы — поставщик задаётся конфигурацией, как и был.
++
++## Decisions
++
++**Решение 1. Размышление отключается через `chat_template_kwargs`, потому что другого способа нет.**
++Проверены оба: родной яндексовый `reasoning_options: {mode: DISABLED}` на OpenAI-совместимом
++эндпоинте отвергается с `Unsupported parameter(s)`, а `chat_template_kwargs: {enable_thinking: false}`
++работает — ответ приходит с `finish_reason: stop` и непустым содержанием.
++*Почему это не хак:* параметр передаётся поставщику как есть и им же документирован; альтернатива
++— поднимать бюджет и надеяться, что рассуждение закончится раньше, чем деньги.
++*Где ставится:* только на пути распознавания еды. Текстовый путь бота не трогаем.
++
++**Решение 2. Поле параметров шаблона объявляется общим, а значение задаёт вызывающий.**
++`chatRequest` получает необязательное поле; `RecognizeFood` заполняет его, `Ask` — нет.
++*Почему не зашить в клиент:* клиент обслуживает двух разных потребителей с разными моделями.
++Скрытое поведение, включённое для обоих, однажды сломает того, кого не проверяли.
++
++**Решение 3. Распознавание задаёт свой предел ответа.**
++Сейчас `RecognizeFood` не задаёт `max_tokens` вовсе, и предел берётся от модели.
++*Почему это надо исправить независимо от размышления:* предел модели у разных поставщиков разный
++и может быть очень большим. Запрос без потолка — это счёт без потолка.
++*Сколько:* достаточно для списка блюд с граммовками и КБЖУ, и заведомо мало для рассуждения.
++
++**Решение 4. Пустое содержание — ошибка, а не пустой результат.**
++Если модель вернула `content: null` или пустую строку, распознавание возвращает ошибку.
++*Почему так:* иначе человек, сфотографировавший тарелку, увидит «ничего не распознано» и решит,
++что виновата его фотография. Это тот же класс дефекта, о котором предупреждает комментарий в
++`config.go`: ответ с кодом 200, в котором ничего нет.
++*Что видит человек:* честный отказ и предложение добавить еду вручную.
++
++**Решение 5. Умолчания переводятся на работающий эндпоинт.**
++`VISION_BASE_URL` по умолчанию указывает на тот же адрес, что и текстовый путь,
++`VISION_AUTH_SCHEME` — на `Api-Key`.
++*Почему меняем умолчание, а не только документацию:* умолчание, ведущее к недоступному
++поставщику, — это грабли, на которые уже наступили один раз. Развёртывание, которому нужен
++другой поставщик, задаёт переменные явно.
++*Что при этом не меняется:* ключ и имя модели остаются обязательными. Способность по-прежнему
++выводится из наличия обоих, и ключ по умолчанию не подставляется — общий ключ с ботом должен
++быть осознанным решением эксплуатации, а не следствием умолчания.
++
++**Решение 6. Комментарий о моделях со зрением переписывается на проверенное.**
++Нынешний текст утверждает, что таких моделей в каталоге нет. Это утверждение и увело проект к
++недоступному поставщику.
++*Почему это часть изменения, а не уборка:* пока оно стоит в коде, следующий человек, читающий
++`deriveFeatures`, снова пойдёт искать зарубежного поставщика.
++
++## Risks / Trade-offs
++
++**Поведение параметра может измениться в другой версии модели.** `chat_template_kwargs`
++передаётся поставщику как есть, и если в будущей версии размышление перестанет отключаться этим
++флагом, распознавание вернётся к пустым ответам. Смягчается решением 4: пустой ответ станет
++видимой ошибкой, а не тишиной.
++
++**Качество распознавания не проверено этим изменением.** Проверено, что модель видит изображение
++и отвечает. Насколько верно она называет состав блюда — вопрос отдельный, и его надо мерить на
++настоящих фотографиях еды до выкатки на прод.
++
++**Общий ключ с ботом означает общий счёт.** Дневной потолок вызовов у распознавания свой
++(`FOOD_RECOGNITION_DAILY_LIMIT`, по умолчанию 3 на пользователя), но деньги одни.
++
++## Migration Plan
++
++Миграций базы нет. После выкатки кода задаются `VISION_API_KEY` и `VISION_MODEL` сначала на dev,
++затем на проде; `GET /ready` должен показать `food_recognition: true`. Переменная не применяется
++без полной выкатки. Откат — снятие переменных: способность возвращается в выключенное состояние
++и отвечает `503`, как и всякая недоступная способность.
++
++## Open Questions
++
++- Нужен ли распознаванию отдельный ключ, а не общий с ботом. Общий проще и дешевле в
++  эксплуатации; отдельный позволяет отключить одно, не трогая другое. По умолчанию — общий, до
++  появления причины разделить.
+diff --git a/openspec/changes/enable-food-recognition/proposal.md b/openspec/changes/enable-food-recognition/proposal.md
+new file mode 100644
+index 00000000..ba091610
+--- /dev/null
++++ b/openspec/changes/enable-food-recognition/proposal.md
+@@ -0,0 +1,83 @@
++## Why
++
++Способность `food_recognition` выключена на проде. Проверено живым запросом к `GET /ready`
++(версия `v2026.09.17+09f1349d`): включены `chat_attachments`, `content_media`, `data_exports`,
++`email`, `error_reporting`, `profile_avatars`, `support_bot`, `support_bridge`, `web_push`,
++`weekly_photos`; выключены `food_recognition` и `tracing`.
++
++Выключена она потому, что `deriveFeatures` требует `VisionAPIKey` и `VisionModel`
++(`internal/config/config.go:419`), а поставщик по умолчанию — OpenRouter
++(`config.go:381`), который в стране не работает. Рядом стоит комментарий, объясняющий, почему
++поставщик отдельный от текстового:
++
++> Ни одна модель в каталоге Yandex Foundation Models не принимает изображения: запрос проходит
++> с кодом 200, картинка молча игнорируется, ответ строится по одному тексту.
++
++**На момент написания это было верно, сейчас — нет.** В каталоге появилась модель
++`qwen3.6-35b-a3b`, принимающая изображения, и работает она на том же OpenAI-совместимом
++эндпоинте, который уже обслуживает бота поддержки.
++
++Проверено настоящими запросами (IAM-токен, `https://llm.api.cloud.yandex.net/v1/chat/completions`,
++изображение в том же формате, что шлёт `RecognizeFood`):
++
++| Запрос | Результат |
++|---|---|
++| `max_tokens=50` | `content: null`, `finish_reason: length`; в `reasoning_content` модель описывает картинку |
++| `max_tokens=2000` | `content: null`, `finish_reason: length`, 6672 символа рассуждения |
++| `+ reasoning_options: {mode: DISABLED}` | Отвергнуто: `Unsupported parameter(s): reasoning_options` |
++| `+ chat_template_kwargs: {enable_thinking: false}` | `finish_reason: stop`, `content` содержит ответ, рассуждения нет |
++
++Отсюда два факта, определяющие это изменение.
++
++1. **Зрение работает, и формат запроса менять не нужно** — модель видит изображение, переданное
++   как `image_url` с `data:` URL, ровно как его шлёт `RecognizeFood`.
++2. **Но это рассуждающая модель.** Без явного отключения размышления она расходует весь бюджет
++   ответа и возвращает `content: null`. `RecognizeFood` при этом вообще не задаёт `max_tokens`
++   (`llm/client.go:222-234`), то есть провайдер взял бы предел модели: дорогой запрос с пустым
++   ответом. Молча это не проходит — разбор пустой строки падает, — но падает он сообщением
++   «failed to parse recognition result», которое указывает на испорченный ответ модели, а не на
++   то, что ответа не было вовсе. Разбираться по такому сообщению пришлось бы с нуля.
++
++Включить способность одними переменными окружения нельзя: получится функция, которая принимает
++фотографию пользователя, тратит деньги и не отвечает ничего.
++
++## What Changes
++
++- Запрос к модели получает возможность передавать параметры шаблона чата, и распознавание еды
++  отключает размышление явно.
++- Распознавание еды задаёт предел ответа, а не полагается на предел модели.
++- Ответ без содержания получает свою ошибку: сейчас он неотличим от испорченного ответа модели.
++- Умолчания поставщика зрения переводятся на эндпоинт, который работает в стране.
++- Устаревший комментарий о том, что в каталоге нет моделей со зрением, заменяется на то, что
++  проверено.
++- `.env.example` описывает, чем именно заполнять переменные зрения.
++
++## Capabilities
++
++### Modified Capabilities
++
++- `food-recognition`: запрос к модели со зрением, отключение размышления, предел ответа,
++  поведение при пустом содержании.
++
++## Impact
++
++**Бэкенд:**
++- `apps/api/internal/shared/llm/client.go:118-135` — `chatRequest` получает поле параметров
++  шаблона чата; `RecognizeFood` (строка 219) задаёт его и предел ответа.
++- `apps/api/internal/shared/llm/client.go:264-291` — разбор ответа: пустое содержание
++  становится ошибкой.
++- `apps/api/internal/config/config.go:381-382` — умолчания `VISION_BASE_URL` и
++  `VISION_AUTH_SCHEME`.
++- `apps/api/internal/config/config.go:414-419` — комментарий о моделях со зрением.
++- `apps/api/.env.example:134-142` — описание переменных зрения.
++
++**Эксплуатация:** после выкатки нужно задать `VISION_API_KEY` и `VISION_MODEL` на dev и на
++проде. Переменная не применяется без полной выкатки: `deploy` при том же коммите пропускается,
++`redeploy` не пересоздаёт контейнер.
++
++**Зависимостей нет.** Изменение не пересекается с `landing-conversion`: там утверждение про
++фотографии еды на посадочной странице показывается по флагу способности, и работает оно
++одинаково при любом исходе этого изменения.
++
++**Чего здесь нет намеренно:** бот поддержки на другую модель не переводится. Он работает, и
++трогать текстовый путь ради задачи про зрение — лишний риск.
+diff --git a/openspec/changes/enable-food-recognition/specs/food-recognition/spec.md b/openspec/changes/enable-food-recognition/specs/food-recognition/spec.md
+new file mode 100644
+index 00000000..9c910199
+--- /dev/null
++++ b/openspec/changes/enable-food-recognition/specs/food-recognition/spec.md
+@@ -0,0 +1,101 @@
++## ADDED Requirements
++
++### Requirement: Запрос распознавания отключает размышление модели
++
++Запрос к модели со зрением SHALL явно отключать режим размышления. Ответ MUST содержать состав
++блюда, а не рассуждение о нём.
++
++#### Scenario: Размышление отключено в запросе
++
++- **WHEN** выполняется запрос распознавания еды
++- **THEN** в теле запроса передан параметр отключения размышления
++
++#### Scenario: Текстовый путь не затронут
++
++- **WHEN** выполняется запрос бота поддержки
++- **THEN** параметр отключения размышления в теле запроса отсутствует
++
++### Requirement: Запрос распознавания ограничивает длину ответа
++
++Запрос распознавания SHALL задавать предел длины ответа и MUST NOT полагаться на предел модели.
++
++#### Scenario: Предел задан
++
++- **WHEN** выполняется запрос распознавания еды
++- **THEN** в теле запроса задан предел длины ответа
++
++### Requirement: Пустой ответ модели отличим от испорченного
++
++Ответ модели с пустым содержанием SHALL приводить к ошибке, отличимой от ошибки разбора
++испорченного ответа. Пустой ответ MUST NOT представляться как результат, в котором ничего не
++распознано.
++
++#### Scenario: Модель вернула пустое содержание
++
++- **WHEN** модель возвращает ответ с пустым содержанием
++- **THEN** распознавание завершается ошибкой
++- **AND** ошибка сообщает, что модель не вернула ответ, а не что ответ испорчен
++- **AND** ошибка отличима от результата без распознанных блюд
++
++#### Scenario: Модель не успела ответить в отведённый предел
++
++- **WHEN** модель возвращает ответ с признаком исчерпания предела длины и пустым содержанием
++- **THEN** распознавание завершается ошибкой
++
++#### Scenario: Модель вернула состав блюда
++
++- **WHEN** модель возвращает непустое содержание с составом блюда
++- **THEN** распознавание возвращает список блюд
++
++### Requirement: Невесомое не попадает в результат
++
++Распознанные позиции с неположительным весом SHALL отбрасываться. Такая позиция MUST NOT
++попадать в дневник питания.
++
++#### Scenario: Модель назвала несъедобное
++
++- **WHEN** модель возвращает позицию с нулевым или отрицательным весом
++- **THEN** эта позиция в результате отсутствует
++- **AND** остальные позиции сохраняются
++
++#### Scenario: Весомых позиций не оказалось
++
++- **WHEN** все возвращённые позиции имеют неположительный вес
++- **THEN** результат пуст
++- **AND** распознавание не считается ошибкой
++
++### Requirement: Умолчания поставщика зрения указывают на доступный эндпоинт
++
++Умолчания адреса и схемы авторизации поставщика зрения SHALL указывать на поставщика, доступного
++в стране размещения продукта.
++
++#### Scenario: Развёртывание не задаёт адрес поставщика
++
++- **WHEN** переменная адреса поставщика зрения не задана
++- **THEN** используется адрес, совпадающий с адресом текстового поставщика
++- **AND** используется схема авторизации этого поставщика
++
++#### Scenario: Развёртывание задаёт своего поставщика
++
++- **WHEN** переменные адреса и схемы авторизации заданы
++- **THEN** используются заданные значения
++
++### Requirement: Способность остаётся выведенной из наличия учётных данных
++
++Способность распознавания SHALL считаться включённой только при заданных ключе и имени модели.
++Ключ MUST NOT подставляться из настроек текстового поставщика автоматически.
++
++#### Scenario: Ключ задан, имя модели нет
++
++- **WHEN** задан ключ поставщика зрения и не задано имя модели
++- **THEN** способность выключена
++
++#### Scenario: Оба значения заданы
++
++- **WHEN** заданы и ключ, и имя модели
++- **THEN** способность включена
++
++#### Scenario: Способность выключена
++
++- **WHEN** способность выключена и выполняется запрос распознавания
++- **THEN** запрос отвечает отказом о недоступности способности
+diff --git a/openspec/changes/enable-food-recognition/tasks.md b/openspec/changes/enable-food-recognition/tasks.md
+new file mode 100644
+index 00000000..9a7c77a0
+--- /dev/null
++++ b/openspec/changes/enable-food-recognition/tasks.md
+@@ -0,0 +1,32 @@
++## 1. Отключение размышления и предел ответа
++
++- [ ] 1.1 Добавить в `chatRequest` (`internal/shared/llm/client.go:118`) необязательное поле параметров шаблона чата. Проверка: тест сценария «Текстовый путь не затронут» — в теле запроса бота поля нет.
++- [ ] 1.2 Задать в `RecognizeFood` отключение размышления и предел длины ответа. Проверка: тесты сценариев «Размышление отключено в запросе» и «Предел задан» — оба читают фактически отправленное тело.
++- [ ] 1.3 Прогнать существующие тесты клиента. Проверка: `cd apps/api && go test ./internal/shared/llm/` — путь бота не сломан.
++
++## 2. Пустой ответ как отказ
++
++- [ ] 2.1 Возвращать ошибку, когда содержание ответа пусто. Проверка: тесты сценариев «Модель вернула пустое содержание» и «Модель не успела ответить в отведённый предел».
++- [ ] 2.2 Убедиться, что ошибка отличима от результата без блюд. Проверка: тест сценария «Модель вернула состав блюда» проходит и возвращает список, а не ошибку.
++- [ ] 2.3 Отбрасывать позиции с неположительным весом. Проверка: тесты сценариев «Модель назвала несъедобное» и «Весомых позиций не оказалось». Найдено живой проверкой: модель вернула чайный пакетик с пометкой «неингредиент» и весом 0.
++- [ ] 2.4 Проверить, что обработчик распознавания отвечает человеку честно. Проверка: тест обработчика на пустой ответ модели — сообщение предлагает добавить еду вручную, а не утверждает, что на фото ничего нет.
++
++## 3. Умолчания поставщика
++
++- [ ] 3.1 Перевести умолчания `VISION_BASE_URL` и `VISION_AUTH_SCHEME` (`internal/config/config.go:381-382`) на доступный эндпоинт. Проверка: тесты сценариев «Развёртывание не задаёт адрес поставщика» и «Развёртывание задаёт своего поставщика».
++- [ ] 3.2 Убедиться, что ключ по-прежнему не подставляется автоматически. Проверка: тесты сценариев «Ключ задан, имя модели нет» и «Оба значения заданы».
++- [ ] 3.3 Переписать комментарий о моделях со зрением (`config.go:414-419`) на проверенное. Проверка: текст приложен к PR; прежнее утверждение об отсутствии таких моделей удалено.
++- [ ] 3.4 Описать переменные зрения в `.env.example`. Проверка: указаны эндпоинт, схема авторизации и форма имени модели.
++
++## 4. Живая проверка
++
++- [ ] 4.1 Прогнать распознавание на настоящих фотографиях еды через живой эндпоинт. Проверка: не менее пяти разных фотографий; для каждой приложены ответ модели и оценка, похож ли состав на правду. Это единственная задача, отвечающая на вопрос о качестве, — без неё известно лишь то, что модель отвечает.
++- [ ] 4.2 Замерить стоимость одного распознавания. Проверка: `usage` из ответов приложен к PR.
++- [ ] 4.3 Проверить поведение при исчерпании дневного потолка. Проверка: наблюдение приложено к PR.
++
++## 5. Выкатка
++
++- [ ] 5.1 Выкатить код на dev, задать `VISION_API_KEY` и `VISION_MODEL`, выполнить полную выкатку. Проверка: `GET /ready` на dev показывает `food_recognition: true`.
++- [ ] 5.2 Распознать фотографию через интерфейс на dev. Проверка: наблюдение приложено к PR.
++- [ ] 5.3 Повторить на проде. Проверка: `GET /ready` на проде показывает `food_recognition: true`, распознавание работает из интерфейса.
++- [ ] 5.4 Убедиться, что утверждение про фото на посадочной странице появилось. Проверка: зависит от выкатки `landing-conversion`; если та ещё не выкачена, отметить это, а не считать задачу выполненной.

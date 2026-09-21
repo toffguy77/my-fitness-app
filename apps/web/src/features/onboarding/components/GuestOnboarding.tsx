@@ -29,8 +29,10 @@ import {
 } from '../store/guestOnboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { SupportLink } from '@/shared/components/SupportLink'
+import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { EVENTS, track, TrackView } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 const goals: FitnessGoal[] = ['loss', 'maintain', 'gain']
 
@@ -94,8 +96,10 @@ export function GuestOnboarding() {
             state.setResult(result)
             state.setStep(GUEST_STEPS.result)
             recordStep(GUEST_STEPS.result)
-        } catch {
-            toast.error(t('onboarding.guest.calcFailed'))
+        } catch (err) {
+            // «Подождите немного» — указание, что делать дальше. Заготовка
+            // «проверьте параметры» посылала проверять то, что в порядке.
+            toast.error(messageForOr(err, t('onboarding.guest.calcFailed')))
         } finally {
             setCalculating(false)
         }
@@ -120,7 +124,18 @@ export function GuestOnboarding() {
     }
 
     return (
-        <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-8">
+        // pb-24 (96px), not the pt-8's matching 32px: SupportWidget floats
+        // fixed at bottom-6/right-6 with a 48px-tall collapsed button, so its
+        // footprint reaches ~72px above the viewport bottom. On the goal/body/
+        // activity steps the "mt-8 flex-1" block above absorbs all spare
+        // height in this min-h-screen column, pinning the "Далее"/"Показать
+        // мою норму" button flush to this padding — with the old 32px it sat
+        // inside the widget's footprint and the corner was unreachable
+        // (arithmetic: button spans ~32-80px from the bottom, bubble spans
+        // 24-72px). 96px clears it with margin. Guarded by
+        // e2e/tests/guest-onboarding.spec.ts ("не даёт плавающему виджету
+        // перекрыть кнопку продолжения").
+        <main className="mx-auto flex min-h-screen max-w-md flex-col px-6 pt-8 pb-24">
             <TrackView event={EVENTS.onboardingStarted} />
             <StepIndicator
                 currentStep={Math.min(state.step, stepCount - 1)}
@@ -318,6 +333,8 @@ export function GuestOnboarding() {
             <p className="mt-3 text-center">
                 <SupportLink />
             </p>
+
+            <SupportWidget />
         </main>
     )
 }
@@ -369,6 +386,8 @@ function GuestResultView({
                 {t('onboarding.guest.water', { glasses: result.water_glasses })}
             </p>
 
+            <GuestResultCapture />
+
             <button
                 onClick={onSave}
                 className="mt-8 w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
@@ -376,6 +395,116 @@ function GuestResultView({
                 {t('onboarding.guest.saveResult')}
             </button>
         </section>
+    )
+}
+
+// The second place a contact can be left: right here, under the numbers,
+// without going anywhere near the contact step. Somebody who only wants the
+// number emailed to them should not have to sit through a form asking for
+// their name too.
+function GuestResultCapture() {
+    const state = useGuestOnboardingStore()
+    const [email, setEmail] = useState('')
+    const [dataConsent, setDataConsent] = useState(false)
+    const [contactConsent, setContactConsent] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [sent, setSent] = useState(false)
+
+    const handleSend = async () => {
+        const parameters = parametersOf(state)
+        if (!parameters || !email || !dataConsent) return
+
+        setSaving(true)
+        try {
+            const { token } = await guestApi.createLead({
+                email,
+                parameters,
+                result: state.result,
+                last_step: 'result',
+                capture_source: 'result',
+                source: typeof document !== 'undefined' ? document.referrer : '',
+                consents: { data_processing: dataConsent, contact: contactConsent },
+            })
+            rememberLeadToken(token)
+            track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'result' })
+            // Факт «контакт оставили», без адреса и без цифр расчёта —
+            // отдельно от EVENTS.leadSaved, который несёт свойства для CRM-нужд.
+            track(EVENTS.contactCaptured, { source: 'result' })
+            setSent(true)
+        } catch {
+            toast.error(t('onboarding.guest.resultCapture.failed'))
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    if (sent) {
+        // Confirmation must not promise a letter that was never scheduled: the
+        // reminder only ever goes out to somebody who checked guest.reminder
+        // (contactConsent) — without it, createLead still saves the lead, but
+        // nothing sends anything.
+        return (
+            <p className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                {contactConsent
+                    ? t('onboarding.guest.resultCapture.successWithReminder')
+                    : t('onboarding.guest.resultCapture.success')}
+            </p>
+        )
+    }
+
+    return (
+        <div className="mt-6 space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+            <p className="text-sm text-gray-600">{t('onboarding.guest.resultCapture.hint')}</p>
+
+            <div>
+                <label htmlFor="guest-result-email" className="block text-sm font-medium text-gray-900">
+                    {t('onboarding.guest.resultCapture.emailLabel')}
+                </label>
+                <input
+                    id="guest-result-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t('onboarding.guest.resultCapture.emailPlaceholder')}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+                />
+            </div>
+
+            {/* Same two consents as the contact step, the same wording: one
+                set of formulations, not a second one invented for this
+                screen. */}
+            <div className="space-y-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                        type="checkbox"
+                        checked={dataConsent}
+                        onChange={(e) => setDataConsent(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-600">{t('onboarding.guest.consent')}</span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                        type="checkbox"
+                        checked={contactConsent}
+                        onChange={(e) => setContactConsent(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-600">{t('onboarding.guest.reminder')}</span>
+                </label>
+            </div>
+
+            <button
+                onClick={handleSend}
+                disabled={!email || !dataConsent || saving}
+                className="w-full rounded-lg border border-blue-600 py-3 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 disabled:opacity-50"
+            >
+                {saving
+                    ? t('onboarding.guest.resultCapture.sending')
+                    : t('onboarding.guest.resultCapture.submit')}
+            </button>
+        </div>
     )
 }
 
@@ -393,21 +522,38 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
 
         setSaving(true)
         try {
+            // A contact left on the result screen already has a lead behind
+            // it. Creating a second one here would give the same person two
+            // rows instead of one that carries on; the token proves there is
+            // already something to carry on.
+            if (leadToken()) {
+                track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'contact_step' })
+                track(EVENTS.contactCaptured, { source: 'contact_step' })
+                toast.success(t('onboarding.guest.saved'))
+                onSaved()
+                return
+            }
+
             const { token } = await guestApi.createLead({
                 email,
                 name,
                 parameters,
                 result: state.result,
                 last_step: 'contact',
+                capture_source: 'contact_step',
                 source: typeof document !== 'undefined' ? document.referrer : '',
                 consents: { data_processing: dataConsent, contact: contactConsent },
             })
             rememberLeadToken(token)
-            track(EVENTS.leadSaved, { contact_consent: contactConsent })
+            track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'contact_step' })
+            track(EVENTS.contactCaptured, { source: 'contact_step' })
             toast.success(t('onboarding.guest.saved'))
             onSaved()
-        } catch {
-            toast.error(t('onboarding.guest.saveFailed'))
+        } catch (err) {
+            // Ручка публичная и про зарегистрированный адрес ничего не знает:
+            // ответ одинаков для любого адреса, так что показать причину
+            // безопасно — оракулом существования аккаунта форма не станет.
+            toast.error(messageForOr(err, t('onboarding.guest.saveFailed')))
         } finally {
             setSaving(false)
         }

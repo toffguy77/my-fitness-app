@@ -66,14 +66,19 @@ describe('ProgressSection', () => {
             expect(icon).toBeInTheDocument()
         })
 
-        it('displays placeholder on API error', async () => {
+        // Этот тест раньше утверждал обратное: что при отказе запроса человек
+        // видит «Недостаточно данных». Он был зелёным и закреплял дефект —
+        // фраза про нехватку записей это утверждение о том, как человек вёл
+        // дневник, и при упавшем запросе она про него врёт.
+        it('does not pass a failed request off as a thin diary', async () => {
             mockApiGet.mockRejectedValue(new Error('API error'))
 
             render(<ProgressSection />)
 
             await waitFor(() => {
-                expect(screen.getByText('Недостаточно данных')).toBeInTheDocument()
+                expect(screen.getByText('Не удалось загрузить прогресс')).toBeInTheDocument()
             })
+            expect(screen.queryByText('Недостаточно данных')).not.toBeInTheDocument()
         })
     })
 

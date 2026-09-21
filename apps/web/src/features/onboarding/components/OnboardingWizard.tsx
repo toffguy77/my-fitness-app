@@ -15,6 +15,7 @@ import { useOnboardingStore } from '../store/onboardingStore'
 import { StepIndicator } from './StepIndicator'
 import { cn } from '@/shared/utils/cn'
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 
 // What actually has to happen before the first useful screen. The photo,
 // social accounts and Apple Health used to stand between a new user and their
@@ -95,7 +96,10 @@ export function OnboardingWizard() {
                     if (s.apple_health_enabled) setAppleHealth(s.apple_health_enabled)
                 }
             } catch {
-                // Profile fetch failed — continue with defaults
+                // Молчим намеренно: это необязательное предзаполнение, а не
+                // действие человека. Мастер целиком работает и с умолчаниями,
+                // и тост про непрочитанный профиль на первом же экране —
+                // сообщение о том, чего никто не просил.
             }
         }
         loadProfile()
@@ -142,8 +146,8 @@ export function OnboardingWizard() {
                     router.push('/dashboard')
                     break
             }
-        } catch {
-            toast.error(t('onboarding.saveFailed'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('onboarding.saveFailed')))
         } finally {
             setSaving(false)
         }
@@ -156,8 +160,8 @@ export function OnboardingWizard() {
             try {
                 await completeOnboarding()
                 router.push('/dashboard')
-            } catch {
-                toast.error(t('onboarding.finishFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('onboarding.finishFailed')))
             } finally {
                 setSaving(false)
             }

@@ -8,6 +8,7 @@ import { adminApi } from '../api/adminApi'
 import type { AdminUser } from '../types'
 
 import { t } from '@/shared/i18n'
+import { messageForOr } from '@/shared/errors/apiErrors'
 const ROLE_LABELS: Record<string, string> = {
     client: t('admin.roles.client'),
     coordinator: t('admin.roles.coordinator'),
@@ -39,7 +40,7 @@ export function UserList() {
                 setUsers(page.items)
                 setTotal(page.total)
             })
-            .catch(() => setError(t('admin.users.loadFailed')))
+            .catch((err) => setError(messageForOr(err, t('admin.users.loadFailed'))))
             .finally(() => setLoading(false))
     }, [])
 
@@ -51,8 +52,8 @@ export function UserList() {
             const page = await adminApi.getUsers({ limit: PAGE_SIZE, offset: users.length })
             setUsers((current) => [...current, ...page.items])
             setTotal(page.total)
-        } catch {
-            setError(t('admin.users.loadFailed'))
+        } catch (err) {
+            setError(messageForOr(err, t('admin.users.loadFailed')))
         } finally {
             setLoadingMore(false)
         }

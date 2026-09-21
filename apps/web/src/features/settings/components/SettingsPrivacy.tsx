@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { accountApi, type DataExport, type DeletionStatus } from '../api/account'
-import { isApiError, messageFor } from '@/shared/errors/apiErrors'
+import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { t } from '@/shared/i18n'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
 // i18n-exempt: the word a person types to confirm; it belongs with the
 // sentence that asks for it, which is in the dictionary.
@@ -19,6 +20,13 @@ const CONFIRM_PHRASE = 'УДАЛИТЬ'
  * operations are obligations rather than niceties.
  */
 export function SettingsPrivacy() {
+    const { user } = useCurrentUser()
+    // Defaults to true while the profile has not answered yet: the wrong
+    // guess in that direction asks for a password that turns out to be
+    // unnecessary, while the other wrong guess would hide the field an
+    // account with a password actually needs.
+    const hasPassword = user?.has_password ?? true
+
     const [status, setStatus] = useState<DeletionStatus | null>(null)
     const [exports, setExports] = useState<DataExport[]>([])
     const [loading, setLoading] = useState(true)
@@ -27,6 +35,11 @@ export function SettingsPrivacy() {
     const [showDeleteForm, setShowDeleteForm] = useState(false)
     const [password, setPassword] = useState('')
     const [confirmation, setConfirmation] = useState('')
+
+    // Only ever relevant without a password: the code that stands in for it.
+    const [code, setCode] = useState('')
+    const [codeSent, setCodeSent] = useState(false)
+    const [sendingCode, setSendingCode] = useState(false)
 
     const refresh = async () => {
         const [deletion, exportList] = await Promise.all([
@@ -44,8 +57,8 @@ export function SettingsPrivacy() {
         async function loadInitial() {
             try {
                 await refresh()
-            } catch {
-                toast.error(t('settings.privacy.stateLoadFailed'))
+            } catch (err) {
+                toast.error(messageForOr(err, t('settings.privacy.stateLoadFailed')))
             } finally {
                 setLoading(false)
             }
@@ -60,24 +73,39 @@ export function SettingsPrivacy() {
             toast.success(t('settings.privacy.exportRequested'))
             await refresh()
         } catch (err) {
-            toast.error(isApiError(err) ? messageFor(err) : t('settings.privacy.exportFailed'))
+            toast.error(messageForOr(err, t('settings.privacy.exportFailed')))
         } finally {
             setBusy(false)
+        }
+    }
+
+    const handleSendCode = async () => {
+        setSendingCode(true)
+        try {
+            await accountApi.requestDeletionCode()
+            setCodeSent(true)
+            toast.success(t('settings.privacy.codeSent'))
+        } catch (err) {
+            toast.error(messageForOr(err, t('settings.privacy.codeSendFailed')))
+        } finally {
+            setSendingCode(false)
         }
     }
 
     const handleDelete = async () => {
         setBusy(true)
         try {
-            await accountApi.requestDeletion(password)
+            await accountApi.requestDeletion(hasPassword ? password : '', hasPassword ? '' : code)
             setShowDeleteForm(false)
             setPassword('')
             setConfirmation('')
+            setCode('')
+            setCodeSent(false)
             toast.success(t('settings.privacy.deletionRequested'))
             await refresh()
         } catch (err) {
             toast.error(isApiError(err) && err.status === 401
-                ? t('settings.privacy.wrongPassword')
+                ? t(hasPassword ? 'settings.privacy.wrongPassword' : 'settings.privacy.wrongCode')
                 : t('settings.privacy.deletionFailed'))
         } finally {
             setBusy(false)
@@ -90,8 +118,10 @@ export function SettingsPrivacy() {
             await accountApi.cancelDeletion()
             toast.success(t('settings.privacy.deletionCancelled'))
             await refresh()
-        } catch {
-            toast.error(t('settings.privacy.cancelFailed'))
+        } catch (err) {
+            // «Удаление уже состоялось» и «нет связи» — разные новости для
+            // того, кто передумал удалять аккаунт.
+            toast.error(messageForOr(err, t('settings.privacy.cancelFailed')))
         } finally {
             setBusy(false)
         }
@@ -186,16 +216,46 @@ export function SettingsPrivacy() {
                             </button>
                         ) : (
                             <div className="mt-4 space-y-3 rounded-md border border-red-300 p-4">
-                                <label className="block text-sm">
-                                    {t('settings.privacy.currentPassword')}
-                                    <input
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-                                        autoComplete="current-password"
-                                    />
-                                </label>
+                                {hasPassword ? (
+                                    <label className="block text-sm">
+                                        {t('settings.privacy.currentPassword')}
+                                        <input
+                                            type="password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                                            autoComplete="current-password"
+                                        />
+                                    </label>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <p className="text-sm text-gray-600">
+                                            {t('settings.privacy.noPasswordExplanation')}
+                                        </p>
+                                        {!codeSent ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleSendCode}
+                                                disabled={sendingCode}
+                                                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                            >
+                                                {sendingCode ? t('settings.privacy.sendingCode') : t('settings.privacy.sendCode')}
+                                            </button>
+                                        ) : (
+                                            <label className="block text-sm">
+                                                {t('settings.privacy.codeLabel')}
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    maxLength={6}
+                                                    value={code}
+                                                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
+                                )}
                                 <label className="block text-sm">
                                     {t('settings.privacy.confirmPhrase', { phrase: CONFIRM_PHRASE })}
                                     <input
@@ -209,7 +269,11 @@ export function SettingsPrivacy() {
                                     <button
                                         type="button"
                                         onClick={handleDelete}
-                                        disabled={busy || !password || confirmation !== CONFIRM_PHRASE}
+                                        disabled={
+                                            busy ||
+                                            confirmation !== CONFIRM_PHRASE ||
+                                            (hasPassword ? !password : code.length !== 6)
+                                        }
                                         className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
                                     >
                                         {t('settings.privacy.deleteAccount')}

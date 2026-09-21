@@ -88,18 +88,38 @@ function refreshOnce(perform: () => Promise<string>): Promise<string> {
     return refreshInFlight;
 }
 
-type RefreshSubscriber = (token: string) => void;
+/**
+ * A parked request has to leave the queue one way or the other: with the new
+ * token, or with the reason the refresh that would have produced one failed.
+ * A subscriber holding only `onSuccess` is exactly how a failed refresh used
+ * to leave requests parked forever — there was nothing to call.
+ */
+interface RefreshSubscriber {
+    onSuccess: (token: string) => void;
+    onFailure: (err: unknown) => void;
+}
 
 let isRefreshing = false;
 let refreshSubscribers: RefreshSubscriber[] = [];
 
 function onTokenRefreshed(newToken: string) {
-    refreshSubscribers.forEach(cb => cb(newToken));
+    const subscribers = refreshSubscribers;
     refreshSubscribers = [];
+    subscribers.forEach(({ onSuccess }) => onSuccess(newToken));
 }
 
-function addRefreshSubscriber(cb: RefreshSubscriber) {
-    refreshSubscribers.push(cb);
+/**
+ * Settles every parked request with the same reason the driving refresh
+ * failed with, instead of discarding the queue and leaving them unsettled.
+ */
+function onRefreshFailed(err: unknown) {
+    const subscribers = refreshSubscribers;
+    refreshSubscribers = [];
+    subscribers.forEach(({ onFailure }) => onFailure(err));
+}
+
+function addRefreshSubscriber(onSuccess: (token: string) => void, onFailure: (err: unknown) => void) {
+    refreshSubscribers.push({ onSuccess, onFailure });
 }
 
 class ApiClient {
@@ -164,11 +184,16 @@ class ApiClient {
         };
 
         if (isRefreshing) {
-            // Another refresh is in progress — queue this request
+            // Another refresh is in progress — queue this request. Whichever
+            // way that refresh ends, this promise has to settle with it: the
+            // new token, or the reason it failed.
             return new Promise<T>((resolve, reject) => {
-                addRefreshSubscriber((newToken: string) => {
-                    retryFetch(newToken).then(resolve).catch(reject);
-                });
+                addRefreshSubscriber(
+                    (newToken: string) => {
+                        retryFetch(newToken).then(resolve).catch(reject);
+                    },
+                    (err: unknown) => reject(err),
+                );
             });
         }
 
@@ -189,7 +214,7 @@ class ApiClient {
             })
             .catch((err) => {
                 isRefreshing = false;
-                refreshSubscribers = [];
+                onRefreshFailed(err);
                 clearAuth();
                 if (typeof window !== 'undefined') {
                     window.location.href = '/auth';
@@ -324,10 +349,16 @@ class ApiClient {
         };
 
         if (isRefreshing) {
+            // Another refresh is in progress — queue this request. Whichever
+            // way that refresh ends, this promise has to settle with it: the
+            // new token, or the reason it failed.
             return new Promise<T>((resolve, reject) => {
-                addRefreshSubscriber((newToken: string) => {
-                    retryFetch(newToken).then(resolve).catch(reject);
-                });
+                addRefreshSubscriber(
+                    (newToken: string) => {
+                        retryFetch(newToken).then(resolve).catch(reject);
+                    },
+                    (err: unknown) => reject(err),
+                );
             });
         }
 
@@ -348,7 +379,7 @@ class ApiClient {
             })
             .catch((err) => {
                 isRefreshing = false;
-                refreshSubscribers = [];
+                onRefreshFailed(err);
                 clearAuth();
                 if (typeof window !== 'undefined') {
                     window.location.href = '/auth';

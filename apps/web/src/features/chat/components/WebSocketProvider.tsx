@@ -107,7 +107,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                     const event = JSON.parse(e.data) as WebSocketEvent
                     setLastEvent(event)
                 } catch {
-                    // Ignore malformed messages
+                    // Молчим намеренно: это не отказ по запросу человека, а
+                    // мусор в потоке событий. Показать про него нечего, а
+                    // оборвать из-за него живое соединение — значит потерять
+                    // все нормальные события следом.
                 }
             }
 

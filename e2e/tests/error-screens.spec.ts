@@ -22,9 +22,12 @@ test.describe('Error screens', () => {
     await page.goto('/')
 
     // The page itself does not depend on the API, and must not disappear
-    // because a widget on it could not load.
+    // because a widget on it could not load. Heading text updated to match
+    // the landing rewrite (task 9 of the landing-conversion plan) — this
+    // assertion still held the pre-rewrite h1 and had been silently stale
+    // since then, the same class of drift landing.spec.ts already had fixed.
     await expect(
-      page.getByRole('heading', { name: 'Трекер питания и фитнеса' })
+      page.getByRole('heading', { level: 1, name: /норма КБЖУ за минуту/i })
     ).toBeVisible({ timeout: 15000 })
   })
 
@@ -42,8 +45,15 @@ test.describe('Error screens', () => {
     await page.getByRole('button', { name: /Умеренная активность/ }).click()
     await page.getByRole('button', { name: 'Показать мою норму' }).click()
 
-    // Told what happened, and still holding their answers.
-    await expect(page.getByText(/Не удалось выполнить расчёт/)).toBeVisible({ timeout: 15000 })
+    // Told what happened, and still holding their answers. `route.abort`
+    // simulates a transport failure, not a server refusal, so since
+    // 937589ab ("причина отказа доезжает до человека") the toast is the
+    // specific NetworkError sentence (apiErrors.ts, messageFor) rather than
+    // the generic onboarding.guest.calcFailed fallback — that fallback fires
+    // only for an error with no recognizable kind, which this is not.
+    await expect(
+        page.getByText(/Нет связи с сервером\. Проверьте интернет-соединение и попробуйте снова\./)
+    ).toBeVisible({ timeout: 15000 })
     await expect(page.getByRole('button', { name: 'Показать мою норму' })).toBeEnabled()
   })
 })

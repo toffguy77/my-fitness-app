@@ -23,6 +23,13 @@ jest.mock('react-hot-toast', () => ({
     default: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }),
 }))
 
+const trackSpy = jest.fn()
+
+jest.mock('@/shared/analytics', () => ({
+    ...jest.requireActual('@/shared/analytics'),
+    track: (...args: unknown[]) => trackSpy(...args),
+}))
+
 const push = jest.fn()
 let searchParams = new URLSearchParams()
 jest.mock('next/navigation', () => ({
@@ -180,6 +187,173 @@ describe('The guest onboarding', () => {
 
             expect(api.createLead).not.toHaveBeenCalled()
             expect(push).toHaveBeenCalledWith('/auth?mode=register')
+        })
+
+        // Событие говорит только, что шаг случился, и откуда — не кто его
+        // сделал. Ни адреса, ни имени, введённых на этом самом экране, в
+        // полезной нагрузке быть не должно.
+        it('отправляет событие захвата контакта с источником contact_step', async () => {
+            api.createLead.mockResolvedValue({ token: 't', lead: { id: 'l' } as never })
+
+            render(<GuestOnboarding />)
+            await userEvent.type(screen.getByLabelText('Email'), 'guest@example.com')
+            await userEvent.click(screen.getByRole('checkbox', { name: /обработку моих данных/ }))
+            await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            expect(trackSpy).toHaveBeenCalledWith('contact_captured', { source: 'contact_step' })
+        })
+    })
+
+    // The whole premise of this screen: somebody who is not going to sit
+    // through the contact step can still leave a contact, right where they
+    // are, and get it back later.
+    describe('capturing the contact on the result screen', () => {
+        function renderAtResultStep() {
+            answerEverything()
+            useGuestOnboardingStore.setState({ step: GUEST_STEPS.result, result })
+            return render(<GuestOnboarding />)
+        }
+
+        async function saveFromResultScreen(email: string) {
+            await userEvent.type(screen.getByLabelText(/почт/i), email)
+            await userEvent.click(screen.getByLabelText(/обработку/i))
+            await userEvent.click(screen.getByRole('button', { name: /сохранить расчёт/i }))
+        }
+
+        // Storing body measurements because somebody typed an address is not a
+        // basis here either — the same guard as the contact step.
+        it('cannot be sent without the data-processing consent', async () => {
+            renderAtResultStep()
+
+            await userEvent.type(screen.getByLabelText(/почт/i), 'result@example.com')
+
+            expect(screen.getByRole('button', { name: /сохранить расчёт/i })).toBeDisabled()
+        })
+
+        it('сохраняет расчёт с экрана результата, не проходя шаг контакта', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await saveFromResultScreen('result@example.com')
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            const [input] = api.createLead.mock.calls[0]
+            expect(input.email).toBe('result@example.com')
+            expect(input.capture_source).toBe('result')
+            expect(input.last_step).toBe('result')
+            // The whole point of capturing here: the calculation must not be
+            // lost along with the address. A request with an empty result
+            // would pass every check above and still fail this one.
+            expect(input.result).toMatchObject({
+                calories: result.calories,
+                protein: result.protein,
+                fat: result.fat,
+                carbs: result.carbs,
+            })
+
+            expect(leadToken()).toBe('result-token')
+            // Человек остаётся там же и может продолжить мастер.
+            expect(screen.getByTestId('guest-calories')).toBeInTheDocument()
+            // saveFromResultScreen отмечает только согласие на обработку
+            // данных, не на напоминание — значит письма не будет, и
+            // подтверждение обязано сказать именно это, а не обещать письмо.
+            expect(screen.getByText('Расчёт сохранён на этой почте.')).toBeInTheDocument()
+        })
+
+        // Кнопка и подтверждение раньше обещали письмо безусловно — «Пришлём
+        // расчёт на почту» / «Расчёт отправлен на почту» — хотя реальное
+        // письмо уходит отдельной задачей только тем, кто отметил согласие
+        // на напоминание (guest.reminder / contactConsent), причём не сразу,
+        // а через сутки, и только с калориями. Без этого согласия createLead
+        // всё равно сохраняет заявку, но ничего никому не пришлют.
+        it('без согласия на напоминание подтверждение не обещает письмо', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await saveFromResultScreen('result@example.com')
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            expect(screen.getByText('Расчёт сохранён на этой почте.')).toBeInTheDocument()
+            expect(screen.queryByText(/придёт одно письмо/i)).not.toBeInTheDocument()
+            expect(screen.queryByText(/пришлём/i)).not.toBeInTheDocument()
+        })
+
+        it('обещает письмо, только если отмечено согласие на напоминание', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await userEvent.type(screen.getByLabelText(/почт/i), 'result@example.com')
+            await userEvent.click(screen.getByLabelText(/обработку/i))
+            await userEvent.click(screen.getByLabelText(/письмо-напоминание/i))
+            await userEvent.click(screen.getByRole('button', { name: /сохранить расчёт/i }))
+
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+            const [input] = api.createLead.mock.calls[0]
+            expect(input.consents).toEqual({ data_processing: true, contact: true })
+            expect(
+                screen.getByText(
+                    'Расчёт сохранён. Не закончишь регистрацию сегодня — завтра придёт одно письмо с калориями и ссылкой, чтобы вернуться.'
+                )
+            ).toBeInTheDocument()
+        })
+
+        it('отправляет событие захвата контакта с источником', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+            await saveFromResultScreen('e@example.com')
+
+            expect(trackSpy).toHaveBeenCalledWith('contact_captured', { source: 'result' })
+        })
+
+        // Утверждение «личных данных нет» истинно вырожденно на пустом
+        // наборе — поэтому здесь сначала доказывается, что событие вообще
+        // было отправлено, и только потом проверяется его состав.
+        it('в событии захвата контакта нет ни адреса, ни имени, ни цифр расчёта', async () => {
+            api.createLead.mockResolvedValue({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+            await saveFromResultScreen('result@example.com')
+            await waitFor(() => expect(api.createLead).toHaveBeenCalled())
+
+            const captureCalls = trackSpy.mock.calls.filter(([name]) => name === 'contact_captured')
+            expect(captureCalls.length).toBeGreaterThan(0)
+            for (const [, properties] of captureCalls) {
+                expect(properties).toEqual({ source: 'result' })
+            }
+        })
+
+        it('не создаёт вторую заявку, когда гость всё равно доходит до шага контакта', async () => {
+            api.createLead.mockResolvedValueOnce({
+                token: 'result-token',
+                lead: { id: 'lead-r' } as never,
+            })
+            renderAtResultStep()
+
+            await saveFromResultScreen('result@example.com')
+            await waitFor(() => expect(api.createLead).toHaveBeenCalledTimes(1))
+
+            await userEvent.click(screen.getByRole('button', { name: 'Сохранить результат' }))
+            await userEvent.type(screen.getByLabelText('Email'), 'result@example.com')
+            await userEvent.click(screen.getByRole('checkbox', { name: /обработку моих данных/ }))
+            await userEvent.click(screen.getByRole('button', { name: 'Сохранить и продолжить' }))
+
+            await waitFor(() => expect(push).toHaveBeenCalledWith('/auth?mode=register'))
+            expect(api.createLead).toHaveBeenCalledTimes(1)
         })
     })
 

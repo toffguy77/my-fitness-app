@@ -40,6 +40,31 @@ type Settings struct {
 	FitnessGoal        *string  `json:"fitness_goal,omitempty"`
 }
 
+// SettingsProvided marks which fields of a settings update actually
+// appeared in the request body, as distinct from a field the request left
+// out. Both an absent key and an explicit `null` unmarshal to the same Go
+// zero value (empty string, nil pointer), so Settings alone cannot tell
+// "the caller didn't mention this" from "the caller wants it cleared" —
+// and a caller genuinely does mean the latter sometimes: SettingsBody on
+// the client sends an explicit null to clear target_weight, birth_date,
+// height, biological_sex, activity_level or fitness_goal, and clearing a
+// linked telegram/instagram handle is a real action too. UpdateSettings
+// uses this to decide, per column, whether to touch it at all.
+type SettingsProvided struct {
+	Language           bool
+	Units              bool
+	Timezone           bool
+	TelegramUsername   bool
+	InstagramUsername  bool
+	AppleHealthEnabled bool
+	TargetWeight       bool
+	Height             bool
+	BirthDate          bool
+	BiologicalSex      bool
+	ActivityLevel      bool
+	FitnessGoal        bool
+}
+
 // Service handles users business logic
 type Service struct {
 	db  *sql.DB
@@ -63,12 +88,17 @@ func (s *Service) GetProfile(ctx context.Context, userID int64) (*FullProfile, e
 	if s.db == nil {
 		return nil, fmt.Errorf("database connection not available")
 	}
+	// birth_date is scanned as a string, and pgx renders a DATE column as a
+	// full RFC3339 timestamp ("2001-05-03T00:00:00Z") for a text scan target.
+	// <input type="date"> on the client accepts only "YYYY-MM-DD" and silently
+	// renders blank for anything else, so the calendar-date form is produced
+	// here rather than relying on every caller to truncate it.
 	query := `
 		SELECT u.id, u.email, COALESCE(u.name, ''), u.role, COALESCE(u.avatar_url, ''), COALESCE(u.onboarding_completed, false),
 		       COALESCE(s.language, 'ru'), COALESCE(s.units, 'metric'), COALESCE(s.timezone, 'Europe/Moscow'),
 		       COALESCE(s.telegram_username, ''), COALESCE(s.instagram_username, ''), COALESCE(s.apple_health_enabled, false),
 		       s.target_weight, s.height,
-		       s.birth_date, s.biological_sex, s.activity_level, s.fitness_goal
+		       to_char(s.birth_date, 'YYYY-MM-DD'), s.biological_sex, s.activity_level, s.fitness_goal
 		FROM users u
 		LEFT JOIN user_settings s ON s.user_id = u.id
 		WHERE u.id = $1
@@ -150,29 +180,62 @@ func (s *Service) UpdateProfile(ctx context.Context, userID int64, name string) 
 	return s.GetProfile(ctx, userID)
 }
 
-// UpdateSettings upserts user settings and returns the updated settings
-func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Settings) (*Settings, error) {
+// UpdateSettings upserts user settings and returns the updated settings.
+//
+// A field with Provided false is left untouched: the incoming value (always
+// the Go zero value for an omitted field) is never written, so a request
+// carrying only one field — e.g. the Apple Health toggle sending just
+// {"apple_health_enabled": true} — cannot wipe the rest of the row. A field
+// with Provided true is written exactly as given, including a nil pointer,
+// so a caller can still deliberately clear a nullable column (target_weight,
+// birth_date, height, biological_sex, activity_level, fitness_goal,
+// telegram_username, instagram_username all support this from the client).
+//
+// The registration flow always creates a bare user_settings row first
+// (auth.Register: "INSERT INTO user_settings (user_id) VALUES ($1) ON
+// CONFLICT DO NOTHING"), so in practice the ON CONFLICT branch is what runs.
+// The plain INSERT branch below still has to produce a row that satisfies
+// the NOT NULL columns (language, units, timezone) even if the very first
+// call omits them, so it falls back to the same defaults as migration 014/022
+// for those three; the rest fall back to NULL/false like their column
+// defaults, which is safe because none of them are NOT NULL.
+func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Settings, provided SettingsProvided) (*Settings, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database connection not available")
 	}
 	query := `
 		INSERT INTO user_settings (user_id, language, units, timezone, telegram_username, instagram_username, apple_health_enabled, target_weight, height, birth_date, biological_sex, activity_level, fitness_goal, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+		VALUES (
+		  $1,
+		  CASE WHEN $14 THEN $2::text ELSE 'ru' END,
+		  CASE WHEN $15 THEN $3::text ELSE 'metric' END,
+		  CASE WHEN $16 THEN $4::text ELSE 'Europe/Moscow' END,
+		  CASE WHEN $17 THEN $5::text ELSE NULL END,
+		  CASE WHEN $18 THEN $6::text ELSE NULL END,
+		  CASE WHEN $19 THEN $7::boolean ELSE false END,
+		  CASE WHEN $20 THEN $8::numeric ELSE NULL END,
+		  CASE WHEN $21 THEN $9::numeric ELSE NULL END,
+		  CASE WHEN $22 THEN $10::date ELSE NULL END,
+		  CASE WHEN $23 THEN $11::text ELSE NULL END,
+		  CASE WHEN $24 THEN $12::text ELSE 'moderate' END,
+		  CASE WHEN $25 THEN $13::text ELSE 'maintain' END,
+		  NOW()
+		)
 		ON CONFLICT (user_id) DO UPDATE SET
-		  language = EXCLUDED.language,
-		  units = EXCLUDED.units,
-		  timezone = EXCLUDED.timezone,
-		  telegram_username = EXCLUDED.telegram_username,
-		  instagram_username = EXCLUDED.instagram_username,
-		  apple_health_enabled = EXCLUDED.apple_health_enabled,
-		  target_weight = EXCLUDED.target_weight,
-		  height = EXCLUDED.height,
-		  birth_date = EXCLUDED.birth_date,
-		  biological_sex = EXCLUDED.biological_sex,
-		  activity_level = EXCLUDED.activity_level,
-		  fitness_goal = EXCLUDED.fitness_goal,
+		  language = CASE WHEN $14 THEN EXCLUDED.language ELSE user_settings.language END,
+		  units = CASE WHEN $15 THEN EXCLUDED.units ELSE user_settings.units END,
+		  timezone = CASE WHEN $16 THEN EXCLUDED.timezone ELSE user_settings.timezone END,
+		  telegram_username = CASE WHEN $17 THEN EXCLUDED.telegram_username ELSE user_settings.telegram_username END,
+		  instagram_username = CASE WHEN $18 THEN EXCLUDED.instagram_username ELSE user_settings.instagram_username END,
+		  apple_health_enabled = CASE WHEN $19 THEN EXCLUDED.apple_health_enabled ELSE user_settings.apple_health_enabled END,
+		  target_weight = CASE WHEN $20 THEN EXCLUDED.target_weight ELSE user_settings.target_weight END,
+		  height = CASE WHEN $21 THEN EXCLUDED.height ELSE user_settings.height END,
+		  birth_date = CASE WHEN $22 THEN EXCLUDED.birth_date ELSE user_settings.birth_date END,
+		  biological_sex = CASE WHEN $23 THEN EXCLUDED.biological_sex ELSE user_settings.biological_sex END,
+		  activity_level = CASE WHEN $24 THEN EXCLUDED.activity_level ELSE user_settings.activity_level END,
+		  fitness_goal = CASE WHEN $25 THEN EXCLUDED.fitness_goal ELSE user_settings.fitness_goal END,
 		  updated_at = NOW()
-		RETURNING language, units, timezone, telegram_username, instagram_username, apple_health_enabled, target_weight, height, birth_date, biological_sex, activity_level, fitness_goal
+		RETURNING language, units, timezone, COALESCE(telegram_username, ''), COALESCE(instagram_username, ''), apple_health_enabled, target_weight, height, to_char(birth_date, 'YYYY-MM-DD'), biological_sex, activity_level, fitness_goal
 	`
 
 	var result Settings
@@ -193,6 +256,18 @@ func (s *Service) UpdateSettings(ctx context.Context, userID int64, settings Set
 		settings.BiologicalSex,
 		settings.ActivityLevel,
 		settings.FitnessGoal,
+		provided.Language,
+		provided.Units,
+		provided.Timezone,
+		provided.TelegramUsername,
+		provided.InstagramUsername,
+		provided.AppleHealthEnabled,
+		provided.TargetWeight,
+		provided.Height,
+		provided.BirthDate,
+		provided.BiologicalSex,
+		provided.ActivityLevel,
+		provided.FitnessGoal,
 	).Scan(
 		&result.Language,
 		&result.Units,

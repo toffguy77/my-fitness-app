@@ -61,8 +61,11 @@ import ForgotPasswordPage from '../forgot-password/page'
 
 describe('Auth Pages', () => {
     describe('AuthPage', () => {
-        it('renders AuthScreen component', () => {
-            render(<AuthPage />)
+        // Асинхронный серверный компонент: звать как обычную функцию и
+        // ожидать, а не рендерить через JSX — см.
+        // apps/web/src/app/auth/link/consume/__tests__/page.test.tsx.
+        it('renders AuthScreen component', async () => {
+            render(await AuthPage({ searchParams: Promise.resolve({}) }))
             expect(screen.getByTestId('auth-screen')).toBeInTheDocument()
         })
     })

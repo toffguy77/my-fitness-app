@@ -15,6 +15,8 @@ import type {
     WeeklySnapshot,
     BenchmarkData,
 } from '../types'
+import type { Page, PageRequest } from '@/shared/types/pagination'
+import { pageQuery } from '@/shared/types/pagination'
 
 const BASE = '/api/v1/curator'
 
@@ -64,6 +66,127 @@ export const curatorApi = {
         apiClient.get<DailySnapshot[] | WeeklySnapshot[]>(`${BASE}/analytics/history?period=${period}&${period === 'daily' ? 'days' : 'weeks'}=${count}`),
     getBenchmark: (weeks: number) =>
         apiClient.get<BenchmarkData>(`${BASE}/analytics/benchmark?weeks=${weeks}`),
+
+    // Onboarding attempts that stopped short of registration, as a work
+    // queue: the backend orders them longest-waiting-first among the
+    // unhandled ones and clamps its own offset (task 3) — this only adds the
+    // include_handled flag onto the same pagination query string.
+    getLeads: (options?: PageRequest & { includeHandled?: boolean }) => {
+        const { includeHandled, ...page } = options ?? {}
+        const query = pageQuery(page)
+        const separator = query ? '&' : '?'
+        return apiClient.get<Page<Lead>>(
+            `${BASE}/leads${query}${includeHandled ? `${separator}include_handled=true` : ''}`
+        )
+    },
+
+    markLeadHandled: (leadId: string) =>
+        apiClient.post<{ handled: boolean }>(`${BASE}/leads/${leadId}/handled`, {}),
+
+    // Support conversations from the Telegram bot. Escalated ones come first:
+    // somebody is waiting on the other end of those.
+    getSupportConversations: (status?: string, page?: PageRequest) => {
+        const query = pageQuery(page)
+        const separator = query ? '&' : '?'
+        return apiClient.get<Page<SupportConversation>>(
+            `${BASE}/support/conversations${query}${status ? `${separator}status=${status}` : ''}`
+        )
+    },
+
+    getSupportThread: (conversationId: string) =>
+        apiClient.get<SupportThread>(`${BASE}/support/conversations/${conversationId}`),
+
+    replyToSupport: (conversationId: string, text: string) =>
+        apiClient.post<{ sent: boolean }>(`${BASE}/support/conversations/${conversationId}/reply`, { text }),
+
+    closeSupport: (conversationId: string) =>
+        apiClient.post<{ closed: boolean }>(`${BASE}/support/conversations/${conversationId}/close`, {}),
+}
+
+/** A Telegram support chat. */
+export interface SupportConversation {
+    id: string
+    chat_id: number
+    lead_id?: string
+    user_id?: number
+    status: 'open' | 'escalated' | 'closed'
+    telegram_username?: string
+    telegram_name?: string
+    escalation_reason?: string
+    escalated_at?: string
+    last_message_at: string
+    created_at: string
+}
+
+export interface SupportMessage {
+    id: string
+    author: 'user' | 'bot' | 'operator'
+    text: string
+    created_at: string
+}
+
+export interface SupportThread {
+    conversation: SupportConversation
+    messages: SupportMessage[]
+    /** What the person was doing when they got stuck, when the chat came from
+     *  a saved onboarding attempt. */
+    lead?: {
+        id: string
+        email: string
+        name?: string
+        last_step: string
+        summary: string
+    }
+}
+
+/**
+ * An onboarding attempt saved before registration, as the curator queue
+ * returns it: task 3's `/curator/leads` always answers with these fields
+ * alongside the lead itself, never the bare record.
+ */
+export interface Lead {
+    id: string
+    email: string
+    name?: string
+    parameters: {
+        sex?: string
+        birth_date?: string
+        height_cm?: number
+        weight_kg?: number
+        activity_level?: string
+        goal?: string
+    }
+    result?: {
+        calories: number
+        protein: number
+        fat: number
+        carbs: number
+        water_glasses: number
+    }
+    last_step: string
+    source?: string
+    consents: { data_processing: boolean; contact: boolean }
+    handled_at?: string
+    created_at: string
+    /** How many days the person has waited, computed server-side. */
+    age_days: number
+    /** Whether the one automatic reminder has already gone out. */
+    reminder_sent: boolean
+    /**
+     * Whether writing to this person is allowed at all (migration 051's
+     * separate contact consent). A lead can be in the queue — it says
+     * something about the funnel — without permission to write to them; a
+     * human follow-up must not become a loophole around a withheld consent.
+     */
+    contact_allowed: boolean
+    /**
+     * The support conversation opened from this lead's resume link, when the
+     * person also talked to the bot. Absent for most leads until the
+     * public-support-widget plan starts linking conversations widely — the
+     * queue must not offer a transition to a conversation that does not
+     * exist.
+     */
+    conversation_id?: string
 }
 
 /** One channel's outcome for a notification. */
