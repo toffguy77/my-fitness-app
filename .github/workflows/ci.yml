@@ -49,10 +49,34 @@ jobs:
       - name: Check codebase integrity
         run: node scripts/check-codebase-integrity.mjs
 
+      # Catches an E2E account the cleanup does not know about. The run on
+      # the production server is only safe because every account it signs in
+      # as gets deleted afterwards; an account added to the fixture and
+      # forgotten in scripts/e2e-db-snapshot.sh survives the run, with
+      # everything that references it, while the cleanup reports success.
+      - name: Check E2E cleanup covers every test account
+        run: node scripts/check-e2e-cleanup-covers-accounts.mjs
+
+      # Same requirement from the other end: an address a spec types into a
+      # form that matches none of the cleanup's guest patterns leaves its lead
+      # — and the web conversation attached to it — on the server for good.
+      # support-widget.spec.ts used widget-e2e@example.com, one hyphen away
+      # from the pattern that would have covered it.
+      - name: Check E2E guest emails are cleanable
+        run: node scripts/check-e2e-guest-emails.mjs
+
       # Catches a Russian sentence written inline in a section that has been
       # translated, and a t() key the dictionary does not have.
       - name: Check translations
         run: node scripts/check-i18n.mjs
+
+      # The guards above are code, and their own tests were written and then
+      # never run by anything: only scripts/__tests__/dev-proxy.test.mjs was
+      # wired in (in e2e.yml, where the proxy it tests is about to start).
+      # A guard that silently stops matching passes every build it was meant
+      # to fail, so the whole directory runs here.
+      - name: Test the guards themselves
+        run: node --test scripts/__tests__/
 
       - name: TypeScript
         run: npm run type-check

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { t } from '@/shared/i18n';
+import { PASSWORD_RULES } from '@/shared/validation/password';
 
 /**
  * Email validation schema
@@ -15,24 +16,17 @@ export const emailSchema = z
     .email('Invalid email format')
     .max(100, 'Email too long');
 
-export const passwordSchema = z
-    .string()
-    .min(8, t('auth.validation.passwordMin'))
-    .max(128, t('auth.validation.passwordMax'))
-    .superRefine((val, ctx) => {
-        if (!/[A-Z]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordUpper') });
+// Правила живут в shared: их читает и общее поле ввода, рисующее список
+// требований. Здесь — только схема, собранная из них.
+export { PASSWORD_RULES, type PasswordRule } from '@/shared/validation/password';
+
+export const passwordSchema = z.string().superRefine((val, ctx) => {
+    for (const rule of PASSWORD_RULES) {
+        if (!rule.satisfied(val)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: rule.message });
         }
-        if (!/[a-z]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordLower') });
-        }
-        if (!/[0-9]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordDigit') });
-        }
-        if (!/[^A-Za-z0-9]/.test(val)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('auth.validation.passwordSpecial') });
-        }
-    });
+    }
+});
 
 /**
  * Consent validation schema

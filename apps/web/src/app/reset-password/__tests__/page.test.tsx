@@ -187,6 +187,43 @@ describe('ResetPasswordPage', () => {
         })
     })
 
+    // Форма принимала любой пароль длиной от восьми символов: политику
+    // целиком проверял только сервер, и человек узнавал о заглавной букве из
+    // ответа API — притом что список требований прямо над полем уже показывал
+    // четыре невыполненных правила. Спецификация password-policy требует
+    // обратного: отправка не происходит, пока правила не выполнены.
+    it('не отправляет пароль, прошедший по длине, но нарушающий политику', async () => {
+        mockSearchParams = new URLSearchParams('token=valid-token')
+        ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+            ok: true,
+            headers: new Headers(),
+            json: () => Promise.resolve({ valid: true }),
+        })
+
+        render(<ResetPasswordPage />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Сброс пароля')).toBeInTheDocument()
+        })
+
+        // Восемь символов — прежней проверки хватало; заглавной, цифры и
+        // спецсимвола нет.
+        await user.type(screen.getByTestId('password-password'), 'abcdefgh')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'abcdefgh')
+        const form = screen.getByText('Сбросить пароль').closest('form')!
+        fireEvent.submit(form)
+
+        await waitFor(() => {
+            expect(
+                screen.getByText('Пароль должен содержать хотя бы одну заглавную букву'),
+            ).toBeInTheDocument()
+        })
+
+        // Главное: запроса не было. Сообщение можно показать и после отказа
+        // сервера — проверка именно в том, что до сервера дело не дошло.
+        expect(global.fetch).toHaveBeenCalledTimes(1)
+    })
+
     // Branch: passwords don't match (line 75-78)
     it('shows error when passwords do not match', async () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
@@ -202,8 +239,8 @@ describe('ResetPasswordPage', () => {
             expect(screen.getByText('Сброс пароля')).toBeInTheDocument()
         })
 
-        await user.type(screen.getByTestId('password-password'), 'password123')
-        await user.type(screen.getByTestId('password-confirmPassword'), 'password456')
+        await user.type(screen.getByTestId('password-password'), 'Password123!')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'Password456!')
         await user.click(screen.getByText('Сбросить пароль'))
 
         await waitFor(() => {
@@ -232,8 +269,8 @@ describe('ResetPasswordPage', () => {
             expect(screen.getByText('Сброс пароля')).toBeInTheDocument()
         })
 
-        await user.type(screen.getByTestId('password-password'), 'newpassword123')
-        await user.type(screen.getByTestId('password-confirmPassword'), 'newpassword123')
+        await user.type(screen.getByTestId('password-password'), 'Newpassword123!')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'Newpassword123!')
         await user.click(screen.getByText('Сбросить пароль'))
 
         await waitFor(() => {
@@ -267,8 +304,8 @@ describe('ResetPasswordPage', () => {
             expect(screen.getByText('Сброс пароля')).toBeInTheDocument()
         })
 
-        await user.type(screen.getByTestId('password-password'), 'newpassword123')
-        await user.type(screen.getByTestId('password-confirmPassword'), 'newpassword123')
+        await user.type(screen.getByTestId('password-password'), 'Newpassword123!')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'Newpassword123!')
         await user.click(screen.getByText('Сбросить пароль'))
 
         await waitFor(() => {
@@ -298,8 +335,8 @@ describe('ResetPasswordPage', () => {
             expect(screen.getByText('Сброс пароля')).toBeInTheDocument()
         })
 
-        await user.type(screen.getByTestId('password-password'), 'newpassword123')
-        await user.type(screen.getByTestId('password-confirmPassword'), 'newpassword123')
+        await user.type(screen.getByTestId('password-password'), 'Newpassword123!')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'Newpassword123!')
         await user.click(screen.getByText('Сбросить пароль'))
 
         await waitFor(() => {
@@ -324,8 +361,8 @@ describe('ResetPasswordPage', () => {
             expect(screen.getByText('Сброс пароля')).toBeInTheDocument()
         })
 
-        await user.type(screen.getByTestId('password-password'), 'newpassword123')
-        await user.type(screen.getByTestId('password-confirmPassword'), 'newpassword123')
+        await user.type(screen.getByTestId('password-password'), 'Newpassword123!')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'Newpassword123!')
         await user.click(screen.getByText('Сбросить пароль'))
 
         await waitFor(() => {
@@ -353,8 +390,8 @@ describe('ResetPasswordPage', () => {
             expect(screen.getByText('Сброс пароля')).toBeInTheDocument()
         })
 
-        await user.type(screen.getByTestId('password-password'), 'newpassword123')
-        await user.type(screen.getByTestId('password-confirmPassword'), 'newpassword123')
+        await user.type(screen.getByTestId('password-password'), 'Newpassword123!')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'Newpassword123!')
         await user.click(screen.getByText('Сбросить пароль'))
 
         expect(screen.getByText('Сброс пароля...')).toBeInTheDocument()
@@ -422,8 +459,8 @@ describe('ResetPasswordPage', () => {
         })
 
         // Enter password but mismatching confirm
-        await user.type(screen.getByTestId('password-password'), 'password123')
-        await user.type(screen.getByTestId('password-confirmPassword'), 'password456')
+        await user.type(screen.getByTestId('password-password'), 'Password123!')
+        await user.type(screen.getByTestId('password-confirmPassword'), 'Password456!')
         await user.click(screen.getByText('Сбросить пароль'))
 
         await waitFor(() => {

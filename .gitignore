@@ -25,6 +25,10 @@ apps/api/cleanup-food-data
 .env.*
 .env.local
 .env*.local
+# Примеры — не секреты, и .env.* выше ловит их заодно с настоящими файлами.
+# Существующие (apps/api/.env.example, deploy/env/*) уцелели только потому,
+# что попали в git раньше этого правила; новому нужно исключение явно.
+!**/.env.*.example
 
 # IDE
 .vscode/
