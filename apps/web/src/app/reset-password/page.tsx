@@ -8,6 +8,7 @@ import { Button } from '@/shared/components/ui/Button'
 import { PasswordInput } from '@/shared/components/forms/PasswordInput'
 import toast from 'react-hot-toast'
 import { validateResetToken, resetPassword as resetPasswordApi } from '@/features/auth/api/passwordReset'
+import { passwordSchema } from '@/features/auth/utils/validation'
 
 function ResetPasswordContent() {
     const router = useRouter()
@@ -64,8 +65,15 @@ function ResetPasswordContent() {
             return
         }
 
-        if (password.length < 8) {
-            setError('Пароль должен содержать минимум 8 символов')
+        // Проверяем всей политикой, а не одной длиной. Раньше здесь стояло
+        // `password.length < 8`: пароль из восьми строчных букв форму
+        // проходил, уходил на сервер и возвращался отказом — притом что
+        // список требований прямо над полем уже показывал четыре невыполненных
+        // правила. Спецификация password-policy требует обратного: отправка
+        // не происходит, пока правила не выполнены.
+        const policy = passwordSchema.safeParse(password)
+        if (!policy.success) {
+            setError(policy.error.issues[0].message)
             return
         }
 

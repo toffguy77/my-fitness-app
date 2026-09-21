@@ -44,20 +44,33 @@
 
 ## 6. Frontend: PasswordChecklist Component
 
-- [x] 6.1 Create `apps/web/src/features/auth/components/PasswordChecklist.tsx` with a `password: string` prop
-- [x] 6.2 Compute satisfaction of all six rules (min 8, max 128, uppercase, lowercase, digit, special) as local booleans
+> Отдельного файла `PasswordChecklist.tsx` в дереве нет и не было: список
+> требований живёт внутри общего поля ввода
+> `apps/web/src/shared/components/forms/PasswordInput.tsx` (признак
+> `showRequirements`) — тем самым он и оказался одним компонентом на все три
+> формы, чего требует сценарий спецификации. Пункты 6.1–8.2 отмечены по
+> поведению, а не по имени файла; сами имена здесь исправлены, чтобы запись
+> не отправляла читателя к несуществующему файлу.
+>
+> Правила при этом были перечислены дважды — в схеме Zod и внутри поля
+> ввода, своими словами и своими регулярками. Теперь источник один:
+> `apps/web/src/shared/validation/password.ts`, из него собраны и схема, и
+> список.
+
+- [x] 6.1 Список требований в `apps/web/src/shared/components/forms/PasswordInput.tsx`, признак `showRequirements`, значение берётся из `value`
+- [x] 6.2 Выполненность шести правил выводится из `PASSWORD_RULES` — того же массива, из которого собрана `passwordSchema`. Проверка: `PasswordInput.test.tsx`, «пункт %s повторяет формулировку схемы» — сверяет вывод с сообщением самой схемы, а не с массивом
 - [x] 6.3 Render a list of six items; each shows a check icon (green) when satisfied and an unmet indicator (grey/red) when not
 - [x] 6.4 Only render the checklist when `password.length > 0` (hide before user starts typing)
 
 ## 7. Frontend: Integrate Checklist into Registration Form
 
-- [x] 7.1 Import and render `<PasswordChecklist password={passwordValue} />` directly below the password input in the registration form in `AuthScreen.tsx`
+- [x] 7.1 Регистрация показывает список: `AuthForm.tsx:54` передаёт `showRequirements={mode === 'register'}`
 - [x] 7.2 Verify checklist updates correctly as user types; verify Zod errors still appear on blur/submit
 
 ## 8. Frontend: Integrate Checklist into Reset Password Form
 
 - [x] 8.1 Locate the reset password form component (password-reset page)
-- [x] 8.2 Import and render `<PasswordChecklist password={passwordValue} />` below the new-password input
+- [x] 8.2 Форма восстановления показывает список (`app/reset-password/page.tsx`, `showRequirements`) и с этого коммита проверяет политику целиком, а не только длину. Проверка: «не отправляет пароль, прошедший по длине, но нарушающий политику»
 - [x] 8.3 Verify checklist and Zod validation work end-to-end on the reset flow
 
 ## 9. Frontend: Settings — Password Change
