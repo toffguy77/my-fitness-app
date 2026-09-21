@@ -27,21 +27,19 @@ export class AuthPage {
 
   async goto() {
     await this.page.goto('/auth')
-    // The screen shows the magic-link form first; every test in this object
-    // exercises the password form, so it switches to it the same way a real
-    // visitor would — a click, not a reload. The button is server-rendered
-    // before hydration attaches its handler, so a single click can land in
-    // that window and do nothing — a classic lost Next.js click, and the
-    // failure it produces (expectLoaded() timing out on "Email address not
-    // visible") says nothing about a missed click. Unlike every other page
-    // object here (see dashboard.page.ts, settings.page.ts), goto() acts
-    // instead of only navigating, precisely because this screen requires a
-    // click to reach the form the rest of the object assumes. `toPass`
-    // retries the click itself, not just the wait after it — a plain
-    // `expect(...).toBeVisible()` here would still time out once if the
-    // click were lost, just with a clearer stack trace.
+    // `/auth` открывает форму пароля сразу — вход и регистрация разведены по
+    // существу, а не по подписи. Переключаться некуда и не нужно.
+    //
+    // Клик оставлен как запасной путь: если экран почему-то открылся формой
+    // ссылки (например, пришли по `?mode=register`), к паролю ведёт
+    // переключатель. Он отрисован сервером раньше, чем к нему привязан
+    // обработчик, поэтому одиночный клик может попасть в это окно и не
+    // сделать ничего — `toPass` повторяет сам клик, а не только ожидание
+    // после него.
     await expect(async () => {
-      await this.page.getByRole('button', { name: 'Войти по паролю' }).click()
+      if (!(await this.emailInput.isVisible().catch(() => false))) {
+        await this.page.getByRole('button', { name: 'Войти по паролю' }).click()
+      }
       await expect(this.emailInput).toBeVisible({ timeout: 2000 })
     }).toPass({ timeout: 15000 })
   }

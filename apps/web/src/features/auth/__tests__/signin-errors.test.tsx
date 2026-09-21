@@ -28,10 +28,9 @@ function rejectionFor(status: number, data: unknown = {}) {
     return error
 }
 
-/** The magic-link form is what a fresh screen shows; password is reached from there. */
+/** Свежий экран входа открывается формой пароля — переключать нечего. */
 async function openPasswordForm() {
     render(<AuthScreen />)
-    await userEvent.click(screen.getByRole('button', { name: /войти по паролю/i }))
 }
 
 async function signIn(email: string, password: string) {
