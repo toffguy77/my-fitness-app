@@ -3,6 +3,7 @@ package router
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -137,4 +138,40 @@ func TestOldAdminSupportPathIsGone(t *testing.T) {
 	w := getAs(t, r, "/api/v1/admin/support/conversations", "super_admin")
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// Задача 2.5: изменение и удаление заявки недоступны — registerCuratorLeadRoutes
+// регистрирует только GET на очередь и POST на отметку "обработана".
+//
+// Проверка идёт по таблице реальных маршрутов (testEngine(t).Routes()), а не
+// по коду HTTP-ответа. Причина: New() в этом пакете вызывает gin.New() без
+// HandleMethodNotAllowed, и в таком движке 404 означает одновременно и "такого
+// пути нет вообще", и "путь есть, но не для этого метода" — два разных факта
+// с одним и тем же кодом. Тест на код ответа доказал бы только "сейчас это не
+// обслуживается", а не "маршрута для этого не существует", и не покраснел бы
+// одинаково надёжно, если бы кто-то зарегистрировал PUT/PATCH/DELETE, а
+// обработчик сам отвечал 404 по другой причине. Таблица маршрутов — это
+// именно то, что curator.go регистрирует, и ловит появление маршрута прямо в
+// момент регистрации, а не косвенно через поведение хендлера.
+func TestLeadRoutesHaveNoMutationOrDeletion(t *testing.T) {
+	r := testEngine(t)
+
+	forbidden := map[string]bool{
+		http.MethodPut:    true,
+		http.MethodPatch:  true,
+		http.MethodDelete: true,
+	}
+
+	var mutating []string
+	for _, route := range r.Routes() {
+		if !strings.HasPrefix(route.Path, "/api/v1/curator/leads") {
+			continue
+		}
+		if forbidden[route.Method] {
+			mutating = append(mutating, route.Method+" "+route.Path)
+		}
+	}
+
+	assert.Empty(t, mutating,
+		"изменение или удаление заявки не должно быть маршрутизировано: %v", mutating)
 }
