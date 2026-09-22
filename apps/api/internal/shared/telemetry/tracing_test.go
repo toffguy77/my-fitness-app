@@ -2,6 +2,8 @@ package telemetry
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -89,4 +91,38 @@ func TestSuccessesAreExportedAtRatioOne(t *testing.T) {
 
 func TestTraceIDFromIsEmptyWithoutASpan(t *testing.T) {
 	assert.Empty(t, TraceIDFrom(context.Background()))
+}
+
+// Трассировка обязана действительно стартовать с заданным адресом.
+//
+// На проде она не стартовала ни разу: `resource.Merge` отказывал с
+// «conflicting Schema URL: .../1.43.0 and .../1.26.0» — версия semconv,
+// которой описан сервис, разошлась с той, что несёт `resource.Default()`
+// внутри SDK. Разошлась она при обновлении SDK, само по себе безобидном.
+//
+// Отказ был записан в лог при старте и на этом кончился: приложение
+// продолжило работу, а `/health` всё равно сообщал «tracing: true» —
+// признак считался по наличию адреса, а не по тому, что вышло.
+//
+// Проверка держит именно старт, а не экспорт: адрес указывает на локальный
+// приёмник, наружу ничего не уходит.
+func TestStartTracingStartsWithAnEndpoint(t *testing.T) {
+	received := make(chan struct{}, 1)
+	collector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case received <- struct{}{}:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer collector.Close()
+
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", collector.URL)
+	t.Setenv("OTEL_EXPORTER_OTLP_INSECURE", "true")
+
+	on, stop, err := StartTracing(context.Background(), collector.URL, "burcev-api", "v0.0.0-test", "test")
+	require.NoError(t, err, "трассировка не стартовала")
+	require.True(t, on, "адрес задан, а трассировка считает себя выключенной")
+	require.NotNil(t, stop)
+	require.NoError(t, stop(context.Background()))
 }

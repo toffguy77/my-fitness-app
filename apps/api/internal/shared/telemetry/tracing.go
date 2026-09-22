@@ -44,8 +44,17 @@ func StartTracing(ctx context.Context, endpoint, serviceName, version, environme
 		return false, nil, fmt.Errorf("create trace exporter: %w", err)
 	}
 
-	res, err := resource.Merge(resource.Default(), resource.NewWithAttributes(
-		semconv.SchemaURL,
+	// NewSchemaless, а не NewWithAttributes(semconv.SchemaURL, ...).
+	//
+	// resource.Merge отказывается сливать два описания с РАЗНЫМИ схемами, а
+	// `resource.Default()` несёт ту версию semconv, что вшита в сам SDK. Стоит
+	// SDK обновиться — версии расходятся, Merge возвращает «conflicting Schema
+	// URL», и трассировка не стартует вовсе. Именно это и случилось на проде:
+	// 1.43.0 у SDK против 1.26.0 у импорта здесь.
+	//
+	// Описание без схемы сливается с любым: атрибуты те же, а ломаться при
+	// следующем обновлении SDK нечему.
+	res, err := resource.Merge(resource.Default(), resource.NewSchemaless(
 		semconv.ServiceName(serviceName),
 		semconv.ServiceVersion(version),
 		semconv.DeploymentEnvironment(environment),
