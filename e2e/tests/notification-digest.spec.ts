@@ -11,6 +11,9 @@ import { getAccount } from '../fixtures/test-accounts'
  * the application. Mail goes to a catcher in CI, and this reads it back.
  */
 
+/** Тема дайджеста. Одна на весь файл: по ней его и отличают от прочей почты. */
+const DIGEST_SUBJECT = /новое событие|новых события|новых событий/
+
 const MAILPIT = process.env.MAILPIT_URL || 'http://localhost:8025'
 
 // This file drives everything through the API and one page; a session handed
@@ -107,13 +110,78 @@ test.describe('Notification digest', () => {
         const curatorContext = await browser.newContext()
         const curatorToken = await signIn(curatorContext, baseURL!, 'curator')
 
+        // Кому именно назначаем задачу, спрашиваем у самого клиента.
+        //
+        // Раньше нужный клиент искался в списке куратора по почте — а список
+        // почты не содержит вовсе (curator/service.go отдаёт id, имя, аватар).
+        // Сравнение никогда не совпадало, и срабатывал запасной `roster[0]`:
+        // задача уходила произвольному клиенту, дайджест — ему же, а тест
+        // ждал письма на адрес своего клиента и сообщал «дайджест не пришёл».
+        // Пока у куратора был один клиент, запасной вариант совпадал с
+        // нужным, и подмена не проявлялась.
+        const clientContextForId = await browser.newContext()
+        let clientId: number
+        try {
+            const clientToken = await signIn(clientContextForId, baseURL!, 'client')
+            const profile = await clientContextForId.request.get(
+                `${baseURL}/api/v1/users/profile`,
+                { headers: asUser(clientToken) },
+            )
+            expect(profile.ok(), await profile.text()).toBeTruthy()
+            clientId = (await profile.json()).data.profile.id
+        } finally {
+            await clientContextForId.close()
+        }
+
+        // Условие проверки создаётся ею самой, а не наследуется от соседей.
+        //
+        // Дайджест уходит только по тем событиям, у которых для человека
+        // включён канал «почта». У клиента прогона `task_assigned.email`
+        // оказывался выключен — его гасит соседний тест настроек
+        // уведомлений, — и дайджест не отправлялся вовсе. Тест при этом
+        // сообщал «дайджест не пришёл»: правда, но не про дайджест.
+        const prefsContext = await browser.newContext()
+        let restorePreferences: (() => Promise<void>) | null = null
+        try {
+            const prefsToken = await signIn(prefsContext, baseURL!, 'client')
+            const before = await prefsContext.request.get(
+                `${baseURL}/api/v1/notifications/delivery-preferences`,
+                { headers: asUser(prefsToken) },
+            )
+            expect(before.ok(), await before.text()).toBeTruthy()
+            const original = (await before.json()).data
+
+            const withEmail = {
+                ...original,
+                types: original.types.map((t: { type: string }) =>
+                    t.type === 'task_assigned' ? { ...t, email: true } : t,
+                ),
+            }
+            await prefsContext.request.put(
+                `${baseURL}/api/v1/notifications/delivery-preferences`,
+                { headers: asUser(prefsToken), data: withEmail },
+            )
+
+            // Возвращаем как было — прогон не должен менять настройки учётки.
+            restorePreferences = async () => {
+                await prefsContext.request.put(
+                    `${baseURL}/api/v1/notifications/delivery-preferences`,
+                    { headers: asUser(prefsToken), data: original },
+                )
+                await prefsContext.close()
+            }
+        } catch (error) {
+            await prefsContext.close()
+            throw error
+        }
+
         const clients = await curatorContext.request.get(`${baseURL}/api/v1/curator/clients`, {
             headers: asUser(curatorToken),
         })
         expect(clients.ok(), await clients.text()).toBeTruthy()
         const roster = (await clients.json()).data ?? []
-        const target = roster.find((c: { email?: string }) => c.email === client.email) ?? roster[0]
-        expect(target, 'the curator has no clients to assign anything to').toBeTruthy()
+        const target = roster.find((c: { id: number }) => c.id === clientId)
+        expect(target, 'клиент прогона не в списке этого куратора').toBeTruthy()
 
         const created = await curatorContext.request.post(
             `${baseURL}/api/v1/curator/clients/${target.id}/tasks`,
@@ -133,13 +201,23 @@ test.describe('Notification digest', () => {
         await curatorContext.close()
 
         // The notification is unread, so after the wait the digest job mails it.
+        // Ждём именно дайджест, а не первое попавшееся письмо.
+        //
+        // Раньше ожидалось «письмо появилось», а тема проверялась отдельной
+        // строкой. Пока набор идёт в один поток, первым письмом и был
+        // дайджест; в несколько потоков в тот же ящик успевает прийти
+        // уведомление о входе («Вход в BURCEV») — оно приходит на каждый вход,
+        // а входов в наборе больше двухсот. Тест падал на чужом письме и
+        // сообщал «дайджест не пришёл», хотя дайджест приходил следом.
+        //
+        // Само ожидание и есть доказательство: не пришёл — истечёт срок.
         let message: Message | undefined
         await expect
             .poll(
                 async () => {
                     const messages = await inboxOf(request, client.email)
-                    message = messages[0]
-                    return messages.length
+                    message = messages.find((m) => DIGEST_SUBJECT.test(m.Subject))
+                    return message ? 1 : 0
                 },
                 {
                     message: 'no digest arrived for the client',
@@ -148,9 +226,6 @@ test.describe('Notification digest', () => {
                 }
             )
             .toBeGreaterThan(0)
-
-        // One message covering what happened, not one per event.
-        expect(message!.Subject).toMatch(/новое событие|новых события|новых событий/)
 
         const full = await request.get(`${MAILPIT}/api/v1/message/${message!.ID}`)
         const html = (await full.json()).HTML as string
@@ -188,6 +263,10 @@ test.describe('Notification digest', () => {
             })
         } finally {
             await clientContext.close()
+            // Канал письма возвращается в исходное состояние в любом случае:
+            // тест, меняющий настройки учётки и падающий на полпути, оставил
+            // бы их за собой следующему.
+            await restorePreferences?.()
         }
     })
 
@@ -195,7 +274,13 @@ test.describe('Notification digest', () => {
         test.slow()
 
         const client = getAccount('client')
-        const before = (await inboxOf(request, client.email)).length
+        // Считаем дайджесты, а не письма вообще: в тот же ящик за двадцать
+        // секунд ожидания успевает прийти уведомление о входе — его шлёт
+        // любой соседний тест, входящий под этой учёткой, — и счёт всей
+        // почты рос без всякого дайджеста.
+        const digestsBefore = (await inboxOf(request, client.email)).filter((m) =>
+            DIGEST_SUBJECT.test(m.Subject),
+        ).length
 
         const curatorContext = await browser.newContext()
         const curatorToken = await signIn(curatorContext, baseURL!, 'curator')
@@ -233,6 +318,11 @@ test.describe('Notification digest', () => {
         // The email existed to catch what the application missed. It did not
         // miss this one, so nothing should arrive.
         await new Promise((resolve) => setTimeout(resolve, 20_000))
-        expect(await inboxOf(request, client.email)).toHaveLength(before)
+        const digestsAfter = (await inboxOf(request, client.email)).filter((m) =>
+            DIGEST_SUBJECT.test(m.Subject),
+        ).length
+        expect(digestsAfter, 'прочитанное вовремя уведомление всё равно ушло письмом').toBe(
+            digestsBefore,
+        )
     })
 })

@@ -174,20 +174,25 @@ describe('AuthScreen', () => {
     listProviders.mockResolvedValue([])
   })
 
-  it('shows the magic-link form by default, not the password form', () => {
+  // Вход открывается формой пароля: прежде оба перехода с посадочной вели к
+  // форме ссылки, и «вход» с «регистрацией» выглядели одинаково — одно поле
+  // почты и блок согласий. Владелец продукта, проверяя руками, сообщил, что
+  // это одна и та же страница.
+  it('открывает форму пароля по умолчанию, а форму ссылки держит скрытой', () => {
     render(<AuthScreen />)
 
     expect(screen.getByTestId('logo')).toBeInTheDocument()
     expect(screen.getByTestId('auth-footer')).toBeInTheDocument()
-    expect(screen.getByTestId('magic-link-form')).toBeInTheDocument()
-    expect(screen.queryByTestId('auth-form')).not.toBeInTheDocument()
+    expect(screen.getByTestId('auth-form')).toBeInTheDocument()
+    // Скрыта, но не размонтирована: MagicLinkForm хранит своё состояние
+    // (набранную почту, согласия, отметку «отправлено») — см. AuthScreen.tsx.
+    expect(screen.getByTestId('magic-link-form')).not.toBeVisible()
   })
 
   it('reveals the password form via "Войти по паролю", without unmounting for a reload', async () => {
-    const user = userEvent.setup()
+    // Переключаться больше не нужно: вход и открывается формой пароля.
+    // Проверка осталась о том же — форма ссылки при этом не размонтирована.
     render(<AuthScreen />)
-
-    await switchToPasswordMode(user)
 
     expect(screen.getByTestId('auth-form')).toBeInTheDocument()
     // Hidden, not unmounted: MagicLinkForm keeps its own state (typed email,
@@ -355,17 +360,15 @@ describe('AuthScreen', () => {
     mockIsLoading = true
     const user = userEvent.setup()
     render(<AuthScreen />)
-    await switchToPasswordMode(user)
 
     expect(screen.getByLabelText('Войти')).toBeDisabled()
     expect(screen.getByLabelText('Зарегистрироваться')).toBeDisabled()
   })
 
-  // Задача 9, ruling по второму обзору: регистрация по ссылке — тот же
-  // экран, что вход, а не форма пароля. MagicLinkForm не различает вход и
-  // регистрацию поведением, только текстом — initialMode='register' обязан
-  // передать это дальше как `intent`, а не подменить форму целиком.
-  it('opens the link form for initialMode=register too, passing intent through — not the password form', () => {
+  // Режим решает, какая форма открыта первой: регистрация — ссылка с
+  // согласиями, вход — почта и пароль. Так два перехода с посадочной
+  // перестают приводить к неразличимым экранам.
+  it('регистрация открывается формой ссылки с намерением register', () => {
     render(<AuthScreen initialMode="register" />)
 
     expect(screen.getByTestId('magic-link-form')).toBeVisible()
@@ -373,12 +376,14 @@ describe('AuthScreen', () => {
     expect(screen.queryByTestId('auth-form')).not.toBeInTheDocument()
   })
 
-  it('still opens into the link form when initialMode is login (default, unchanged), with login intent', () => {
+  it('вход открывается формой пароля, а не ссылкой', () => {
     render(<AuthScreen initialMode="login" />)
 
-    expect(screen.getByTestId('magic-link-form')).toBeVisible()
+    expect(screen.getByTestId('auth-form')).toBeInTheDocument()
+    expect(screen.getByTestId('magic-link-form')).not.toBeVisible()
+    // Намерение всё равно «вход»: переключившись на ссылку, человек увидит
+    // тексты входа, а не регистрации.
     expect(screen.getByTestId('magic-link-intent')).toHaveTextContent('login')
-    expect(screen.queryByTestId('auth-form')).not.toBeInTheDocument()
   })
 
   // Иерархия кнопок в варианте пароля, когда до него всё же дошли из

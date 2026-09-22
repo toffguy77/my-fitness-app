@@ -43,12 +43,27 @@ test.describe('One curator, another curator’s client', () => {
             expect(clients.length, 'the first curator has no client to guard').toBeGreaterThan(0)
             const clientId = clients[0].id
 
-            // The stranger sees nobody, which is the other half of the same
-            // guarantee: not just refused, but not even listed.
+            // Вторая половина той же гарантии: чужой клиент не просто
+            // недоступен по маршрутам — он вообще не виден в списке.
+            //
+            // Проверяется отсутствие ИМЕННО этого клиента, а не пустота
+            // списка. Пустым список быть не обязан: регистрация назначает
+            // новому клиенту наименее загруженного куратора
+            // (auth/service.go, assignCurator), а «чужой» куратор начинает с
+            // нуля клиентов — значит каждый аккаунт, заведённый соседним
+            // тестом, достаётся ему. Прежняя проверка держалась на том, что
+            // до неё не успел отработать ни один такой тест: в CI порядок
+            // складывался удачно, в четыре потока — нет.
             const strangerRoster = await stranger.request.get(`${baseURL}/api/v1/curator/clients`, {
                 headers: asUser(strangerToken),
             })
-            expect((await strangerRoster.json()).data ?? []).toHaveLength(0)
+            const strangerClients = ((await strangerRoster.json()).data ?? []) as Array<{
+                id: number
+            }>
+            expect(
+                strangerClients.map((c) => c.id),
+                'чужой куратор видит клиента, которого ему не поручали',
+            ).not.toContain(clientId)
 
             const allowed: string[] = []
             for (const route of clientScopedRoutes()) {

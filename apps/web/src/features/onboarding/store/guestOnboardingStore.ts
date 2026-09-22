@@ -18,6 +18,16 @@ export interface GuestOnboardingState {
     weightKg: string
     activityLevel: ActivityLevel | ''
     result: GuestResult | null
+    /**
+     * Почта, которую гость уже назвал.
+     *
+     * Лежит в хранилище, а не в состоянии экрана: адрес спрашивали трижды —
+     * на «сохранить результат», на «отправить результат» и ещё раз при
+     * регистрации, — потому что каждый экран держал свой useState и о
+     * соседних не знал. Хранилище переживает переход на /auth, поэтому
+     * регистрация тоже открывается с уже заполненным полем.
+     */
+    email: string
 
     setStep: (step: number) => void
     next: () => void
@@ -29,6 +39,7 @@ export interface GuestOnboardingState {
     setWeightKg: (value: string) => void
     setActivityLevel: (value: ActivityLevel) => void
     setResult: (result: GuestResult | null) => void
+    setEmail: (value: string) => void
     load: (values: Partial<GuestParameters>, result?: GuestResult | null) => void
     reset: () => void
 }
@@ -54,6 +65,7 @@ const initialState = {
     weightKg: '',
     activityLevel: '' as const,
     result: null,
+    email: '',
 }
 
 export const useGuestOnboardingStore = create<GuestOnboardingState>()(
@@ -71,6 +83,7 @@ export const useGuestOnboardingStore = create<GuestOnboardingState>()(
             setWeightKg: (weightKg) => set({ weightKg }),
             setActivityLevel: (activityLevel) => set({ activityLevel }),
             setResult: (result) => set({ result }),
+            setEmail: (email) => set({ email }),
 
             // Used when somebody comes back through the link in the reminder.
             load: (values, result) =>

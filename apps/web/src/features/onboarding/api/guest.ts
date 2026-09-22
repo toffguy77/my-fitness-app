@@ -127,3 +127,23 @@ export function forgetLeadToken(): void {
     }
     document.cookie = `${LEAD_TOKEN_KEY}=; path=/; max-age=0; samesite=lax`
 }
+
+/**
+ * Почта, которую гость назвал в мастере расчёта.
+ *
+ * Экран входа читает её отсюда, а не из хранилища мастера напрямую: features
+ * не должны тянуть состояние друг друга. Пустая строка, если мастер не
+ * проходили или хранилище недоступно (приватное окно, отключённые данные
+ * сайта) — обращение обёрнуто, потому что доступ к localStorage в этих
+ * случаях бросает исключение, а не возвращает null.
+ */
+export function guestEmail(): string {
+    try {
+        const raw = localStorage.getItem('guest-onboarding')
+        if (!raw) return ''
+        const parsed = JSON.parse(raw) as { state?: { email?: string } }
+        return parsed.state?.email ?? ''
+    } catch {
+        return ''
+    }
+}

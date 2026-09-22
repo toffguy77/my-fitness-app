@@ -22,6 +22,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { guestEmail } from '@/features/onboarding/api/guest';
 import { Button, Input } from '@/shared/components/ui';
 import { ConsentSection } from './ConsentSection';
 import { useFormValidation } from '@/features/auth/hooks/useFormValidation';
@@ -42,7 +43,10 @@ export interface MagicLinkFormProps {
 }
 
 export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLinkFormProps) {
-    const [email, setEmail] = useState('');
+    // Адрес, который гость уже называл в мастере расчёта, подставляется
+    // сам: раньше его спрашивали и там, и здесь — третий раз подряд за одну
+    // сессию. Пустая строка, если мастер не проходили.
+    const [email, setEmail] = useState(() => guestEmail());
     const [consents, setConsents] = useState<ConsentState>({
         terms_of_service: false,
         privacy_policy: false,
@@ -121,9 +125,17 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                 >
                     {t('auth.magicLink.sent')}
                 </p>
+                {/*
+                    Переключатель выглядит нажимаемым, а не подписью.
+                    Прежний вариант — серый текст того же размера, что и
+                    пояснение рядом, без подчёркивания и без курсора-руки, —
+                    читался как надпись: вход по паролю оказывался
+                    недостижим для того, кто его ищет.
+                */}
                 <button
+                    type="button"
                     onClick={onSwitchToPassword}
-                    className="w-full text-sm text-gray-600 hover:text-gray-900"
+                    className="w-full cursor-pointer text-sm font-medium text-blue-600 underline underline-offset-4 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
                 >
                     {t('auth.magicLink.switchToPassword')}
                 </button>
@@ -173,9 +185,18 @@ export function MagicLinkForm({ onSwitchToPassword, intent = 'login' }: MagicLin
                     {isSubmitting ? t('auth.magicLink.submitting') : submitLabel}
                 </Button>
 
+                {/* (тот же переключатель на экране «письмо отправлено») */}
+                {/*
+                    Переключатель выглядит нажимаемым, а не подписью.
+                    Прежний вариант — серый текст того же размера, что и
+                    пояснение рядом, без подчёркивания и без курсора-руки, —
+                    читался как надпись: вход по паролю оказывался
+                    недостижим для того, кто его ищет.
+                */}
                 <button
+                    type="button"
                     onClick={onSwitchToPassword}
-                    className="w-full text-sm text-gray-600 hover:text-gray-900"
+                    className="w-full cursor-pointer text-sm font-medium text-blue-600 underline underline-offset-4 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
                 >
                     {t('auth.magicLink.switchToPassword')}
                 </button>
