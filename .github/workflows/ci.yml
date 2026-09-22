@@ -65,6 +65,13 @@ jobs:
       - name: Check E2E guest emails are cleanable
         run: node scripts/check-e2e-guest-emails.mjs
 
+      # Catches a setting in deploy/env/*.example that docker-compose.yml never
+      # passes to any service: it can be set and does nothing, which is worse
+      # than not existing. Twelve such settings were shipped, CORS_ORIGIN and a
+      # secret-shaped NEXT_PUBLIC_* among them; none was read by any code.
+      - name: Check deployment settings reach the code
+        run: node scripts/check-deploy-env.mjs
+
       # Catches a Russian sentence written inline in a section that has been
       # translated, and a t() key the dictionary does not have.
       - name: Check translations
