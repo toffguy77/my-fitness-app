@@ -20,7 +20,13 @@
 import http from 'node:http'
 
 const PORT = Number(process.env.PROXY_PORT || 3070)
-const WEB = process.env.PROXY_WEB || 'http://127.0.0.1:3069'
+// Порт фронтенда — из той же переменной, что и у самого фронтенда
+// (apps/web/package.json). Раньше он был зашит здесь числом, а в скрипте
+// запуска — своим: заняв 3069 чужим стендом, `npm run start` падал, а прокси
+// продолжал слать на 3069 и отдавал браузеру чужое приложение. Ни отказа, ни
+// предупреждения — страницы отдавались, просто не те.
+const WEB_PORT = Number(process.env.WEB_PORT || 3069)
+const WEB = process.env.PROXY_WEB || `http://127.0.0.1:${WEB_PORT}`
 const API = process.env.PROXY_API || 'http://127.0.0.1:4000'
 
 /** The paths Traefik hands to the API. Everything else belongs to the web app. */
@@ -124,6 +130,43 @@ server.on('clientError', (error, socket) => {
 process.on('uncaughtException', (error) => {
     console.error('proxy survived an unexpected error:', error)
 })
+
+/**
+ * Убеждается, что по адресу WEB стоит именно наш фронтенд.
+ *
+ * Проверяется метка `x-burcev-web`, которую ставит apps/web/next.config.ts.
+ * Без этой проверки прокси отдавал браузеру что угодно, слушающее нужный
+ * порт: `npm run start`, не сумевший занять порт, умирал, а на том же порту
+ * оставался фронтенд из соседнего рабочего каталога — запущенный неделю
+ * назад, собранный с другими настройками. Ни отказа, ни предупреждения:
+ * страницы отдавались, тесты падали на «элемент не найден», и выглядело это
+ * как сломанный продукт.
+ *
+ * Отказ здесь громкий и с объяснением — это дешевле часа поисков.
+ */
+async function verifyWebTarget() {
+    let response
+    try {
+        response = await fetch(WEB, { method: 'HEAD', redirect: 'manual' })
+    } catch (error) {
+        console.error(
+            `прокси не стартует: по адресу ${WEB} никто не отвечает (${error.code || error.message}).\n` +
+                `Фронтенд не поднят или занял другой порт — задайте WEB_PORT и запустите его им же.`,
+        )
+        process.exit(1)
+    }
+    if (!response.headers.get('x-burcev-web')) {
+        console.error(
+            `прокси не стартует: по адресу ${WEB} отвечает не приложение BURCEV.\n` +
+                `Нет метки x-burcev-web — скорее всего порт занят чужим стендом, а наш\n` +
+                `фронтенд не поднялся. Задайте WEB_PORT свободным портом и запустите\n` +
+                `фронтенд им же: WEB_PORT=<порт> npm run start --workspace=apps/web`,
+        )
+        process.exit(1)
+    }
+}
+
+await verifyWebTarget()
 
 server.listen(PORT, () => {
     console.log(`proxy on http://localhost:${PORT} — /api/v1, /ws, /health, /ready → ${API}, the rest → ${WEB}`)
