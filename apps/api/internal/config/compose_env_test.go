@@ -83,9 +83,6 @@ func TestComposePassesEveryVariableTheServiceReads(t *testing.T) {
 		"PORT": {}, "NODE_ENV": {},
 		// Test-only knob. Production must never scale its auth limits.
 		"AUTH_RATE_LIMIT_SCALE": {},
-		// Read by the OpenTelemetry SDK itself from the endpoint above; there
-		// is nothing for an operator to set separately.
-		"OTEL_EXPORTER_OTLP_HEADERS": {},
 		// Falls back to the connection host, which is how every environment
 		// runs; it exists for a certificate whose name differs from the host.
 		"DB_TLS_SERVER_NAME": {},

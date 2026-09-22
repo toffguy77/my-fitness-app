@@ -189,6 +189,11 @@ services:
       - APP_VERSION=${APP_VERSION:-dev}
       # Наблюдаемость. Обе выключаются отсутствием значения — см. .env.example.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      # Заголовки для приёмника трассировки: почти любой требует авторизации,
+      # и передаётся она именно так. Без этой строки переменную можно было
+      # задать где угодно — до контейнера она не доходила, экспортёр уходил
+      # без ключа и получал отказ. Трассировка при этом числилась включённой.
+      - OTEL_EXPORTER_OTLP_HEADERS=${OTEL_EXPORTER_OTLP_HEADERS}
       - OTEL_TRACES_SAMPLE_RATIO=${OTEL_TRACES_SAMPLE_RATIO:-0.1}
       - SENTRY_DSN=${SENTRY_DSN}
     networks:
