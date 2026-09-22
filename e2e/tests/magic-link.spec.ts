@@ -120,15 +120,28 @@ test.describe('Вход по одноразовой ссылке', () => {
 
         // Захват контакта прямо на экране результата (задача 10), не на
         // отдельном шаге контакта — форма под цифрами расчёта.
-        await page.getByLabel(/почт/i).fill(address)
+        // Точное имя поля: на экране теперь две формы — ссылки («Почта») и
+        // пароля («Электронная почта»), — и свободное /почт/i совпадало с
+        // обеими. Форма пароля скрыта, но в разметке есть.
+        await page.getByLabel('Почта', { exact: true }).fill(address)
         await page.getByLabel(/обработку/i).check()
         await page.getByRole('button', { name: 'Сохранить расчёт' }).click()
         await expect(page.getByText('Расчёт сохранён на этой почте.')).toBeVisible({ timeout: 10000 })
 
         // Тот же адрес — запрос ссылки входа. Аккаунта на этот адрес ещё нет:
         // сервер решит завести его при переходе.
+        //
+        // `/auth` открывает форму пароля: вход и регистрация разведены по
+        // существу. К ссылке ведёт переключатель — им и пользуемся, как
+        // человек без пароля. Переключатель отрисован сервером раньше, чем к
+        // нему привязан обработчик, поэтому повторяем сам клик, а не только
+        // ожидание после него.
         await page.goto('/auth')
-        await page.getByLabel(/почт/i).fill(address)
+        await expect(async () => {
+            await page.getByRole('button', { name: 'Войти по ссылке' }).click()
+            await expect(page.getByLabel('Почта', { exact: true })).toBeVisible({ timeout: 2000 })
+        }).toPass({ timeout: 15000 })
+        await page.getByLabel('Почта', { exact: true }).fill(address)
         await page.getByLabel(/оферт/i).check()
         await page.getByLabel(/конфиденциальност/i).check()
         await page.getByLabel(/обработку/i).check()
@@ -329,7 +342,7 @@ test.describe('Захват контакта на экране результа�
     test('без согласия на обработку данных кнопка сохранения недоступна', async ({ page }) => {
         await completeGuestWizardToResult(page, { heightCm: '165', weightKg: '58' })
 
-        await page.getByLabel(/почт/i).fill(freshAddress('noconsent'))
+        await page.getByLabel('Почта', { exact: true }).fill(freshAddress('noconsent'))
         await expect(page.getByRole('button', { name: 'Сохранить расчёт' })).toBeDisabled()
 
         await page.getByLabel(/обработку/i).check()

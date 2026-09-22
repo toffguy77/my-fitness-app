@@ -173,26 +173,27 @@ docker-clean: ## Clean Docker resources
 # Deployment
 # =============================================================================
 
+# Цель называет адрес, на который выкатывается dev: new.burcev.team, а не
+# dev.burcev.team — такого адреса нет и не было.
 deploy-dev: ## Deploy to dev environment
-	@echo "$(BLUE)Deploying to dev.burcev.team...$(RESET)"
+	@echo "$(BLUE)Deploying to new.burcev.team...$(RESET)"
 	git push origin dev
-	@echo "$(GREEN)✓ Pushed to dev branch - CI/CD will deploy$(RESET)"
+	@echo "$(GREEN)✓ Pushed to dev branch — Dokploy выкатит автоматически$(RESET)"
 
-deploy-staging: ## Deploy to staging environment
-	@echo "$(BLUE)Deploying to beta.burcev.team...$(RESET)"
-	git push origin staging
-	@echo "$(GREEN)✓ Pushed to staging branch - CI/CD will deploy$(RESET)"
+# deploy-staging убрана: ветки staging нет, адреса beta.burcev.team нет,
+# среды staging нет. Цель обещала выкатку туда, куда выкатывать некуда.
 
-deploy-prod: ## Deploy to production environment
-	@echo "$(BLUE)Deploying to burcev.team...$(RESET)"
-	@echo "$(RED)⚠ This will deploy to production!$(RESET)"
-	@read -p "Are you sure? (yes/no): " confirm; \
-	if [ "$$confirm" = "yes" ]; then \
-		git push origin main; \
-		echo "$(GREEN)✓ Pushed to main branch - CI/CD will deploy$(RESET)"; \
-	else \
-		echo "$(YELLOW)Deployment cancelled$(RESET)"; \
-	fi
+deploy-prod: ## Показать, как выкатывается прод (push в main этого НЕ делает)
+	@echo "$(RED)Push в main прод НЕ выкатывает.$(RESET)"
+	@echo "Dokploy следит автоматически только за dev; прод выкатывается вручную:"
+	@echo "  1. влить в main (через PR — требуются проверки ruleset'а);"
+	@echo "  2. задать APP_VERSION в составе прода;"
+	@echo "  3. вызвать compose.deploy в Dokploy API."
+	@echo ""
+	@echo "Прежняя версия этой цели делала push в main и сообщала"
+	@echo "«CI/CD will deploy» — выкатки не происходило, а сообщение говорило,"
+	@echo "что произошла."
+
 
 # =============================================================================
 # Database

@@ -81,29 +81,24 @@ describe('AuthPage — какой экран открывает mode из адр
         expect(screen.queryByText('Получить ссылку для входа')).not.toBeInTheDocument()
     })
 
-    it('без mode открывает форму по ссылке с намерением "вход" — прежнее поведение', async () => {
+    // Без mode — это вход, а вход теперь открывается формой пароля: два
+    // перехода с посадочной обязаны приводить к разным экранам, иначе
+    // «регистрация» и «вход» неразличимы (проверка владельца продукта).
+    it('без mode открывает форму пароля, без согласий', async () => {
         render(await AuthPage({ searchParams: Promise.resolve({}) }))
 
-        expect(
-            screen.getByRole('heading', { name: 'Вход', level: 2 })
-        ).toBeVisible()
-        expect(
-            screen.getByRole('button', { name: 'Получить ссылку для входа' })
-        ).toBeVisible()
-        expect(
-            screen.queryByRole('button', { name: 'Получить ссылку для регистрации' })
-        ).not.toBeInTheDocument()
+        expect(screen.getByLabelText('Электронная почта')).toBeVisible()
+        expect(screen.getByLabelText('Пароль')).toBeVisible()
+        // Согласия — признак заведения аккаунта. Форма ссылки остаётся в
+        // разметке (скрытой), поэтому проверяем видимость, а не наличие.
+        expect(screen.queryAllByText(/Я принимаю/)[0]).not.toBeVisible()
     })
 
     it('при mode=login явно — то же самое, что и без mode', async () => {
         render(await AuthPage({ searchParams: Promise.resolve({ mode: 'login' }) }))
 
-        expect(
-            screen.getByRole('heading', { name: 'Вход', level: 2 })
-        ).toBeVisible()
-        expect(
-            screen.getByRole('button', { name: 'Получить ссылку для входа' })
-        ).toBeVisible()
+        expect(screen.getByLabelText('Электронная почта')).toBeVisible()
+        expect(screen.getByLabelText('Пароль')).toBeVisible()
     })
 
     // Пароль остаётся вторым способом входа/регистрации, доступным без

@@ -112,7 +112,11 @@ export class SettingsNotificationsPage {
   constructor(public page: Page) {}
 
   get heading() {
-    return this.page.getByRole('heading', { name: 'Уведомления' })
+    // exact: имя роли по умолчанию ищется как ПОДСТРОКА, поэтому
+    // 'Уведомления' совпадало и с соседним 'Уведомления в Telegram' —
+    // strict mode отказывал на двух совпадениях. Страница при этом верна:
+    // заголовок один.
+    return this.page.getByRole('heading', { name: 'Уведомления', exact: true })
   }
 
   get doNotDisturbLabel() {

@@ -404,7 +404,10 @@ function GuestResultView({
 // their name too.
 function GuestResultCapture() {
     const state = useGuestOnboardingStore()
-    const [email, setEmail] = useState('')
+    // Адрес — из общего хранилища, а не из состояния этого экрана: его уже
+    // могли назвать на соседнем шаге, и спрашивать второй раз незачем.
+    const email = state.email
+    const setEmail = state.setEmail
     const [dataConsent, setDataConsent] = useState(false)
     const [contactConsent, setContactConsent] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -510,7 +513,10 @@ function GuestResultCapture() {
 
 function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: () => void }) {
     const state = useGuestOnboardingStore()
-    const [email, setEmail] = useState('')
+    // То же общее хранилище: экран результата и этот шаг спрашивали адрес
+    // каждый по-своему, и человек вводил его дважды подряд.
+    const email = state.email
+    const setEmail = state.setEmail
     const [name, setName] = useState('')
     const [dataConsent, setDataConsent] = useState(false)
     const [contactConsent, setContactConsent] = useState(false)

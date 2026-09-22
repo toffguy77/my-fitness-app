@@ -42,7 +42,8 @@ async function checkAllRequiredConsents(user: ReturnType<typeof userEvent.setup>
 describe('Switching between the magic-link and password forms', () => {
     it('keeps a typed email after a round trip through the password form', async () => {
         const user = userEvent.setup()
-        render(<AuthScreen />)
+        // Круговой переход начинается с формы ссылки — её открывает регистрация.
+        render(<AuthScreen initialMode="register" />)
 
         await user.type(screen.getByLabelText(/почт/i), 'saved@example.com')
 
@@ -57,7 +58,8 @@ describe('Switching between the magic-link and password forms', () => {
     it('keeps showing the confirmation after a round trip, instead of a blank form', async () => {
         ;(apiClient.post as jest.Mock).mockResolvedValueOnce(undefined)
         const user = userEvent.setup()
-        render(<AuthScreen />)
+        // Круговой переход начинается с формы ссылки — её открывает регистрация.
+        render(<AuthScreen initialMode="register" />)
 
         await user.type(screen.getByLabelText(/почт/i), 'sent@example.com')
         await checkAllRequiredConsents(user)

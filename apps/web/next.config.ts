@@ -30,6 +30,21 @@ const baseConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },
+  // Метка «это приложение BURCEV».
+  //
+  // Прокси разработки (scripts/dev-proxy.mjs) требует её от цели перед тем,
+  // как начать проксировать. Без метки он не отличал наш фронтенд от чужого,
+  // слушающего тот же порт: если `npm run start` не смог занять порт и умер,
+  // прокси продолжал отдавать браузеру приложение из другого каталога —
+  // молча, без единой ошибки, страницы просто были не те.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [{ key: 'x-burcev-web', value: appVersion }],
+      },
+    ];
+  },
   async rewrites() {
     const apiBackend = process.env.INTERNAL_API_URL || 'http://api:4000';
     return [

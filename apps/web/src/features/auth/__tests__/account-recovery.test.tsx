@@ -56,7 +56,6 @@ describe('Signing in with a deletion pending', () => {
         render(<AuthScreen />)
         // The magic-link form is what a fresh screen shows; the password form
         // is a second way in, reached without a reload.
-        await userEvent.click(screen.getByRole('button', { name: /войти по паролю/i }))
         await userEvent.type(screen.getByLabelText('Электронная почта'), 'leaving@example.com')
         await userEvent.type(screen.getByLabelText('Пароль'), 'Password123!')
         await userEvent.click(screen.getByLabelText('Войти'))
@@ -74,7 +73,6 @@ describe('Signing in with a deletion pending', () => {
         })
 
         render(<AuthScreen />)
-        await userEvent.click(screen.getByRole('button', { name: /войти по паролю/i }))
         await userEvent.type(screen.getByLabelText('Электронная почта'), 'user@example.com')
         await userEvent.type(screen.getByLabelText('Пароль'), 'Password123!')
         await userEvent.click(screen.getByLabelText('Войти'))

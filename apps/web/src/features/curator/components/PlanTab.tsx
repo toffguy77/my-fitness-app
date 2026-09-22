@@ -179,7 +179,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     setEditingPlan(undefined)
                     setShowForm(true)
                 }}
-                className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
+                className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:bottom-24 sm:right-6 sm:h-14 sm:w-14 touch-manipulation"
                 aria-label={t('curator.plan.createAria')}
             >
                 <Plus className="h-5 w-5 sm:h-6 sm:w-6" />

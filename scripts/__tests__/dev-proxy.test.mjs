@@ -60,6 +60,10 @@ before(async () => {
 
     web = http.createServer((request, response) => {
         response.setHeader('Content-Type', 'text/html')
+        // Метка, по которой прокси узнаёт наш фронтенд. Её ставит
+        // apps/web/next.config.ts; без неё прокси откажется стартовать —
+        // см. «не стартует на чужом сервере» ниже.
+        response.setHeader('x-burcev-web', '0.0.0-test')
         response.end('<html><body>from the web app</body></html>')
     })
     await new Promise((resolve) => web.listen(WEB_PORT, '127.0.0.1', resolve))
@@ -184,4 +188,56 @@ test('answers 502 rather than dying when an upstream is gone', async () => {
 
     web = http.createServer((request, response) => response.end('<html>from the web app</html>'))
     await new Promise((resolve) => web.listen(WEB_PORT, '127.0.0.1', resolve))
+})
+
+/**
+ * Отказ вместо тихой работы не на том фронтенде.
+ *
+ * Прокси по умолчанию шлёт на 3069. Если `npm run start` не смог занять порт
+ * и умер, там остаётся чужой стенд — например из соседнего рабочего каталога,
+ * поднятый неделю назад. Прокси отдавал его браузеру молча: страницы есть,
+ * ошибок нет, а приложение не то. Час поисков стоил дороже, чем эта проверка.
+ */
+async function startProxyExpectingFailure(env) {
+    const child = spawn(process.execPath, ['scripts/dev-proxy.mjs'], {
+        env: { ...process.env, ...env },
+        stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let output = ''
+    child.stdout.on('data', (chunk) => (output += chunk))
+    child.stderr.on('data', (chunk) => (output += chunk))
+    const code = await new Promise((resolve) => child.on('exit', resolve))
+    return { code, output }
+}
+
+test('не стартует, когда по адресу фронтенда никто не отвечает', async () => {
+    const { code, output } = await startProxyExpectingFailure({
+        PROXY_PORT: String(PROXY_PORT + 10),
+        PROXY_WEB: 'http://127.0.0.1:1',
+        PROXY_API: `http://127.0.0.1:${API_PORT}`,
+    })
+
+    assert.equal(code, 1)
+    assert.match(output, /никто не отвечает/)
+})
+
+test('не стартует, когда порт занят не нашим приложением', async () => {
+    const stranger = http.createServer((request, response) => {
+        response.end('это не BURCEV')
+    })
+    const strangerPort = WEB_PORT + 11
+    await new Promise((resolve) => stranger.listen(strangerPort, '127.0.0.1', resolve))
+    try {
+        const { code, output } = await startProxyExpectingFailure({
+            PROXY_PORT: String(PROXY_PORT + 11),
+            PROXY_WEB: `http://127.0.0.1:${strangerPort}`,
+            PROXY_API: `http://127.0.0.1:${API_PORT}`,
+        })
+
+        assert.equal(code, 1)
+        assert.match(output, /не приложение BURCEV/)
+        assert.match(output, /WEB_PORT/)
+    } finally {
+        await shutDown(stranger)
+    }
 })
