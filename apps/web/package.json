@@ -3,10 +3,10 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev -p 3069",
+        "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev -p ${WEB_PORT:-3069}",
         "build": "NODE_OPTIONS='--max-old-space-size=4096' next build && npm run build:sw",
         "build:analyze": "ANALYZE=true NODE_OPTIONS='--max-old-space-size=4096' next build",
-        "start": "next start -p 3069",
+        "start": "next start -p ${WEB_PORT:-3069}",
         "lint": "eslint src",
         "lint:fix": "eslint src --fix",
         "type-check": "tsc --noEmit",
