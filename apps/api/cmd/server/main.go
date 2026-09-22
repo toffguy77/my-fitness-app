@@ -409,6 +409,9 @@ func main() {
 	// optional capability here.
 	tracingOn, stopTracing, err := telemetry.StartTracing(
 		context.Background(), cfg.OTLPEndpoint, "burcev-api", cfg.Version, cfg.Env)
+	// Признак ставится по тому, что вышло, а не по тому, что задали: см.
+	// config.deriveFeatures, где он намеренно выключен по умолчанию.
+	cfg.Features.Tracing = tracingOn
 	if err != nil {
 		log.Warn("Tracing could not be started; continuing without it", "error", err)
 	} else if tracingOn {
