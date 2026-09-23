@@ -74,3 +74,38 @@ func TestAssignCuratorSkipsTestAndDepartingCurators(t *testing.T) {
 	require.Equal(t, "live@example.test", assignedEmail,
 		"куратором стал не живой человек, хотя он единственный годный кандидат")
 }
+
+// Служебному клиенту служебный куратор достаётся — иначе прогон остаётся без
+// кураторов вовсе.
+//
+// В прогоне (CI, .github/workflows/e2e.yml) все учётки на @burcev.test,
+// включая кураторские. Правило «служебные не кураторы» без оговорки оставило
+// бы без куратора каждого, кого заводит registration.spec.ts, и сломало бы
+// проверки переписки — при том, что на проде оно ничего бы не изменило.
+// Поэтому запрет односторонний: служебный куратор не достаётся живому
+// человеку, но служебному клиенту достаётся.
+func TestAssignCuratorGivesTestCuratorToTestClient(t *testing.T) {
+	db := testsupport.SchemaWithMigrations(t, "assign_curator_test_client")
+	ctx := context.Background()
+	service := auth.NewService(db.DB, &config.Config{}, logger.New())
+
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO users (email, password, name, role, email_verified)
+		 VALUES ('e2e-curator@burcev.test', 'x', 'Служебный', 'coordinator', true)`)
+	require.NoError(t, err)
+
+	result, err := service.Register(ctx, "e2e-client-17@burcev.test", "Passw0rd!x", "Служебный клиент",
+		"127.0.0.1", "test", &auth.ConsentsInput{
+			TermsOfService: true, PrivacyPolicy: true, DataProcessing: true,
+		})
+	require.NoError(t, err)
+	require.NotNil(t, result.User)
+
+	var assignedEmail string
+	err = db.QueryRowContext(ctx, `
+		SELECT u.email FROM curator_client_relationships r
+		  JOIN users u ON u.id = r.curator_id
+		 WHERE r.client_id = $1 AND r.status = 'active'`, result.User.ID).Scan(&assignedEmail)
+	require.NoError(t, err, "служебный клиент остался без куратора — прогон так работать не сможет")
+	require.Equal(t, "e2e-curator@burcev.test", assignedEmail)
+}

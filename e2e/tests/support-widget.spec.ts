@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 
 import { test, expect, signIn, asUser } from '../fixtures/session'
+import { answerCookieBanner } from '../fixtures/cookie-banner'
 
 /**
  * Разговор с ботом поддержки на посадочной — до регистрации.
@@ -190,6 +191,7 @@ test.describe('Виджет поддержки на посадочной (гос
         page,
     }) => {
         await page.goto('/')
+        await answerCookieBanner(page)
 
         const { conversationId, token } = await openWidgetForReal(page)
         conversationIds.push(conversationId)
@@ -267,6 +269,7 @@ test.describe('Виджет поддержки на посадочной (гос
         baseURL,
     }) => {
         await page.goto('/')
+        await answerCookieBanner(page)
 
         const { conversationId, token } = await openWidgetForReal(page)
         conversationIds.push(conversationId)
@@ -314,6 +317,7 @@ test.describe('Виджет поддержки на посадочной (гос
 
     test('потолок сообщений в разговоре отвечает внятной причиной, а не общей фразой', async ({ page }) => {
         await page.goto('/')
+        await answerCookieBanner(page)
 
         const { conversationId, token } = await openWidgetForReal(page)
         conversationIds.push(conversationId)
@@ -361,6 +365,7 @@ test.describe('Виджет поддержки на посадочной (гос
 
     test('при недоступном API виджет объясняет причину и не роняет страницу', async ({ page }) => {
         await page.goto('/')
+        await answerCookieBanner(page)
 
         // Разрыв соединения — не обработанный сервером отказ: посетитель без
         // сети или с упавшим бэкендом получает ровно это на первом же запросе.
