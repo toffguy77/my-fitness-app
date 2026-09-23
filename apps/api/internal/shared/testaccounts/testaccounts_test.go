@@ -44,4 +44,20 @@ func TestPatternMatchesTooling(t *testing.T) {
 		t.Error("слепок не знает тех же шаблонов, что IsTest: " +
 			"ожидались *@burcev.test и e2e-*@burcev.team")
 	}
+
+	// Третья запись — в SQL выбора куратора. Вызвать оттуда Go нельзя: выбор
+	// делает один запрос, и тащить всех координаторов в память ради одной
+	// строки было бы хуже повторения. Но повторение молчит, когда расходится,
+	// а разойтись ему есть куда: именно так понижение куратора осталось со
+	// старым запросом, когда условия добавили в регистрацию.
+	pick, err := os.ReadFile(filepath.Join(root, "apps", "api", "internal",
+		"shared", "curators", "pick.go"))
+	if err != nil {
+		t.Fatalf("не прочитать подбор куратора: %v", err)
+	}
+	if !strings.Contains(string(pick), "'%@burcev.test'") ||
+		!strings.Contains(string(pick), "'e2e-%'") ||
+		!strings.Contains(string(pick), "'%@burcev.team'") {
+		t.Error("SQL подбора куратора не знает тех же шаблонов, что IsTest")
+	}
 }
