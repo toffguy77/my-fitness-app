@@ -39,6 +39,9 @@ import {
 import { ClientTasksSection } from '@/features/dashboard/components/ClientTasksSection'
 import { CuratorFeedbackSection } from '@/features/dashboard/components/CuratorFeedbackSection'
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
+import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
+import { messageForOr } from '@/shared/errors/apiErrors'
+import toast from 'react-hot-toast'
 import type { NavigationItemId } from '@/features/dashboard/types'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
 import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
@@ -159,9 +162,34 @@ export default function DashboardPage() {
         // Navigation is handled by the FooterNavigation component
     }
 
+    const [submittingReport, setSubmittingReport] = useState(false)
+
+    /**
+     * Отправка недельного отчёта куратору.
+     *
+     * Кнопка существовала с самого начала — заметная, пульсирующая, по
+     * воскресеньям, — и вызывала обработчик, который писал в консоль. Человек
+     * жал, ничего не происходило, и понять это было нельзя: ни ошибки, ни
+     * подтверждения. При этом сервер умел принимать отчёт, а служба дашборда
+     * умела уведомлять куратора: не хватало ровно этого вызова.
+     *
+     * Сервер сам проверяет, что неделя заполнена, и отказывает с перечнем
+     * недостающего — показываем этот перечень, а не общую фразу: человеку
+     * нужно знать, что именно дозаполнить.
+     */
     const handleSubmitReport = async () => {
-        // TODO: Implement weekly report submission
-        console.log('Submit weekly report')
+        if (submittingReport) return
+        setSubmittingReport(true)
+        try {
+            // Сервер принимает дату недели, не момент времени.
+            const asDate = (d: Date) => d.toISOString().slice(0, 10)
+            await dashboardApi.submitWeeklyReport(asDate(selectedWeek.start), asDate(selectedWeek.end))
+            toast.success(t('dashboard.calendar.reportSent'))
+        } catch (error) {
+            toast.error(messageForOr(error, t('dashboard.calendar.reportFailed')))
+        } finally {
+            setSubmittingReport(false)
+        }
     }
 
     // Show loading state while checking authentication

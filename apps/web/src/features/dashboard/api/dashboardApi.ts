@@ -45,4 +45,16 @@ export const dashboardApi = {
      */
     getReportFeedback: (reportId: string) =>
         apiClient.get<CuratorFeedback>(getApiUrl('/dashboard/weekly-reports/' + reportId + '/feedback')),
+
+    /**
+     * Отправить недельный отчёт куратору.
+     *
+     * Сервер сам проверяет полноту недели и отказывает с перечнем того, чего
+     * не хватает; куратор получает уведомление уже из службы дашборда.
+     */
+    submitWeeklyReport: (weekStart: string, weekEnd: string) =>
+        apiClient.post<{ id: string; week_number: number }>(getApiUrl('/dashboard/weekly-report'), {
+            week_start: weekStart,
+            week_end: weekEnd,
+        }),
 }
