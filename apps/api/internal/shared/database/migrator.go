@@ -44,7 +44,39 @@ func NewMigrator(db *DB, migrationsFS fs.FS, log migrationLogger) *Migrator {
 // baseline: if schema_migrations is empty and baseline > 0, all versions up to
 // and including baseline are recorded as already applied without running their
 // SQL (for brownfield databases that were migrated manually).
+// migrationLockID — произвольное, но постоянное число: блокировка Postgres
+// различает держателей именно по нему. Менять его нельзя, иначе старый и
+// новый экземпляры перестанут видеть друг друга.
+const migrationLockID = 8_150_923
+
 func (m *Migrator) Run(ctx context.Context, baseline int) error {
+	// Миграции применяет ровно один экземпляр за раз.
+	//
+	// Без этого два контейнера, стартующие одновременно, оба видят один и тот
+	// же список неприменённого и оба берутся его применять: второй падает на
+	// «колонка уже существует» или на повторной записи версии — и уходит в
+	// перезапуск по кругу. Пока экземпляр был один, это не проявлялось; любая
+	// попытка выкатки без простоя упёрлась бы в это сразу.
+	//
+	// Блокировка на соединении, а не на транзакции: миграции применяются
+	// каждая своей транзакцией, и блокировка обязана пережить их все.
+	// Ожидающий экземпляр не падает, а ждёт и затем видит всё применённым.
+	conn, err := m.db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("acquire connection for migration lock: %w", err)
+	}
+	defer conn.Close()
+
+	if _, err := conn.ExecContext(ctx, `SELECT pg_advisory_lock($1)`, migrationLockID); err != nil {
+		return fmt.Errorf("take migration lock: %w", err)
+	}
+	defer func() {
+		if _, err := conn.ExecContext(context.WithoutCancel(ctx),
+			`SELECT pg_advisory_unlock($1)`, migrationLockID); err != nil {
+			m.log.Errorw("Не удалось отпустить блокировку миграций", "error", err)
+		}
+	}()
+
 	if err := m.ensureMigrationsTable(ctx); err != nil {
 		return err
 	}
