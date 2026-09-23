@@ -21,6 +21,11 @@ function renderMetrika() {
     render(<YandexMetrika />)
 }
 
+let pathname = '/'
+jest.mock('next/navigation', () => ({
+    usePathname: () => pathname,
+}))
+
 jest.mock('next/script', () => ({
     __esModule: true,
     default: ({ children }: { children?: React.ReactNode }) => (
@@ -29,7 +34,10 @@ jest.mock('next/script', () => ({
 }))
 
 describe('Полоса согласия на аналитические cookie', () => {
-    beforeEach(() => localStorage.clear())
+    beforeEach(() => {
+        localStorage.clear()
+        pathname = '/'
+    })
 
     it('показывается, пока выбор не сделан', () => {
         render(<CookieConsent />)
@@ -74,4 +82,28 @@ describe('Полоса согласия на аналитические cookie',
 
         expect(screen.getByTestId('metrika-script')).toBeInTheDocument()
     })
+})
+
+describe('Где полоса показывается', () => {
+    beforeEach(() => localStorage.clear())
+
+    it.each(['/', '/auth', '/legal/privacy', '/onboarding'])(
+        'на публичной странице %s — да',
+        (path) => {
+            pathname = path
+            render(<CookieConsent />)
+
+            expect(screen.getByTestId('cookie-consent')).toBeInTheDocument()
+        },
+    )
+
+    it.each(['/dashboard', '/settings/password', '/curator', '/food-tracker'])(
+        'внутри кабинета %s — нет: там снизу навигация, и полоса перекрывала кнопки',
+        (path) => {
+            pathname = path
+            render(<CookieConsent />)
+
+            expect(screen.queryByTestId('cookie-consent')).not.toBeInTheDocument()
+        },
+    )
 })
