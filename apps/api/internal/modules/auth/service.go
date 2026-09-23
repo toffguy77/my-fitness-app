@@ -722,6 +722,22 @@ func (s *Service) revokeAllUserRefreshTokens(ctx context.Context, userID int64) 
 // Best-effort: registration succeeds even if no coordinator exists.
 func (s *Service) assignCurator(ctx context.Context, clientID int64) {
 	// Pick coordinator with fewest active clients
+	// Кого нельзя ставить куратором новому человеку:
+	//
+	//   • служебные учётки прогона. На проде они живут постоянно и всегда
+	//     пусты — а выбирается наименее загруженный, то есть они всегда
+	//     первые в очереди. Клиент достался бы куратору, который никогда не
+	//     ответит. На 23 сентября из трёх кандидатов с нулём клиентов два
+	//     были тестовыми;
+	//   • ушедших. Учётка с запрошенным удалением деактивирована и через 30
+	//     дней исчезнет вовсе, но кандидатом оставалась: у владельца продукта
+	//     такая висела с 15 сентября и всё это время могла получить клиента;
+	//   • удалённых.
+	//
+	// Шаблон служебных адресов повторён в SQL, а не вызван из Go, потому что
+	// выбор делает один запрос: вытащить всех координаторов и отсеять в коде
+	// значило бы читать таблицу целиком ради одной строки. Совпадение с
+	// testaccounts.IsTest стережёт TestAssignmentSkipsTestAccounts.
 	var curatorID int64
 	err := s.db.QueryRowContext(ctx, `
 		SELECT u.id
@@ -729,6 +745,10 @@ func (s *Service) assignCurator(ctx context.Context, clientID int64) {
 		LEFT JOIN curator_client_relationships ccr
 			ON ccr.curator_id = u.id AND ccr.status = 'active'
 		WHERE u.role = 'coordinator'
+		  AND u.deleted_at IS NULL
+		  AND u.deletion_requested_at IS NULL
+		  AND LOWER(u.email) NOT LIKE '%@burcev.test'
+		  AND NOT (LOWER(u.email) LIKE 'e2e-%' AND LOWER(u.email) LIKE '%@burcev.team')
 		GROUP BY u.id
 		ORDER BY COUNT(ccr.client_id) ASC
 		LIMIT 1

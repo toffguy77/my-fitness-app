@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/burcev/api/internal/modules/admin"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -113,4 +114,48 @@ func TestDemotionInvalidatesTheOldToken(t *testing.T) {
 		`SELECT curator_id FROM curator_client_relationships WHERE client_id = $1 AND status = 'active'`,
 		clientID).Scan(&newCuratorID))
 	assert.Equal(t, otherCuratorID, newCuratorID, "the orphaned client must have been reassigned")
+}
+
+// Служебной учётной записи прогона нельзя дать права через админку.
+//
+// Такие учётки живут на проде постоянно и нужны ровно затем, чтобы под ними
+// ходили проверки: пароль лежит в файле окружения, который раздаётся тому,
+// кто их гоняет. Куратор из такой учётки получал бы живых клиентов,
+// администратор — доступ ко всем данным.
+//
+// Роли им ставятся напрямую в базе, подготовительной командой перед прогоном
+// и под присмотром. Через интерфейс администратора это выглядело бы обычным
+// повышением сотрудника — и было бы им по последствиям.
+func TestTestAccountsCannotBePromoted(t *testing.T) {
+	service, _, _, newUser := newRoleChangeService(t)
+	ctx := context.Background()
+
+	for _, c := range []struct{ email, role string }{
+		{"e2e-curator@burcev.team", "coordinator"},
+		{"e2e-admin@burcev.team", "super_admin"},
+		{"stand-17@burcev.test", "coordinator"},
+	} {
+		id := newUser(ctx, c.email, "client")
+
+		err := service.ChangeRole(ctx, id, c.role)
+
+		require.Error(t, err, "%s не должна получать роль %s", c.email, c.role)
+		require.ErrorIs(t, err, apperrors.ErrForbidden)
+	}
+}
+
+// А человека на том же домене — можно: граница проходит по приставке, а не
+// по домену, иначе повысить сотрудника стало бы нельзя.
+func TestRealAccountOnProductDomainCanBePromoted(t *testing.T) {
+	service, _, db, newUser := newRoleChangeService(t)
+	ctx := context.Background()
+
+	id := newUser(ctx, "director@burcev.team", "client")
+
+	require.NoError(t, service.ChangeRole(ctx, id, "coordinator"))
+
+	var role string
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT role FROM users WHERE id = $1`, id).Scan(&role))
+	require.Equal(t, "coordinator", role)
 }
