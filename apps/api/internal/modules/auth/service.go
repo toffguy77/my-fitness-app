@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/burcev/api/internal/shared/testaccounts"
+	"github.com/burcev/api/internal/shared/curators"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/burcev/api/internal/config"
@@ -724,46 +724,10 @@ func (s *Service) revokeAllUserRefreshTokens(ctx context.Context, userID int64) 
 // Best-effort: registration succeeds even if no coordinator exists.
 func (s *Service) assignCurator(ctx context.Context, clientID int64, clientEmail string) {
 	// Pick coordinator with fewest active clients
-	// Кого нельзя ставить куратором новому человеку:
-	//
-	//   • служебные учётки прогона — живому человеку. На проде они живут
-	//     постоянно и всегда пусты, а выбирается наименее загруженный, то
-	//     есть они всегда первые в очереди: клиент достался бы куратору,
-	//     который никогда не ответит. На 23 сентября из трёх кандидатов с
-	//     нулём клиентов два были тестовыми.
-	//
-	//     Служебному клиенту служебный куратор, наоборот, единственно
-	//     возможный: в прогоне других кураторов нет вовсе, и запрет без
-	//     этой оговорки оставил бы без куратора всех, кого заводит
-	//     registration.spec.ts. Правило поэтому не «служебные не кураторы»,
-	//     а «служебные обслуживают только служебных»;
-	//   • ушедших. Учётка с запрошенным удалением деактивирована и через 30
-	//     дней исчезнет вовсе, но кандидатом оставалась: у владельца продукта
-	//     такая висела с 15 сентября и всё это время могла получить клиента;
-	//   • удалённых.
-	//
-	// Шаблон служебных адресов повторён в SQL, а не вызван из Go, потому что
-	// выбор кураторов делает один запрос: вытащить всех координаторов и
-	// отсеять в коде значило бы читать таблицу целиком ради одной строки.
-	// Клиент — один известный адрес, его проверяет testaccounts.IsTest.
-	// Совпадение двух записей шаблона стережёт TestPatternMatchesTooling.
-	var curatorID int64
-	err := s.db.QueryRowContext(ctx, `
-		SELECT u.id
-		FROM users u
-		LEFT JOIN curator_client_relationships ccr
-			ON ccr.curator_id = u.id AND ccr.status = 'active'
-		WHERE u.role = 'coordinator'
-		  AND u.deleted_at IS NULL
-		  AND u.deletion_requested_at IS NULL
-		  AND ($1 OR (
-			LOWER(u.email) NOT LIKE '%@burcev.test'
-			AND NOT (LOWER(u.email) LIKE 'e2e-%' AND LOWER(u.email) LIKE '%@burcev.team')
-		  ))
-		GROUP BY u.id
-		ORDER BY COUNT(ccr.client_id) ASC
-		LIMIT 1
-	`, testaccounts.IsTest(clientEmail)).Scan(&curatorID)
+	// Кого нельзя ставить куратором и почему — в curators.LeastLoaded.
+	// Тот же выбор делает понижение куратора в admin: два одинаковых
+	// запроса в разных пакетах однажды уже разошлись.
+	curatorID, err := curators.LeastLoaded(ctx, s.db, clientEmail, 0)
 	if err != nil {
 		s.log.Warnw("No coordinator available for auto-assignment", "client_id", clientID, "error", err)
 		return

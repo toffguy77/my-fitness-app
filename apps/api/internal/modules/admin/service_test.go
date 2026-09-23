@@ -277,9 +277,9 @@ func TestChangeRole(t *testing.T) {
 		mock.ExpectBegin()
 
 		// Get active clients - none
-		mock.ExpectQuery("SELECT client_id FROM curator_client_relationships").
+		mock.ExpectQuery("SELECT r.client_id, u.email").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
+			WillReturnRows(sqlmock.NewRows([]string{"client_id", "email"}))
 
 		// Deactivate relationships
 		mock.ExpectExec("UPDATE curator_client_relationships SET status").
@@ -311,9 +311,10 @@ func TestChangeRole(t *testing.T) {
 		mock.ExpectBegin()
 
 		// Has active clients
-		mock.ExpectQuery("SELECT client_id FROM curator_client_relationships").
+		mock.ExpectQuery("SELECT r.client_id, u.email").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).AddRow(int64(100)))
+			WillReturnRows(sqlmock.NewRows([]string{"client_id", "email"}).
+				AddRow(int64(100), "person@example.test"))
 
 		// Deactivate relationships
 		mock.ExpectExec("UPDATE curator_client_relationships SET status").
@@ -325,10 +326,12 @@ func TestChangeRole(t *testing.T) {
 			WithArgs(int64(1)).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		// No remaining curators
-		mock.ExpectQuery("SELECT COUNT").
-			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+		// Некому отдать: подбор кандидата не возвращает ни одной строки.
+		// Отдельного подсчёта координаторов больше нет — он считал всех
+		// подряд и разрешал то, чего подбор сделать не мог.
+		mock.ExpectQuery("SELECT u.id").
+			WithArgs(false, int64(1)).
+			WillReturnError(sql.ErrNoRows)
 
 		mock.ExpectRollback()
 

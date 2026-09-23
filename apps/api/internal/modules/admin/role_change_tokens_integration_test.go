@@ -159,3 +159,44 @@ func TestRealAccountOnProductDomainCanBePromoted(t *testing.T) {
 		`SELECT role FROM users WHERE id = $1`, id).Scan(&role))
 	require.Equal(t, "coordinator", role)
 }
+
+// Клиенты понижаемого куратора достаются живому человеку, а не служебной
+// учётке.
+//
+// Понижение куратора переносит его клиентов на наименее загруженного — и до
+// этой правки выбирало его своим запросом, копией того, что стоит в
+// регистрации. Когда в тот, другой, добавили условия, этот остался прежним:
+// живые люди уехали бы на учётку прогона, которая всегда пуста и потому
+// всегда первая в очереди. Теперь выбор один на оба места
+// (curators.LeastLoaded), и эта проверка стоит на том, которое разошлось.
+func TestDemotionMovesClientsToALiveCurator(t *testing.T) {
+	service, _, db, newUser := newRoleChangeService(t)
+	ctx := context.Background()
+
+	leaving := newUser(ctx, "leaving@example.test", "coordinator")
+	client := newUser(ctx, "person@example.test", "client")
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status)
+		 VALUES ($1, $2, 'active')`, leaving, client)
+	require.NoError(t, err)
+
+	// Служебная учётка пуста — то есть наименее загружена из всех.
+	newUser(ctx, "e2e-curator@burcev.team", "coordinator")
+
+	// Живой куратор уже ведёт человека, то есть заведомо загруженнее.
+	live := newUser(ctx, "live@example.test", "coordinator")
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status)
+		 VALUES ($1, $2, 'active')`, live, newUser(ctx, "other@example.test", "client"))
+	require.NoError(t, err)
+
+	require.NoError(t, service.ChangeRole(ctx, leaving, "client"))
+
+	var newCurator string
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT u.email FROM curator_client_relationships r
+		  JOIN users u ON u.id = r.curator_id
+		 WHERE r.client_id = $1 AND r.status = 'active'`, client).Scan(&newCurator))
+	require.Equal(t, "live@example.test", newCurator,
+		"клиент уехал на служебную учётку, хотя живой куратор был")
+}
