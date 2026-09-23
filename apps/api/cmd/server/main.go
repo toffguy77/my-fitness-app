@@ -83,10 +83,6 @@ func main() {
 		log.Warn("JWT_SECRET is unsafe (placeholder or shorter than 32 bytes). "+
 			"This is fatal in production; set a random secret.", "env", cfg.Env)
 	}
-	if disabled := cfg.Features.Disabled(); len(disabled) > 0 {
-		log.Warn("Optional capabilities are disabled — the credentials for them are not set",
-			"disabled", disabled)
-	}
 
 	// Initialize database
 	//
@@ -448,6 +444,17 @@ func main() {
 		}()
 	} else {
 		log.Warn("Tracing is off — OTEL_EXPORTER_OTLP_ENDPOINT is not set")
+	}
+
+	// Сводка выключенного — после запуска трассировки, а не до.
+	//
+	// Признак трассировки ставится по тому, что вышло, а не по тому, что
+	// задали (config.deriveFeatures), и до StartTracing он выключен всегда.
+	// Напечатанная раньше, сводка называла выключенной возможность, которая
+	// через полсекунды работала, — и приучала не читать строку целиком.
+	if disabled := cfg.Features.Disabled(); len(disabled) > 0 {
+		log.Warn("Optional capabilities are disabled — the credentials for them are not set",
+			"disabled", disabled)
 	}
 
 	metrics := telemetry.New("burcev", db.DB.Stats)
