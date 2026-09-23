@@ -42,6 +42,7 @@ import (
 	"github.com/burcev/api/internal/shared/storage"
 	"github.com/burcev/api/internal/shared/telegram"
 	"github.com/burcev/api/internal/shared/telemetry"
+	"github.com/burcev/api/internal/shared/testaccounts"
 	"github.com/burcev/api/internal/shared/ws"
 	"github.com/burcev/api/migrations"
 	"github.com/gin-gonic/gin"
@@ -126,6 +127,28 @@ func main() {
 	migrator := database.NewMigrator(db, migrations.FS, log)
 	if err := migrator.Run(context.Background(), cfg.MigrationBaseline); err != nil {
 		log.Fatal("Database migration failed", "error", err)
+	}
+
+	// Служебный куратор, за которым числится живой человек, — это клиент,
+	// закреплённый за учёткой, которая никогда не ответит. 23 сентября на
+	// проде два из трёх кандидатов с нулём клиентов были служебными, то есть
+	// первыми в очереди на следующего пришедшего.
+	//
+	// Назначение такую пару больше не создаёт, но создать её можно иначе:
+	// правкой в базе, переносом клиента, строкой с прежних времён. Поэтому
+	// смотрим на то, что в таблице на самом деле.
+	//
+	// Предупреждение, а не отказ: забытая связка, роняющая прод при запуске,
+	// хуже того, от чего мы защищаемся. Сама по себе служебная учётка с
+	// ролью поводом не считается — на проде они живут по решению владельца,
+	// и крик о них при каждом запуске никто бы не читал.
+	if cfg.IsProduction() {
+		if serving, err := testaccounts.ServingRealClients(context.Background(), db.DB); err != nil {
+			log.Warn("Не удалось проверить служебных кураторов", "error", err)
+		} else if len(serving) > 0 {
+			log.Warn("За служебными учётками числятся живые клиенты — "+
+				"переназначьте их на настоящего куратора", "curators", serving)
+		}
 	}
 
 	// Email is an optional capability. In production the config validation
