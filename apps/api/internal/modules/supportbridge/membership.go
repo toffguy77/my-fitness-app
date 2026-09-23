@@ -122,6 +122,49 @@ func (s *Service) OnRoleGranted(ctx context.Context, userID int64, name string) 
 	return s.messenger.SendMessage(ctx, chatID, invitationText+"\n\n"+link)
 }
 
+// OnTelegramLinked зовётся, когда человек подключил бота.
+//
+// Возвращает, куратор ли это. Ответ нужен поддержке, чтобы не слать куратору
+// руководство клиента: его рабочее место — кураторский раздел, и «как вести
+// дневник питания» ему не про него.
+//
+// Смена роли и подключение бота идут в любом порядке. Если роль дали раньше,
+// OnRoleGranted писать было некуда — бот не пишет первым, — и приглашение
+// осталось ждать в профиле, где его никто не искал. Человек, только что
+// нажавший «Старт», как раз там, где сообщение дойдёт.
+//
+// Уже вошедшему в группу не пишем: приглашение ему больше ни к чему, а
+// повторное сообщение после отвязки и новой привязки выглядело бы сбоем.
+// Куратором он при этом остаётся — руководство клиента ему всё равно не идёт.
+func (s *Service) OnTelegramLinked(ctx context.Context, userID int64) (bool, error) {
+	curator, err := s.belongsInGroup(ctx, userID)
+	if err != nil || !curator {
+		return false, err
+	}
+	if !s.membershipEnabled() {
+		return true, nil
+	}
+
+	var joined bool
+	err = s.db.QueryRowContext(ctx,
+		`SELECT joined_at IS NOT NULL FROM curator_group_invites WHERE user_id = $1`,
+		userID).Scan(&joined)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return true, fmt.Errorf("check invite state: %w", err)
+	}
+	if joined {
+		return true, nil
+	}
+
+	var name string
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COALESCE(name, '') FROM users WHERE id = $1`, userID).Scan(&name); err != nil {
+		return true, fmt.Errorf("look up name: %w", err)
+	}
+
+	return true, s.OnRoleGranted(ctx, userID, name)
+}
+
 // OnRoleRevoked убирает человека из группы.
 //
 // Сразу, не дожидаясь сверки: ушедший куратор, остающийся в группе даже на
@@ -221,9 +264,26 @@ func (s *Service) userByChat(ctx context.Context, chatID int64) (int64, bool, er
 }
 
 // invitationText — что человек видит вместе со ссылкой.
+//
+// Руководство названо ссылкой, а не пересказом: пересказ в сообщении устареет
+// молча, а по ссылке всегда лежит то, что в `main`. Репозиторий открыт —
+// учётная запись GitHub читателю не нужна.
 const invitationText = "Вы назначены куратором. Вот ссылка в рабочую группу — " +
 	"в ней у каждого клиента своя тема.\n\n" +
-	"Ссылка личная и работает один раз."
+	"Ссылка личная и работает один раз.\n\n" +
+	"С чего начать — здесь: " + CuratorGuideURL
+
+// CuratorGuideURL — приглашение куратору в репозитории.
+//
+// Публичная ссылка на `main`: у куратора нет ни репозитория, ни доступа к
+// внутренним путям, а руководство меняется вместе с продуктом.
+//
+// Путь закодирован процентами, хотя GitHub понимает и кириллицу как есть.
+// Причина в получателе: бот шлёт обычный текст (parse_mode не задан — см.
+// telegram.Client.SendMessage), и ссылку клиент выделяет сам. Где именно он
+// оборвёт кириллический путь, зависит от клиента, а оборванная ссылка ведёт
+// в никуда молча. Некрасиво, зато нажимается везде.
+const CuratorGuideURL = "https://github.com/toffguy77/my-fitness-app/blob/main/docs/curator-guide/00-%D0%BF%D1%80%D0%B8%D0%B3%D0%BB%D0%B0%D1%88%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BA%D1%83%D1%80%D0%B0%D1%82%D0%BE%D1%80%D1%83.md"
 
 // Reconcile сверяет состав группы с ролями.
 //
