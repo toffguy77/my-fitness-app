@@ -251,5 +251,10 @@ func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient stri
 	// пользователя: отказ здесь не должен стирать уже созданный аккаунт.
 	s.storeConsents(ctx, userID, &parsed, ip, ua)
 
+	// Тот же вызов, что и в Register. Без него аккаунт, заведённый переходом
+	// по ссылке, остаётся без куратора навсегда: назначение нигде не
+	// повторяется, а на посадочной вход по ссылке — главный путь внутрь.
+	s.assignCurator(ctx, userID, recipient)
+
 	return s.issueTokensForUser(ctx, userID, ip, ua)
 }

@@ -190,9 +190,9 @@ func TestChangeRole(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "person@example.test"))
 
 		mock.ExpectBegin()
 		mock.ExpectExec("UPDATE users SET role").
@@ -211,9 +211,9 @@ func TestChangeRole(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "person@example.test"))
 
 		err := service.ChangeRole(ctx, 1, "client")
 		assert.NoError(t, err)
@@ -225,9 +225,9 @@ func TestChangeRole(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("super_admin"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("super_admin", "person@example.test"))
 
 		err := service.ChangeRole(ctx, 1, "client")
 		assert.Error(t, err)
@@ -239,7 +239,7 @@ func TestChangeRole(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(999)).
 			WillReturnError(sql.ErrNoRows)
 
@@ -255,9 +255,9 @@ func TestChangeRole(t *testing.T) {
 
 		service := NewService(&database.DB{DB: db}, logger.New())
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "person@example.test"))
 
 		err = service.ChangeRole(context.Background(), 1, "coordinator")
 		assert.Error(t, err)
@@ -269,9 +269,9 @@ func TestChangeRole(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("coordinator"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("coordinator", "person@example.test"))
 
 		// demoteCurator: begin tx
 		mock.ExpectBegin()
@@ -304,9 +304,9 @@ func TestChangeRole(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(1)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("coordinator"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("coordinator", "person@example.test"))
 
 		mock.ExpectBegin()
 

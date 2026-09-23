@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/session'
+import { answerCookieBanner } from '../fixtures/cookie-banner'
 
 /**
  * The way in, for somebody who has no account.
@@ -97,6 +98,10 @@ test.describe('Guest onboarding', () => {
     // iPhone SE width — the tightest common viewport, and where the overlap
     // was reproducible before the fix.
     await page.setViewportSize({ width: 375, height: 667 })
+
+    // Полоса про cookie держит виджет скрытым, пока на неё не ответили, —
+    // а перекрытие проверяется именно между виджетом и кнопкой «Далее».
+    await answerCookieBanner(page)
 
     const continueButton = page.getByRole('button', { name: 'Далее', exact: true })
     const widgetButton = page.getByRole('button', { name: 'Задать вопрос' })

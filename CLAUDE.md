@@ -184,6 +184,31 @@ makes its required check unsatisfiable: every pull request then reports
 mergeable and blocked at the same time, with nothing failing and nothing
 saying why. If a job has to be renamed, change the ruleset in the same breath.
 
+## Служебные учётки
+
+Учётки прогона (`*@burcev.test` и `e2e-*@burcev.team`) живут на проде
+постоянно. Шаблон объявлен один раз — `internal/shared/testaccounts` — и
+повторён в двух местах, где вызвать Go нельзя: в SQL выбора куратора и в
+`scripts/e2e-db-snapshot.sh`. Совпадение сторожит `TestPatternMatchesTooling`.
+
+Три правила:
+
+1. Служебный куратор достаётся только служебному клиенту. Такие учётки всегда
+   пусты, а выбирается наименее загруженный — то есть без этого правила они
+   всегда первые в очереди за живым человеком.
+2. Роль выше клиентской через админку им не поставить (`admin.ChangeRole`).
+   Роли ставятся прямо в базе, подготовительной командой.
+3. На старте в проде сервис предупреждает, если за служебной учёткой всё же
+   числится живой клиент.
+
+Граница проходит по приставке, а не по домену: `director@burcev.team` —
+человек, и повысить его можно.
+
+**Куратор назначается на каждом пути внутрь** — форма регистрации, ссылка,
+внешний провайдер. Назначение нигде не повторяется, так что путь, где о нём
+забыли, оставляет клиента без куратора навсегда.
+`TestEveryAccountPathAssignsCurator` проверяет все три.
+
 ## Integrity Checks
 
 Two scripts guard defects the audit found shipping to production. Both run in CI

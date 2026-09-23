@@ -11,6 +11,7 @@ import (
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/testaccounts"
 )
 
 // ErrLastCurator: разжаловать последнего куратора нельзя — клиентов некому
@@ -269,13 +270,30 @@ func (s *Service) ChangeRole(ctx context.Context, userID int64, newRole string) 
 	startTime := time.Now()
 
 	// Get current role
-	var currentRole string
-	err := s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&currentRole)
+	var currentRole, email string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT role, email FROM users WHERE id = $1`, userID).Scan(&currentRole, &email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("ChangeRole: %w", apperrors.ErrNotFound)
 		}
 		return fmt.Errorf("failed to get user role: %w", err)
+	}
+
+	// Служебной учётке прогона нельзя дать права.
+	//
+	// Такие живут на проде постоянно и нужны ровно затем, чтобы под ними
+	// ходили проверки. Куратор из них получал бы живых клиентов, а
+	// администратор — доступ ко всем данным; пароль при этом лежит в файле
+	// окружения, который раздаётся тому, кто гоняет проверки.
+	//
+	// Роли им ставятся напрямую в базе, одной подготовительной командой перед
+	// прогоном (см. руководство администратора) — сознательно, под присмотром
+	// и с паролями, заведёнными тут же. Через интерфейс администратора —
+	// никогда: оттуда это выглядело бы обычным повышением сотрудника.
+	if newRole != "client" && testaccounts.IsTest(email) {
+		return fmt.Errorf("служебной учётной записи нельзя дать роль %q: %w",
+			newRole, apperrors.ErrForbidden)
 	}
 
 	if currentRole == newRole {
