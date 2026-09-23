@@ -1,11 +1,40 @@
 'use client'
 
 import Script from 'next/script'
+import { useEffect, useState } from 'react'
+import { analyticsChoice, COOKIE_CHOICE_KEY } from './CookieConsent'
 
 const METRIKA_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
 
+/**
+ * Счётчик подключается только после согласия.
+ *
+ * Раньше скрипт вставлялся при открытии страницы, до всякого вопроса: cookie
+ * ставились, поведение записывалось, а согласия не спрашивали ни у кого.
+ * Полоса согласия без этой проверки была бы украшением — «отказался» и
+ * «согласился» вели бы себя одинаково.
+ *
+ * Слушаем и событие storage: человек мог ответить в другой вкладке.
+ */
 export function YandexMetrika({ nonce }: { nonce?: string }) {
-    if (!METRIKA_ID) return null
+    const [allowed, setAllowed] = useState(false)
+
+    useEffect(() => {
+        const read = () => setAllowed(analyticsChoice() === 'granted')
+        read()
+        const onStorage = (event: StorageEvent) => {
+            if (event.key === COOKIE_CHOICE_KEY) read()
+        }
+        // Собственное событие: в своей вкладке storage не срабатывает.
+        window.addEventListener('analytics-consent-changed', read)
+        window.addEventListener('storage', onStorage)
+        return () => {
+            window.removeEventListener('analytics-consent-changed', read)
+            window.removeEventListener('storage', onStorage)
+        }
+    }, [])
+
+    if (!METRIKA_ID || !allowed) return null
 
     return (
         <>
