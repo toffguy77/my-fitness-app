@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/config"
+	"github.com/burcev/api/internal/modules/auth"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/testsupport"
 	"github.com/stretchr/testify/require"
