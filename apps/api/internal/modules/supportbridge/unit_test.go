@@ -2,6 +2,10 @@ package supportbridge
 
 import (
 	"context"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/burcev/api/internal/shared/logger"
@@ -150,4 +154,22 @@ func (noMembers) DeclineJoinRequest(context.Context, int64, int64) error { retur
 func (noMembers) RemoveMember(context.Context, int64, int64) error       { return nil }
 func (noMembers) Administrators(context.Context, int64) ([]telegram.Member, error) {
 	return nil, nil
+}
+
+// Ссылка на руководство куратора ведёт в существующий файл.
+//
+// Её отправляют живому человеку в момент, когда он только стал куратором:
+// переименование файла сломает её молча, а заметит это тот, кому в первый
+// рабочий день покажут «404» вместо «с чего начать».
+func TestCuratorGuideURLPointsAtAFileThatExists(t *testing.T) {
+	const prefix = "https://github.com/toffguy77/my-fitness-app/blob/main/"
+	require.True(t, strings.HasPrefix(CuratorGuideURL, prefix),
+		"ссылка ведёт не в этот репозиторий: %s", CuratorGuideURL)
+
+	decoded, err := url.PathUnescape(strings.TrimPrefix(CuratorGuideURL, prefix))
+	require.NoError(t, err)
+
+	// Пять уровней вверх: internal/modules/supportbridge внутри apps/api.
+	_, err = os.Stat(filepath.Join("..", "..", "..", "..", "..", filepath.FromSlash(decoded)))
+	require.NoError(t, err, "файл руководства не найден: %s", decoded)
 }

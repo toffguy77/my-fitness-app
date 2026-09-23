@@ -296,3 +296,62 @@ func TestInviteLinkForIsOnlyForCurators(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, link, "уходящему выдали ссылку")
 }
+
+// Куратор, подключивший бота после назначения, получает приглашение — и в нём
+// ссылку на кураторское руководство.
+//
+// Смена роли и запуск бота идут в любом порядке. Когда роль дали первой,
+// писать было некуда: бот не пишет первым, и приглашение оставалось ждать в
+// профиле, где его никто не искал. Момент, когда человек нажал «Старт», —
+// единственный, в который сообщение дойдёт.
+func TestLinkingAfterRoleSendsTheInvitation(t *testing.T) {
+	s, db, members, messenger := withMembership(t, "linked_after_role")
+	ctx := context.Background()
+
+	curator := account(t, db, "curator@example.test", "coordinator")
+	link(t, db, curator, 777)
+
+	isCurator, err := s.OnTelegramLinked(ctx, curator)
+	require.NoError(t, err)
+	assert.True(t, isCurator)
+
+	require.Len(t, messenger.sent, 1, "куратор остался без приглашения")
+	assert.Contains(t, messenger.sent[0], supportbridge.CuratorGuideURL,
+		"в приглашении нет ссылки на руководство куратора")
+	assert.Equal(t, 1, members.links, "ссылку в группу не выдали")
+}
+
+// Обычный человек кураторским приглашением не тревожится.
+func TestLinkingByPlainPersonSendsNothing(t *testing.T) {
+	s, db, _, messenger := withMembership(t, "linked_plain")
+	ctx := context.Background()
+
+	person := account(t, db, "person@example.test", "client")
+	link(t, db, person, 778)
+
+	isCurator, err := s.OnTelegramLinked(ctx, person)
+	require.NoError(t, err)
+	assert.False(t, isCurator, "обычного человека приняли за куратора")
+	assert.Empty(t, messenger.sent)
+}
+
+// Вошедшему в группу приглашение второй раз не шлётся.
+//
+// Иначе отвязка и новая привязка выглядели бы сбоем: человек уже внутри, а
+// ему снова предлагают войти по ссылке, которая работает один раз.
+func TestLinkingAgainDoesNotRepeatTheInvitation(t *testing.T) {
+	s, db, _, messenger := withMembership(t, "linked_twice")
+	ctx := context.Background()
+
+	curator := account(t, db, "joined@example.test", "coordinator")
+	link(t, db, curator, 779)
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO curator_group_invites (user_id, invite_link, joined_at)
+		 VALUES ($1, 'https://t.me/+уже', NOW())`, curator)
+	require.NoError(t, err)
+
+	isCurator, err := s.OnTelegramLinked(ctx, curator)
+	require.NoError(t, err)
+	assert.True(t, isCurator, "вошедший куратор перестал считаться куратором")
+	assert.Empty(t, messenger.sent, "приглашение отправили тому, кто уже в группе")
+}

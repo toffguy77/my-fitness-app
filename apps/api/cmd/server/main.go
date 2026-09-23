@@ -395,6 +395,9 @@ func main() {
 		supportService.WithMembership(bridge).WithGroup(cfg.TelegramSupportGroupID)
 		adminService.WithGroupMembership(bridge)
 		telegramLinkHandler.WithInvites(bridge)
+		// Кто бы ни пришёл первым — роль или запуск бота, — человек получает
+		// своё: куратор приглашение в группу, остальные руководство клиента.
+		supportService.WithLinkedGreeter(bridge)
 
 		// Уведомления — и в Telegram тому, кто его привязал.
 		notificationsSvc.WithTelegram(telegramlink.NewDelivery(
