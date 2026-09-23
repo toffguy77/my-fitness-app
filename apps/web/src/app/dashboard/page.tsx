@@ -158,10 +158,6 @@ export default function DashboardPage() {
         }
     }, [setOfflineStatus])
 
-    const handleNavigate = (itemId: NavigationItemId) => {
-        // Navigation is handled by the FooterNavigation component
-    }
-
     const [submittingReport, setSubmittingReport] = useState(false)
 
     /**
@@ -214,7 +210,6 @@ export default function DashboardPage() {
             userName={profileName || userData.name || userData.email}
             avatarUrl={avatarUrl}
             activeNavItem="dashboard"
-            onNavigate={handleNavigate}
         >
             <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 p-3 sm:p-4 md:p-6">
                 {/* Profile Completion Banner */}

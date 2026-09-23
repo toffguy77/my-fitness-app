@@ -72,6 +72,13 @@ jobs:
       - name: Check deployment settings reach the code
         run: node scripts/check-deploy-env.mjs
 
+      # Catches a button whose handler does nothing — a comment, or a
+      # console.log, and no action. Two shipped: «Отправить недельный отчёт»
+      # (pulsing, every Sunday) and the chevron on every task. Both were
+      # visible, both stayed silent on click.
+      - name: Check interface handlers do something
+        run: node scripts/check-dead-handlers.mjs
+
       # Catches a Russian sentence written inline in a section that has been
       # translated, and a t() key the dictionary does not have.
       - name: Check translations
