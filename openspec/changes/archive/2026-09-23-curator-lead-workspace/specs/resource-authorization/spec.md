@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Доступ к заявкам
 
@@ -37,8 +37,6 @@
 
 - **WHEN** пользователь без привилегированной роли обращается к разговорам
 - **THEN** доступ не предоставляется
-
-## ADDED Requirements
 
 ### Requirement: Заявки и разговоры вне группы клиентских маршрутов
 
