@@ -557,8 +557,6 @@ func (h *Handler) SubmitWeeklyReport(c *gin.Context) {
 		return
 	}
 
-	// TODO: Trigger curator notification
-
 	if h.analytics != nil {
 		h.analytics.RecordServerEvent(c.Request.Context(), "weekly_report_submitted", userID, nil)
 	}
