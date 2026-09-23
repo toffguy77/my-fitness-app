@@ -13,11 +13,14 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { t } from '@/shared/i18n';
 
 export const COOKIE_CHOICE_KEY = 'analytics-consent';
+
+/** Событие, которым полоса сообщает о выборе в своей же вкладке. */
+export const CONSENT_EVENT = 'analytics-consent-changed';
 
 export type CookieChoice = 'granted' | 'denied';
 
@@ -36,14 +39,26 @@ export function analyticsChoice(): CookieChoice | null {
     }
 }
 
-export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) => void }) {
-    // Полоса рисуется только после монтирования: на сервере выбора не видно,
-    // и отрисованная там полоса мигнула бы у того, кто уже ответил.
-    const [choice, setChoice] = useState<CookieChoice | null | 'unknown'>('unknown');
+/** Подписка на изменение выбора: своё событие плюс другая вкладка. */
+export function subscribeToAnalyticsChoice(onChange: () => void): () => void {
+    window.addEventListener(CONSENT_EVENT, onChange);
+    window.addEventListener('storage', onChange);
+    return () => {
+        window.removeEventListener(CONSENT_EVENT, onChange);
+        window.removeEventListener('storage', onChange);
+    };
+}
 
-    useEffect(() => {
-        setChoice(analyticsChoice());
-    }, []);
+export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) => void }) {
+    // useSyncExternalStore, а не чтение в эффекте: выбор живёт вне React, а
+    // запись его в состояние из useEffect — лишний проход отрисовки, на
+    // который правило react-hooks и ругается. На сервере выбора не видно
+    // вовсе, поэтому серверный снимок — null, и полоса там не рисуется.
+    const choice = useSyncExternalStore(
+        subscribeToAnalyticsChoice,
+        analyticsChoice,
+        () => 'unknown' as const,
+    );
 
     const decide = (value: CookieChoice) => {
         try {
@@ -52,9 +67,9 @@ export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) 
             // Не сохранилось — спросим в следующий раз. Молча грузить счётчик
             // при этом всё равно нельзя.
         }
-        setChoice(value);
-        // Счётчик слушает это событие: в своей же вкладке storage не срабатывает.
-        window.dispatchEvent(new Event('analytics-consent-changed'));
+        // Своё событие: в своей вкладке storage не срабатывает. Оно же
+        // перерисовывает и полосу, и счётчик — оба читают один источник.
+        window.dispatchEvent(new Event(CONSENT_EVENT));
         onChoice?.(value);
     };
 

@@ -8,7 +8,18 @@
  */
 import { render, screen, fireEvent } from '@testing-library/react'
 import { CookieConsent, COOKIE_CHOICE_KEY, analyticsChoice } from '../CookieConsent'
+
 import { YandexMetrika } from '../YandexMetrika'
+
+/**
+ * Идентификатор счётчика задаётся здесь: в тестовом окружении его нет, и без
+ * этого проверки «счётчик не подключается» проходили бы даже со снятой
+ * защитой — компонент возвращал бы null по отсутствию идентификатора.
+ */
+function renderMetrika() {
+    process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID = '99999'
+    render(<YandexMetrika />)
+}
 
 jest.mock('next/script', () => ({
     __esModule: true,
@@ -43,7 +54,7 @@ describe('Полоса согласия на аналитические cookie',
     })
 
     it('счётчик не подключается без согласия', () => {
-        render(<YandexMetrika />)
+        renderMetrika()
 
         expect(screen.queryByTestId('metrika-script')).not.toBeInTheDocument()
     })
@@ -51,8 +62,16 @@ describe('Полоса согласия на аналитические cookie',
     it('счётчик не подключается и при прямом отказе', () => {
         localStorage.setItem(COOKIE_CHOICE_KEY, 'denied')
 
-        render(<YandexMetrika />)
+        renderMetrika()
 
         expect(screen.queryByTestId('metrika-script')).not.toBeInTheDocument()
+    })
+
+    it('а с согласием — подключается: иначе проверки выше ничего не значат', () => {
+        localStorage.setItem(COOKIE_CHOICE_KEY, 'granted')
+
+        renderMetrika()
+
+        expect(screen.getByTestId('metrika-script')).toBeInTheDocument()
     })
 })

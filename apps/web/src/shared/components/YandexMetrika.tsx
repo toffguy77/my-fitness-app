@@ -1,10 +1,9 @@
 'use client'
 
 import Script from 'next/script'
-import { useEffect, useState } from 'react'
-import { analyticsChoice, COOKIE_CHOICE_KEY } from './CookieConsent'
+import { useSyncExternalStore } from 'react'
+import { analyticsChoice, subscribeToAnalyticsChoice } from './CookieConsent'
 
-const METRIKA_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
 
 /**
  * Счётчик подключается только после согласия.
@@ -17,24 +16,20 @@ const METRIKA_ID = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
  * Слушаем и событие storage: человек мог ответить в другой вкладке.
  */
 export function YandexMetrika({ nonce }: { nonce?: string }) {
-    const [allowed, setAllowed] = useState(false)
+    // Читается при отрисовке, а не при загрузке модуля: Next всё равно
+    // подставляет значение литералом на сборке, зато проверка может задать
+    // его сама. Пока читалось при загрузке, в тестах идентификатора не было
+    // вовсе — и проверки «счётчик не подключается» проходили бы даже со
+    // снятой защитой.
+    const metrikaId = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
+    const allowed =
+        useSyncExternalStore(
+            subscribeToAnalyticsChoice,
+            analyticsChoice,
+            () => null,
+        ) === 'granted'
 
-    useEffect(() => {
-        const read = () => setAllowed(analyticsChoice() === 'granted')
-        read()
-        const onStorage = (event: StorageEvent) => {
-            if (event.key === COOKIE_CHOICE_KEY) read()
-        }
-        // Собственное событие: в своей вкладке storage не срабатывает.
-        window.addEventListener('analytics-consent-changed', read)
-        window.addEventListener('storage', onStorage)
-        return () => {
-            window.removeEventListener('analytics-consent-changed', read)
-            window.removeEventListener('storage', onStorage)
-        }
-    }, [])
-
-    if (!METRIKA_ID || !allowed) return null
+    if (!metrikaId || !allowed) return null
 
     return (
         <>
@@ -50,7 +45,7 @@ export function YandexMetrika({ nonce }: { nonce?: string }) {
                     k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
                     (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
 
-                    ym(${METRIKA_ID}, "init", {
+                    ym(${metrikaId}, "init", {
                         clickmap: true,
                         trackLinks: true,
                         accurateTrackBounce: true,
@@ -61,7 +56,7 @@ export function YandexMetrika({ nonce }: { nonce?: string }) {
             <noscript>
                 <div>
                     <img
-                        src={`https://mc.yandex.ru/watch/${METRIKA_ID}`}
+                        src={`https://mc.yandex.ru/watch/${metrikaId}`}
                         style={{ position: 'absolute', left: '-9999px' }}
                         alt=""
                     />
