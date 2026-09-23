@@ -137,6 +137,10 @@ func (s *Service) createUserFromProvider(ctx context.Context, provider string, p
 		return nil, fmt.Errorf("commit registration: %w", err)
 	}
 
+	// Тот же вызов, что и в Register: аккаунт, заведённый через провайдера,
+	// иначе остаётся без куратора навсегда — назначение нигде не повторяется.
+	s.assignCurator(ctx, userID, profile.Email)
+
 	s.log.Info("Registered via external provider", "user_id", userID, "provider", provider)
 	return s.issueTokensForUser(ctx, userID, ip, ua)
 }

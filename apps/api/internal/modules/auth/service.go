@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgconn"
 	"strings"
 	"time"
+
+	"github.com/burcev/api/internal/shared/curators"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/apperrors"
@@ -224,7 +226,7 @@ func (s *Service) Register(ctx context.Context, email, password, name, ip, ua st
 	s.storeConsents(ctx, user.ID, consents, ip, ua)
 
 	// Auto-assign curator (coordinator with fewest active clients)
-	s.assignCurator(ctx, user.ID)
+	s.assignCurator(ctx, user.ID, user.Email)
 
 	// Generate JWT token
 	token, err := s.generateToken(&user)
@@ -720,19 +722,12 @@ func (s *Service) revokeAllUserRefreshTokens(ctx context.Context, userID int64) 
 // assignCurator assigns the least-loaded active coordinator to a new client.
 // Creates both the curator_client_relationship and a conversation.
 // Best-effort: registration succeeds even if no coordinator exists.
-func (s *Service) assignCurator(ctx context.Context, clientID int64) {
+func (s *Service) assignCurator(ctx context.Context, clientID int64, clientEmail string) {
 	// Pick coordinator with fewest active clients
-	var curatorID int64
-	err := s.db.QueryRowContext(ctx, `
-		SELECT u.id
-		FROM users u
-		LEFT JOIN curator_client_relationships ccr
-			ON ccr.curator_id = u.id AND ccr.status = 'active'
-		WHERE u.role = 'coordinator'
-		GROUP BY u.id
-		ORDER BY COUNT(ccr.client_id) ASC
-		LIMIT 1
-	`).Scan(&curatorID)
+	// Кого нельзя ставить куратором и почему — в curators.LeastLoaded.
+	// Тот же выбор делает понижение куратора в admin: два одинаковых
+	// запроса в разных пакетах однажды уже разошлись.
+	curatorID, err := curators.LeastLoaded(ctx, s.db, clientEmail, 0)
 	if err != nil {
 		s.log.Warnw("No coordinator available for auto-assignment", "client_id", clientID, "error", err)
 		return

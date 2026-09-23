@@ -249,19 +249,16 @@ describe('TasksSection', () => {
         })
     })
 
-    describe('View Details', () => {
-        it('renders view details button for all tasks', () => {
-            const task = createMockTask('task-1', 5)
-            mockUseDashboardStore.mockReturnValue({
-                tasks: [task],
-                updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
-
-            render(<TasksSection currentWeek={5} />)
-
-            expect(screen.getByLabelText(/подробнее о задаче/i)).toBeInTheDocument()
-        })
-    })
+    // Проверки «подробнее о задаче» убраны вместе с самой кнопкой.
+    //
+    // Они требовали, чтобы стрелка была на каждой задаче, и обе проходили —
+    // кнопка действительно была. Чего они не проверяли: что она хоть
+    // что-нибудь делает. Обработчик состоял из комментария «TODO: перейти на
+    // страницу задачи или открыть окно», страницы задачи нет, окна тоже, а
+    // описание и так выведено в списке.
+    //
+    // Держать проверку на существование кнопки, которая молчит, — значит
+    // стеречь обещание, а не поведение.
 
     describe('Show More Functionality', () => {
         it('shows "Еще" button when tasks exceed maxVisibleTasks', () => {
@@ -398,17 +395,6 @@ describe('TasksSection', () => {
             expect(screen.getByLabelText(/задача выполнена/i)).toBeInTheDocument()
         })
 
-        it('has proper ARIA label for view details button', () => {
-            const task = createMockTask('task-1', 5)
-            mockUseDashboardStore.mockReturnValue({
-                tasks: [task],
-                updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
-
-            render(<TasksSection currentWeek={5} />)
-
-            expect(screen.getByLabelText(/подробнее о задаче/i)).toBeInTheDocument()
-        })
 
         it('has proper heading structure', () => {
             const task = createMockTask('task-1', 5)

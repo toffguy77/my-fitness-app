@@ -120,11 +120,10 @@ function isToday(date: Date): boolean {
 interface TaskItemProps {
     task: Task
     onToggleComplete: (taskId: string) => void
-    onViewDetails: (taskId: string) => void
     style?: React.CSSProperties
 }
 
-const TaskItem = memo(function TaskItem({ task, onToggleComplete, onViewDetails, style }: TaskItemProps) {
+const TaskItem = memo(function TaskItem({ task, onToggleComplete, style }: TaskItemProps) {
     const isCompleted = task.status === 'completed'
     const isOverdue = task.status === 'overdue'
     const dueDateFormatted = formatDate(task.dueDate)
@@ -180,15 +179,13 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, onViewDetails,
                 </div>
             </div>
 
-            {/* View details button */}
-            <button
-                type="button"
-                onClick={() => onViewDetails(task.id)}
-                className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label={t('dashboard.tasks.moreAria', { title: task.title })}
-            >
-                <ChevronRight className="w-5 h-5" aria-hidden="true" />
-            </button>
+            {/*
+                Здесь была стрелка «подробнее». Она вызывала обработчик с
+                комментарием «TODO: перейти на страницу задачи или открыть
+                окно» и не делала ничего: страницы задачи нет, окна тоже.
+                Показывать в подробностях нечего — описание задачи и так
+                выведено в списке выше.
+            */}
         </div>
     )
 })
@@ -199,7 +196,6 @@ const TaskItem = memo(function TaskItem({ task, onToggleComplete, onViewDetails,
 interface VirtualRowProps {
     tasks: Task[]
     onToggleComplete: (taskId: string) => void
-    onViewDetails: (taskId: string) => void
 }
 
 function VirtualRowComponent({
@@ -207,7 +203,6 @@ function VirtualRowComponent({
     style,
     tasks,
     onToggleComplete,
-    onViewDetails
 }: {
     ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' }
     index: number
@@ -222,7 +217,6 @@ function VirtualRowComponent({
             <TaskItem
                 task={task}
                 onToggleComplete={onToggleComplete}
-                onViewDetails={onViewDetails}
             />
         </div>
     )
@@ -304,19 +298,11 @@ export const TasksSection = memo(function TasksSection({
         }
     }, [updateTaskStatus])
 
-    /**
-     * Handle view task details
-     */
-    const handleViewDetails = useCallback((taskId: string) => {
-        // TODO: Navigate to task details page or open modal
-    }, [])
-
     // Virtual list row props
     const rowProps = useMemo<VirtualRowProps>(() => ({
         tasks: allTasks,
         onToggleComplete: handleToggleComplete,
-        onViewDetails: handleViewDetails,
-    }), [allTasks, handleToggleComplete, handleViewDetails])
+    }), [allTasks, handleToggleComplete])
 
     return (
         <section
@@ -371,7 +357,6 @@ export const TasksSection = memo(function TasksSection({
                                                     <TaskItem
                                                         task={task}
                                                         onToggleComplete={handleToggleComplete}
-                                                        onViewDetails={handleViewDetails}
                                                     />
                                                 </div>
                                             ))}
@@ -398,7 +383,6 @@ export const TasksSection = memo(function TasksSection({
                                                     <TaskItem
                                                         task={task}
                                                         onToggleComplete={handleToggleComplete}
-                                                        onViewDetails={handleViewDetails}
                                                     />
                                                 </div>
                                             ))}

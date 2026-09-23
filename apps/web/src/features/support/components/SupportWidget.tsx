@@ -20,11 +20,12 @@
  * broken landing page.
  */
 
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useSyncExternalStore, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useWidgetStore } from '../store/widgetStore'
 import type { WidgetMessage } from '../api/widget'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { t } from '@/shared/i18n'
+import { analyticsChoice, subscribeToAnalyticsChoice } from '@/shared/components/CookieConsent'
 
 const POLL_INTERVAL_MS = 10_000
 
@@ -40,6 +41,19 @@ function authorLabel(author: string): string {
 }
 
 export function SupportWidget() {
+    // Пока человек не ответил про cookie, кнопки помощи нет.
+    //
+    // Оба элемента — первого захода, и на узком экране (375 пикселей) им
+    // вдвоём тесно: полоса сдвигает содержимое вниз, и кнопка «Далее» в
+    // гостевом мастере уезжает под кнопку виджета. Поймала проверка, которая
+    // ровно за этим и поставлена.
+    //
+    // Порядок такой и по смыслу: сперва вопрос про данные, потом предложение
+    // помощи. Ответ хранится, так что кнопка появляется сразу после него и
+    // больше не пропадает.
+    const consentPending =
+        useSyncExternalStore(subscribeToAnalyticsChoice, analyticsChoice, () => null) === null
+
     const open = useWidgetStore((s) => s.open)
     const token = useWidgetStore((s) => s.token)
     const messages = useWidgetStore((s) => s.messages)
@@ -98,6 +112,8 @@ export function SupportWidget() {
         setQuestion('')
         setAskedOnce(true)
     }
+
+    if (consentPending) return null
 
     if (!open) {
         return (

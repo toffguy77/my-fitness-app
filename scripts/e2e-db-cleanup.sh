@@ -119,6 +119,10 @@ SNAPSHOT_FILE="${1:?использование: e2e-db-cleanup.sh <путь-к-�
 
 WINDOW_START="$(jq -r '.window_start' "$SNAPSHOT_FILE")"
 KNOWN_EMAILS_CSV="$(jq -r '.accounts | join(",")' "$SNAPSHOT_FILE")"
+# Оставлять ли учётные записи прогона. На проде они постоянные, на стенде —
+# одноразовые; см. комментарий у самого удаления ниже.
+KEEP_ACCOUNTS="${E2E_KEEP_ACCOUNTS:-0}"
+
 GUEST_PATTERNS_CSV="${E2E_GUEST_EMAIL_PATTERNS:-$(jq -r '.guest_patterns | join(",")' "$SNAPSHOT_FILE")}"
 
 if [ -z "$KNOWN_EMAILS_CSV" ] && [ -z "$GUEST_PATTERNS_CSV" ]; then
@@ -338,14 +342,31 @@ BEGIN
 END \$\$;
 
 -- Сами учётки.
+--
+-- E2E_KEEP_ACCOUNTS=1 оставляет их на месте: всё, что они создали за прогон,
+-- уже удалено выше — дневник, разговоры, заявки, сессии. Уцелевает только
+-- строка человека.
+--
+-- Так работает прод: пять выделенных учёток там постоянные. Удалять их после
+-- каждого прогона значит заводить заново перед следующим, а на регистрацию
+-- стоит предел пять в час — ровно столько, сколько их и есть. Обещание
+-- «среда вернётся в прежнее состояние» при этом соблюдается точнее: учётки
+-- были до прогона и остаются после, а их данные исчезают.
+--
+-- На стенде, где учётки одноразовые, переменная не задаётся, и всё работает
+-- как прежде.
 DO \$\$
 DECLARE
   affected bigint;
 BEGIN
-  DELETE FROM users WHERE id IN (SELECT id FROM e2e_target_ids);
-  GET DIAGNOSTICS affected = ROW_COUNT;
-  IF affected > 0 THEN
-    INSERT INTO e2e_cleanup_report VALUES ('users', affected);
+  IF '${KEEP_ACCOUNTS}' = '1' THEN
+    RAISE NOTICE 'учётные записи прогона оставлены на месте (E2E_KEEP_ACCOUNTS=1)';
+  ELSE
+    DELETE FROM users WHERE id IN (SELECT id FROM e2e_target_ids);
+    GET DIAGNOSTICS affected = ROW_COUNT;
+    IF affected > 0 THEN
+      INSERT INTO e2e_cleanup_report VALUES ('users', affected);
+    END IF;
   END IF;
 END \$\$;
 
@@ -402,9 +423,11 @@ DO \$\$
 DECLARE
   leftover bigint;
 BEGIN
-  SELECT COUNT(*) INTO leftover FROM users WHERE id IN (SELECT id FROM e2e_target_ids);
-  IF leftover > 0 THEN
-    RAISE EXCEPTION 'ЗАЧИСТКА НЕ ПОЛНАЯ: % учётных записей прогона не удалены', leftover;
+  IF '${KEEP_ACCOUNTS}' <> '1' THEN
+    SELECT COUNT(*) INTO leftover FROM users WHERE id IN (SELECT id FROM e2e_target_ids);
+    IF leftover > 0 THEN
+      RAISE EXCEPTION 'ЗАЧИСТКА НЕ ПОЛНАЯ: % учётных записей прогона не удалены', leftover;
+    END IF;
   END IF;
 
   SELECT COUNT(*) INTO leftover FROM leads

@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/curators"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/shared/testaccounts"
 )
 
 // ErrLastCurator: разжаловать последнего куратора нельзя — клиентов некому
@@ -269,13 +271,30 @@ func (s *Service) ChangeRole(ctx context.Context, userID int64, newRole string) 
 	startTime := time.Now()
 
 	// Get current role
-	var currentRole string
-	err := s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&currentRole)
+	var currentRole, email string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT role, email FROM users WHERE id = $1`, userID).Scan(&currentRole, &email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("ChangeRole: %w", apperrors.ErrNotFound)
 		}
 		return fmt.Errorf("failed to get user role: %w", err)
+	}
+
+	// Служебной учётке прогона нельзя дать права.
+	//
+	// Такие живут на проде постоянно и нужны ровно затем, чтобы под ними
+	// ходили проверки. Куратор из них получал бы живых клиентов, а
+	// администратор — доступ ко всем данным; пароль при этом лежит в файле
+	// окружения, который раздаётся тому, кто гоняет проверки.
+	//
+	// Роли им ставятся напрямую в базе, одной подготовительной командой перед
+	// прогоном (см. руководство администратора) — сознательно, под присмотром
+	// и с паролями, заведёнными тут же. Через интерфейс администратора —
+	// никогда: оттуда это выглядело бы обычным повышением сотрудника.
+	if newRole != "client" && testaccounts.IsTest(email) {
+		return fmt.Errorf("служебной учётной записи нельзя дать роль %q: %w",
+			newRole, apperrors.ErrForbidden)
 	}
 
 	if currentRole == newRole {
@@ -392,22 +411,31 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 	defer tx.Rollback()
 
 	// 1. Get active clients of this curator
+	//
+	// Адрес нужен вместе с идентификатором: кому можно отдать клиента,
+	// зависит от того, служебный он или живой (curators.LeastLoaded).
 	clientRows, err := tx.QueryContext(ctx, `
-		SELECT client_id FROM curator_client_relationships
-		WHERE curator_id = $1 AND status = 'active'
+		SELECT r.client_id, u.email
+		FROM curator_client_relationships r
+		JOIN users u ON u.id = r.client_id
+		WHERE r.curator_id = $1 AND r.status = 'active'
 	`, curatorID)
 	if err != nil {
 		return fmt.Errorf("failed to get curator clients: %w", err)
 	}
 	defer clientRows.Close()
 
-	var orphanedClients []int64
+	type orphan struct {
+		id    int64
+		email string
+	}
+	var orphanedClients []orphan
 	for clientRows.Next() {
-		var clientID int64
-		if err := clientRows.Scan(&clientID); err != nil {
+		var o orphan
+		if err := clientRows.Scan(&o.id, &o.email); err != nil {
 			return fmt.Errorf("failed to scan client: %w", err)
 		}
-		orphanedClients = append(orphanedClients, clientID)
+		orphanedClients = append(orphanedClients, o)
 	}
 
 	if err := clientRows.Err(); err != nil {
@@ -441,56 +469,39 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 	}
 
 	// 4. Reassign orphaned clients
-	if len(orphanedClients) > 0 {
-		// Check if there are remaining curators
-		var remainingCount int
-		err = tx.QueryRowContext(ctx, `
-			SELECT COUNT(*) FROM users WHERE role = 'coordinator' AND id != $1
-		`, curatorID).Scan(&remainingCount)
+	//
+	// Кандидата подбирает та же функция, что и при регистрации. Раньше
+	// здесь стоял свой, точно такой же запрос — и когда в тот, другой,
+	// добавили условия, этот остался прежним: понижение куратора раздавало
+	// его живых людей служебным учёткам и тем, кто уходит.
+	//
+	// «Некому отдать» проверяется самой попыткой подобрать, а не отдельным
+	// подсчётом координаторов: подсчёт считал всех подряд и разрешал то,
+	// чего подбор сделать не мог.
+	for _, client := range orphanedClients {
+		newCuratorID, err := curators.LeastLoaded(ctx, tx, client.email, curatorID)
 		if err != nil {
-			return fmt.Errorf("failed to count remaining curators: %w", err)
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("%w: %d clients have nobody to go to", ErrLastCurator, len(orphanedClients))
+			}
+			return fmt.Errorf("failed to find curator for client %d: %w", client.id, err)
+		}
+		// Create new relationship
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO curator_client_relationships (curator_id, client_id, status)
+			VALUES ($1, $2, 'active')
+			ON CONFLICT (curator_id, client_id) DO UPDATE SET status = 'active'
+		`, newCuratorID, client.id); err != nil {
+			return fmt.Errorf("failed to create relationship for client %d: %w", client.id, err)
 		}
 
-		if remainingCount == 0 {
-			return fmt.Errorf("%w: %d clients have nobody to go to", ErrLastCurator, len(orphanedClients))
-		}
-
-		for _, clientID := range orphanedClients {
-			// Find least-loaded curator (excluding the one being demoted)
-			var newCuratorID int64
-			err = tx.QueryRowContext(ctx, `
-				SELECT u.id
-				FROM users u
-				LEFT JOIN curator_client_relationships ccr
-					ON ccr.curator_id = u.id AND ccr.status = 'active'
-				WHERE u.role = 'coordinator' AND u.id != $1
-				GROUP BY u.id
-				ORDER BY COUNT(ccr.client_id) ASC
-				LIMIT 1
-			`, curatorID).Scan(&newCuratorID)
-			if err != nil {
-				return fmt.Errorf("failed to find curator for client %d: %w", clientID, err)
-			}
-
-			// Create new relationship
-			_, err = tx.ExecContext(ctx, `
-				INSERT INTO curator_client_relationships (curator_id, client_id, status)
-				VALUES ($1, $2, 'active')
-				ON CONFLICT (curator_id, client_id) DO UPDATE SET status = 'active'
-			`, newCuratorID, clientID)
-			if err != nil {
-				return fmt.Errorf("failed to create relationship for client %d: %w", clientID, err)
-			}
-
-			// Create conversation for the new pair
-			_, err = tx.ExecContext(ctx, `
-				INSERT INTO conversations (client_id, curator_id)
-				VALUES ($1, $2)
-				ON CONFLICT (client_id, curator_id) WHERE anonymized_at IS NULL DO NOTHING
-			`, clientID, newCuratorID)
-			if err != nil {
-				return fmt.Errorf("failed to create conversation for client %d: %w", clientID, err)
-			}
+		// Create conversation for the new pair
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO conversations (client_id, curator_id)
+			VALUES ($1, $2)
+			ON CONFLICT (client_id, curator_id) WHERE anonymized_at IS NULL DO NOTHING
+		`, client.id, newCuratorID); err != nil {
+			return fmt.Errorf("failed to create conversation for client %d: %w", client.id, err)
 		}
 	}
 

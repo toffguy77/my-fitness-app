@@ -204,3 +204,42 @@ func TestMigrationsIgnoreTablesInOtherSchemas(t *testing.T) {
 		database.NewMigrator(db, migrations.FS, logger.New()).Run(context.Background(), 0),
 		"a table in an unrelated schema must not change what a migration does here")
 }
+
+// Два экземпляра, стартующие одновременно, не мешают друг другу.
+//
+// Это условие выкатки без простоя: старый контейнер ещё жив, новый уже
+// поднимается — и оба вызывают Run на одной базе. Без блокировки оба видят
+// один и тот же список неприменённого и оба берутся его применять. Второй
+// падает: «колонка уже существует» или повторная запись версии, — и уходит в
+// перезапуск по кругу.
+//
+// Пока экземпляр был один, это не проявлялось никогда. Любая попытка
+// поднять второй упёрлась бы в это сразу, и выглядело бы как случайный отказ
+// выкатки, а не как отсутствующая блокировка.
+func TestConcurrentMigrationsDoNotCollide(t *testing.T) {
+	db := freshDatabase(t)
+
+	const instances = 4
+	errs := make(chan error, instances)
+	start := make(chan struct{})
+
+	for i := 0; i < instances; i++ {
+		go func() {
+			migrator := database.NewMigrator(db, migrations.FS, logger.New())
+			<-start // все стартуют разом, иначе гонки может и не случиться
+			errs <- migrator.Run(context.Background(), 0)
+		}()
+	}
+	close(start)
+
+	for i := 0; i < instances; i++ {
+		require.NoError(t, <-errs, "одновременный запуск не должен ронять ни один экземпляр")
+	}
+
+	// И каждая миграция применена ровно один раз: повторная запись версии
+	// означала бы, что блокировка не удержала.
+	migrator := database.NewMigrator(db, migrations.FS, logger.New())
+	applied, err := migrator.Applied(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, migrationVersions(t, "_up.sql"), applied)
+}

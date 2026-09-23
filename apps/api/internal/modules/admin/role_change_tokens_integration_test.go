@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/burcev/api/internal/modules/admin"
+	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -113,4 +114,89 @@ func TestDemotionInvalidatesTheOldToken(t *testing.T) {
 		`SELECT curator_id FROM curator_client_relationships WHERE client_id = $1 AND status = 'active'`,
 		clientID).Scan(&newCuratorID))
 	assert.Equal(t, otherCuratorID, newCuratorID, "the orphaned client must have been reassigned")
+}
+
+// Служебной учётной записи прогона нельзя дать права через админку.
+//
+// Такие учётки живут на проде постоянно и нужны ровно затем, чтобы под ними
+// ходили проверки: пароль лежит в файле окружения, который раздаётся тому,
+// кто их гоняет. Куратор из такой учётки получал бы живых клиентов,
+// администратор — доступ ко всем данным.
+//
+// Роли им ставятся напрямую в базе, подготовительной командой перед прогоном
+// и под присмотром. Через интерфейс администратора это выглядело бы обычным
+// повышением сотрудника — и было бы им по последствиям.
+func TestTestAccountsCannotBePromoted(t *testing.T) {
+	service, _, _, newUser := newRoleChangeService(t)
+	ctx := context.Background()
+
+	for _, c := range []struct{ email, role string }{
+		{"e2e-curator@burcev.team", "coordinator"},
+		{"e2e-admin@burcev.team", "super_admin"},
+		{"stand-17@burcev.test", "coordinator"},
+	} {
+		id := newUser(ctx, c.email, "client")
+
+		err := service.ChangeRole(ctx, id, c.role)
+
+		require.Error(t, err, "%s не должна получать роль %s", c.email, c.role)
+		require.ErrorIs(t, err, apperrors.ErrForbidden)
+	}
+}
+
+// А человека на том же домене — можно: граница проходит по приставке, а не
+// по домену, иначе повысить сотрудника стало бы нельзя.
+func TestRealAccountOnProductDomainCanBePromoted(t *testing.T) {
+	service, _, db, newUser := newRoleChangeService(t)
+	ctx := context.Background()
+
+	id := newUser(ctx, "director@burcev.team", "client")
+
+	require.NoError(t, service.ChangeRole(ctx, id, "coordinator"))
+
+	var role string
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT role FROM users WHERE id = $1`, id).Scan(&role))
+	require.Equal(t, "coordinator", role)
+}
+
+// Клиенты понижаемого куратора достаются живому человеку, а не служебной
+// учётке.
+//
+// Понижение куратора переносит его клиентов на наименее загруженного — и до
+// этой правки выбирало его своим запросом, копией того, что стоит в
+// регистрации. Когда в тот, другой, добавили условия, этот остался прежним:
+// живые люди уехали бы на учётку прогона, которая всегда пуста и потому
+// всегда первая в очереди. Теперь выбор один на оба места
+// (curators.LeastLoaded), и эта проверка стоит на том, которое разошлось.
+func TestDemotionMovesClientsToALiveCurator(t *testing.T) {
+	service, _, db, newUser := newRoleChangeService(t)
+	ctx := context.Background()
+
+	leaving := newUser(ctx, "leaving@example.test", "coordinator")
+	client := newUser(ctx, "person@example.test", "client")
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status)
+		 VALUES ($1, $2, 'active')`, leaving, client)
+	require.NoError(t, err)
+
+	// Служебная учётка пуста — то есть наименее загружена из всех.
+	newUser(ctx, "e2e-curator@burcev.team", "coordinator")
+
+	// Живой куратор уже ведёт человека, то есть заведомо загруженнее.
+	live := newUser(ctx, "live@example.test", "coordinator")
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status)
+		 VALUES ($1, $2, 'active')`, live, newUser(ctx, "other@example.test", "client"))
+	require.NoError(t, err)
+
+	require.NoError(t, service.ChangeRole(ctx, leaving, "client"))
+
+	var newCurator string
+	require.NoError(t, db.QueryRowContext(ctx, `
+		SELECT u.email FROM curator_client_relationships r
+		  JOIN users u ON u.id = r.curator_id
+		 WHERE r.client_id = $1 AND r.status = 'active'`, client).Scan(&newCurator))
+	require.Equal(t, "live@example.test", newCurator,
+		"клиент уехал на служебную учётку, хотя живой куратор был")
 }
