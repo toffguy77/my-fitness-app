@@ -4,7 +4,7 @@
  * Validates: Requirements 1.1, 1.4, 13.2
  */
 
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import DashboardPage from '../page'
 import { apiClient } from '@/shared/utils/api-client'
@@ -36,8 +36,24 @@ jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
 }))
 
 // Mock dashboard components
+// Подмена отдаёт кнопку наружу: настоящая появляется только по воскресеньям,
+// а проверять нужно обработчик страницы, а не расписание.
 jest.mock('@/features/dashboard/components/CalendarNavigator', () => ({
-    CalendarNavigator: () => <div data-testid="calendar-navigator">Calendar Navigator</div>,
+    CalendarNavigator: ({ onSubmitReport }: { onSubmitReport?: () => void }) => (
+        <div data-testid="calendar-navigator">
+            Calendar Navigator
+            <button onClick={() => onSubmitReport?.()}>Отправить недельный отчет</button>
+        </div>
+    ),
+}))
+
+jest.mock('@/features/dashboard/api/dashboardApi', () => ({
+    dashboardApi: { submitWeeklyReport: jest.fn().mockResolvedValue({ id: 'r1', week_number: 3 }) },
+}))
+
+jest.mock('react-hot-toast', () => ({
+    __esModule: true,
+    default: { success: jest.fn(), error: jest.fn() },
 }))
 
 jest.mock('@/features/dashboard/components/DailyTrackingGrid', () => ({
@@ -400,6 +416,55 @@ describe('DashboardPage', () => {
             window.dispatchEvent(new Event('offline'))
 
             expect(mockSetOfflineStatus).toHaveBeenCalledWith(true)
+        })
+    })
+})
+
+/**
+ * Кнопка недельного отчёта обязана доходить до сервера.
+ *
+ * Она была на виду с самого начала — заметная, пульсирующая, по воскресеньям, —
+ * и вызывала обработчик, который писал в консоль:
+ *
+ *   const handleSubmitReport = async () => {
+ *       // TODO: Implement weekly report submission
+ *       console.log('Submit weekly report')
+ *   }
+ *
+ * Человек жал и не получал ничего: ни ошибки, ни подтверждения. Сервер при
+ * этом умел принимать отчёт, а служба дашборда — уведомлять куратора.
+ *
+ * Прежняя проверка была в CalendarNavigator.test.tsx и требовала, чтобы
+ * компонент вызвал ПЕРЕДАННЫЙ ему обработчик. Она проходила и с заглушкой:
+ * обработчик подменялся в самом тесте. Эта смотрит на обработчик страницы.
+ */
+describe('Недельный отчёт со страницы дашборда', () => {
+    it('нажатие отправляет отчёт на сервер, а не пишет в консоль', async () => {
+        const { dashboardApi } = jest.requireMock('@/features/dashboard/api/dashboardApi')
+        render(<DashboardPage />)
+
+        const button = await screen.findByRole('button', { name: 'Отправить недельный отчет' })
+        fireEvent.click(button)
+
+        await waitFor(() => {
+            expect(dashboardApi.submitWeeklyReport).toHaveBeenCalled()
+        })
+        // Обе границы недели — строки даты, как ждёт сервер (week_start/week_end).
+        const [start, end] = dashboardApi.submitWeeklyReport.mock.calls[0]
+        expect(start).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+        expect(end).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    })
+
+    it('отказ сервера показывается человеку, а не проглатывается', async () => {
+        const { dashboardApi } = jest.requireMock('@/features/dashboard/api/dashboardApi')
+        const toast = jest.requireMock('react-hot-toast').default
+        dashboardApi.submitWeeklyReport.mockRejectedValueOnce(new Error('нет данных за среду'))
+
+        render(<DashboardPage />)
+        fireEvent.click(await screen.findByRole('button', { name: 'Отправить недельный отчет' }))
+
+        await waitFor(() => {
+            expect(toast.error).toHaveBeenCalled()
         })
     })
 })

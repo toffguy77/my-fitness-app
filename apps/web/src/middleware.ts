@@ -86,6 +86,35 @@ function contentSecurityPolicy(nonce: string): string {
     ].join('; ')
 }
 
+/**
+ * Заголовки безопасности, одинаковые для любого ответа.
+ *
+ * Вынесены из middleware отдельной функцией, потому что NextRequest в
+ * тестовом окружении не построить: у него url только на чтение. Проверять
+ * заголовки через живой запрос не вышло бы, а непроверенными они уже один
+ * раз оказались — nginx должен был их слать и не слал.
+ */
+export function applySecurityHeaders(headers: Headers, secure: boolean): void {
+    // The rest of what nginx was supposed to be sending and was not.
+    headers.set('X-Content-Type-Options', 'nosniff')
+    headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    headers.set('X-Frame-Options', 'DENY')
+    headers.set(
+        'Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+    )
+    // HSTS: следующий заход на этот домен браузер сделает только по https,
+    // не спрашивая. Без заголовка первый переход по ссылке на http успевает
+    // уйти в сеть открытым — вместе с cookie сессии, если она уже есть.
+    //
+    // Только по https: по http браузер заголовок игнорирует, а на стенде
+    // разработки он сделал бы localhost недоступным по http на год вперёд —
+    // включая чужие проекты на том же адресе.
+    if (secure) {
+        headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    }
+}
+
 export function middleware(request: NextRequest) {
     const nonce = makeNonce()
     const policy = contentSecurityPolicy(nonce)
@@ -108,14 +137,7 @@ export function middleware(request: NextRequest) {
 
     const response = NextResponse.next({ request: { headers } })
     response.headers.set('Content-Security-Policy', policy)
-    // The rest of what nginx was supposed to be sending and was not.
-    response.headers.set('X-Content-Type-Options', 'nosniff')
-    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-    response.headers.set('X-Frame-Options', 'DENY')
-    response.headers.set(
-        'Permissions-Policy',
-        'camera=(), microphone=(), geolocation=(), interest-cohort=()'
-    )
+    applySecurityHeaders(response.headers, request.nextUrl.protocol === 'https:')
     return response
 }
 
