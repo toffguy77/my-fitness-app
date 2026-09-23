@@ -82,7 +82,18 @@ export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) 
             role="dialog"
             aria-label={t('cookies.title')}
             data-testid="cookie-consent"
-            className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-200 bg-white p-4 shadow-lg sm:p-5"
+            // bottom-16, а не bottom-0: нижняя навигация приложения занимает
+            // ровно эти 64 пикселя, и полоса поверх неё перекрывала переходы
+            // между разделами — нажать «Дневник» или «Чаты» было нельзя,
+            // пока не ответишь про cookie. Поймал набор E2E: разом упали все
+            // проверки навигации клиента, куратора и администратора.
+            //
+            // Справа на широком экране оставлено место под плавающие кнопки:
+            // виджет поддержки на посадочной и «создать» в кабинете стоят в
+            // правом нижнем углу, и полоса во всю ширину перекрывала их так же,
+            // как навигацию. На узком экране полоса занимает всю ширину, но
+            // стоит выше обеих.
+            className="fixed bottom-16 left-2 right-2 z-[60] rounded-lg border border-gray-200 bg-white p-4 shadow-lg sm:left-4 sm:right-24 sm:p-5"
         >
             <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-gray-700">
