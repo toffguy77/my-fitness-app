@@ -65,6 +65,10 @@ describe('SupportWidget', () => {
     beforeEach(() => {
         jest.clearAllMocks()
         localStorage.clear()
+        // Кнопка помощи не показывается, пока человек не ответил про cookie:
+        // на узком экране полоса согласия и виджет не помещаются вдвоём.
+        // Проверки виджета говорят не об этом, поэтому ответ уже дан.
+        localStorage.setItem('analytics-consent', 'granted')
         tokenMock.mockReturnValue(null)
         resetStore()
     })
@@ -254,5 +258,26 @@ describe('SupportWidget', () => {
 
         expect(screen.getByRole('button', { name: /сохранить контакт/i })).toBeDisabled()
         expect(api.contact).not.toHaveBeenCalled()
+    })
+})
+
+describe('Кнопка помощи и согласие на cookie', () => {
+    beforeEach(() => {
+        localStorage.clear()
+        resetStore()
+    })
+
+    it('не показывается, пока про cookie не ответили', () => {
+        render(<SupportWidget />)
+
+        expect(screen.queryByRole('button', { name: 'Задать вопрос' })).not.toBeInTheDocument()
+    })
+
+    it.each(['granted', 'denied'])('показывается после ответа «%s»', (answer) => {
+        localStorage.setItem('analytics-consent', answer)
+
+        render(<SupportWidget />)
+
+        expect(screen.getByRole('button', { name: 'Задать вопрос' })).toBeInTheDocument()
     })
 })
