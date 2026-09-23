@@ -82,6 +82,9 @@ type Service struct {
 	media MediaBridge
 	// links может быть nil: без привязки /start работает как раньше.
 	links LinkRedeemer
+	// linkedGreeter может быть nil: тогда привязка отвечает без ссылки на
+	// руководство, как отвечала раньше.
+	linkedGreeter LinkedGreeter
 	// membership и groupID: решение по заявкам в группу кураторов.
 	membership GroupMembership
 	groupID    int64
