@@ -14,6 +14,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { t } from '@/shared/i18n';
 
@@ -49,7 +50,28 @@ export function subscribeToAnalyticsChoice(onChange: () => void): () => void {
     };
 }
 
+/**
+ * Где полоса уместна.
+ *
+ * Только на публичных страницах: посадочная, вход, юридические тексты,
+ * гостевой мастер. Внутри кабинета её быть не должно — там снизу закреплена
+ * навигация, а страницы свёрстаны с отступом ровно под неё. Полоса отнимала
+ * у них ещё сотню пикселей, которых никто не закладывал, и кнопки внизу
+ * страниц становились недостижимы: набор E2E показал это дважды подряд,
+ * сперва перекрытой навигацией, потом перекрытыми кнопками настроек.
+ *
+ * Спросить один раз при первом заходе достаточно: ответ хранится и действует
+ * везде. Кто попал сразу в кабинет по прямой ссылке и полосы не видел,
+ * остаётся без счётчика — это безопасная сторона умолчания.
+ */
+const PUBLIC_PREFIXES = ['/auth', '/legal', '/onboarding', '/reset-password', '/forgot-password'];
+
+export function isPublicPath(pathname: string): boolean {
+    return pathname === '/' || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
 export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) => void }) {
+    const pathname = usePathname();
     // useSyncExternalStore, а не чтение в эффекте: выбор живёт вне React, а
     // запись его в состояние из useEffect — лишний проход отрисовки, на
     // который правило react-hooks и ругается. На сервере выбора не видно
@@ -73,7 +95,7 @@ export function CookieConsent({ onChoice }: { onChoice?: (choice: CookieChoice) 
         onChoice?.(value);
     };
 
-    if (choice !== null) {
+    if (choice !== null || !isPublicPath(pathname ?? '/')) {
         return null;
     }
 
