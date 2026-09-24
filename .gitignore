@@ -38,7 +38,12 @@ apps/api/cleanup-food-data
 *~
 
 # Claude Code
+#
+# CLAUDE.md is ignored by pattern because `next dev` writes one per app
+# (apps/web/CLAUDE.md) from generate-agent-files.js. The repository's own
+# CLAUDE.md files are tracked already, and a tracked file ignores this.
 CLAUDE.md
+AGENTS.md
 .claude/
 
 # OS

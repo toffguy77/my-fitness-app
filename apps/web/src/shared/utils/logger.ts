@@ -55,7 +55,13 @@ class Logger {
         this.config = {
             minLevel: process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG,
             enableConsole: true,
-            enableRemote: true,
+            // Never from a test process. `whatwg-fetch` implements fetch on top
+            // of jsdom's XMLHttpRequest, so a buffer flushed during a test is a
+            // real request to whatever host the test page claims to be — which
+            // failed two food-tracker tests with a TLS error that named neither
+            // the logger nor the request. A test that reaches the network is
+            // also a test whose result depends on the network.
+            enableRemote: process.env.NODE_ENV !== 'test',
             remoteEndpoint: '/api/v1/logs',
             includeStackTrace: true,
             includeUserAgent: true,
