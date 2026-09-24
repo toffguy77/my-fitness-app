@@ -1,6 +1,6 @@
 'use client'
 
-import { callCounter, counterId } from './counter'
+import { callCounter, counterAllowed } from './counter'
 
 /**
  * Where the visitor came from.
@@ -100,7 +100,12 @@ export function storedAttribution(): Attribution {
  * for it would not be saved at all for anybody running an ad blocker.
  */
 export function counterClientId(timeoutMs = 3000): Promise<string | undefined> {
-    if (!counterId()) return Promise.resolve(undefined)
+    // Согласие проверяется здесь, а не только внутри callCounter. Без него
+    // скрипта счётчика на странице нет, и вызов и так ничего бы не сделал —
+    // но спрашивать счётчик об идентификаторе браузера это ровно то, чем
+    // согласие и управляет, и опираться на «скрипта всё равно нет» значит
+    // держать это правило неявным.
+    if (!counterAllowed()) return Promise.resolve(undefined)
 
     return new Promise((resolve) => {
         let settled = false

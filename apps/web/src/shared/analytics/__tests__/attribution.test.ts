@@ -145,4 +145,20 @@ describe('Asking the counter for the browser identifier', () => {
 
         await expect(counterClientId()).resolves.toBeUndefined()
     })
+
+    // Согласие проверяется явно, а не через «скрипта всё равно нет».
+    it('ничего не спрашивает без согласия', async () => {
+        localStorage.removeItem(COOKIE_CHOICE_KEY)
+        ym.mockImplementation((_id, _action, callback: (v: string) => void) => callback('cid-42'))
+
+        await expect(counterClientId()).resolves.toBeUndefined()
+        expect(ym).not.toHaveBeenCalled()
+    })
+
+    it('ничего не спрашивает после отказа', async () => {
+        localStorage.setItem(COOKIE_CHOICE_KEY, 'denied')
+
+        await expect(counterClientId()).resolves.toBeUndefined()
+        expect(ym).not.toHaveBeenCalled()
+    })
 })
