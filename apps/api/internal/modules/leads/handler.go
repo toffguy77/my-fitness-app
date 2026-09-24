@@ -70,6 +70,39 @@ func (h *Handler) Create(c *gin.Context) {
 	})
 }
 
+// AttachClientID handles POST /api/v1/public/leads/client-id.
+//
+// Called after the lead is saved, once the counter has handed the browser
+// identifier over. Separate from Create because the callback that produces it
+// never fires behind an ad blocker, and waiting for it before saving would
+// lose the contact of everybody running one.
+//
+// Answers the same way whether or not anything was written, for the same
+// reason UpdateStep does: this is attribution, not the visitor's data, and
+// there is nothing they could do about a failure.
+func (h *Handler) AttachClientID(c *gin.Context) {
+	var in ClientIDInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные запроса")
+		return
+	}
+
+	err := h.service.AttachClientID(c.Request.Context(), in.Token, in.ClientID)
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrTokenInvalid), errors.Is(err, apperrors.ErrTokenExpired),
+		errors.Is(err, apperrors.ErrNotFound), errors.Is(err, apperrors.ErrValidation):
+		response.Success(c, http.StatusOK, gin.H{"recorded": false})
+		return
+	default:
+		h.log.Error("Failed to attach lead client id", "error", err)
+		response.InternalError(c, "Не удалось сохранить источник")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"recorded": true})
+}
+
 // UpdateStep handles POST /api/v1/public/leads/step.
 func (h *Handler) UpdateStep(c *gin.Context) {
 	var req struct {

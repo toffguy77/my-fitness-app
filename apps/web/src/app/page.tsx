@@ -5,7 +5,7 @@ import { JsonLd } from '@/shared/components/JsonLd'
 import { AuthRedirect } from './_components/AuthRedirect'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { SupportWidget } from '@/features/support/components/SupportWidget'
-import { TrackView, EVENTS } from '@/shared/analytics'
+import { TrackView, TrackScrollDepth, EVENTS } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
 
 const API_URL = process.env.INTERNAL_API_URL || 'http://api:4000'
@@ -104,6 +104,7 @@ export default async function Home({
             <JsonLd data={webAppJsonLd} />
             <AuthRedirect />
             <TrackView event={EVENTS.landingViewed} />
+            <TrackScrollDepth />
             <div className="min-h-screen bg-white">
                 {/* Шапка: только логотип и два действия — вход и регистрация,
                     оба без прокрутки. Герой (h1, основное действие) — уже

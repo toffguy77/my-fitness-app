@@ -1104,6 +1104,7 @@ export const ru = {
             write: 'Написать',
             openConversation: 'Открыть переписку',
             showHandled: 'Показывать обработанные',
+            noCampaign: 'Источник перехода неизвестен',
         },
         support: {
             escalated: 'Ждёт ответа',

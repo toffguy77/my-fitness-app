@@ -10,6 +10,8 @@
  */
 
 import type { EventName, EventProperties } from './events'
+import { isMirrored } from './events'
+import { callCounter, counterAllowed } from './counter'
 
 const VISITOR_KEY = 'analytics_visitor_id'
 const ENDPOINT = '/api/v1/public/analytics/events'
@@ -57,6 +59,8 @@ export function track(name: EventName, properties?: EventProperties): void {
 
     queue.push({ name, occurred_at: new Date().toISOString(), properties })
 
+    mirror(name)
+
     if (queue.length >= MAX_BATCH) {
         flush()
         return
@@ -64,6 +68,22 @@ export function track(name: EventName, properties?: EventProperties): void {
     if (timer === null) {
         timer = setTimeout(flush, FLUSH_INTERVAL_MS)
     }
+}
+
+/**
+ * Reports the event to the web analytics counter, if it is one of the five and
+ * the counter is there.
+ *
+ * The name alone. Nothing else is passed — see MIRRORED_EVENTS for why.
+ *
+ * Silent when there is no counter: no id, no consent and an ad blocker all
+ * look the same from here, and none of them is a reason to lose the event from
+ * our own batch.
+ */
+function mirror(name: EventName): void {
+    if (!isMirrored(name) || !counterAllowed()) return
+
+    callCounter('reachGoal', name)
 }
 
 /** Sends whatever has accumulated. */
