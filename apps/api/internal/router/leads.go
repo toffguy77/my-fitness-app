@@ -19,6 +19,9 @@ func registerLeadRoutes(v1 *gin.RouterGroup, d Deps) {
 
 	g.POST("/leads", d.AuthRateLimiter.Limit("lead-create"), d.Leads.Create)
 	g.POST("/leads/step", d.Leads.UpdateStep)
+	// No id in the path: the signed resume token names the lead, so a stranger
+	// cannot address somebody else's. Hence no entry in protectedRoutes.
+	g.POST("/leads/client-id", d.Leads.AttachClientID)
 	g.GET("/leads/resume", d.Leads.Resume)
 	g.GET("/leads/unsubscribe", d.Leads.Unsubscribe)
 }

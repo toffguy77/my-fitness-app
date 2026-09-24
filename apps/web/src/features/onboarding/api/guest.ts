@@ -5,6 +5,7 @@
  * with no session behind it, and a record of somebody who is not a user yet.
  */
 
+import type { Attribution } from '@/shared/analytics/attribution'
 import { apiClient } from '@/shared/utils/api-client'
 
 export type Sex = 'male' | 'female'
@@ -70,9 +71,26 @@ export const guestApi = {
          * was ever created before the result screen could capture one too.
          */
         capture_source?: string
+        /** Которую рекламу человек открыл, чтобы сюда попасть. */
+        attribution?: Attribution
         consents: LeadConsents
     }): Promise<{ token: string; lead: SavedLead }> {
         return apiClient.post('/api/v1/public/leads', input)
+    },
+
+    /**
+     * Передаёт идентификатор браузера, когда счётчик его выдаст.
+     *
+     * Отдельно от createLead: обратный вызов счётчика не приходит вовсе, если
+     * стоит блокировщик, а заявка должна сохраниться в любом случае — контакт
+     * позволяет написать человеку, идентификатор лишь говорит, из какой он
+     * кампании.
+     */
+    async attachClientId(token: string, clientId: string): Promise<void> {
+        await apiClient.post('/api/v1/public/leads/client-id', {
+            token,
+            client_id: clientId,
+        })
     },
 
     /** Records how far somebody got, so a follow-up knows what to say. */

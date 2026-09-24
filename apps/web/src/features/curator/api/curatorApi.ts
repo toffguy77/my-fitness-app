@@ -164,7 +164,20 @@ export interface Lead {
         water_glasses: number
     }
     last_step: string
+    /** Адрес источника перехода, который сообщил браузер. Почти всегда пуст —
+     *  ради этого заведено `attribution`. Остаётся ради строк, записанных до
+     *  него. */
     source?: string
+    /** Которую рекламу человек открыл, чтобы сюда попасть. */
+    attribution: {
+        utm_source?: string
+        utm_medium?: string
+        utm_campaign?: string
+        utm_content?: string
+        utm_term?: string
+        yandex_click_id?: string
+        metrika_client_id?: string
+    }
     consents: { data_processing: boolean; contact: boolean }
     handled_at?: string
     created_at: string

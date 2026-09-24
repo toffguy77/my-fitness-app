@@ -46,6 +46,19 @@ function ageLabel(ageDays: number): string {
     })
 }
 
+/**
+ * How the campaign reads in one line.
+ *
+ * Source and campaign are what anybody grouping this list cares about; the
+ * medium says paid or not. The click identifier is deliberately absent — it is
+ * for the conversion upload, not for a person to read.
+ */
+function campaignOf(lead: Lead): string | null {
+    const { utm_source, utm_medium, utm_campaign } = lead.attribution ?? {}
+    const parts = [utm_source, utm_medium, utm_campaign].filter(Boolean)
+    return parts.length > 0 ? parts.join(' · ') : null
+}
+
 export function LeadList() {
     const [leads, setLeads] = useState<Lead[]>([])
     const [total, setTotal] = useState(0)
@@ -185,6 +198,15 @@ export function LeadList() {
                             <p className="mt-1 text-xs text-gray-500">
                                 {ageLabel(lead.age_days)}
                                 {lead.reminder_sent && ` · ${t('curator.leads.reminderSent')}`}
+                            </p>
+
+                            {/* Из какой кампании пришёл человек. Вопрос, ради
+                                которого этот список и заводился — «какие
+                                каналы приводят тех, кто доходит», — раньше
+                                ответа не имел: браузер писал сюда
+                                document.referrer, пустой при прямом заходе. */}
+                            <p className="mt-1 text-xs text-gray-500">
+                                {campaignOf(lead) ?? t('curator.leads.noCampaign')}
                             </p>
 
                             {/* Whether we may write to them at all is not a detail:

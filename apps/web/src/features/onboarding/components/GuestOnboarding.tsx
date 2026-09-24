@@ -31,6 +31,7 @@ import { StepIndicator } from './StepIndicator'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { SupportWidget } from '@/features/support/components/SupportWidget'
 import { EVENTS, track, TrackView } from '@/shared/analytics'
+import { storedAttribution, counterClientId } from '@/shared/analytics/attribution'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
 
@@ -43,6 +44,22 @@ const sexes: Sex[] = ['female', 'male']
 // Only its length is read during render; the titles themselves come from the
 // dictionary at the point of use.
 const stepCount = 5
+
+/**
+ * Передаёт идентификатор браузера заявке, когда счётчик его выдаст.
+ *
+ * Намеренно не ожидается: обратный вызов счётчика не приходит вовсе, если
+ * стоит блокировщик или согласия не было. Ожидание стоило бы контакта всем,
+ * у кого блокировщик, — в обмен на атрибуцию, которой в этом случае всё
+ * равно не было бы.
+ */
+function attachBrowserId(token: string): void {
+    void counterClientId().then((clientId) => {
+        if (clientId) {
+            void guestApi.attachClientId(token, clientId).catch(() => {})
+        }
+    })
+}
 
 export function GuestOnboarding() {
     const router = useRouter()
@@ -425,10 +442,15 @@ function GuestResultCapture() {
                 result: state.result,
                 last_step: 'result',
                 capture_source: 'result',
-                source: typeof document !== 'undefined' ? document.referrer : '',
+                // Кампания, из которой пришёл этот заход: считана на первой
+                // странице и пережила переходы мастера. Раньше сюда писался
+                // document.referrer, а он не отвечал ни на что — пусто при
+                // прямом заходе, домен площадки при переходе из рекламы.
+                attribution: storedAttribution(),
                 consents: { data_processing: dataConsent, contact: contactConsent },
             })
             rememberLeadToken(token)
+            attachBrowserId(token)
             track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'result' })
             // Факт «контакт оставили», без адреса и без цифр расчёта —
             // отдельно от EVENTS.leadSaved, который несёт свойства для CRM-нужд.
@@ -547,10 +569,15 @@ function GuestContactStep({ onSaved, onSkip }: { onSaved: () => void; onSkip: ()
                 result: state.result,
                 last_step: 'contact',
                 capture_source: 'contact_step',
-                source: typeof document !== 'undefined' ? document.referrer : '',
+                // Кампания, из которой пришёл этот заход: считана на первой
+                // странице и пережила переходы мастера. Раньше сюда писался
+                // document.referrer, а он не отвечал ни на что — пусто при
+                // прямом заходе, домен площадки при переходе из рекламы.
+                attribution: storedAttribution(),
                 consents: { data_processing: dataConsent, contact: contactConsent },
             })
             rememberLeadToken(token)
+            attachBrowserId(token)
             track(EVENTS.leadSaved, { contact_consent: contactConsent, capture_source: 'contact_step' })
             track(EVENTS.contactCaptured, { source: 'contact_step' })
             toast.success(t('onboarding.guest.saved'))

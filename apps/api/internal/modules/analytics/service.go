@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"database/sql"
@@ -39,6 +40,8 @@ type Batch struct {
 type Service struct {
 	db  *sql.DB
 	log *logger.Logger
+	// conversions is nil unless an advertising account is configured.
+	conversions ConversionQueue
 }
 
 // NewService creates the service.
@@ -71,6 +74,21 @@ func isScalar(value any) bool {
 	}
 }
 
+// ConversionQueue accepts facts that the advertising account should learn
+// about. Implemented by the metrika module; an interface so that analytics
+// does not depend on it, and so a deployment without an advertising account
+// simply has none.
+type ConversionQueue interface {
+	Queue(ctx context.Context, userID int64, eventName string, occurredAt time.Time)
+}
+
+// WithConversions attaches the queue. Nil in every environment that has no
+// advertising account, which is all of them except production.
+func (s *Service) WithConversions(queue ConversionQueue) *Service {
+	s.conversions = queue
+	return s
+}
+
 func Validate(event Event, fromClient bool) error {
 	definition, known := Dictionary[event.Name]
 	if !known {
@@ -101,6 +119,12 @@ func Validate(event Event, fromClient bool) error {
 		if !isScalar(value) {
 			return fmt.Errorf("property %q of %q is %T, not a value a report can group by: %w",
 				property, event.Name, value, apperrors.ErrValidation)
+		}
+		if allowedValues, constrained := definition.Values[property]; constrained {
+			if !slices.Contains(allowedValues, fmt.Sprint(value)) {
+				return fmt.Errorf("property %q of %q is %v, not one of %v: %w",
+					property, event.Name, value, allowedValues, apperrors.ErrValidation)
+			}
 		}
 	}
 
@@ -172,6 +196,16 @@ func (s *Service) RecordServerEvent(ctx context.Context, name string, userID int
 		                     gen_random_uuid()), $2, 'server', $3::jsonb)`,
 		name, userID, string(payload)); err != nil {
 		s.log.Error("Failed to record server analytics event", "error", err, "event", name)
+	}
+
+	// Some of these facts are also worth telling the advertising account, which
+	// cannot see them: they do not happen in a browser, so no goal can be
+	// reached for them.
+	//
+	// Hooked here rather than in the four handlers that record them, so that a
+	// fifth fact added later is not silently left out of the upload.
+	if s.conversions != nil {
+		s.conversions.Queue(ctx, userID, name, time.Now())
 	}
 }
 

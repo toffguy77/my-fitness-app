@@ -28,6 +28,9 @@ INDEX conversations conversations_pkey btree (id)
 INDEX conversations idx_conversations_client btree (client_id)
 INDEX conversations idx_conversations_curator btree (curator_id)
 INDEX conversations idx_conversations_live_pair btree (client_id, curator_id) WHERE (anonymized_at IS NULL)
+INDEX conversion_uploads conversion_uploads_pkey btree (id)
+INDEX conversion_uploads conversion_uploads_user_id_event_name_key btree (user_id, event_name)
+INDEX conversion_uploads idx_conversion_uploads_pending btree (occurred_at) WHERE (sent_at IS NULL)
 INDEX curator_client_relationships coach_client_relationships_coach_id_client_id_key btree (curator_id, client_id)
 INDEX curator_client_relationships coach_client_relationships_pkey btree (id)
 INDEX curator_client_relationships idx_curator_client_client btree (client_id, status)
@@ -73,7 +76,9 @@ INDEX job_runs idx_job_runs_started btree (started_at)
 INDEX job_runs job_runs_pkey btree (id)
 INDEX leads idx_leads_created_at btree (created_at)
 INDEX leads idx_leads_email btree (email)
+INDEX leads idx_leads_metrika_client_id btree (metrika_client_id) WHERE (metrika_client_id IS NOT NULL)
 INDEX leads idx_leads_reminder btree (reminder_sent_at, contact_consent)
+INDEX leads idx_leads_utm_campaign btree (utm_campaign) WHERE (utm_campaign IS NOT NULL)
 INDEX leads leads_pkey btree (id)
 INDEX magic_links idx_magic_links_email btree (email)
 INDEX magic_links idx_magic_links_expires btree (expires_at)
@@ -155,6 +160,8 @@ INDEX telegram_link_tickets idx_telegram_link_tickets_user btree (user_id)
 INDEX telegram_link_tickets telegram_link_tickets_pkey btree (token_hash)
 INDEX telegram_links telegram_links_chat_id_key btree (chat_id)
 INDEX telegram_links telegram_links_pkey btree (user_id)
+INDEX user_attribution idx_user_attribution_client_id btree (metrika_client_id) WHERE (metrika_client_id IS NOT NULL)
+INDEX user_attribution user_attribution_pkey btree (user_id)
 INDEX user_consents idx_user_consents_lead_id btree (lead_id)
 INDEX user_consents idx_user_consents_type btree (consent_type)
 INDEX user_consents idx_user_consents_user_id btree (user_id)
@@ -248,6 +255,15 @@ conversations.created_at timestamp with time zone NOT NULL DEFAULT now()
 conversations.curator_id bigint NOT NULL
 conversations.id uuid NOT NULL DEFAULT gen_random_uuid()
 conversations.updated_at timestamp with time zone NOT NULL DEFAULT now()
+conversion_uploads.attempts integer NOT NULL DEFAULT 0
+conversion_uploads.created_at timestamp with time zone NOT NULL DEFAULT now()
+conversion_uploads.event_name text NOT NULL
+conversion_uploads.id bigint NOT NULL DEFAULT nextval('conversion_uploads_id_seq')
+conversion_uploads.last_error text
+conversion_uploads.metrika_client_id text NOT NULL
+conversion_uploads.occurred_at timestamp with time zone NOT NULL
+conversion_uploads.sent_at timestamp with time zone
+conversion_uploads.user_id bigint NOT NULL
 curator_client_relationships.client_id bigint NOT NULL
 curator_client_relationships.created_at timestamp with time zone DEFAULT now()
 curator_client_relationships.curator_id bigint NOT NULL
@@ -403,14 +419,21 @@ leads.handled_by bigint
 leads.height_cm numeric
 leads.id uuid NOT NULL DEFAULT gen_random_uuid()
 leads.last_step text NOT NULL DEFAULT 'contact'
+leads.metrika_client_id text
 leads.name text
 leads.protein numeric
 leads.reminder_sent_at timestamp with time zone
 leads.sex text
 leads.source text
 leads.updated_at timestamp with time zone NOT NULL DEFAULT now()
+leads.utm_campaign text
+leads.utm_content text
+leads.utm_medium text
+leads.utm_source text
+leads.utm_term text
 leads.water_glasses integer
 leads.weight_kg numeric
+leads.yandex_click_id text
 magic_links.consents jsonb
 magic_links.consumed_at timestamp with time zone
 magic_links.created_at timestamp with time zone NOT NULL DEFAULT now()
@@ -621,6 +644,15 @@ telegram_links.chat_id bigint NOT NULL
 telegram_links.linked_at timestamp with time zone NOT NULL DEFAULT now()
 telegram_links.user_id bigint NOT NULL
 telegram_links.username text
+user_attribution.created_at timestamp with time zone NOT NULL DEFAULT now()
+user_attribution.metrika_client_id text
+user_attribution.user_id bigint NOT NULL
+user_attribution.utm_campaign text
+user_attribution.utm_content text
+user_attribution.utm_medium text
+user_attribution.utm_source text
+user_attribution.utm_term text
+user_attribution.yandex_click_id text
 user_consents.consent_type text NOT NULL
 user_consents.granted boolean NOT NULL
 user_consents.granted_at timestamp with time zone DEFAULT now()

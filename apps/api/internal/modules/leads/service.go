@@ -65,21 +65,24 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 	defer func() { _ = tx.Rollback() }()
 
 	lead := &Lead{
-		Email:      email,
-		Name:       in.Name,
-		Parameters: in.Parameters,
-		Result:     in.Result,
-		LastStep:   step,
-		Source:     in.Source,
-		Consents:   in.Consents,
+		Email:       email,
+		Name:        in.Name,
+		Parameters:  in.Parameters,
+		Result:      in.Result,
+		LastStep:    step,
+		Source:      in.Source,
+		Consents:    in.Consents,
+		Attribution: in.Attribution,
 	}
 
 	err = tx.QueryRowContext(ctx, `
 		INSERT INTO leads (
 			email, name, sex, birth_date, height_cm, weight_kg, activity_level, goal,
 			calories, protein, fat, carbs, water_glasses,
-			last_step, source, data_consent, contact_consent, capture_source
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+			last_step, source, data_consent, contact_consent, capture_source,
+			utm_source, utm_medium, utm_campaign, utm_content, utm_term, yandex_click_id
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+		          $19,$20,$21,$22,$23,$24)
 		RETURNING id, created_at, updated_at`,
 		email, nullIfEmpty(in.Name),
 		nullIfEmpty(in.Parameters.Sex), nullIfEmpty(in.Parameters.BirthDate),
@@ -91,6 +94,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 		resultField(in.Result, func(r *Result) any { return r.Carbs }),
 		resultField(in.Result, func(r *Result) any { return r.WaterGlasses }),
 		step, nullIfEmpty(in.Source), in.Consents.DataProcessing, in.Consents.Contact, captureSource,
+		nullIfEmpty(in.Attribution.UTMSource), nullIfEmpty(in.Attribution.UTMMedium),
+		nullIfEmpty(in.Attribution.UTMCampaign), nullIfEmpty(in.Attribution.UTMContent),
+		nullIfEmpty(in.Attribution.UTMTerm), nullIfEmpty(in.Attribution.YandexClickID),
 	).Scan(&lead.ID, &lead.CreatedAt, &lead.UpdatedAt)
 	if err != nil {
 		return nil, "", fmt.Errorf("create lead: %w", err)
@@ -111,6 +117,37 @@ func (s *Service) Create(ctx context.Context, in CreateInput, ip, ua string) (*L
 
 	s.log.Info("Saved onboarding lead", "lead_id", lead.ID, "step", step)
 	return lead, s.ResumeToken(lead.ID), nil
+}
+
+// AttachClientID records the browser identifier the counter handed over.
+//
+// Written once and never overwritten: a second visit in the same browser
+// produces the same identifier, and a different one would mean the lead has
+// been claimed by somebody else's browser — which is not something to follow.
+//
+// Silent when the lead already has one, and silent when the token names no
+// lead: this is called from a page, and neither case is worth an error the
+// visitor would see.
+func (s *Service) AttachClientID(ctx context.Context, token, clientID string) error {
+	leadID, err := parseToken(s.secret, token)
+	if err != nil {
+		return err
+	}
+
+	clientID = strings.TrimSpace(clientID)
+	if clientID == "" {
+		return fmt.Errorf("empty client id: %w", apperrors.ErrValidation)
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+		UPDATE leads
+		SET metrika_client_id = $2, updated_at = NOW()
+		WHERE id = $1 AND metrika_client_id IS NULL`,
+		leadID, clientID)
+	if err != nil {
+		return fmt.Errorf("attach client id: %w", err)
+	}
+	return nil
 }
 
 // UpdateStep records how far the person got.
@@ -169,6 +206,30 @@ func (s *Service) Claim(ctx context.Context, token string, userID int64) (*Lead,
 		`UPDATE user_consents SET user_id = $1, lead_id = NULL WHERE lead_id = $2`,
 		userID, lead.ID); err != nil {
 		return nil, fmt.Errorf("move consents: %w", err)
+	}
+
+	// So does where they came from, and for a concrete reason: every conversion
+	// worth reporting to the advertising account — this registration, the
+	// address being confirmed, the first food entry, a curator being assigned —
+	// happens after this row is deleted. Without the copy there would be no
+	// identifier left to attribute any of them to.
+	//
+	// DO NOTHING rather than an update: a second lead claimed by the same
+	// account would otherwise rewrite the campaign that actually brought them.
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO user_attribution (
+			user_id, metrika_client_id, yandex_click_id,
+			utm_source, utm_medium, utm_campaign, utm_content, utm_term
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		ON CONFLICT (user_id) DO NOTHING`,
+		userID,
+		nullIfEmpty(lead.Attribution.MetrikaClientID),
+		nullIfEmpty(lead.Attribution.YandexClickID),
+		nullIfEmpty(lead.Attribution.UTMSource), nullIfEmpty(lead.Attribution.UTMMedium),
+		nullIfEmpty(lead.Attribution.UTMCampaign), nullIfEmpty(lead.Attribution.UTMContent),
+		nullIfEmpty(lead.Attribution.UTMTerm),
+	); err != nil {
+		return nil, fmt.Errorf("keep attribution: %w", err)
 	}
 
 	if _, err := tx.ExecContext(ctx, `DELETE FROM leads WHERE id = $1`, lead.ID); err != nil {
@@ -295,6 +356,9 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 		       page.height_cm, page.weight_kg, page.activity_level, page.goal,
 		       page.calories, page.protein, page.fat, page.carbs, page.water_glasses,
 		       page.last_step, page.source, page.data_consent, page.contact_consent,
+		       page.utm_source, page.utm_medium, page.utm_campaign,
+		       page.utm_content, page.utm_term, page.yandex_click_id,
+		       page.metrika_client_id,
 		       page.handled_at, page.created_at, page.updated_at,
 		       EXTRACT(DAY FROM NOW() - page.created_at)::int,
 		       page.reminder_sent_at IS NOT NULL,
@@ -306,6 +370,13 @@ func (s *Service) Queue(ctx context.Context, includeHandled bool, limit, offset 
 		           COALESCE(l.activity_level, '') AS activity_level, COALESCE(l.goal, '') AS goal,
 		           l.calories, l.protein, l.fat, l.carbs, l.water_glasses,
 		           l.last_step, COALESCE(l.source, '') AS source, l.data_consent, l.contact_consent,
+		           COALESCE(l.utm_source, '') AS utm_source,
+		           COALESCE(l.utm_medium, '') AS utm_medium,
+		           COALESCE(l.utm_campaign, '') AS utm_campaign,
+		           COALESCE(l.utm_content, '') AS utm_content,
+		           COALESCE(l.utm_term, '') AS utm_term,
+		           COALESCE(l.yandex_click_id, '') AS yandex_click_id,
+		           COALESCE(l.metrika_client_id, '') AS metrika_client_id,
 		           l.handled_at, l.created_at, l.updated_at, l.reminder_sent_at
 		    FROM leads l
 		    WHERE ($1::boolean OR l.handled_at IS NULL)
@@ -399,6 +470,10 @@ func (s *Service) DueReminders(ctx context.Context) ([]Lead, error) {
 		       height_cm, weight_kg, COALESCE(activity_level, ''), COALESCE(goal, ''),
 		       calories, protein, fat, carbs, water_glasses,
 		       last_step, COALESCE(source, ''), data_consent, contact_consent,
+		       COALESCE(utm_source, ''), COALESCE(utm_medium, ''),
+		       COALESCE(utm_campaign, ''), COALESCE(utm_content, ''),
+		       COALESCE(utm_term, ''), COALESCE(yandex_click_id, ''),
+		       COALESCE(metrika_client_id, ''),
 		       handled_at, created_at, updated_at
 		FROM leads
 		WHERE reminder_sent_at IS NULL
@@ -450,6 +525,10 @@ func (s *Service) byID(ctx context.Context, leadID string) (*Lead, error) {
 		       height_cm, weight_kg, COALESCE(activity_level, ''), COALESCE(goal, ''),
 		       calories, protein, fat, carbs, water_glasses,
 		       last_step, COALESCE(source, ''), data_consent, contact_consent,
+		       COALESCE(utm_source, ''), COALESCE(utm_medium, ''),
+		       COALESCE(utm_campaign, ''), COALESCE(utm_content, ''),
+		       COALESCE(utm_term, ''), COALESCE(yandex_click_id, ''),
+		       COALESCE(metrika_client_id, ''),
 		       handled_at, created_at, updated_at
 		FROM leads WHERE id = $1`, leadID)
 
@@ -483,6 +562,10 @@ func scanLead(row scanner, extra ...any) (*Lead, error) {
 		&height, &weight, &lead.Parameters.ActivityLevel, &lead.Parameters.Goal,
 		&calories, &protein, &fat, &carbs, &water,
 		&lead.LastStep, &lead.Source, &lead.Consents.DataProcessing, &lead.Consents.Contact,
+		&lead.Attribution.UTMSource, &lead.Attribution.UTMMedium,
+		&lead.Attribution.UTMCampaign, &lead.Attribution.UTMContent,
+		&lead.Attribution.UTMTerm, &lead.Attribution.YandexClickID,
+		&lead.Attribution.MetrikaClientID,
 		&handledAt, &lead.CreatedAt, &lead.UpdatedAt,
 	}
 	dest = append(dest, extra...)
