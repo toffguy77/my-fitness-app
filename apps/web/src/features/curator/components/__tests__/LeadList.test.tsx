@@ -29,6 +29,7 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
         parameters: { goal: 'loss', height_cm: 170, weight_kg: 65 },
         result: { calories: 1800, protein: 120, fat: 50, carbs: 200, water_glasses: 8 },
         last_step: 'result',
+        attribution: { utm_source: 'yandex', utm_medium: 'cpc', utm_campaign: 'autumn' },
         consents: { data_processing: true, contact: true },
         age_days: 3,
         reminder_sent: true,
@@ -227,5 +228,36 @@ describe('LeadList (очередь заявок)', () => {
         await waitFor(() =>
             expect(api.getLeads).toHaveBeenCalledWith(expect.objectContaining({ includeHandled: true }))
         )
+    })
+})
+
+// Вопрос, ради которого этот список и существует: какие каналы приводят людей,
+// доходящих до конца. Раньше на него нельзя было ответить — браузер писал в
+// заявку `document.referrer`, пустой при прямом заходе.
+describe('Источник перехода в списке заявок', () => {
+    it('показывает кампанию, из которой пришёл человек', async () => {
+        respondWith([makeLead()])
+
+        render(<LeadList />)
+
+        expect(await screen.findByText('yandex · cpc · autumn')).toBeInTheDocument()
+    })
+
+    it('говорит прямо, когда источник неизвестен', async () => {
+        respondWith([makeLead({ attribution: {} })])
+
+        render(<LeadList />)
+
+        expect(await screen.findByText('Источник перехода неизвестен')).toBeInTheDocument()
+    })
+
+    // Идентификатор клика — для загрузки конверсий, а не для чтения человеком.
+    it('не показывает идентификатор рекламного перехода', async () => {
+        respondWith([makeLead({ attribution: { utm_source: 'yandex', yandex_click_id: 'yclid-1' } })])
+
+        render(<LeadList />)
+
+        await screen.findByText('yandex')
+        expect(screen.queryByText(/yclid-1/)).not.toBeInTheDocument()
     })
 })

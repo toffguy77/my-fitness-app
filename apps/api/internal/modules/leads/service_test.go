@@ -130,6 +130,9 @@ func TestCreate_StoresCaptureSource(t *testing.T) {
 					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 					sqlmock.AnyArg(), source,
+					// Шесть полей источника перехода, добавленных миграцией 078.
+					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+					sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 				).
 				WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 					AddRow("lead-9", time.Now(), time.Now()))
@@ -166,6 +169,9 @@ func TestCreate_DefaultsCaptureSourceToContactStep(t *testing.T) {
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 			sqlmock.AnyArg(), "contact_step",
+			// Шесть полей источника перехода, добавленных миграцией 078.
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
+			sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow("lead-10", time.Now(), time.Now()))
@@ -217,6 +223,7 @@ func TestClaim_MovesConsentsAndRemovesTheLead(t *testing.T) {
 	mock.ExpectExec("UPDATE user_consents SET user_id").
 		WithArgs(int64(42), "lead-7").
 		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("INSERT INTO user_attribution").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM leads").
 		WithArgs("lead-7").
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -305,11 +312,15 @@ func leadRow(id string) *sqlmock.Rows {
 		"id", "email", "name", "sex", "birth_date", "height_cm", "weight_kg",
 		"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
 		"last_step", "source", "data_consent", "contact_consent",
+		"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+		"yandex_click_id", "metrika_client_id",
 		"handled_at", "created_at", "updated_at",
 	}).AddRow(
 		id, "guest@example.com", "Гость", "female", time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC),
 		175.0, 70.0, "moderate", "loss", 1800.0, 120.0, 50.0, 200.0, 8,
-		"contact", "landing", true, true, nil, time.Now(), time.Now(),
+		"contact", "landing", true, true,
+		"yandex", "cpc", "autumn", "", "", "yclid-1", "cid-42",
+		nil, time.Now(), time.Now(),
 	)
 }
 
@@ -321,6 +332,8 @@ func queueRow(id string, ageDays int, reminderSent bool, conversationID string) 
 		"id", "email", "name", "sex", "birth_date", "height_cm", "weight_kg",
 		"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
 		"last_step", "source", "data_consent", "contact_consent",
+		"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+		"yandex_click_id", "metrika_client_id",
 		"handled_at", "created_at", "updated_at",
 		"age_days", "reminder_sent", "conversation_id",
 	})
@@ -331,7 +344,9 @@ func queueRow(id string, ageDays int, reminderSent bool, conversationID string) 
 	return rows.AddRow(
 		id, "guest@example.com", "Гость", "female", time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC),
 		175.0, 70.0, "moderate", "loss", 1800.0, 120.0, 50.0, 200.0, 8,
-		"contact", "landing", true, true, nil, time.Now(), time.Now(),
+		"contact", "landing", true, true,
+		"yandex", "cpc", "autumn", "", "", "yclid-1", "cid-42",
+		nil, time.Now(), time.Now(),
 		ageDays, reminderSent, conv,
 	)
 }
@@ -360,6 +375,7 @@ func TestClaimInto_MovesEverythingInOneCall(t *testing.T) {
 	mock.ExpectQuery("FROM leads WHERE id").WillReturnRows(leadRow("lead-7"))
 	mock.ExpectBegin()
 	mock.ExpectExec("UPDATE user_consents SET user_id").WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("INSERT INTO user_attribution").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec("DELETE FROM leads").WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 	mock.ExpectExec("INSERT INTO user_settings").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -478,4 +494,180 @@ func TestQueue_ClampsAnAbsurdOffset(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet(), "запрос должен уйти в базу с обрезанным сдвигом, а не с тем, что передал вызывающий")
+}
+
+// Сценарий «Заявка из рекламного перехода».
+//
+// Раньше в заявку писался `document.referrer`: для прямого захода пусто, для
+// рекламного перехода — домен площадки. На вопрос «из какой кампании пришёл
+// человек» это не отвечало ни разу.
+func TestCreate_StoresTheCampaignItCameFrom(t *testing.T) {
+	service, mock := setupService(t)
+
+	in := validInput()
+	in.Attribution = Attribution{
+		UTMSource:     "yandex",
+		UTMMedium:     "cpc",
+		UTMCampaign:   "autumn",
+		YandexClickID: "yclid-1",
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO leads").
+		WithArgs(
+			"guest@example.com", "Гость", "female", "1990-05-01",
+			sqlmock.AnyArg(), sqlmock.AnyArg(), "moderate", "loss",
+			1800.0, 120.0, 50.0, 200.0, 8,
+			"contact", "landing", true, true, "contact_step",
+			"yandex", "cpc", "autumn", nil, nil, "yclid-1",
+		).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("lead-7", time.Now(), time.Now()))
+	mock.ExpectExec("INSERT INTO user_consents").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO user_consents").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	lead, _, err := service.Create(context.Background(), in, "ip", "ua")
+
+	require.NoError(t, err)
+	assert.Equal(t, "autumn", lead.Attribution.UTMCampaign)
+	assert.Equal(t, "yclid-1", lead.Attribution.YandexClickID)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Сценарий «Заявка из прямого захода»: меток нет, заявка всё равно сохраняется.
+func TestCreate_SavesWithoutAnyCampaignTags(t *testing.T) {
+	service, mock := setupService(t)
+
+	in := validInput()
+	in.Attribution = Attribution{}
+
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO leads").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("lead-8", time.Now(), time.Now()))
+	mock.ExpectExec("INSERT INTO user_consents").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO user_consents").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	lead, _, err := service.Create(context.Background(), in, "ip", "ua")
+
+	require.NoError(t, err)
+	assert.Empty(t, lead.Attribution.UTMCampaign)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Сценарий «Идентификатор пришёл после создания заявки».
+func TestAttachClientID_WritesItByToken(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectExec("UPDATE leads").
+		WithArgs("lead-7", "cid-42").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := service.AttachClientID(
+		context.Background(), service.ResumeToken("lead-7"), "cid-42")
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Сценарий «Повторная дозапись»: условие в запросе, а не проверка в коде —
+// иначе между чтением и записью влезает второй запрос того же браузера.
+func TestAttachClientID_DoesNotOverwriteAnExistingOne(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectExec("UPDATE leads").
+		WithArgs("lead-7", "cid-99").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	err := service.AttachClientID(
+		context.Background(), service.ResumeToken("lead-7"), "cid-99")
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Сценарий «Дозапись по чужому токену»: ни одна заявка не меняется.
+func TestAttachClientID_RefusesATokenWeDidNotMint(t *testing.T) {
+	service, mock := setupService(t)
+
+	err := service.AttachClientID(context.Background(), "не-наш-токен", "cid-42")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrTokenInvalid)
+	// Ни одного запроса не ожидалось — обращение к базе провалило бы мок.
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Пустой идентификатор — не повод переписывать строку.
+func TestAttachClientID_RefusesAnEmptyIdentifier(t *testing.T) {
+	service, mock := setupService(t)
+
+	err := service.AttachClientID(
+		context.Background(), service.ResumeToken("lead-7"), "   ")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrValidation)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Сценарий «Заявка перенесена в профиль».
+//
+// Перенос удаляет строку заявки — сознательно: человек стал пользователем, и
+// хранить его контакт второй раз незачем. Но все четыре передаваемые конверсии
+// случаются уже после этого, поэтому источник обязан пережить удаление.
+func TestClaim_KeepsWhereTheyCameFromAfterTheLeadIsGone(t *testing.T) {
+	service, mock := setupService(t)
+
+	mock.ExpectQuery("FROM leads WHERE id").WillReturnRows(leadRow("lead-7"))
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE user_consents SET user_id").WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("INSERT INTO user_attribution").
+		WithArgs(int64(42), "cid-42", "yclid-1", "yandex", "cpc", "autumn", nil, nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("DELETE FROM leads").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	_, err := service.Claim(context.Background(), service.ResumeToken("lead-7"), 42)
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Сценарий «Заявка без идентификатора браузера»: запись всё равно создаётся с
+// тем, что известно, а перенос завершается успешно. Большинство строк будут
+// именно такими — блокировщик или отказ от куки.
+func TestClaim_KeepsWhatIsKnownWithoutABrowserIdentifier(t *testing.T) {
+	service, mock := setupService(t)
+
+	row := sqlmock.NewRows([]string{
+		"id", "email", "name", "sex", "birth_date", "height_cm", "weight_kg",
+		"activity_level", "goal", "calories", "protein", "fat", "carbs", "water_glasses",
+		"last_step", "source", "data_consent", "contact_consent",
+		"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+		"yandex_click_id", "metrika_client_id",
+		"handled_at", "created_at", "updated_at",
+	}).AddRow(
+		"lead-9", "guest@example.com", "Гость", "female",
+		time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC),
+		175.0, 70.0, "moderate", "loss", 1800.0, 120.0, 50.0, 200.0, 8,
+		"contact", "", true, true,
+		"", "", "", "", "", "", "",
+		nil, time.Now(), time.Now(),
+	)
+
+	mock.ExpectQuery("FROM leads WHERE id").WillReturnRows(row)
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE user_consents SET user_id").WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec("INSERT INTO user_attribution").
+		WithArgs(int64(42), nil, nil, nil, nil, nil, nil, nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("DELETE FROM leads").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	_, err := service.Claim(context.Background(), service.ResumeToken("lead-9"), 42)
+
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

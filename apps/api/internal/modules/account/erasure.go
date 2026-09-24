@@ -121,6 +121,18 @@ var strategies = []TableStrategy{
 	{Table: "support_messages", Column: "operator_id", Strategy: StrategyKeep, Reason: "reached through the conversation, which is deleted with the account"},
 	{Table: "leads", Column: "handled_by", Strategy: StrategyKeep, Reason: "an onboarding attempt by somebody else; the deleted curator's name drops to NULL"},
 	{Table: "oauth_pending_links", Column: "", Strategy: StrategyKeep, Reason: "unfinished sign-in attempts, holding no reference to an account"},
+
+	// Откуда человек пришёл и что мы об этом рассказали рекламному кабинету.
+	//
+	// Удаляется, а не обезличивается: ценность этих строк — ровно в
+	// идентификаторе браузера, и строка без него не значит ничего. Оставить
+	// его значило бы хранить указатель на человека, который просил себя
+	// удалить.
+	//
+	// Неотправленные конверсии уходят вместе со строкой, и это верно: про
+	// того, кто удалил аккаунт, рекламному кабинету сообщать нечего.
+	{Table: "user_attribution", Column: "user_id", Strategy: StrategyDelete, Reason: "the browser identifier is the whole content of the row"},
+	{Table: "conversion_uploads", Column: "user_id", Strategy: StrategyDelete, Reason: "nothing is reported to the ad account about somebody who asked to be erased"},
 }
 
 // Strategies exposes the table for tests and documentation.

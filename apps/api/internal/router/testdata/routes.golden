@@ -134,6 +134,7 @@ POST /api/v1/notifications/unsubscribe
 POST /api/v1/nutrition-calc/recalculate
 POST /api/v1/public/analytics/events
 POST /api/v1/public/leads
+POST /api/v1/public/leads/client-id
 POST /api/v1/public/leads/step
 POST /api/v1/public/nutrition/calculate
 POST /api/v1/public/support/telegram

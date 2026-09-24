@@ -34,19 +34,44 @@ type Consents struct {
 	Contact        bool `json:"contact"`
 }
 
+// Attribution is where the person came from.
+//
+// Fields rather than the single `Source` string that came before: the question
+// asked of this data is "which campaign", and an administrative list groups by
+// campaign. Grouping by a URL means parsing one on every read.
+//
+// YandexClickID is separate from the tags because the tags can be put on a
+// link by anybody, including us in our own letters, while the click id is set
+// by the ad network and is what ties a conversion back to a paid click.
+//
+// MetrikaClientID arrives after the lead is saved — the counter hands it over
+// through a callback that never fires behind an ad blocker — so it is written
+// later and is often absent.
+type Attribution struct {
+	UTMSource   string `json:"utm_source,omitempty"`
+	UTMMedium   string `json:"utm_medium,omitempty"`
+	UTMCampaign string `json:"utm_campaign,omitempty"`
+	UTMContent  string `json:"utm_content,omitempty"`
+	UTMTerm     string `json:"utm_term,omitempty"`
+
+	YandexClickID   string `json:"yandex_click_id,omitempty"`
+	MetrikaClientID string `json:"metrika_client_id,omitempty"`
+}
+
 // Lead is a saved onboarding attempt.
 type Lead struct {
-	ID         string     `json:"id"`
-	Email      string     `json:"email"`
-	Name       string     `json:"name,omitempty"`
-	Parameters Parameters `json:"parameters"`
-	Result     *Result    `json:"result,omitempty"`
-	LastStep   string     `json:"last_step"`
-	Source     string     `json:"source,omitempty"`
-	Consents   Consents   `json:"consents"`
-	HandledAt  *time.Time `json:"handled_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	ID          string      `json:"id"`
+	Email       string      `json:"email"`
+	Name        string      `json:"name,omitempty"`
+	Parameters  Parameters  `json:"parameters"`
+	Result      *Result     `json:"result,omitempty"`
+	LastStep    string      `json:"last_step"`
+	Source      string      `json:"source,omitempty"`
+	Attribution Attribution `json:"attribution"`
+	Consents    Consents    `json:"consents"`
+	HandledAt   *time.Time  `json:"handled_at,omitempty"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 }
 
 // QueueEntry is a lead together with what a curator needs to act on it: how
@@ -78,15 +103,27 @@ type QueueEntry struct {
 // CreateInput is what the contact step, the result screen and the support
 // bot submit.
 type CreateInput struct {
-	Email      string     `json:"email" binding:"required,email"`
-	Name       string     `json:"name"`
-	Parameters Parameters `json:"parameters"`
-	Result     *Result    `json:"result"`
-	LastStep   string     `json:"last_step"`
-	Source     string     `json:"source"`
+	Email       string      `json:"email" binding:"required,email"`
+	Name        string      `json:"name"`
+	Parameters  Parameters  `json:"parameters"`
+	Result      *Result     `json:"result"`
+	LastStep    string      `json:"last_step"`
+	Source      string      `json:"source"`
+	Attribution Attribution `json:"attribution"`
 	// Which screen the contact was left on: contact_step | result | bot.
 	// Empty defaults to contact_step in Service.Create — that was the only
 	// place a lead was ever created before this field existed.
 	CaptureSource string   `json:"capture_source"`
 	Consents      Consents `json:"consents"`
+}
+
+// ClientIDInput carries the browser identifier for a lead already saved.
+//
+// Separate from CreateInput because it arrives later and on its own: waiting
+// for it before saving the lead would lose the contact of everybody running an
+// ad blocker, in exchange for attribution that would not exist in that case
+// anyway. The contact matters more.
+type ClientIDInput struct {
+	Token    string `json:"token" binding:"required"`
+	ClientID string `json:"client_id" binding:"required"`
 }

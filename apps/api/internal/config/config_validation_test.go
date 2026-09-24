@@ -161,8 +161,12 @@ func TestFeatures_DerivedFromCredentials(t *testing.T) {
 	// own credentials and is off for the same reason. Мост переписки требует
 	// сверх того идентификатор форум-группы — её создаёт человек, и вывести её
 	// из учётных данных нельзя.
-	assert.Equal(t, []string{"support_bot", "support_bridge", "web_push", "error_reporting", "tracing"},
-		cfg.Features.Disabled())
+	// Обратная связь рекламному кабинету выключена по той же причине: токен
+	// привязан к живому человеку, и вывести его из учётных данных нельзя.
+	assert.Equal(t, []string{
+		"support_bot", "support_bridge", "web_push",
+		"error_reporting", "tracing", "ads_attribution",
+	}, cfg.Features.Disabled())
 }
 
 func TestFeatures_DisabledWhenCredentialsAbsent(t *testing.T) {

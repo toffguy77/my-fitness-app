@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import { Toaster } from 'react-hot-toast'
 import { YandexMetrika } from '@/shared/components/YandexMetrika'
+import { MetrikaRouteHits } from '@/shared/components/MetrikaRouteHits'
+import { AttributionCapture } from '@/shared/analytics'
 import { CookieConsent } from '@/shared/components/CookieConsent'
 import { ServiceWorkerCleanup } from '@/shared/components/ServiceWorkerCleanup'
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
@@ -70,6 +72,8 @@ export default async function RootLayout({
             </head>
             <body>
                 <YandexMetrika nonce={nonce} />
+                <MetrikaRouteHits />
+                <AttributionCapture />
                 <CookieConsent />
                 <ServiceWorkerCleanup />
                 <GlobalErrorHandlers />

@@ -10,6 +10,7 @@ import "sort"
 const (
 	// The way in: landing page to registered account.
 	EventLandingViewed      = "landing_viewed"
+	EventLandingScroll      = "landing_scroll_depth"
 	EventOnboardingStarted  = "onboarding_started"
 	EventOnboardingStep     = "onboarding_step_completed"
 	EventOnboardingResult   = "onboarding_result_shown"
@@ -52,11 +53,28 @@ type Definition struct {
 	// ServerOnly events are facts; accepting them from a browser would let
 	// anybody claim a registration that never happened.
 	ServerOnly bool
+	// Values constrains a property to a fixed set, compared by printed form so
+	// that 25 and "25" are the same answer. A property absent here takes any
+	// scalar.
+	//
+	// It exists because a threshold is only useful if there are four of them:
+	// a report groups by a handful of values, and a free number turns one line
+	// into a hundred that nobody reads.
+	Values map[string][]string
 }
 
 // Dictionary is every event the service accepts.
 var Dictionary = map[string]Definition{
-	EventLandingViewed:      {Optional: []string{"source"}},
+	EventLandingViewed: {Optional: []string{"source"}},
+	// Карта скроллинга ушла вместе с записью сессий — одна опция Метрики несла
+	// обе, — и это отвечает на вопрос, ради которого она была нужна:
+	// дочитывают ли посадочную до утверждений, вокруг которых она построена.
+	// Значение категориальное намеренно: сырой процент — сотня значений, по
+	// которым никто не станет группировать.
+	EventLandingScroll: {
+		Required: []string{"depth"},
+		Values:   map[string][]string{"depth": {"25", "50", "75", "100"}},
+	},
 	EventOnboardingStarted:  {Optional: []string{"source"}},
 	EventOnboardingStep:     {Required: []string{"step"}},
 	EventOnboardingResult:   {Optional: []string{"goal", "activity_level"}},

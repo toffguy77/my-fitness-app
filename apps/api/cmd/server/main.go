@@ -26,6 +26,7 @@ import (
 	foodtracker "github.com/burcev/api/internal/modules/food-tracker"
 	"github.com/burcev/api/internal/modules/leads"
 	"github.com/burcev/api/internal/modules/logs"
+	"github.com/burcev/api/internal/modules/metrika"
 	"github.com/burcev/api/internal/modules/notifications"
 	nutritioncalc "github.com/burcev/api/internal/modules/nutrition-calc"
 	"github.com/burcev/api/internal/modules/support"
@@ -344,6 +345,16 @@ func main() {
 
 	analyticsService := analytics.NewService(db.DB, log)
 
+	// Telling the advertising account what happened after the browser closed.
+	// Nil wherever no account is configured, which is every environment except
+	// production — and then nothing queues, and no job is registered.
+	var metrikaService *metrika.Service
+	if cfg.Features.AdsAttribution {
+		metrikaService = metrika.NewService(
+			db.DB, log, cfg.MetrikaOAuthToken, cfg.MetrikaCounterID)
+		analyticsService = analyticsService.WithConversions(metrikaService)
+	}
+
 	// Leads outlive the browser session they were created in, so their resume
 	// links are signed with the same secret that signs sessions.
 	leadsService := leads.NewService(db.DB, log, cfg.JWTSecret)
@@ -562,6 +573,7 @@ func main() {
 		RateLimiter:   rateLimiter,
 		Scheduler:     scheduler,
 		Capabilities:  capabilityVerifier,
+		Metrika:       metrikaService,
 	})
 
 	// Routing lives in internal/router, one file per domain.

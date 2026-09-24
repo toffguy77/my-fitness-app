@@ -19,6 +19,7 @@ import (
 	"github.com/burcev/api/internal/modules/content"
 	"github.com/burcev/api/internal/modules/curator"
 	"github.com/burcev/api/internal/modules/leads"
+	"github.com/burcev/api/internal/modules/metrika"
 	"github.com/burcev/api/internal/modules/notifications"
 	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/modules/supportbridge"
@@ -66,6 +67,10 @@ type Deps struct {
 	Scheduler   *jobs.Scheduler
 	// Capabilities is nil when nothing verifiable is configured.
 	Capabilities *capabilities.Verifier
+	// Metrika is nil when the advertising account is not configured, which is
+	// every environment except production. Its job is then not registered at
+	// all rather than running hourly to find nothing.
+	Metrika *metrika.Service
 }
 
 // Register declares every periodic job. It panics on an invalid declaration:
@@ -250,6 +255,24 @@ func Register(registry *jobs.Registry, d Deps) {
 			return sendLeadReminders(ctx, d)
 		},
 	})
+
+	// Конверсии, случившиеся не в браузере, уезжают в рекламный кабинет.
+	//
+	// Задача, а не запрос из обработчика: один HTTP-вызов к Яндексу внутри
+	// регистрации делает их недоступность нашей. Факт должен быть записан,
+	// даже если о нём некому сообщить.
+	//
+	// Раз в час: конверсия ценна не срочностью, а тем, что она вообще дошла.
+	if d.Metrika != nil {
+		registry.MustRegister(jobs.Job{
+			Name:     "metrika.upload-conversions",
+			Interval: time.Hour,
+			Timeout:  5 * time.Minute,
+			Run: func(ctx context.Context) (int, error) {
+				return d.Metrika.Upload(ctx)
+			},
+		})
+	}
 
 	// Состав рабочей группы сверяется с ролями.
 	//

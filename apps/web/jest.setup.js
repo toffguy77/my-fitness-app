@@ -132,3 +132,42 @@ jest.mock('react-window', () => ({
 // beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }))
 // afterEach(() => server.resetHandlers())
 // afterAll(() => server.close())
+
+// Ни один тест не выходит в сеть.
+//
+// Пока запроса не было видно, это стоило двух падений и часа на чтение: с
+// отключённым MSW незамоканный fetch уходил в настоящую сеть, `whatwg-fetch`
+// реализует его поверх XMLHttpRequest из jsdom, и всё это возвращалось ошибкой
+// рукопожатия TLS, не называвшей ни адреса, ни виновника. Падали при этом два
+// теста food-tracker, которые про сеть ничего не знают: отправлял буфер
+// логгер и клиент продуктовых событий.
+//
+// Тест, который что-то отправляет наружу, зависит от сети и от чужого сервера.
+// Здесь он вместо этого падает с адресом в сообщении.
+//
+// Свой мок в тесте перекрывает этот запрет — он ловит только то, что никто не
+// подменил, то есть ровно случайные обращения.
+const forbidNetwork = (url) => {
+    throw new Error(
+        `Тест обратился в сеть: ${url}\n` +
+        `Подмените транспорт в самом тесте. Реальный запрос делает результат ` +
+        `зависимым от сети и от чужого сервера.`,
+    )
+}
+
+beforeEach(() => {
+    global.fetch = jest.fn((input) =>
+        forbidNetwork(typeof input === 'string' ? input : (input?.url ?? String(input))),
+    )
+
+    // `sendBeacon` в jsdom нет, а его отсутствие уводит отправку событий в
+    // запасной путь через fetch. Пустая заглушка сообщает вызывающему, что
+    // отправка принята, и никуда не идёт.
+    if (typeof navigator !== 'undefined') {
+        Object.defineProperty(navigator, 'sendBeacon', {
+            value: jest.fn().mockReturnValue(true),
+            configurable: true,
+            writable: true,
+        })
+    }
+})

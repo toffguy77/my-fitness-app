@@ -45,6 +45,10 @@ type Features struct {
 	// something and see whether anybody hears.
 	ErrorReporting bool
 	Tracing        bool
+	// AdsAttribution reports product facts to the advertising account. Off
+	// without a token: local development has no business holding one, and an
+	// upload signed with nothing would fail on every run.
+	AdsAttribution bool
 }
 
 // Disabled returns the names of the capabilities that are turned off, in a
@@ -67,6 +71,7 @@ func (f Features) Disabled() []string {
 		{"web_push", f.WebPush},
 		{"error_reporting", f.ErrorReporting},
 		{"tracing", f.Tracing},
+		{"ads_attribution", f.AdsAttribution},
 	} {
 		if !c.on {
 			off = append(off, c.name)
@@ -90,6 +95,7 @@ func (f Features) Map() map[string]bool {
 		"web_push":         f.WebPush,
 		"error_reporting":  f.ErrorReporting,
 		"tracing":          f.Tracing,
+		"ads_attribution":  f.AdsAttribution,
 	}
 }
 
@@ -237,6 +243,11 @@ type Config struct {
 	SentryDSN    string
 	OTLPEndpoint string
 
+	// Web analytics, for reporting conversions back to the advertising
+	// account. Optional: without both the capability is off.
+	MetrikaOAuthToken string
+	MetrikaCounterID  string
+
 	// Migrations
 	MigrationBaseline int
 
@@ -292,10 +303,12 @@ func Load() (*Config, error) {
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-key"),
 
 		// Application domain (drives ResetPasswordURL and links in emails)
-		AppDomain:    getEnv("APP_DOMAIN", ""),
-		Version:      getEnv("APP_VERSION", "dev"),
-		SentryDSN:    getEnv("SENTRY_DSN", ""),
-		OTLPEndpoint: getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
+		AppDomain:         getEnv("APP_DOMAIN", ""),
+		Version:           getEnv("APP_VERSION", "dev"),
+		SentryDSN:         getEnv("SENTRY_DSN", ""),
+		MetrikaOAuthToken: getEnv("YANDEX_METRIKA_OAUTH_TOKEN", ""),
+		MetrikaCounterID:  getEnv("YANDEX_METRIKA_COUNTER_ID", ""),
+		OTLPEndpoint:      getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
 
 		// SMTP Configuration (Yandex Mail)
 		SMTPHost:        getEnv("SMTP_HOST", "smtp.yandex.ru"),
