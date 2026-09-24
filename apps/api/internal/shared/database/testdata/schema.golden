@@ -434,6 +434,35 @@ leads.utm_term text
 leads.water_glasses integer
 leads.weight_kg numeric
 leads.yandex_click_id text
+live_analytics_events.app_version text
+live_analytics_events.id bigint
+live_analytics_events.name text
+live_analytics_events.occurred_at timestamp with time zone
+live_analytics_events.platform text
+live_analytics_events.properties jsonb
+live_analytics_events.user_id bigint
+live_analytics_events.visitor_id uuid
+live_users.anonymized_at timestamp with time zone
+live_users.avatar_url text
+live_users.created_at timestamp with time zone
+live_users.deleted_at timestamp with time zone
+live_users.deletion_requested_at timestamp with time zone
+live_users.email text
+live_users.email_unsubscribed_at timestamp with time zone
+live_users.email_verified boolean
+live_users.files_purged_at timestamp with time zone
+live_users.id bigint
+live_users.is_system boolean
+live_users.name text
+live_users.onboarding_completed boolean
+live_users.password text
+live_users.password_changed_at timestamp without time zone
+live_users.pending_file_prefixes jsonb
+live_users.quiet_hours_end smallint
+live_users.quiet_hours_start smallint
+live_users.role text
+live_users.token_version integer
+live_users.updated_at timestamp with time zone
 magic_links.consents jsonb
 magic_links.consumed_at timestamp with time zone
 magic_links.created_at timestamp with time zone NOT NULL DEFAULT now()
