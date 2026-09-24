@@ -181,3 +181,45 @@ func TestFeatures_DisabledWhenCredentialsAbsent(t *testing.T) {
 	assert.Contains(t, cfg.Features.Map(), "food_recognition")
 	assert.False(t, cfg.Features.Map()["food_recognition"])
 }
+
+// Способность, которую никто не проверял во включённом состоянии.
+//
+// Так она и уехала на прод мёртвой: поле в структуре было, в списке
+// выключенных значилось, а присваивания в deriveFeatures не было вовсе.
+// Проверка «выключена без учётных данных» это пропускала — она проходит и
+// тогда, когда признак не вычисляется никогда.
+func TestFeatures_AdsAttributionOnWithBothCredentials(t *testing.T) {
+	prodEnv(t)
+	t.Setenv("YANDEX_METRIKA_OAUTH_TOKEN", "oauth-token")
+	t.Setenv("YANDEX_METRIKA_COUNTER_ID", "107159088")
+
+	cfg, err := loadIn(t)
+
+	require.NoError(t, err)
+	assert.True(t, cfg.Features.AdsAttribution)
+	assert.NotContains(t, cfg.Features.Disabled(), "ads_attribution")
+	assert.True(t, cfg.Features.Map()["ads_attribution"])
+}
+
+// Токен без счётчика некуда загружать, счётчик без токена не пишется.
+func TestFeatures_AdsAttributionNeedsBoth(t *testing.T) {
+	for _, only := range []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{"только токен", "YANDEX_METRIKA_OAUTH_TOKEN", "oauth-token"},
+		{"только счётчик", "YANDEX_METRIKA_COUNTER_ID", "107159088"},
+	} {
+		t.Run(only.name, func(t *testing.T) {
+			prodEnv(t)
+			t.Setenv(only.key, only.value)
+
+			cfg, err := loadIn(t)
+
+			require.NoError(t, err)
+			assert.False(t, cfg.Features.AdsAttribution)
+			assert.Contains(t, cfg.Features.Disabled(), "ads_attribution")
+		})
+	}
+}

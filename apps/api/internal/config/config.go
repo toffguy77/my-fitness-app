@@ -489,6 +489,10 @@ func deriveFeatures(c *Config) Features {
 		// refuses a request signed without any of them.
 		WebPush: c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" && c.VAPIDSubject != "",
 
+		// Обе разом: токен без счётчика некуда загружать, счётчик без токена
+		// не пишется.
+		AdsAttribution: c.MetrikaOAuthToken != "" && c.MetrikaCounterID != "",
+
 		ErrorReporting: c.SentryDSN != "",
 
 		// Наличие адреса — намерение, а не результат: экспортёр ещё должен
