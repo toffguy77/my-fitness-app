@@ -3,6 +3,7 @@ package foodtracker
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -1746,33 +1747,278 @@ func (s *Service) AddWater(ctx context.Context, userID int64, date time.Time, gl
 // Recommendations
 // ============================================================================
 
+// ============================================================================
+// Нормы: разрешение под профиль
+// ============================================================================
+
+// normProfile — то, что нужно знать о человеке, чтобы выбрать норму.
+//
+// Оба поля могут быть пусты, и это обычный случай, а не краевой: на проде пол и
+// дату рождения заполнили 2 из 9 живых аккаунтов.
+type normProfile struct {
+	Sex *string
+	Age *int
+}
+
+// profileForNorms читает пол и возраст. Отсутствие настроек — не ошибка.
+func (s *Service) profileForNorms(ctx context.Context, userID int64) (normProfile, error) {
+	query := `
+		SELECT biological_sex, birth_date
+		FROM user_settings
+		WHERE user_id = $1
+	`
+
+	var sex *string
+	var birth *time.Time
+	err := s.db.QueryRowContext(ctx, query, userID).Scan(&sex, &birth)
+	if errors.Is(err, sql.ErrNoRows) {
+		return normProfile{}, nil
+	}
+	if err != nil {
+		return normProfile{}, fmt.Errorf("ошибка при чтении профиля: %w", err)
+	}
+
+	profile := normProfile{}
+	// В базе пол лежит как 'male'/'female'; всё прочее для нормы бесполезно —
+	// источник даёт два варианта и не даёт третьего.
+	if sex != nil && (*sex == "male" || *sex == "female") {
+		profile.Sex = sex
+	}
+	if birth != nil {
+		age := yearsSince(*birth, time.Now())
+		profile.Age = &age
+	}
+	return profile, nil
+}
+
+// yearsSince — полных лет между датами.
+func yearsSince(birth, now time.Time) int {
+	years := now.Year() - birth.Year()
+	if now.YearDay() < birth.YearDay() {
+		years--
+	}
+	if years < 0 {
+		years = 0
+	}
+	return years
+}
+
+// normsByNutrient читает все нормы разом: их несколько десятков, и отдельный
+// запрос на нутриент превратил бы одну страницу в тридцать три запроса.
+func (s *Service) normsByNutrient(ctx context.Context) (map[string][]NutrientNorm, error) {
+	query := `
+		SELECT nutrient_id, sex, min_age, daily_target, min_value, optimal_value,
+		       source, source_version, note
+		FROM nutrient_norms
+		ORDER BY nutrient_id, min_age
+	`
+
+	rows, err := s.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка при получении норм: %w", err)
+	}
+	defer rows.Close()
+
+	byNutrient := make(map[string][]NutrientNorm)
+	for rows.Next() {
+		var norm NutrientNorm
+		if err := rows.Scan(
+			&norm.NutrientID,
+			&norm.Sex,
+			&norm.MinAge,
+			&norm.DailyTarget,
+			&norm.MinValue,
+			&norm.OptimalValue,
+			&norm.Source,
+			&norm.SourceVersion,
+			&norm.Note,
+		); err != nil {
+			s.log.Error("Failed to scan nutrient norm", "error", err)
+			continue
+		}
+		byNutrient[norm.NutrientID] = append(byNutrient[norm.NutrientID], norm)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ошибка при обработке норм: %w", err)
+	}
+	return byNutrient, nil
+}
+
+// resolveNorm выбирает норму под профиль.
+//
+// Второе значение — «норма есть, но без профиля её не выбрать». Это не ошибка и
+// не отсутствие нормы: у железа их две, 10 и 18 мг, и любая из них, показанная
+// наугад, будет выглядеть как ответ, не будучи им.
+//
+// Правила выбора: сначала норма для пола человека, иначе общая для всех
+// взрослых; среди подходящих по возрасту — с наибольшим порогом.
+func resolveNorm(norms []NutrientNorm, profile normProfile) (*NutrientNorm, bool) {
+	if len(norms) == 0 {
+		return nil, false
+	}
+
+	sexSpecific := false
+	ageBands := make(map[int]struct{})
+	for _, norm := range norms {
+		if norm.Sex != "any" {
+			sexSpecific = true
+		}
+		ageBands[norm.MinAge] = struct{}{}
+	}
+
+	if sexSpecific && profile.Sex == nil {
+		return nil, true
+	}
+	if len(ageBands) > 1 && profile.Age == nil {
+		return nil, true
+	}
+
+	// Без возраста остаётся единственный порог, и это взрослая норма.
+	age := 18
+	if profile.Age != nil {
+		age = *profile.Age
+	}
+
+	var best *NutrientNorm
+	for i := range norms {
+		norm := norms[i]
+		if norm.Sex != "any" && (profile.Sex == nil || norm.Sex != *profile.Sex) {
+			continue
+		}
+		if norm.MinAge > age {
+			continue
+		}
+		if best == nil || better(norm, *best, profile) {
+			best = &norms[i]
+		}
+	}
+
+	if best == nil {
+		// Норма есть, но не для этого человека — например только с 18 лет.
+		return nil, true
+	}
+	return best, false
+}
+
+// better — правило предпочтения: своя по полу важнее общей, старший порог
+// возраста важнее младшего.
+func better(candidate, current NutrientNorm, profile normProfile) bool {
+	candidateOwn := profile.Sex != nil && candidate.Sex == *profile.Sex
+	currentOwn := profile.Sex != nil && current.Sex == *profile.Sex
+	if candidateOwn != currentOwn {
+		return candidateOwn
+	}
+	return candidate.MinAge > current.MinAge
+}
+
+// intakeFor — потребление нутриента, если продукт умеет его считать.
+//
+// До этой правки потребление подставлялось по карте русских названий
+// ("Белок", "Жиры", "Углеводы", "Калории"). В справочнике из МР 2.3.1.0253-21
+// таких строк нет, то есть карта была бы мёртвой, а переименование нутриента
+// молча выключало бы измерение. Теперь это данные: колонка intake_source.
+func intakeFor(source *string, totals *KBZHU) *float64 {
+	if source == nil || totals == nil {
+		return nil
+	}
+	var value float64
+	switch *source {
+	case "calories":
+		value = totals.Calories
+	case "protein":
+		value = totals.Protein
+	case "fat":
+		value = totals.Fat
+	case "carbs":
+		value = totals.Carbs
+	default:
+		// Клетчатка и натрий объявлены в схеме, но ещё не считаются. Пусто
+		// честнее нуля: см. предложение micronutrient-intake.
+		return nil
+	}
+	return &value
+}
+
+// withProgress собирает строку ответа: нутриент, норма под профиль, потребление.
+func withProgress(
+	rec NutrientRecommendation,
+	norms []NutrientNorm,
+	profile normProfile,
+	totals *KBZHU,
+	isTracked bool,
+) NutrientRecommendationWithProgress {
+	item := NutrientRecommendationWithProgress{
+		NutrientRecommendation: rec,
+		IsTracked:              isTracked,
+		CurrentIntake:          intakeFor(rec.IntakeSource, totals),
+	}
+
+	norm, needsProfile := resolveNorm(norms, profile)
+	item.NormNeedsProfile = needsProfile
+	if norm != nil {
+		target := norm.DailyTarget
+		item.DailyTarget = &target
+		item.MinValue = norm.MinValue
+		item.OptimalValue = norm.OptimalValue
+		source := norm.Source + " (" + norm.SourceVersion + ")"
+		item.NormSource = &source
+		item.NormNote = norm.Note
+	}
+
+	// Процент считается только когда известны оба числа. Иначе он был бы
+	// процентом от догадки или процентом неизвестного.
+	if item.DailyTarget != nil && item.CurrentIntake != nil && *item.DailyTarget > 0 {
+		percentage := roundToOneDecimal((*item.CurrentIntake / *item.DailyTarget) * 100)
+		item.Percentage = &percentage
+	}
+
+	return item
+}
+
+// ============================================================================
+// Рекомендации
+// ============================================================================
+
 // GetRecommendations retrieves nutrient recommendations for a user
 // Returns daily recommendations grouped by category, weekly recommendations, and custom recommendations
 // Requirements: 11.1, 11.2, 11.3, 11.4, 15.1, 15.2
 func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRecommendationsResponse, error) {
 	startTime := time.Now()
 
-	// Get daily recommendations with user preferences
-	dailyQuery := `
-		SELECT nr.id, nr.name, nr.category, nr.daily_target, nr.unit, nr.is_weekly,
-		       nr.description, nr.benefits, nr.effects, nr.min_recommendation, nr.optimal_recommendation,
+	profile, err := s.profileForNorms(ctx, userID)
+	if err != nil {
+		// Без профиля нормы, зависящие от пола, не разрешатся — но остальные
+		// покажутся. Отказ профиля не повод не показать ничего.
+		s.log.Warn("Failed to read profile for norms", "error", err, "user_id", userID)
+		profile = normProfile{}
+	}
+
+	norms, err := s.normsByNutrient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Каталог: все нутриенты с признаком отслеживания. Выключенные тоже приходят —
+	// иначе экран настроек не смог бы показать, что человек их выключил.
+	catalogueQuery := `
+		SELECT nr.id, nr.name, nr.category, nr.unit, nr.is_weekly,
+		       nr.description, nr.benefits, nr.effects,
+		       nr.source, nr.source_version, nr.intake_source,
 		       COALESCE(unp.is_tracked, true) as is_tracked
 		FROM nutrient_recommendations nr
 		LEFT JOIN user_nutrient_preferences unp ON nr.id = unp.nutrient_id AND unp.user_id = $1
-		WHERE nr.is_weekly = false
-		ORDER BY nr.category, nr.name
+		ORDER BY nr.is_weekly, nr.category, nr.name
 	`
 
-	rows, err := s.db.QueryContext(ctx, dailyQuery, userID)
+	rows, err := s.db.QueryContext(ctx, catalogueQuery, userID)
 	if err != nil {
-		s.log.LogDatabaseQuery(dailyQuery, time.Since(startTime), err, map[string]interface{}{
+		s.log.LogDatabaseQuery(catalogueQuery, time.Since(startTime), err, map[string]interface{}{
 			"user_id": userID,
 		})
 		return nil, fmt.Errorf("ошибка при получении рекомендаций: %w", err)
 	}
 	defer rows.Close()
 
-	// Initialize daily recommendations map
 	daily := make(map[NutrientCategory][]NutrientRecommendationWithProgress)
 	for _, cat := range []NutrientCategory{
 		NutrientCategoryVitamins,
@@ -1784,149 +2030,54 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 		daily[cat] = []NutrientRecommendationWithProgress{}
 	}
 
-	// Calculate today's actual intake from food entries
-	today := time.Now()
-	dailyTotals, err := s.CalculateDailyTotals(ctx, userID, today)
+	// Потребление считается по записям за сегодня. Для микронутриентов оно
+	// неизвестно, и это видно по пустому intake_source.
+	dailyTotals, err := s.CalculateDailyTotals(ctx, userID, time.Now())
 	if err != nil {
 		s.log.Warn("Failed to calculate daily totals for recommendations", "error", err)
-		dailyTotals = &KBZHU{}
-	}
-	if dailyTotals == nil {
-		dailyTotals = &KBZHU{}
+		dailyTotals = nil
 	}
 
-	// Map nutrient names to actual intake values
-	nutrientIntakeMap := map[string]float64{
-		"Белок":    dailyTotals.Protein,
-		"Жиры":     dailyTotals.Fat,
-		"Углеводы": dailyTotals.Carbs,
-		"Калории":  dailyTotals.Calories,
-	}
-
+	var weekly []NutrientRecommendationWithProgress
 	for rows.Next() {
 		var rec NutrientRecommendation
 		var isTracked bool
-		err := rows.Scan(
+		if err := rows.Scan(
 			&rec.ID,
 			&rec.Name,
 			&rec.Category,
-			&rec.DailyTarget,
 			&rec.Unit,
 			&rec.IsWeekly,
 			&rec.Description,
 			&rec.Benefits,
 			&rec.Effects,
-			&rec.MinRecommendation,
-			&rec.OptimalRecommendation,
+			&rec.Source,
+			&rec.SourceVersion,
+			&rec.IntakeSource,
 			&isTracked,
-		)
-		if err != nil {
+		); err != nil {
 			s.log.Error("Failed to scan nutrient recommendation", "error", err)
 			continue
 		}
 
-		// Выключенные нутриенты тоже попадают в ответ — с признаком. Экран
-		// настроек иначе не может показать, что человек выключил, а
-		// UpdateNutrientPreferences ждёт от него полный список отслеживаемых.
-		// Отбор «показывать во вкладке» делает клиент.
-
-		// Get actual intake from today's food entries
-		currentIntake := 0.0
-		if val, ok := nutrientIntakeMap[rec.Name]; ok {
-			currentIntake = val
+		item := withProgress(rec, norms[rec.ID], profile, dailyTotals, isTracked)
+		if rec.IsWeekly {
+			weekly = append(weekly, item)
+			continue
 		}
-		percentage := 0.0
-		if rec.DailyTarget > 0 {
-			percentage = roundToOneDecimal((currentIntake / rec.DailyTarget) * 100)
-		}
-
-		recWithProgress := NutrientRecommendationWithProgress{
-			NutrientRecommendation: rec,
-			CurrentIntake:          currentIntake,
-			Percentage:             percentage,
-			IsTracked:              isTracked,
-		}
-
-		daily[rec.Category] = append(daily[rec.Category], recWithProgress)
+		daily[rec.Category] = append(daily[rec.Category], item)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("ошибка при обработке рекомендаций: %w", err)
 	}
 
-	s.log.LogDatabaseQuery(dailyQuery, time.Since(startTime), nil, map[string]interface{}{
+	s.log.LogDatabaseQuery(catalogueQuery, time.Since(startTime), nil, map[string]interface{}{
 		"user_id": userID,
 	})
 
-	// Get weekly recommendations
-	weeklyQuery := `
-		SELECT nr.id, nr.name, nr.category, nr.daily_target, nr.unit, nr.is_weekly,
-		       nr.description, nr.benefits, nr.effects, nr.min_recommendation, nr.optimal_recommendation,
-		       COALESCE(unp.is_tracked, true) as is_tracked
-		FROM nutrient_recommendations nr
-		LEFT JOIN user_nutrient_preferences unp ON nr.id = unp.nutrient_id AND unp.user_id = $1
-		WHERE nr.is_weekly = true
-		ORDER BY nr.name
-	`
-
-	weeklyRows, err := s.db.QueryContext(ctx, weeklyQuery, userID)
-	if err != nil {
-		s.log.LogDatabaseQuery(weeklyQuery, time.Since(startTime), err, map[string]interface{}{
-			"user_id": userID,
-		})
-		return nil, fmt.Errorf("ошибка при получении недельных рекомендаций: %w", err)
-	}
-	defer weeklyRows.Close()
-
-	var weekly []NutrientRecommendationWithProgress
-	for weeklyRows.Next() {
-		var rec NutrientRecommendation
-		var isTracked bool
-		err := weeklyRows.Scan(
-			&rec.ID,
-			&rec.Name,
-			&rec.Category,
-			&rec.DailyTarget,
-			&rec.Unit,
-			&rec.IsWeekly,
-			&rec.Description,
-			&rec.Benefits,
-			&rec.Effects,
-			&rec.MinRecommendation,
-			&rec.OptimalRecommendation,
-			&isTracked,
-		)
-		if err != nil {
-			s.log.Error("Failed to scan weekly recommendation", "error", err)
-			continue
-		}
-
-		// Get actual intake from today's food entries
-		currentIntake := 0.0
-		if val, ok := nutrientIntakeMap[rec.Name]; ok {
-			currentIntake = val
-		}
-		percentage := 0.0
-		if rec.DailyTarget > 0 {
-			percentage = roundToOneDecimal((currentIntake / rec.DailyTarget) * 100)
-		}
-
-		weekly = append(weekly, NutrientRecommendationWithProgress{
-			NutrientRecommendation: rec,
-			CurrentIntake:          currentIntake,
-			Percentage:             percentage,
-			IsTracked:              isTracked,
-		})
-	}
-	if err := weeklyRows.Err(); err != nil {
-		s.log.Error("Failed while iterating weekly recommendations", "error", err)
-	}
-
-	s.log.LogDatabaseQuery(weeklyQuery, time.Since(startTime), nil, map[string]interface{}{
-		"user_id": userID,
-	})
-
-	// Get custom recommendations
+	// Своих рекомендаций это изменение не касается: потребление по ним сервер не
+	// считает, и в ответе его нет.
 	customQuery := `
 		SELECT id, user_id, name, daily_target, unit, created_at
 		FROM user_custom_recommendations
@@ -1946,15 +2097,14 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 	var custom []UserCustomRecommendation
 	for customRows.Next() {
 		var rec UserCustomRecommendation
-		err := customRows.Scan(
+		if err := customRows.Scan(
 			&rec.ID,
 			&rec.UserID,
 			&rec.Name,
 			&rec.DailyTarget,
 			&rec.Unit,
 			&rec.CreatedAt,
-		)
-		if err != nil {
+		); err != nil {
 			s.log.Error("Failed to scan custom recommendation", "error", err)
 			continue
 		}
@@ -1977,19 +2127,23 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 }
 
 // GetRecommendationDetail retrieves detailed information about a specific nutrient
+//
+// Потребление и продукты рациона приходят пустыми: продукт не считает
+// микронутриенты. До этой правки здесь стояли ноль и пустой список — ноль
+// выглядел как измерение, которого не было.
+//
 // Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6
 func (s *Service) GetRecommendationDetail(ctx context.Context, nutrientID string, userID int64) (*NutrientDetailResponse, error) {
 	startTime := time.Now()
 
-	// Validate nutrient ID
 	if _, err := uuid.Parse(nutrientID); err != nil {
 		return nil, fmt.Errorf("неверный формат идентификатора нутриента")
 	}
 
-	// Get nutrient recommendation details
 	query := `
-		SELECT id, name, category, daily_target, unit, is_weekly,
-		       description, benefits, effects, min_recommendation, optimal_recommendation
+		SELECT id, name, category, unit, is_weekly,
+		       description, benefits, effects,
+		       source, source_version, intake_source
 		FROM nutrient_recommendations
 		WHERE id = $1
 	`
@@ -1999,26 +2153,23 @@ func (s *Service) GetRecommendationDetail(ctx context.Context, nutrientID string
 		&rec.ID,
 		&rec.Name,
 		&rec.Category,
-		&rec.DailyTarget,
 		&rec.Unit,
 		&rec.IsWeekly,
 		&rec.Description,
 		&rec.Benefits,
 		&rec.Effects,
-		&rec.MinRecommendation,
-		&rec.OptimalRecommendation,
+		&rec.Source,
+		&rec.SourceVersion,
+		&rec.IntakeSource,
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
-				"nutrient_id": nutrientID,
-			})
-			return nil, fmt.Errorf("рекомендация не найдена")
-		}
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
 			"nutrient_id": nutrientID,
 		})
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("рекомендация не найдена")
+		}
 		return nil, fmt.Errorf("ошибка при получении рекомендации: %w", err)
 	}
 
@@ -2027,17 +2178,37 @@ func (s *Service) GetRecommendationDetail(ctx context.Context, nutrientID string
 		"found":       true,
 	})
 
-	// Get food sources from user's diet (placeholder - would need actual nutrient tracking per food)
-	// For now, return empty sources
-	sources := []FoodSourceInDiet{}
+	profile, err := s.profileForNorms(ctx, userID)
+	if err != nil {
+		s.log.Warn("Failed to read profile for norms", "error", err, "user_id", userID)
+		profile = normProfile{}
+	}
 
-	// Calculate current intake (placeholder)
-	currentIntake := 0.0
+	norms, err := s.normsByNutrient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dailyTotals, err := s.CalculateDailyTotals(ctx, userID, time.Now())
+	if err != nil {
+		s.log.Warn("Failed to calculate daily totals for nutrient detail", "error", err)
+		dailyTotals = nil
+	}
+
+	item := withProgress(rec, norms[rec.ID], profile, dailyTotals, true)
 
 	return &NutrientDetailResponse{
 		NutrientRecommendation: rec,
-		CurrentIntake:          currentIntake,
-		Sources:                sources,
+		DailyTarget:            item.DailyTarget,
+		MinValue:               item.MinValue,
+		OptimalValue:           item.OptimalValue,
+		NormSource:             item.NormSource,
+		NormNote:               item.NormNote,
+		NormNeedsProfile:       item.NormNeedsProfile,
+		CurrentIntake:          item.CurrentIntake,
+		// Вклад продуктов рациона требует содержания нутриента в продукте;
+		// продукт этого пока не читает (см. micronutrient-intake).
+		Sources: []FoodSourceInDiet{},
 	}, nil
 }
 

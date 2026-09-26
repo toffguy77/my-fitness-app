@@ -130,13 +130,30 @@ export function NutrientDetailPanel({
 
                 {detail && !isLoading && !error && (
                     <div className="mt-3 space-y-3">
-                        <p className="text-xs text-gray-900 sm:text-sm">
-                            {t('foodTracker.nutrientDetail.progress', {
-                                intake: String(detail.currentIntake),
-                                target: String(detail.dailyTarget),
-                                unit,
-                            })}
-                        </p>
+                        {/* Три положения, как и в списке: измерено, только норма,
+                            норму выбрать нельзя. Ноль не показывается ни в одном. */}
+                        {detail.currentIntake !== undefined && detail.dailyTarget !== undefined ? (
+                            <p className="text-xs text-gray-900 sm:text-sm">
+                                {t('foodTracker.nutrientDetail.progress', {
+                                    intake: String(detail.currentIntake),
+                                    target: String(detail.dailyTarget),
+                                    unit,
+                                })}
+                            </p>
+                        ) : detail.dailyTarget !== undefined ? (
+                            <>
+                                <p className="text-xs text-gray-900 sm:text-sm">
+                                    {String(detail.dailyTarget)} {unit}
+                                </p>
+                                <p className="text-xs text-gray-500 sm:text-sm">
+                                    {t('foodTracker.nutrientDetail.intakeNotCounted')}
+                                </p>
+                            </>
+                        ) : (
+                            <p className="text-xs text-gray-600 sm:text-sm">
+                                {t('foodTracker.nutrientDetail.normNeedsProfile')}
+                            </p>
+                        )}
 
                         {/* Границы нормы показываются только те, что заведены. */}
                         {detail.minRecommendation !== undefined && (
@@ -168,6 +185,15 @@ export function NutrientDetailPanel({
                             title={t('foodTracker.nutrientDetail.effects')}
                             text={detail.effects}
                         />
+
+                        {/* Откуда норма. Через год спросят не «откуда нормы», а
+                            «откуда эта», и ответ должен быть на экране. */}
+                        {detail.normSource && (
+                            <p className="text-[11px] text-gray-500 sm:text-xs">
+                                {t('foodTracker.nutrientDetail.source', { source: detail.normSource })}
+                                {detail.normNote ? ` — ${detail.normNote}` : ''}
+                            </p>
+                        )}
 
                         <section className="space-y-1">
                             <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide sm:text-sm">

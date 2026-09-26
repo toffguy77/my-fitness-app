@@ -205,7 +205,7 @@ describe('Property 18: Category Collapsibility', () => {
                     cleanup();
                     const currentIntakes: Record<string, number> = {};
                     recommendations.forEach((rec) => {
-                        currentIntakes[rec.id] = Math.floor(Math.random() * rec.dailyTarget);
+                        currentIntakes[rec.id] = Math.floor(Math.random() * (rec.dailyTarget ?? 100));
                     });
 
                     const { container } = render(
@@ -238,7 +238,7 @@ describe('Property 18: Category Collapsibility', () => {
                     cleanup();
                     const currentIntakes: Record<string, number> = {};
                     recommendations.forEach((rec) => {
-                        currentIntakes[rec.id] = Math.floor(Math.random() * rec.dailyTarget);
+                        currentIntakes[rec.id] = Math.floor(Math.random() * (rec.dailyTarget ?? 100));
                     });
 
                     render(

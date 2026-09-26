@@ -29,6 +29,9 @@ const FULL: NutrientDetail = {
     effects: 'Недостаток даёт утомляемость',
     minRecommendation: 60,
     optimalRecommendation: 120,
+    normSource: 'МР 2.3.1.0253-21 (2021-07-22)',
+    normNote: 'табл. 11, 16; физиологическая потребность',
+    normNeedsProfile: false,
     sourcesInDiet: [{ foodName: 'Шиповник', amount: 50, unit: 'g', contribution: 30 }],
 };
 
@@ -97,5 +100,50 @@ describe('Панель подробностей по нутриенту', () => 
         await userEvent.click(screen.getByLabelText('Закрыть'));
 
         expect(onClose).toHaveBeenCalled();
+    });
+});
+
+describe('Панель подробностей: норма и её источник', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    // Через год спросят не «откуда нормы», а «откуда эта».
+    it('показывает источник нормы', async () => {
+        load.mockResolvedValue(FULL);
+
+        render(<NutrientDetailPanel nutrientId="a" onClose={jest.fn()} />);
+        await waitFor(() => expect(screen.getByText('Витамин C')).toBeInTheDocument());
+
+        expect(screen.getByText(/МР 2\.3\.1\.0253-21/)).toBeInTheDocument();
+        expect(screen.getByText(/табл\. 11, 16/)).toBeInTheDocument();
+    });
+
+    it('показывает норму без прогресса, когда потребление не считается', async () => {
+        load.mockResolvedValue({ ...FULL, currentIntake: undefined });
+
+        render(<NutrientDetailPanel nutrientId="a" onClose={jest.fn()} />);
+        await waitFor(() => expect(screen.getByText('Витамин C')).toBeInTheDocument());
+
+        expect(screen.getByText('90 мг')).toBeInTheDocument();
+        expect(screen.getByText(/потребление по этому нутриенту мы пока не считаем/i)).toBeInTheDocument();
+        expect(screen.queryByText(/0 из 90/)).not.toBeInTheDocument();
+    });
+
+    // Железа женщине нужно 18 мг, мужчине 10: показать любое из двух наугад
+    // значило бы выдать догадку за норму.
+    it('говорит про профиль, когда норму выбрать нельзя', async () => {
+        load.mockResolvedValue({
+            id: 'fe',
+            name: 'Железо',
+            unit: 'mg',
+            normNeedsProfile: true,
+            sourcesInDiet: [],
+        });
+
+        render(<NutrientDetailPanel nutrientId="fe" onClose={jest.fn()} />);
+        await waitFor(() => expect(screen.getByText('Железо')).toBeInTheDocument());
+
+        expect(screen.getByText(/норма зависит от пола и возраста/i)).toBeInTheDocument();
     });
 });

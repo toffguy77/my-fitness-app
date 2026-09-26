@@ -37,23 +37,29 @@ const MADE_UP_RESPONSE: ServerRecommendationsResponse = {
                 id: '11111111-1111-1111-1111-111111111111',
                 name: 'Витамин C',
                 category: 'vitamins',
-                daily_target: 90,
                 unit: 'mg',
                 is_weekly: false,
+                is_tracked: true,
+                source: 'МР 2.3.1.0253-21',
+                source_version: '2021-07-22',
+                daily_target: 90,
                 current_intake: 45,
                 percentage: 50,
-                is_tracked: true,
+                norm_needs_profile: false,
             },
             {
                 id: '22222222-2222-2222-2222-222222222222',
                 name: 'Витамин D',
                 category: 'vitamins',
-                daily_target: 15,
                 unit: 'mcg',
                 is_weekly: false,
-                current_intake: 0,
-                percentage: 0,
                 is_tracked: false,
+                source: 'МР 2.3.1.0253-21',
+                source_version: '2021-07-22',
+                daily_target: 15,
+                current_intake: null,
+                percentage: null,
+                norm_needs_profile: false,
             },
         ],
         minerals: [
@@ -61,12 +67,16 @@ const MADE_UP_RESPONSE: ServerRecommendationsResponse = {
                 id: '33333333-3333-3333-3333-333333333333',
                 name: 'Железо',
                 category: 'minerals',
-                daily_target: 18,
                 unit: 'mg',
                 is_weekly: false,
-                current_intake: 9,
-                percentage: 50,
                 is_tracked: true,
+                source: 'МР 2.3.1.0253-21',
+                source_version: '2021-07-22',
+                // Норму железа без пола выбрать нельзя: 10 мг или 18.
+                daily_target: null,
+                current_intake: null,
+                percentage: null,
+                norm_needs_profile: true,
             },
         ],
         fiber: [],
@@ -78,12 +88,15 @@ const MADE_UP_RESPONSE: ServerRecommendationsResponse = {
             id: '44444444-4444-4444-4444-444444444444',
             name: 'Омега-3',
             category: 'lipids',
-            daily_target: 1600,
             unit: 'mg',
             is_weekly: true,
+            is_tracked: true,
+            source: 'МР 2.3.1.0253-21',
+            source_version: '2021-07-22',
+            daily_target: 1600,
             current_intake: 400,
             percentage: 25,
-            is_tracked: true,
+            norm_needs_profile: false,
         },
     ],
     custom: [
@@ -116,10 +129,15 @@ describe('Преобразование ответа сервера в форму
             id: '11111111-1111-1111-1111-111111111111',
             name: 'Витамин C',
             category: 'vitamins',
-            dailyTarget: 90,
             unit: 'mg',
             isWeekly: false,
             isCustom: false,
+            dailyTarget: 90,
+            minValue: undefined,
+            optimalValue: undefined,
+            normSource: undefined,
+            normNote: undefined,
+            normNeedsProfile: false,
         })
     })
 
@@ -133,10 +151,10 @@ describe('Преобразование ответа сервера в форму
     it('собирает потребление в карту по идентификатору', () => {
         const data = toRecommendationsData(MADE_UP_RESPONSE)
 
+        // Неизвестное потребление в карту не попадает: запись со значением 0
+        // была бы неотличима от измеренного нуля.
         expect(data.currentIntakes).toEqual({
             '11111111-1111-1111-1111-111111111111': 45,
-            '22222222-2222-2222-2222-222222222222': 0,
-            '33333333-3333-3333-3333-333333333333': 9,
             '44444444-4444-4444-4444-444444444444': 400,
         })
     })
@@ -166,6 +184,24 @@ describe('Преобразование ответа сервера в форму
         expect('currentIntake' in custom).toBe(false)
     })
 
+    // Норма железа зависит от пола, а его в профиле нет: подставить 10 или 18
+    // значило бы выдать догадку за норму.
+    it('не подставляет число вместо неразрешённой нормы', () => {
+        const data = toRecommendationsData(MADE_UP_RESPONSE)
+        const iron = data.nutrients.find((n) => n.name === 'Железо')
+
+        expect(iron).toBeDefined()
+        expect(iron?.dailyTarget).toBeUndefined()
+        expect(iron?.normNeedsProfile).toBe(true)
+    })
+
+    it('не подставляет ноль вместо неизвестного потребления', () => {
+        const data = toRecommendationsData(MADE_UP_RESPONSE)
+
+        expect('33333333-3333-3333-3333-333333333333' in data.currentIntakes).toBe(false)
+        expect('22222222-2222-2222-2222-222222222222' in data.currentIntakes).toBe(false)
+    })
+
     // Настоящий ответ сегодня именно такой, и падать на нём нельзя.
     it('переживает настоящий пустой ответ dev', () => {
         const data = toRecommendationsData(REAL_EMPTY_RESPONSE)
@@ -193,8 +229,11 @@ describe('Преобразование подробностей по нутри�
         description: 'Водорастворимый витамин',
         benefits: 'Иммунитет',
         effects: 'Недостаток даёт утомляемость',
-        min_recommendation: 60,
-        optimal_recommendation: 120,
+        min_value: 60,
+        optimal_value: 120,
+        norm_source: 'МР 2.3.1.0253-21 (2021-07-22)',
+        norm_note: 'табл. 11, 16; физиологическая потребность',
+        norm_needs_profile: false,
         sources: [{ food_name: 'Шиповник', amount: 50, unit: 'g', contribution: 30 }],
     }
 
@@ -210,6 +249,9 @@ describe('Преобразование подробностей по нутри�
             effects: 'Недостаток даёт утомляемость',
             minRecommendation: 60,
             optimalRecommendation: 120,
+            normSource: 'МР 2.3.1.0253-21 (2021-07-22)',
+            normNote: 'табл. 11, 16; физиологическая потребность',
+            normNeedsProfile: false,
             sourcesInDiet: [
                 { foodName: 'Шиповник', amount: 50, unit: 'g', contribution: 30 },
             ],
@@ -227,8 +269,8 @@ describe('Преобразование подробностей по нутри�
             description: null,
             benefits: null,
             effects: null,
-            min_recommendation: null,
-            optimal_recommendation: null,
+            min_value: null,
+            optimal_value: null,
             sources: null,
         })
 
@@ -272,14 +314,18 @@ describe('Образец не расходится с ответом серве�
             ...jsonFields(goTypes, 'NutrientRecommendation'),
             ...jsonFields(goTypes, 'NutrientRecommendationWithProgress'),
         ]
-        // Необязательные поля справочника (omitempty) в пустом справочнике не
-        // приходят вовсе, поэтому образец их не несёт.
+        // Поля с omitempty сервер не присылает, когда их нет: описание в
+        // незаполненном справочнике, границы нормы у нутриента без вилки,
+        // intake_source у нутриента, потребление которого не считается.
         const optional = [
             'description',
             'benefits',
             'effects',
-            'min_recommendation',
-            'optimal_recommendation',
+            'min_value',
+            'optimal_value',
+            'norm_source',
+            'norm_note',
+            'intake_source',
         ]
         const sample = Object.keys(MADE_UP_RESPONSE.daily!.vitamins![0])
 
@@ -300,9 +346,12 @@ describe('Образец не расходится с ответом серве�
 
     it('подробности несут все поля, которые отдаёт сервер', () => {
         const expected = jsonFields(goTypes, 'NutrientDetailResponse')
+        // omitempty: сервер не присылает их, когда нечего присылать.
+        const optional = ['min_value', 'optimal_value', 'norm_source', 'norm_note']
         const sample = Object.keys(full())
 
         for (const field of expected) {
+            if (optional.includes(field)) continue
             expect(sample).toContain(field)
         }
     })
@@ -312,8 +361,15 @@ describe('Образец не расходится с ответом серве�
             id: 'x',
             name: 'x',
             unit: 'mg',
+            source: 'МР 2.3.1.0253-21',
+            source_version: '2021-07-22',
             daily_target: 1,
-            current_intake: 0,
+            current_intake: null,
+            min_value: null,
+            optimal_value: null,
+            norm_source: null,
+            norm_note: null,
+            norm_needs_profile: false,
             sources: [],
         }
     }

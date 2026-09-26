@@ -141,6 +141,20 @@ export function RecommendationsTab({
         [recommendations]
     );
 
+    // Есть ли хоть один нутриент, потребление которого продукт считает. Для
+    // витаминов и минералов — нет, и тогда «нет записей о еде» было бы не той
+    // причиной: записи есть, а считать по ним микронутриенты продукт не умеет.
+    const anyIntakeKnown = useMemo(
+        () => recommendations.some((rec) => currentIntakes[rec.id] !== undefined),
+        [recommendations, currentIntakes]
+    );
+
+    // Норма зависит от пола или возраста, а в профиле их нет.
+    const anyNormNeedsProfile = useMemo(
+        () => recommendations.some((rec) => rec.normNeedsProfile),
+        [recommendations]
+    );
+
     // Toggle category expansion
     const toggleCategory = useCallback((category: string) => {
         setExpandedCategories((prev) => {
@@ -219,11 +233,36 @@ export function RecommendationsTab({
                 </p>
             )}
 
-            {/* Нулевое потребление по всем нутриентам объясняется, а не показывается молча. */}
-            {!isLoading && !error && !catalogueEmpty && hasEntriesToday === false && (
+            {/* Почему рядом с нормами нет прогресса. Две разные причины, и путать
+                их нельзя: либо продукт не считает этот нутриент, либо считать
+                нечего — за день нет записей. */}
+            {!isLoading && !error && !catalogueEmpty && !anyIntakeKnown && recommendations.length > 0 && (
+                <p className="text-xs text-gray-500 sm:text-sm">
+                    {t('foodTracker.recommendations.intakeNotCounted')}
+                </p>
+            )}
+
+            {!isLoading && !error && !catalogueEmpty && anyIntakeKnown && hasEntriesToday === false && (
                 <p className="text-xs text-gray-500 sm:text-sm">
                     {t('foodTracker.recommendations.noEntriesToday')}
                 </p>
+            )}
+
+            {/* Норму железа без пола не выбрать: 10 мг или 18. Вместо догадки —
+                просьба заполнить профиль, и это единственное место в продукте, где
+                заполнение сразу что-то даёт. */}
+            {!isLoading && !error && anyNormNeedsProfile && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 sm:p-3">
+                    <p className="text-xs text-blue-900 sm:text-sm">
+                        {t('foodTracker.recommendations.profileNeeded')}
+                    </p>
+                    <a
+                        href="/settings"
+                        className="mt-1.5 inline-block text-xs font-medium text-blue-700 underline sm:text-sm"
+                    >
+                        {t('foodTracker.recommendations.profileLink')}
+                    </a>
+                </div>
             )}
 
             {/* Loading state */}
