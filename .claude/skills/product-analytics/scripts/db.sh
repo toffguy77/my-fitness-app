@@ -71,8 +71,18 @@ if [[ "$ENV_NAME" == "prod" ]]; then
         set -euo pipefail
         env_file=\$(mktemp); chmod 600 \"\$env_file\"
         trap 'rm -f \"\$env_file\"' EXIT
-        api=\$(sudo docker ps --format '{{.Names}}' | grep -- '-api-1' | grep -v mdmsg0 | head -1)
-        [ -n \"\$api\" ] || { echo 'не нашёлся контейнер api прода' >&2; exit 1; }
+        # Контейнер выбирается по имени базы, а не по имени контейнера.
+        # Раньше здесь стоял grep -v mdmsg0 — по имени приложения dev'а в
+        # Dokploy. Имена сменились, фильтр перестал отсекать что-либо, и head -1
+        # начал брать dev: запросы «к проду» молча читали dev, и ответ выглядел
+        # так же уверенно. Имя базы — то, что нам на самом деле нужно, и оно не
+        # меняется при переименовании compose.
+        api=''
+        for c in \$(sudo docker ps --format '{{.Names}}' | grep -- '-api-1'); do
+            name=\$(sudo docker exec \"\$c\" printenv DB_NAME 2>/dev/null || true)
+            if [ \"\$name\" = 'web-app-db' ]; then api=\"\$c\"; break; fi
+        done
+        [ -n \"\$api\" ] || { echo 'не нашёлся контейнер api прода (нет контейнера с DB_NAME=web-app-db)' >&2; exit 1; }
         sudo docker exec \"\$api\" printenv \
             | grep -E '^DB_(HOST|PORT|USER|PASSWORD|NAME|SSL_MODE)=' > \"\$env_file\"
         sudo docker run --rm -i --env-file \"\$env_file\" \
