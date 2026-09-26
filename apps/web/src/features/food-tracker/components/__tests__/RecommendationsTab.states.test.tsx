@@ -90,7 +90,9 @@ describe('Вкладка рекомендаций: состояния', () => {
             render(<RecommendationsTab recommendations={[IRON]} />);
 
             expect(screen.getByText(/зависят от пола и возраста/i)).toBeInTheDocument();
-            expect(screen.getByText('Заполнить профиль')).toHaveAttribute('href', '/settings');
+            // Пол и дата рождения живут в /settings/body, и ссылка должна вести
+            // именно туда: страницы /settings в App Router нет.
+            expect(screen.getByText('Заполнить профиль')).toHaveAttribute('href', '/settings/body');
         });
 
         it('показывает у нутриента причину, а не ноль', () => {

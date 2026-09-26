@@ -257,7 +257,7 @@ export function RecommendationsTab({
                         {t('foodTracker.recommendations.profileNeeded')}
                     </p>
                     <a
-                        href="/settings"
+                        href="/settings/body"
                         className="mt-1.5 inline-block text-xs font-medium text-blue-700 underline sm:text-sm"
                     >
                         {t('foodTracker.recommendations.profileLink')}
