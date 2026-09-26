@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BarcodeTab } from '../BarcodeTab';
 import type { FoodItem } from '../../types';

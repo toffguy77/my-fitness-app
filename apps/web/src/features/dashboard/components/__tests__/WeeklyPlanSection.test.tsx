@@ -9,6 +9,7 @@ import { render, screen } from '@testing-library/react'
 import { WeeklyPlanSection } from '../WeeklyPlanSection'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { WeeklyPlan, DailyMetrics } from '../../types'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the store
 jest.mock('../../store/dashboardStore')
@@ -81,10 +82,10 @@ describe('WeeklyPlanSection', () => {
         jest.clearAllMocks()
 
         // Default mock implementation
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             weeklyPlan: null,
             dailyData: {},
-        } as any)
+        }))
     })
 
     describe('Rendering', () => {
@@ -101,10 +102,10 @@ describe('WeeklyPlanSection', () => {
 
         it('renders active plan with targets', () => {
             const plan = createMockWeeklyPlan()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -123,10 +124,10 @@ describe('WeeklyPlanSection', () => {
     describe('Plan Display', () => {
         it('displays calorie goal', () => {
             const plan = createMockWeeklyPlan({ caloriesGoal: 2500 })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
             expect(screen.getByText(/2500 ккал/i)).toBeInTheDocument()
@@ -134,10 +135,10 @@ describe('WeeklyPlanSection', () => {
 
         it('displays protein goal', () => {
             const plan = createMockWeeklyPlan({ proteinGoal: 180 })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
             expect(screen.getByText(/180 г/i)).toBeInTheDocument()
@@ -145,10 +146,10 @@ describe('WeeklyPlanSection', () => {
 
         it('displays fat goal when present', () => {
             const plan = createMockWeeklyPlan({ fatGoal: 80 })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
             expect(screen.getByText(/80 г/i)).toBeInTheDocument()
@@ -156,10 +157,10 @@ describe('WeeklyPlanSection', () => {
 
         it('displays carbs goal when present', () => {
             const plan = createMockWeeklyPlan({ carbsGoal: 250 })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
             expect(screen.getByText(/250 г/i)).toBeInTheDocument()
@@ -167,10 +168,10 @@ describe('WeeklyPlanSection', () => {
 
         it('displays steps goal when present', () => {
             const plan = createMockWeeklyPlan({ stepsGoal: 12000 })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
             expect(screen.getByText(/12[,\s]?000/)).toBeInTheDocument()
@@ -178,10 +179,10 @@ describe('WeeklyPlanSection', () => {
 
         it('displays plan dates', () => {
             const plan = createMockWeeklyPlan()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
             expect(screen.getByText(/период действия/i)).toBeInTheDocument()
@@ -189,10 +190,10 @@ describe('WeeklyPlanSection', () => {
 
         it('displays active indicator', () => {
             const plan = createMockWeeklyPlan()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
             expect(screen.getByText(/активна/i)).toBeInTheDocument()
@@ -229,10 +230,10 @@ describe('WeeklyPlanSection', () => {
                 ),
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData,
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -268,10 +269,10 @@ describe('WeeklyPlanSection', () => {
                 ),
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData,
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -305,10 +306,10 @@ describe('WeeklyPlanSection', () => {
                 ),
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData,
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -358,10 +359,10 @@ describe('WeeklyPlanSection', () => {
                 ),
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData,
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -395,10 +396,10 @@ describe('WeeklyPlanSection', () => {
                 ),
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData,
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -410,10 +411,10 @@ describe('WeeklyPlanSection', () => {
     describe('Accessibility', () => {
         it('has proper ARIA labels', () => {
             const plan = createMockWeeklyPlan()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -442,10 +443,10 @@ describe('WeeklyPlanSection', () => {
                 carbsGoal: undefined,
                 stepsGoal: undefined,
             })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -456,10 +457,10 @@ describe('WeeklyPlanSection', () => {
 
         it('handles inactive plan', () => {
             const plan = createMockWeeklyPlan({ isActive: false })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -472,10 +473,10 @@ describe('WeeklyPlanSection', () => {
                 startDate: new Date('2024-01-01'),
                 endDate: new Date('2024-01-07'),
             })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -485,10 +486,10 @@ describe('WeeklyPlanSection', () => {
 
         it('handles missing daily data gracefully', () => {
             const plan = createMockWeeklyPlan()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: {},
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 
@@ -498,10 +499,10 @@ describe('WeeklyPlanSection', () => {
 
         it('handles undefined daily data gracefully', () => {
             const plan = createMockWeeklyPlan()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 weeklyPlan: plan,
                 dailyData: undefined,
-            } as any)
+            }))
 
             render(<WeeklyPlanSection />)
 

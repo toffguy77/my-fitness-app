@@ -3,20 +3,32 @@
  * Queues mutations when offline and syncs when connection is restored
  */
 
-import type { MetricUpdate } from '../types';
+
+import type { MetricUpdate, TaskStatus } from '../types';
+
+/**
+ * What a queued mutation carries, paired with the kind of mutation it is.
+ *
+ * `data` used to be `any`, which is how the sync loop came to read
+ * `entry.data.status` for one kind of entry and `entry.data.weekStart` for
+ * another with nothing checking that the producer had put either there.
+ */
+export type QueuePayload =
+    | { type: 'metric'; data: MetricUpdate }
+    | { type: 'task'; data: { status: Extract<TaskStatus, 'completed'> } }
+    | { type: 'photo'; data: { weekStart: string } }
+    | { type: 'report'; data: { weekStart: string; weekEnd: string } };
 
 /**
  * Queue entry interface
  */
-export interface QueueEntry {
+export type QueueEntry = QueuePayload & {
     id: string;
-    type: 'metric' | 'task' | 'photo' | 'report';
     date: string;
-    data: any;
     timestamp: number;
     attempts: number;
     maxAttempts: number;
-}
+};
 
 /**
  * LocalStorage key for offline queue
@@ -69,12 +81,14 @@ export function saveQueue(queue: QueueEntry[]): void {
 /**
  * Add entry to queue
  */
-export function addToQueue(
-    type: QueueEntry['type'],
+export function addToQueue<T extends QueuePayload['type']>(
+    type: T,
     date: string,
-    data: any
+    data: Extract<QueuePayload, { type: T }>['data']
 ): QueueEntry {
-    const entry: QueueEntry = {
+    // The pair is checked at the call site by the signature above; the compiler
+    // cannot see that through the generic, which is all this cast says.
+    const entry = {
         id: generateId(),
         type,
         date,
@@ -82,7 +96,7 @@ export function addToQueue(
         timestamp: Date.now(),
         attempts: 0,
         maxAttempts: MAX_ATTEMPTS,
-    };
+    } as unknown as QueueEntry;
 
     const queue = loadQueue();
     queue.push(entry);
@@ -103,7 +117,12 @@ export function removeFromQueue(id: string): void {
 /**
  * Update entry in queue
  */
-export function updateQueueEntry(id: string, updates: Partial<QueueEntry>): void {
+export function updateQueueEntry(
+    id: string,
+    // The kind of entry and its payload are fixed once queued; only the
+    // bookkeeping fields are updated, and saying so keeps the pair intact.
+    updates: Partial<Omit<QueueEntry, 'type' | 'data'>>,
+): void {
     const queue = loadQueue();
     const index = queue.findIndex((entry) => entry.id === id);
 

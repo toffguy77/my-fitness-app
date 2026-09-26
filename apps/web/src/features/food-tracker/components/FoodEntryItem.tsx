@@ -27,8 +27,6 @@ export interface FoodEntryItemProps {
     onEdit?: (entry: FoodEntry) => void;
     /** Callback when delete is requested */
     onDelete?: (entry: FoodEntry) => void;
-    /** Enable swipe actions for mobile */
-    enableSwipe?: boolean;
     /** Additional CSS classes */
     className?: string;
 }
@@ -62,7 +60,6 @@ export function FoodEntryItem({
     onClick,
     onEdit,
     onDelete,
-    enableSwipe = false,
     className = '',
 }: FoodEntryItemProps) {
     const [showActions, setShowActions] = useState(false);

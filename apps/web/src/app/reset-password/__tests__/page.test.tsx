@@ -22,13 +22,21 @@ jest.mock('@/shared/components/ui', () => ({
 }))
 
 jest.mock('@/shared/components/ui/Button', () => ({
-    Button: ({ children, isLoading, ...props }: any) => (
+    // isLoading is pulled out of props on purpose: it must not reach the DOM.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to keep it out of {...props}
+    Button: ({ children, isLoading, ...props }: React.ComponentProps<'button'> & { isLoading?: boolean }) => (
         <button {...props}>{children}</button>
     ),
 }))
 
 jest.mock('@/shared/components/forms/PasswordInput', () => ({
-    PasswordInput: ({ id, value, onChange, error, disabled, ...rest }: any) => (
+    PasswordInput: ({ id, value, onChange, error, disabled }: {
+        id: string
+        value: string
+        onChange: React.ChangeEventHandler<HTMLInputElement>
+        error?: string
+        disabled?: boolean
+    }) => (
         <div>
             <input id={id} value={value} onChange={onChange} data-testid={`password-${id}`} disabled={disabled} />
             {error && <span role="alert">{error}</span>}
@@ -373,7 +381,7 @@ describe('ResetPasswordPage', () => {
     // Branch: isLoading text (line 267)
     it('shows loading text during password reset', async () => {
         mockSearchParams = new URLSearchParams('token=valid-token')
-        let resolveReset: (v: any) => void
+        let resolveReset: (v: unknown) => void
         ;(global.fetch as jest.Mock)
             .mockResolvedValueOnce({
                 ok: true,

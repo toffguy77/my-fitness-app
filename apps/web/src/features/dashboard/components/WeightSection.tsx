@@ -183,8 +183,12 @@ export const WeightSection = memo(function WeightSection({ date, className }: We
                 setWeightTrend(
                     (raw.weight_trend || []).map((p) => ({ date: new Date(p.date), weight: p.weight })),
                 )
-                if (raw.target_weight != null && targetWeight == null) {
-                    setTargetWeight(raw.target_weight)
+                // Не перебивать то, что уже пришло из профиля. Условие было
+                // написано через прочитанное состояние, а эффект выполняется
+                // один раз на монтировании: в замыкании там всегда null, и
+                // прогресс затирал цель из профиля, если отвечал позже.
+                if (raw.target_weight != null) {
+                    setTargetWeight((current) => current ?? raw.target_weight)
                 }
             })
             .catch(() => {

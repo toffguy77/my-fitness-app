@@ -170,7 +170,7 @@ describe('offlineQueue', () => {
                 id: '1',
                 type: 'metric',
                 date: '2024-01-15',
-                data: {},
+                data: { type: 'weight', data: { weight: 75 } },
                 timestamp: Date.now(),
                 attempts: 1,
                 maxAttempts: 3,
@@ -184,7 +184,7 @@ describe('offlineQueue', () => {
                 id: '1',
                 type: 'metric',
                 date: '2024-01-15',
-                data: {},
+                data: { type: 'weight', data: { weight: 75 } },
                 timestamp: Date.now(),
                 attempts: 3,
                 maxAttempts: 3,
@@ -258,8 +258,8 @@ describe('offlineQueue', () => {
             const entry1 = addToQueue('metric', '2024-01-15', { type: 'weight', data: { weight: 75 } });
 
             // Wait a bit to ensure different timestamps
-            const entry2 = addToQueue('task', 'task-1', { status: 'completed' });
-            const entry3 = addToQueue('metric', '2024-01-16', { type: 'steps', data: { steps: 10000 } });
+            addToQueue('task', 'task-1', { status: 'completed' });
+            addToQueue('metric', '2024-01-16', { type: 'steps', data: { steps: 10000 } });
 
             const oldest = getOldestEntry();
 

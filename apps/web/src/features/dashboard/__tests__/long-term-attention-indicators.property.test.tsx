@@ -36,12 +36,6 @@ function toDateStr(date: Date): string {
     return date.toISOString().split('T')[0]
 }
 
-// Helper to check if date is today
-function isToday(date: Date): boolean {
-    const today = new Date()
-    return toDateStr(date) === toDateStr(today)
-}
-
 // Helper to get current week number
 function getCurrentWeekNumber(): number {
     const now = new Date()
@@ -376,52 +370,46 @@ describe('Property 44: Weekly Report Submission Indicator', () => {
         jest.clearAllMocks()
     })
 
+    // Not property-based: the outcome depends on today's date, not on any
+    // generated input. The boolean this test used to take was never read.
     it('Feature: dashboard, Property 44: Submit button appears on Sunday of current week', () => {
-        fc.assert(
-            fc.property(
-                fc.boolean(), // Whether it's Sunday
-                (isSundayTest) => {
-                    const today = new Date()
+        const today = new Date()
 
-                    // Calculate week start (Monday)
-                    const weekStart = getWeekStart(today)
+        // Calculate week start (Monday)
+        const weekStart = getWeekStart(today)
 
-                        // Mock store
-                        ; (useDashboardStore as unknown as jest.Mock).mockReturnValue({
-                            selectedDate: today,
-                            selectedWeek: { start: weekStart, end: today },
-                            dailyData: {},
-                            weeklyPlan: null,
-                            tasks: [],
-                            navigateWeek: jest.fn(),
-                            setSelectedDate: jest.fn(),
-                            submitWeeklyReport: jest.fn(),
-                            isLoading: false,
-                        })
+        // Mock store
+        ;(useDashboardStore as unknown as jest.Mock).mockReturnValue({
+            selectedDate: today,
+            selectedWeek: { start: weekStart, end: today },
+            dailyData: {},
+            weeklyPlan: null,
+            tasks: [],
+            navigateWeek: jest.fn(),
+            setSelectedDate: jest.fn(),
+            submitWeeklyReport: jest.fn(),
+            isLoading: false,
+        })
 
-                    const { unmount } = render(<CalendarNavigator />)
+        const { unmount } = render(<CalendarNavigator />)
 
-                    const submitButton = screen.queryByLabelText('Отправить недельный отчет')
+        const submitButton = screen.queryByLabelText('Отправить недельный отчет')
 
-                    // Submit button only shows on Sunday of current week
-                    const isCurrentWeek = isSameWeek(weekStart, today)
-                    const shouldShow = isSunday(today) && isCurrentWeek
+        // Submit button only shows on Sunday of current week
+        const isCurrentWeek = isSameWeek(weekStart, today)
+        const shouldShow = isSunday(today) && isCurrentWeek
 
-                    if (shouldShow) {
-                        expect(submitButton).toBeInTheDocument()
-                        // Check for pulsing animation
-                        if (submitButton) {
-                            expect(submitButton.className).toContain('animate-pulse')
-                        }
-                    } else {
-                        expect(submitButton).not.toBeInTheDocument()
-                    }
+        if (shouldShow) {
+            expect(submitButton).toBeInTheDocument()
+            // Check for pulsing animation
+            if (submitButton) {
+                expect(submitButton.className).toContain('animate-pulse')
+            }
+        } else {
+            expect(submitButton).not.toBeInTheDocument()
+        }
 
-                    unmount()
-                }
-            ),
-            { numRuns: 100 }
-        )
+        unmount()
     })
 
     it('Feature: dashboard, Property 44: Submit button has pulsing animation on Sunday', () => {

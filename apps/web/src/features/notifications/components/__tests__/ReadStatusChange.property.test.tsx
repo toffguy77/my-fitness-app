@@ -38,7 +38,7 @@ describe('Property 9: Visual Update on Read Status Change', () => {
                 async (notification) => {
                     const user = userEvent.setup();
                     let currentNotification = { ...notification };
-                    const mockOnMarkAsRead = jest.fn((id: string) => {
+                    const mockOnMarkAsRead = jest.fn(() => {
                         // Simulate marking as read by updating the notification
                         currentNotification = {
                             ...currentNotification,
@@ -103,7 +103,7 @@ describe('Property 9: Visual Update on Read Status Change', () => {
                 async (notification) => {
                     const user = userEvent.setup();
                     let currentNotification = { ...notification };
-                    const mockOnMarkAsRead = jest.fn((id: string) => {
+                    const mockOnMarkAsRead = jest.fn(() => {
                         currentNotification = {
                             ...currentNotification,
                             readAt: new Date().toISOString(),

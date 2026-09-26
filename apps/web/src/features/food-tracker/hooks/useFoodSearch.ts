@@ -192,9 +192,9 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
                 setTotalResults(response.total);
                 setHasMore(offset + response.items.length < response.total);
                 setCurrentPage(page);
-            } catch (err: any) {
+            } catch (err) {
                 // Ignore abort errors
-                if (err.name === 'AbortError') {
+                if (err instanceof Error && err.name === 'AbortError') {
                     return;
                 }
 

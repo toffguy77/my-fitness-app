@@ -10,15 +10,38 @@ import { apiClient } from '@/shared/utils/api-client'
 import { getApiUrl } from '@/config/api'
 import type { ClientTaskView, CuratorFeedback } from '../types'
 
+/**
+ * A task as the API sends it.
+ *
+ * Both spellings of the two renamed fields are listed because both have been
+ * seen on the wire, and the mapping below reads whichever is present. Naming
+ * the shape is the point: with `any` here, a field the server stops sending
+ * turned into `undefined` at the far end of the mapping instead of a type
+ * error at this end.
+ */
+interface BackendTask {
+    id: string
+    title?: string
+    type?: ClientTaskView['type']
+    description?: string
+    deadline?: string
+    due_date?: string
+    dueDate?: string
+    recurrence?: ClientTaskView['recurrence']
+    recurrence_days?: number[]
+    status?: ClientTaskView['status']
+    completions?: Array<string | { completed_date?: string; completedDate?: string }>
+}
+
 export const dashboardApi = {
     /**
      * Fetch current user's active tasks assigned by curator
      */
     getMyTasks: async (): Promise<{ tasks: ClientTaskView[]; count: number; week: number }> => {
-        const data = await apiClient.get<{ tasks: any[]; count: number; week: number }>(getApiUrl('/dashboard/tasks'))
+        const data = await apiClient.get<{ tasks: BackendTask[]; count: number; week: number }>(getApiUrl('/dashboard/tasks'))
         return {
             ...data,
-            tasks: (data.tasks || []).map((t: any) => ({
+            tasks: (data.tasks || []).map((t) => ({
                 id: t.id,
                 title: t.title ?? '',
                 type: t.type ?? 'habit',
@@ -28,7 +51,7 @@ export const dashboardApi = {
                 recurrence_days: t.recurrence_days,
                 status: t.status ?? 'active',
                 completions: Array.isArray(t.completions)
-                    ? t.completions.map((c: any) => typeof c === 'string' ? c : c.completed_date ?? c.completedDate ?? '')
+                    ? t.completions.map((c) => typeof c === 'string' ? c : c.completed_date ?? c.completedDate ?? '')
                     : [],
             })),
         }

@@ -7,16 +7,7 @@
  */
 
 import fc from 'fast-check';
-import {
-    getMealSlotByTime,
-    getMealSlotLabel,
-    getMealSlotIcon,
-    calculateSlotSubtotal,
-    calculateSlotSubtotals,
-    groupEntriesByMealType,
-    MEAL_LABELS,
-    MEAL_ICONS,
-} from '../mealSlotUtils';
+import { getMealSlotByTime, getMealSlotLabel, getMealSlotIcon, calculateSlotSubtotal, calculateSlotSubtotals } from '../mealSlotUtils';
 import { roundToOneDecimal, EMPTY_KBZHU } from '../kbzhuCalculator';
 import type { MealType, FoodEntry, KBZHU, EntriesByMealType } from '../../types';
 

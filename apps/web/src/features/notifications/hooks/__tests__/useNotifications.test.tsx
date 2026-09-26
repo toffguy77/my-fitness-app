@@ -3,7 +3,7 @@
  * Tests data fetching, pagination, and mark as read functionality
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useNotifications } from '../useNotifications';
 import { useNotificationsStore } from '../../store/notificationsStore';
 import type { Notification, NotificationCategory } from '../../types';

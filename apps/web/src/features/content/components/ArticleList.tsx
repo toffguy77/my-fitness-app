@@ -7,6 +7,7 @@ import { contentApi } from '@/features/content/api/contentApi'
 import { CATEGORY_LABELS } from '@/features/content/types'
 import type { Article } from '@/features/content/types'
 import { StatusBadge } from './StatusBadge'
+import { isApiError, serverMessageFrom } from '@/shared/errors/apiErrors'
 
 const STATUS_TABS = [
     { key: '', label: 'Все' },
@@ -35,9 +36,9 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
                 categoryFilter || undefined,
             )
             setArticles(res.articles ?? [])
-        } catch (err: any) {
-            const msg = err?.response?.data?.message || err?.message || 'Не удалось загрузить статьи'
-            setError(`Ошибка: ${msg} (status: ${err?.response?.status ?? 'unknown'})`)
+        } catch (err) {
+            const msg = serverMessageFrom(err) || (err instanceof Error ? err.message : '') || 'Не удалось загрузить статьи'
+            setError(`Ошибка: ${msg} (status: ${isApiError(err) ? err.status : 'unknown'})`)
             setArticles([])
         } finally {
             setLoading(false)
@@ -77,6 +78,9 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
     }, [statusFilter, categoryFilter])
 
     const handleDelete = async (id: string) => {
+        // Подтверждение перед необратимым действием. Заменить его можно только
+        // своим диалогом — это отдельная работа, а не уборка.
+        // eslint-disable-next-line no-alert -- нужен блокирующий ответ «да/нет»
         if (!window.confirm('Удалить статью?')) return
         setError(null)
         try {

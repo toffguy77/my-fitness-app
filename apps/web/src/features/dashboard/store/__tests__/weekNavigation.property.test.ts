@@ -27,32 +27,6 @@ function formatDateISO(date: Date): string {
 }
 
 /**
- * Helper: Get start of week (Monday) for a given date
- */
-function getWeekStart(date: Date): Date {
-    if (!isValidDate(date)) {
-        throw new Error('Invalid date provided to getWeekStart');
-    }
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
-}
-
-/**
- * Helper: Get end of week (Sunday) for a given date
- */
-function getWeekEnd(date: Date): Date {
-    if (!isValidDate(date)) {
-        throw new Error('Invalid date provided to getWeekEnd');
-    }
-    const start = getWeekStart(date);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    return end;
-}
-
-/**
  * Helper: Check if two dates are the same day
  */
 function isSameDay(date1: Date, date2: Date): boolean {
@@ -112,7 +86,6 @@ describe('Property 1: Week Navigation Bidirectionality', () => {
                         start: new Date(result.current.selectedWeek.start),
                         end: new Date(result.current.selectedWeek.end),
                     };
-                    const originalDate = new Date(result.current.selectedDate);
 
                     // Skip if store returned invalid dates
                     if (!isValidDate(originalWeek.start) || !isValidDate(originalWeek.end)) {

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Search } from 'lucide-react'
@@ -133,9 +134,11 @@ export function UserList() {
                             >
                                 <div className="flex items-center gap-3">
                                     {user.avatar_url ? (
-                                        <img
+                                        <Image
                                             src={user.avatar_url}
                                             alt={user.name}
+                                            width={40}
+                                            height={40}
                                             className="h-10 w-10 rounded-full object-cover"
                                         />
                                     ) : (

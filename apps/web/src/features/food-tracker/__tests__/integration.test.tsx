@@ -4,13 +4,13 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import { DietTab } from '../components/DietTab';
 import { FoodTrackerTabs } from '../components/FoodTrackerTabs';
 import { DatePicker } from '../components/DatePicker';
-import type { FoodEntry, MealType, KBZHU, EntriesByMealType } from '../types';
+import { FoodEntry, KBZHU, EntriesByMealType } from '../types';
 
 // Mock the API client
 jest.mock('@/shared/utils/api-client', () => ({

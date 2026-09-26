@@ -19,7 +19,7 @@ jest.mock('@/features/content/api/contentApi', () => ({
 // Mock next/link
 jest.mock('next/link', () => ({
     __esModule: true,
-    default: ({ href, children, ...props }: any) => (
+    default: ({ href, children, ...props }: React.ComponentProps<'a'>) => (
         <a href={href} {...props}>{children}</a>
     ),
 }))
@@ -35,7 +35,6 @@ import { contentApi } from '@/features/content/api/contentApi'
 
 const mockListArticles = contentApi.listArticles as jest.Mock
 const mockDeleteArticle = contentApi.deleteArticle as jest.Mock
-const mockPublishArticle = contentApi.publishArticle as jest.Mock
 
 const createArticle = (overrides: Partial<Article> = {}): Article => ({
     id: '1',

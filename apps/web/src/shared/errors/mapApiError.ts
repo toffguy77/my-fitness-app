@@ -13,6 +13,7 @@
  */
 
 import { t } from '@/shared/i18n'
+import { isApiError } from './apiErrors'
 
 export type ApiErrorCode =
     | 'UNAUTHORIZED'
@@ -45,9 +46,21 @@ export function mapApiError(
         return { code: 'NETWORK_ERROR', message: t('apiErrors.offline'), retryable: true }
     }
 
-    const anyError = error as { response?: { status?: number; data?: { message?: string } }; message?: string }
-    const status = anyError?.response?.status
-    const serverMessage = anyError?.response?.data?.message || anyError?.message
+    // `ApiError` first, the legacy `response` shape second.
+    //
+    // `api-client` attaches `error.response = { status, data }` to the ApiError
+    // it throws, for callers written against that shape, so reading only the
+    // legacy shape worked — until an `ApiError` arrived from anywhere else. Then
+    // every status below was skipped and a 403 came back as UNKNOWN, which is
+    // what the store shows as "что-то пошло не так".
+    const legacy = error as { response?: { status?: number; data?: { message?: string } }; message?: string }
+    const body = isApiError(error)
+        ? (error.data as { message?: string } | undefined)
+        : legacy?.response?.data
+    const status = isApiError(error) ? error.status : legacy?.response?.status
+    // The client's own `ApiError.message` is "API request failed with status
+    // 400" — no use to a reader, so it is not offered as the server's text.
+    const serverMessage = body?.message || (isApiError(error) ? undefined : legacy?.message)
 
     switch (status) {
         case 401:

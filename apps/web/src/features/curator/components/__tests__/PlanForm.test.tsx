@@ -110,7 +110,6 @@ describe('PlanForm', () => {
     })
 
     it('shows validation error when KBZHU fields are empty', async () => {
-        const user = userEvent.setup()
         render(<PlanForm clientId={1} onClose={mockOnClose} onSaved={mockOnSaved} />)
 
         // Leave fields empty but fill one to allow form to attempt submit

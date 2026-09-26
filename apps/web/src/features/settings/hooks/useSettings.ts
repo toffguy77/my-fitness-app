@@ -5,7 +5,7 @@ import { getProfile, updateProfile, updateSettings, uploadAvatar, deleteAvatar }
 import type { FullProfile, UserSettings } from '../api/settings'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
-import { messageForOr } from '@/shared/errors/apiErrors'
+import { messageForOr, serverMessageFrom } from '@/shared/errors/apiErrors'
 
 export function useSettings() {
     const [profile, setProfile] = useState<FullProfile | null>(null)
@@ -41,8 +41,8 @@ export function useSettings() {
             const result = await updateSettings(settings)
             setProfile(prev => prev ? { ...prev, settings: { ...prev.settings, ...result.settings } } : null)
             toast.success(t('settings.saved'))
-        } catch (err: any) {
-            const message = err?.response?.data?.message || t('settings.saveFailed')
+        } catch (err) {
+            const message = serverMessageFrom(err) || t('settings.saveFailed')
             toast.error(message)
             throw err
         }

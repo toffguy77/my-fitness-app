@@ -44,21 +44,6 @@ jest.mock('@/shared/components/settings', () => ({
     ),
 }))
 
-// Helper to set up the mock with specific profile
-function setupMock(profile: Record<string, unknown> | null) {
-    jest.doMock('../SettingsPageLayout', () => ({
-        SettingsPageLayout: ({ children }: { children: (props: Record<string, unknown>) => React.ReactNode }) =>
-            <div data-testid="settings-layout">{children({
-                profile,
-                isLoading: false,
-                saveName: mockSaveName,
-                saveSettings: mockSaveSettings,
-                handleAvatarUpload: mockHandleAvatarUpload,
-                handleAvatarDelete: mockHandleAvatarDelete,
-            })}</div>,
-    }))
-}
-
 // Default profile for most tests
 const baseSettings = {
     language: 'ru' as const,

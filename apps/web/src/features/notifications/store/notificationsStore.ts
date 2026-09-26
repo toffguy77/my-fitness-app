@@ -19,6 +19,7 @@ import type {
 
 import { t } from '@/shared/i18n'
 import { mapApiError } from '@/shared/errors/mapApiError'
+import { isApiError } from '@/shared/errors/apiErrors'
 /**
  * LocalStorage keys for caching
  */
@@ -28,11 +29,6 @@ const CACHE_KEYS = {
     UNREAD_COUNTS: 'notifications_unread_counts',
     LAST_SYNC: 'notifications_last_sync',
 } as const;
-
-/**
- * Cache expiration time (5 minutes)
- */
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
 /**
  * Load cached notifications from localStorage
@@ -105,42 +101,6 @@ function saveCachedUnreadCounts(counts: { main: number; content: number }): void
 }
 
 /**
- * Check if cache is expired
- */
-function isCacheExpired(): boolean {
-    if (typeof window === 'undefined') return true;
-
-    try {
-        const lastSync = localStorage.getItem(CACHE_KEYS.LAST_SYNC);
-
-        if (!lastSync) return true;
-
-        const lastSyncTime = new Date(lastSync).getTime();
-        const now = Date.now();
-
-        return now - lastSyncTime > CACHE_EXPIRATION_MS;
-    } catch (error) {
-        return true;
-    }
-}
-
-/**
- * Clear all cached data
- */
-function clearCache(): void {
-    if (typeof window === 'undefined') return;
-
-    try {
-        localStorage.removeItem(CACHE_KEYS.NOTIFICATIONS_MAIN);
-        localStorage.removeItem(CACHE_KEYS.NOTIFICATIONS_CONTENT);
-        localStorage.removeItem(CACHE_KEYS.UNREAD_COUNTS);
-        localStorage.removeItem(CACHE_KEYS.LAST_SYNC);
-    } catch (error) {
-        console.error('Failed to clear cache:', error);
-    }
-}
-
-/**
  * Check if browser is online
  */
 function isOnline(): boolean {
@@ -170,16 +130,16 @@ async function retryWithBackoff<T>(
     maxRetries: number = 3,
     baseDelay: number = 1000
 ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
             return await fn();
-        } catch (error: any) {
+        } catch (error) {
             lastError = error;
 
             // Don't retry on client errors (4xx) except 408 (timeout) and 429 (rate limit)
-            const status = error.response?.status;
+            const status = isApiError(error) ? error.status : undefined;
             if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
                 throw error;
             }
@@ -323,7 +283,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
             // Fetch unread counts after loading notifications
             await get().pollForUpdates();
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,
@@ -385,7 +345,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                     ),
                 },
             }));
-        } catch (error: any) {
+        } catch (error) {
             // Rollback on failure
             set((state) => ({
                 notifications: {
@@ -450,7 +410,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                 3,
                 1000
             );
-        } catch (error: any) {
+        } catch (error) {
             // Rollback on failure
             set((state) => ({
                 notifications: {
@@ -485,7 +445,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                     content: counts.content,
                 },
             });
-        } catch (error: any) {
+        } catch (error) {
             // Non-critical operation, just log the error
             console.error('Failed to fetch unread counts:', error);
         }
@@ -548,7 +508,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                     },
                 };
             });
-        } catch (error: any) {
+        } catch (error) {
             // Silently fail polling to avoid disrupting user experience
             console.error('Polling failed:', error);
         }
@@ -613,8 +573,6 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
      * Retry the last failed operation
      */
     retry: async () => {
-        const state = get();
-
         // Clear error and offline status
         set({ error: null, isOffline: false });
 

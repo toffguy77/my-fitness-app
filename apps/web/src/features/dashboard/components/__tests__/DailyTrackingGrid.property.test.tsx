@@ -10,7 +10,6 @@ import * as fc from 'fast-check'
 import { DailyTrackingGrid } from '../DailyTrackingGrid'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
-import type { DailyMetrics } from '../../types'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')

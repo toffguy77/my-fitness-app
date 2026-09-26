@@ -6,62 +6,8 @@
  */
 
 import fc from 'fast-check';
-import type {
-    KBZHU,
-    MealType,
-    PortionType,
-    FoodSource,
-    FoodItem,
-    FoodEntry,
-    RecognizedFood,
-    NutrientCategoryType,
-    NutrientRecommendation,
-    NutrientDetail,
-    NutrientFoodSource,
-    WaterLog,
-    MealTemplate,
-    CustomRecommendationUnit,
-    CustomRecommendation,
-    FoodTrackerTab,
-    EntryMethodTab,
-    ProgressColor,
-    EntriesByMealType,
-    TargetGoals,
-    CreateFoodEntryRequest,
-    UpdateFoodEntryRequest,
-    FoodTrackerErrorCode,
-    FoodTrackerError,
-} from '../index';
-import {
-    kbzhuGenerator,
-    mealTypeGenerator,
-    portionTypeGenerator,
-    foodSourceGenerator,
-    foodItemGenerator,
-    foodEntryGenerator,
-    recognizedFoodGenerator,
-    nutrientCategoryTypeGenerator,
-    nutrientRecommendationGenerator,
-    nutrientDetailGenerator,
-    nutrientFoodSourceGenerator,
-    waterLogGenerator,
-    mealTemplateGenerator,
-    customRecommendationUnitGenerator,
-    customRecommendationGenerator,
-    foodTrackerTabGenerator,
-    entryMethodTabGenerator,
-    progressColorGenerator,
-    targetGoalsGenerator,
-    timeGenerator,
-    dateGenerator,
-    timestampGenerator,
-    validPortionGenerator,
-    invalidPortionGenerator,
-    breakfastTimeGenerator,
-    lunchTimeGenerator,
-    dinnerTimeGenerator,
-    snackTimeGenerator,
-} from '../../testing/generators';
+import { KBZHU, MealType, PortionType, FoodSource, FoodItem, FoodEntry, RecognizedFood, NutrientCategoryType, NutrientRecommendation, WaterLog, MealTemplate, CustomRecommendation, FoodTrackerTab, EntryMethodTab, ProgressColor, TargetGoals } from '../index';
+import { kbzhuGenerator, mealTypeGenerator, portionTypeGenerator, foodSourceGenerator, foodItemGenerator, foodEntryGenerator, recognizedFoodGenerator, nutrientCategoryTypeGenerator, nutrientRecommendationGenerator, waterLogGenerator, mealTemplateGenerator, customRecommendationGenerator, foodTrackerTabGenerator, entryMethodTabGenerator, progressColorGenerator, targetGoalsGenerator, timeGenerator, dateGenerator, timestampGenerator, validPortionGenerator, invalidPortionGenerator, breakfastTimeGenerator, lunchTimeGenerator, dinnerTimeGenerator, snackTimeGenerator } from '../../testing/generators';
 
 describe('Food Tracker Types', () => {
     describe('KBZHU', () => {

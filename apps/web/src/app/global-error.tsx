@@ -16,6 +16,11 @@ export default function GlobalError({
     error: Error & { digest?: string }
     reset: () => void
 }) {
+    // A new id for a new error: the dependency is the error's identity, not
+    // anything the callback reads, which is why the rule calls it unnecessary.
+    // A second failure inside the same boundary is a separate incident and gets
+    // its own id to report.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `error` is the key, deliberately
     const errorId = useMemo(() => generateErrorId(), [error])
 
     useEffect(() => {

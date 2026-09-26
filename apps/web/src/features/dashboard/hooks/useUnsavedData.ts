@@ -3,7 +3,7 @@
  * Retains data when save operations fail, allowing user to retry
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { MetricUpdate } from '../types';
 
 /**
@@ -71,7 +71,6 @@ function saveUnsavedData(data: UnsavedDataEntry[]): void {
 export function useUnsavedData() {
     // Initialize state with data from localStorage (lazy initialization)
     const [unsavedData, setUnsavedData] = useState<UnsavedDataEntry[]>(() => loadUnsavedData());
-    const [isLoading, setIsLoading] = useState(false);
 
     /**
      * Add unsaved data entry
@@ -177,7 +176,6 @@ export function useUnsavedData() {
     return {
         unsavedData,
         unsavedCount,
-        isLoading,
         addUnsavedData,
         removeUnsavedData,
         clearUnsavedData,

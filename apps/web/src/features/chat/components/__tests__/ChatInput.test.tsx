@@ -1,5 +1,4 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { ChatInput } from '../ChatInput'
 
 // Mock lucide-react icons

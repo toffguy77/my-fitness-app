@@ -3,7 +3,7 @@
  * Integrates with Golang backend API for login and registration
  */
 
-import { isNetworkError } from '@/shared/errors/apiErrors';
+import { isApiError, isNetworkError } from '@/shared/errors/apiErrors';
 import { apiClient } from '@/shared/utils/api-client';
 import { leadToken } from '@/features/onboarding/api/guest';
 import { visitorId } from '@/shared/analytics';
@@ -27,7 +27,7 @@ export async function loginUser(data: AuthFormData): Promise<AuthResponse> {
         });
 
         return response;
-    } catch (error: any) {
+    } catch (error) {
         throw mapApiError(error);
     }
 }
@@ -57,7 +57,7 @@ export async function registerUser(
         });
 
         return response;
-    } catch (error: any) {
+    } catch (error) {
         throw mapApiError(error);
     }
 }
@@ -67,10 +67,13 @@ export async function registerUser(
  * @param error - Raw error from API client
  * @returns Structured AuthError with appropriate message
  */
-export function mapApiError(error: any): AuthError {
+export function mapApiError(error: unknown): AuthError {
     // Transport failures. The api client now raises a typed NetworkError; the
     // TypeError check stays for any call path that still reaches fetch directly.
-    if (isNetworkError(error) || error.name === 'TypeError' || error.message?.includes('fetch')) {
+    if (
+        isNetworkError(error) ||
+        (error instanceof Error && (error.name === 'TypeError' || error.message.includes('fetch')))
+    ) {
         return {
             code: 'network_error',
             message: 'Check internet connection',
@@ -78,8 +81,13 @@ export function mapApiError(error: any): AuthError {
     }
 
     // API error responses
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
+    const status = isApiError(error) ? error.status : undefined;
+    const body = isApiError(error) ? (error.data as { message?: string } | undefined) : undefined;
+    // What the server said, kept apart from what the client threw: the two are
+    // not interchangeable. `ApiError.message` is "API request failed with
+    // status 400", which is fine for a substring check and no use to a reader.
+    const serverMessage = body?.message;
+    const message = serverMessage || (error instanceof Error ? error.message : undefined);
 
     // Check message-based errors first (more specific)
     if (message?.toLowerCase().includes('already exists')) {
@@ -114,11 +122,11 @@ export function mapApiError(error: any): AuthError {
     if (status === 400) {
         return {
             code: 'validation_error',
-            message: message || 'Invalid request data',
+            message: serverMessage || 'Invalid request data',
         };
     }
 
-    if (status >= 500) {
+    if (status !== undefined && status >= 500) {
         return {
             code: 'server_error',
             message: t('auth.serviceUnavailable'),

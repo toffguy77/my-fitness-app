@@ -27,8 +27,6 @@ import { unitLabel } from '../utils/unitLabel'
 // ============================================================================
 
 export interface RecommendationsTabProps {
-    /** Selected date in YYYY-MM-DD format */
-    date: string;
     /** Nutrient recommendations */
     recommendations?: NutrientRecommendation[];
     /** Custom user recommendations */
@@ -74,7 +72,6 @@ const CATEGORY_ORDER: NutrientCategoryType[] = [
 // ============================================================================
 
 export function RecommendationsTab({
-    date,
     recommendations = [],
     customRecommendations = [],
     currentIntakes = {},

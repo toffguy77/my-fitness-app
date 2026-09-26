@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { CuratorLayout } from '@/features/curator'
@@ -67,9 +68,11 @@ export default function ProfilePage() {
             {/* Avatar section */}
             <div className="flex flex-col items-center mb-8">
                 {profile.avatar_url ? (
-                    <img
+                    <Image
                         src={profile.avatar_url}
                         alt={profile.name || 'Avatar'}
+                        width={96}
+                        height={96}
                         className="w-24 h-24 rounded-full object-cover"
                     />
                 ) : (

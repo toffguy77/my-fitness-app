@@ -7,6 +7,7 @@ import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import toast from 'react-hot-toast'
 import { requestPasswordReset } from '@/features/auth/api/passwordReset'
+import { isApiError, serverMessageFrom } from '@/shared/errors/apiErrors'
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('')
@@ -44,15 +45,14 @@ export default function ForgotPasswordPage() {
 
             setIsSubmitted(true)
             toast.success('Проверьте почту для инструкций по сбросу пароля')
-        } catch (err: any) {
-            const status = err?.response?.status
-            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
+        } catch (err) {
+            const serverMessage = serverMessageFrom(err)
             let errorMessage: string
-            if (status === 429) {
+            if (isApiError(err) && err.status === 429) {
                 errorMessage = 'Слишком много запросов. Попробуйте позже.'
             } else if (serverMessage) {
                 errorMessage = serverMessage
-            } else if (err?.response !== undefined) {
+            } else if (isApiError(err)) {
                 errorMessage = 'Не удалось отправить письмо'
             } else {
                 errorMessage = 'Произошла ошибка'

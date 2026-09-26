@@ -8,6 +8,7 @@ import fc from 'fast-check';
 import { getNotificationIcon, getNotificationIconName } from '../iconMapping';
 import { typeGenerator } from '../../testing/generators';
 import type { NotificationType } from '../../types';
+import type { LucideIcon } from 'lucide-react';
 import {
     MessageSquare,
     Trophy,
@@ -47,7 +48,7 @@ describe('iconMapping', () => {
         });
 
         it('should map each notification type to a specific icon', () => {
-            const expectedMappings: Record<NotificationType, any> = {
+            const expectedMappings: Record<NotificationType, LucideIcon> = {
                 trainer_feedback: MessageSquare,
                 achievement: Trophy,
                 reminder: Bell,

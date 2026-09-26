@@ -15,7 +15,7 @@ import { ApiError, messageFor } from '@/shared/errors/apiErrors'
 
 jest.mock('next/link', () => ({
     __esModule: true,
-    default: ({ href, children, ...props }: any) => (
+    default: ({ href, children, ...props }: React.ComponentProps<'a'>) => (
         <a href={href} {...props}>{children}</a>
     ),
 }))

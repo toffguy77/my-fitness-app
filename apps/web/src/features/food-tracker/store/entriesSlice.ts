@@ -207,7 +207,7 @@ export const createEntriesSlice: StateCreator<
             }
 
             set(updatedState);
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,
@@ -310,7 +310,7 @@ export const createEntriesSlice: StateCreator<
 
             toast.success(t('foodTracker.entries.added'));
             return response;
-        } catch (error: any) {
+        } catch (error) {
             // Rollback optimistic update
             set((state) => {
                 const newEntries = { ...state.entries };
@@ -448,7 +448,7 @@ export const createEntriesSlice: StateCreator<
 
             toast.success(t('foodTracker.entries.updated'));
             return response;
-        } catch (error: any) {
+        } catch (error) {
             // Rollback optimistic update
             set((state) => {
                 const newEntries = { ...state.entries };
@@ -528,7 +528,7 @@ export const createEntriesSlice: StateCreator<
 
             toast.success(t('foodTracker.entries.deleted'));
             return true;
-        } catch (error: any) {
+        } catch (error) {
             // Rollback optimistic update
             set((state) => {
                 const newEntries = { ...state.entries };

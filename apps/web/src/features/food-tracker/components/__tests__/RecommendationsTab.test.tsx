@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecommendationsTab } from '../RecommendationsTab';
 import { NutrientCategory } from '../NutrientCategory';
@@ -385,13 +385,13 @@ describe('RecommendationsTab', () => {
 
     describe('Display', () => {
         it('renders header with Russian title', () => {
-            render(<RecommendationsTab date="2024-01-15" />);
+            render(<RecommendationsTab />);
 
             expect(screen.getByText('Рекомендации')).toBeInTheDocument();
         });
 
         it('renders configure button with Russian text', () => {
-            render(<RecommendationsTab date="2024-01-15" />);
+            render(<RecommendationsTab />);
 
             // Use aria-label to find the header configure button specifically
             expect(
@@ -402,7 +402,6 @@ describe('RecommendationsTab', () => {
         it('renders daily recommendations section', () => {
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     recommendations={defaultRecommendations}
                 />
             );
@@ -413,7 +412,6 @@ describe('RecommendationsTab', () => {
         it('renders weekly recommendations section when present', () => {
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     recommendations={defaultRecommendations}
                 />
             );
@@ -422,7 +420,7 @@ describe('RecommendationsTab', () => {
         });
 
         it('renders custom recommendations section', () => {
-            render(<RecommendationsTab date="2024-01-15" />);
+            render(<RecommendationsTab />);
 
             expect(screen.getByText('Пользовательские')).toBeInTheDocument();
         });
@@ -432,7 +430,6 @@ describe('RecommendationsTab', () => {
         it('groups recommendations by category', () => {
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     recommendations={defaultRecommendations}
                 />
             );
@@ -449,7 +446,6 @@ describe('RecommendationsTab', () => {
 
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     recommendations={recommendations}
                 />
             );
@@ -467,7 +463,6 @@ describe('RecommendationsTab', () => {
 
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     customRecommendations={customRecommendations}
                 />
             );
@@ -476,7 +471,7 @@ describe('RecommendationsTab', () => {
         });
 
         it('displays add recommendation button with Russian text', () => {
-            render(<RecommendationsTab date="2024-01-15" />);
+            render(<RecommendationsTab />);
 
             expect(
                 screen.getByRole('button', { name: /добавить рекомендацию/i })
@@ -484,7 +479,7 @@ describe('RecommendationsTab', () => {
         });
 
         it('displays empty state message in Russian', () => {
-            render(<RecommendationsTab date="2024-01-15" />);
+            render(<RecommendationsTab />);
 
             expect(
                 screen.getByText('Нет пользовательских рекомендаций')
@@ -494,7 +489,7 @@ describe('RecommendationsTab', () => {
 
     describe('Loading State', () => {
         it('displays loading indicator with Russian text', () => {
-            render(<RecommendationsTab date="2024-01-15" isLoading={true} />);
+            render(<RecommendationsTab isLoading={true} />);
 
             expect(screen.getByText('Загрузка...')).toBeInTheDocument();
         });
@@ -507,7 +502,6 @@ describe('RecommendationsTab', () => {
 
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     onConfigureClick={onConfigureClick}
                 />
             );
@@ -525,7 +519,6 @@ describe('RecommendationsTab', () => {
 
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     onAddRecommendationClick={onAddRecommendationClick}
                 />
             );
@@ -545,7 +538,6 @@ describe('RecommendationsTab', () => {
 
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     recommendations={recommendations}
                     onRecommendationClick={onRecommendationClick}
                 />
@@ -558,7 +550,7 @@ describe('RecommendationsTab', () => {
 
     describe('Accessibility', () => {
         it('has accessible main container', () => {
-            render(<RecommendationsTab date="2024-01-15" />);
+            render(<RecommendationsTab />);
 
             expect(
                 screen.getByLabelText(/рекомендации по питательным веществам/i)
@@ -568,7 +560,6 @@ describe('RecommendationsTab', () => {
         it('has accessible daily recommendations section', () => {
             render(
                 <RecommendationsTab
-                    date="2024-01-15"
                     recommendations={defaultRecommendations}
                 />
             );

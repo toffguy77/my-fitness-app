@@ -18,7 +18,7 @@
 'use client'
 
 import { useState, useRef, ChangeEvent, memo, useCallback, useMemo } from 'react'
-import { Camera, Upload, CheckCircle, AlertTriangle, Plus } from 'lucide-react'
+import { Camera, Upload, CheckCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/shared/components/ui/Button'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validatePhoto } from '../utils/validation'
@@ -134,7 +134,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
         // Upload file
         try {
             await uploadPhoto(weekIdentifier, file)
-        } catch (error) {
+        } catch {
             // Error is handled by store (toast notification)
             setPreviewUrl(null)
         }
@@ -179,6 +179,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                     <div className="space-y-3">
                         {/* Thumbnail preview - responsive aspect ratio */}
                         <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={previewUrl}
                                 alt={t('dashboard.photo.alt')}

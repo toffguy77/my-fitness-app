@@ -5,7 +5,7 @@
  * and virtual scrolling for performance optimization.
  */
 
-import { useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useRef, lazy, Suspense } from 'react';
 import type { Notification, NotificationCategory, NotificationError } from '../types';
 import { NotificationItem } from './NotificationItem';
 import { groupNotificationsByDate } from '../utils/dateGrouping';

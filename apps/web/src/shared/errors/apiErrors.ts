@@ -51,6 +51,21 @@ export function isApiError(error: unknown): error is ApiError {
     return error instanceof ApiError
 }
 
+/**
+ * The server's own error text, when the failure came from the server and it
+ * sent one.
+ *
+ * Handlers used to read this off `err.response.data` through an `any`: the
+ * shape `api-client` attaches for older call sites. Going through `ApiError`
+ * says the same thing with the types on, so a handler that reads a field the
+ * server never sends stops compiling instead of quietly showing the fallback.
+ */
+export function serverMessageFrom(error: unknown): string | undefined {
+    if (!isApiError(error)) return undefined
+    const body = error.data as { error?: string; message?: string } | undefined
+    return body?.error || body?.message
+}
+
 /** Message to show the user, chosen by failure kind rather than by guesswork. */
 export function messageFor(error: unknown): string {
     if (isNetworkError(error)) {

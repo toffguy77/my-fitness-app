@@ -5,11 +5,12 @@
  * Validates: Requirements 2.1, 2.2, 2.4, 2.5, 2.6
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
-import type { DailyMetrics, WeeklyPlan } from '../../types'
+import type { DailyMetrics, NutritionData, WeeklyPlan } from '../../types'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')
@@ -96,11 +97,11 @@ describe('NutritionBlock', () => {
 
     describe('Basic Rendering', () => {
         it('renders nutrition block with title and quick add button', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -109,11 +110,11 @@ describe('NutritionBlock', () => {
         })
 
         it('applies custom className when provided', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             const { container } = render(<NutritionBlock date={mockDate} className="custom-class" />)
 
@@ -123,11 +124,11 @@ describe('NutritionBlock', () => {
 
     describe('Calorie Display', () => {
         it('displays current calories and goal correctly', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -145,11 +146,11 @@ describe('NutritionBlock', () => {
                 },
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: overGoalData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -163,11 +164,11 @@ describe('NutritionBlock', () => {
                 caloriesGoal: 0,
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: zeroGoalPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -177,11 +178,11 @@ describe('NutritionBlock', () => {
 
     describe('Macro Breakdown', () => {
         it('displays all macro nutrients with correct values', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -212,11 +213,11 @@ describe('NutritionBlock', () => {
                 },
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: overMacroData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -234,11 +235,11 @@ describe('NutritionBlock', () => {
                 carbsGoal: 0,
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: zeroMacroPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -266,11 +267,11 @@ describe('NutritionBlock', () => {
                 },
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: emptyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -280,11 +281,11 @@ describe('NutritionBlock', () => {
         })
 
         it('does not show empty state when calories are logged', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -296,11 +297,11 @@ describe('NutritionBlock', () => {
         it.skip('navigates to food tracker when quick add button is clicked', async () => {
             const user = userEvent.setup()
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -325,11 +326,11 @@ describe('NutritionBlock', () => {
                 },
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: emptyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -347,23 +348,25 @@ describe('NutritionBlock', () => {
             const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { })
 
             // Save original location
-            const originalHref = (window as any).location.href
-            const originalLocation = (window as any).location
+            const originalHref = window.location.href
 
-            // Mock location.href setter to throw error
-            delete (window as any).location
-                ; (window as any).location = {
-                    get href() { return '' },
-                    set href(value) {
-                        throw new Error('Navigation failed')
-                    }
+            // Mock location.href setter to throw error. `window.location` is not
+            // optional in the DOM types, so replacing it needs a window that
+            // admits it — named here rather than switched off with `any`.
+            const mutableWindow = window as unknown as { location?: unknown }
+            delete mutableWindow.location
+            mutableWindow.location = {
+                get href() { return '' },
+                set href(value) {
+                    throw new Error('Navigation failed')
                 }
+            }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -382,18 +385,18 @@ describe('NutritionBlock', () => {
             consoleSpy.mockRestore()
 
             // Restore normal location mock
-            delete (window as any).location
-                ; (window as any).location = { href: originalHref }
+            delete mutableWindow.location
+            mutableWindow.location = { href: originalHref }
         })
     })
 
     describe('Data Handling', () => {
         it('handles missing daily data gracefully', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: {}, // No data for the date
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -404,11 +407,11 @@ describe('NutritionBlock', () => {
         })
 
         it('handles missing weekly plan gracefully', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: null,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -422,14 +425,14 @@ describe('NutritionBlock', () => {
         it('handles missing nutrition data in daily data', () => {
             const dataWithoutNutrition = {
                 ...mockDailyData,
-                nutrition: undefined as any,
+                nutrition: undefined as unknown as NutritionData,
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: dataWithoutNutrition },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -443,11 +446,11 @@ describe('NutritionBlock', () => {
 
     describe('Accessibility', () => {
         it('has proper ARIA labels for progress bars', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -466,11 +469,11 @@ describe('NutritionBlock', () => {
         })
 
         it('has proper button labels', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 
@@ -497,11 +500,11 @@ describe('NutritionBlock', () => {
                     },
                 }
 
-                mockUseDashboardStore.mockReturnValue({
+                mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                     ...mockStoreDefaults,
                     dailyData: { [mockDateStr]: testData },
                     weeklyPlan: mockWeeklyPlan,
-                })
+                }))
 
                 const { container } = render(<NutritionBlock date={mockDate} />)
 
@@ -520,11 +523,11 @@ describe('NutritionBlock', () => {
                 },
             }
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: veryHighCalorieData },
                 weeklyPlan: mockWeeklyPlan,
-            })
+            }))
 
             render(<NutritionBlock date={mockDate} />)
 

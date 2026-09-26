@@ -6,8 +6,21 @@
  */
 
 import { useState, useCallback } from 'react';
+import { z } from 'zod';
 import { loginSchema, registerSchema, emailSchema, passwordSchema } from '@/features/auth/utils/validation';
 import type { AuthFormData, ConsentState, ValidationErrors } from '@/features/auth/types';
+
+/**
+ * The problems zod reported, or none if the throw came from somewhere else.
+ *
+ * `schema.parse` throws `unknown` as far as the type system is concerned. This
+ * says out loud what reading `err.issues` off an `any` left implicit: anything
+ * that is not a zod failure carries no issues, and the caller shows its own
+ * fallback sentence.
+ */
+function issuesOf(err: unknown): z.core.$ZodIssue[] {
+    return err instanceof z.ZodError ? err.issues : [];
+}
 
 export function useFormValidation() {
     const [errors, setErrors] = useState<ValidationErrors>({});
@@ -21,8 +34,8 @@ export function useFormValidation() {
             emailSchema.parse(email);
             setErrors((prev) => ({ ...prev, email: undefined }));
             return true;
-        } catch (err: any) {
-            const errorMessage = err.issues?.[0]?.message || 'Invalid email';
+        } catch (err) {
+            const errorMessage = issuesOf(err)[0]?.message || 'Invalid email';
             setErrors((prev) => ({ ...prev, email: errorMessage }));
             return false;
         }
@@ -37,8 +50,8 @@ export function useFormValidation() {
             passwordSchema.parse(password);
             setErrors((prev) => ({ ...prev, password: undefined }));
             return true;
-        } catch (err: any) {
-            const errorMessage = err.issues?.[0]?.message || 'Invalid password';
+        } catch (err) {
+            const errorMessage = issuesOf(err)[0]?.message || 'Invalid password';
             setErrors((prev) => ({ ...prev, password: errorMessage }));
             return false;
         }
@@ -53,9 +66,9 @@ export function useFormValidation() {
             loginSchema.parse(data);
             setErrors({});
             return true;
-        } catch (err: any) {
+        } catch (err) {
             const validationErrors: ValidationErrors = {};
-            err.issues?.forEach((issue: any) => {
+            issuesOf(err).forEach((issue) => {
                 const field = issue.path[0] as keyof ValidationErrors;
                 validationErrors[field] = issue.message;
             });
@@ -74,9 +87,9 @@ export function useFormValidation() {
                 registerSchema.parse({ ...data, consents });
                 setErrors({});
                 return true;
-            } catch (err: any) {
+            } catch (err) {
                 const validationErrors: ValidationErrors = {};
-                err.issues?.forEach((issue: any) => {
+                issuesOf(err).forEach((issue) => {
                     const field = issue.path[0];
                     if (field === 'consents') {
                         validationErrors.consents = issue.message;

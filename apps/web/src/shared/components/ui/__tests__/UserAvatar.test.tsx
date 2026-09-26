@@ -113,7 +113,11 @@ describe('UserAvatar', () => {
             )
             const img = container.querySelector('img')
             expect(img).toBeInTheDocument()
-            expect(img).toHaveAttribute('src', 'https://example.com/avatar.jpg')
+            // next/image отдаёт картинку через свой оптимизатор, поэтому в src
+// лежит ссылка на него с исходным адресом внутри.
+            expect(img?.getAttribute('src')).toContain(
+                encodeURIComponent('https://example.com/avatar.jpg'),
+            )
             expect(img).toHaveAttribute('alt', "John Doe's avatar")
         })
 

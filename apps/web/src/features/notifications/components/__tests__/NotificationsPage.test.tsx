@@ -10,7 +10,7 @@
  * - useAutoMarkAsRead hook
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { NotificationsPage } from '../NotificationsPage';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useNotificationPolling } from '../../hooks/useNotificationPolling';
@@ -38,11 +38,14 @@ mockIntersectionObserver.mockReturnValue({
     unobserve: () => null,
     disconnect: () => null,
 });
-window.IntersectionObserver = mockIntersectionObserver as any;
+window.IntersectionObserver = mockIntersectionObserver as unknown as typeof IntersectionObserver;
 
 // Mock react-window
 jest.mock('react-window', () => ({
-    VariableSizeList: ({ children, itemCount }: any) => (
+    VariableSizeList: ({ children, itemCount }: {
+        children: (props: { index: number; style: React.CSSProperties }) => React.ReactNode
+        itemCount: number
+    }) => (
         <div data-testid="virtual-list">
             {Array.from({ length: Math.min(itemCount, 10) }, (_, index) => (
                 <div key={index}>

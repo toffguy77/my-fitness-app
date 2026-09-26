@@ -108,7 +108,7 @@ describe('Dashboard Calculations - Property-Based Tests', () => {
      * Validates: Requirements 4.1, 4.7
      */
     describe('Property 9: Steps Data Display and Calculation', () => {
-        const createMetrics = (steps: number, stepsGoal: number): Pick<DailyMetrics, 'nutrition' | 'weight' | 'steps' | 'workout'> => ({
+        const createMetrics = (steps: number): Pick<DailyMetrics, 'nutrition' | 'weight' | 'steps' | 'workout'> => ({
             nutrition: { calories: 0, protein: 0, fat: 0, carbs: 0 },
             weight: null,
             steps,
@@ -121,7 +121,7 @@ describe('Dashboard Calculations - Property-Based Tests', () => {
                     fc.integer({ min: 0, max: 100000 }), // steps
                     fc.integer({ min: 1, max: 100000 }), // stepsGoal
                     (steps, stepsGoal) => {
-                        const metrics = createMetrics(steps, stepsGoal)
+                        const metrics = createMetrics(steps)
                         const status = calculateCompletionStatus(metrics, stepsGoal)
 
                         // Activity should be completed if steps >= goal
@@ -168,7 +168,7 @@ describe('Dashboard Calculations - Property-Based Tests', () => {
                     fc.integer({ min: 0, max: 100000 }),
                     fc.integer({ min: 1, max: 100000 }),
                     (steps, stepsGoal) => {
-                        const metrics = createMetrics(steps, stepsGoal)
+                        const metrics = createMetrics(steps)
                         const status = calculateCompletionStatus(metrics, stepsGoal)
                         const percentage = calculatePercentage(steps, stepsGoal)
 

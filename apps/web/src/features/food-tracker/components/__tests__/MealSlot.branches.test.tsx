@@ -10,7 +10,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MealSlot } from '../MealSlot';
-import type { FoodEntry, MealType } from '../../types';
+import { FoodEntry } from '../../types';
 
 // ============================================================================
 // Helpers

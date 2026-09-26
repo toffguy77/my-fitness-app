@@ -155,7 +155,6 @@ describe('UnsavedDataNotification', () => {
     })
 
     it('does not retry when canRetry returns false', async () => {
-        const user = userEvent.setup()
         mockCanRetry.mockReturnValue(false)
         mockUnsavedData = [
             {

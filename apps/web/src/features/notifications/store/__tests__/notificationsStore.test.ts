@@ -5,6 +5,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useNotificationsStore } from '../notificationsStore';
 import { apiClient } from '@/shared/utils/api-client';
+import { ApiError } from '@/shared/errors/apiErrors';
 import type {
     Notification,
     GetNotificationsResponse,
@@ -238,9 +239,7 @@ describe('notificationsStore', () => {
         });
 
         it('should handle 401 unauthorized errors', async () => {
-            const authError = {
-                response: { status: 401, data: { message: 'Unauthorized' } },
-            };
+            const authError = new ApiError(401, { message: 'Unauthorized' });
             mockApiClient.get.mockRejectedValue(authError);
 
             const { result } = renderHook(() => useNotificationsStore());
@@ -258,9 +257,7 @@ describe('notificationsStore', () => {
         });
 
         it('should not fetch if already loading', async () => {
-            let callCount = 0;
             mockApiClient.get.mockImplementation((url: string) => {
-                callCount++;
                 if (url.includes('/notifications?category=main')) {
                     return new Promise((resolve) => {
                         setTimeout(() => resolve({
@@ -378,9 +375,7 @@ describe('notificationsStore', () => {
 
         it('should rollback on API failure', async () => {
             // Use 422 (not 500) so retryWithBackoff doesn't retry (avoids 3s delay + async leaks)
-            const apiError = {
-                response: { status: 422, data: { message: 'Server error' } },
-            };
+            const apiError = new ApiError(422, { message: 'Server error' });
             mockApiClient.post.mockRejectedValue(apiError);
 
             const { result } = renderHook(() => useNotificationsStore());
@@ -388,7 +383,7 @@ describe('notificationsStore', () => {
             await act(async () => {
                 try {
                     await result.current.markAsRead('1', 'main');
-                } catch (error) {
+                } catch {
                     // Expected to throw
                 }
             });
@@ -520,9 +515,7 @@ describe('notificationsStore', () => {
         });
 
         it('should rollback on API failure', async () => {
-            const apiError = {
-                response: { status: 500, data: { message: 'Server error' } },
-            };
+            const apiError = new ApiError(500, { message: 'Server error' });
             mockApiClient.post.mockRejectedValue(apiError);
 
             const { result } = renderHook(() => useNotificationsStore());
@@ -530,7 +523,7 @@ describe('notificationsStore', () => {
             await act(async () => {
                 try {
                     await result.current.markAllAsRead('main');
-                } catch (error) {
+                } catch {
                     // Expected to throw
                 }
             });
@@ -782,11 +775,6 @@ describe('notificationsStore', () => {
                 hasMore: false,
             };
 
-            const mockUnreadCounts: UnreadCountsResponse = {
-                main: 0,
-                content: 0,
-            };
-
             mockApiClient.get.mockResolvedValue(mockResponse);
 
             const { result } = renderHook(() => useNotificationsStore());
@@ -867,9 +855,7 @@ describe('notificationsStore', () => {
 
     describe('error mapping', () => {
         it('should map 404 errors correctly', async () => {
-            const notFoundError = {
-                response: { status: 404, data: { message: 'Not found' } },
-            };
+            const notFoundError = new ApiError(404, { message: 'Not found' });
             mockApiClient.get.mockRejectedValue(notFoundError);
 
             const { result } = renderHook(() => useNotificationsStore());
@@ -885,9 +871,7 @@ describe('notificationsStore', () => {
         });
 
         it('should map 400 validation errors correctly', async () => {
-            const validationError = {
-                response: { status: 400, data: { message: 'Invalid category' } },
-            };
+            const validationError = new ApiError(400, { message: 'Invalid category' });
             mockApiClient.get.mockRejectedValue(validationError);
 
             const { result } = renderHook(() => useNotificationsStore());
@@ -903,9 +887,7 @@ describe('notificationsStore', () => {
         });
 
         it('should map 500 server errors correctly', async () => {
-            const serverError = {
-                response: { status: 500, data: { message: 'Internal server error' } },
-            };
+            const serverError = new ApiError(500, { message: 'Internal server error' });
             mockApiClient.get.mockRejectedValue(serverError);
 
             const { result } = renderHook(() => useNotificationsStore());

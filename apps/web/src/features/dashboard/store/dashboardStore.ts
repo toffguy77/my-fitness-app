@@ -19,23 +19,15 @@ import type {
     WeeklyPlan,
     Task,
     MetricUpdate,
-    PhotoData,
+    TaskStatus,
     WeeklyReport,
 } from '../types';
 import { getToken } from '@/shared/utils/token-storage';
-import {
-    addToQueue,
-    removeFromQueue,
-    loadQueue,
-    incrementAttempts,
-    shouldRetry,
-    removeFailedEntries,
-    sortQueueByTimestamp,
-    type QueueEntry,
-} from '../utils/offlineQueue';
+import { addToQueue, removeFromQueue, incrementAttempts, shouldRetry, sortQueueByTimestamp, type QueueEntry } from '../utils/offlineQueue';
 
 import { t, plural } from '@/shared/i18n'
 import { mapApiError } from '@/shared/errors/mapApiError'
+import { isApiError } from '@/shared/errors/apiErrors'
 
 /**
  * "1 изменение", "2 изменения", "5 изменений". The previous version said
@@ -76,11 +68,6 @@ if (typeof window !== 'undefined') {
         // Сказать об этом некому и нечего.
     }
 }
-
-/**
- * Cache expiration time (5 minutes for localStorage)
- */
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
 /**
  * In-memory cache TTL values (milliseconds)
@@ -287,10 +274,20 @@ interface BackendDailyMetrics {
 }
 
 /**
+ * What a mapper may be handed: the backend row, or a value already in frontend
+ * shape — the cache and the tests both supply the latter.
+ *
+ * Every field is optional because only one of the two shapes has any given one;
+ * naming both is what makes a misspelled field a type error here rather than an
+ * `undefined` at the far end of the mapping.
+ */
+type Raw<Backend, Frontend> = Partial<Backend> & Partial<Frontend>;
+
+/**
  * Map flat backend metrics to nested frontend DailyMetrics shape.
  * Also handles already-mapped data gracefully (e.g. from cache or test mocks).
  */
-function mapBackendMetrics(raw: BackendDailyMetrics | DailyMetrics | any): DailyMetrics {
+function mapBackendMetrics(raw: Raw<BackendDailyMetrics, DailyMetrics>): DailyMetrics {
     // If already in frontend shape (has nested 'nutrition' object), return as-is
     if (raw.nutrition !== undefined && typeof raw.nutrition === 'object') {
         return raw as DailyMetrics;
@@ -298,7 +295,7 @@ function mapBackendMetrics(raw: BackendDailyMetrics | DailyMetrics | any): Daily
 
     // Map from flat backend shape to nested frontend shape
     return {
-        date: raw.date?.includes?.('T') ? raw.date.split('T')[0] : raw.date,
+        date: raw.date?.includes('T') ? raw.date.split('T')[0] : (raw.date ?? ''),
         userId: String(raw.user_id ?? raw.userId ?? ''),
         nutrition: {
             calories: raw.calories || 0,
@@ -339,45 +336,87 @@ interface GetWeekMetricsResponse {
     count: number;
 }
 
-interface GetWeeklyPlanResponse {
-    // When no plan: { plan: null }
-    // When plan exists: the plan object directly (no wrapper)
-    plan?: any;
-    // Backend plan fields (snake_case) may appear at top level
-    [key: string]: any;
+/**
+ * The weekly plan as the backend sends it: snake_case, dates as strings.
+ */
+interface BackendWeeklyPlan {
+    id: string;
+    user_id: number | string;
+    curator_id: number | string;
+    calories_goal: number;
+    protein_goal: number;
+    fat_goal?: number | null;
+    carbs_goal?: number | null;
+    steps_goal?: number | null;
+    comment?: string | null;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    created_by: number | string;
 }
+
+type RawWeeklyPlan = Raw<BackendWeeklyPlan, WeeklyPlan>;
+
+// When there is no plan the body is { plan: null }; when there is one, the plan
+// object arrives directly, with its fields at the top level.
+type GetWeeklyPlanResponse = RawWeeklyPlan & { plan?: RawWeeklyPlan | null };
 
 /**
  * Map backend weekly plan (snake_case) to frontend WeeklyPlan (camelCase).
  * Handles already-mapped data gracefully.
  */
-function mapBackendWeeklyPlan(raw: any): WeeklyPlan {
+function mapBackendWeeklyPlan(raw: RawWeeklyPlan): WeeklyPlan {
     // If already in frontend shape (has camelCase keys), return as-is
     if (raw.caloriesGoal !== undefined) {
         return raw as WeeklyPlan;
     }
 
+    // A date the server did not send stays an Invalid Date, as it was when this
+    // read `any`: the plan is unusable either way, and inventing today's date
+    // here would make a broken plan look like a current one.
     return {
-        id: raw.id,
+        id: raw.id ?? '',
         userId: String(raw.user_id ?? raw.userId ?? ''),
         curatorId: String(raw.curator_id ?? raw.curatorId ?? ''),
-        caloriesGoal: raw.calories_goal ?? 0,
-        proteinGoal: raw.protein_goal ?? 0,
+        caloriesGoal: raw.calories_goal ?? raw.caloriesGoal ?? 0,
+        proteinGoal: raw.protein_goal ?? raw.proteinGoal ?? 0,
         fatGoal: raw.fat_goal ?? undefined,
         carbsGoal: raw.carbs_goal ?? undefined,
         stepsGoal: raw.steps_goal ?? undefined,
         comment: raw.comment ?? undefined,
-        startDate: new Date(raw.start_date ?? raw.startDate),
-        endDate: new Date(raw.end_date ?? raw.endDate),
+        startDate: new Date(raw.start_date ?? raw.startDate ?? ''),
+        endDate: new Date(raw.end_date ?? raw.endDate ?? ''),
         isActive: raw.is_active ?? raw.isActive ?? false,
-        createdAt: new Date(raw.created_at ?? raw.createdAt),
-        updatedAt: new Date(raw.updated_at ?? raw.updatedAt),
+        createdAt: new Date(raw.created_at ?? raw.createdAt ?? ''),
+        updatedAt: new Date(raw.updated_at ?? raw.updatedAt ?? ''),
         createdBy: String(raw.created_by ?? raw.createdBy ?? ''),
     };
 }
 
+/**
+ * A curator task as the backend sends it.
+ */
+interface BackendTask {
+    id: string;
+    user_id: number | string;
+    curator_id: number | string;
+    title?: string;
+    description?: string;
+    week_number?: number;
+    assigned_at?: string;
+    due_date?: string;
+    completed_at?: string | null;
+    status?: TaskStatus;
+    created_at?: string;
+    updated_at?: string;
+}
+
+type RawTask = Raw<BackendTask, Task>;
+
 interface GetTasksResponse {
-    tasks: any[];
+    tasks: RawTask[];
     count: number;
     week: number;
 }
@@ -386,9 +425,9 @@ interface GetTasksResponse {
  * Map backend task (snake_case) to frontend Task (camelCase).
  * Handles already-mapped data gracefully.
  */
-function mapBackendTask(raw: any): Task {
+function mapBackendTask(raw: RawTask): Task {
     return {
-        id: raw.id,
+        id: raw.id ?? '',
         userId: String(raw.user_id ?? raw.userId ?? ''),
         curatorId: String(raw.curator_id ?? raw.curatorId ?? ''),
         title: raw.title ?? '',
@@ -396,14 +435,12 @@ function mapBackendTask(raw: any): Task {
         weekNumber: raw.week_number ?? raw.weekNumber ?? 0,
         assignedAt: new Date(raw.assigned_at ?? raw.assignedAt ?? Date.now()),
         dueDate: new Date(raw.due_date ?? raw.dueDate ?? Date.now()),
-        completedAt: (raw.completed_at || raw.completedAt) ? new Date(raw.completed_at ?? raw.completedAt) : undefined,
+        completedAt: (raw.completed_at || raw.completedAt) ? new Date(raw.completed_at ?? raw.completedAt ?? '') : undefined,
         status: raw.status ?? 'active',
         createdAt: new Date(raw.created_at ?? raw.createdAt ?? Date.now()),
         updatedAt: new Date(raw.updated_at ?? raw.updatedAt ?? Date.now()),
     };
 }
-
-type UploadPhotoResponse = PhotoData;
 
 type SubmitWeeklyReportResponse = WeeklyReport;
 
@@ -458,15 +495,15 @@ async function retryWithBackoff<T>(
     maxRetries: number = 3,
     baseDelay: number = 1000
 ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
             return await fn();
-        } catch (error: any) {
+        } catch (error) {
             lastError = error;
 
-            const status = error.response?.status;
+            const status = isApiError(error) ? error.status : undefined;
             if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
                 throw error;
             }
@@ -705,7 +742,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     isLoading: false,
                 };
             });
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,
@@ -788,7 +825,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                     isLoading: false,
                 };
             });
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,
@@ -981,7 +1018,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             const cachedTasks = memoryCache.getTasks();
 
             // Determine which requests need to be made
-            const requests: Promise<any>[] = [];
+            const requests: Promise<unknown>[] = [];
             const requestTypes: string[] = [];
 
             if (!cachedWeekData) {
@@ -1089,7 +1126,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             // Prefetch adjacent weeks after initial load
             get().prefetchAdjacentWeeks(weekStart);
 
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,
@@ -1180,7 +1217,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             if (metric.type === 'workout' || metric.type === 'weight') {
                 set((state) => ({ tasksVersion: state.tasksVersion + 1 }));
             }
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
 
             // If network error, queue for retry
@@ -1244,7 +1281,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             set({ weeklyPlan: plan });
             saveCachedData(CACHE_KEYS.WEEKLY_PLAN, plan);
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 error: mappedError,
@@ -1296,7 +1333,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             set({ tasks: tasksArray });
             saveCachedData(CACHE_KEYS.TASKS, tasksArray);
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 error: mappedError,
@@ -1356,7 +1393,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 3,
                 1000
             );
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
 
             // If network error, queue for retry
@@ -1404,7 +1441,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             set({ isLoading: false });
             toast.success(t('dashboard.sync.reportSent'));
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,
@@ -1449,7 +1486,7 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
 
             set({ isLoading: false });
             toast.success(t('dashboard.sync.photoUploaded'));
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,

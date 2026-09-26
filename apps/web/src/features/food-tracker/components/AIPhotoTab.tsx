@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { Camera, Image, Upload, AlertCircle, X, Search } from 'lucide-react';
+import { Camera, Image as ImageIcon, Upload, AlertCircle, X, Search } from 'lucide-react';
 import type { FoodItem, KBZHU, RecognizedFood } from '../types';
 import { EVENTS, track } from '@/shared/analytics';
 import { t } from '@/shared/i18n';
@@ -146,7 +146,6 @@ export function AIPhotoTab({
     className = '',
 }: AIPhotoTabProps) {
     const [status, setStatus] = useState<ProcessingStatus>('idle');
-    const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [results, setResults] = useState<RecognitionResult[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -185,7 +184,6 @@ export function AIPhotoTab({
         };
         reader.readAsDataURL(file);
 
-        setSelectedPhoto(file);
         setStatus('processing');
         setError(null);
         setResults([]);
@@ -282,7 +280,6 @@ export function AIPhotoTab({
     // Reset and try again
     const handleReset = useCallback(() => {
         setStatus('idle');
-        setSelectedPhoto(null);
         setPhotoPreview(null);
         setResults([]);
         setError(null);
@@ -345,7 +342,7 @@ export function AIPhotoTab({
             {/* Photo Selection */}
             {status === 'idle' && (
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
-                    <Image className="w-16 h-16 text-gray-400 mb-4" />
+                    <ImageIcon className="w-16 h-16 text-gray-400 mb-4" />
                     <p className="text-gray-600 text-center mb-6">
                         {t('foodTracker.photo.prompt')}
                     </p>
@@ -375,6 +372,7 @@ export function AIPhotoTab({
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
                     {photoPreview && (
                         <div className="w-48 h-48 rounded-xl overflow-hidden mb-6">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={photoPreview}
                                 alt={t('foodTracker.photo.uploaded')}
@@ -393,6 +391,7 @@ export function AIPhotoTab({
                     {/* Photo preview */}
                     {photoPreview && (
                         <div className="relative h-40 bg-gray-100 mb-4">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={photoPreview}
                                 alt={t('foodTracker.photo.uploaded')}
@@ -591,6 +590,7 @@ export function AIPhotoTab({
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
                     {photoPreview && (
                         <div className="w-48 h-48 rounded-xl overflow-hidden mb-6 opacity-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={photoPreview}
                                 alt={t('foodTracker.photo.uploaded')}
