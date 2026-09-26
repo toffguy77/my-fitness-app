@@ -351,7 +351,9 @@ export function DatePicker({
                                                 : 'hover:bg-gray-100 text-gray-700'
                                         }`}
                                     aria-label={`${day} ${RUSSIAN_MONTHS_GENITIVE[calendarMonth]}`}
-                                    aria-selected={isSelected}
+                                    // Кнопка не поддерживает aria-selected: для выбранной
+                                    // даты в сетке это aria-current.
+                                    aria-current={isSelected ? 'date' : undefined}
                                 >
                                     {day}
                                 </button>

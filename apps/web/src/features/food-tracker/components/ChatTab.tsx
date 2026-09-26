@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Send, Image, Clock, Bot, Plus } from 'lucide-react';
+import { Send, Image as ImageIcon, Clock, Bot, Plus } from 'lucide-react';
 import type { FoodItem } from '../types';
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors';
@@ -248,7 +248,7 @@ export function ChatTab({
                         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                         aria-label={t('foodTracker.chat.attachPhoto')}
                     >
-                        <Image className="w-6 h-6" />
+                        <ImageIcon className="w-6 h-6" />
                     </button>
                     <input
                         ref={inputRef}

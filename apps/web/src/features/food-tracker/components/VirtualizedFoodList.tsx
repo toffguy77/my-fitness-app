@@ -79,6 +79,7 @@ function FoodRow({
         <div style={style}>
             <div
                 role="option"
+                aria-selected={false}
                 tabIndex={0}
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}
@@ -169,6 +170,7 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
     return (
         <li
             role="option"
+            aria-selected={false}
             tabIndex={0}
             onClick={handleClick}
             onKeyDown={handleKeyDown}

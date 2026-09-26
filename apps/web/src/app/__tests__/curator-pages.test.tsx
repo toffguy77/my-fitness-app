@@ -29,7 +29,9 @@ jest.mock('next/navigation', () => ({
 // Mock next/image
 jest.mock('next/image', () => ({
     __esModule: true,
-    // eslint-disable-next-line @next/next/no-img-element -- подмена next/image: сам оптимизатор здесь и подменяется
+    // Подмена next/image: сам оптимизатор здесь и подменяется, а alt приходит
+    // из пропсов вызывающего кода.
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- подмена next/image
     default: (props: Record<string, unknown>) => <img {...props} />,
 }))
 

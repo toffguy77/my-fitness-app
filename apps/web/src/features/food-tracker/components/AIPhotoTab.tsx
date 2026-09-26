@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { Camera, Image, Upload, AlertCircle, X, Search } from 'lucide-react';
+import { Camera, Image as ImageIcon, Upload, AlertCircle, X, Search } from 'lucide-react';
 import type { FoodItem, KBZHU, RecognizedFood } from '../types';
 import { EVENTS, track } from '@/shared/analytics';
 import { t } from '@/shared/i18n';
@@ -342,7 +342,7 @@ export function AIPhotoTab({
             {/* Photo Selection */}
             {status === 'idle' && (
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
-                    <Image className="w-16 h-16 text-gray-400 mb-4" />
+                    <ImageIcon className="w-16 h-16 text-gray-400 mb-4" />
                     <p className="text-gray-600 text-center mb-6">
                         {t('foodTracker.photo.prompt')}
                     </p>
