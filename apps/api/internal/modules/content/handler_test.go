@@ -101,13 +101,6 @@ func (m *mockContentService) UploadMedia(ctx context.Context, authorID int64, ar
 	return "https://example.com/media.jpg", nil
 }
 
-func (m *mockContentService) UploadMarkdownFile(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error) {
-	if m.uploadMarkdownFileFunc != nil {
-		return m.uploadMarkdownFileFunc(ctx, authorID, file, req)
-	}
-	return &Article{}, nil
-}
-
 func (m *mockContentService) UploadCoverImage(ctx context.Context, file *multipart.FileHeader) (string, error) {
 	return "https://storage.yandexcloud.net/curator-content/cover-images/test.jpg", nil
 }

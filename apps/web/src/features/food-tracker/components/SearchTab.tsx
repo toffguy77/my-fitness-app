@@ -29,8 +29,22 @@ export interface SearchTabProps {
     mealType?: MealType;
     /** Recent foods to display when search is empty */
     recentFoods?: FoodItem[];
-    /** Popular/favorite foods to display */
-    popularFoods?: FoodItem[];
+    /**
+     * Избранные продукты.
+     *
+     * Пропс звался `popularFoods`, а получал избранное, и раздел был подписан
+     * «Популярные» — при том, что список приходит из `/food-tracker/favorites`.
+     * Имя и подпись врали в одну сторону, теперь оба говорят про избранное.
+     */
+    favoriteFoods?: FoodItem[];
+    /** Идентификаторы избранных продуктов: по ним зажигается отметка. */
+    favoriteIds?: Set<string>;
+    /** Переключить избранное. Без него отметка не показывается вовсе. */
+    onToggleFavorite?: (foodId: string) => void;
+    /** Продукт, по которому отметка сейчас меняется. */
+    pendingFavoriteId?: string | null;
+    /** Сообщение, если отметку не удалось сохранить. */
+    favoriteError?: string | null;
     /** External search function */
     onSearch?: (query: string) => Promise<FoodItem[]>;
     /** External search results (if provided, overrides internal results) */
@@ -60,7 +74,11 @@ export function SearchTab({
     onSelectFood,
     onManualEntry,
     recentFoods = [],
-    popularFoods = [],
+    favoriteFoods = [],
+    favoriteIds,
+    onToggleFavorite,
+    pendingFavoriteId = null,
+    favoriteError = null,
     onSearch,
     searchResults,
     isLoading = false,
@@ -188,7 +206,11 @@ export function SearchTab({
     const showResults = query.length >= MIN_SEARCH_LENGTH;
     const showFailure = showResults && !!searchError && !isSearching;
     const showEmptyState = showResults && hasSearched && results.length === 0 && !isSearching && !showFailure;
-    const showRecentAndPopular = !showResults && (recentFoods.length > 0 || popularFoods.length > 0);
+    // Раздел избранного показывается и пустым: до этой правки он был пуст
+    // всегда, и человеку не за что было зацепиться, чтобы это изменить.
+    const canFavorite = !!onToggleFavorite;
+    const showRecentAndPopular =
+        !showResults && (recentFoods.length > 0 || favoriteFoods.length > 0 || canFavorite);
 
     // Loading state
     const loading = isLoading || isSearching;
@@ -214,6 +236,13 @@ export function SearchTab({
                 )}
             </div>
 
+            {/* Отметку не удалось сохранить: прежнее состояние осталось видимым. */}
+            {favoriteError && (
+                <p className="mb-2 text-sm text-red-600" role="alert">
+                    {favoriteError}
+                </p>
+            )}
+
             {/* Поиск не состоялся — это не то же самое, что «такого нет» */}
             {showFailure && (
                 <div className="flex-1 flex flex-col items-center justify-center py-8">
@@ -228,6 +257,9 @@ export function SearchTab({
                         foods={results}
                         onSelect={handleSelectFood}
                         emptyMessage=""
+                        favoriteIds={favoriteIds}
+                        onToggleFavorite={onToggleFavorite}
+                        pendingFavoriteId={pendingFavoriteId}
                     />
                     {/* Infinite scroll sentinel */}
                     {hasMore && (
@@ -264,14 +296,21 @@ export function SearchTab({
                             icon={<Clock className="w-4 h-4" />}
                             foods={recentFoods}
                             onSelect={handleSelectFood}
+                            favoriteIds={favoriteIds}
+                            onToggleFavorite={onToggleFavorite}
+                            pendingFavoriteId={pendingFavoriteId}
                         />
                     )}
-                    {popularFoods.length > 0 && (
+                    {(favoriteFoods.length > 0 || canFavorite) && (
                         <FoodSection
                             title={t('foodTracker.search.popular')}
                             icon={<Star className="w-4 h-4" />}
-                            foods={popularFoods}
+                            foods={favoriteFoods}
                             onSelect={handleSelectFood}
+                            favoriteIds={favoriteIds}
+                            onToggleFavorite={onToggleFavorite}
+                            pendingFavoriteId={pendingFavoriteId}
+                            emptyMessage={t('foodTracker.search.noFavorites')}
                         />
                     )}
                 </div>
@@ -301,32 +340,39 @@ export function SearchTab({
 // Sub-components
 // ============================================================================
 
-interface FoodSectionProps {
+interface FavoriteControls {
+    favoriteIds?: Set<string>;
+    onToggleFavorite?: (foodId: string) => void;
+    pendingFavoriteId?: string | null;
+}
+
+interface FoodSectionProps extends FavoriteControls {
     title: string;
     icon: React.ReactNode;
     foods: FoodItem[];
     onSelect: (food: FoodItem) => void;
+    emptyMessage?: string;
 }
 
-function FoodSection({ title, icon, foods, onSelect }: FoodSectionProps) {
+function FoodSection({ title, icon, foods, onSelect, emptyMessage, ...favorites }: FoodSectionProps) {
     return (
         <section>
             <div className="flex items-center gap-2 mb-2 text-gray-500">
                 {icon}
                 <h3 className="text-sm font-medium">{title}</h3>
             </div>
-            <FoodList foods={foods} onSelect={onSelect} />
+            <FoodList foods={foods} onSelect={onSelect} emptyMessage={emptyMessage} {...favorites} />
         </section>
     );
 }
 
-interface FoodListProps {
+interface FoodListProps extends FavoriteControls {
     foods: FoodItem[];
     onSelect: (food: FoodItem) => void;
     emptyMessage?: string;
 }
 
-function FoodList({ foods, onSelect, emptyMessage }: FoodListProps) {
+function FoodList({ foods, onSelect, emptyMessage, ...favorites }: FoodListProps) {
     if (foods.length === 0 && emptyMessage) {
         return <p className="text-gray-500 text-center py-4">{emptyMessage}</p>;
     }
@@ -334,18 +380,18 @@ function FoodList({ foods, onSelect, emptyMessage }: FoodListProps) {
     return (
         <ul className="space-y-1" role="listbox" aria-label={t('foodTracker.search.listAria')}>
             {foods.map((food) => (
-                <FoodListItem key={food.id} food={food} onSelect={onSelect} />
+                <FoodListItem key={food.id} food={food} onSelect={onSelect} {...favorites} />
             ))}
         </ul>
     );
 }
 
-interface FoodListItemProps {
+interface FoodListItemProps extends FavoriteControls {
     food: FoodItem;
     onSelect: (food: FoodItem) => void;
 }
 
-function FoodListItem({ food, onSelect }: FoodListItemProps) {
+function FoodListItem({ food, onSelect, favoriteIds, onToggleFavorite, pendingFavoriteId }: FoodListItemProps) {
     const handleClick = useCallback(() => {
         onSelect(food);
     }, [food, onSelect]);
@@ -385,6 +431,32 @@ function FoodListItem({ food, onSelect }: FoodListItemProps) {
                 </p>
                 <p className="text-xs text-gray-500">{t('foodTracker.search.per100')}</p>
             </div>
+
+            {/* Отметка избранного. Раньше её не было вовсе, и раздел избранного
+                оставался пустым навсегда. */}
+            {onToggleFavorite && (
+                <button
+                    type="button"
+                    onClick={(event) => {
+                        // Клик по звёздочке не должен открывать продукт.
+                        event.stopPropagation();
+                        onToggleFavorite(food.id);
+                    }}
+                    disabled={pendingFavoriteId === food.id}
+                    className="ml-3 p-1.5 -m-1.5 text-gray-300 hover:text-yellow-500 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded touch-manipulation"
+                    aria-pressed={favoriteIds?.has(food.id) ?? false}
+                    aria-label={
+                        favoriteIds?.has(food.id)
+                            ? t('foodTracker.search.removeFavoriteAria', { name: food.name })
+                            : t('foodTracker.search.addFavoriteAria', { name: food.name })
+                    }
+                >
+                    <Star
+                        className={`w-4 h-4 ${favoriteIds?.has(food.id) ? 'fill-yellow-400 text-yellow-500' : ''}`}
+                        aria-hidden="true"
+                    />
+                </button>
+            )}
         </li>
     );
 }

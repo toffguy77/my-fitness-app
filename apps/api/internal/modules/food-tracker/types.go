@@ -501,10 +501,14 @@ func (t *MealTemplate) Validate() error {
 }
 
 // UserFavoriteFood represents a user's favorite food
+//
+// Колонка называется created_at, а не added_at: структура утверждала обратное, и
+// INSERT в избранное был написан по ней — то есть не мог сработать никогда,
+// потому что звать его было некому и падение никто не видел.
 type UserFavoriteFood struct {
-	UserID  int64     `json:"user_id" db:"user_id"`
-	FoodID  string    `json:"food_id" db:"food_id"`
-	AddedAt time.Time `json:"added_at" db:"added_at"`
+	UserID    int64     `json:"user_id" db:"user_id"`
+	FoodID    string    `json:"food_id" db:"food_id"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
 // ============================================================================

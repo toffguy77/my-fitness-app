@@ -7,7 +7,7 @@
  * @module food-tracker/hooks/useFoodSearch
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import type { FoodItem, SearchFoodsResponse } from '../types';
@@ -20,6 +20,18 @@ import { t } from '@/shared/i18n';
 export interface UseFoodSearchState {
     /** Current search query */
     query: string;
+    /**
+     * Идентификаторы избранных продуктов.
+     *
+     * До этой правки положить продукт в избранное было нельзя: `POST` и
+     * `DELETE /food-tracker/favorites/:foodId` существовали, а кнопки не было —
+     * раздел показывался и всегда оставался пустым.
+     */
+    favoriteIds: Set<string>;
+    /** Отметка меняется — запрос в пути. */
+    pendingFavoriteId: string | null;
+    /** Сообщение, если отметку не удалось сохранить. */
+    favoriteError: string | null;
     /** Search results */
     results: FoodItem[];
     /** Recent foods for the user */
@@ -39,6 +51,13 @@ export interface UseFoodSearchState {
 }
 
 export interface UseFoodSearchActions {
+    /**
+     * Добавить продукт в избранное или убрать оттуда.
+     *
+     * Отметка меняется после ответа сервера, а не до него: звёздочка, которая
+     * зажглась и погасла, не говорит человеку, сохранилось ли что-нибудь.
+     */
+    toggleFavorite: (foodId: string) => Promise<void>;
     /** Set search query (triggers debounced search) */
     setQuery: (query: string) => void;
     /** Clear search results and query */
@@ -107,6 +126,8 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
     const [results, setResults] = useState<FoodItem[]>([]);
     const [recentFoods, setRecentFoods] = useState<FoodItem[]>([]);
     const [favoriteFoods, setFavoriteFoods] = useState<FoodItem[]>([]);
+    const [pendingFavoriteId, setPendingFavoriteId] = useState<string | null>(null);
+    const [favoriteError, setFavoriteError] = useState<string | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [isLoadingRecent, setIsLoadingRecent] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -136,8 +157,13 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
 
         try {
             const url = getApiUrl('/food-tracker/recent');
-            const response = await apiClient.get<{ items: FoodItem[] }>(url);
-            setRecentFoods(response.items);
+            // Поле называется `foods`: так его назвал сервер
+            // (`GetRecentFoodsResponse`). Клиент читал `items`, получал
+            // undefined и отдавал его в состояние — а пропс со значением по
+            // умолчанию `recentFoods = []` превращал это в пустой список.
+            // Поэтому «Недавние» не показывались никогда, и никто не заметил.
+            const response = await apiClient.get<{ foods: FoodItem[] }>(url);
+            setRecentFoods(response.foods ?? []);
         } catch {
             // Молчим намеренно: «недавние» — это список-подсказка над пустым
             // полем поиска, фоновая подгрузка, а не действие человека. Поиск
@@ -283,14 +309,59 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
     const loadFavoriteFoods = useCallback(async () => {
         try {
             const url = getApiUrl('/food-tracker/favorites');
-            const response = await apiClient.get<{ items: FoodItem[] }>(url);
-            setFavoriteFoods(response.items);
+            // См. выше: сервер отдаёт `foods` (`GetFavoriteFoodsResponse`).
+            const response = await apiClient.get<{ foods: FoodItem[] }>(url);
+            setFavoriteFoods(response.foods ?? []);
         } catch {
             // То же самое, что и с «недавними»: подсказка, а не результат
             // запроса человека.
             setFavoriteFoods([]);
         }
     }, []);
+
+    // Избранное загружается на монтировании вместе с «недавними»: это такой же
+    // список-подсказка над пустым полем поиска. Раньше `loadFavoriteFoods` не
+    // звал никто — то есть даже заполненное избранное не показалось бы.
+    useEffect(() => {
+        if (!autoLoadRecent) return;
+
+        async function load() {
+            await loadFavoriteFoods();
+        }
+        load();
+    }, [autoLoadRecent, loadFavoriteFoods]);
+
+    const favoriteIds = useMemo(
+        () => new Set(favoriteFoods.map((food) => food.id)),
+        [favoriteFoods]
+    );
+
+    const toggleFavorite = useCallback(
+        async (foodId: string) => {
+            const wasFavorite = favoriteIds.has(foodId);
+            setPendingFavoriteId(foodId);
+            setFavoriteError(null);
+            try {
+                const url = getApiUrl(`/food-tracker/favorites/${foodId}`);
+                if (wasFavorite) {
+                    await apiClient.delete(url);
+                } else {
+                    await apiClient.post(url, {});
+                }
+                // Список перечитывается у сервера: он знает, что сохранилось.
+                await loadFavoriteFoods();
+            } catch {
+                setFavoriteError(
+                    wasFavorite
+                        ? t('foodTracker.search.favoriteRemoveFailed')
+                        : t('foodTracker.search.favoriteAddFailed')
+                );
+            } finally {
+                setPendingFavoriteId(null);
+            }
+        },
+        [favoriteIds, loadFavoriteFoods]
+    );
 
     // Load more results
     const loadMore = useCallback(async () => {
@@ -307,6 +378,9 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
         results,
         recentFoods,
         favoriteFoods,
+        favoriteIds,
+        pendingFavoriteId,
+        favoriteError,
         isSearching,
         isLoadingRecent,
         error,
@@ -317,6 +391,7 @@ export function useFoodSearch(options: UseFoodSearchOptions = {}): UseFoodSearch
         clearSearch,
         loadRecentFoods,
         loadFavoriteFoods,
+        toggleFavorite,
         loadMore,
         searchNow,
     };

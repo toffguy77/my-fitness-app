@@ -81,11 +81,11 @@ describe('SearchTab', () => {
             render(
                 <SearchTab
                     onSelectFood={jest.fn()}
-                    popularFoods={mockPopularFoods}
+                    favoriteFoods={mockPopularFoods}
                 />
             );
 
-            expect(screen.getByText('Популярные')).toBeInTheDocument();
+            expect(screen.getByText('Избранное')).toBeInTheDocument();
             expect(screen.getByText('Курица')).toBeInTheDocument();
             expect(screen.getByText('Рис')).toBeInTheDocument();
         });
@@ -95,12 +95,12 @@ describe('SearchTab', () => {
                 <SearchTab
                     onSelectFood={jest.fn()}
                     recentFoods={mockRecentFoods}
-                    popularFoods={mockPopularFoods}
+                    favoriteFoods={mockPopularFoods}
                 />
             );
 
             expect(screen.getByText('Недавние')).toBeInTheDocument();
-            expect(screen.getByText('Популярные')).toBeInTheDocument();
+            expect(screen.getByText('Избранное')).toBeInTheDocument();
         });
 
         it('renders food items with serving size and calories', () => {
@@ -495,5 +495,103 @@ describe('SearchTab', () => {
             });
             expect(screen.queryByText('Ничего не найдено')).not.toBeInTheDocument();
         });
+    });
+});
+
+// ============================================================================
+// Избранное
+// ============================================================================
+//
+// Раздел избранного показывался и был пуст всегда: положить в него было нечем.
+
+describe('SearchTab: отметка избранного', () => {
+    const FOOD = {
+        id: '1',
+        name: 'Гречка',
+        category: 'grains',
+        servingSize: 100,
+        servingUnit: 'g',
+        nutritionPer100: { calories: 100, protein: 5, fat: 2, carbs: 20 },
+    } as never;
+
+    it('не показывает отметку, когда переключать нечем', () => {
+        render(<SearchTab onSelectFood={jest.fn()} recentFoods={[FOOD]} />);
+
+        expect(screen.queryByLabelText(/в избранное/i)).not.toBeInTheDocument();
+    });
+
+    it('добавляет продукт в избранное по нажатию', async () => {
+        const onToggleFavorite = jest.fn();
+        render(
+            <SearchTab
+                onSelectFood={jest.fn()}
+                recentFoods={[FOOD]}
+                favoriteIds={new Set()}
+                onToggleFavorite={onToggleFavorite}
+            />
+        );
+
+        await userEvent.click(screen.getByLabelText('Добавить Гречка в избранное'));
+
+        expect(onToggleFavorite).toHaveBeenCalledWith('1');
+    });
+
+    // Клик по звёздочке не должен открывать продукт: это два разных действия в
+    // одной строке.
+    it('не открывает продукт при нажатии на отметку', async () => {
+        const onSelectFood = jest.fn();
+        render(
+            <SearchTab
+                onSelectFood={onSelectFood}
+                recentFoods={[FOOD]}
+                favoriteIds={new Set()}
+                onToggleFavorite={jest.fn()}
+            />
+        );
+
+        await userEvent.click(screen.getByLabelText('Добавить Гречка в избранное'));
+
+        expect(onSelectFood).not.toHaveBeenCalled();
+    });
+
+    it('показывает отмеченный продукт отмеченным', () => {
+        render(
+            <SearchTab
+                onSelectFood={jest.fn()}
+                recentFoods={[FOOD]}
+                favoriteIds={new Set(['1'])}
+                onToggleFavorite={jest.fn()}
+            />
+        );
+
+        const button = screen.getByLabelText('Убрать Гречка из избранного');
+        expect(button).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('объясняет пустое избранное вместо пустого места', () => {
+        render(
+            <SearchTab
+                onSelectFood={jest.fn()}
+                favoriteFoods={[]}
+                favoriteIds={new Set()}
+                onToggleFavorite={jest.fn()}
+            />
+        );
+
+        expect(screen.getByText(/нажмите звёздочку у продукта/i)).toBeInTheDocument();
+    });
+
+    it('сообщает, когда отметку не удалось сохранить', () => {
+        render(
+            <SearchTab
+                onSelectFood={jest.fn()}
+                recentFoods={[FOOD]}
+                favoriteIds={new Set()}
+                onToggleFavorite={jest.fn()}
+                favoriteError="Не удалось добавить в избранное. Попробуйте снова."
+            />
+        );
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Не удалось добавить');
     });
 });

@@ -236,8 +236,10 @@ describe('useFoodSearch', () => {
 
     describe('loadRecentFoods', () => {
         it('loads recent foods from API', async () => {
+            // Сервер отдаёт `foods` (GetRecentFoodsResponse). Подмена, говорившая
+            // `items`, сама и прятала то, что клиент читает не то поле.
             (apiClient.get as unknown as jest.Mock).mockResolvedValue({
-                items: mockFoodItems,
+                foods: mockFoodItems,
             });
 
             const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));
@@ -266,7 +268,7 @@ describe('useFoodSearch', () => {
     describe('loadFavoriteFoods', () => {
         it('loads favorite foods from API', async () => {
             (apiClient.get as unknown as jest.Mock).mockResolvedValue({
-                items: mockFoodItems,
+                foods: mockFoodItems,
             });
 
             const { result } = renderHook(() => useFoodSearch({ autoLoadRecent: false }));

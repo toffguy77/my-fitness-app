@@ -28,7 +28,6 @@ func registerContentRoutes(v1 *gin.RouterGroup, d Deps) {
 		manage.POST("/:id/schedule", d.Content.ScheduleArticle)
 		manage.POST("/:id/unpublish", d.Content.UnpublishArticle)
 		manage.POST("/:id/media", d.Content.UploadMedia)
-		manage.POST("/upload", d.Content.UploadMarkdownFile)
 		manage.POST("/cover", d.Content.UploadCoverImage)
 	}
 
