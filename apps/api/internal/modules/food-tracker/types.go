@@ -388,18 +388,48 @@ type BarcodeCache struct {
 }
 
 // NutrientRecommendation represents a nutrient recommendation
+// Нутриент из справочника: что это такое, а не сколько его нужно.
+//
+// Чисел здесь нет с миграции 082: норма зависит от человека, а не от нутриента —
+// железа женщине нужно 18 мг, мужчине 10 мг. Нормы живут в NutrientNorm.
 type NutrientRecommendation struct {
-	ID                    string           `json:"id" db:"id"`
-	Name                  string           `json:"name" db:"name"`
-	Category              NutrientCategory `json:"category" db:"category"`
-	DailyTarget           float64          `json:"daily_target" db:"daily_target"`
-	Unit                  string           `json:"unit" db:"unit"`
-	IsWeekly              bool             `json:"is_weekly" db:"is_weekly"`
-	Description           *string          `json:"description,omitempty" db:"description"`
-	Benefits              *string          `json:"benefits,omitempty" db:"benefits"`
-	Effects               *string          `json:"effects,omitempty" db:"effects"`
-	MinRecommendation     *float64         `json:"min_recommendation,omitempty" db:"min_recommendation"`
-	OptimalRecommendation *float64         `json:"optimal_recommendation,omitempty" db:"optimal_recommendation"`
+	ID       string           `json:"id" db:"id"`
+	Name     string           `json:"name" db:"name"`
+	Category NutrientCategory `json:"category" db:"category"`
+	Unit     string           `json:"unit" db:"unit"`
+	IsWeekly bool             `json:"is_weekly" db:"is_weekly"`
+
+	Description *string `json:"description,omitempty" db:"description"`
+	Benefits    *string `json:"benefits,omitempty" db:"benefits"`
+	Effects     *string `json:"effects,omitempty" db:"effects"`
+
+	// Откуда взято описание. Документы заменяют — МР 2.3.1.0253-21 заменили
+	// МР 2.3.1.2432-08, — и через год спросят не «откуда нормы», а «откуда эта».
+	Source        string `json:"source" db:"source"`
+	SourceVersion string `json:"source_version" db:"source_version"`
+
+	// Как считается потребление. Пусто — не считается вовсе, и тогда показывать
+	// ноль нельзя: «0 из 100 мг» человек прочитает как «вы не добрали».
+	IntakeSource *string `json:"intake_source,omitempty" db:"intake_source"`
+}
+
+// NutrientNorm — суточная норма нутриента для определённого пола и возраста.
+//
+// Sex == "any" означает, что норма одна для всех взрослых. Отсутствие такой
+// строки у нутриента означает, что без пола норму выбрать нельзя.
+//
+// MinAge — порог «от возраста»: применяется наибольший подходящий. Так
+// пересечения невозможны по построению.
+type NutrientNorm struct {
+	NutrientID    string   `db:"nutrient_id"`
+	Sex           string   `db:"sex"`
+	MinAge        int      `db:"min_age"`
+	DailyTarget   float64  `db:"daily_target"`
+	MinValue      *float64 `db:"min_value"`
+	OptimalValue  *float64 `db:"optimal_value"`
+	Source        string   `db:"source"`
+	SourceVersion string   `db:"source_version"`
+	Note          *string  `db:"note"`
 }
 
 // UserNutrientPreference represents user's nutrient tracking preference
@@ -471,10 +501,14 @@ func (t *MealTemplate) Validate() error {
 }
 
 // UserFavoriteFood represents a user's favorite food
+//
+// Колонка называется created_at, а не added_at: структура утверждала обратное, и
+// INSERT в избранное был написан по ней — то есть не мог сработать никогда,
+// потому что звать его было некому и падение никто не видел.
 type UserFavoriteFood struct {
-	UserID  int64     `json:"user_id" db:"user_id"`
-	FoodID  string    `json:"food_id" db:"food_id"`
-	AddedAt time.Time `json:"added_at" db:"added_at"`
+	UserID    int64     `json:"user_id" db:"user_id"`
+	FoodID    string    `json:"food_id" db:"food_id"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
 // ============================================================================
@@ -792,17 +826,59 @@ type GetRecommendationsResponse struct {
 	Custom []UserCustomRecommendation                                `json:"custom"`
 }
 
-// NutrientRecommendationWithProgress represents a recommendation with current progress
+// NutrientRecommendationWithProgress — нутриент с нормой под спрашивающего.
+//
+// IsTracked приходит по каждому нутриенту, включая выключенные: экран настроек
+// собирает из этого текущее состояние переключателей, а
+// PUT /recommendations/preferences ждёт от него полный список отслеживаемых.
+// Отбор «показывать во вкладке» делает клиент.
+//
+// Норма, потребление и процент — указатели, и nil у каждого значит своё:
+//
+//   - DailyTarget == nil: норму нельзя выбрать, потому что она зависит от пола
+//     или возраста, а в профиле их нет. Подставить одно из двух значений
+//     означало бы выдать догадку за норму: у железа это 10 против 18 мг.
+//   - CurrentIntake == nil: потребление не считается. Ноль здесь выглядел бы
+//     как измерение, которого не было.
 type NutrientRecommendationWithProgress struct {
 	NutrientRecommendation
-	CurrentIntake float64 `json:"current_intake"`
-	Percentage    float64 `json:"percentage"`
+
+	DailyTarget  *float64 `json:"daily_target"`
+	MinValue     *float64 `json:"min_value,omitempty"`
+	OptimalValue *float64 `json:"optimal_value,omitempty"`
+
+	// Откуда взята именно эта норма и чем она объявлена в источнике:
+	// физиологической потребностью или адекватным уровнем потребления.
+	NormSource *string `json:"norm_source,omitempty"`
+	NormNote   *string `json:"norm_note,omitempty"`
+
+	// Норма есть в справочнике, но зависит от того, чего в профиле нет.
+	NormNeedsProfile bool `json:"norm_needs_profile"`
+
+	CurrentIntake *float64 `json:"current_intake"`
+	Percentage    *float64 `json:"percentage"`
+
+	IsTracked bool `json:"is_tracked"`
 }
 
 // NutrientDetailResponse represents the response for getting nutrient details
+//
+// Потребление и продукты рациона приходят пустыми, пока продукт не умеет считать
+// микронутриенты: до этой правки здесь стоял ноль и пустой список — ноль
+// выглядел как измерение.
 type NutrientDetailResponse struct {
 	NutrientRecommendation
-	CurrentIntake float64            `json:"current_intake"`
+
+	DailyTarget  *float64 `json:"daily_target"`
+	MinValue     *float64 `json:"min_value,omitempty"`
+	OptimalValue *float64 `json:"optimal_value,omitempty"`
+
+	NormSource *string `json:"norm_source,omitempty"`
+	NormNote   *string `json:"norm_note,omitempty"`
+
+	NormNeedsProfile bool `json:"norm_needs_profile"`
+
+	CurrentIntake *float64           `json:"current_intake"`
 	Sources       []FoodSourceInDiet `json:"sources"`
 }
 

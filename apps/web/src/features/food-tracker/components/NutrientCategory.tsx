@@ -93,7 +93,8 @@ export function NutrientCategory({
                         <NutrientRecommendationItem
                             key={rec.id}
                             recommendation={rec}
-                            currentIntake={currentIntakes[rec.id] || 0}
+                            // Отсутствие записи означает «неизвестно», а не ноль.
+                            currentIntake={currentIntakes[rec.id]}
                             onClick={() => onRecommendationClick(rec)}
                         />
                     ))}

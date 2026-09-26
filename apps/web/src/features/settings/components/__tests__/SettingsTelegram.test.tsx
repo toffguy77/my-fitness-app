@@ -9,6 +9,7 @@ jest.mock('@/features/settings/api/telegram', () => ({
         status: jest.fn(),
         connect: jest.fn(),
         disconnect: jest.fn(),
+        groupInvite: jest.fn(),
     },
 }))
 
@@ -21,6 +22,9 @@ const api = telegramApi as jest.Mocked<typeof telegramApi>
 
 beforeEach(() => {
     jest.clearAllMocks()
+    // По умолчанию приглашения нет: оно положено кураторам и только при
+    // настроенной группе. Тесты, которым оно нужно, говорят об этом сами.
+    api.groupInvite.mockRejectedValue(new ApiError(503, {}))
 })
 
 describe('SettingsTelegram', () => {
@@ -86,5 +90,43 @@ describe('SettingsTelegram', () => {
         await userEvent.click(await screen.findByRole('button', { name: 'Отключить' }))
 
         expect(await screen.findByText('Не подключён')).toBeInTheDocument()
+    })
+})
+
+describe('SettingsTelegram: ссылка в рабочую группу', () => {
+    // Обработчик существует ровно для них: боту некуда им написать — он не
+    // пишет первым, — и увидеть ссылку больше негде. В профиле её не было:
+    // поиск `curator-group` по фронтенду не находил ничего.
+    it('показывает ссылку тому, у кого Telegram не привязан', async () => {
+        api.status.mockResolvedValue({ linked: false })
+        api.groupInvite.mockResolvedValue({ invite_link: 'https://t.me/+abc' })
+
+        render(<SettingsTelegram />)
+
+        const link = await screen.findByRole('link', { name: 'Войти в рабочую группу' })
+        expect(link).toHaveAttribute('href', 'https://t.me/+abc')
+    })
+
+    it('не показывает ссылку и не спрашивает её, когда Telegram привязан', async () => {
+        api.status.mockResolvedValue({ linked: true, username: 'ivanov' })
+
+        render(<SettingsTelegram />)
+        await screen.findByText(/Подключён/)
+
+        expect(api.groupInvite).not.toHaveBeenCalled()
+        expect(screen.queryByRole('link', { name: 'Войти в рабочую группу' })).not.toBeInTheDocument()
+    })
+
+    // Группа не настроена в окружении или приглашение не положено — обработчик
+    // отвечает 503 в обоих случаях. Показывать нечего, и раздел не ломается.
+    it('переживает выключенную способность', async () => {
+        api.status.mockResolvedValue({ linked: false })
+
+        render(<SettingsTelegram />)
+        await screen.findByText('Не подключён')
+
+        await waitFor(() => expect(api.groupInvite).toHaveBeenCalled())
+        expect(screen.queryByRole('link', { name: 'Войти в рабочую группу' })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Подключить Telegram' })).toBeInTheDocument()
     })
 })

@@ -23,6 +23,7 @@ export function SettingsTelegram() {
     const [loading, setLoading] = useState(true)
     const [busy, setBusy] = useState(false)
     const [unavailable, setUnavailable] = useState(false)
+    const [groupLink, setGroupLink] = useState<string | null>(null)
 
     useEffect(() => {
         async function load() {
@@ -36,6 +37,38 @@ export function SettingsTelegram() {
         }
         load()
     }, [])
+
+    /**
+     * Ссылка в рабочую группу — тем, кто не привязал Telegram.
+     *
+     * Обработчик существует ровно для них: боту некуда им написать, он не пишет
+     * первым. Спрашивать её у привязанного человека незачем — он уже получает
+     * сообщения; предлагать войти туда, где он есть, тем более.
+     *
+     * Ответ `503` означает, что группа не настроена или приглашение не положено.
+     * Тогда ничего не показывается и ничего не сообщается: это не ошибка
+     * человека и не повод занимать его внимание.
+     */
+    useEffect(() => {
+        // Привязан или состояние ещё не прочитано — спрашивать нечего. Сбрасывать
+        // прежнее значение здесь не нужно: ссылка рисуется только в ветке «не
+        // привязан», так что показать её привязанному человеку она не может.
+        if (!state || state.linked) return
+
+        let cancelled = false
+        void (async () => {
+            try {
+                const invite = await telegramApi.groupInvite()
+                if (!cancelled) setGroupLink(invite.invite_link)
+            } catch {
+                if (!cancelled) setGroupLink(null)
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [state])
 
     const handleConnect = async () => {
         setBusy(true)
@@ -109,6 +142,17 @@ export function SettingsTelegram() {
                         </button>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">{t('settings.telegram.whyLink')}</p>
+
+                    {groupLink && (
+                        <a
+                            href={groupLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-block text-sm font-medium text-blue-600"
+                        >
+                            {t('settings.telegram.groupInvite')}
+                        </a>
+                    )}
                 </div>
             )}
         </section>

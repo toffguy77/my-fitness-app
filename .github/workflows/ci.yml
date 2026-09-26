@@ -89,8 +89,13 @@ jobs:
       # wired in (in e2e.yml, where the proxy it tests is about to start).
       # A guard that silently stops matching passes every build it was meant
       # to fail, so the whole directory runs here.
+      # Список файлов, а не каталог: каталог как аргумент `--test` понимают не все
+      # версии Node. На закреплённой здесь 20 он работает, на 24 у разработчика
+      # падает с MODULE_NOT_FOUND — то есть команда из CI у него не запускается
+      # вовсе, а проверка, которую нельзя позвать так же, как её зовёт CI,
+      # перестаёт быть той же проверкой.
       - name: Test the guards themselves
-        run: node --test scripts/__tests__/
+        run: node --test scripts/__tests__/*.test.mjs
 
       - name: TypeScript
         run: npm run type-check

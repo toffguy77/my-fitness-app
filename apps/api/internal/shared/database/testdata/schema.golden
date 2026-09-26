@@ -101,6 +101,9 @@ INDEX notification_preferences notification_preferences_pkey btree (user_id, typ
 INDEX notifications idx_notifications_user_category btree (user_id, category, created_at DESC)
 INDEX notifications idx_notifications_user_unread btree (user_id, read_at) WHERE (read_at IS NULL)
 INDEX notifications notifications_pkey btree (id)
+INDEX nutrient_norms idx_nutrient_norms_nutrient btree (nutrient_id)
+INDEX nutrient_norms nutrient_norms_nutrient_id_sex_min_age_key btree (nutrient_id, sex, min_age)
+INDEX nutrient_norms nutrient_norms_pkey btree (id)
 INDEX nutrient_recommendations idx_nutrient_recommendations_category btree (category)
 INDEX nutrient_recommendations idx_nutrient_recommendations_weekly btree (is_weekly) WHERE (is_weekly = true)
 INDEX nutrient_recommendations nutrient_recommendations_pkey btree (id)
@@ -526,17 +529,28 @@ notifications.read_at timestamp with time zone
 notifications.title character varying NOT NULL
 notifications.type character varying NOT NULL
 notifications.user_id bigint NOT NULL
+nutrient_norms.created_at timestamp with time zone DEFAULT now()
+nutrient_norms.daily_target numeric NOT NULL
+nutrient_norms.id uuid NOT NULL DEFAULT gen_random_uuid()
+nutrient_norms.min_age integer NOT NULL DEFAULT 18
+nutrient_norms.min_value numeric
+nutrient_norms.note text
+nutrient_norms.nutrient_id uuid NOT NULL
+nutrient_norms.optimal_value numeric
+nutrient_norms.sex text NOT NULL DEFAULT 'any'
+nutrient_norms.source text NOT NULL
+nutrient_norms.source_version text NOT NULL
 nutrient_recommendations.benefits text
 nutrient_recommendations.category text NOT NULL
 nutrient_recommendations.created_at timestamp with time zone DEFAULT now()
-nutrient_recommendations.daily_target numeric NOT NULL
 nutrient_recommendations.description text
 nutrient_recommendations.effects text
 nutrient_recommendations.id uuid NOT NULL DEFAULT gen_random_uuid()
+nutrient_recommendations.intake_source text
 nutrient_recommendations.is_weekly boolean DEFAULT false
-nutrient_recommendations.min_recommendation numeric
 nutrient_recommendations.name text NOT NULL
-nutrient_recommendations.optimal_recommendation numeric
+nutrient_recommendations.source text NOT NULL
+nutrient_recommendations.source_version text NOT NULL
 nutrient_recommendations.unit text NOT NULL
 nutrients.amount numeric
 nutrients.daily_norm_percent numeric

@@ -170,24 +170,53 @@ export interface NutrientRecommendation {
     id: string;
     name: string;
     category: NutrientCategoryType;
-    dailyTarget: number;
     unit: string;
     isWeekly: boolean;
     isCustom: boolean;
+    /**
+     * Суточная норма, если её удалось выбрать.
+     *
+     * Необязательна с миграции 082: норма зависит от пола и возраста, и когда в
+     * профиле их нет, выбрать нельзя. У железа это 10 мг против 18 — любое из
+     * двух чисел, показанное наугад, выглядело бы как ответ, не будучи им.
+     */
+    dailyTarget?: number;
+    /** Границы нормы, если источник задаёт её вилкой (у пищевых волокон 20—25 г). */
+    minValue?: number;
+    optimalValue?: number;
+    /** Откуда норма и чем она объявлена в источнике. */
+    normSource?: string;
+    normNote?: string;
+    /** Норма есть в справочнике, но зависит от того, чего в профиле нет. */
+    normNeedsProfile?: boolean;
 }
 
 /**
  * Detailed nutrient information
  */
+/**
+ * Описание, польза, действие и границы нормы приходят с сервера
+ * необязательными (`*string`, `*float64`): в справочнике они могут быть пусты.
+ * Поэтому они необязательны и здесь — пустое поле не показывается, а ноль
+ * вместо неизвестной границы не подставляется.
+ */
 export interface NutrientDetail {
     id: string;
     name: string;
-    description: string;
-    benefits: string;
-    effects: string;
-    minRecommendation: number;
-    optimalRecommendation: number;
     unit: string;
+    /** Норма, если её удалось выбрать под профиль. */
+    dailyTarget?: number;
+    /** Потребление, если продукт его считает. Для микронутриентов — нет. */
+    currentIntake?: number;
+    description?: string;
+    benefits?: string;
+    effects?: string;
+    minRecommendation?: number;
+    optimalRecommendation?: number;
+    /** Откуда норма и чем она объявлена в источнике. */
+    normSource?: string;
+    normNote?: string;
+    normNeedsProfile?: boolean;
     sourcesInDiet: NutrientFoodSource[];
 }
 
@@ -255,7 +284,15 @@ export interface CustomRecommendation {
     name: string;
     dailyTarget: number;
     unit: CustomRecommendationUnit;
-    currentIntake: number;
+    /**
+     * Потребление, если оно известно.
+     *
+     * Сервер считает его только для нутриентов, сопоставимых с КБЖУ, — для
+     * рекомендации, заданной человеком, взять его неоткуда. Ноль здесь
+     * нарисовал бы «0 из 500 мг»: человек решил бы, что не добрал, хотя никто
+     * ничего не считал. Отсутствие числа честнее.
+     */
+    currentIntake?: number;
 }
 
 // ============================================================================

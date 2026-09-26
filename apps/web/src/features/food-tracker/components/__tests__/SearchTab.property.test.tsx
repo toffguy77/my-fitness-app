@@ -209,7 +209,7 @@ describe('SearchTab Property Tests', () => {
                     render(
                         <SearchTab
                             onSelectFood={jest.fn()}
-                            popularFoods={foods}
+                            favoriteFoods={foods}
                         />
                     );
 

@@ -699,6 +699,10 @@ function SearchTabWithHook({ onSelectFood, onManualEntry }: SearchTabWithHookPro
         results,
         recentFoods,
         favoriteFoods,
+        favoriteIds,
+        pendingFavoriteId,
+        favoriteError,
+        toggleFavorite,
         isSearching,
         setQuery,
     } = useFoodSearch({ autoLoadRecent: true });
@@ -715,7 +719,11 @@ function SearchTabWithHook({ onSelectFood, onManualEntry }: SearchTabWithHookPro
             onSelectFood={onSelectFood}
             onManualEntry={onManualEntry}
             recentFoods={recentFoods}
-            popularFoods={favoriteFoods}
+            favoriteFoods={favoriteFoods}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={toggleFavorite}
+            pendingFavoriteId={pendingFavoriteId}
+            favoriteError={favoriteError}
             searchResults={results}
             onSearch={handleSearch}
             isLoading={isSearching}

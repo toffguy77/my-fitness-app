@@ -1,0 +1,30 @@
+[
+  {
+    "route": "GET /health",
+    "reason": "Проба живости. Её зовут Traefik и Dokploy, браузеру она не нужна."
+  },
+  {
+    "route": "GET /ready",
+    "reason": "Проба готовности: та же роль, тот же вызывающий."
+  },
+  {
+    "route": "GET /ws",
+    "reason": "Открывается как WebSocket, а не запросом: apps/web/src/features/chat/components/WebSocketProvider.tsx собирает адрес из протокола и хоста, поэтому литерала /api/... в коде нет."
+  },
+  {
+    "route": "GET /api/v1/auth/oauth/:provider/callback",
+    "reason": "Сюда браузер приводит внешний провайдер после согласия. Адрес знает провайдер, а не наш код."
+  },
+  {
+    "route": "POST /api/v1/public/support/telegram",
+    "reason": "Вебхук Telegram. Зовёт его Telegram."
+  },
+  {
+    "route": "GET /api/v1/public/leads/unsubscribe",
+    "reason": "Ссылка из письма: человек открывает её из почты, а не со страницы."
+  },
+  {
+    "route": "GET /api/v1/logs/stats",
+    "reason": "Сводка журналов для super_admin. Экрана у неё нет намеренно — её смотрят при разборе происшествия, руками."
+  }
+]

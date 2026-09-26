@@ -221,6 +221,8 @@ export const nutrientDetailGenerator = (): fc.Arbitrary<NutrientDetail> => {
     return fc.record({
         id: fc.uuid(),
         name: fc.string({ minLength: 2, maxLength: 50 }),
+        dailyTarget: fc.float({ min: 1, max: 2000, noNaN: true }),
+        currentIntake: fc.float({ min: 0, max: 2000, noNaN: true }),
         description: fc.string({ minLength: 10, maxLength: 500 }),
         benefits: fc.string({ minLength: 10, maxLength: 500 }),
         effects: fc.string({ minLength: 10, maxLength: 500 }),
