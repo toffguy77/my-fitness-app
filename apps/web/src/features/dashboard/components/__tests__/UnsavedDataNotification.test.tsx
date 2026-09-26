@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UnsavedDataNotification } from '../UnsavedDataNotification'
 
@@ -45,7 +45,6 @@ describe('UnsavedDataNotification', () => {
         mockUnsavedData = []
         mockCanRetry.mockReturnValue(true)
         mockUpdateMetric.mockResolvedValue(undefined)
-        window.confirm = jest.fn().mockReturnValue(true)
     })
 
     it('renders nothing when there is no unsaved data', () => {
@@ -239,13 +238,15 @@ describe('UnsavedDataNotification', () => {
 
         await user.click(screen.getByText('Отменить'))
 
-        expect(window.confirm).toHaveBeenCalled()
+        // Отказ от несохранённых данных спрашивает подтверждение своим диалогом.
+        const dialog = await screen.findByRole('dialog')
+        await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+
         expect(mockClearUnsavedData).toHaveBeenCalled()
     })
 
     it('does not dismiss when confirm is cancelled', async () => {
-        const user = userEvent.setup();
-        (window.confirm as jest.Mock).mockReturnValue(false)
+        const user = userEvent.setup()
         mockUnsavedData = [
             {
                 date: '2026-03-07',
@@ -259,7 +260,12 @@ describe('UnsavedDataNotification', () => {
 
         await user.click(screen.getByText('Отменить'))
 
-        expect(window.confirm).toHaveBeenCalled()
+        const dialog = await screen.findByRole('dialog')
+        await user.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        })
         expect(mockClearUnsavedData).not.toHaveBeenCalled()
     })
 
@@ -278,7 +284,9 @@ describe('UnsavedDataNotification', () => {
 
         await user.click(screen.getByLabelText('Закрыть'))
 
-        expect(window.confirm).toHaveBeenCalled()
+        const dialog = await screen.findByRole('dialog')
+        await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+
         expect(mockClearUnsavedData).toHaveBeenCalled()
     })
 

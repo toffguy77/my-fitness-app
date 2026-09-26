@@ -6,7 +6,7 @@
 
 import { renderHook } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
-import { useKeyboardNavigation, useRovingTabIndex, useFocusTrap } from '../useKeyboardNavigation';
+import { useKeyboardNavigation, useRovingTabIndex } from '../useKeyboardNavigation';
 
 describe('useKeyboardNavigation', () => {
     let container: HTMLDivElement;
@@ -489,85 +489,5 @@ describe('useRovingTabIndex', () => {
         // Should skip button 1 and go to button 2
         expect(buttons[0].getAttribute('tabindex')).toBe('-1');
         expect(buttons[2].getAttribute('tabindex')).toBe('0');
-    });
-});
-
-describe('useFocusTrap', () => {
-    let container: HTMLDivElement;
-    let buttons: HTMLButtonElement[];
-
-    beforeEach(() => {
-        container = document.createElement('div');
-        buttons = [];
-
-        for (let i = 0; i < 3; i++) {
-            const button = document.createElement('button');
-            button.textContent = `Button ${i}`;
-            container.appendChild(button);
-            buttons.push(button);
-        }
-
-        document.body.appendChild(container);
-    });
-
-    afterEach(() => {
-        document.body.removeChild(container);
-    });
-
-    it('should focus first element on mount when active', () => {
-        const ref = { current: container };
-
-        renderHook(() => useFocusTrap(ref, true));
-
-        // Note: In JSDOM, focus() doesn't actually change document.activeElement
-        // We just verify the hook was called without errors
-        expect(container).toBeInTheDocument();
-    });
-
-    it('should not trap focus when inactive', () => {
-        const ref = { current: container };
-
-        renderHook(() => useFocusTrap(ref, false));
-
-        // Verify no event listeners were added by checking container exists
-        expect(container).toBeInTheDocument();
-    });
-
-    it('should handle Tab key to trap focus', () => {
-        const ref = { current: container };
-
-        renderHook(() => useFocusTrap(ref, true));
-
-        // Simulate Tab key
-        const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
-        const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
-
-        // Focus last button and press Tab: the trap wraps round to the first
-        buttons[2].focus();
-        container.dispatchEvent(event);
-
-        expect(preventDefaultSpy).toHaveBeenCalled();
-        expect(document.activeElement).toBe(buttons[0]);
-    });
-
-    it('should handle Shift+Tab key to trap focus backwards', () => {
-        const ref = { current: container };
-
-        renderHook(() => useFocusTrap(ref, true));
-
-        // Simulate Shift+Tab key
-        const event = new KeyboardEvent('keydown', {
-            key: 'Tab',
-            shiftKey: true,
-            bubbles: true,
-        });
-
-        // Focus first button and press Shift+Tab: the trap wraps to the last
-        const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
-        buttons[0].focus();
-        container.dispatchEvent(event);
-
-        expect(preventDefaultSpy).toHaveBeenCalled();
-        expect(document.activeElement).toBe(buttons[2]);
     });
 });

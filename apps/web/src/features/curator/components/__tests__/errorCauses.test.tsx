@@ -15,7 +15,7 @@
  * успешные сценарии) уже разобраны в SupportQueue.test.tsx и LeadList.test.tsx
  * рядом — здесь только причины отказа, которых там не было.
  */
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiError } from '@/shared/errors/apiErrors'
 
@@ -105,7 +105,6 @@ const task: TaskView = {
 
 beforeEach(() => {
     jest.clearAllMocks()
-    window.confirm = jest.fn().mockReturnValue(true)
 })
 
 describe('Обратная связь по отчёту', () => {
@@ -151,6 +150,10 @@ describe('Недельный план', () => {
 
         render(<PlanTab clientId={1} />)
         await userEvent.click(await screen.findByRole('button', { name: 'Удалить план' }))
+        // Удаление спрашивает подтверждение своим диалогом.
+        await userEvent.click(
+            within(await screen.findByRole('dialog')).getByRole('button', { name: 'Удалить' }),
+        )
 
         await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Больше недоступно'), WAIT)
         // План остался на экране — и теперь понятно почему.

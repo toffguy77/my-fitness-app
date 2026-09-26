@@ -54,11 +54,12 @@ const eslintConfig = defineConfig([
       "no-new-func": "error",
       "no-script-url": "error",
       "no-debugger": "error",
-      // no-alert also covers confirm() and prompt(). The five current uses are
-      // confirmations before destructive actions, not XSS vectors, so this is a
-      // UX debt rather than a security defect: replacing them needs a reusable
-      // dialog component. Kept visible as a warning.
-      "no-alert": "warn",
+      // no-alert также покрывает confirm() и prompt(). Правило держали
+      // предупреждением, пока подтверждения перед необратимыми действиями
+      // спрашивались браузерным окном: заменить их было нечем. Теперь есть
+      // ConfirmDialog, в коде не осталось ни одного вызова, и правило
+      // закрывает путь назад, а не напоминает о долге.
+      "no-alert": "error",
     },
   },
   {

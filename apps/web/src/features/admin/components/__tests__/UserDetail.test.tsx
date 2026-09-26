@@ -1,5 +1,5 @@
 import { ApiError } from '@/shared/errors/apiErrors'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { UserDetail } from '../UserDetail'
 import { adminApi } from '../../api/adminApi'
 import toast from 'react-hot-toast'
@@ -55,8 +55,13 @@ function makeCurator(overrides: Partial<CuratorLoad> = {}): CuratorLoad {
 describe('UserDetail', () => {
     beforeEach(() => {
         jest.clearAllMocks()
-        window.confirm = jest.fn().mockReturnValue(true)
     })
+
+    /** Смена роли спрашивает подтверждение своим диалогом; это ответ «да». */
+    async function confirmInDialog(action: string) {
+        const dialog = await screen.findByRole('dialog')
+        fireEvent.click(within(dialog).getByRole('button', { name: action }))
+    }
 
     it('shows loading state', () => {
         mockAdminApi.getUser.mockReturnValue(new Promise(() => {}))
@@ -162,11 +167,32 @@ describe('UserDetail', () => {
         })
 
         fireEvent.click(screen.getByRole('button', { name: 'Куратор' }))
+        await confirmInDialog('Назначить')
 
         await waitFor(() => {
             expect(mockAdminApi.changeRole).toHaveBeenCalledWith(1, 'coordinator')
             expect(mockToast.success).toHaveBeenCalledWith('Роль изменена')
         })
+    })
+
+    it('не меняет роль, если подтверждение отклонено', async () => {
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
+        mockAdminApi.getCurators.mockResolvedValue([])
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Управление ролью')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByRole('button', { name: 'Куратор' }))
+        const dialog = await screen.findByRole('dialog')
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        })
+        expect(mockAdminApi.changeRole).not.toHaveBeenCalled()
     })
 
     it('shows toast on role change failure', async () => {
@@ -181,6 +207,7 @@ describe('UserDetail', () => {
         })
 
         fireEvent.click(screen.getByRole('button', { name: 'Куратор' }))
+        await confirmInDialog('Назначить')
 
         await waitFor(() => {
             expect(mockToast.error).toHaveBeenCalledWith('Не удалось изменить роль')
