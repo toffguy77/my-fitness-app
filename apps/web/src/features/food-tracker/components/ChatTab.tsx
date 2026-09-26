@@ -221,6 +221,7 @@ export function ChatTab({
             {photoPreview && (
                 <div className="px-4 pb-2">
                     <div className="relative inline-block">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                         <img
                             src={photoPreview}
                             alt={t('foodTracker.chat.chosenPhoto')}
@@ -320,6 +321,7 @@ function MessageBubble({ message, onSelectSuggestion }: MessageBubbleProps) {
 
                 {/* Photo */}
                 {message.photo && (
+                    // eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать
                     <img
                         src={message.photo}
                         alt={t('foodTracker.chat.attachedPhoto')}

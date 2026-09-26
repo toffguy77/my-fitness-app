@@ -142,6 +142,7 @@ describe('Property 36: Screen Reader Accessibility', () => {
                         const testId = `image-${imageData.alt}`;
 
                         const TestComponent = () => (
+                            // eslint-disable-next-line @next/next/no-img-element -- проверяется доступность разметки, а не загрузка картинки
                             <img
                                 src={imageData.src}
                                 alt={imageData.alt}

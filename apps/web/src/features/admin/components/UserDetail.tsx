@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -122,9 +123,11 @@ export function UserDetail({ userId }: UserDetailProps) {
                     <ArrowLeft className="h-5 w-5 text-gray-700" />
                 </button>
                 {user.avatar_url ? (
-                    <img
+                    <Image
                         src={user.avatar_url}
                         alt={user.name}
+                        width={40}
+                        height={40}
                         className="h-10 w-10 rounded-full object-cover"
                     />
                 ) : (

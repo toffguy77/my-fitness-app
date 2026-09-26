@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import Image from 'next/image'
 import { cn } from '@/shared/utils/cn'
 
 export interface UserAvatarProps {
@@ -17,6 +18,11 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
             lg: 'h-12 w-12 text-base',
         }
 
+        // The rendered size in pixels, which `next/image` needs to ask the
+        // optimiser for the right one. Kept beside the classes above so the two
+        // cannot drift apart.
+        const pixelSizes = { sm: 32, md: 40, lg: 48 }
+
         const getInitials = (name: string): string => {
             return name.charAt(0).toUpperCase()
         }
@@ -26,9 +32,11 @@ export const UserAvatar = forwardRef<HTMLButtonElement, UserAvatarProps>(
         const avatarStyles = 'bg-blue-100 text-blue-700 border border-blue-200'
 
         const content = avatarUrl ? (
-            <img
+            <Image
                 src={avatarUrl}
                 alt={`${name}'s avatar`}
+                width={pixelSizes[size]}
+                height={pixelSizes[size]}
                 className="h-full w-full rounded-full object-cover"
             />
         ) : (

@@ -45,7 +45,11 @@ describe('PhotoUploader', () => {
 
         const img = screen.getByRole('img', { name: 'Alice' })
         expect(img).toBeInTheDocument()
-        expect(img).toHaveAttribute('src', 'https://example.com/avatar.jpg')
+        // next/image отдаёт картинку через свой оптимизатор, поэтому в src
+// лежит ссылка на него с исходным адресом внутри.
+            expect(img?.getAttribute('src')).toContain(
+                encodeURIComponent('https://example.com/avatar.jpg'),
+            )
     })
 
     it('uses "Avatar" as alt text when userName is not provided', () => {

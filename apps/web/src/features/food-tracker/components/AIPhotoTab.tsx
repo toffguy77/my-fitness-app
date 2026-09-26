@@ -372,6 +372,7 @@ export function AIPhotoTab({
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
                     {photoPreview && (
                         <div className="w-48 h-48 rounded-xl overflow-hidden mb-6">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={photoPreview}
                                 alt={t('foodTracker.photo.uploaded')}
@@ -390,6 +391,7 @@ export function AIPhotoTab({
                     {/* Photo preview */}
                     {photoPreview && (
                         <div className="relative h-40 bg-gray-100 mb-4">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={photoPreview}
                                 alt={t('foodTracker.photo.uploaded')}
@@ -588,6 +590,7 @@ export function AIPhotoTab({
                 <div className="flex-1 flex flex-col items-center justify-center p-6">
                     {photoPreview && (
                         <div className="w-48 h-48 rounded-xl overflow-hidden mb-6 opacity-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={photoPreview}
                                 alt={t('foodTracker.photo.uploaded')}

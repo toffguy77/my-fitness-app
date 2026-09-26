@@ -179,6 +179,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
                     <div className="space-y-3">
                         {/* Thumbnail preview - responsive aspect ratio */}
                         <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- локальный предпросмотр: data: URL из FileReader, оптимизатору next/image его не отдать */}
                             <img
                                 src={previewUrl}
                                 alt={t('dashboard.photo.alt')}

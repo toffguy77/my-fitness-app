@@ -28,7 +28,11 @@ describe('CuratorLoadCard', () => {
         render(<CuratorLoadCard curator={curator} />)
 
         const img = screen.getByRole('img', { name: 'Мария Иванова' })
-        expect(img).toHaveAttribute('src', 'https://example.com/avatar.jpg')
+        // next/image отдаёт картинку через свой оптимизатор, поэтому в src
+// лежит ссылка на него с исходным адресом внутри.
+            expect(img?.getAttribute('src')).toContain(
+                encodeURIComponent('https://example.com/avatar.jpg'),
+            )
     })
 
     it('shows initials when no avatar_url', () => {
