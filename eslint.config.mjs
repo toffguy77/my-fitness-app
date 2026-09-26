@@ -17,27 +17,19 @@ const eslintConfig = defineConfig([
     "scripts/**", // Ignore scripts directory
   ]),
   {
+    // Послабления для тестов.
+    //
+    // Здесь было ещё два: `no-explicit-any` и `exhaustive-deps` выключались для
+    // тестов и не выключались — общий блок ниже включает их обратно для всех
+    // файлов, потому что идёт после этого. Отсюда и брались 248 предупреждений
+    // про `any` в тестах при конфигурации, которая их будто бы разрешает.
+    // Строки убраны, а не перенесены ниже: `any` в тесте выключает ровно ту
+    // проверку типов, ради которой тест написан.
     files: ["**/__tests__/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/error-handling.test.tsx"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "warn",
       "@typescript-eslint/ban-ts-comment": "off", // Allow @ts-nocheck in test files
-      "react-hooks/exhaustive-deps": "off",
       "react-hooks/rules-of-hooks": "warn",
-    },
-  },
-  {
-    files: ["**/DateInput.tsx", "**/InstallPrompt.tsx", "**/OfflineIndicator.tsx"],
-    rules: {
-      "react-hooks/exhaustive-deps": "warn",
-    },
-  },
-  {
-    // Отключаем ошибки React Compiler для файлов с синхронным setState в useEffect
-    // Это валидные случаи инициализации состояния из внешних систем
-    files: ["**/DateInput.tsx", "**/InstallPrompt.tsx", "**/OfflineIndicator.tsx"],
-    rules: {
-      "@next/next/no-img-element": "off",
     },
   },
   {
