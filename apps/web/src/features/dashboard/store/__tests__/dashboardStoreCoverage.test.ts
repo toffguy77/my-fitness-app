@@ -6,7 +6,7 @@
  * pollForUpdates error path, and 500 mapError branch.
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useDashboardStore, clearMemoryCache } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';

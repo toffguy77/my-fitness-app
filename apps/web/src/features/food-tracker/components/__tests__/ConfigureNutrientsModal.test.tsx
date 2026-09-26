@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConfigureNutrientsModal } from '../ConfigureNutrientsModal';
 import type { NutrientRecommendation } from '../../types';
 

@@ -19,20 +19,10 @@ import type {
     WeeklyPlan,
     Task,
     MetricUpdate,
-    PhotoData,
     WeeklyReport,
 } from '../types';
 import { getToken } from '@/shared/utils/token-storage';
-import {
-    addToQueue,
-    removeFromQueue,
-    loadQueue,
-    incrementAttempts,
-    shouldRetry,
-    removeFailedEntries,
-    sortQueueByTimestamp,
-    type QueueEntry,
-} from '../utils/offlineQueue';
+import { addToQueue, removeFromQueue, incrementAttempts, shouldRetry, sortQueueByTimestamp, type QueueEntry } from '../utils/offlineQueue';
 
 import { t, plural } from '@/shared/i18n'
 import { mapApiError } from '@/shared/errors/mapApiError'
@@ -76,11 +66,6 @@ if (typeof window !== 'undefined') {
         // Сказать об этом некому и нечего.
     }
 }
-
-/**
- * Cache expiration time (5 minutes for localStorage)
- */
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
 /**
  * In-memory cache TTL values (milliseconds)
@@ -402,8 +387,6 @@ function mapBackendTask(raw: any): Task {
         updatedAt: new Date(raw.updated_at ?? raw.updatedAt ?? Date.now()),
     };
 }
-
-type UploadPhotoResponse = PhotoData;
 
 type SubmitWeeklyReportResponse = WeeklyReport;
 

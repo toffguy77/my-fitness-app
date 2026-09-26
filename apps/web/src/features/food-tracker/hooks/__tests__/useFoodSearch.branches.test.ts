@@ -309,9 +309,8 @@ describe('useFoodSearch Branch Coverage', () => {
     // -------------------------------------------------------------------------
     describe('clearSearch abort and timer cleanup', () => {
         it('aborts ongoing request when clearSearch is called', async () => {
-            // Make the search hang
-            let resolveSearch: (v: any) => void;
-            mockApiGet.mockImplementation(() => new Promise((r) => { resolveSearch = r; }));
+            // Make the search hang: the promise is never resolved.
+            mockApiGet.mockImplementation(() => new Promise(() => {}));
 
             const { result } = renderHook(() =>
                 useFoodSearch({ autoLoadRecent: false })

@@ -4,7 +4,7 @@
  */
 
 import fc from 'fast-check';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { NotificationList } from '../NotificationList';
 import { categoryGenerator } from '../../testing/generators';
 

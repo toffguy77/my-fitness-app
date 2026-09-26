@@ -83,7 +83,6 @@ describe('DashboardLayout', () => {
                 <DashboardLayout
                     userName="John Doe"
                     avatarUrl="https://example.com/avatar.jpg"
-                    notificationCount={5}
                 >
                     <div>Content</div>
                 </DashboardLayout>

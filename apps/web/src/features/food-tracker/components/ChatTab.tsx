@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Send, Image, Clock, CheckCircle, User, Bot, Plus } from 'lucide-react';
+import { Send, Image, Clock, Bot, Plus } from 'lucide-react';
 import type { FoodItem } from '../types';
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors';
@@ -192,11 +192,6 @@ export function ChatTab({
     const handleSelectSuggestion = useCallback((food: FoodItem) => {
         onSelectFood(food);
     }, [onSelectFood]);
-
-    // Format timestamp
-    const formatTime = (date: Date): string => {
-        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    };
 
     return (
         <div className={`flex flex-col h-full ${className}`}>

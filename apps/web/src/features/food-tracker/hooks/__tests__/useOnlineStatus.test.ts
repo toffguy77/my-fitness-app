@@ -6,7 +6,7 @@
  * @module food-tracker/hooks/__tests__/useOnlineStatus
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useOnlineStatus } from '../useOnlineStatus';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
 

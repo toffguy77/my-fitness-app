@@ -10,8 +10,6 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useSession } from '@/shared/hooks/useSession'
 

@@ -358,7 +358,6 @@ describe('AuthScreen', () => {
 
   it('disables buttons when loading', async () => {
     mockIsLoading = true
-    const user = userEvent.setup()
     render(<AuthScreen />)
 
     expect(screen.getByLabelText('Войти')).toBeDisabled()

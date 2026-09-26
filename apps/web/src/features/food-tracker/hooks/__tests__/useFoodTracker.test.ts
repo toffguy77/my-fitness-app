@@ -2,7 +2,7 @@
  * Unit tests for useFoodTracker hook
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useFoodTracker } from '../useFoodTracker';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
 import type { MealType, CreateFoodEntryRequest, FoodEntry, KBZHU } from '../../types';

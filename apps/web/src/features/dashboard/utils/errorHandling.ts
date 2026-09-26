@@ -146,14 +146,8 @@ export async function retryWithBackoff<T>(
  * Display error toast notification
  *
  * @param error - Dashboard error
- * @param showRetryButton - Whether to show retry button (not implemented in simple version)
- * @param onRetry - Retry callback function
  */
-export function showErrorToast(
-    error: DashboardError,
-    showRetryButton: boolean = false,
-    onRetry?: () => void
-): void {
+export function showErrorToast(error: DashboardError): void {
     const toastOptions: any = {
         duration: 5000,
         icon: '❌',
@@ -189,12 +183,10 @@ export function showValidationErrors(errors: string[]): void {
  *
  * @param error - Error to handle
  * @param context - Context description for logging
- * @param onRetry - Optional retry callback
  */
 export function handleError(
     error: any,
-    context: string,
-    onRetry?: () => void
+    context: string
 ): void {
     const mappedError = mapApiError(error);
 
@@ -204,7 +196,7 @@ export function handleError(
     }
 
     // Show toast notification
-    showErrorToast(mappedError, !!onRetry, onRetry);
+    showErrorToast(mappedError);
 }
 
 /**
@@ -236,19 +228,17 @@ export function createErrorHandler(componentName: string) {
  *
  * @param fn - Async function to wrap
  * @param context - Context description
- * @param onRetry - Optional retry callback
  * @returns Wrapped function
  */
 export function withErrorHandling<T extends (...args: any[]) => Promise<any>>(
     fn: T,
-    context: string,
-    onRetry?: () => void
+    context: string
 ): T {
     return (async (...args: any[]) => {
         try {
             return await fn(...args);
         } catch (error) {
-            handleError(error, context, onRetry);
+            handleError(error, context);
             throw error;
         }
     }) as T;

@@ -9,11 +9,6 @@
 import React from 'react';
 import { render, cleanup } from '@testing-library/react';
 import fc from 'fast-check';
-import { CalendarNavigator } from '../components/CalendarNavigator';
-import { NutritionBlock } from '../components/NutritionBlock';
-import { WeightBlock } from '../components/WeightBlock';
-import { StepsBlock } from '../components/StepsBlock';
-import { WorkoutBlock } from '../components/WorkoutBlock';
 
 // Clean up after each property test
 afterEach(() => {
@@ -66,7 +61,7 @@ describe('Property 36: Screen Reader Accessibility', () => {
                         );
 
                         const { getByTestId, queryByTestId } = render(<TestComponent />);
-                        const container = getByTestId(testId);
+                        getByTestId(testId);
 
                         // Verify ARIA labels exist for visible indicators
                         if (completionStatus.nutritionFilled) {

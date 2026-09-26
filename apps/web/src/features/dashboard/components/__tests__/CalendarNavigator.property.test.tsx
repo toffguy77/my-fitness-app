@@ -3,14 +3,10 @@
  * Tests universal properties that should hold for all inputs
  */
 
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import fc from 'fast-check';
 import { CalendarNavigator } from '../CalendarNavigator';
 import { useDashboardStore } from '../../store/dashboardStore';
-import {
-    dailyMetricsWithCompletionArbitrary,
-    weekOfDailyMetricsArbitrary,
-} from '../../testing/generators';
 import type { DailyMetrics, CompletionStatus } from '../../types';
 
 // Mock the dashboard store

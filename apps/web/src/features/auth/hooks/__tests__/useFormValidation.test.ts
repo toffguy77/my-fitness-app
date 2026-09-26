@@ -4,7 +4,6 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
-import fc from 'fast-check';
 import { useFormValidation } from '../useFormValidation';
 import type { AuthFormData, ConsentState } from '../../types';
 
@@ -108,7 +107,7 @@ describe('useFormValidation', () => {
                 { email: '@domain.com', name: 'missing local part' },
             ];
 
-            invalidEmails.forEach(({ email, name }) => {
+            invalidEmails.forEach(({ email }) => {
                 const { result } = renderHook(() => useFormValidation());
 
                 act(() => {

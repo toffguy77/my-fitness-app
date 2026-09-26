@@ -203,7 +203,7 @@ jest.mock('@/features/chat/components/FoodEntryForm', () => ({
 
 // Mock content feature components
 jest.mock('@/features/content/components/ArticleList', () => ({
-    ArticleList: (props: { basePath?: string }) => (
+    ArticleList: () => (
         <div data-testid="article-list">ArticleList</div>
     ),
 }))

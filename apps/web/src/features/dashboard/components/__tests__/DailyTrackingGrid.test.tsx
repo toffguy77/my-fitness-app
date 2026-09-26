@@ -488,7 +488,6 @@ describe('DailyTrackingGrid', () => {
 
         it('handles date at midnight correctly', () => {
             const midnightDate = new Date('2024-01-15T00:00:00Z')
-            const expectedDateStr = '2024-01-15'
 
             render(<DailyTrackingGrid date={midnightDate} />)
 

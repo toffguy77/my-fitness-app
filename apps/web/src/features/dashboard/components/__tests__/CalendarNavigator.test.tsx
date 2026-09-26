@@ -318,7 +318,6 @@ describe('CalendarNavigator', () => {
 
         it('does not show submit button for past weeks', () => {
             // Viewing previous week
-            const today = new Date('2024-01-21T12:00:00Z');
             const previousWeekStart = new Date('2024-01-08T12:00:00Z');
 
             (useDashboardStore as unknown as jest.Mock).mockReturnValue({

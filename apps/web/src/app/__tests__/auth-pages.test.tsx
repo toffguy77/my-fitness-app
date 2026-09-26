@@ -34,6 +34,8 @@ jest.mock('@/shared/components/ui', () => ({
 }))
 
 jest.mock('@/shared/components/ui/Button', () => ({
+    // isLoading is pulled out of props on purpose: it must not reach the DOM.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to keep it out of {...props}
     Button: ({ children, isLoading, ...props }: { children: React.ReactNode; isLoading?: boolean; [key: string]: unknown }) => (
         <button data-testid="button" {...props}>{children}</button>
     ),
@@ -44,7 +46,7 @@ jest.mock('@/shared/components/ui/Input', () => ({
 }))
 
 jest.mock('@/shared/components/forms/PasswordInput', () => ({
-    PasswordInput: (props: Record<string, unknown>) => (
+    PasswordInput: () => (
         <input data-testid="password-input" />
     ),
 }))

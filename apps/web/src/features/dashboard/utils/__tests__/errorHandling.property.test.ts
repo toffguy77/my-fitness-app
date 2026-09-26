@@ -184,7 +184,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
                         const result = promise.catch((e) => e);
                         await jest.advanceTimersByTimeAsync(1000);
                         await result;
-                    } catch (error) {
+                    } catch {
                         // Expected to fail
                     }
 

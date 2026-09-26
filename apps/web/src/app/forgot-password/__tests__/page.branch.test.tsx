@@ -33,7 +33,6 @@ describe('ForgotPasswordPage - branch coverage', () => {
 
         render(<ForgotPasswordPage />)
         const emailInput = screen.getByLabelText('Email адрес')
-        const form = screen.getByRole('button', { name: /Отправить инструкции/i }).closest('form')!
 
         await user.type(emailInput, 'test@example.com')
         await user.click(screen.getByRole('button', { name: /Отправить инструкции/i }))

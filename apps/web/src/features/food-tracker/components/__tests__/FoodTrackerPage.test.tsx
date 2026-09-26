@@ -2,7 +2,7 @@
  * Unit tests for FoodTrackerPage component
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { FoodTrackerPage } from '../FoodTrackerPage';
 import { useFoodTracker } from '../../hooks/useFoodTracker';
 

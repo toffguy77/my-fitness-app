@@ -146,7 +146,6 @@ export function AIPhotoTab({
     className = '',
 }: AIPhotoTabProps) {
     const [status, setStatus] = useState<ProcessingStatus>('idle');
-    const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
     const [results, setResults] = useState<RecognitionResult[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -185,7 +184,6 @@ export function AIPhotoTab({
         };
         reader.readAsDataURL(file);
 
-        setSelectedPhoto(file);
         setStatus('processing');
         setError(null);
         setResults([]);
@@ -282,7 +280,6 @@ export function AIPhotoTab({
     // Reset and try again
     const handleReset = useCallback(() => {
         setStatus('idle');
-        setSelectedPhoto(null);
         setPhotoPreview(null);
         setResults([]);
         setError(null);

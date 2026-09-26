@@ -43,7 +43,7 @@ export function UnsavedDataNotification() {
             await updateMetric(date, entry.metric);
             removeUnsavedData(date);
             toast.success(t('dashboard.unsaved.saved'));
-        } catch (error) {
+        } catch {
             toast.error(t('dashboard.unsaved.saveFailed'));
         } finally {
             setIsRetrying(false);
@@ -66,7 +66,7 @@ export function UnsavedDataNotification() {
                 await updateMetric(entry.date, entry.metric);
                 removeUnsavedData(entry.date);
                 successCount++;
-            } catch (error) {
+            } catch {
                 failCount++;
             }
         }

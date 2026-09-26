@@ -72,7 +72,7 @@ function formatWithIntl(
     try {
         const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
         return rtf.format(value, unit);
-    } catch (error) {
+    } catch {
         // Fallback if Intl.RelativeTimeFormat is not supported
         const absValue = Math.abs(value);
         const unitStr = absValue === 1 ? unit : `${unit}s`;

@@ -4,7 +4,7 @@
  */
 
 import React, { Suspense } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({

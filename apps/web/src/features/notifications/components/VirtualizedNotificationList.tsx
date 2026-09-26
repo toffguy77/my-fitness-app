@@ -5,7 +5,7 @@
  * This component is lazy-loaded to optimize bundle size.
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
 import { List } from 'react-window';
 import type { Notification } from '../types';
 import { NotificationItem } from './NotificationItem';

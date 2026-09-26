@@ -3,7 +3,7 @@
  * Tests error handling and rollback behavior
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useDashboardStore } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
@@ -122,7 +122,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -148,7 +148,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -247,7 +247,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.uploadPhoto(weekIdentifier, file);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -270,7 +270,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.uploadPhoto(weekIdentifier, file);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -326,7 +326,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
                         new Date('2024-01-01'),
                         new Date('2024-01-07')
                     );
-                } catch (error) {
+                } catch {
                     // Expected
                 }
             });
@@ -355,7 +355,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected
                 }
             });
@@ -377,7 +377,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected
                 }
             });

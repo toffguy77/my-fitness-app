@@ -30,11 +30,6 @@ const CACHE_KEYS = {
 } as const;
 
 /**
- * Cache expiration time (5 minutes)
- */
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
-
-/**
  * Load cached notifications from localStorage
  */
 function loadCachedNotifications(category: NotificationCategory): Notification[] {
@@ -101,42 +96,6 @@ function saveCachedUnreadCounts(counts: { main: number; content: number }): void
         localStorage.setItem(CACHE_KEYS.UNREAD_COUNTS, JSON.stringify(counts));
     } catch (error) {
         console.error('Failed to save cached unread counts:', error);
-    }
-}
-
-/**
- * Check if cache is expired
- */
-function isCacheExpired(): boolean {
-    if (typeof window === 'undefined') return true;
-
-    try {
-        const lastSync = localStorage.getItem(CACHE_KEYS.LAST_SYNC);
-
-        if (!lastSync) return true;
-
-        const lastSyncTime = new Date(lastSync).getTime();
-        const now = Date.now();
-
-        return now - lastSyncTime > CACHE_EXPIRATION_MS;
-    } catch (error) {
-        return true;
-    }
-}
-
-/**
- * Clear all cached data
- */
-function clearCache(): void {
-    if (typeof window === 'undefined') return;
-
-    try {
-        localStorage.removeItem(CACHE_KEYS.NOTIFICATIONS_MAIN);
-        localStorage.removeItem(CACHE_KEYS.NOTIFICATIONS_CONTENT);
-        localStorage.removeItem(CACHE_KEYS.UNREAD_COUNTS);
-        localStorage.removeItem(CACHE_KEYS.LAST_SYNC);
-    } catch (error) {
-        console.error('Failed to clear cache:', error);
     }
 }
 
@@ -613,8 +572,6 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
      * Retry the last failed operation
      */
     retry: async () => {
-        const state = get();
-
         // Clear error and offline status
         set({ error: null, isOffline: false });
 

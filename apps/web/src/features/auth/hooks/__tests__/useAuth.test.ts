@@ -5,7 +5,6 @@
 
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
-import fc from 'fast-check';
 import { useAuth } from '../useAuth';
 import * as authApi from '../../api/auth';
 import { apiClient } from '@/shared/utils/api-client';

@@ -9,7 +9,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FoodTrackerTabs } from '../FoodTrackerTabs';
-import type { FoodTrackerTab } from '../../types';
 
 // ============================================================================
 // Tests

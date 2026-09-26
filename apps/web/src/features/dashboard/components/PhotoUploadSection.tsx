@@ -18,7 +18,7 @@
 'use client'
 
 import { useState, useRef, ChangeEvent, memo, useCallback, useMemo } from 'react'
-import { Camera, Upload, CheckCircle, AlertTriangle, Plus } from 'lucide-react'
+import { Camera, Upload, CheckCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/shared/components/ui/Button'
 import { useDashboardStore } from '../store/dashboardStore'
 import { validatePhoto } from '../utils/validation'
@@ -134,7 +134,7 @@ export const PhotoUploadSection = memo(function PhotoUploadSection({
         // Upload file
         try {
             await uploadPhoto(weekIdentifier, file)
-        } catch (error) {
+        } catch {
             // Error is handled by store (toast notification)
             setPreviewUrl(null)
         }

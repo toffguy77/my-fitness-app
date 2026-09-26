@@ -4,13 +4,13 @@ import type { Message } from '../../types'
 
 // Mock child components
 jest.mock('../FoodEntryCard', () => ({
-    FoodEntryCard: ({ metadata }: { metadata: unknown }) => (
+    FoodEntryCard: () => (
         <div data-testid="food-entry-card">Food Entry</div>
     ),
 }))
 
 jest.mock('../FileAttachment', () => ({
-    FileAttachment: ({ attachment }: { attachment: unknown }) => (
+    FileAttachment: () => (
         <div data-testid="file-attachment">File</div>
     ),
 }))

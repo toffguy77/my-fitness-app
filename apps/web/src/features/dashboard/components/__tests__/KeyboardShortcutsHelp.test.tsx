@@ -45,7 +45,7 @@ describe('KeyboardShortcutsHelp', () => {
     })
 
     it('does not toggle when "?" is pressed in an input element', () => {
-        const { container } = render(
+        render(
             <>
                 <input data-testid="test-input" />
                 <KeyboardShortcutsHelp />

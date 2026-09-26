@@ -22,7 +22,7 @@ window.IntersectionObserver = mockIntersectionObserver as any;
 
 // Mock react-window
 jest.mock('react-window', () => ({
-    VariableSizeList: ({ children, itemCount, itemSize }: any) => (
+    VariableSizeList: ({ children, itemCount }: any) => (
         <div data-testid="virtual-list">
             {Array.from({ length: Math.min(itemCount, 10) }, (_, index) => (
                 <div key={index}>
@@ -840,7 +840,7 @@ describe('Error Handling', () => {
         it('should display error message with proper text styling', () => {
             const error = new Error('Custom error message');
 
-            const { container } = render(
+            render(
                 <NotificationList
                     {...defaultProps}
                     error={error}
@@ -856,7 +856,7 @@ describe('Error Handling', () => {
         it('should display error title with proper styling', () => {
             const error = new Error('Test error');
 
-            const { container } = render(
+            render(
                 <NotificationList
                     {...defaultProps}
                     error={error}
@@ -871,7 +871,7 @@ describe('Error Handling', () => {
         it('should apply responsive text sizing to error messages', () => {
             const error = new Error('Test error');
 
-            const { container } = render(
+            render(
                 <NotificationList
                     {...defaultProps}
                     error={error}

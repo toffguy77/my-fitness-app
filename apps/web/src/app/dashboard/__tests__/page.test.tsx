@@ -238,7 +238,7 @@ describe('DashboardPage', () => {
                 role: 'client',
             }))
 
-            const { container } = render(<DashboardPage />)
+            render(<DashboardPage />)
 
             // In test environment, useEffect runs synchronously, so loading state may not be visible
             // Instead, verify that the component eventually renders the dashboard

@@ -19,8 +19,7 @@ import {
     MACRO_DISTRIBUTION,
     CALORIES_PER_GRAM,
 } from '../kbzhuCalculator';
-import type { KBZHU, FoodEntry } from '../../types';
-import { foodEntryGenerator, kbzhuGenerator } from '../../testing/generators';
+import { foodEntryGenerator } from '../../testing/generators';
 
 // ============================================================================
 // Test Configuration

@@ -26,7 +26,7 @@ jest.mock('@/shared/hooks/useSession', () => ({
 
 // Mock sub-components to simplify testing
 jest.mock('../CategoryFilter', () => ({
-    CategoryFilter: ({ selected, onSelect }: any) => (
+    CategoryFilter: ({ onSelect }: any) => (
         <div data-testid="category-filter">
             <button onClick={() => onSelect('nutrition')}>Nutrition</button>
             <button onClick={() => onSelect(null)}>All</button>

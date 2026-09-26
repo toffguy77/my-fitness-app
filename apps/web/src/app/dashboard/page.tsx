@@ -22,7 +22,7 @@
 
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { getProfile } from '@/features/settings/api/settings'
 import { CalendarNavigator } from '@/features/dashboard/components/CalendarNavigator'
@@ -42,7 +42,6 @@ import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
 import { messageForOr } from '@/shared/errors/apiErrors'
 import toast from 'react-hot-toast'
-import type { NavigationItemId } from '@/features/dashboard/types'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
 import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
@@ -58,7 +57,6 @@ interface UserData {
 }
 
 export default function DashboardPage() {
-    const router = useRouter()
     const searchParams = useSearchParams()
     const highlightTaskId = searchParams.get('task')
     // Who is looking at this page. The cache paints the first frame; the
@@ -72,7 +70,6 @@ export default function DashboardPage() {
     const {
         selectedDate,
         selectedWeek,
-        fetchDailyData,
         fetchWeekData,
         fetchWeeklyPlan,
         fetchTasks,

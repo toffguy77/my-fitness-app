@@ -209,7 +209,7 @@ describe('Dashboard Store Actions', () => {
                         type: 'nutrition',
                         data: { calories: 2000, protein: 150, fat: 60, carbs: 200 },
                     });
-                } catch (error) {
+                } catch {
                     // Expected to throw
                 }
             });
@@ -328,7 +328,7 @@ describe('Dashboard Store Actions', () => {
             await act(async () => {
                 try {
                     await result.current.updateTaskStatus(taskId, 'completed');
-                } catch (error) {
+                } catch {
                     // Expected to throw
                 }
             });

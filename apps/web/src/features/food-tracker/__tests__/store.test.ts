@@ -8,15 +8,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
-import type {
-    FoodEntry,
-    MealType,
-    KBZHU,
-    GetFoodEntriesResponse,
-    WaterLogResponse,
-    CreateFoodEntryRequest,
-    UpdateFoodEntryRequest,
-} from '../types';
+import { FoodEntry, KBZHU, GetFoodEntriesResponse, WaterLogResponse, CreateFoodEntryRequest } from '../types';
 
 // Mock apiClient
 jest.mock('@/shared/utils/api-client', () => ({

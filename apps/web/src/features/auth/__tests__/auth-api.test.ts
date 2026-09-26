@@ -1,6 +1,5 @@
 import fc from 'fast-check';
 import { mapApiError } from '../api/auth';
-import type { AuthError } from '../types';
 
 describe('Authentication API Error Mapping', () => {
     describe('Property 7: Authentication Error Mapping', () => {

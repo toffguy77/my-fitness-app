@@ -5,10 +5,10 @@
  * Validates: Requirements 10.6, 16.1
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import fc from 'fast-check';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
-import type { FoodEntry, MealType, KBZHU, CreateFoodEntryRequest } from '../types';
+import { FoodEntry, MealType, CreateFoodEntryRequest } from '../types';
 import {
     foodEntryGenerator,
     mealTypeGenerator,
@@ -78,26 +78,6 @@ describe('Property 16: Entry Persistence Round-Trip', () => {
             date: dateGenerator(),
         });
     };
-
-    /**
-     * Generator for a complete food entry (as returned from API)
-     */
-    const completeFoodEntryGenerator = (request: CreateFoodEntryRequest): fc.Arbitrary<FoodEntry> => {
-        return fc.record({
-            id: fc.uuid(),
-            foodId: fc.constant(request.foodId),
-            foodName: fc.string({ minLength: 2, maxLength: 100 }),
-            mealType: fc.constant(request.mealType),
-            portionType: fc.constant(request.portionType),
-            portionAmount: fc.constant(request.portionAmount),
-            nutrition: kbzhuGenerator(),
-            time: fc.constant(request.time),
-            date: fc.constant(request.date),
-            createdAt: fc.constant(new Date().toISOString()),
-            updatedAt: fc.constant(new Date().toISOString()),
-        });
-    };
-
     /**
      * For any created entry, the retrieved entry should have identical values
      * for all fields that were specified in the creation request.

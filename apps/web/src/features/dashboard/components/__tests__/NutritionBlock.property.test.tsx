@@ -5,12 +5,12 @@
  * Validates: Requirements 2.1, 2.2, 2.5
  */
 
-import { render, screen, cleanup, within } from '@testing-library/react'
+import { render, cleanup, within } from '@testing-library/react'
 import * as fc from 'fast-check'
 import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
-import type { NutritionData, WeeklyPlan, DailyMetrics } from '../../types'
+import { NutritionData, DailyMetrics } from '../../types'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')

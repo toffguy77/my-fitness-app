@@ -38,11 +38,6 @@ export interface ConfigureNutrientsModalProps {
     className?: string;
 }
 
-interface CategoryState {
-    isExpanded: boolean;
-    nutrients: NutrientRecommendation[];
-}
-
 // ============================================================================
 // Constants
 // ============================================================================

@@ -3,7 +3,6 @@
  * Queues mutations when offline and syncs when connection is restored
  */
 
-import type { MetricUpdate } from '../types';
 
 /**
  * Queue entry interface

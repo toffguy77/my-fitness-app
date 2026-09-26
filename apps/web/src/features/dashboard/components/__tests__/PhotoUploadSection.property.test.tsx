@@ -429,7 +429,7 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                 { weekStart: new Date('2024-01-15'), weekEnd: new Date('2024-01-21'), description: 'week 3' },
             ]
 
-            testCases.forEach(({ weekStart, weekEnd, description }) => {
+            testCases.forEach(({ weekStart, weekEnd }) => {
                 mockUseDashboardStore.mockReturnValue({
                     uploadPhoto: jest.fn(),
                     isLoading: false,

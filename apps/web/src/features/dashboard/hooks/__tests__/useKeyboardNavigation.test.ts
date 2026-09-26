@@ -4,10 +4,9 @@
  * Requirements: 16.1, 16.4
  */
 
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
 import { useKeyboardNavigation, useRovingTabIndex, useFocusTrap } from '../useKeyboardNavigation';
-import { useRef } from 'react';
 
 describe('useKeyboardNavigation', () => {
     let container: HTMLDivElement;
@@ -543,13 +542,12 @@ describe('useFocusTrap', () => {
         const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
         const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
 
-        // Focus last button and press Tab
+        // Focus last button and press Tab: the trap wraps round to the first
         buttons[2].focus();
         container.dispatchEvent(event);
 
-        // In a real browser, this would wrap to first button
-        // In JSDOM, we just verify the event was handled
-        expect(container).toBeInTheDocument();
+        expect(preventDefaultSpy).toHaveBeenCalled();
+        expect(document.activeElement).toBe(buttons[0]);
     });
 
     it('should handle Shift+Tab key to trap focus backwards', () => {
@@ -564,12 +562,12 @@ describe('useFocusTrap', () => {
             bubbles: true,
         });
 
-        // Focus first button and press Shift+Tab
+        // Focus first button and press Shift+Tab: the trap wraps to the last
+        const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
         buttons[0].focus();
         container.dispatchEvent(event);
 
-        // In a real browser, this would wrap to last button
-        // In JSDOM, we just verify the event was handled
-        expect(container).toBeInTheDocument();
+        expect(preventDefaultSpy).toHaveBeenCalled();
+        expect(document.activeElement).toBe(buttons[2]);
     });
 });

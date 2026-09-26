@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FoodEntryModal } from '../FoodEntryModal';
-import type { FoodEntry, FoodItem, MealType } from '../../types';
+import { FoodEntry, MealType } from '../../types';
 
 // ============================================================================
 // Mocks
@@ -98,7 +98,7 @@ jest.mock('../SearchTab', () => ({
 }));
 
 jest.mock('../BarcodeTab', () => ({
-    BarcodeTab: ({ onSelectFood }: any) => <div data-testid="barcode-tab">Barcode</div>,
+    BarcodeTab: () => <div data-testid="barcode-tab">Barcode</div>,
 }));
 
 jest.mock('../AIPhotoTab', () => ({
@@ -170,7 +170,7 @@ jest.mock('../AIPhotoTab', () => ({
 }));
 
 jest.mock('../ChatTab', () => ({
-    ChatTab: ({ onSelectFood }: any) => (
+    ChatTab: () => (
         <div data-testid="chat-tab">
             <p>Опишите, что вы съели</p>
         </div>

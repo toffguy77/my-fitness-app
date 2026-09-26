@@ -5,7 +5,7 @@
  * Requirements: 1.2, 3.1, 4.3, 5.2, 5.3
  */
 
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { useNotificationsStore } from '../store/notificationsStore'
 import { apiClient } from '@/shared/utils/api-client'
 
@@ -134,7 +134,7 @@ describe('Notifications Integration Tests', () => {
             await act(async () => {
                 try {
                     await useNotificationsStore.getState().fetchNotifications('main')
-                } catch (error) {
+                } catch {
                     // Expected to fail
                 }
             })
@@ -450,7 +450,7 @@ describe('Notifications Integration Tests', () => {
             await act(async () => {
                 try {
                     await useNotificationsStore.getState().fetchNotifications('main')
-                } catch (error) {
+                } catch {
                     // Expected to fail
                 }
             })
@@ -538,7 +538,7 @@ describe('Notifications Integration Tests', () => {
             await act(async () => {
                 try {
                     await useNotificationsStore.getState().markAsRead('1', 'main')
-                } catch (error) {
+                } catch {
                     // Expected to fail
                 }
             })

@@ -4,7 +4,7 @@
  * Tests: Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
  */
 
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkoutBlock } from '../WorkoutBlock'
 import { useDashboardStore } from '../../store/dashboardStore'

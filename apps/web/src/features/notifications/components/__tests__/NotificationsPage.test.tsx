@@ -10,7 +10,7 @@
  * - useAutoMarkAsRead hook
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { NotificationsPage } from '../NotificationsPage';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useNotificationPolling } from '../../hooks/useNotificationPolling';

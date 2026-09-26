@@ -6,22 +6,6 @@ import { groupNotificationsByDate } from './dateGrouping';
 import type { Notification } from '../types';
 
 describe('groupNotificationsByDate', () => {
-    // Helper function to create a notification with a specific date
-    const createNotification = (id: string, hoursAgo: number): Notification => {
-        const date = new Date();
-        date.setHours(date.getHours() - hoursAgo);
-
-        return {
-            id,
-            userId: 'user-1',
-            category: 'main',
-            type: 'general',
-            title: `Notification ${id}`,
-            content: `Content ${id}`,
-            createdAt: date.toISOString(),
-        };
-    };
-
     // Helper to create notification with specific date
     const createNotificationWithDate = (id: string, date: Date): Notification => {
         return {

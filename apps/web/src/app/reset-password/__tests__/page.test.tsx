@@ -22,13 +22,15 @@ jest.mock('@/shared/components/ui', () => ({
 }))
 
 jest.mock('@/shared/components/ui/Button', () => ({
+    // isLoading is pulled out of props on purpose: it must not reach the DOM.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to keep it out of {...props}
     Button: ({ children, isLoading, ...props }: any) => (
         <button {...props}>{children}</button>
     ),
 }))
 
 jest.mock('@/shared/components/forms/PasswordInput', () => ({
-    PasswordInput: ({ id, value, onChange, error, disabled, ...rest }: any) => (
+    PasswordInput: ({ id, value, onChange, error, disabled }: any) => (
         <div>
             <input id={id} value={value} onChange={onChange} data-testid={`password-${id}`} disabled={disabled} />
             {error && <span role="alert">{error}</span>}

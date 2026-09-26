@@ -47,17 +47,6 @@ const waterLogGenerator = (): fc.Arbitrary<WaterLog> =>
         glassSize: fc.constantFrom(200, 250, 300, 350),
     });
 
-/**
- * Generate water log with specific glasses count
- */
-const waterLogWithGlassesGenerator = (glasses: number): fc.Arbitrary<WaterLog> =>
-    fc.record({
-        date: dateGenerator(),
-        glasses: fc.constant(glasses),
-        goal: fc.integer({ min: 1, max: 20 }),
-        glassSize: fc.constantFrom(200, 250, 300, 350),
-    });
-
 // ============================================================================
 // Property Tests
 // ============================================================================

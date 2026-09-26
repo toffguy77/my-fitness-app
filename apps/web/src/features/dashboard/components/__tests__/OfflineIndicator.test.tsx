@@ -3,11 +3,10 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OfflineIndicator } from '../OfflineIndicator';
 import { useDashboardStore } from '../../store/dashboardStore';
-import { addToQueue, clearQueue } from '../../utils/offlineQueue';
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore');

@@ -5,7 +5,7 @@
  * Validates: Requirements 2.1, 2.2, 2.4, 2.5, 2.6
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
@@ -348,7 +348,6 @@ describe('NutritionBlock', () => {
 
             // Save original location
             const originalHref = (window as any).location.href
-            const originalLocation = (window as any).location
 
             // Mock location.href setter to throw error
             delete (window as any).location

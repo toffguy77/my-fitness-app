@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { emailSchema, passwordSchema, loginSchema, registerSchema } from '../utils/validation';
+import { emailSchema, passwordSchema } from '../utils/validation';
 
 describe('Email Validation', () => {
     describe('Property 2: Email Validation', () => {

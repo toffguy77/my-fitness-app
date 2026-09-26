@@ -258,9 +258,7 @@ describe('notificationsStore', () => {
         });
 
         it('should not fetch if already loading', async () => {
-            let callCount = 0;
             mockApiClient.get.mockImplementation((url: string) => {
-                callCount++;
                 if (url.includes('/notifications?category=main')) {
                     return new Promise((resolve) => {
                         setTimeout(() => resolve({
@@ -388,7 +386,7 @@ describe('notificationsStore', () => {
             await act(async () => {
                 try {
                     await result.current.markAsRead('1', 'main');
-                } catch (error) {
+                } catch {
                     // Expected to throw
                 }
             });
@@ -530,7 +528,7 @@ describe('notificationsStore', () => {
             await act(async () => {
                 try {
                     await result.current.markAllAsRead('main');
-                } catch (error) {
+                } catch {
                     // Expected to throw
                 }
             });
@@ -780,11 +778,6 @@ describe('notificationsStore', () => {
                 notifications: [],
                 total: 0,
                 hasMore: false,
-            };
-
-            const mockUnreadCounts: UnreadCountsResponse = {
-                main: 0,
-                content: 0,
             };
 
             mockApiClient.get.mockResolvedValue(mockResponse);

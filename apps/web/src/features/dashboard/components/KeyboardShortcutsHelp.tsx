@@ -11,8 +11,6 @@
 
 import { useState, useEffect } from 'react';
 import { X, Keyboard } from 'lucide-react';
-import { Button } from '@/shared/components/ui/Button';
-import { cn } from '@/shared/utils/cn';
 import { t } from '@/shared/i18n'
 
 /**

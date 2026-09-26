@@ -11,7 +11,7 @@
  * - Memoized workout type buttons
  */
 
-import { useState, useCallback, memo, useMemo } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { Plus, Check, Dumbbell, Clock, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'

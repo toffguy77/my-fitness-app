@@ -21,7 +21,7 @@
 
 import { useState, memo, useMemo, useCallback, useRef, useEffect, type CSSProperties } from 'react'
 import { List } from 'react-window'
-import { CheckCircle, Circle, ChevronRight, MoreHorizontal } from 'lucide-react'
+import { CheckCircle, Circle, MoreHorizontal } from 'lucide-react'
 import { useDashboardStore } from '../store/dashboardStore'
 import type { Task } from '../types'
 import { AttentionBadge } from './AttentionBadge'
@@ -257,11 +257,6 @@ export const TasksSection = memo(function TasksSection({
     // Determine if virtual scrolling should be used
     const useVirtualScrolling = enableVirtualScrolling && allTasks.length > virtualScrollThreshold
 
-    // Visible tasks for non-virtual mode
-    const visibleTasks = useMemo(() => {
-        return showAll ? allTasks : allTasks.slice(0, maxVisibleTasks)
-    }, [showAll, allTasks, maxVisibleTasks])
-
     const hasMoreTasks = allTasks.length > maxVisibleTasks
 
     // Get urgent tasks (due within 2 days) - only for current day - memoized
@@ -293,7 +288,7 @@ export const TasksSection = memo(function TasksSection({
     const handleToggleComplete = useCallback(async (taskId: string) => {
         try {
             await updateTaskStatus(taskId, 'completed')
-        } catch (error) {
+        } catch {
             // Error is handled by store (toast notification)
         }
     }, [updateTaskStatus])

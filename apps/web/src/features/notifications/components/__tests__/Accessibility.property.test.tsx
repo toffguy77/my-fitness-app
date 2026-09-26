@@ -85,7 +85,7 @@ describe('Property 17: Accessibility Compliance', () => {
                     const tabs = container.querySelectorAll('[role="tab"]');
                     expect(tabs.length).toBe(2);
 
-                    tabs.forEach((tab, index) => {
+                    tabs.forEach((tab) => {
                         // Should have aria-selected
                         expect(tab).toHaveAttribute('aria-selected');
 
