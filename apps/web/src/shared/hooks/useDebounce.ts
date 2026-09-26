@@ -57,10 +57,10 @@ export function useDebounce<T>(value: T, delay: number = 300): T {
  * return <input onChange={(e) => handleInputChange(e.target.value)} />
  * ```
  */
-export function useDebouncedCallback<T extends (...args: any[]) => any>(
-    callback: T,
+export function useDebouncedCallback<Args extends unknown[]>(
+    callback: (...args: Args) => unknown,
     delay: number = 300
-): (...args: Parameters<T>) => void {
+): (...args: Args) => void {
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const callbackRef = useRef(callback)
 
@@ -79,7 +79,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
     }, [])
 
     return useCallback(
-        (...args: Parameters<T>) => {
+        (...args: Args) => {
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current)
             }

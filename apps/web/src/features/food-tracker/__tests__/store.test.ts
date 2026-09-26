@@ -9,6 +9,7 @@ import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
 import { FoodEntry, KBZHU, GetFoodEntriesResponse, WaterLogResponse, CreateFoodEntryRequest } from '../types';
+import { ApiError } from '@/shared/errors/apiErrors';
 
 // Mock apiClient
 jest.mock('@/shared/utils/api-client', () => ({
@@ -242,9 +243,7 @@ describe('foodTrackerStore', () => {
         });
 
         it('should handle 401 unauthorized errors', async () => {
-            const authError = {
-                response: { status: 401, data: { message: 'Unauthorized' } },
-            };
+            const authError = new ApiError(401, { message: 'Unauthorized' });
             mockApiClient.get.mockRejectedValue(authError);
 
             const { result } = renderHook(() => useFoodTrackerStore());
@@ -260,9 +259,7 @@ describe('foodTrackerStore', () => {
         });
 
         it('should handle 500 server errors', async () => {
-            const serverError = {
-                response: { status: 500, data: { message: 'Internal server error' } },
-            };
+            const serverError = new ApiError(500, { message: 'Internal server error' });
             mockApiClient.get.mockRejectedValue(serverError);
 
             const { result } = renderHook(() => useFoodTrackerStore());
@@ -822,9 +819,7 @@ describe('foodTrackerStore', () => {
         describe('addEntry rollback', () => {
             it('should rollback optimistic add on API failure', async () => {
                 // Use 400 error to avoid retry logic (4xx errors are not retried)
-                const apiError = {
-                    response: { status: 400, data: { message: 'Неверный формат данных' } },
-                };
+                const apiError = new ApiError(400, { message: 'Неверный формат данных' });
                 mockApiClient.post.mockRejectedValueOnce(apiError);
 
                 const { result } = renderHook(() => useFoodTrackerStore());
@@ -877,9 +872,7 @@ describe('foodTrackerStore', () => {
                 expect(result.current.dailyTotals.calories).toBe(100);
 
                 // Fail the add with 400 error (not retried)
-                const apiError = {
-                    response: { status: 400, data: { message: 'Неверный формат данных' } },
-                };
+                const apiError = new ApiError(400, { message: 'Неверный формат данных' });
                 mockApiClient.post.mockRejectedValueOnce(apiError);
 
                 await act(async () => {
@@ -920,9 +913,7 @@ describe('foodTrackerStore', () => {
                 const { result } = renderHook(() => useFoodTrackerStore());
 
                 // Use 400 error to avoid retry logic
-                const apiError = {
-                    response: { status: 400, data: { message: 'Неверный формат данных' } },
-                };
+                const apiError = new ApiError(400, { message: 'Неверный формат данных' });
                 mockApiClient.put.mockRejectedValueOnce(apiError);
 
                 await act(async () => {
@@ -960,9 +951,7 @@ describe('foodTrackerStore', () => {
                 const { result } = renderHook(() => useFoodTrackerStore());
 
                 // Use 400 error to avoid retry logic
-                const apiError = {
-                    response: { status: 400, data: { message: 'Неверный формат данных' } },
-                };
+                const apiError = new ApiError(400, { message: 'Неверный формат данных' });
                 mockApiClient.put.mockRejectedValueOnce(apiError);
 
                 await act(async () => {
@@ -998,9 +987,7 @@ describe('foodTrackerStore', () => {
                 const { result } = renderHook(() => useFoodTrackerStore());
 
                 // Use 400 error to avoid retry logic
-                const apiError = {
-                    response: { status: 400, data: { message: 'Неверный формат данных' } },
-                };
+                const apiError = new ApiError(400, { message: 'Неверный формат данных' });
                 mockApiClient.delete.mockRejectedValueOnce(apiError);
 
                 await act(async () => {
@@ -1044,9 +1031,7 @@ describe('foodTrackerStore', () => {
                 expect(result.current.dailyTotals.calories).toBe(100);
 
                 // Fail the delete with 400 error (not retried)
-                const apiError = {
-                    response: { status: 400, data: { message: 'Неверный формат данных' } },
-                };
+                const apiError = new ApiError(400, { message: 'Неверный формат данных' });
                 mockApiClient.delete.mockRejectedValueOnce(apiError);
 
                 await act(async () => {
@@ -1089,9 +1074,7 @@ describe('foodTrackerStore', () => {
                 useFoodTrackerStore.setState({ waterIntake: 3 });
             });
 
-            const apiError = {
-                response: { status: 400, data: { message: 'Bad request' } },
-            };
+            const apiError = new ApiError(400, { message: 'Bad request' });
             mockApiClient.post.mockRejectedValueOnce(apiError);
 
             await act(async () => {
@@ -1195,9 +1178,7 @@ describe('foodTrackerStore', () => {
         });
 
         it('should map 404 errors correctly', async () => {
-            const notFoundError = {
-                response: { status: 404, data: { message: 'Not found' } },
-            };
+            const notFoundError = new ApiError(404, { message: 'Not found' });
             mockApiClient.get.mockRejectedValue(notFoundError);
 
             const { result } = renderHook(() => useFoodTrackerStore());
@@ -1213,9 +1194,7 @@ describe('foodTrackerStore', () => {
         });
 
         it('should map 400 validation errors correctly', async () => {
-            const validationError = {
-                response: { status: 400, data: { message: 'Неверный формат даты' } },
-            };
+            const validationError = new ApiError(400, { message: 'Неверный формат даты' });
             mockApiClient.get.mockRejectedValue(validationError);
 
             const { result } = renderHook(() => useFoodTrackerStore());

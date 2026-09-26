@@ -3,7 +3,7 @@
  * Provides centralized error management, retry logic, and user-friendly error messages
  */
 
-import toast from 'react-hot-toast';
+import toast, { type ToastOptions } from 'react-hot-toast';
 import { t } from '@/shared/i18n'
 import { mapApiError as mapSharedApiError, type ApiErrorCode } from '@/shared/errors/mapApiError'
 
@@ -28,7 +28,7 @@ export enum DashboardErrorCode {
 export interface DashboardError {
     code: DashboardErrorCode;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
     retryable: boolean;
 }
 
@@ -111,12 +111,12 @@ export async function retryWithBackoff<T>(
     fn: () => Promise<T>,
     config: RetryConfig = DEFAULT_RETRY_CONFIG
 ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < config.maxRetries; attempt++) {
         try {
             return await fn();
-        } catch (error: any) {
+        } catch (error) {
             lastError = error;
 
             const mappedError = mapApiError(error);
@@ -148,7 +148,7 @@ export async function retryWithBackoff<T>(
  * @param error - Dashboard error
  */
 export function showErrorToast(error: DashboardError): void {
-    const toastOptions: any = {
+    const toastOptions: ToastOptions = {
         duration: 5000,
         icon: '❌',
     };
@@ -185,7 +185,7 @@ export function showValidationErrors(errors: string[]): void {
  * @param context - Context description for logging
  */
 export function handleError(
-    error: any,
+    error: unknown,
     context: string
 ): void {
     const mappedError = mapApiError(error);
@@ -206,7 +206,7 @@ export function handleError(
  * @returns Error handler function
  */
 export function createErrorHandler(componentName: string) {
-    return (error: any, errorInfo?: any) => {
+    return (error: unknown, errorInfo?: unknown) => {
         // Log error
         if (process.env.NODE_ENV !== 'production') {
             console.error(`[${componentName}] Error:`, error);
@@ -230,16 +230,16 @@ export function createErrorHandler(componentName: string) {
  * @param context - Context description
  * @returns Wrapped function
  */
-export function withErrorHandling<T extends (...args: any[]) => Promise<any>>(
-    fn: T,
+export function withErrorHandling<Args extends unknown[], Result>(
+    fn: (...args: Args) => Promise<Result>,
     context: string
-): T {
-    return (async (...args: any[]) => {
+): (...args: Args) => Promise<Result> {
+    return async (...args: Args) => {
         try {
             return await fn(...args);
         } catch (error) {
             handleError(error, context);
             throw error;
         }
-    }) as T;
+    };
 }

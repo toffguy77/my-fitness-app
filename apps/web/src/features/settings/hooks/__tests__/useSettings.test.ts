@@ -163,7 +163,8 @@ describe('useSettings', () => {
   })
 
   it('saveSettings shows error toast on failure and rethrows', async () => {
-    const err = { response: { data: { message: 'Custom error' } } }
+    // What the api client throws — not a hand-rolled look-alike.
+    const err = new ApiError(400, { message: 'Custom error' })
     mockUpdateSettings.mockRejectedValueOnce(err)
 
     const { result } = renderHook(() => useSettings())

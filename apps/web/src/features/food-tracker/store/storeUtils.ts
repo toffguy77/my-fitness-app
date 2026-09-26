@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import { t } from '@/shared/i18n';
 import { mapApiError } from '@/shared/errors/mapApiError';
+import { isApiError } from '@/shared/errors/apiErrors';
 
 // ============================================================================
 // Constants
@@ -177,16 +178,16 @@ export async function retryWithBackoff<T>(
     maxRetries: number = 3,
     baseDelay: number = 1000
 ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
             return await fn();
-        } catch (error: any) {
+        } catch (error) {
             lastError = error;
 
             // Don't retry on client errors (4xx) except 408 (timeout) and 429 (rate limit)
-            const status = error.response?.status;
+            const status = isApiError(error) ? error.status : undefined;
             if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
                 throw error;
             }

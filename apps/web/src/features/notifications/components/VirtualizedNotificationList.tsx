@@ -6,7 +6,7 @@
  */
 
 import { useRef } from 'react';
-import { List } from 'react-window';
+import { List, type ListImperativeAPI } from 'react-window';
 import type { Notification } from '../types';
 import { NotificationItem } from './NotificationItem';
 
@@ -26,7 +26,7 @@ export default function VirtualizedNotificationList({
     hasMore,
     observerTarget,
 }: VirtualizedNotificationListProps) {
-    const listRef = useRef<any>(null);
+    const listRef = useRef<ListImperativeAPI>(null);
 
     // Flatten groups into a single array with headers
     const items = groupedNotifications.flatMap((group) => [

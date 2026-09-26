@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VerifyEmailScreen } from '../VerifyEmailScreen'
+import { ApiError } from '@/shared/errors/apiErrors'
 
 const mockPush = jest.fn()
 
@@ -194,7 +195,7 @@ describe('VerifyEmailScreen', () => {
   })
 
   it('shows error message on verification failure', async () => {
-    mockVerifyEmail.mockRejectedValueOnce({ message: 'Invalid code' })
+    mockVerifyEmail.mockRejectedValueOnce(new Error('Invalid code'))
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
     render(<VerifyEmailScreen />)
 
@@ -282,9 +283,7 @@ describe('VerifyEmailScreen', () => {
   })
 
   it('shows toast error when resend fails', async () => {
-    mockResendVerificationCode.mockRejectedValueOnce({
-      response: { data: { message: 'Rate limited' } },
-    })
+    mockResendVerificationCode.mockRejectedValueOnce(new ApiError(429, { message: 'Rate limited' }))
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
     render(<VerifyEmailScreen />)
 

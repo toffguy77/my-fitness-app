@@ -19,6 +19,7 @@ import type {
 
 import { t } from '@/shared/i18n'
 import { mapApiError } from '@/shared/errors/mapApiError'
+import { isApiError } from '@/shared/errors/apiErrors'
 /**
  * LocalStorage keys for caching
  */
@@ -129,16 +130,16 @@ async function retryWithBackoff<T>(
     maxRetries: number = 3,
     baseDelay: number = 1000
 ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
             return await fn();
-        } catch (error: any) {
+        } catch (error) {
             lastError = error;
 
             // Don't retry on client errors (4xx) except 408 (timeout) and 429 (rate limit)
-            const status = error.response?.status;
+            const status = isApiError(error) ? error.status : undefined;
             if (status && status >= 400 && status < 500 && status !== 408 && status !== 429) {
                 throw error;
             }
@@ -282,7 +283,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
 
             // Fetch unread counts after loading notifications
             await get().pollForUpdates();
-        } catch (error: any) {
+        } catch (error) {
             const mappedError = mapError(error);
             set({
                 isLoading: false,
@@ -344,7 +345,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                     ),
                 },
             }));
-        } catch (error: any) {
+        } catch (error) {
             // Rollback on failure
             set((state) => ({
                 notifications: {
@@ -409,7 +410,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                 3,
                 1000
             );
-        } catch (error: any) {
+        } catch (error) {
             // Rollback on failure
             set((state) => ({
                 notifications: {
@@ -444,7 +445,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                     content: counts.content,
                 },
             });
-        } catch (error: any) {
+        } catch (error) {
             // Non-critical operation, just log the error
             console.error('Failed to fetch unread counts:', error);
         }
@@ -507,7 +508,7 @@ export const useNotificationsStore = create<NotificationsState>((set, get) => ({
                     },
                 };
             });
-        } catch (error: any) {
+        } catch (error) {
             // Silently fail polling to avoid disrupting user experience
             console.error('Polling failed:', error);
         }
