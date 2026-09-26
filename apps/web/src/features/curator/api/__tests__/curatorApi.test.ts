@@ -1,5 +1,11 @@
 import { curatorApi } from '../curatorApi'
 import { apiClient } from '@/shared/utils/api-client'
+import type {
+    CreateTaskRequest,
+    CreateWeeklyPlanRequest,
+    SubmitFeedbackRequest,
+    UpdateWeeklyPlanRequest,
+} from '../../types'
 
 jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
@@ -111,11 +117,18 @@ describe('curatorApi', () => {
 
     describe('createWeeklyPlan', () => {
         it('calls POST with plan payload', async () => {
-            const req = { week_start: '2026-03-02', content: 'Plan content' }
+            const req: CreateWeeklyPlanRequest = {
+                calories: 2000,
+                protein: 150,
+                fat: 60,
+                carbs: 200,
+                start_date: '2026-03-02',
+                end_date: '2026-03-08',
+            }
             const created = { id: 'p1', ...req }
             mockApiClient.post.mockResolvedValue(created)
 
-            const result = await curatorApi.createWeeklyPlan(3, req as any)
+            const result = await curatorApi.createWeeklyPlan(3, req)
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
                 '/api/v1/curator/clients/3/weekly-plan',
@@ -127,11 +140,11 @@ describe('curatorApi', () => {
 
     describe('updateWeeklyPlan', () => {
         it('calls PUT with plan id and payload', async () => {
-            const req = { content: 'Updated content' }
+            const req: UpdateWeeklyPlanRequest = { comment: 'Updated content' }
             const updated = { id: 'p1', ...req }
             mockApiClient.put.mockResolvedValue(updated)
 
-            const result = await curatorApi.updateWeeklyPlan(3, 'p1', req as any)
+            const result = await curatorApi.updateWeeklyPlan(3, 'p1', req)
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
                 '/api/v1/curator/clients/3/weekly-plan/p1',
@@ -175,11 +188,17 @@ describe('curatorApi', () => {
 
     describe('createTask', () => {
         it('calls POST with task payload', async () => {
-            const req = { title: 'New task', description: 'Do something' }
+            const req: CreateTaskRequest = {
+                title: 'New task',
+                type: 'habit',
+                description: 'Do something',
+                deadline: '2026-03-08',
+                recurrence: 'once',
+            }
             const created = { id: 't1', ...req }
             mockApiClient.post.mockResolvedValue(created)
 
-            const result = await curatorApi.createTask(3, req as any)
+            const result = await curatorApi.createTask(3, req)
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
                 '/api/v1/curator/clients/3/tasks',
@@ -195,7 +214,7 @@ describe('curatorApi', () => {
             const updated = { id: 't1', ...req }
             mockApiClient.put.mockResolvedValue(updated)
 
-            const result = await curatorApi.updateTask(3, 't1', req as any)
+            const result = await curatorApi.updateTask(3, 't1', req)
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
                 '/api/v1/curator/clients/3/tasks/t1',
@@ -231,10 +250,13 @@ describe('curatorApi', () => {
 
     describe('submitFeedback', () => {
         it('calls PUT with report id and feedback payload', async () => {
-            const req = { summary: 'Good week', nutrition: { rating: 'good' } }
+            const req: SubmitFeedbackRequest = {
+                summary: 'Good week',
+                nutrition: { rating: 'good' },
+            }
             mockApiClient.put.mockResolvedValue(undefined)
 
-            await curatorApi.submitFeedback(3, 'r1', req as any)
+            await curatorApi.submitFeedback(3, 'r1', req)
 
             expect(mockApiClient.put).toHaveBeenCalledWith(
                 '/api/v1/curator/clients/3/weekly-reports/r1/feedback',

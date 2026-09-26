@@ -11,6 +11,7 @@ import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { formatLocalDate } from '@/shared/utils/format'
 import { NutritionData, DailyMetrics } from '../../types'
+import { dashboardStoreValue, type DashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')
@@ -64,7 +65,7 @@ const dateGenerator = () =>
 
 describe('Property 4: Nutrition Data Display Completeness', () => {
     // Create fresh mock functions for each test
-    let mockStore: any
+    let mockStore: DashboardStoreValue
 
     beforeEach(() => {
         // Clean up DOM before each test
@@ -73,10 +74,10 @@ describe('Property 4: Nutrition Data Display Completeness', () => {
         mockLocation.href = ''
 
         // Create default mock store
-        mockStore = {
+        mockStore = dashboardStoreValue({
             dailyData: {},
             weeklyPlan: null,
-        }
+        })
 
             ; (useDashboardStore as unknown as jest.Mock).mockReturnValue(mockStore)
     })

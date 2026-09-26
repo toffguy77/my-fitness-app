@@ -11,6 +11,7 @@ import fc from 'fast-check'
 import { PhotoUploadSection } from '../PhotoUploadSection'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { PhotoData } from '../../types'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the store
 jest.mock('../../store/dashboardStore')
@@ -64,10 +65,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
         jest.setSystemTime(new Date('2024-01-01T12:00:00Z')) // Monday
 
         // Default mock implementation
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             uploadPhoto: jest.fn().mockResolvedValue(undefined),
             isLoading: false,
-        } as any)
+        }))
     })
 
     afterEach(() => {
@@ -94,10 +95,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                         const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             uploadPhoto: mockUploadPhoto,
                             isLoading: false,
-                        } as any)
+                        }))
 
                         const weekStart = new Date('2024-01-01')
                         const weekEnd = new Date('2024-01-07')
@@ -143,10 +144,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                         const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn()
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             uploadPhoto: mockUploadPhoto,
                             isLoading: false,
-                        } as any)
+                        }))
 
                         const weekStart = new Date('2024-01-01')
                         const weekEnd = new Date('2024-01-07')
@@ -198,10 +199,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                         const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn()
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             uploadPhoto: mockUploadPhoto,
                             isLoading: false,
-                        } as any)
+                        }))
 
                         const weekStart = new Date('2024-01-01')
                         const weekEnd = new Date('2024-01-07')
@@ -250,10 +251,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                         const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn()
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             uploadPhoto: mockUploadPhoto,
                             isLoading: false,
-                        } as any)
+                        }))
 
                         const weekStart = new Date('2024-01-01')
                         const weekEnd = new Date('2024-01-07')
@@ -311,10 +312,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                         const weekIdentifier = `${year}-W${weekNumber.toString().padStart(2, '0')}`
                         const photoData = createMockPhotoData(weekIdentifier)
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             uploadPhoto: jest.fn(),
                             isLoading: false,
-                        } as any)
+                        }))
 
                         const weekStart = new Date(`${year}-01-01`)
                         const weekEnd = new Date(`${year}-01-07`)
@@ -368,10 +369,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
                         const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
                         const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             uploadPhoto: mockUploadPhoto,
                             isLoading: false,
-                        } as any)
+                        }))
 
                         const weekStart = new Date(`${year}-01-01`)
                         const weekEnd = new Date(`${year}-01-07`)
@@ -430,10 +431,10 @@ describe('PhotoUploadSection - Property-Based Tests', () => {
             ]
 
             testCases.forEach(({ weekStart, weekEnd }) => {
-                mockUseDashboardStore.mockReturnValue({
+                mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                     uploadPhoto: jest.fn(),
                     isLoading: false,
-                } as any)
+                }))
 
                 // Create a unique container for this test iteration
                 const container = document.createElement('div')

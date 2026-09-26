@@ -35,7 +35,7 @@ describe('Notifications Integration Tests', () => {
             isOffline: false,
             isLoadingFromCache: false,
             retryCount: 0,
-        } as any)
+        })
 
         // Reset mocks
         jest.clearAllMocks()

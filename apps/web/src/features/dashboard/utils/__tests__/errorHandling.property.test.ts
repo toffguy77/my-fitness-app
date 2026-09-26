@@ -11,6 +11,7 @@ import {
     DashboardErrorCode,
     DEFAULT_RETRY_CONFIG,
 } from '../errorHandling';
+import { ApiError } from '@/shared/errors/apiErrors';
 
 describe('Property 28: Save Error Handling with Retry', () => {
     beforeEach(() => {
@@ -35,7 +36,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
                     const fn = jest.fn().mockImplementation(async () => {
                         callCount++;
                         if (callCount <= failureCount) {
-                            throw { response: { status: 500 } }; // Retryable error
+                            throw new ApiError(500, {}); // Retryable error
                         }
                         return 'success';
                     });
@@ -57,7 +58,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
                         expect(callCount).toBe(failureCount + 1);
                     } else {
                         // Should fail after max retries
-                        expect(finalResult).toEqual({ response: { status: 500 } });
+                        expect((finalResult as ApiError).status).toBe(500);
                         expect(callCount).toBe(maxRetries);
                     }
                 }
@@ -71,9 +72,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
             fc.asyncProperty(
                 fc.constantFrom(400, 401, 403, 404), // Non-retryable status codes
                 async (statusCode) => {
-                    const fn = jest.fn().mockRejectedValue({
-                        response: { status: statusCode },
-                    });
+                    const fn = jest.fn().mockRejectedValue(new ApiError(statusCode, {}));
 
                     const promise = retryWithBackoff(fn, {
                         ...DEFAULT_RETRY_CONFIG,
@@ -86,7 +85,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
 
                     // Should fail immediately without retries
                     expect(fn).toHaveBeenCalledTimes(1);
-                    expect((error as any).response.status).toBe(statusCode);
+                    expect((error as ApiError).status).toBe(statusCode);
                 }
             ),
             { numRuns: 20 }
@@ -143,7 +142,7 @@ describe('Property 28: Save Error Handling with Retry', () => {
                             expect(mappedError.code).toBe(DashboardErrorCode.SERVER_ERROR);
                             expect(mappedError.retryable).toBe(true);
                         }
-                    } else if (error instanceof TypeError || (error as any).message?.includes('network')) {
+                    } else if (error instanceof TypeError || ('message' in error && error.message.includes('network'))) {
                         expect(mappedError.code).toBe(DashboardErrorCode.NETWORK_ERROR);
                         expect(mappedError.retryable).toBe(true);
                     }

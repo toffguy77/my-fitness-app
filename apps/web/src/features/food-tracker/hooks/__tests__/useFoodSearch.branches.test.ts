@@ -100,7 +100,7 @@ describe('useFoodSearch Branch Coverage', () => {
     describe('loadMore', () => {
         it('does not load when isSearching is true', async () => {
             // Make the initial search hang
-            let resolveSearch: (v: any) => void;
+            let resolveSearch: (v: unknown) => void;
             mockApiGet.mockImplementation(() => new Promise((r) => { resolveSearch = r; }));
 
             const { result } = renderHook(() =>

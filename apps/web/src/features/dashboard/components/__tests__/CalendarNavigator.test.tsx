@@ -500,7 +500,8 @@ describe('CalendarNavigator', () => {
             const today = new Date('2024-01-15T12:00:00Z');
             const weekStart = getWeekStart(today);
 
-            // Metrics without completionStatus
+            // Metrics without completionStatus: the omission is the point of the
+            // test, so the shape is named as a lie rather than switched off.
             const incompleteMetrics = {
                 date: '2024-01-15',
                 userId: 1,
@@ -510,7 +511,7 @@ describe('CalendarNavigator', () => {
                 workout: null,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-            } as any;
+            } as unknown as DailyMetrics;
 
             (useDashboardStore as unknown as jest.Mock).mockReturnValue({
                 selectedDate: today,

@@ -9,6 +9,7 @@ import { render, screen } from '@testing-library/react'
 import { WorkoutBlock } from '../WorkoutBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import fc from 'fast-check'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock dependencies
 jest.mock('../../store/dashboardStore')
@@ -29,7 +30,7 @@ describe('Property 11: Workout Data Display', () => {
             fc.property(
                 fc.constantFrom('Силовая', 'Кардио', 'Йога', 'HIIT', 'Растяжка', 'Плавание', 'Бег', 'Велосипед', 'Другое'),
                 (workoutType) => {
-                    mockUseDashboardStore.mockReturnValue({
+                    mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                         dailyData: {
                             '2024-01-15': {
                                 workout: {
@@ -39,7 +40,7 @@ describe('Property 11: Workout Data Display', () => {
                             },
                         },
                         updateMetric: mockUpdateMetric,
-                    } as any)
+                    }))
 
                     const { unmount } = render(<WorkoutBlock date={new Date('2024-01-15')} />)
 
@@ -63,7 +64,7 @@ describe('Property 11: Workout Data Display', () => {
             fc.property(
                 fc.integer({ min: 1, max: 600 }),
                 (duration) => {
-                    mockUseDashboardStore.mockReturnValue({
+                    mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                         dailyData: {
                             '2024-01-15': {
                                 workout: {
@@ -74,7 +75,7 @@ describe('Property 11: Workout Data Display', () => {
                             },
                         },
                         updateMetric: mockUpdateMetric,
-                    } as any)
+                    }))
 
                     const { unmount } = render(<WorkoutBlock date={new Date('2024-01-15')} />)
 
@@ -117,10 +118,10 @@ describe('Property 11: Workout Data Display', () => {
             fc.property(
                 fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter(d => !isNaN(d.getTime())),
                 (date) => {
-                    mockUseDashboardStore.mockReturnValue({
+                    mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                         dailyData: {},
                         updateMetric: mockUpdateMetric,
-                    } as any)
+                    }))
 
                     const { unmount } = render(<WorkoutBlock date={date} />)
 
@@ -143,7 +144,7 @@ describe('Property 11: Workout Data Display', () => {
                     duration: fc.option(fc.integer({ min: 1, max: 600 }), { nil: undefined }),
                 }),
                 (workout) => {
-                    mockUseDashboardStore.mockReturnValue({
+                    mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                         dailyData: {
                             '2024-01-15': {
                                 workout: {
@@ -153,7 +154,7 @@ describe('Property 11: Workout Data Display', () => {
                             },
                         },
                         updateMetric: mockUpdateMetric,
-                    } as any)
+                    }))
 
                     const { unmount } = render(<WorkoutBlock date={new Date('2024-01-15')} />)
 
@@ -187,10 +188,10 @@ describe('Property 11: Workout Data Display', () => {
                         },
                     } : {}
 
-                    mockUseDashboardStore.mockReturnValue({
+                    mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                         dailyData,
                         updateMetric: mockUpdateMetric,
-                    } as any)
+                    }))
 
                     const { unmount } = render(<WorkoutBlock date={new Date('2024-01-15')} />)
 

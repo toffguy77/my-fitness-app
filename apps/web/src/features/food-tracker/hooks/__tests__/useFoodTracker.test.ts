@@ -5,7 +5,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useFoodTracker } from '../useFoodTracker';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
-import type { MealType, CreateFoodEntryRequest, FoodEntry, KBZHU } from '../../types';
+import type { EntriesByMealType, MealType, CreateFoodEntryRequest, FoodEntry, KBZHU } from '../../types';
 import { formatLocalDate } from '@/shared/utils/format';
 
 // Mock the store
@@ -448,12 +448,14 @@ describe('useFoodTracker', () => {
 
         it('returns empty array when entries object has missing meal type', () => {
             // Simulate a case where a meal type key is missing from entries
+            // The missing meal type is the point of the test, so the shape is
+            // named as a lie rather than switched off.
             const incompleteEntries = {
                 breakfast: mockEntries.breakfast,
                 // lunch is missing
                 dinner: [],
                 snack: [],
-            } as any;
+            } as unknown as EntriesByMealType;
 
             (useFoodTrackerStore as unknown as jest.Mock).mockImplementation((selector) => {
                 const state = {

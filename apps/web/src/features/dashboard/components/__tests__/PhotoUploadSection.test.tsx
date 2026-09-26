@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { PhotoUploadSection } from '../PhotoUploadSection'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { PhotoData } from '../../types'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the store
 jest.mock('../../store/dashboardStore')
@@ -65,10 +66,10 @@ describe('PhotoUploadSection', () => {
         jest.setSystemTime(new Date('2024-01-01T12:00:00Z')) // Monday
 
         // Default mock implementation
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             uploadPhoto: jest.fn().mockResolvedValue(undefined),
             isLoading: false,
-        } as any)
+        }))
     })
 
     afterEach(() => {
@@ -313,10 +314,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -345,10 +346,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -374,10 +375,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -403,10 +404,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -434,10 +435,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -465,10 +466,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -498,10 +499,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -531,10 +532,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -562,10 +563,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -601,10 +602,10 @@ describe('PhotoUploadSection', () => {
 
     describe('Loading State', () => {
         it('disables upload button when loading', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: jest.fn(),
                 isLoading: true,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -621,10 +622,10 @@ describe('PhotoUploadSection', () => {
         })
 
         it('disables re-upload button when loading', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: jest.fn(),
                 isLoading: true,
-            } as any)
+            }))
 
             const photoData = createMockPhotoData()
             const weekStart = new Date('2024-01-01')
@@ -648,10 +649,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockRejectedValue(new Error('Upload failed'))
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -720,10 +721,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn()
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')
@@ -771,10 +772,10 @@ describe('PhotoUploadSection', () => {
             const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
             const mockUploadPhoto = jest.fn().mockResolvedValue(undefined)
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 uploadPhoto: mockUploadPhoto,
                 isLoading: false,
-            } as any)
+            }))
 
             const weekStart = new Date('2024-01-01')
             const weekEnd = new Date('2024-01-07')

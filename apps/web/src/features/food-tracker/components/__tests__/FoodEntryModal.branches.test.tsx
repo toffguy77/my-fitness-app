@@ -13,6 +13,15 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { FoodEntryModal } from '../FoodEntryModal';
 import { FoodEntry, MealType } from '../../types';
+// Type-only imports of the modules being mocked: erased at runtime, so the
+// mocks stay mocks, and a prop renamed in the real component breaks the stand-in
+// here instead of quietly never arriving.
+import type { AIPhotoTabProps } from '../AIPhotoTab';
+import type { ManualEntryFormProps } from '../ManualEntryForm';
+import type { PortionSelectorProps } from '../PortionSelector';
+import type { SearchTabProps } from '../SearchTab';
+import type { FoodTrackerStore } from '../../store/types';
+import { foodTrackerStoreValue } from '../../testing/storeValue';
 
 // ============================================================================
 // Mocks
@@ -22,12 +31,12 @@ const mockAddEntry = jest.fn().mockResolvedValue(undefined);
 const mockUpdateEntry = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../store/foodTrackerStore', () => ({
-    useFoodTrackerStore: (selector: (s: any) => any) =>
-        selector({
+    useFoodTrackerStore: (selector: (s: FoodTrackerStore) => unknown) =>
+        selector(foodTrackerStoreValue({
             addEntry: mockAddEntry,
             updateEntry: mockUpdateEntry,
             selectedDate: '2025-01-15',
-        }),
+        })),
 }));
 
 jest.mock('@/shared/utils/api-client', () => ({
@@ -51,7 +60,7 @@ jest.mock('react-hot-toast', () => ({
 
 // Mock child components to isolate FoodEntryModal logic
 jest.mock('../SearchTab', () => ({
-    SearchTab: ({ onSelectFood, onManualEntry }: any) => (
+    SearchTab: ({ onSelectFood, onManualEntry }: Pick<SearchTabProps, 'onSelectFood' | 'onManualEntry'>) => (
         <div data-testid="search-tab">
             <input placeholder="Поиск блюд и продуктов" />
             <button
@@ -102,7 +111,7 @@ jest.mock('../BarcodeTab', () => ({
 }));
 
 jest.mock('../AIPhotoTab', () => ({
-    AIPhotoTab: ({ onSelectFoods, onManualSearch }: any) => (
+    AIPhotoTab: ({ onSelectFoods, onManualSearch }: Pick<AIPhotoTabProps, 'onSelectFoods' | 'onManualSearch'>) => (
         <div data-testid="photo-tab">
             <button
                 data-testid="select-single-photo-food"
@@ -178,7 +187,7 @@ jest.mock('../ChatTab', () => ({
 }));
 
 jest.mock('../ManualEntryForm', () => ({
-    ManualEntryForm: ({ onSubmit, onCancel }: any) => (
+    ManualEntryForm: ({ onSubmit, onCancel }: Pick<ManualEntryFormProps, 'onSubmit' | 'onCancel'>) => (
         <div data-testid="manual-entry-form">
             <button
                 data-testid="submit-manual"
@@ -205,7 +214,7 @@ jest.mock('../ManualEntryForm', () => ({
 }));
 
 jest.mock('../PortionSelector', () => ({
-    PortionSelector: ({ food, onPortionChange }: any) => (
+    PortionSelector: ({ food, onPortionChange }: Pick<PortionSelectorProps, 'food' | 'onPortionChange'>) => (
         <div data-testid="portion-selector">
             <span>{food?.name}</span>
             <button

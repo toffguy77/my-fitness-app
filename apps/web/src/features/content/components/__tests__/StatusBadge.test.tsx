@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { StatusBadge } from '../StatusBadge';
+import type { ContentStatus } from '../../types';
 
 describe('StatusBadge', () => {
     it('renders "Черновик" for draft status', () => {
@@ -41,7 +42,7 @@ describe('StatusBadge', () => {
 
     it('falls back gracefully for unknown status values', () => {
         // Test the ?? fallback branch in STATUS_CONFIG lookup
-        render(<StatusBadge status={'unknown' as any} />);
+        render(<StatusBadge status={'unknown' as ContentStatus} />);
         expect(screen.getByText('unknown')).toBeInTheDocument();
     });
 });

@@ -14,6 +14,15 @@ import type { Notification, NotificationCategory } from '../../types';
 // Mock the store
 jest.mock('../../store/notificationsStore');
 
+/**
+ * `querySelectorAll` answers with a NodeList, and a test hands it an array.
+ * The cast says so once, here, instead of `as any` at every call: the elements
+ * themselves stay checked.
+ */
+function asNodeList(elements: Element[]): NodeListOf<Element> {
+    return elements as unknown as NodeListOf<Element>;
+}
+
 describe('useAutoMarkAsRead - Property Tests', () => {
     let mockMarkAsRead: jest.Mock;
     let mockIntersectionObserver: jest.Mock;
@@ -47,10 +56,10 @@ describe('useAutoMarkAsRead - Property Tests', () => {
             };
         });
 
-        global.IntersectionObserver = mockIntersectionObserver as any;
+        global.IntersectionObserver = mockIntersectionObserver as unknown as typeof IntersectionObserver;
 
         // Mock document.querySelectorAll
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([]));
     });
 
     afterEach(() => {
@@ -75,7 +84,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                         });
 
                         // Mock querySelectorAll to return our elements
-                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(mockElements as any);
+                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList(mockElements));
 
                         // Render hook
                         const { unmount } = renderHook(() =>
@@ -94,7 +103,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                     intersectionRatio: 0.5,
                                 } as unknown as IntersectionObserverEntry,
                             ];
-                            callback(entries, mockIntersectionObserver() as any);
+                            callback(entries, mockIntersectionObserver() as unknown as IntersectionObserver);
                         }
 
                         // Wait for delay + buffer
@@ -135,7 +144,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                             return element;
                         });
 
-                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(mockElements as any);
+                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList(mockElements));
 
                         // Render hook
                         const { unmount } = renderHook(() =>
@@ -154,7 +163,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                     intersectionRatio: 0,
                                 } as unknown as IntersectionObserverEntry,
                             ];
-                            callback(entries, mockIntersectionObserver() as any);
+                            callback(entries, mockIntersectionObserver() as unknown as IntersectionObserver);
                         }
 
                         // Wait for delay + buffer
@@ -190,7 +199,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                             return element;
                         });
 
-                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(mockElements as any);
+                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList(mockElements));
 
                         // Render hook
                         const { unmount } = renderHook(() =>
@@ -210,7 +219,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                         intersectionRatio: 0.5,
                                     } as unknown as IntersectionObserverEntry,
                                 ],
-                                mockIntersectionObserver() as any
+                                mockIntersectionObserver() as unknown as IntersectionObserver
                             );
 
                             // Wait a bit (less than delay)
@@ -225,7 +234,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                         intersectionRatio: 0,
                                     } as unknown as IntersectionObserverEntry,
                                 ],
-                                mockIntersectionObserver() as any
+                                mockIntersectionObserver() as unknown as IntersectionObserver
                             );
 
                             // Wait for full delay
@@ -268,7 +277,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                             return element;
                         });
 
-                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(mockElements as any);
+                        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList(mockElements));
 
                         // Render hook with read notifications
                         const { unmount } = renderHook(() =>
@@ -287,7 +296,7 @@ describe('useAutoMarkAsRead - Property Tests', () => {
                                         intersectionRatio: 0.5,
                                     } as unknown as IntersectionObserverEntry,
                                 ],
-                                mockIntersectionObserver() as any
+                                mockIntersectionObserver() as unknown as IntersectionObserver
                             );
                         }
 

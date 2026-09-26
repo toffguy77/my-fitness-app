@@ -12,6 +12,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FoodEntryItem } from '../FoodEntryItem';
 import type { FoodEntry } from '../../types';
+import type { PortionType } from '../../types';
 
 // ============================================================================
 // Helpers
@@ -295,7 +296,7 @@ describe('FoodEntryItem Branch Coverage', () => {
         });
 
         it('defaults to "г" for unknown portion type', () => {
-            const entry = createEntry({ portionType: 'unknown' as any, portionAmount: 100 });
+            const entry = createEntry({ portionType: 'unknown' as PortionType, portionAmount: 100 });
             render(<FoodEntryItem entry={entry} />);
             expect(screen.getByText('100 г')).toBeInTheDocument();
         });

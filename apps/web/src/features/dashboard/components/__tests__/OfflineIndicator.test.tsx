@@ -7,6 +7,7 @@ import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OfflineIndicator } from '../OfflineIndicator';
 import { useDashboardStore } from '../../store/dashboardStore';
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore');
@@ -27,10 +28,10 @@ describe('OfflineIndicator', () => {
         jest.clearAllMocks();
         jest.useFakeTimers();
 
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             isOffline: false,
             syncWhenOnline: mockSyncWhenOnline,
-        } as any);
+        }));
 
         // Mock getQueueSize
         const { getQueueSize } = require('../../utils/offlineQueue');
@@ -49,10 +50,10 @@ describe('OfflineIndicator', () => {
         });
 
         it('should render when offline', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             expect(screen.getByRole('status')).toBeInTheDocument();
@@ -76,10 +77,10 @@ describe('OfflineIndicator', () => {
 
     describe('Offline state', () => {
         beforeEach(() => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
         });
 
         it('should display offline icon', () => {
@@ -261,20 +262,20 @@ describe('OfflineIndicator', () => {
 
     describe('Accessibility', () => {
         it('should have role="status"', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             expect(screen.getByRole('status')).toBeInTheDocument();
         });
 
         it('should have aria-live="polite"', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             const status = screen.getByRole('status');
@@ -282,10 +283,10 @@ describe('OfflineIndicator', () => {
         });
 
         it('should have aria-atomic="true"', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             const status = screen.getByRole('status');
@@ -307,10 +308,10 @@ describe('OfflineIndicator', () => {
         });
 
         it('should hide icons from screen readers', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             const icons = screen.getByRole('status').querySelectorAll('svg');
@@ -322,10 +323,10 @@ describe('OfflineIndicator', () => {
 
     describe('Custom className', () => {
         it('should apply custom className', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator className="custom-class" />);
             const indicator = screen.getByRole('status');

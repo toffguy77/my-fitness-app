@@ -10,6 +10,7 @@ import fc from 'fast-check'
 import { WeeklyPlanSection } from '../WeeklyPlanSection'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { WeeklyPlan } from '../../types'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the store
 jest.mock('../../store/dashboardStore')
@@ -57,10 +58,10 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                             createdBy: 'coach-123',
                         }
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             weeklyPlan: mockPlan,
                             dailyData: {}, // Add empty dailyData to prevent undefined access
-                        } as any)
+                        }))
 
                         const { unmount } = render(<WeeklyPlanSection />)
 
@@ -121,10 +122,10 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                             createdBy: 'coach-123',
                         }
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             weeklyPlan: mockPlan,
                             dailyData: {}, // Add empty dailyData to prevent undefined access
-                        } as any)
+                        }))
 
                         const { unmount } = render(<WeeklyPlanSection />)
 
@@ -168,9 +169,9 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                 fc.property(
                     fc.constant(null),
                     () => {
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             weeklyPlan: null,
-                        } as any)
+                        }))
 
                         const { unmount } = render(<WeeklyPlanSection />)
 
@@ -219,9 +220,9 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                             createdBy: 'coach-123',
                         }
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             weeklyPlan: mockPlan,
-                        } as any)
+                        }))
 
                         const { unmount } = render(<WeeklyPlanSection />)
 
@@ -270,9 +271,9 @@ describe('WeeklyPlanSection - Property-Based Tests', () => {
                             createdBy: 'coach-123',
                         }
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             weeklyPlan: mockPlan,
-                        } as any)
+                        }))
 
                         const { unmount } = render(<WeeklyPlanSection />)
 

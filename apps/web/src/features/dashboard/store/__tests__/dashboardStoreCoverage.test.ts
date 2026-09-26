@@ -33,6 +33,7 @@ const mockToast = toast as jest.Mocked<typeof toast>;
 
 // Import offline queue mocks for sync tests
 import { ApiError } from '@/shared/errors/apiErrors';
+import type { DailyMetrics } from '../../types';
 import {
     addToQueue,
     removeFromQueue,
@@ -50,7 +51,7 @@ const mockIncrementAttempts = incrementAttempts as jest.Mock;
 /**
  * Helper: create a frontend-shaped DailyMetrics object
  */
-function makeDailyMetrics(date: string, overrides: Record<string, any> = {}) {
+function makeDailyMetrics(date: string, overrides: Partial<DailyMetrics> = {}) {
     return {
         date,
         userId: 'user-1',
@@ -72,7 +73,7 @@ function makeDailyMetrics(date: string, overrides: Record<string, any> = {}) {
 /**
  * Helper: create a backend-shaped (flat, snake_case) metrics object
  */
-function makeBackendMetrics(date: string, overrides: Record<string, any> = {}) {
+function makeBackendMetrics(date: string, overrides: Record<string, unknown> = {}) {
     return {
         id: 'met-1',
         user_id: 1,

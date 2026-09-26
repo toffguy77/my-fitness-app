@@ -7,6 +7,9 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDashboardStore, clearMemoryCache } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
+// The fixtures below are days with only the fields the action under test
+// touches; the cast names what they are missing.
+import type { DailyMetrics } from '../../types';
 
 // Mock dependencies
 jest.mock('@/shared/utils/api-client');
@@ -147,7 +150,7 @@ describe('Dashboard Store Actions', () => {
                         activityCompleted: false,
                     },
                     updatedAt: new Date(),
-                } as any;
+                } as unknown as DailyMetrics;
             });
 
             mockApiClient.post.mockResolvedValue({ data: {} });
@@ -196,7 +199,7 @@ describe('Dashboard Store Actions', () => {
             };
 
             act(() => {
-                result.current.dailyData[date] = initialData as any;
+                result.current.dailyData[date] = initialData as unknown as DailyMetrics;
             });
 
             mockApiClient.post.mockRejectedValue({
@@ -236,7 +239,7 @@ describe('Dashboard Store Actions', () => {
                         activityCompleted: false,
                     },
                     updatedAt: new Date(),
-                } as any;
+                } as unknown as DailyMetrics;
             });
 
             mockApiClient.post.mockResolvedValue({ data: {} });
@@ -496,7 +499,7 @@ describe('Dashboard Store Actions', () => {
                             },
                             updatedAt: new Date(),
                         },
-                    } as any,
+                    } as unknown as Record<string, DailyMetrics>,
                     error: { code: 'SERVER_ERROR', message: 'Test error' },
                     isLoading: true,
                     weeklyPlan: {

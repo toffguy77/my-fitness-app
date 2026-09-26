@@ -24,11 +24,14 @@ describe('groupNotificationsByDate', () => {
         expect(result).toEqual([]);
     });
 
+    // The signature says neither can happen; the guard inside the function says
+    // one of them has. The cast names what is under test instead of switching
+    // the checking off with `any`.
     it('should return empty array for null/undefined input', () => {
-        const result1 = groupNotificationsByDate(null as any);
+        const result1 = groupNotificationsByDate(null as unknown as Notification[]);
         expect(result1).toEqual([]);
 
-        const result2 = groupNotificationsByDate(undefined as any);
+        const result2 = groupNotificationsByDate(undefined as unknown as Notification[]);
         expect(result2).toEqual([]);
     });
 

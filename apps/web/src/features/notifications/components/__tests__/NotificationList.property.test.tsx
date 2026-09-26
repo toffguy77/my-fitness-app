@@ -15,7 +15,7 @@ mockIntersectionObserver.mockReturnValue({
     unobserve: () => null,
     disconnect: () => null,
 });
-window.IntersectionObserver = mockIntersectionObserver as any;
+window.IntersectionObserver = mockIntersectionObserver as unknown as typeof IntersectionObserver;
 
 describe('NotificationList - Property Tests', () => {
     /**
@@ -105,7 +105,7 @@ describe('NotificationList - Property Tests', () => {
                             disconnect: jest.fn(),
                         };
                     });
-                    window.IntersectionObserver = mockObserver as any;
+                    window.IntersectionObserver = mockObserver as unknown as typeof IntersectionObserver;
 
                     const { unmount } = render(
                         <NotificationList

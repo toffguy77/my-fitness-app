@@ -186,7 +186,7 @@ describe('foodTrackerStore', () => {
         });
 
         it('should set loading state during fetch', async () => {
-            let resolveEntries: (value: any) => void;
+            let resolveEntries: (value: unknown) => void;
             const entriesPromise = new Promise((resolve) => {
                 resolveEntries = resolve;
             });
@@ -275,7 +275,7 @@ describe('foodTrackerStore', () => {
         });
 
         it('should not fetch if already loading', async () => {
-            let resolveEntries: (value: any) => void;
+            let resolveEntries: (value: unknown) => void;
             const entriesPromise = new Promise((resolve) => {
                 resolveEntries = resolve;
             });
@@ -637,7 +637,7 @@ describe('foodTrackerStore', () => {
     describe('optimistic updates', () => {
         describe('addEntry optimistic update', () => {
             it('should add entry optimistically before API response', async () => {
-                let resolvePost: (value: any) => void;
+                let resolvePost: (value: unknown) => void;
                 const postPromise = new Promise((resolve) => {
                     resolvePost = resolve;
                 });
@@ -718,7 +718,7 @@ describe('foodTrackerStore', () => {
                     result.current.entries.breakfast = [originalEntry];
                 });
 
-                let resolveUpdate: (value: any) => void;
+                let resolveUpdate: (value: unknown) => void;
                 const updatePromise = new Promise((resolve) => {
                     resolveUpdate = resolve;
                 });
@@ -772,7 +772,7 @@ describe('foodTrackerStore', () => {
                     result.current.entries.breakfast = [entry];
                 });
 
-                let resolveDelete: (value: any) => void;
+                let resolveDelete: (value: unknown) => void;
                 const deletePromise = new Promise((resolve) => {
                     resolveDelete = resolve;
                 });
