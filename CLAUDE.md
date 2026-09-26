@@ -35,7 +35,7 @@ npm run test:e2e:ui     # Interactive UI
 
 ### Linting & Type Checking
 ```bash
-cd apps/web && npm run lint       # ESLint (eslint src)
+cd apps/web && npm run lint       # ESLint (eslint src --max-warnings 0)
 cd apps/web && npm run lint:fix   # ESLint with auto-fix
 cd apps/web && npm run type-check # TypeScript (tsc --noEmit)
 cd apps/api && go fmt ./...       # Go formatting
@@ -105,6 +105,19 @@ Follows a **handler/service pattern** organized by domain module.
 - State backend: S3 bucket `burcev-terraform-state`
 - Manages: service accounts, S3 access keys, IAM bindings, PostgreSQL users/databases
 - Secrets (credentials, passwords) are in `.claude/CLAUDE.local.md` (local only, not in git)
+
+## Lint Hygiene
+
+`npm run lint` в `apps/web` запускается с `--max-warnings 0`: предупреждение
+ломает сборку так же, как ошибка. Порог поставлен после того, как счётчик
+дорос до 584 в 183 файлах, и среди них потерялась мёртвая директива
+`eslint-disable`, сообщавшая ровно об этом.
+
+Подавление — только точечное (`eslint-disable-next-line <правило> -- причина`)
+и только с объяснением рядом. `/* eslint-disable */` на файл и ослабление
+правила в конфигурации вместо исправления — тот же долг, только невидимый.
+
+CI вызывает `npm run lint:web`, то есть ту же команду, что и разработчик.
 
 ## Authorization & Data Isolation
 

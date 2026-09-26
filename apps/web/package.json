@@ -7,7 +7,7 @@
         "build": "NODE_OPTIONS='--max-old-space-size=4096' next build && npm run build:sw",
         "build:analyze": "ANALYZE=true NODE_OPTIONS='--max-old-space-size=4096' next build",
         "start": "next start -p ${WEB_PORT:-3069}",
-        "lint": "eslint src",
+        "lint": "eslint src --max-warnings 0",
         "lint:fix": "eslint src --fix",
         "type-check": "tsc --noEmit",
         "test": "NODE_OPTIONS='--max-old-space-size=4096' jest --passWithNoTests",
