@@ -179,15 +179,23 @@ export interface NutrientRecommendation {
 /**
  * Detailed nutrient information
  */
+/**
+ * Описание, польза, действие и границы нормы приходят с сервера
+ * необязательными (`*string`, `*float64`): в справочнике они могут быть пусты.
+ * Поэтому они необязательны и здесь — пустое поле не показывается, а ноль
+ * вместо неизвестной границы не подставляется.
+ */
 export interface NutrientDetail {
     id: string;
     name: string;
-    description: string;
-    benefits: string;
-    effects: string;
-    minRecommendation: number;
-    optimalRecommendation: number;
     unit: string;
+    dailyTarget: number;
+    currentIntake: number;
+    description?: string;
+    benefits?: string;
+    effects?: string;
+    minRecommendation?: number;
+    optimalRecommendation?: number;
     sourcesInDiet: NutrientFoodSource[];
 }
 
@@ -255,7 +263,15 @@ export interface CustomRecommendation {
     name: string;
     dailyTarget: number;
     unit: CustomRecommendationUnit;
-    currentIntake: number;
+    /**
+     * Потребление, если оно известно.
+     *
+     * Сервер считает его только для нутриентов, сопоставимых с КБЖУ, — для
+     * рекомендации, заданной человеком, взять его неоткуда. Ноль здесь
+     * нарисовал бы «0 из 500 мг»: человек решил бы, что не добрал, хотя никто
+     * ничего не считал. Отсутствие числа честнее.
+     */
+    currentIntake?: number;
 }
 
 // ============================================================================

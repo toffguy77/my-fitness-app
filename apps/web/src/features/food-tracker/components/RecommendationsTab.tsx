@@ -35,6 +35,26 @@ export interface RecommendationsTabProps {
     currentIntakes?: Record<string, number>;
     /** Whether data is loading */
     isLoading?: boolean;
+    /**
+     * Справочник нутриентов пуст.
+     *
+     * Отличается от «нет отслеживаемых»: настройками это не лечится, потому что
+     * выбирать не из чего. `nutrient_recommendations` пуст и на dev, и на проде.
+     */
+    catalogueEmpty?: boolean;
+    /**
+     * Есть ли записи о еде за день, по которым считается потребление.
+     *
+     * `undefined` — неизвестно (выбран не сегодняшний день), и тогда об этом
+     * ничего не говорится, вместо того чтобы угадывать.
+     */
+    hasEntriesToday?: boolean;
+    /** Показывается ли не сегодняшний день: потребление сервер считает за сегодня. */
+    showsOtherDay?: boolean;
+    /** Текст ошибки загрузки. */
+    error?: string | null;
+    /** Повторить загрузку. */
+    onRetry?: () => void;
     /** Callback when configure button clicked */
     onConfigureClick?: () => void;
     /** Callback when add recommendation button clicked */
@@ -76,6 +96,11 @@ export function RecommendationsTab({
     customRecommendations = [],
     currentIntakes = {},
     isLoading = false,
+    catalogueEmpty = false,
+    hasEntriesToday,
+    showsOtherDay = false,
+    error = null,
+    onRetry,
     onConfigureClick,
     onAddRecommendationClick,
     onRecommendationClick,
@@ -168,6 +193,39 @@ export function RecommendationsTab({
                 </div>
             </div>
 
+            {/* Загрузка не удалась: показанное ниже — не измерение. */}
+            {error && (
+                <div
+                    className="rounded-lg border border-red-200 bg-red-50 p-2.5 sm:p-3"
+                    role="alert"
+                >
+                    <p className="text-xs text-red-800 sm:text-sm">{error}</p>
+                    {onRetry && (
+                        <button
+                            type="button"
+                            onClick={onRetry}
+                            className="mt-1.5 text-xs text-red-700 underline hover:text-red-900 sm:text-sm touch-manipulation"
+                        >
+                            {t('foodTracker.recommendations.retry')}
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Потребление сервер считает за сегодня, а не за выбранный день. */}
+            {!isLoading && !error && showsOtherDay && (
+                <p className="text-xs text-gray-500 sm:text-sm">
+                    {t('foodTracker.recommendations.todayOnly')}
+                </p>
+            )}
+
+            {/* Нулевое потребление по всем нутриентам объясняется, а не показывается молча. */}
+            {!isLoading && !error && !catalogueEmpty && hasEntriesToday === false && (
+                <p className="text-xs text-gray-500 sm:text-sm">
+                    {t('foodTracker.recommendations.noEntriesToday')}
+                </p>
+            )}
+
             {/* Loading state */}
             {isLoading && (
                 <div className="flex items-center justify-center py-6 sm:py-8" aria-live="polite" aria-busy="true">
@@ -208,17 +266,27 @@ export function RecommendationsTab({
                             })}
                         </div>
 
-                        {/* Empty state for daily recommendations */}
+                        {/* Пусто по двум разным причинам, и человеку они не всё равно:
+                            справочник норм не заполнен — настройки не помогут;
+                            нутриенты выключены — помогут именно они. */}
                         {recommendations.filter((r) => !r.isWeekly).length === 0 && (
                             <div className="text-center py-6 text-gray-500 sm:py-8">
-                                <p className="text-xs sm:text-sm">{t('foodTracker.recommendations.noDaily')}</p>
-                                <button
-                                    type="button"
-                                    onClick={onConfigureClick}
-                                    className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 sm:mt-2 sm:text-sm touch-manipulation"
-                                >
-                                    {t('foodTracker.recommendations.configure')}
-                                </button>
+                                {catalogueEmpty ? (
+                                    <p className="text-xs sm:text-sm">
+                                        {t('foodTracker.recommendations.catalogueEmpty')}
+                                    </p>
+                                ) : (
+                                    <>
+                                        <p className="text-xs sm:text-sm">{t('foodTracker.recommendations.noDaily')}</p>
+                                        <button
+                                            type="button"
+                                            onClick={onConfigureClick}
+                                            className="mt-1.5 text-xs text-blue-500 hover:text-blue-600 sm:mt-2 sm:text-sm touch-manipulation"
+                                        >
+                                            {t('foodTracker.recommendations.configure')}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         )}
                     </section>
@@ -288,8 +356,16 @@ export function RecommendationsTab({
                                             <span className="text-xs font-medium text-gray-900 sm:text-sm">
                                                 {rec.name}
                                             </span>
+                                            {/* Потребление по своей рекомендации сервер не
+                                                считает. Ноль нарисовал бы «0 из 500 мг» и
+                                                выглядел бы как измерение. */}
                                             <span className="text-xs text-gray-500 sm:text-sm">
-                                                {rec.currentIntake} / {rec.dailyTarget} {unitLabel(rec.unit)}
+                                                {rec.currentIntake === undefined
+                                                    ? t('foodTracker.recommendations.targetOnly', {
+                                                        target: String(rec.dailyTarget),
+                                                        unit: unitLabel(rec.unit),
+                                                    })
+                                                    : `${rec.currentIntake} / ${rec.dailyTarget} ${unitLabel(rec.unit)}`}
                                             </span>
                                         </button>
                                     ))
