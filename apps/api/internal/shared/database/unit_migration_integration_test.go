@@ -41,9 +41,12 @@ func TestUnitsBecomeCodesWithoutLosingAnything(t *testing.T) {
 		 VALUES ($1, 'Своё', 'мл', 50)`, userID)
 	require.NoError(t, err)
 
+	// Числовых колонок у справочника нет с миграции 082: нормы живут в
+	// nutrient_norms, потому что зависят от пола и возраста. Здесь важна только
+	// единица — её и проверяет миграция 061.
 	_, err = db.ExecContext(ctx,
-		`INSERT INTO nutrient_recommendations (name, category, unit, daily_target)
-		 VALUES ('Витамин D', 'vitamins', 'мкг', 10)`)
+		`INSERT INTO nutrient_recommendations (name, category, unit, source, source_version)
+		 VALUES ('Витамин D (из прошлого)', 'vitamins', 'мкг', 'тест', 'тест')`)
 	require.NoError(t, err)
 
 	// Reconstructing the state before 061: the migrations have all run, so the

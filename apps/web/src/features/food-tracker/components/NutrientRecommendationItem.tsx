@@ -23,8 +23,14 @@ import { unitLabel } from '../utils/unitLabel'
 export interface NutrientRecommendationItemProps {
     /** Nutrient recommendation data */
     recommendation: NutrientRecommendation;
-    /** Current intake amount */
-    currentIntake: number;
+    /**
+     * Потребление, если оно известно.
+     *
+     * Продукт считает потребление только для КБЖУ. Для витаминов и минералов
+     * его нет, и ноль здесь нарисовал бы «0 из 100 мг» — человек прочитал бы
+     * это как «вы не добрали», хотя никто ничего не измерял.
+     */
+    currentIntake?: number;
     /** Callback when item clicked */
     onClick: () => void;
     /** Additional CSS classes */
@@ -73,34 +79,49 @@ export function NutrientRecommendationItem({
     onClick,
     className = '',
 }: NutrientRecommendationItemProps): React.ReactElement {
-    const { name, dailyTarget, unit, isWeekly } = recommendation;
+    const { name, dailyTarget, unit, isWeekly, normNeedsProfile } = recommendation;
 
-    // Calculate progress
+    // Прогресс можно показать только когда известны оба числа. Иначе полоса
+    // росла бы из догадки или из неизвестного.
+    const hasProgress = currentIntake !== undefined && dailyTarget !== undefined;
+
     const percentage = useMemo(
-        () => getPercentage(currentIntake, dailyTarget),
-        [currentIntake, dailyTarget]
+        () => (hasProgress ? getPercentage(currentIntake, dailyTarget) : 0),
+        [hasProgress, currentIntake, dailyTarget]
     );
 
-    // Get progress bar color
-    const progressColor = useMemo(
-        () => getProgressColor(currentIntake, dailyTarget),
-        [currentIntake, dailyTarget]
+    // null — мерить нечего, и полоса не рисуется вовсе.
+    const progressColor = useMemo<ProgressColor | null>(
+        () => (hasProgress ? getProgressColor(currentIntake, dailyTarget) : null),
+        [hasProgress, currentIntake, dailyTarget]
     );
 
-    // Cap progress bar at 100% for display
     const displayPercentage = Math.min(percentage, 100);
 
-    // Format progress text
-    const progressText = `${formatNumber(currentIntake)} / ${formatNumber(dailyTarget)} ${unitLabel(unit)}`;
+    /**
+     * Что показать справа от названия — три разных положения:
+     *
+     *   потребление и норма известны → «45 / 100 мг»;
+     *   известна только норма        → «100 мг» без полосы;
+     *   норму выбрать нельзя         → сказано, чего не хватает.
+     */
+    const valueText = hasProgress
+        ? `${formatNumber(currentIntake)} / ${formatNumber(dailyTarget)} ${unitLabel(unit)}`
+        : dailyTarget !== undefined
+            ? `${formatNumber(dailyTarget)} ${unitLabel(unit)}`
+            : normNeedsProfile
+                ? t('foodTracker.nutrientItem.normNeedsProfile')
+                : t('foodTracker.nutrientItem.normUnknown');
 
-    // Accessibility label
-    const ariaLabel = t('foodTracker.nutrientItem.aria', {
-        name,
-        current: formatNumber(currentIntake),
-        target: formatNumber(dailyTarget),
-        unit: unitLabel(unit),
-        percentage: Math.round(percentage),
-    });
+    const ariaLabel = hasProgress
+        ? t('foodTracker.nutrientItem.aria', {
+            name,
+            current: formatNumber(currentIntake),
+            target: formatNumber(dailyTarget),
+            unit: unitLabel(unit),
+            percentage: Math.round(percentage),
+        })
+        : `${name}. ${valueText}`;
 
     return (
         <button
@@ -123,24 +144,26 @@ export function NutrientRecommendationItem({
                         className="text-[10px] text-gray-500 ml-2 whitespace-nowrap sm:text-sm"
                         aria-hidden="true"
                     >
-                        {progressText}
+                        {valueText}
                     </span>
                 </div>
 
-                {/* Progress bar */}
-                <div
-                    className="h-1 bg-gray-200 rounded-full overflow-hidden sm:h-1.5"
-                    role="progressbar"
-                    aria-valuenow={Math.round(percentage)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={t('foodTracker.nutrientItem.progressAria', { name, percentage: Math.round(percentage) })}
-                >
+                {/* Полоса прогресса — только когда есть что мерить. */}
+                {hasProgress && progressColor && (
                     <div
-                        className={`h-full rounded-full transition-all duration-300 ${getProgressColorClass(progressColor)}`}
-                        style={{ width: `${displayPercentage}%` }}
-                    />
-                </div>
+                        className="h-1 bg-gray-200 rounded-full overflow-hidden sm:h-1.5"
+                        role="progressbar"
+                        aria-valuenow={Math.round(percentage)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={t('foodTracker.nutrientItem.progressAria', { name, percentage: Math.round(percentage) })}
+                    >
+                        <div
+                            className={`h-full rounded-full transition-all duration-300 ${getProgressColorClass(progressColor)}`}
+                            style={{ width: `${displayPercentage}%` }}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Chevron indicator */}

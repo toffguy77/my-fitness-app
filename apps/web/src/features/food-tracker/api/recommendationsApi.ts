@@ -40,12 +40,27 @@ export interface ServerNutrient {
     id: string
     name: string
     category: NutrientCategoryType
-    daily_target: number
     unit: string
     is_weekly: boolean
-    current_intake: number
-    percentage: number
     is_tracked: boolean
+    source: string
+    source_version: string
+
+    /**
+     * Норма и потребление — необязательные, и `null` у каждого значит своё.
+     *
+     * `daily_target === null` — норму нельзя выбрать: она зависит от пола или
+     * возраста, а в профиле их нет. `current_intake === null` — потребление не
+     * считается; ноль здесь выглядел бы как измерение, которого не было.
+     */
+    daily_target: number | null
+    current_intake: number | null
+    percentage: number | null
+    min_value?: number | null
+    optimal_value?: number | null
+    norm_source?: string | null
+    norm_note?: string | null
+    norm_needs_profile: boolean
 }
 
 /** Своя рекомендация, как её отдаёт сервер. Потребления по ней сервер не считает. */
@@ -92,10 +107,17 @@ function toNutrient(server: ServerNutrient, isWeekly: boolean): NutrientRecommen
         id: server.id,
         name: server.name,
         category: server.category,
-        dailyTarget: server.daily_target,
         unit: server.unit,
         isWeekly,
         isCustom: false,
+        // null превращается в отсутствие поля, а не в ноль: дальше по коду
+        // отсутствие означает «неизвестно», и это единственное честное значение.
+        dailyTarget: server.daily_target ?? undefined,
+        minValue: server.min_value ?? undefined,
+        optimalValue: server.optimal_value ?? undefined,
+        normSource: server.norm_source ?? undefined,
+        normNote: server.norm_note ?? undefined,
+        normNeedsProfile: server.norm_needs_profile,
     }
 }
 
@@ -132,7 +154,11 @@ export function toRecommendationsData(
         for (const item of list ?? []) {
             nutrients.push(toNutrient(item, isWeekly))
             if (item.is_tracked) trackedIds.push(item.id)
-            currentIntakes[item.id] = item.current_intake
+            // Неизвестное потребление не попадает в карту вовсе. Запись со
+            // значением 0 была бы неотличима от измеренного нуля.
+            if (item.current_intake !== null && item.current_intake !== undefined) {
+                currentIntakes[item.id] = item.current_intake
+            }
         }
     }
 
@@ -199,13 +225,18 @@ export interface ServerNutrientDetail {
     id: string
     name: string
     unit: string
-    daily_target: number
-    current_intake: number
+    source?: string
+    source_version?: string
+    daily_target: number | null
+    current_intake: number | null
+    min_value?: number | null
+    optimal_value?: number | null
+    norm_source?: string | null
+    norm_note?: string | null
+    norm_needs_profile?: boolean
     description?: string | null
     benefits?: string | null
     effects?: string | null
-    min_recommendation?: number | null
-    optimal_recommendation?: number | null
     sources?: ServerFoodSource[] | null
 }
 
@@ -238,13 +269,16 @@ export function toNutrientDetail(server: ServerNutrientDetail): NutrientDetail {
         id: server.id,
         name: server.name,
         unit: server.unit,
-        dailyTarget: server.daily_target,
-        currentIntake: server.current_intake,
+        dailyTarget: server.daily_target ?? undefined,
+        currentIntake: server.current_intake ?? undefined,
         description: server.description ?? undefined,
         benefits: server.benefits ?? undefined,
         effects: server.effects ?? undefined,
-        minRecommendation: server.min_recommendation ?? undefined,
-        optimalRecommendation: server.optimal_recommendation ?? undefined,
+        minRecommendation: server.min_value ?? undefined,
+        optimalRecommendation: server.optimal_value ?? undefined,
+        normSource: server.norm_source ?? undefined,
+        normNote: server.norm_note ?? undefined,
+        normNeedsProfile: server.norm_needs_profile ?? false,
         sourcesInDiet: (server.sources ?? []).map(toFoodSource),
     }
 }

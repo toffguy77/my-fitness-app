@@ -170,10 +170,25 @@ export interface NutrientRecommendation {
     id: string;
     name: string;
     category: NutrientCategoryType;
-    dailyTarget: number;
     unit: string;
     isWeekly: boolean;
     isCustom: boolean;
+    /**
+     * Суточная норма, если её удалось выбрать.
+     *
+     * Необязательна с миграции 082: норма зависит от пола и возраста, и когда в
+     * профиле их нет, выбрать нельзя. У железа это 10 мг против 18 — любое из
+     * двух чисел, показанное наугад, выглядело бы как ответ, не будучи им.
+     */
+    dailyTarget?: number;
+    /** Границы нормы, если источник задаёт её вилкой (у пищевых волокон 20—25 г). */
+    minValue?: number;
+    optimalValue?: number;
+    /** Откуда норма и чем она объявлена в источнике. */
+    normSource?: string;
+    normNote?: string;
+    /** Норма есть в справочнике, но зависит от того, чего в профиле нет. */
+    normNeedsProfile?: boolean;
 }
 
 /**
@@ -189,13 +204,19 @@ export interface NutrientDetail {
     id: string;
     name: string;
     unit: string;
-    dailyTarget: number;
-    currentIntake: number;
+    /** Норма, если её удалось выбрать под профиль. */
+    dailyTarget?: number;
+    /** Потребление, если продукт его считает. Для микронутриентов — нет. */
+    currentIntake?: number;
     description?: string;
     benefits?: string;
     effects?: string;
     minRecommendation?: number;
     optimalRecommendation?: number;
+    /** Откуда норма и чем она объявлена в источнике. */
+    normSource?: string;
+    normNote?: string;
+    normNeedsProfile?: boolean;
     sourcesInDiet: NutrientFoodSource[];
 }
 

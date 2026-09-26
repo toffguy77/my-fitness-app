@@ -16,7 +16,6 @@ const VITAMIN_C: NutrientRecommendation = {
     id: 'a',
     name: 'Витамин C',
     category: 'vitamins',
-    dailyTarget: 90,
     unit: 'mg',
     isWeekly: false,
     isCustom: false,
@@ -51,12 +50,86 @@ describe('Вкладка рекомендаций: состояния', () => {
         expect(screen.queryByText(/нормы по нутриентам пока не заведены/i)).not.toBeInTheDocument();
     });
 
-    it('объясняет нулевое потребление отсутствием записей о еде', () => {
+    // Две разные причины отсутствия прогресса, и путать их нельзя.
+    it('объясняет нулевое потребление отсутствием записей, когда нутриент измеряется', () => {
         render(
-            <RecommendationsTab recommendations={[VITAMIN_C]} hasEntriesToday={false} />
+            <RecommendationsTab
+                recommendations={[VITAMIN_C]}
+                currentIntakes={{ a: 0 }}
+                hasEntriesToday={false}
+            />
         );
 
         expect(screen.getByText(/за сегодня нет записей о еде/i)).toBeInTheDocument();
+    });
+
+    it('говорит, что потребление не считается, когда его неоткуда взять', () => {
+        render(<RecommendationsTab recommendations={[VITAMIN_C]} hasEntriesToday={false} />);
+
+        expect(screen.getByText(/потребление витаминов и минералов мы пока не считаем/i))
+            .toBeInTheDocument();
+        // Про записи здесь говорить нельзя: они могут быть, а считать по ним
+        // микронутриенты продукт всё равно не умеет.
+        expect(screen.queryByText(/за сегодня нет записей о еде/i)).not.toBeInTheDocument();
+    });
+
+    describe('норма зависит от профиля', () => {
+        const IRON = {
+            id: 'fe',
+            name: 'Железо',
+            category: 'minerals' as const,
+            unit: 'mg',
+            isWeekly: false,
+            isCustom: false,
+            normNeedsProfile: true,
+        };
+
+        // Железа женщине нужно 18 мг, мужчине 10. Любое из двух, показанное
+        // наугад, выглядело бы как ответ.
+        it('просит заполнить профиль вместо числа', () => {
+            render(<RecommendationsTab recommendations={[IRON]} />);
+
+            expect(screen.getByText(/зависят от пола и возраста/i)).toBeInTheDocument();
+            // Пол и дата рождения живут в /settings/body, и ссылка должна вести
+            // именно туда: страницы /settings в App Router нет.
+            expect(screen.getByText('Заполнить профиль')).toHaveAttribute('href', '/settings/body');
+        });
+
+        it('показывает у нутриента причину, а не ноль', () => {
+            render(<RecommendationsTab recommendations={[IRON]} />);
+
+            expect(screen.getByText(/норма зависит от пола и возраста/i)).toBeInTheDocument();
+            expect(screen.queryByText(/^0 /)).not.toBeInTheDocument();
+        });
+
+        it('не просит профиль, когда норма от него не зависит', () => {
+            render(<RecommendationsTab recommendations={[{ ...VITAMIN_C, dailyTarget: 100 }]} />);
+
+            expect(screen.queryByText(/зависят от пола и возраста/i)).not.toBeInTheDocument();
+        });
+    });
+
+    describe('нутриент без измеренного потребления', () => {
+        it('показывает норму без полосы прогресса', () => {
+            const { container } = render(
+                <RecommendationsTab recommendations={[{ ...VITAMIN_C, dailyTarget: 100 }]} />
+            );
+
+            expect(screen.getByText('100 мг')).toBeInTheDocument();
+            expect(container.querySelector('[role="progressbar"]')).toBeNull();
+        });
+
+        it('показывает полосу, когда потребление известно', () => {
+            const { container } = render(
+                <RecommendationsTab
+                    recommendations={[{ ...VITAMIN_C, dailyTarget: 100 }]}
+                    currentIntakes={{ a: 45 }}
+                />
+            );
+
+            expect(screen.getByText('45 / 100 мг')).toBeInTheDocument();
+            expect(container.querySelector('[role="progressbar"]')).not.toBeNull();
+        });
     });
 
     it('молчит про записи, когда не знает про них', () => {
