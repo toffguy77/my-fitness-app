@@ -11,6 +11,7 @@ import type { AdminUser, CuratorLoad } from '../types'
 import toast from 'react-hot-toast'
 
 import { t } from '@/shared/i18n'
+import { useConfirm } from '@/shared/components/ui'
 const ROLE_LABELS: Record<string, string> = {
     client: t('admin.roles.client'),
     coordinator: t('admin.roles.coordinator'),
@@ -27,6 +28,7 @@ export function UserDetail({ userId }: UserDetailProps) {
     const [curators, setCurators] = useState<CuratorLoad[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const { confirm, dialog } = useConfirm()
     const [actionLoading, setActionLoading] = useState(false)
 
     useEffect(() => {
@@ -51,31 +53,33 @@ export function UserDetail({ userId }: UserDetailProps) {
             .finally(() => setLoading(false))
     }, [userId])
 
-    const handleChangeRole = async (newRole: string) => {
+    const handleChangeRole = (newRole: string) => {
         if (!user) return
         if (user.role === newRole) return
 
-        const confirmMsg = newRole === 'client'
-            ? t('admin.user.demoteConfirm')
-            : t('admin.user.promoteConfirm')
+        const demoting = newRole === 'client'
 
-        // Подтверждение перед необратимым действием. Заменить его можно только
-        // своим диалогом — это отдельная работа, а не уборка.
-        // eslint-disable-next-line no-alert -- нужен блокирующий ответ «да/нет»
-        if (!confirm(confirmMsg)) return
-
-        setActionLoading(true)
-        try {
-            await adminApi.changeRole(user.id, newRole)
-            toast.success(t('admin.user.roleChanged'))
-            // Refresh data
-            setUser(await adminApi.getUser(userId))
-            setCurators(await adminApi.getCurators())
-        } catch (err) {
-            toast.error(messageForOr(err, t('admin.user.roleChangeFailed')))
-        } finally {
-            setActionLoading(false)
-        }
+        confirm({
+            title: demoting ? t('admin.user.demoteTitle') : t('admin.user.promoteTitle'),
+            description: demoting
+                ? t('admin.user.demoteConfirm')
+                : t('admin.user.promoteConfirm'),
+            confirmLabel: demoting ? t('admin.user.demoteAction') : t('admin.user.promoteAction'),
+            onConfirm: async () => {
+                setActionLoading(true)
+                try {
+                    await adminApi.changeRole(user.id, newRole)
+                    toast.success(t('admin.user.roleChanged'))
+                    // Refresh data
+                    setUser(await adminApi.getUser(userId))
+                    setCurators(await adminApi.getCurators())
+                } catch (err) {
+                    toast.error(messageForOr(err, t('admin.user.roleChangeFailed')))
+                } finally {
+                    setActionLoading(false)
+                }
+            },
+        })
     }
 
     const handleAssignCurator = async (curatorId: number) => {
@@ -243,6 +247,8 @@ export function UserDetail({ userId }: UserDetailProps) {
                     )}
                 </div>
             )}
+
+            {dialog}
         </div>
     )
 }

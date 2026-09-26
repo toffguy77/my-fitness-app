@@ -9,7 +9,7 @@
  * features/curator/components/__tests__/errorCauses.test.tsx вместе с
  * SupportQueue и LeadList — заявки и поддержка теперь кураторские экраны.
  */
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiError } from '@/shared/errors/apiErrors'
 import { UserDetail } from '../UserDetail'
@@ -50,7 +50,6 @@ const WAIT = { timeout: 1500 }
 
 beforeEach(() => {
     jest.clearAllMocks()
-    window.confirm = jest.fn().mockReturnValue(true)
 })
 
 describe('Карточка пользователя', () => {
@@ -75,6 +74,10 @@ describe('Карточка пользователя', () => {
 
         render(<UserDetail userId={1} />)
         await userEvent.click(await screen.findByRole('button', { name: 'Куратор' }))
+        // Смена роли спрашивает подтверждение своим диалогом.
+        await userEvent.click(
+            within(await screen.findByRole('dialog')).getByRole('button', { name: 'Назначить' }),
+        )
 
         await waitFor(
             () => expect(toast.error).toHaveBeenCalledWith('Действие невозможно в текущем состоянии'),

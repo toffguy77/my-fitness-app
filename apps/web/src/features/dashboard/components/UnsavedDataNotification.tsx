@@ -5,6 +5,7 @@
 
 import { AlertCircle, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
+import { useConfirm } from '@/shared/components/ui';
 import { useUnsavedData } from '../hooks/useUnsavedData';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useState } from 'react';
@@ -24,6 +25,7 @@ export function UnsavedDataNotification() {
     } = useUnsavedData();
     const { updateMetric } = useDashboardStore();
     const [isRetrying, setIsRetrying] = useState(false);
+    const { confirm, dialog } = useConfirm();
 
     // Don't show if no unsaved data
     if (unsavedCount === 0) {
@@ -86,16 +88,12 @@ export function UnsavedDataNotification() {
      * Dismiss notification and clear unsaved data
      */
     const handleDismiss = () => {
-        if (
-            // Подтверждение перед необратимым действием. Заменить его можно только
-            // своим диалогом — это отдельная работа, а не уборка.
-            // eslint-disable-next-line no-alert -- нужен блокирующий ответ «да/нет»
-            window.confirm(
-                t('dashboard.unsaved.discardConfirm')
-            )
-        ) {
-            clearUnsavedData();
-        }
+        confirm({
+            title: t('dashboard.unsaved.discardTitle'),
+            description: t('dashboard.unsaved.discardConfirm'),
+            confirmLabel: t('common.delete'),
+            onConfirm: () => clearUnsavedData(),
+        });
     };
 
     return (
@@ -186,6 +184,8 @@ export function UnsavedDataNotification() {
                     </button>
                 </div>
             </div>
+
+            {dialog}
         </div>
     );
 }

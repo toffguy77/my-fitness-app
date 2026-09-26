@@ -10,6 +10,7 @@ import { PlanForm } from './PlanForm'
 import { t } from '@/shared/i18n'
 import toast from 'react-hot-toast'
 import { messageForOr } from '@/shared/errors/apiErrors'
+import { useConfirm } from '@/shared/components/ui'
 function formatDateRu(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00')
     if (isNaN(d.getTime())) return dateStr
@@ -27,6 +28,7 @@ export function PlanTab({ clientId }: PlanTabProps) {
     const [showForm, setShowForm] = useState(false)
     const [editingPlan, setEditingPlan] = useState<WeeklyPlanView | undefined>()
     const [showHistory, setShowHistory] = useState(false)
+    const { confirm, dialog } = useConfirm()
 
     useEffect(() => {
         let cancelled = false
@@ -117,12 +119,12 @@ export function PlanTab({ clientId }: PlanTabProps) {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    // Подтверждение перед необратимым действием. Заменить его можно только
-                                    // своим диалогом — это отдельная работа, а не уборка.
-                                    // eslint-disable-next-line no-alert -- нужен блокирующий ответ «да/нет»
-                                    if (window.confirm(t('curator.plan.deleteConfirm'))) {
-                                        handleDelete(activePlan.id)
-                                    }
+                                    confirm({
+                                        title: t('curator.plan.deleteConfirm'),
+                                        description: t('curator.plan.deleteDescription'),
+                                        confirmLabel: t('common.delete'),
+                                        onConfirm: () => handleDelete(activePlan.id),
+                                    })
                                 }}
                                 className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                                 aria-label={t('curator.plan.deleteAria')}
@@ -241,6 +243,8 @@ export function PlanTab({ clientId }: PlanTabProps) {
                     onSaved={handleSaved}
                 />
             )}
+
+            {dialog}
         </div>
     )
 }
