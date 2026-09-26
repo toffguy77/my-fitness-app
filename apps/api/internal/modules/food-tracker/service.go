@@ -1825,10 +1825,10 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			continue
 		}
 
-		// Only include tracked nutrients
-		if !isTracked {
-			continue
-		}
+		// Выключенные нутриенты тоже попадают в ответ — с признаком. Экран
+		// настроек иначе не может показать, что человек выключил, а
+		// UpdateNutrientPreferences ждёт от него полный список отслеживаемых.
+		// Отбор «показывать во вкладке» делает клиент.
 
 		// Get actual intake from today's food entries
 		currentIntake := 0.0
@@ -1844,6 +1844,7 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			NutrientRecommendation: rec,
 			CurrentIntake:          currentIntake,
 			Percentage:             percentage,
+			IsTracked:              isTracked,
 		}
 
 		daily[rec.Category] = append(daily[rec.Category], recWithProgress)
@@ -1860,10 +1861,11 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 	// Get weekly recommendations
 	weeklyQuery := `
 		SELECT nr.id, nr.name, nr.category, nr.daily_target, nr.unit, nr.is_weekly,
-		       nr.description, nr.benefits, nr.effects, nr.min_recommendation, nr.optimal_recommendation
+		       nr.description, nr.benefits, nr.effects, nr.min_recommendation, nr.optimal_recommendation,
+		       COALESCE(unp.is_tracked, true) as is_tracked
 		FROM nutrient_recommendations nr
 		LEFT JOIN user_nutrient_preferences unp ON nr.id = unp.nutrient_id AND unp.user_id = $1
-		WHERE nr.is_weekly = true AND COALESCE(unp.is_tracked, true) = true
+		WHERE nr.is_weekly = true
 		ORDER BY nr.name
 	`
 
@@ -1879,6 +1881,7 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 	var weekly []NutrientRecommendationWithProgress
 	for weeklyRows.Next() {
 		var rec NutrientRecommendation
+		var isTracked bool
 		err := weeklyRows.Scan(
 			&rec.ID,
 			&rec.Name,
@@ -1891,6 +1894,7 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			&rec.Effects,
 			&rec.MinRecommendation,
 			&rec.OptimalRecommendation,
+			&isTracked,
 		)
 		if err != nil {
 			s.log.Error("Failed to scan weekly recommendation", "error", err)
@@ -1911,6 +1915,7 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			NutrientRecommendation: rec,
 			CurrentIntake:          currentIntake,
 			Percentage:             percentage,
+			IsTracked:              isTracked,
 		})
 	}
 	if err := weeklyRows.Err(); err != nil {
@@ -2037,6 +2042,14 @@ func (s *Service) GetRecommendationDetail(ctx context.Context, nutrientID string
 }
 
 // UpdateNutrientPreferences updates user's nutrient tracking preferences
+//
+// Состояние записывается по всему справочнику, а не только по присланным
+// нутриентам. Раньше сброс трогал лишь существующие строки, а нутриент без
+// строки читался как отслеживаемый (COALESCE(unp.is_tracked, true)) — то есть у
+// человека, ни разу не менявшего настройки, первая снятая галочка не
+// сохранялась: сбрасывать было нечего, вставлялось только выбранное, и при
+// следующем чтении нутриент снова оказывался отслеживаемым.
+//
 // Requirements: 13.1, 13.3, 13.4, 13.6, 13.7
 func (s *Service) UpdateNutrientPreferences(ctx context.Context, userID int64, nutrientIDs []string) error {
 	startTime := time.Now()
@@ -2048,52 +2061,32 @@ func (s *Service) UpdateNutrientPreferences(ctx context.Context, userID int64, n
 		}
 	}
 
-	// Start transaction
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("ошибка при начале транзакции: %w", err)
+	// Пустой список — законное состояние: человек выключил всё. Отдельной ветки
+	// не нужно, пустой массив даёт is_tracked = false по всему справочнику.
+	if nutrientIDs == nil {
+		nutrientIDs = []string{}
 	}
-	defer tx.Rollback()
 
-	// First, set all preferences to not tracked
-	resetQuery := `
-		UPDATE user_nutrient_preferences
-		SET is_tracked = false
-		WHERE user_id = $1
+	query := `
+		INSERT INTO user_nutrient_preferences (user_id, nutrient_id, is_tracked)
+		SELECT $1, nr.id, nr.id = ANY($2::uuid[])
+		FROM nutrient_recommendations nr
+		ON CONFLICT (user_id, nutrient_id) DO UPDATE
+		SET is_tracked = EXCLUDED.is_tracked
 	`
-	_, err = tx.ExecContext(ctx, resetQuery, userID)
-	if err != nil {
-		s.log.LogDatabaseQuery(resetQuery, time.Since(startTime), err, map[string]interface{}{
-			"user_id": userID,
+
+	if _, err := s.db.ExecContext(ctx, query, userID, nutrientIDs); err != nil {
+		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
+			"user_id":       userID,
+			"nutrients_set": len(nutrientIDs),
 		})
-		return fmt.Errorf("ошибка при сбросе настроек: %w", err)
+		return fmt.Errorf("ошибка при обновлении настроек: %w", err)
 	}
 
-	// Then, upsert preferences for selected nutrients
-	if len(nutrientIDs) > 0 {
-		upsertQuery := `
-			INSERT INTO user_nutrient_preferences (user_id, nutrient_id, is_tracked)
-			VALUES ($1, $2, true)
-			ON CONFLICT (user_id, nutrient_id) DO UPDATE
-			SET is_tracked = true
-		`
-
-		for _, nutrientID := range nutrientIDs {
-			_, err = tx.ExecContext(ctx, upsertQuery, userID, nutrientID)
-			if err != nil {
-				s.log.LogDatabaseQuery(upsertQuery, time.Since(startTime), err, map[string]interface{}{
-					"user_id":     userID,
-					"nutrient_id": nutrientID,
-				})
-				return fmt.Errorf("ошибка при обновлении настроек: %w", err)
-			}
-		}
-	}
-
-	// Commit transaction
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("ошибка при сохранении настроек: %w", err)
-	}
+	s.log.LogDatabaseQuery(query, time.Since(startTime), nil, map[string]interface{}{
+		"user_id":       userID,
+		"nutrients_set": len(nutrientIDs),
+	})
 
 	s.log.LogBusinessEvent("nutrient_preferences_updated", map[string]interface{}{
 		"user_id":       userID,

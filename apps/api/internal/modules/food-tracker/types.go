@@ -793,10 +793,16 @@ type GetRecommendationsResponse struct {
 }
 
 // NutrientRecommendationWithProgress represents a recommendation with current progress
+//
+// IsTracked приходит по каждому нутриенту, включая выключенные: экран настроек
+// собирает из этого текущее состояние переключателей, а
+// PUT /recommendations/preferences ждёт от него полный список отслеживаемых.
+// Отбор «показывать во вкладке» делает клиент.
 type NutrientRecommendationWithProgress struct {
 	NutrientRecommendation
 	CurrentIntake float64 `json:"current_intake"`
 	Percentage    float64 `json:"percentage"`
+	IsTracked     bool    `json:"is_tracked"`
 }
 
 // NutrientDetailResponse represents the response for getting nutrient details

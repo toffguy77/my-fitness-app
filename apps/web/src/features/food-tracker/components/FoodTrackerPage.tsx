@@ -15,9 +15,13 @@ import { DatePicker } from './DatePicker';
 import { FoodTrackerTabs } from './FoodTrackerTabs';
 import { DietTab } from './DietTab';
 import { RecommendationsTab } from './RecommendationsTab';
+import { ConfigureNutrientsModal } from './ConfigureNutrientsModal';
+import { AddCustomRecommendationForm } from './AddCustomRecommendationForm';
+import { NutrientDetailPanel } from './NutrientDetailPanel';
 import { useFoodTracker } from '../hooks/useFoodTracker';
+import { useRecommendations } from '../hooks/useRecommendations';
 import { formatLocalDate } from '@/shared/utils/format';
-import type { FoodTrackerTab } from '../types';
+import type { CustomRecommendation, FoodTrackerTab, NutrientRecommendation } from '../types';
 import { t } from '@/shared/i18n';
 
 // ============================================================================
@@ -64,6 +68,47 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
     const handleTabChange = useCallback((tab: FoodTrackerTab) => {
         setActiveTab(tab);
     }, []);
+
+    // ------------------------------------------------------------------
+    // Рекомендации
+    //
+    // Вкладка загружается только когда её открыли: до этого изменения она
+    // монтировалась без единого пропса и не звала сервер вовсе.
+    // ------------------------------------------------------------------
+    const recommendations = useRecommendations({ enabled: activeTab === 'recommendations' });
+    const [isConfigureOpen, setIsConfigureOpen] = useState(false);
+    const [isAddCustomOpen, setIsAddCustomOpen] = useState(false);
+    const [openNutrient, setOpenNutrient] = useState<NutrientRecommendation | null>(null);
+
+    const handleSavePreferences = useCallback(
+        (nutrientIds: string[]) => {
+            void (async () => {
+                // Экран закрывается только после успеха: закрыть раньше значило
+                // бы показать выбор, которого на сервере нет.
+                const saved = await recommendations.savePreferences(nutrientIds);
+                if (saved) setIsConfigureOpen(false);
+            })();
+        },
+        [recommendations]
+    );
+
+    const handleAddCustom = useCallback(
+        (recommendation: Omit<CustomRecommendation, 'id' | 'currentIntake'>) => {
+            void (async () => {
+                const added = await recommendations.addCustomRecommendation(recommendation);
+                if (added) setIsAddCustomOpen(false);
+            })();
+        },
+        [recommendations]
+    );
+
+    // Потребление сервер считает за сегодня, а не за выбранный день. Для
+    // другого дня мы не знаем, есть ли записи за сегодня, и не делаем вид, что
+    // знаем.
+    const today = formatLocalDate(new Date());
+    const showsToday = formatLocalDate(selectedDate) === today;
+    // entries разложены по приёмам пищи, а не списком.
+    const hasEntries = Object.values(entries).some((meal) => meal.length > 0);
 
     return (
         <div className={`bg-gray-50 ${className}`}>
@@ -113,7 +158,20 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                     )}
 
                     {activeTab === 'recommendations' && (
-                        <RecommendationsTab />
+                        <RecommendationsTab
+                            recommendations={recommendations.trackedNutrients}
+                            customRecommendations={recommendations.customRecommendations}
+                            currentIntakes={recommendations.currentIntakes}
+                            isLoading={recommendations.isLoading}
+                            catalogueEmpty={recommendations.catalogueEmpty}
+                            hasEntriesToday={showsToday ? hasEntries : undefined}
+                            showsOtherDay={!showsToday}
+                            error={recommendations.error}
+                            onRetry={recommendations.reload}
+                            onConfigureClick={() => setIsConfigureOpen(true)}
+                            onAddRecommendationClick={() => setIsAddCustomOpen(true)}
+                            onRecommendationClick={setOpenNutrient}
+                        />
                     )}
                 </div>
 
@@ -142,6 +200,50 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                 )}
             </div>
 
+            {/* Настройка отслеживаемых нутриентов. Показываются все, выбранными —
+                те, что пришли отслеживаемыми. */}
+            <ConfigureNutrientsModal
+                isOpen={isConfigureOpen}
+                nutrients={recommendations.nutrients}
+                selectedIds={recommendations.trackedIds}
+                onClose={() => setIsConfigureOpen(false)}
+                onSave={handleSavePreferences}
+            />
+
+            <AddCustomRecommendationForm
+                isOpen={isAddCustomOpen}
+                onClose={() => setIsAddCustomOpen(false)}
+                onAdd={handleAddCustom}
+            />
+
+            {openNutrient && (
+                <NutrientDetailPanel
+                    nutrientId={openNutrient.id}
+                    nutrientName={openNutrient.name}
+                    onClose={() => setOpenNutrient(null)}
+                />
+            )}
+
+            {/* Сохранение или добавление не удалось: прежнее состояние осталось видимым. */}
+            {recommendations.actionError && (
+                <div
+                    className="fixed bottom-20 left-3 right-3 max-w-sm mx-auto bg-red-50 border border-red-200 rounded-lg p-3 shadow-lg sm:left-4 sm:right-4 sm:max-w-md sm:p-4 z-40"
+                    role="alert"
+                    aria-live="assertive"
+                >
+                    <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs text-red-800 sm:text-sm">{recommendations.actionError}</p>
+                        <button
+                            type="button"
+                            onClick={recommendations.clearActionError}
+                            className="text-red-500 hover:text-red-700 p-1 -m-1 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
+                            aria-label={t('foodTracker.page.dismissError')}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

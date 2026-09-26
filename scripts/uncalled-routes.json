@@ -1,0 +1,45 @@
+[
+  {
+    "route": "GET /health",
+    "reason": "Проба живости. Её зовут Traefik и Dokploy, браузеру она не нужна."
+  },
+  {
+    "route": "GET /ready",
+    "reason": "Проба готовности: та же роль, тот же вызывающий."
+  },
+  {
+    "route": "GET /ws",
+    "reason": "Открывается как WebSocket, а не запросом: apps/web/src/features/chat/components/WebSocketProvider.tsx собирает адрес из протокола и хоста, поэтому литерала /api/... в коде нет."
+  },
+  {
+    "route": "GET /api/v1/auth/oauth/:provider/callback",
+    "reason": "Сюда браузер приводит внешний провайдер после согласия. Адрес знает провайдер, а не наш код."
+  },
+  {
+    "route": "POST /api/v1/public/support/telegram",
+    "reason": "Вебхук Telegram. Зовёт его Telegram."
+  },
+  {
+    "route": "GET /api/v1/public/leads/unsubscribe",
+    "reason": "Ссылка из письма: человек открывает её из почты, а не со страницы."
+  },
+  {
+    "route": "GET /api/v1/logs/stats",
+    "reason": "Сводка журналов для super_admin. Экрана у неё нет намеренно — её смотрят при разборе происшествия, руками."
+  },
+  {
+    "route": "POST /api/v1/food-tracker/favorites/:foodId",
+    "reason": "Добавить в избранное из интерфейса нельзя: кнопки нет. Список избранного показывается (GET /food-tracker/favorites), но положить в него нечего, поэтому он всегда пуст.",
+    "defect": "openspec/changes/server-only-features/proposal.md"
+  },
+  {
+    "route": "DELETE /api/v1/food-tracker/favorites/:foodId",
+    "reason": "Убрать из избранного тоже неоткуда — та же половина функции, что и добавление.",
+    "defect": "openspec/changes/server-only-features/proposal.md"
+  },
+  {
+    "route": "POST /api/v1/content/articles/upload",
+    "reason": "Загрузка статьи markdown-файлом: обработчик UploadMarkdownFile написан, в редакторе такой возможности нет.",
+    "defect": "openspec/changes/server-only-features/proposal.md"
+  }
+]
