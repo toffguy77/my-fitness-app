@@ -117,6 +117,9 @@ export function PlanTab({ clientId }: PlanTabProps) {
                             <button
                                 type="button"
                                 onClick={() => {
+                                    // Подтверждение перед необратимым действием. Заменить его можно только
+                                    // своим диалогом — это отдельная работа, а не уборка.
+                                    // eslint-disable-next-line no-alert -- нужен блокирующий ответ «да/нет»
                                     if (window.confirm(t('curator.plan.deleteConfirm'))) {
                                         handleDelete(activePlan.id)
                                     }
