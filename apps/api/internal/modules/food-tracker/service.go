@@ -764,6 +764,25 @@ func (s *Service) getFoodItemByID(ctx context.Context, foodID string) (*FoodItem
 	return &item, nil
 }
 
+// favoriteFoodID переводит идентификатор из поиска в идентификатор food_items.
+//
+// UUID возвращается как есть. Числовой идентификатор — это строка таблицы
+// products, и её надо перенести в food_items, потому что избранное ссылается
+// именно туда. Перенос делает ensureFoodItemExists, и он идемпотентен:
+// идентификатор считается от номера продукта, так что один продукт всегда даёт
+// одну строку.
+func (s *Service) favoriteFoodID(ctx context.Context, foodID string) (string, error) {
+	if _, err := uuid.Parse(foodID); err == nil {
+		return foodID, nil
+	}
+
+	item, err := s.getFoodItemByID(ctx, foodID)
+	if err != nil {
+		return "", fmt.Errorf("неверный формат идентификатора продукта")
+	}
+	return s.ensureFoodItemExists(ctx, foodID, item)
+}
+
 // ensureFoodItemExists ensures the food item exists in food_items table.
 // For products table items (non-UUID IDs), copies them to food_items with a deterministic UUID.
 // Returns the food_items UUID to use for food_entries.
@@ -1514,22 +1533,26 @@ func (s *Service) GetFavoriteFoods(ctx context.Context, userID int64, limit int)
 func (s *Service) AddToFavorites(ctx context.Context, userID int64, foodID string) error {
 	startTime := time.Now()
 
-	// Validate food ID
-	if _, err := uuid.Parse(foodID); err != nil {
-		return fmt.Errorf("неверный формат идентификатора продукта")
+	// Поиск объединяет три таблицы, и у products идентификаторы числовые, а
+	// user_favorite_foods.food_id — UUID со ссылкой на food_items. Поэтому
+	// продукт сначала переводится в food_items тем же способом, которым это
+	// делает запись в дневник: иначе половину найденного отметить нельзя. Для
+	// запроса «молоко» это 15 строк из 20, и первая из них — первая же в выдаче.
+	foodItemID, err := s.favoriteFoodID(ctx, foodID)
+	if err != nil {
+		return err
 	}
 
 	query := `
-		INSERT INTO user_favorite_foods (user_id, food_id, added_at)
+		INSERT INTO user_favorite_foods (user_id, food_id, created_at)
 		VALUES ($1, $2, NOW())
 		ON CONFLICT (user_id, food_id) DO NOTHING
 	`
 
-	_, err := s.db.ExecContext(ctx, query, userID, foodID)
-	if err != nil {
+	if _, err := s.db.ExecContext(ctx, query, userID, foodItemID); err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
 			"user_id": userID,
-			"food_id": foodID,
+			"food_id": foodItemID,
 		})
 		return fmt.Errorf("ошибка при добавлении в избранное: %w", err)
 	}
@@ -1551,9 +1574,12 @@ func (s *Service) AddToFavorites(ctx context.Context, userID int64, foodID strin
 func (s *Service) RemoveFromFavorites(ctx context.Context, userID int64, foodID string) error {
 	startTime := time.Now()
 
-	// Validate food ID
-	if _, err := uuid.Parse(foodID); err != nil {
-		return fmt.Errorf("неверный формат идентификатора продукта")
+	// Тот же перевод, что и при добавлении: человек снимает отметку с той же
+	// строки поиска, с которой её поставил, и приходит тот же числовой
+	// идентификатор.
+	foodItemID, err := s.favoriteFoodID(ctx, foodID)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -1561,7 +1587,7 @@ func (s *Service) RemoveFromFavorites(ctx context.Context, userID int64, foodID 
 		WHERE user_id = $1 AND food_id = $2
 	`
 
-	result, err := s.db.ExecContext(ctx, query, userID, foodID)
+	result, err := s.db.ExecContext(ctx, query, userID, foodItemID)
 	if err != nil {
 		s.log.LogDatabaseQuery(query, time.Since(startTime), err, map[string]interface{}{
 			"user_id": userID,

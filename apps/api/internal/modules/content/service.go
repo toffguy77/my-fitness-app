@@ -45,7 +45,6 @@ type ServiceInterface interface {
 	ScheduleArticle(ctx context.Context, authorID int64, articleID string, req ScheduleArticleRequest, isAdmin bool) error
 	UnpublishArticle(ctx context.Context, authorID int64, articleID string, isAdmin bool) error
 	UploadMedia(ctx context.Context, authorID int64, articleID string, file *multipart.FileHeader, isAdmin bool) (string, error)
-	UploadMarkdownFile(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error)
 	UploadCoverImage(ctx context.Context, file *multipart.FileHeader) (string, error)
 
 	// Client operations
@@ -837,43 +836,6 @@ func (s *Service) UploadCoverImage(ctx context.Context, file *multipart.FileHead
 	}
 
 	return url, nil
-}
-
-// UploadMarkdownFile reads a .md file, creates an article, and uploads the body to S3.
-func (s *Service) UploadMarkdownFile(ctx context.Context, authorID int64, file *multipart.FileHeader, req CreateArticleRequest) (*Article, error) {
-	if err := s.requireS3(); err != nil {
-		return nil, err
-	}
-	src, err := file.Open()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open markdown file: %w", err)
-	}
-	defer src.Close()
-
-	mdContent, err := io.ReadAll(src)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read markdown file: %w", err)
-	}
-
-	// Create article record
-	article, err := s.CreateArticle(ctx, authorID, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create article from markdown: %w", err)
-	}
-
-	// Upload body to S3
-	s3Key := fmt.Sprintf("content/%s/body.md", article.ID)
-	_, err = s.s3.UploadFile(ctx, s3Key, bytes.NewReader(mdContent), "text/markdown", int64(len(mdContent)))
-	if err != nil {
-		s.log.Error("Failed to upload markdown body to S3", "error", err, "article_id", article.ID)
-		// Clean up: delete the article row since we couldn't upload the body
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM articles WHERE id = $1`, article.ID)
-		return nil, fmt.Errorf("failed to upload markdown body: %w", err)
-	}
-
-	s.log.Info("Markdown file uploaded and article created", "article_id", article.ID, "filename", file.Filename)
-
-	return article, nil
 }
 
 // GetFeed returns published articles visible to a client.

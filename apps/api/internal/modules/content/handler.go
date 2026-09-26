@@ -384,45 +384,6 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"url": url})
 }
 
-// UploadMarkdownFile handles POST /api/v1/content/articles/upload
-func (h *Handler) UploadMarkdownFile(c *gin.Context) {
-	userID, ok := h.getUserID(c)
-	if !ok {
-		return
-	}
-
-	file, err := c.FormFile("file")
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "Файл не загружен")
-		return
-	}
-
-	// Read metadata from form fields
-	req := CreateArticleRequest{
-		Title:         c.PostForm("title"),
-		Excerpt:       c.PostForm("excerpt"),
-		Category:      c.PostForm("category"),
-		AudienceScope: c.PostForm("audience_scope"),
-	}
-
-	if req.Title == "" || req.Category == "" || req.AudienceScope == "" {
-		response.Error(c, http.StatusBadRequest, "Необходимо указать title, category и audience_scope")
-		return
-	}
-
-	article, err := h.service.UploadMarkdownFile(c.Request.Context(), userID, file, req)
-	if err != nil {
-		h.log.Error("Failed to upload markdown file", "error", err, "user_id", userID)
-		if h.refuseBadMedia(c, err) {
-			return
-		}
-		response.InternalError(c, "Не удалось загрузить markdown файл")
-		return
-	}
-
-	response.Success(c, http.StatusCreated, article)
-}
-
 // refuseBadMedia answers a rejected upload, or reports that it did not.
 //
 // Отказ обязан объяснять, что делать. Снимок с iPhone получал здесь

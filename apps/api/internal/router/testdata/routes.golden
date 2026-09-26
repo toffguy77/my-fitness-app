@@ -103,7 +103,6 @@ POST /api/v1/content/articles/:id/publish
 POST /api/v1/content/articles/:id/schedule
 POST /api/v1/content/articles/:id/unpublish
 POST /api/v1/content/articles/cover
-POST /api/v1/content/articles/upload
 POST /api/v1/conversations/:id/messages
 POST /api/v1/conversations/:id/messages/:msgId/food-entry
 POST /api/v1/conversations/:id/read
