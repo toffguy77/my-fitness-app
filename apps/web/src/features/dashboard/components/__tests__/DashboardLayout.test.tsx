@@ -1,5 +1,6 @@
 import { render, waitFor, act } from '@testing-library/react'
 import { DashboardLayout } from '../DashboardLayout'
+import { useNotificationsStore } from '@/features/notifications'
 
 // Mock Next.js router
 const mockPush = jest.fn()
@@ -24,6 +25,11 @@ jest.mock('@/features/notifications', () => ({
         stopPolling: mockStopPolling,
     })),
 }))
+
+// The import above points at the mock: jest.mock is hoisted above it.
+const mockUseNotificationsStore = useNotificationsStore as jest.MockedFunction<
+    typeof useNotificationsStore
+>
 
 describe('DashboardLayout', () => {
     beforeEach(() => {
@@ -292,8 +298,7 @@ describe('DashboardLayout', () => {
         })
 
         it('should handle zero unread counts', () => {
-            const useNotificationsStore = require('@/features/notifications').useNotificationsStore
-            useNotificationsStore.mockImplementation(() => ({
+            mockUseNotificationsStore.mockImplementation(() => ({
                 unreadCounts: { main: 0, content: 0 },
                 fetchUnreadCounts: mockFetchUnreadCounts,
                 startPolling: mockStartPolling,

@@ -12,6 +12,8 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FoodEntryModal } from '../FoodEntryModal';
+import { apiClient } from '@/shared/utils/api-client';
+import toast from 'react-hot-toast';
 import { FoodEntry, MealType } from '../../types';
 // Type-only imports of the modules being mocked: erased at runtime, so the
 // mocks stay mocks, and a prop renamed in the real component breaks the stand-in
@@ -22,6 +24,11 @@ import type { PortionSelectorProps } from '../PortionSelector';
 import type { SearchTabProps } from '../SearchTab';
 import type { FoodTrackerStore } from '../../store/types';
 import { foodTrackerStoreValue } from '../../testing/storeValue';
+
+// Both modules are mocked below; the static imports above point at the mocks,
+// because jest.mock is hoisted above them.
+const mockApiPost = apiClient.post as jest.MockedFunction<typeof apiClient.post>;
+const mockToast = toast as jest.Mocked<typeof toast>;
 
 // ============================================================================
 // Mocks
@@ -673,8 +680,6 @@ describe('FoodEntryModal Branch Coverage', () => {
 
         it('calls API to clone food when bookmark is clicked', async () => {
             const user = userEvent.setup();
-            const { apiClient } = require('@/shared/utils/api-client');
-            const toast = require('react-hot-toast').default;
 
             render(
                 <FoodEntryModal isOpen={true} onClose={jest.fn()} />
@@ -684,16 +689,14 @@ describe('FoodEntryModal Branch Coverage', () => {
             await user.click(screen.getByLabelText('Сохранить как свой'));
 
             await waitFor(() => {
-                expect(apiClient.post).toHaveBeenCalled();
-                expect(toast.success).toHaveBeenCalledWith('Продукт сохранён');
+                expect(mockApiPost).toHaveBeenCalled();
+                expect(mockToast.success).toHaveBeenCalledWith('Продукт сохранён');
             });
         });
 
         it('shows error toast when clone fails', async () => {
             const user = userEvent.setup();
-            const { apiClient } = require('@/shared/utils/api-client');
-            const toast = require('react-hot-toast').default;
-            apiClient.post.mockRejectedValueOnce(new Error('Clone failed'));
+            mockApiPost.mockRejectedValueOnce(new Error('Clone failed'));
 
             render(
                 <FoodEntryModal isOpen={true} onClose={jest.fn()} />
@@ -703,7 +706,7 @@ describe('FoodEntryModal Branch Coverage', () => {
             await user.click(screen.getByLabelText('Сохранить как свой'));
 
             await waitFor(() => {
-                expect(toast.error).toHaveBeenCalledWith('Не удалось сохранить продукт');
+                expect(mockToast.error).toHaveBeenCalledWith('Не удалось сохранить продукт');
             });
         });
     });

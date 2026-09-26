@@ -7,6 +7,7 @@ import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OfflineIndicator } from '../OfflineIndicator';
 import { useDashboardStore } from '../../store/dashboardStore';
+import { getQueueSize } from '../../utils/offlineQueue';
 import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the dashboard store
@@ -20,6 +21,7 @@ jest.mock('../../utils/offlineQueue', () => ({
 }));
 
 const mockUseDashboardStore = useDashboardStore as jest.MockedFunction<typeof useDashboardStore>;
+const mockGetQueueSize = getQueueSize as jest.MockedFunction<typeof getQueueSize>;
 
 describe('OfflineIndicator', () => {
     const mockSyncWhenOnline = jest.fn();
@@ -33,9 +35,7 @@ describe('OfflineIndicator', () => {
             syncWhenOnline: mockSyncWhenOnline,
         }));
 
-        // Mock getQueueSize
-        const { getQueueSize } = require('../../utils/offlineQueue');
-        getQueueSize.mockReturnValue(0);
+        mockGetQueueSize.mockReturnValue(0);
     });
 
     afterEach(() => {
@@ -61,8 +61,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should render when online but has pending changes', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(3);
+            mockGetQueueSize.mockReturnValue(3);
 
             render(<OfflineIndicator />);
 
@@ -96,8 +95,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should show pending changes count when offline', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(5);
+            mockGetQueueSize.mockReturnValue(5);
 
             render(<OfflineIndicator />);
 
@@ -109,8 +107,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should show singular form for 1 change', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(1);
+            mockGetQueueSize.mockReturnValue(1);
 
             render(<OfflineIndicator />);
 
@@ -129,8 +126,7 @@ describe('OfflineIndicator', () => {
 
     describe('Online state with pending changes', () => {
         beforeEach(() => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(3);
+            mockGetQueueSize.mockReturnValue(3);
         });
 
         it('should display online icon', () => {
@@ -216,8 +212,7 @@ describe('OfflineIndicator', () => {
 
     describe('Queue size updates', () => {
         it('should update queue size periodically', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(2);
+            mockGetQueueSize.mockReturnValue(2);
 
             render(<OfflineIndicator />);
 
@@ -228,7 +223,7 @@ describe('OfflineIndicator', () => {
             expect(screen.getByText(/Синхронизация \(2\)/)).toBeInTheDocument();
 
             // Update queue size
-            getQueueSize.mockReturnValue(5);
+            mockGetQueueSize.mockReturnValue(5);
 
             act(() => {
                 jest.advanceTimersByTime(1000);
@@ -238,8 +233,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should hide indicator when queue becomes empty', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(2);
+            mockGetQueueSize.mockReturnValue(2);
 
             const { container } = render(<OfflineIndicator />);
 
@@ -250,7 +244,7 @@ describe('OfflineIndicator', () => {
             expect(screen.getByRole('status')).toBeInTheDocument();
 
             // Clear queue
-            getQueueSize.mockReturnValue(0);
+            mockGetQueueSize.mockReturnValue(0);
 
             act(() => {
                 jest.advanceTimersByTime(1000);
@@ -294,8 +288,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should have aria-label on sync button', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(3);
+            mockGetQueueSize.mockReturnValue(3);
 
             render(<OfflineIndicator />);
 
