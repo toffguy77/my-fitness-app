@@ -80,14 +80,28 @@ Follows a **handler/service pattern** organized by domain module.
   - `email/` — SMTP service
   - `storage/` — S3 (Yandex Cloud) integration
   - `response/` — Standardized API response helpers
-- `migrations/` — SQL migration files (numbered up/down pairs)
+- `migrations/` — SQL migration files (numbered up/down pairs), applied at
+  startup by `internal/shared/database/migrator.go`
+
+**Before adding a migration, check which numbers the target database already
+holds** — not just which files the branch has. `dev` and production run ahead of
+any one branch, and the migrator matches on version number alone: a version
+already in `schema_migrations` counts as applied whatever its name. A clash
+means the migration silently does not run, the service starts normally, and the
+first query against the new columns answers `500`. This is how `073`–`075` of
+the Metrika work were nearly shipped dead.
 
 ### Key Technical Details
 - React Compiler is enabled (`reactCompiler: true` in `apps/web/next.config.ts` — the only Next.js config; there is no root-level one)
 - Frontend runs on port **3069**, backend on port **4000**
 - Next.js standalone output mode for containerized deployment
-- API proxied through Next.js rewrites in production
-- Jest uses `jest-environment-jsdom` with MSW for API mocking
+- In production Traefik routes by path; Next rewrites are **not** the mechanism
+  (they drop `Set-Cookie` — see the routing section below)
+- Jest uses `jest-environment-jsdom`. MSW is **disabled** in `apps/web/jest.setup.js`
+  (ESM incompatibility); each test stubs its own transport. `jest.setup.js` refuses
+  any unmocked network call by name — an unmocked `fetch` used to reach the real
+  network through jsdom's `XMLHttpRequest` and failed two food-tracker tests with a
+  TLS error naming neither the request nor its caller
 - Coverage thresholds: branches 79%, functions 85%, lines 87%, statements 84%
 - Husky pre-commit hooks run linting and type checks
 - Commit messages follow conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
@@ -101,7 +115,7 @@ Follows a **handler/service pattern** organized by domain module.
 
 ### Infrastructure (Terraform + Yandex Cloud)
 - Terraform config in `infra/`, uses **workspaces** (`dev`, `prod`) with separate `.tfvars`
-- Yandex Cloud CLI: `/Users/thatguy/yc`
+- Yandex Cloud CLI: `~/yc`
 - State backend: S3 bucket `burcev-terraform-state`
 - Manages: service accounts, S3 access keys, IAM bindings, PostgreSQL users/databases
 - Secrets (credentials, passwords) are in `.claude/CLAUDE.local.md` (local only, not in git)

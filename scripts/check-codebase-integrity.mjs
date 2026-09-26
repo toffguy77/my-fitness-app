@@ -260,6 +260,42 @@ for (const name of unsent) {
     )
 }
 
+// --- Конвейер аналитики обязан быть замкнут ------------------------------
+//
+// Правило выше следит, чтобы объявленное событие кто-то отправлял. Но событий
+// мало: воронку склеивает `analytics_identities`, а заполняет её единственный
+// запрос — POST /api/v1/analytics/identify.
+//
+// 2026-09-26 таблица на проде была пуста. Обработчик написан, маршрут
+// зарегистрирован, защищён — а звать его никто не звал, и перехода
+// «аноним → зарегистрировался» не существовало в данных вовсе. Со стороны это
+// выглядело как «никто не регистрируется», то есть как продуктовый факт.
+//
+// check-api-contract.mjs это пропускает по устройству: он проверяет обратное
+// направление — что путь, который зовёт фронтенд, есть на сервере. Маршрут,
+// которого не зовёт никто, мимо него проходит.
+//
+// Проверка узкая намеренно. Общее правило «у каждого маршрута есть вызывающий»
+// требует разбора двух десятков случаев, где отсутствие вызова законно —
+// вебхуки, /health, служебные пути, — и без этого разбора оно либо шумит, либо
+// маскирует. Здесь же цена пропуска высока и известна.
+const analyticsRoutes = [
+    '/api/v1/analytics/identify',
+    '/api/v1/public/analytics/events',
+]
+
+for (const route of analyticsRoutes) {
+    const withoutPrefix = route.replace('/api/v1', '')
+    if (!productionWebText.includes(route) && !productionWebText.includes(withoutPrefix)) {
+        problems.push(
+            `Analytics route nobody calls: ${route}\n` +
+                `  The handler exists and the route is registered, but no frontend code\n` +
+                `  reaches it — so the table it fills stays empty and the gap reads as a\n` +
+                `  product fact rather than a defect.`,
+        )
+    }
+}
+
 // Переменная, которую читает сервер, должна доходить до контейнера.
 //
 // Dokploy хранит переменные окружения у себя, а docker-compose передаёт в
