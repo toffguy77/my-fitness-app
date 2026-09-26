@@ -82,24 +82,30 @@ export default function DashboardPage() {
 
     // The profile carries the avatar and the display name; the identity itself
     // comes from the session above.
+    //
+    // Both effects below key off the id rather than the whole user: the cache
+    // paints the first frame and the server settles it, which replaces the
+    // object with an equal one, and a dependency on the object would fetch the
+    // profile and the history again every time that happens.
+    const userId = userData?.id
     const [profileName, setProfileName] = useState<string | undefined>(undefined)
     useEffect(() => {
-        if (!userData) return
+        if (!userId) return
         getProfile()
             .then((profile) => {
                 if (profile.avatar_url) setAvatarUrl(profile.avatar_url)
                 if (profile.name) setProfileName(profile.name)
             })
             .catch(() => {})
-    }, [userData?.id])
+    }, [userId])
 
     // Fetch KBJU weekly history (re-fetch after metric saves via targetsVersion)
     useEffect(() => {
-        if (!userData) return
+        if (!userId) return
         getHistory(7)
             .then(res => setKbjuHistory(res.days))
             .catch(() => {})
-    }, [userData?.id, targetsVersion])
+    }, [userId, targetsVersion])
 
     // Fetch dashboard data on mount
     useEffect(() => {

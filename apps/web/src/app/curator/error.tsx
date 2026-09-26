@@ -14,6 +14,11 @@ export default function SegmentError({
 }) {
     // Derived during render so the effect only reports; setting state inside
     // the effect would trigger a cascading re-render.
+    // A new id for a new error: the dependency is the error's identity, not
+    // anything the callback reads, which is why the rule calls it unnecessary.
+    // A second failure inside the same boundary is a separate incident and gets
+    // its own id to report.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `error` is the key, deliberately
     const errorId = useMemo(() => generateErrorId(), [error])
 
     useEffect(() => {

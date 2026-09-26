@@ -103,13 +103,17 @@ export function useAutoMarkAsRead(
             threshold: 0.5, // 50% visible
         });
 
-        // Observe all notification elements
+        // Observe all notification elements. The map is captured here rather
+        // than read in the cleanup: by the time cleanup runs, the ref may point
+        // at a different map, and the one this effect filled would be left as it
+        // was.
+        const observedElements = elementRefsRef.current;
         const elements = document.querySelectorAll('[data-notification-id]');
         elements.forEach((element) => {
             const notificationId = element.getAttribute('data-notification-id');
             if (notificationId) {
                 observerRef.current?.observe(element);
-                elementRefsRef.current.set(notificationId, element);
+                observedElements.set(notificationId, element);
             }
         });
 
@@ -120,7 +124,7 @@ export function useAutoMarkAsRead(
                 observerRef.current = null;
             }
             clearAllTimeouts();
-            elementRefsRef.current.clear();
+            observedElements.clear();
         };
     }, [notifications, enabled, handleIntersection, clearAllTimeouts]);
 
