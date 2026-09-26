@@ -7,6 +7,7 @@
  */
 
 import { recognizeFood } from '../recognizeFood';
+import { ApiError } from '@/shared/errors/apiErrors';
 import * as compressImageModule from '../compressImage';
 
 // ============================================================================
@@ -149,8 +150,8 @@ describe('recognizeFood', () => {
     });
 
     it('throws on HTTP error response (API request failed)', async () => {
-        const error: any = new Error('API request failed');
-        error.response = { status: 500, data: { message: 'Internal server error' } };
+        // What the api client throws for a failed response.
+        const error = new ApiError(500, { message: 'Internal server error' });
         mockApiClient.postFormData.mockRejectedValueOnce(error);
 
         await expect(recognizeFood(createMockFile())).rejects.toThrow('API request failed');

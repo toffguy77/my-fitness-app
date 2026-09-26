@@ -2,7 +2,7 @@
  * Unit tests for useFoodSearch hook
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useFoodSearch } from '../useFoodSearch';
 import { apiClient } from '@/shared/utils/api-client';
 import type { FoodItem } from '../../types';

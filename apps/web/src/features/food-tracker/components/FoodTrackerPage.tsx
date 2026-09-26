@@ -45,8 +45,6 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
         error,
         isOffline,
         fetchDayData,
-        addEntry,
-        updateEntry,
         deleteEntry,
         clearError,
     } = useFoodTracker({ autoFetch: false });
@@ -110,14 +108,12 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                             dailyTotals={dailyTotals}
                             targetGoals={targetGoals}
                             isLoading={isLoading}
-                            onAddEntry={addEntry}
-                            onUpdateEntry={updateEntry}
                             onDeleteEntry={deleteEntry}
                         />
                     )}
 
                     {activeTab === 'recommendations' && (
-                        <RecommendationsTab date={formatLocalDate(selectedDate)} />
+                        <RecommendationsTab />
                     )}
                 </div>
 

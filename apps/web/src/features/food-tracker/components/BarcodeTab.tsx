@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Camera, CameraOff, RefreshCw, AlertCircle, CheckCircle, Plus, Upload, Image } from 'lucide-react';
+import { Camera, CameraOff, RefreshCw, AlertCircle, CheckCircle, Plus, Upload, Image as ImageIcon } from 'lucide-react';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { useLogger } from '@/shared/hooks/useLogger';
 import type { FoodItem } from '../types';
@@ -199,7 +199,7 @@ export function BarcodeTab({
                                             onClick={handleCameraCapture}
                                             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
                                         >
-                                            <Image className="w-5 h-5" />
+                                            <ImageIcon className="w-5 h-5" />
                                             <span>{t('foodTracker.barcode.photo')}</span>
                                         </button>
                                         {/* Gallery selection */}
@@ -246,7 +246,7 @@ export function BarcodeTab({
                                             onClick={handleCameraCapture}
                                             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500"
                                         >
-                                            <Image className="w-5 h-5" />
+                                            <ImageIcon className="w-5 h-5" />
                                             <span>{t('foodTracker.barcode.photo')}</span>
                                         </button>
                                         <button

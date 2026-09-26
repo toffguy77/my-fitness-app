@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { useSettings } from '../hooks/useSettings'
@@ -14,7 +13,6 @@ interface SettingsPageLayoutProps {
 }
 
 export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps) {
-    const router = useRouter()
     const settingsHook = useSettings()
     const { profile, isLoading } = settingsHook
 

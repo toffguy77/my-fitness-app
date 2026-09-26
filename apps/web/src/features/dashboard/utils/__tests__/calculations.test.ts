@@ -10,7 +10,7 @@ import {
     isAllGoalsMet,
     calculateAdherence,
 } from '../calculations'
-import type { DailyMetrics, WeeklyReportSummary } from '../../types'
+import { DailyMetrics } from '../../types'
 
 describe('Dashboard Calculation Utilities', () => {
     describe('calculatePercentage', () => {

@@ -5,6 +5,7 @@
 
 import { AlertCircle, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
+import { useConfirm } from '@/shared/components/ui';
 import { useUnsavedData } from '../hooks/useUnsavedData';
 import { useDashboardStore } from '../store/dashboardStore';
 import { useState } from 'react';
@@ -24,6 +25,7 @@ export function UnsavedDataNotification() {
     } = useUnsavedData();
     const { updateMetric } = useDashboardStore();
     const [isRetrying, setIsRetrying] = useState(false);
+    const { confirm, dialog } = useConfirm();
 
     // Don't show if no unsaved data
     if (unsavedCount === 0) {
@@ -43,7 +45,7 @@ export function UnsavedDataNotification() {
             await updateMetric(date, entry.metric);
             removeUnsavedData(date);
             toast.success(t('dashboard.unsaved.saved'));
-        } catch (error) {
+        } catch {
             toast.error(t('dashboard.unsaved.saveFailed'));
         } finally {
             setIsRetrying(false);
@@ -66,7 +68,7 @@ export function UnsavedDataNotification() {
                 await updateMetric(entry.date, entry.metric);
                 removeUnsavedData(entry.date);
                 successCount++;
-            } catch (error) {
+            } catch {
                 failCount++;
             }
         }
@@ -86,13 +88,12 @@ export function UnsavedDataNotification() {
      * Dismiss notification and clear unsaved data
      */
     const handleDismiss = () => {
-        if (
-            window.confirm(
-                t('dashboard.unsaved.discardConfirm')
-            )
-        ) {
-            clearUnsavedData();
-        }
+        confirm({
+            title: t('dashboard.unsaved.discardTitle'),
+            description: t('dashboard.unsaved.discardConfirm'),
+            confirmLabel: t('common.delete'),
+            onConfirm: () => clearUnsavedData(),
+        });
     };
 
     return (
@@ -183,6 +184,8 @@ export function UnsavedDataNotification() {
                     </button>
                 </div>
             </div>
+
+            {dialog}
         </div>
     );
 }

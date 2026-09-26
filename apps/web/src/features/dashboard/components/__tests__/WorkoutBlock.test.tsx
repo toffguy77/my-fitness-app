@@ -4,11 +4,12 @@
  * Tests: Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
  */
 
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkoutBlock } from '../WorkoutBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import toast from 'react-hot-toast'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock dependencies
 jest.mock('../../store/dashboardStore')
@@ -31,10 +32,10 @@ describe('WorkoutBlock', () => {
         jest.clearAllMocks()
         mockUpdateMetric.mockResolvedValue(undefined)
 
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             dailyData: {},
             updateMetric: mockUpdateMetric,
-        } as any)
+        }))
 
         mockToast.success = jest.fn()
         mockToast.error = jest.fn()
@@ -70,7 +71,7 @@ describe('WorkoutBlock', () => {
 
     describe('Completed workout display', () => {
         it('displays completed workout status', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -81,7 +82,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -89,7 +90,7 @@ describe('WorkoutBlock', () => {
         })
 
         it('displays workout type', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -99,7 +100,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -107,7 +108,7 @@ describe('WorkoutBlock', () => {
         })
 
         it('displays workout duration in minutes', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -118,7 +119,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -126,7 +127,7 @@ describe('WorkoutBlock', () => {
         })
 
         it('displays workout duration in hours and minutes', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -137,7 +138,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -145,7 +146,7 @@ describe('WorkoutBlock', () => {
         })
 
         it('displays workout duration in hours only', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -156,7 +157,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -164,7 +165,7 @@ describe('WorkoutBlock', () => {
         })
 
         it('displays edit and cancel buttons', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -174,7 +175,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -534,7 +535,7 @@ describe('WorkoutBlock', () => {
     describe('Cancel workout', () => {
         it('marks workout as not completed', async () => {
             const user = userEvent.setup()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -544,7 +545,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -564,7 +565,7 @@ describe('WorkoutBlock', () => {
 
         it('shows success toast after canceling', async () => {
             const user = userEvent.setup()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -574,7 +575,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -678,7 +679,7 @@ describe('WorkoutBlock', () => {
             const user = userEvent.setup()
             mockUpdateMetric.mockRejectedValueOnce(new Error('Network error'))
 
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -688,7 +689,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -752,7 +753,7 @@ describe('WorkoutBlock', () => {
     describe('Edit workout', () => {
         it('pre-fills form when editing completed workout', async () => {
             const user = userEvent.setup()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -764,7 +765,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 
@@ -780,7 +781,7 @@ describe('WorkoutBlock', () => {
 
         it('pre-fills form when clicking header button on completed workout', async () => {
             const user = userEvent.setup()
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 dailyData: {
                     '2024-01-15': {
                         workout: {
@@ -792,7 +793,7 @@ describe('WorkoutBlock', () => {
                     },
                 },
                 updateMetric: mockUpdateMetric,
-            } as any)
+            }))
 
             render(<WorkoutBlock date={mockDate} />)
 

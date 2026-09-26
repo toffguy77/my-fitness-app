@@ -8,8 +8,6 @@
 import { loginUser, registerUser } from '../api/auth';
 import type { AuthFormData, ConsentState } from '../types';
 
-const API_BASE = 'http://localhost:4000';
-
 // Mock fetch globally
 global.fetch = jest.fn();
 

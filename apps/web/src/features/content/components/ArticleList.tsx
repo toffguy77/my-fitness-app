@@ -7,6 +7,8 @@ import { contentApi } from '@/features/content/api/contentApi'
 import { CATEGORY_LABELS } from '@/features/content/types'
 import type { Article } from '@/features/content/types'
 import { StatusBadge } from './StatusBadge'
+import { isApiError, serverMessageFrom } from '@/shared/errors/apiErrors'
+import { useConfirm } from '@/shared/components/ui'
 
 const STATUS_TABS = [
     { key: '', label: 'Все' },
@@ -25,6 +27,7 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
     const [error, setError] = useState<string | null>(null)
     const [statusFilter, setStatusFilter] = useState('')
     const [categoryFilter] = useState('')
+    const { confirm, dialog } = useConfirm()
 
     const fetchArticles = useCallback(async () => {
         setLoading(true)
@@ -35,9 +38,9 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
                 categoryFilter || undefined,
             )
             setArticles(res.articles ?? [])
-        } catch (err: any) {
-            const msg = err?.response?.data?.message || err?.message || 'Не удалось загрузить статьи'
-            setError(`Ошибка: ${msg} (status: ${err?.response?.status ?? 'unknown'})`)
+        } catch (err) {
+            const msg = serverMessageFrom(err) || (err instanceof Error ? err.message : '') || 'Не удалось загрузить статьи'
+            setError(`Ошибка: ${msg} (status: ${isApiError(err) ? err.status : 'unknown'})`)
             setArticles([])
         } finally {
             setLoading(false)
@@ -76,15 +79,24 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
         return () => { cancelled = true }
     }, [statusFilter, categoryFilter])
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Удалить статью?')) return
-        setError(null)
-        try {
-            await contentApi.deleteArticle(id)
-            await fetchArticles()
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Не удалось удалить статью')
-        }
+    const handleDelete = (id: string) => {
+        // Раздел «Контент» пока не переведён (см. TRANSLATED в
+        // scripts/check-i18n.mjs), поэтому строки здесь литеральные, как и
+        // остальные в этом файле.
+        confirm({
+            title: 'Удалить статью?',
+            description: 'Статья и её история изменений будут удалены без возможности восстановления.',
+            confirmLabel: 'Удалить',
+            onConfirm: async () => {
+                setError(null)
+                try {
+                    await contentApi.deleteArticle(id)
+                    await fetchArticles()
+                } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Не удалось удалить статью')
+                }
+            },
+        })
     }
 
     const handlePublish = async (id: string) => {
@@ -210,6 +222,8 @@ export function ArticleList({ basePath = '/curator/content' }: ArticleListProps)
                     ))}
                 </div>
             )}
+
+            {dialog}
         </div>
     )
 }

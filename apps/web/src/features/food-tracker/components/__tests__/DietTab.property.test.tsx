@@ -10,11 +10,11 @@
  */
 
 import React from 'react';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
 import { DietTab } from '../DietTab';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
-import type { EntriesByMealType, FoodEntry } from '../../types';
+import type { EntriesByMealType } from '../../types';
 
 // ============================================================================
 // Mocks
@@ -46,26 +46,6 @@ jest.mock('lucide-react', () => ({
 // Test Data
 // ============================================================================
 
-const createMockEntry = (overrides: Partial<FoodEntry> = {}): FoodEntry => ({
-    id: `entry-${Math.random().toString(36).slice(2)}`,
-    foodId: 'food-1',
-    foodName: 'Яблоко',
-    mealType: 'breakfast',
-    portionType: 'grams',
-    portionAmount: 150,
-    nutrition: {
-        calories: 78,
-        protein: 0.5,
-        fat: 0.3,
-        carbs: 21,
-    },
-    time: '08:30',
-    date: '2024-01-15',
-    createdAt: '2024-01-15T08:30:00Z',
-    updatedAt: '2024-01-15T08:30:00Z',
-    ...overrides,
-});
-
 const createMockStore = (overrides = {}) => ({
     waterIntake: 0,
     waterGoal: 8,
@@ -96,8 +76,6 @@ const createDefaultProps = (overrides = {}) => ({
         carbs: 200,
     },
     isLoading: false,
-    onAddEntry: jest.fn().mockResolvedValue(createMockEntry()),
-    onUpdateEntry: jest.fn().mockResolvedValue(createMockEntry()),
     onDeleteEntry: jest.fn().mockResolvedValue(true),
     ...overrides,
 });

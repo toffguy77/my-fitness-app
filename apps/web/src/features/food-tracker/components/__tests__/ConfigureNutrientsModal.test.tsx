@@ -12,9 +12,10 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ConfigureNutrientsModal } from '../ConfigureNutrientsModal';
 import type { NutrientRecommendation } from '../../types';
+import type { NutrientCategoryType } from '../../types';
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
@@ -774,7 +775,7 @@ describe('ConfigureNutrientsModal', () => {
                 {
                     id: 'unknown-nutrient',
                     name: 'Неизвестный нутриент',
-                    category: 'unknown' as any,
+                    category: 'unknown' as NutrientCategoryType,
                     dailyTarget: 10,
                     unit: 'мг',
                     isWeekly: false,

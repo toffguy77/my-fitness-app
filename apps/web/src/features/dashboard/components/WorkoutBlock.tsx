@@ -11,13 +11,14 @@
  * - Memoized workout type buttons
  */
 
-import { useState, useCallback, memo, useMemo } from 'react'
+import { useState, useCallback, useMemo, memo } from 'react'
 import { Plus, Check, Dumbbell, Clock, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { cn } from '@/shared/utils/cn'
 import { useDashboardStore } from '../store/dashboardStore'
+import type { WorkoutData } from '../types'
 import { formatLocalDate } from '@/shared/utils/format'
 import { AttentionBadge } from './AttentionBadge'
 import toast from 'react-hot-toast'
@@ -74,8 +75,12 @@ export const WorkoutBlock = memo(function WorkoutBlock({ date, className }: Work
     const dateStr = formatLocalDate(date)
     const dayData = dailyData[dateStr]
 
-    // Get current workout data
-    const workout = dayData?.workout || { completed: false }
+    // Get current workout data.
+    //
+    // Через useMemo, потому что от него зависит useCallback ниже: без него
+    // «нет данных за день» — это новый объект на каждый рендер, и колбэк
+    // пересоздавался бы всегда.
+    const workout = useMemo<WorkoutData>(() => dayData?.workout || { completed: false }, [dayData?.workout])
     const isWorkoutCompleted = workout.completed
 
     // Handle workout type toggle (multi-select)

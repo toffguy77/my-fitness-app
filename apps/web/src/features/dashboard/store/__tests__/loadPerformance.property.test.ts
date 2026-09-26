@@ -215,13 +215,13 @@ describe('Property 27: Dashboard Load Performance', () => {
                         return new Promise((resolve) => {
                             setTimeout(() => {
                                 if (url.includes('/dashboard/week')) {
-                                    resolve({ data: mockWeekData } as any);
+                                    resolve({ data: mockWeekData });
                                 } else if (url.includes('/dashboard/weekly-plan')) {
-                                    resolve({ data: mockWeeklyPlan } as any);
+                                    resolve({ data: mockWeeklyPlan });
                                 } else if (url.includes('/dashboard/tasks')) {
-                                    resolve({ data: mockTasks } as any);
+                                    resolve({ data: mockTasks });
                                 } else {
-                                    resolve({ data: null } as any);
+                                    resolve({ data: null });
                                 }
                             }, apiDelay);
                         });
@@ -302,13 +302,13 @@ describe('Property 27: Dashboard Load Performance', () => {
                         return new Promise((resolve) => {
                             setTimeout(() => {
                                 if (url.includes('/dashboard/week')) {
-                                    resolve({ data: mockWeekData } as any);
+                                    resolve({ data: mockWeekData });
                                 } else if (url.includes('/dashboard/weekly-plan')) {
-                                    resolve({ data: mockWeeklyPlan } as any);
+                                    resolve({ data: mockWeeklyPlan });
                                 } else if (url.includes('/dashboard/tasks')) {
-                                    resolve({ data: mockTasks } as any);
+                                    resolve({ data: mockTasks });
                                 } else {
-                                    resolve({ data: null } as any);
+                                    resolve({ data: null });
                                 }
                             }, 100);
                         });
@@ -407,13 +407,13 @@ describe('Property 27: Dashboard Load Performance', () => {
                         return new Promise((resolve) => {
                             setTimeout(() => {
                                 if (url.includes('/dashboard/week')) {
-                                    resolve({ data: mockWeekData } as any);
+                                    resolve({ data: mockWeekData });
                                 } else if (url.includes('/dashboard/weekly-plan')) {
-                                    resolve({ data: mockWeeklyPlan } as any);
+                                    resolve({ data: mockWeeklyPlan });
                                 } else if (url.includes('/dashboard/tasks')) {
-                                    resolve({ data: mockTasks } as any);
+                                    resolve({ data: mockTasks });
                                 } else {
-                                    resolve({ data: null } as any);
+                                    resolve({ data: null });
                                 }
                             }, 100);
                         });
@@ -485,13 +485,13 @@ describe('Property 27: Dashboard Load Performance', () => {
                         return new Promise((resolve) => {
                             setTimeout(() => {
                                 if (url.includes('/dashboard/week')) {
-                                    resolve({ data: mockWeekData } as any);
+                                    resolve({ data: mockWeekData });
                                 } else if (url.includes('/dashboard/weekly-plan')) {
-                                    resolve({ data: mockWeeklyPlan } as any);
+                                    resolve({ data: mockWeeklyPlan });
                                 } else if (url.includes('/dashboard/tasks')) {
-                                    resolve({ data: mockTasks } as any);
+                                    resolve({ data: mockTasks });
                                 } else {
-                                    resolve({ data: null } as any);
+                                    resolve({ data: null });
                                 }
                             }, 200);
                         });
@@ -567,13 +567,13 @@ describe('Property 27: Dashboard Load Performance', () => {
                         return new Promise((resolve) => {
                             setTimeout(() => {
                                 if (url.includes('/dashboard/week')) {
-                                    resolve({ data: mockWeekData } as any);
+                                    resolve({ data: mockWeekData });
                                 } else if (url.includes('/dashboard/weekly-plan')) {
-                                    resolve({ data: mockWeeklyPlan } as any);
+                                    resolve({ data: mockWeeklyPlan });
                                 } else if (url.includes('/dashboard/tasks')) {
-                                    resolve({ data: mockTasks } as any);
+                                    resolve({ data: mockTasks });
                                 } else {
-                                    resolve({ data: null } as any);
+                                    resolve({ data: null });
                                 }
                             }, 200);
                         });

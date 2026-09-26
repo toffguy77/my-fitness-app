@@ -398,7 +398,7 @@ class ApiClient {
     /**
      * Make a POST request
      */
-    async post<T>(url: string, body: any, options?: RequestOptions): Promise<T> {
+    async post<T>(url: string, body: unknown, options?: RequestOptions): Promise<T> {
         return this.request<T>(url, {
             ...options,
             method: 'POST',
@@ -409,7 +409,7 @@ class ApiClient {
     /**
      * Make a PUT request
      */
-    async put<T>(url: string, body: any, options?: RequestOptions): Promise<T> {
+    async put<T>(url: string, body: unknown, options?: RequestOptions): Promise<T> {
         return this.request<T>(url, {
             ...options,
             method: 'PUT',

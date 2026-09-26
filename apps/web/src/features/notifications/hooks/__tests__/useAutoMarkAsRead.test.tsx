@@ -11,6 +11,15 @@ import type { Notification } from '../../types';
 // Mock the store
 jest.mock('../../store/notificationsStore');
 
+/**
+ * `querySelectorAll` answers with a NodeList, and a test hands it an array.
+ * The cast says so once, here, instead of `as any` at every call: the elements
+ * themselves stay checked.
+ */
+function asNodeList(elements: Element[]): NodeListOf<Element> {
+    return elements as unknown as NodeListOf<Element>;
+}
+
 describe('useAutoMarkAsRead', () => {
     let mockMarkAsRead: jest.Mock;
     let mockIntersectionObserver: jest.Mock;
@@ -67,10 +76,10 @@ describe('useAutoMarkAsRead', () => {
             };
         });
 
-        global.IntersectionObserver = mockIntersectionObserver as any;
+        global.IntersectionObserver = mockIntersectionObserver as unknown as typeof IntersectionObserver;
 
         // Mock document.querySelectorAll
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([]));
     });
 
     afterEach(() => {
@@ -97,7 +106,7 @@ describe('useAutoMarkAsRead', () => {
             return element;
         });
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue(mockElements as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList(mockElements));
 
         renderHook(() => useAutoMarkAsRead(mockNotifications, 'main'));
 
@@ -110,7 +119,7 @@ describe('useAutoMarkAsRead', () => {
         const mockElement = document.createElement('div');
         mockElement.setAttribute('data-notification-id', '1');
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([mockElement] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([mockElement]));
 
         renderHook(() => useAutoMarkAsRead(mockNotifications, 'main', { delay }));
 
@@ -124,7 +133,7 @@ describe('useAutoMarkAsRead', () => {
                     intersectionRatio: 0.5,
                 } as unknown as IntersectionObserverEntry,
             ];
-            callback(entries, mockIntersectionObserver() as any);
+            callback(entries, mockIntersectionObserver() as unknown as IntersectionObserver);
         }
 
         // Wait for delay
@@ -141,7 +150,7 @@ describe('useAutoMarkAsRead', () => {
         const mockElement = document.createElement('div');
         mockElement.setAttribute('data-notification-id', '1');
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([mockElement] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([mockElement]));
 
         renderHook(() => useAutoMarkAsRead(mockNotifications, 'main', { delay }));
 
@@ -155,7 +164,7 @@ describe('useAutoMarkAsRead', () => {
                     intersectionRatio: 0,
                 } as unknown as IntersectionObserverEntry,
             ];
-            callback(entries, mockIntersectionObserver() as any);
+            callback(entries, mockIntersectionObserver() as unknown as IntersectionObserver);
         }
 
         // Wait for delay
@@ -170,7 +179,7 @@ describe('useAutoMarkAsRead', () => {
         const mockElement = document.createElement('div');
         mockElement.setAttribute('data-notification-id', '1');
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([mockElement] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([mockElement]));
 
         renderHook(() => useAutoMarkAsRead(mockNotifications, 'main', { delay }));
 
@@ -185,7 +194,7 @@ describe('useAutoMarkAsRead', () => {
                         intersectionRatio: 0.5,
                     } as unknown as IntersectionObserverEntry,
                 ],
-                mockIntersectionObserver() as any
+                mockIntersectionObserver() as unknown as IntersectionObserver
             );
 
             // Wait half the delay
@@ -200,7 +209,7 @@ describe('useAutoMarkAsRead', () => {
                         intersectionRatio: 0,
                     } as unknown as IntersectionObserverEntry,
                 ],
-                mockIntersectionObserver() as any
+                mockIntersectionObserver() as unknown as IntersectionObserver
             );
 
             // Wait for full delay
@@ -223,7 +232,7 @@ describe('useAutoMarkAsRead', () => {
         const mockElement = document.createElement('div');
         mockElement.setAttribute('data-notification-id', '1');
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([mockElement] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([mockElement]));
 
         renderHook(() => useAutoMarkAsRead(readNotifications, 'main', { delay }));
 
@@ -237,7 +246,7 @@ describe('useAutoMarkAsRead', () => {
                         intersectionRatio: 0.5,
                     } as unknown as IntersectionObserverEntry,
                 ],
-                mockIntersectionObserver() as any
+                mockIntersectionObserver() as unknown as IntersectionObserver
             );
         }
 
@@ -252,7 +261,7 @@ describe('useAutoMarkAsRead', () => {
         const mockElement = document.createElement('div');
         mockElement.setAttribute('data-notification-id', '1');
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([mockElement] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([mockElement]));
 
         const { unmount } = renderHook(() => useAutoMarkAsRead(mockNotifications, 'main'));
 
@@ -268,7 +277,7 @@ describe('useAutoMarkAsRead', () => {
         const mockElement = document.createElement('div');
         mockElement.setAttribute('data-notification-id', '1');
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([mockElement] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([mockElement]));
 
         const { unmount } = renderHook(() => useAutoMarkAsRead(mockNotifications, 'main', { delay }));
 
@@ -283,7 +292,7 @@ describe('useAutoMarkAsRead', () => {
                         intersectionRatio: 0.5,
                     } as unknown as IntersectionObserverEntry,
                 ],
-                mockIntersectionObserver() as any
+                mockIntersectionObserver() as unknown as IntersectionObserver
             );
         }
 
@@ -302,7 +311,7 @@ describe('useAutoMarkAsRead', () => {
         const mockElement = document.createElement('div');
         mockElement.setAttribute('data-notification-id', '1');
 
-        jest.spyOn(document, 'querySelectorAll').mockReturnValue([mockElement] as any);
+        jest.spyOn(document, 'querySelectorAll').mockReturnValue(asNodeList([mockElement]));
 
         renderHook(() => useAutoMarkAsRead(mockNotifications, 'main', { delay: customDelay }));
 
@@ -316,7 +325,7 @@ describe('useAutoMarkAsRead', () => {
                         intersectionRatio: 0.5,
                     } as unknown as IntersectionObserverEntry,
                 ],
-                mockIntersectionObserver() as any
+                mockIntersectionObserver() as unknown as IntersectionObserver
             );
         }
 

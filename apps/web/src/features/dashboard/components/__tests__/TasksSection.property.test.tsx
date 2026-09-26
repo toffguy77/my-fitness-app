@@ -11,6 +11,7 @@ import fc from 'fast-check'
 import { TasksSection } from '../TasksSection'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { Task, TaskStatus } from '../../types'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the store
 jest.mock('../../store/dashboardStore')
@@ -66,10 +67,10 @@ describe('TasksSection - Property-Based Tests', () => {
                     (weekNumber, status) => {
                         const task = createMockTask('task-1', weekNumber, status as TaskStatus)
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks: [task],
                             updateTaskStatus: jest.fn(),
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection currentWeek={weekNumber} />)
 
@@ -102,10 +103,10 @@ describe('TasksSection - Property-Based Tests', () => {
                         const currentWeekTask = createMockTask('task-current', currentWeek)
                         const previousWeekTask = createMockTask('task-previous', currentWeek - 1)
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks: [currentWeekTask, previousWeekTask],
                             updateTaskStatus: jest.fn(),
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection currentWeek={currentWeek} />)
 
@@ -130,10 +131,10 @@ describe('TasksSection - Property-Based Tests', () => {
                 fc.property(
                     fc.constant([]),
                     () => {
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks: [],
                             updateTaskStatus: jest.fn(),
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection />)
 
@@ -163,10 +164,10 @@ describe('TasksSection - Property-Based Tests', () => {
                             createMockTask(`task-${i}`, currentWeek)
                         )
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks,
                             updateTaskStatus: jest.fn(),
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection maxVisibleTasks={5} currentWeek={currentWeek} />)
 
@@ -207,10 +208,10 @@ describe('TasksSection - Property-Based Tests', () => {
                         const mockUpdateTaskStatus = jest.fn().mockResolvedValue(undefined)
                         const task = createMockTask('task-1', weekNumber, 'active')
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks: [task],
                             updateTaskStatus: mockUpdateTaskStatus,
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection currentWeek={weekNumber} />)
 
@@ -240,10 +241,10 @@ describe('TasksSection - Property-Based Tests', () => {
                     (weekNumber) => {
                         const task = createMockTask('task-1', weekNumber, 'completed')
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks: [task],
                             updateTaskStatus: jest.fn(),
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection currentWeek={weekNumber} />)
 
@@ -273,10 +274,10 @@ describe('TasksSection - Property-Based Tests', () => {
                     (weekNumber) => {
                         const task = createMockTask('task-1', weekNumber, 'completed')
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks: [task],
                             updateTaskStatus: jest.fn(),
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection currentWeek={weekNumber} />)
 
@@ -303,10 +304,10 @@ describe('TasksSection - Property-Based Tests', () => {
                     (weekNumber) => {
                         const task = createMockTask('task-1', weekNumber, 'overdue')
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             tasks: [task],
                             updateTaskStatus: jest.fn(),
-                        } as any)
+                        }))
 
                         const { unmount } = render(<TasksSection currentWeek={weekNumber} />)
 

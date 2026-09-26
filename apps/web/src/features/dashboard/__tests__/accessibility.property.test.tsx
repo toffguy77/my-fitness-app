@@ -9,11 +9,6 @@
 import React from 'react';
 import { render, cleanup } from '@testing-library/react';
 import fc from 'fast-check';
-import { CalendarNavigator } from '../components/CalendarNavigator';
-import { NutritionBlock } from '../components/NutritionBlock';
-import { WeightBlock } from '../components/WeightBlock';
-import { StepsBlock } from '../components/StepsBlock';
-import { WorkoutBlock } from '../components/WorkoutBlock';
 
 // Clean up after each property test
 afterEach(() => {
@@ -66,7 +61,7 @@ describe('Property 36: Screen Reader Accessibility', () => {
                         );
 
                         const { getByTestId, queryByTestId } = render(<TestComponent />);
-                        const container = getByTestId(testId);
+                        getByTestId(testId);
 
                         // Verify ARIA labels exist for visible indicators
                         if (completionStatus.nutritionFilled) {
@@ -147,6 +142,7 @@ describe('Property 36: Screen Reader Accessibility', () => {
                         const testId = `image-${imageData.alt}`;
 
                         const TestComponent = () => (
+                            // eslint-disable-next-line @next/next/no-img-element -- проверяется доступность разметки, а не загрузка картинки
                             <img
                                 src={imageData.src}
                                 alt={imageData.alt}

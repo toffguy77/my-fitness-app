@@ -21,7 +21,7 @@ const mockDashboardApi = dashboardApi as jest.Mocked<typeof dashboardApi>
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore', () => ({
-    useDashboardStore: (selector: any) => selector({ tasksVersion: 0 }),
+    useDashboardStore: (selector: (state: { tasksVersion: number }) => unknown) => selector({ tasksVersion: 0 }),
 }))
 
 /**
@@ -192,7 +192,7 @@ describe('ClientTasksSection', () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('1')]
             mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
-            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: false } as any)
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: false })
 
             render(<ClientTasksSection />)
 
@@ -239,7 +239,7 @@ describe('ClientTasksSection', () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('w2', { type: 'workout', title: 'Workout' })]
             mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
-            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: true } as any)
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: true })
 
             render(<ClientTasksSection />)
 
@@ -315,7 +315,7 @@ describe('ClientTasksSection', () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('m1', { type: 'measurement', title: 'Measure weight' })]
             mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
-            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: false } as any)
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: false })
 
             render(<ClientTasksSection />)
 
@@ -335,7 +335,7 @@ describe('ClientTasksSection', () => {
             const user = userEvent.setup()
             const tasks = [createMockTask('w5', { type: 'workout', title: 'Quick workout' })]
             mockDashboardApi.getMyTasks.mockResolvedValue({ tasks, count: tasks.length, week: 1 })
-            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: true } as any)
+            mockDashboardApi.completeTask.mockResolvedValue({ task: tasks[0], metric_synced: true })
 
             render(<ClientTasksSection />)
 

@@ -23,7 +23,6 @@ describe('useUnsavedData', () => {
 
         expect(result.current.unsavedData).toEqual([]);
         expect(result.current.unsavedCount).toBe(0);
-        expect(result.current.isLoading).toBe(false);
     });
 
     it('loads unsaved data from localStorage on mount', () => {

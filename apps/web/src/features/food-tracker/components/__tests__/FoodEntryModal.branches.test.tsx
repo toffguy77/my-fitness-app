@@ -12,7 +12,23 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FoodEntryModal } from '../FoodEntryModal';
-import type { FoodEntry, FoodItem, MealType } from '../../types';
+import { apiClient } from '@/shared/utils/api-client';
+import toast from 'react-hot-toast';
+import { FoodEntry, MealType } from '../../types';
+// Type-only imports of the modules being mocked: erased at runtime, so the
+// mocks stay mocks, and a prop renamed in the real component breaks the stand-in
+// here instead of quietly never arriving.
+import type { AIPhotoTabProps } from '../AIPhotoTab';
+import type { ManualEntryFormProps } from '../ManualEntryForm';
+import type { PortionSelectorProps } from '../PortionSelector';
+import type { SearchTabProps } from '../SearchTab';
+import type { FoodTrackerStore } from '../../store/types';
+import { foodTrackerStoreValue } from '../../testing/storeValue';
+
+// Both modules are mocked below; the static imports above point at the mocks,
+// because jest.mock is hoisted above them.
+const mockApiPost = apiClient.post as jest.MockedFunction<typeof apiClient.post>;
+const mockToast = toast as jest.Mocked<typeof toast>;
 
 // ============================================================================
 // Mocks
@@ -22,12 +38,12 @@ const mockAddEntry = jest.fn().mockResolvedValue(undefined);
 const mockUpdateEntry = jest.fn().mockResolvedValue(undefined);
 
 jest.mock('../../store/foodTrackerStore', () => ({
-    useFoodTrackerStore: (selector: (s: any) => any) =>
-        selector({
+    useFoodTrackerStore: (selector: (s: FoodTrackerStore) => unknown) =>
+        selector(foodTrackerStoreValue({
             addEntry: mockAddEntry,
             updateEntry: mockUpdateEntry,
             selectedDate: '2025-01-15',
-        }),
+        })),
 }));
 
 jest.mock('@/shared/utils/api-client', () => ({
@@ -51,7 +67,7 @@ jest.mock('react-hot-toast', () => ({
 
 // Mock child components to isolate FoodEntryModal logic
 jest.mock('../SearchTab', () => ({
-    SearchTab: ({ onSelectFood, onManualEntry }: any) => (
+    SearchTab: ({ onSelectFood, onManualEntry }: Pick<SearchTabProps, 'onSelectFood' | 'onManualEntry'>) => (
         <div data-testid="search-tab">
             <input placeholder="Поиск блюд и продуктов" />
             <button
@@ -98,11 +114,11 @@ jest.mock('../SearchTab', () => ({
 }));
 
 jest.mock('../BarcodeTab', () => ({
-    BarcodeTab: ({ onSelectFood }: any) => <div data-testid="barcode-tab">Barcode</div>,
+    BarcodeTab: () => <div data-testid="barcode-tab">Barcode</div>,
 }));
 
 jest.mock('../AIPhotoTab', () => ({
-    AIPhotoTab: ({ onSelectFoods, onManualSearch }: any) => (
+    AIPhotoTab: ({ onSelectFoods, onManualSearch }: Pick<AIPhotoTabProps, 'onSelectFoods' | 'onManualSearch'>) => (
         <div data-testid="photo-tab">
             <button
                 data-testid="select-single-photo-food"
@@ -170,7 +186,7 @@ jest.mock('../AIPhotoTab', () => ({
 }));
 
 jest.mock('../ChatTab', () => ({
-    ChatTab: ({ onSelectFood }: any) => (
+    ChatTab: () => (
         <div data-testid="chat-tab">
             <p>Опишите, что вы съели</p>
         </div>
@@ -178,7 +194,7 @@ jest.mock('../ChatTab', () => ({
 }));
 
 jest.mock('../ManualEntryForm', () => ({
-    ManualEntryForm: ({ onSubmit, onCancel }: any) => (
+    ManualEntryForm: ({ onSubmit, onCancel }: Pick<ManualEntryFormProps, 'onSubmit' | 'onCancel'>) => (
         <div data-testid="manual-entry-form">
             <button
                 data-testid="submit-manual"
@@ -205,7 +221,7 @@ jest.mock('../ManualEntryForm', () => ({
 }));
 
 jest.mock('../PortionSelector', () => ({
-    PortionSelector: ({ food, onPortionChange }: any) => (
+    PortionSelector: ({ food, onPortionChange }: Pick<PortionSelectorProps, 'food' | 'onPortionChange'>) => (
         <div data-testid="portion-selector">
             <span>{food?.name}</span>
             <button
@@ -664,8 +680,6 @@ describe('FoodEntryModal Branch Coverage', () => {
 
         it('calls API to clone food when bookmark is clicked', async () => {
             const user = userEvent.setup();
-            const { apiClient } = require('@/shared/utils/api-client');
-            const toast = require('react-hot-toast').default;
 
             render(
                 <FoodEntryModal isOpen={true} onClose={jest.fn()} />
@@ -675,16 +689,14 @@ describe('FoodEntryModal Branch Coverage', () => {
             await user.click(screen.getByLabelText('Сохранить как свой'));
 
             await waitFor(() => {
-                expect(apiClient.post).toHaveBeenCalled();
-                expect(toast.success).toHaveBeenCalledWith('Продукт сохранён');
+                expect(mockApiPost).toHaveBeenCalled();
+                expect(mockToast.success).toHaveBeenCalledWith('Продукт сохранён');
             });
         });
 
         it('shows error toast when clone fails', async () => {
             const user = userEvent.setup();
-            const { apiClient } = require('@/shared/utils/api-client');
-            const toast = require('react-hot-toast').default;
-            apiClient.post.mockRejectedValueOnce(new Error('Clone failed'));
+            mockApiPost.mockRejectedValueOnce(new Error('Clone failed'));
 
             render(
                 <FoodEntryModal isOpen={true} onClose={jest.fn()} />
@@ -694,7 +706,7 @@ describe('FoodEntryModal Branch Coverage', () => {
             await user.click(screen.getByLabelText('Сохранить как свой'));
 
             await waitFor(() => {
-                expect(toast.error).toHaveBeenCalledWith('Не удалось сохранить продукт');
+                expect(mockToast.error).toHaveBeenCalledWith('Не удалось сохранить продукт');
             });
         });
     });

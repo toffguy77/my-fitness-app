@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event'
 import { TasksSection } from '../TasksSection'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { Task, TaskStatus } from '../../types'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the store
 jest.mock('../../store/dashboardStore')
@@ -48,10 +49,10 @@ describe('TasksSection', () => {
 
     beforeEach(() => {
         jest.clearAllMocks()
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             tasks: [],
             updateTaskStatus: mockUpdateTaskStatus,
-        } as any)
+        }))
     })
 
     afterEach(() => {
@@ -72,10 +73,10 @@ describe('TasksSection', () => {
 
         it('renders tasks for current week', () => {
             const task = createMockTask('task-1', 5)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -86,10 +87,10 @@ describe('TasksSection', () => {
 
         it('renders tasks for previous week', () => {
             const task = createMockTask('task-1', 4)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -100,10 +101,10 @@ describe('TasksSection', () => {
         it('renders both current and previous week tasks', () => {
             const currentTask = createMockTask('task-current', 5)
             const previousTask = createMockTask('task-previous', 4)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [currentTask, previousTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -115,10 +116,10 @@ describe('TasksSection', () => {
 
         it('renders task without description', () => {
             const task = createMockTask('task-1', 5, 'active', { description: undefined })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -136,10 +137,10 @@ describe('TasksSection', () => {
     describe('Task Status Display', () => {
         it('displays active task with default styling', () => {
             const task = createMockTask('task-1', 5, 'active')
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -149,10 +150,10 @@ describe('TasksSection', () => {
 
         it('displays completed task with line-through', () => {
             const task = createMockTask('task-1', 5, 'completed')
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -162,10 +163,10 @@ describe('TasksSection', () => {
 
         it('displays overdue indicator for overdue tasks', () => {
             const task = createMockTask('task-1', 5, 'overdue')
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -175,10 +176,10 @@ describe('TasksSection', () => {
         it('displays due date for all tasks', () => {
             const dueDate = new Date('2024-02-15')
             const task = createMockTask('task-1', 5, 'active', { dueDate })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -191,10 +192,10 @@ describe('TasksSection', () => {
             const user = userEvent.setup()
             const task = createMockTask('task-1', 5, 'active')
             mockUpdateTaskStatus.mockResolvedValue(undefined)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -208,10 +209,10 @@ describe('TasksSection', () => {
             const user = userEvent.setup()
             const task = createMockTask('task-1', 5, 'active')
             mockUpdateTaskStatus.mockRejectedValue(new Error('Network error'))
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -224,10 +225,10 @@ describe('TasksSection', () => {
 
         it('disables checkbox for completed tasks', () => {
             const task = createMockTask('task-1', 5, 'completed')
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -237,10 +238,10 @@ describe('TasksSection', () => {
 
         it('does not disable checkbox for active tasks', () => {
             const task = createMockTask('task-1', 5, 'active')
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -265,10 +266,10 @@ describe('TasksSection', () => {
             const tasks = Array.from({ length: 7 }, (_, i) =>
                 createMockTask(`task-${i}`, 5)
             )
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks,
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection maxVisibleTasks={5} currentWeek={5} />)
 
@@ -279,10 +280,10 @@ describe('TasksSection', () => {
             const tasks = Array.from({ length: 3 }, (_, i) =>
                 createMockTask(`task-${i}`, 5)
             )
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks,
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection maxVisibleTasks={5} currentWeek={5} />)
 
@@ -294,10 +295,10 @@ describe('TasksSection', () => {
             const tasks = Array.from({ length: 7 }, (_, i) =>
                 createMockTask(`task-${i}`, 5)
             )
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks,
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection maxVisibleTasks={5} currentWeek={5} />)
 
@@ -324,10 +325,10 @@ describe('TasksSection', () => {
             const previousWeekTasks = Array.from({ length: 4 }, (_, i) =>
                 createMockTask(`previous-${i}`, 4)
             )
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [...currentWeekTasks, ...previousWeekTasks],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection maxVisibleTasks={5} currentWeek={5} />)
 
@@ -345,10 +346,10 @@ describe('TasksSection', () => {
             const week4Tasks = [
                 createMockTask('task-3', 4),
             ]
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [...week5Tasks, ...week4Tasks],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -366,10 +367,10 @@ describe('TasksSection', () => {
             const currentWeekTask = createMockTask('task-current', 5)
             const futureWeekTask = createMockTask('task-future', 6)
             const oldWeekTask = createMockTask('task-old', 3)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [currentWeekTask, futureWeekTask, oldWeekTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -384,10 +385,10 @@ describe('TasksSection', () => {
         it('has proper ARIA labels for checkboxes', () => {
             const activeTask = createMockTask('task-1', 5, 'active')
             const completedTask = createMockTask('task-2', 5, 'completed')
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [activeTask, completedTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -398,10 +399,10 @@ describe('TasksSection', () => {
 
         it('has proper heading structure', () => {
             const task = createMockTask('task-1', 5)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -423,10 +424,10 @@ describe('TasksSection', () => {
     describe('Edge Cases', () => {
         it('handles empty task list for current week', () => {
             const previousWeekTask = createMockTask('task-1', 4)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [previousWeekTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -437,10 +438,10 @@ describe('TasksSection', () => {
 
         it('handles empty task list for previous week', () => {
             const currentWeekTask = createMockTask('task-1', 5)
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [currentWeekTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -453,10 +454,10 @@ describe('TasksSection', () => {
             const tasks = Array.from({ length: 3 }, (_, i) =>
                 createMockTask(`task-${i}`, 5)
             )
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks,
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection maxVisibleTasks={0} currentWeek={5} />)
 
@@ -467,10 +468,10 @@ describe('TasksSection', () => {
         it('handles very long task titles', () => {
             const longTitle = 'A'.repeat(200)
             const task = createMockTask('task-1', 5, 'active', { title: longTitle })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -480,10 +481,10 @@ describe('TasksSection', () => {
         it('handles very long task descriptions', () => {
             const longDescription = 'B'.repeat(500)
             const task = createMockTask('task-1', 5, 'active', { description: longDescription })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -498,10 +499,10 @@ describe('TasksSection', () => {
             tomorrow.setDate(now.getDate() + 1)
 
             const urgentTask = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [urgentTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -519,10 +520,10 @@ describe('TasksSection', () => {
 
             const urgentTask1 = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
             const urgentTask2 = createMockTask('task-2', 5, 'active', { dueDate: dayAfter })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [urgentTask1, urgentTask2],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -535,10 +536,10 @@ describe('TasksSection', () => {
             futureDate.setDate(now.getDate() + 7)
 
             const task = createMockTask('task-1', 5, 'active', { dueDate: futureDate })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [task],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -551,10 +552,10 @@ describe('TasksSection', () => {
             tomorrow.setDate(now.getDate() + 1)
 
             const completedTask = createMockTask('task-1', 5, 'completed', { dueDate: tomorrow })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [completedTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -567,10 +568,10 @@ describe('TasksSection', () => {
             tomorrow.setDate(now.getDate() + 1)
 
             const urgentTask = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [urgentTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 
@@ -584,10 +585,10 @@ describe('TasksSection', () => {
             tomorrow.setDate(now.getDate() + 1)
 
             const urgentTask = createMockTask('task-1', 5, 'active', { dueDate: tomorrow })
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 tasks: [urgentTask],
                 updateTaskStatus: mockUpdateTaskStatus,
-            } as any)
+            }))
 
             render(<TasksSection currentWeek={5} />)
 

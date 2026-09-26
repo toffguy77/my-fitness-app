@@ -5,6 +5,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useOnlineStatus } from '../useOnlineStatus';
 import { useDashboardStore } from '../../store/dashboardStore';
+import { dashboardStoreValue } from '../../testing/storeValue';
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore');
@@ -19,10 +20,10 @@ describe('useOnlineStatus', () => {
         jest.clearAllMocks();
         mockIsOffline = false;
 
-        mockUseDashboardStore.mockImplementation(() => ({
+        mockUseDashboardStore.mockImplementation(() => dashboardStoreValue({
             setOfflineStatus: mockSetOfflineStatus,
             isOffline: mockIsOffline,
-        } as any));
+        }));
 
         // Mock navigator.onLine
         Object.defineProperty(navigator, 'onLine', {
@@ -117,10 +118,10 @@ describe('useOnlineStatus', () => {
     describe('Return value', () => {
         it('should return isOffline from store', () => {
             mockIsOffline = false;
-            mockUseDashboardStore.mockImplementation(() => ({
+            mockUseDashboardStore.mockImplementation(() => dashboardStoreValue({
                 setOfflineStatus: mockSetOfflineStatus,
                 isOffline: mockIsOffline,
-            } as any));
+            }));
 
             const { result } = renderHook(() => useOnlineStatus());
 
@@ -129,10 +130,10 @@ describe('useOnlineStatus', () => {
 
         it('should return updated isOffline value', () => {
             mockIsOffline = true;
-            mockUseDashboardStore.mockImplementation(() => ({
+            mockUseDashboardStore.mockImplementation(() => dashboardStoreValue({
                 setOfflineStatus: mockSetOfflineStatus,
                 isOffline: mockIsOffline,
-            } as any));
+            }));
 
             const { result } = renderHook(() => useOnlineStatus());
 

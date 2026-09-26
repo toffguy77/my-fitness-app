@@ -17,27 +17,19 @@ const eslintConfig = defineConfig([
     "scripts/**", // Ignore scripts directory
   ]),
   {
+    // Послабления для тестов.
+    //
+    // Здесь было ещё два: `no-explicit-any` и `exhaustive-deps` выключались для
+    // тестов и не выключались — общий блок ниже включает их обратно для всех
+    // файлов, потому что идёт после этого. Отсюда и брались 248 предупреждений
+    // про `any` в тестах при конфигурации, которая их будто бы разрешает.
+    // Строки убраны, а не перенесены ниже: `any` в тесте выключает ровно ту
+    // проверку типов, ради которой тест написан.
     files: ["**/__tests__/**", "**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/error-handling.test.tsx"],
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "warn",
       "@typescript-eslint/ban-ts-comment": "off", // Allow @ts-nocheck in test files
-      "react-hooks/exhaustive-deps": "off",
       "react-hooks/rules-of-hooks": "warn",
-    },
-  },
-  {
-    files: ["**/DateInput.tsx", "**/InstallPrompt.tsx", "**/OfflineIndicator.tsx"],
-    rules: {
-      "react-hooks/exhaustive-deps": "warn",
-    },
-  },
-  {
-    // Отключаем ошибки React Compiler для файлов с синхронным setState в useEffect
-    // Это валидные случаи инициализации состояния из внешних систем
-    files: ["**/DateInput.tsx", "**/InstallPrompt.tsx", "**/OfflineIndicator.tsx"],
-    rules: {
-      "@next/next/no-img-element": "off",
     },
   },
   {
@@ -62,11 +54,12 @@ const eslintConfig = defineConfig([
       "no-new-func": "error",
       "no-script-url": "error",
       "no-debugger": "error",
-      // no-alert also covers confirm() and prompt(). The five current uses are
-      // confirmations before destructive actions, not XSS vectors, so this is a
-      // UX debt rather than a security defect: replacing them needs a reusable
-      // dialog component. Kept visible as a warning.
-      "no-alert": "warn",
+      // no-alert также покрывает confirm() и prompt(). Правило держали
+      // предупреждением, пока подтверждения перед необратимыми действиями
+      // спрашивались браузерным окном: заменить их было нечем. Теперь есть
+      // ConfirmDialog, в коде не осталось ни одного вызова, и правило
+      // закрывает путь назад, а не напоминает о долге.
+      "no-alert": "error",
     },
   },
   {

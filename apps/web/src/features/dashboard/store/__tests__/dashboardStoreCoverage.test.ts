@@ -6,7 +6,7 @@
  * pollForUpdates error path, and 500 mapError branch.
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useDashboardStore, clearMemoryCache } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
@@ -32,6 +32,8 @@ const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 const mockToast = toast as jest.Mocked<typeof toast>;
 
 // Import offline queue mocks for sync tests
+import { ApiError } from '@/shared/errors/apiErrors';
+import type { DailyMetrics } from '../../types';
 import {
     addToQueue,
     removeFromQueue,
@@ -49,7 +51,7 @@ const mockIncrementAttempts = incrementAttempts as jest.Mock;
 /**
  * Helper: create a frontend-shaped DailyMetrics object
  */
-function makeDailyMetrics(date: string, overrides: Record<string, any> = {}) {
+function makeDailyMetrics(date: string, overrides: Partial<DailyMetrics> = {}) {
     return {
         date,
         userId: 'user-1',
@@ -71,7 +73,7 @@ function makeDailyMetrics(date: string, overrides: Record<string, any> = {}) {
 /**
  * Helper: create a backend-shaped (flat, snake_case) metrics object
  */
-function makeBackendMetrics(date: string, overrides: Record<string, any> = {}) {
+function makeBackendMetrics(date: string, overrides: Record<string, unknown> = {}) {
     return {
         id: 'met-1',
         user_id: 1,
@@ -534,9 +536,7 @@ describe('Dashboard Store - Coverage Gaps', () => {
             const { result } = renderHook(() => useDashboardStore());
 
             // Use 400 so retryWithBackoff does not retry (4xx is non-retryable)
-            mockApiClient.get.mockRejectedValue({
-                response: { status: 400, data: { message: 'Bad request' } },
-            });
+            mockApiClient.get.mockRejectedValue(new ApiError(400, { message: 'Bad request' }));
 
             await act(async () => {
                 await result.current.fetchAllDashboardData();
@@ -969,9 +969,7 @@ describe('Dashboard Store - Coverage Gaps', () => {
             const { result } = renderHook(() => useDashboardStore());
 
             // Use 400 so retryWithBackoff does not retry
-            mockApiClient.get.mockRejectedValue({
-                response: { status: 400, data: { message: 'Bad request' } },
-            });
+            mockApiClient.get.mockRejectedValue(new ApiError(400, { message: 'Bad request' }));
 
             await act(async () => {
                 await result.current.pollForUpdates();
@@ -987,9 +985,7 @@ describe('Dashboard Store - Coverage Gaps', () => {
         it('maps 400 status to VALIDATION_ERROR with custom message', async () => {
             const { result } = renderHook(() => useDashboardStore());
 
-            mockApiClient.get.mockRejectedValueOnce({
-                response: { status: 400, data: { message: 'Custom validation error' } },
-            });
+            mockApiClient.get.mockRejectedValueOnce(new ApiError(400, { message: 'Custom validation error' }));
 
             await act(async () => {
                 await result.current.fetchWeeklyPlan();
@@ -1002,10 +998,7 @@ describe('Dashboard Store - Coverage Gaps', () => {
         it('maps 400 without message to default VALIDATION_ERROR', async () => {
             const { result } = renderHook(() => useDashboardStore());
 
-            mockApiClient.get.mockRejectedValueOnce({
-                response: { status: 400, data: {} },
-                message: undefined,
-            });
+            mockApiClient.get.mockRejectedValueOnce(new ApiError(400, {}));
 
             await act(async () => {
                 await result.current.fetchWeeklyPlan();
@@ -1276,9 +1269,7 @@ describe('Dashboard Store - Coverage Gaps', () => {
                 week: 1,
             });
             // updateMetric fails - use 400 so retryWithBackoff does not retry
-            mockApiClient.post.mockRejectedValue({
-                response: { status: 400, data: { message: 'Bad request' } },
-            });
+            mockApiClient.post.mockRejectedValue(new ApiError(400, { message: 'Bad request' }));
 
             await act(async () => {
                 await result.current.syncWhenOnline();
@@ -1292,9 +1283,7 @@ describe('Dashboard Store - Coverage Gaps', () => {
             const { result } = renderHook(() => useDashboardStore());
 
             // Make the initial data fetch fail - use 401 so no retry
-            mockApiClient.get.mockRejectedValue({
-                response: { status: 401, data: { message: 'Unauthorized' } },
-            });
+            mockApiClient.get.mockRejectedValue(new ApiError(401, { message: 'Unauthorized' }));
             mockSortQueue.mockReturnValue([]);
 
             await act(async () => {

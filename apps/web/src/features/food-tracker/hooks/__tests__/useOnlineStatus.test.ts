@@ -6,9 +6,10 @@
  * @module food-tracker/hooks/__tests__/useOnlineStatus
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useOnlineStatus } from '../useOnlineStatus';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
+import { foodTrackerStoreValue } from '../../testing/storeValue';
 
 // ============================================================================
 // Mocks
@@ -33,13 +34,13 @@ describe('useOnlineStatus', () => {
         jest.clearAllMocks();
 
         // Default mock implementation
-        mockUseFoodTrackerStore.mockImplementation((selector: any) => {
-            const state = {
+        mockUseFoodTrackerStore.mockImplementation((selector) => {
+            const state = foodTrackerStoreValue({
                 isOffline: false,
                 pendingOperations: [],
                 setOfflineStatus: mockSetOfflineStatus,
                 syncWhenOnline: mockSyncWhenOnline,
-            };
+            });
             return selector(state);
         });
 
@@ -73,13 +74,13 @@ describe('useOnlineStatus', () => {
         });
 
         it('returns offline status when store is offline', () => {
-            mockUseFoodTrackerStore.mockImplementation((selector: any) => {
-                const state = {
+            mockUseFoodTrackerStore.mockImplementation((selector) => {
+                const state = foodTrackerStoreValue({
                     isOffline: true,
                     pendingOperations: [],
                     setOfflineStatus: mockSetOfflineStatus,
                     syncWhenOnline: mockSyncWhenOnline,
-                };
+                });
                 return selector(state);
             });
 
@@ -89,8 +90,8 @@ describe('useOnlineStatus', () => {
         });
 
         it('returns pending operations count', () => {
-            mockUseFoodTrackerStore.mockImplementation((selector: any) => {
-                const state = {
+            mockUseFoodTrackerStore.mockImplementation((selector) => {
+                const state = foodTrackerStoreValue({
                     isOffline: false,
                     pendingOperations: [
                         { type: 'add', data: {} },
@@ -98,7 +99,7 @@ describe('useOnlineStatus', () => {
                     ],
                     setOfflineStatus: mockSetOfflineStatus,
                     syncWhenOnline: mockSyncWhenOnline,
-                };
+                });
                 return selector(state);
             });
 

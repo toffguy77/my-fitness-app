@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WeightSection } from '../WeightSection'
 
@@ -278,6 +278,28 @@ describe('WeightSection', () => {
         await waitFor(() => {
             expect(screen.getByText(/Цель: 70 кг/)).toBeInTheDocument()
         })
+    })
+
+    // Два запроса идут наперегонки, и раньше условие «не перебивать цель из
+    // профиля» читало состояние из замыкания эффекта, где она всегда null.
+    it('keeps the profile target when progress answers later with its own', async () => {
+        mockGetProfile.mockResolvedValue({ settings: { target_weight: 70 } })
+        let resolveProgress: (value: unknown) => void = () => {}
+        mockApiGet.mockImplementation(
+            () => new Promise((resolve) => { resolveProgress = resolve })
+        )
+
+        render(<WeightSection date={createDate('2026-03-07')} />)
+
+        await waitFor(() => {
+            expect(screen.getByText(/Цель: 70 кг/)).toBeInTheDocument()
+        })
+
+        await act(async () => {
+            resolveProgress({ weight_trend: [], target_weight: 65 })
+        })
+
+        expect(screen.getByText(/Цель: 70 кг/)).toBeInTheDocument()
     })
 
     it('shows distance to target when weight is logged and target exists', async () => {

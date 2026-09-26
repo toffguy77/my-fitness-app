@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { isApiError, messageForOr } from '@/shared/errors/apiErrors'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,6 +11,7 @@ import type { AdminUser, CuratorLoad } from '../types'
 import toast from 'react-hot-toast'
 
 import { t } from '@/shared/i18n'
+import { useConfirm } from '@/shared/components/ui'
 const ROLE_LABELS: Record<string, string> = {
     client: t('admin.roles.client'),
     coordinator: t('admin.roles.coordinator'),
@@ -26,6 +28,7 @@ export function UserDetail({ userId }: UserDetailProps) {
     const [curators, setCurators] = useState<CuratorLoad[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const { confirm, dialog } = useConfirm()
     const [actionLoading, setActionLoading] = useState(false)
 
     useEffect(() => {
@@ -50,28 +53,33 @@ export function UserDetail({ userId }: UserDetailProps) {
             .finally(() => setLoading(false))
     }, [userId])
 
-    const handleChangeRole = async (newRole: string) => {
+    const handleChangeRole = (newRole: string) => {
         if (!user) return
         if (user.role === newRole) return
 
-        const confirmMsg = newRole === 'client'
-            ? t('admin.user.demoteConfirm')
-            : t('admin.user.promoteConfirm')
+        const demoting = newRole === 'client'
 
-        if (!confirm(confirmMsg)) return
-
-        setActionLoading(true)
-        try {
-            await adminApi.changeRole(user.id, newRole)
-            toast.success(t('admin.user.roleChanged'))
-            // Refresh data
-            setUser(await adminApi.getUser(userId))
-            setCurators(await adminApi.getCurators())
-        } catch (err) {
-            toast.error(messageForOr(err, t('admin.user.roleChangeFailed')))
-        } finally {
-            setActionLoading(false)
-        }
+        confirm({
+            title: demoting ? t('admin.user.demoteTitle') : t('admin.user.promoteTitle'),
+            description: demoting
+                ? t('admin.user.demoteConfirm')
+                : t('admin.user.promoteConfirm'),
+            confirmLabel: demoting ? t('admin.user.demoteAction') : t('admin.user.promoteAction'),
+            onConfirm: async () => {
+                setActionLoading(true)
+                try {
+                    await adminApi.changeRole(user.id, newRole)
+                    toast.success(t('admin.user.roleChanged'))
+                    // Refresh data
+                    setUser(await adminApi.getUser(userId))
+                    setCurators(await adminApi.getCurators())
+                } catch (err) {
+                    toast.error(messageForOr(err, t('admin.user.roleChangeFailed')))
+                } finally {
+                    setActionLoading(false)
+                }
+            },
+        })
     }
 
     const handleAssignCurator = async (curatorId: number) => {
@@ -122,9 +130,11 @@ export function UserDetail({ userId }: UserDetailProps) {
                     <ArrowLeft className="h-5 w-5 text-gray-700" />
                 </button>
                 {user.avatar_url ? (
-                    <img
+                    <Image
                         src={user.avatar_url}
                         alt={user.name}
+                        width={40}
+                        height={40}
                         className="h-10 w-10 rounded-full object-cover"
                     />
                 ) : (
@@ -237,6 +247,8 @@ export function UserDetail({ userId }: UserDetailProps) {
                     )}
                 </div>
             )}
+
+            {dialog}
         </div>
     )
 }

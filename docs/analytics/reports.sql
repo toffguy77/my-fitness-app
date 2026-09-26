@@ -6,6 +6,15 @@
 -- Every one of them joins on `visitor_id` for the anonymous part of the funnel
 -- and on `user_id` afterwards; `analytics_identities` is what makes the two
 -- halves the same person.
+--
+-- They read `live_analytics_events` and `live_users` rather than the tables
+-- themselves (migration 081). Production carries permanent E2E accounts, and
+-- counting them turns a week with no real registrations into "five new
+-- accounts" — a report that shows fivefold growth out of nothing is worse than
+-- no report, because somebody will act on it.
+--
+-- The anonymous half of the funnel survives the filter: an event with no user
+-- passes, only events tied to a service account are dropped.
 
 -- ---------------------------------------------------------------------------
 -- 1. Registration funnel: landing page → registration, by week.
@@ -19,7 +28,7 @@ SELECT
     COUNT(DISTINCT visitor_id) FILTER (WHERE name = 'onboarding_result_shown') AS saw_result,
     COUNT(DISTINCT visitor_id) FILTER (WHERE name = 'lead_saved')          AS left_contact,
     COUNT(DISTINCT visitor_id) FILTER (WHERE name = 'registered')          AS registered
-FROM analytics_events
+FROM live_analytics_events
 WHERE occurred_at >= NOW() - INTERVAL '90 days'
 GROUP BY week
 ORDER BY week DESC;
@@ -30,7 +39,7 @@ ORDER BY week DESC;
 SELECT
     properties ->> 'step'            AS step,
     COUNT(DISTINCT visitor_id)       AS reached
-FROM analytics_events
+FROM live_analytics_events
 WHERE name = 'onboarding_step_completed'
   AND occurred_at >= NOW() - INTERVAL '30 days'
 GROUP BY step
@@ -43,13 +52,13 @@ ORDER BY reached DESC;
 -- ---------------------------------------------------------------------------
 WITH registrations AS (
     SELECT user_id, MIN(occurred_at) AS registered_at
-    FROM analytics_events
+    FROM live_analytics_events
     WHERE name = 'registered' AND user_id IS NOT NULL
     GROUP BY user_id
 ),
 first_entries AS (
     SELECT user_id, MIN(occurred_at) AS first_entry_at
-    FROM analytics_events
+    FROM live_analytics_events
     WHERE name IN ('first_food_entry', 'food_entry_created') AND user_id IS NOT NULL
     GROUP BY user_id
 )
@@ -79,13 +88,13 @@ WITH cohorts AS (
     SELECT user_id,
            date_trunc('week', MIN(occurred_at)) AS cohort_week,
            MIN(occurred_at)                     AS joined_at
-    FROM analytics_events
+    FROM live_analytics_events
     WHERE user_id IS NOT NULL
     GROUP BY user_id
 ),
 activity AS (
     SELECT DISTINCT user_id, date_trunc('day', occurred_at) AS active_day
-    FROM analytics_events
+    FROM live_analytics_events
     WHERE user_id IS NOT NULL
 )
 SELECT

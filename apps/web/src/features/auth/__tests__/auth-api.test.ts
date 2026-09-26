@@ -1,6 +1,10 @@
 import fc from 'fast-check';
 import { mapApiError } from '../api/auth';
-import type { AuthError } from '../types';
+import { ApiError } from '@/shared/errors/apiErrors';
+
+// The errors here are the ones `api-client` actually throws. Plain objects
+// carrying a `response` field used to stand in for them, which let the mapping
+// be read through an `any` and hid what a real failure looks like.
 
 describe('Authentication API Error Mapping', () => {
     describe('Property 7: Authentication Error Mapping', () => {
@@ -16,13 +20,7 @@ describe('Authentication API Error Mapping', () => {
                     }),
                     (errorMessage, responseData) => {
                         // Create error with 401 status
-                        const error = {
-                            response: {
-                                status: 401,
-                                data: responseData,
-                            },
-                            message: errorMessage,
-                        };
+                        const error = new ApiError(401, responseData);
 
                         const result = mapApiError(error);
 
@@ -47,13 +45,7 @@ describe('Authentication API Error Mapping', () => {
                     }),
                     (errorMessage, responseData) => {
                         // Create error with 409 status
-                        const error = {
-                            response: {
-                                status: 409,
-                                data: responseData,
-                            },
-                            message: errorMessage,
-                        };
+                        const error = new ApiError(409, responseData);
 
                         const result = mapApiError(error);
 
@@ -75,10 +67,7 @@ describe('Authentication API Error Mapping', () => {
                     fc.string(),
                     (errorMessage) => {
                         // Create network error (TypeError only, as per implementation)
-                        const error = {
-                            name: 'TypeError',
-                            message: errorMessage,
-                        };
+                        const error = new TypeError(errorMessage);
 
                         const result = mapApiError(error);
 
@@ -102,10 +91,7 @@ describe('Authentication API Error Mapping', () => {
                     (prefix, suffix) => {
                         // Create error with 'fetch' in message
                         const errorMessage = `${prefix}fetch${suffix}`;
-                        const error = {
-                            name: 'Error',
-                            message: errorMessage,
-                        };
+                        const error = new Error(errorMessage);
 
                         const result = mapApiError(error);
 
@@ -131,13 +117,7 @@ describe('Authentication API Error Mapping', () => {
                     }),
                     (statusCode, errorMessage, responseData) => {
                         // Create server error
-                        const error = {
-                            response: {
-                                status: statusCode,
-                                data: responseData,
-                            },
-                            message: errorMessage,
-                        };
+                        const error = new ApiError(statusCode, responseData);
 
                         const result = mapApiError(error);
 
@@ -159,14 +139,7 @@ describe('Authentication API Error Mapping', () => {
                     fc.option(fc.string(), { nil: undefined }),
                     (responseMessage) => {
                         // Create 400 error
-                        const error = {
-                            response: {
-                                status: 400,
-                                data: {
-                                    message: responseMessage,
-                                },
-                            },
-                        };
+                        const error = new ApiError(400, { message: responseMessage });
 
                         const result = mapApiError(error);
 
@@ -191,16 +164,9 @@ describe('Authentication API Error Mapping', () => {
             fc.assert(
                 fc.property(
                     fc.integer({ min: 200, max: 499 }).filter(n => n !== 400 && n !== 401 && n !== 409),
-                    fc.string(),
-                    (statusCode, errorMessage) => {
+                    (statusCode) => {
                         // Create error with non-standard status code
-                        const error = {
-                            response: {
-                                status: statusCode,
-                                data: {},
-                            },
-                            message: errorMessage,
-                        };
+                        const error = new ApiError(statusCode, {});
 
                         const result = mapApiError(error);
 
@@ -222,14 +188,7 @@ describe('Authentication API Error Mapping', () => {
                     fc.integer({ min: 200, max: 599 }),
                     (statusCode) => {
                         // Create error with "Invalid credentials" in message
-                        const error = {
-                            response: {
-                                status: statusCode,
-                                data: {
-                                    message: 'Invalid credentials provided',
-                                },
-                            },
-                        };
+                        const error = new ApiError(statusCode, { message: 'Invalid credentials provided' });
 
                         const result = mapApiError(error);
 
@@ -251,14 +210,7 @@ describe('Authentication API Error Mapping', () => {
                     fc.integer({ min: 200, max: 599 }),
                     (statusCode) => {
                         // Create error with "already exists" in message
-                        const error = {
-                            response: {
-                                status: statusCode,
-                                data: {
-                                    message: 'User already exists in the system',
-                                },
-                            },
-                        };
+                        const error = new ApiError(statusCode, { message: 'User already exists in the system' });
 
                         const result = mapApiError(error);
 
@@ -282,12 +234,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should map 401 with no message to invalid credentials', () => {
-            const error = {
-                response: {
-                    status: 401,
-                    data: {},
-                },
-            };
+            const error = new ApiError(401, {});
             const result = mapApiError(error);
 
             expect(result.code).toBe('invalid_credentials');
@@ -295,12 +242,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should map 409 with no message to user exists', () => {
-            const error = {
-                response: {
-                    status: 409,
-                    data: {},
-                },
-            };
+            const error = new ApiError(409, {});
             const result = mapApiError(error);
 
             expect(result.code).toBe('user_exists');
@@ -308,14 +250,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should map 500 to server error', () => {
-            const error = {
-                response: {
-                    status: 500,
-                    data: {
-                        message: 'Internal server error',
-                    },
-                },
-            };
+            const error = new ApiError(500, { message: 'Internal server error' });
             const result = mapApiError(error);
 
             expect(result.code).toBe('server_error');
@@ -323,14 +258,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should map 503 to server error', () => {
-            const error = {
-                response: {
-                    status: 503,
-                    data: {
-                        message: 'Service unavailable',
-                    },
-                },
-            };
+            const error = new ApiError(503, { message: 'Service unavailable' });
             const result = mapApiError(error);
 
             expect(result.code).toBe('server_error');
@@ -338,14 +266,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should map 400 with custom message to validation error', () => {
-            const error = {
-                response: {
-                    status: 400,
-                    data: {
-                        message: 'Email is required',
-                    },
-                },
-            };
+            const error = new ApiError(400, { message: 'Email is required' });
             const result = mapApiError(error);
 
             expect(result.code).toBe('validation_error');
@@ -353,12 +274,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should map 400 without message to default validation error', () => {
-            const error = {
-                response: {
-                    status: 400,
-                    data: {},
-                },
-            };
+            const error = new ApiError(400, {});
             const result = mapApiError(error);
 
             expect(result.code).toBe('validation_error');
@@ -366,10 +282,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should handle error with fetch in message', () => {
-            const error = {
-                name: 'Error',
-                message: 'fetch failed due to network',
-            };
+            const error = new Error('fetch failed due to network');
             const result = mapApiError(error);
 
             expect(result.code).toBe('network_error');
@@ -388,14 +301,7 @@ describe('Authentication API Error Mapping', () => {
 
         it('should prioritize message-based detection over status code', () => {
             // Even with 500 status, "Invalid credentials" in message should win
-            const error = {
-                response: {
-                    status: 500,
-                    data: {
-                        message: 'Invalid credentials',
-                    },
-                },
-            };
+            const error = new ApiError(500, { message: 'Invalid credentials' });
             const result = mapApiError(error);
 
             expect(result.code).toBe('invalid_credentials');
@@ -404,12 +310,7 @@ describe('Authentication API Error Mapping', () => {
 
         it('should handle edge case: status 200 with error object', () => {
             // Unusual case but should handle gracefully
-            const error = {
-                response: {
-                    status: 200,
-                    data: {},
-                },
-            };
+            const error = new ApiError(200, {});
             const result = mapApiError(error);
 
             expect(result.code).toBe('server_error');
@@ -417,12 +318,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should handle null/undefined response data', () => {
-            const error = {
-                response: {
-                    status: 500,
-                    data: null,
-                },
-            };
+            const error = new ApiError(500, null);
             const result = mapApiError(error);
 
             expect(result.code).toBe('server_error');
@@ -430,12 +326,7 @@ describe('Authentication API Error Mapping', () => {
         });
 
         it('should return AuthError with correct structure', () => {
-            const error = {
-                response: {
-                    status: 401,
-                    data: {},
-                },
-            };
+            const error = new ApiError(401, {});
             const result = mapApiError(error);
 
             // Verify structure
@@ -455,13 +346,7 @@ describe('Authentication API Error Mapping', () => {
             ];
 
             testCases.forEach(({ status, expectedMessage }) => {
-                const error = {
-                    response: {
-                        status,
-                        data: {},
-                    },
-                };
-                const result = mapApiError(error);
+                const result = mapApiError(new ApiError(status, {}));
 
                 // Verify message is in Russian (contains Cyrillic characters)
                 expect(result.message).toBe(expectedMessage);

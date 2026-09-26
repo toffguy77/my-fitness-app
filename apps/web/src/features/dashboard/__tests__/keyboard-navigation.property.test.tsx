@@ -456,7 +456,6 @@ describe('Property 35: Keyboard Navigation Support', () => {
 
                     const TestComponent = () => {
                         const ref = useRef<HTMLDivElement>(null);
-                        // eslint-disable-next-line react-hooks/immutability
                         hookResultRef.current = useRovingTabIndex(ref as RefObject<HTMLElement>, {
                             orientation: 'horizontal',
                             initialIndex: 0,

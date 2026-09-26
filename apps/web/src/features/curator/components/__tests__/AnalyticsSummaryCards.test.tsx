@@ -58,7 +58,7 @@ describe('AnalyticsSummaryCards', () => {
     })
 
     it('applies green color for kbzhu between 90-110', () => {
-        const { container } = render(
+        render(
             <AnalyticsSummaryCards analytics={{ ...baseAnalytics, avg_kbzhu_percent: 100 }} />
         )
         const kbzhuValue = screen.getByText('100%')

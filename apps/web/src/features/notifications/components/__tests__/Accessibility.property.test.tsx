@@ -41,11 +41,14 @@ mockIntersectionObserver.mockReturnValue({
     unobserve: () => null,
     disconnect: () => null,
 });
-window.IntersectionObserver = mockIntersectionObserver as any;
+window.IntersectionObserver = mockIntersectionObserver as unknown as typeof IntersectionObserver;
 
 // Mock react-window
 jest.mock('react-window', () => ({
-    VariableSizeList: ({ children, itemCount }: any) => (
+    VariableSizeList: ({ children, itemCount }: {
+        children: (props: { index: number; style: React.CSSProperties }) => React.ReactNode
+        itemCount: number
+    }) => (
         <div data-testid="virtual-list">
             {Array.from({ length: Math.min(itemCount, 10) }, (_, index) => (
                 <div key={index}>
@@ -85,7 +88,7 @@ describe('Property 17: Accessibility Compliance', () => {
                     const tabs = container.querySelectorAll('[role="tab"]');
                     expect(tabs.length).toBe(2);
 
-                    tabs.forEach((tab, index) => {
+                    tabs.forEach((tab) => {
                         // Should have aria-selected
                         expect(tab).toHaveAttribute('aria-selected');
 

@@ -6,7 +6,7 @@ import type { ArticleCard } from '@/features/content/types';
 // Mock Next.js Link component
 jest.mock('next/link', () => ({
     __esModule: true,
-    default: ({ href, children, ...props }: any) => (
+    default: ({ href, children, ...props }: React.ComponentProps<'a'>) => (
         <a href={href} {...props}>{children}</a>
     ),
 }));
@@ -14,7 +14,7 @@ jest.mock('next/link', () => ({
 // Mock Next.js Image component
 jest.mock('next/image', () => ({
     __esModule: true,
-    default: (props: any) => {
+    default: (props: React.ComponentProps<'img'> & { fill?: boolean }) => {
         const { fill, ...imgProps } = props;
         // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
         return <img {...imgProps} data-fill={fill ? 'true' : 'false'} />;

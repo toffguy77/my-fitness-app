@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import Image from 'next/image'
 import { cn } from '@/shared/utils/cn'
 
 export interface PhotoUploaderProps {
@@ -54,9 +55,11 @@ export function PhotoUploader({
             {/* Avatar circle */}
             <div className="relative h-32 w-32 overflow-hidden rounded-full">
                 {avatarUrl ? (
-                    <img
+                    <Image
                         src={avatarUrl}
                         alt={userName || 'Avatar'}
+                        width={128}
+                        height={128}
                         className="h-full w-full object-cover"
                     />
                 ) : (

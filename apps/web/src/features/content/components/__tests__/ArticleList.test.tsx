@@ -3,7 +3,7 @@
  */
 
 import React from 'react'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { ArticleList } from '../ArticleList'
 import type { Article } from '@/features/content/types'
 
@@ -19,7 +19,7 @@ jest.mock('@/features/content/api/contentApi', () => ({
 // Mock next/link
 jest.mock('next/link', () => ({
     __esModule: true,
-    default: ({ href, children, ...props }: any) => (
+    default: ({ href, children, ...props }: React.ComponentProps<'a'>) => (
         <a href={href} {...props}>{children}</a>
     ),
 }))
@@ -35,7 +35,6 @@ import { contentApi } from '@/features/content/api/contentApi'
 
 const mockListArticles = contentApi.listArticles as jest.Mock
 const mockDeleteArticle = contentApi.deleteArticle as jest.Mock
-const mockPublishArticle = contentApi.publishArticle as jest.Mock
 
 const createArticle = (overrides: Partial<Article> = {}): Article => ({
     id: '1',
@@ -56,7 +55,6 @@ describe('ArticleList', () => {
     beforeEach(() => {
         jest.clearAllMocks()
         // @ts-ignore
-        window.confirm = jest.fn(() => true)
     })
 
     it('shows loading spinner initially', () => {
@@ -189,8 +187,33 @@ describe('ArticleList', () => {
 
         fireEvent.click(screen.getByText('Удалить'))
 
-        expect(window.confirm).toHaveBeenCalledWith('Удалить статью?')
-        expect(mockDeleteArticle).toHaveBeenCalledWith('1')
+        const dialog = await screen.findByRole('dialog')
+        expect(dialog).toHaveAccessibleName('Удалить статью?')
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+
+        await waitFor(() => {
+            expect(mockDeleteArticle).toHaveBeenCalledWith('1')
+        })
+    })
+
+    it('не удаляет статью, если подтверждение отклонено', async () => {
+        const articles = [createArticle()]
+        mockListArticles.mockResolvedValue({ articles, total: 1 })
+
+        render(<ArticleList />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Удалить')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByText('Удалить'))
+        const dialog = await screen.findByRole('dialog')
+        fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        })
+        expect(mockDeleteArticle).not.toHaveBeenCalled()
     })
 
     it('renders edit link with correct path', async () => {

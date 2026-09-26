@@ -27,7 +27,7 @@ jest.mock('@/shared/utils/api-client', () => ({
 
 // Mock DashboardLayout component
 jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
-    DashboardLayout: ({ children, userName }: any) => (
+    DashboardLayout: ({ children, userName }: { children: React.ReactNode; userName: string }) => (
         <div data-testid="dashboard-layout">
             <div data-testid="user-name">{userName}</div>
             {children}
@@ -238,7 +238,7 @@ describe('DashboardPage', () => {
                 role: 'client',
             }))
 
-            const { container } = render(<DashboardPage />)
+            render(<DashboardPage />)
 
             // In test environment, useEffect runs synchronously, so loading state may not be visible
             // Instead, verify that the component eventually renders the dashboard

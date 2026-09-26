@@ -35,17 +35,21 @@ describe('FileUploader', () => {
 
         // Mock FileReader
         const mockReadAsText = jest.fn()
+        // A stand-in for FileReader with only what the component touches. The
+        // cast names what is missing instead of switching the checking off.
+        // A stand-in for FileReader with only what the component touches. The
+        // cast names what is missing instead of switching the checking off.
         const mockReader = {
             readAsText: mockReadAsText,
-            onload: null as any,
+            onload: null,
             result: '# Test Markdown',
-        }
-        jest.spyOn(window, 'FileReader').mockImplementation(() => mockReader as any)
+        } as unknown as FileReader
+        jest.spyOn(window, 'FileReader').mockImplementation(() => mockReader)
 
         fireEvent.change(input, { target: { files: [file] } })
 
         // Trigger the onload callback
-        mockReader.onload!()
+        mockReader.onload!(new ProgressEvent('load') as ProgressEvent<FileReader>)
 
         expect(onFileLoaded).toHaveBeenCalledWith(
             expect.objectContaining({

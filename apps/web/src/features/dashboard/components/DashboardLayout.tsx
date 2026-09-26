@@ -17,7 +17,6 @@ export interface DashboardLayoutProps {
     children: React.ReactNode
     userName: string
     avatarUrl?: string
-    notificationCount?: number
     activeNavItem?: NavigationItemId
     onNavigate?: (itemId: NavigationItemId) => void
     className?: string
@@ -37,7 +36,6 @@ export const DashboardLayout = forwardRef<HTMLDivElement, DashboardLayoutProps>(
         children,
         userName,
         avatarUrl,
-        notificationCount,
         activeNavItem = 'dashboard',
         onNavigate,
         className

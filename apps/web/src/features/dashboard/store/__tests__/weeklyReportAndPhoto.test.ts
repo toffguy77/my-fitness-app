@@ -3,11 +3,12 @@
  * Tests error handling and rollback behavior
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useDashboardStore } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
 import toast from 'react-hot-toast';
 import { setToken } from '@/shared/utils/token-storage';
+import { ApiError } from '@/shared/errors/apiErrors';
 
 // Mock API client
 jest.mock('@/shared/utils/api-client', () => ({
@@ -112,17 +113,12 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekStart = new Date('2024-01-01');
             const weekEnd = new Date('2024-01-07');
 
-            (apiClient.post as unknown as jest.Mock).mockRejectedValue({
-                response: {
-                    status: 400,
-                    data: { message: 'Недостаточно данных для отчета' },
-                },
-            });
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue(new ApiError(400, { message: 'Недостаточно данных для отчета' }));
 
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -148,7 +144,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -169,12 +165,8 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
 
             // Fail twice, then succeed
             (apiClient.post as unknown as jest.Mock)
-                .mockRejectedValueOnce({
-                    response: { status: 500 },
-                })
-                .mockRejectedValueOnce({
-                    response: { status: 500 },
-                })
+                .mockRejectedValueOnce(new ApiError(500, {}))
+                .mockRejectedValueOnce(new ApiError(500, {}))
                 .mockResolvedValueOnce({
                     data: {
                         id: 'report-1',
@@ -247,7 +239,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.uploadPhoto(weekIdentifier, file);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -270,7 +262,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.uploadPhoto(weekIdentifier, file);
-                } catch (error) {
+                } catch {
                     // Expected error
                 }
             });
@@ -316,9 +308,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const { result } = renderHook(() => useDashboardStore());
 
             // Trigger an error by making a failed API call
-            (apiClient.post as unknown as jest.Mock).mockRejectedValue({
-                response: { status: 400, data: { message: 'Test error' } },
-            });
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue(new ApiError(400, { message: 'Test error' }));
 
             await act(async () => {
                 try {
@@ -326,7 +316,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
                         new Date('2024-01-01'),
                         new Date('2024-01-07')
                     );
-                } catch (error) {
+                } catch {
                     // Expected
                 }
             });
@@ -355,7 +345,7 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected
                 }
             });
@@ -370,14 +360,12 @@ describe('Dashboard Store - Weekly Report and Photo Actions', () => {
             const weekStart = new Date('2024-01-01');
             const weekEnd = new Date('2024-01-07');
 
-            (apiClient.post as unknown as jest.Mock).mockRejectedValue({
-                response: { status: 400 },
-            });
+            (apiClient.post as unknown as jest.Mock).mockRejectedValue(new ApiError(400, {}));
 
             await act(async () => {
                 try {
                     await result.current.submitWeeklyReport(weekStart, weekEnd);
-                } catch (error) {
+                } catch {
                     // Expected
                 }
             });

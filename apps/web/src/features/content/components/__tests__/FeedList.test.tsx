@@ -12,10 +12,10 @@ import type { ArticleCard } from '@/features/content/types'
 const mockGetFeed = jest.fn()
 jest.mock('@/features/content/api/contentApi', () => ({
     contentApi: {
-        getFeed: (...args: any[]) => mockGetFeed(...args),
+        getFeed: (...args: Parameters<typeof mockGetFeed>) => mockGetFeed(...args),
     },
     publicContentApi: {
-        getFeed: (...args: any[]) => mockGetFeed(...args),
+        getFeed: (...args: Parameters<typeof mockGetFeed>) => mockGetFeed(...args),
     },
 }))
 
@@ -26,7 +26,7 @@ jest.mock('@/shared/hooks/useSession', () => ({
 
 // Mock sub-components to simplify testing
 jest.mock('../CategoryFilter', () => ({
-    CategoryFilter: ({ selected, onSelect }: any) => (
+    CategoryFilter: ({ onSelect }: { onSelect: (category: string | null) => void }) => (
         <div data-testid="category-filter">
             <button onClick={() => onSelect('nutrition')}>Nutrition</button>
             <button onClick={() => onSelect(null)}>All</button>

@@ -7,7 +7,6 @@
 
 import { render, screen, waitFor } from '@testing-library/react'
 import { ProgressSection } from '../ProgressSection'
-import fc from 'fast-check'
 
 // Раньше здесь подмены не было вовсе: компонент ходил в настоящий fetch,
 // запрос падал, и «handles empty data gracefully» на самом деле проверял

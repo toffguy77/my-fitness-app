@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { cn } from '@/shared/utils/cn'
 import type { CuratorLoad } from '../types'
 
@@ -26,9 +27,11 @@ export function CuratorLoadCard({ curator }: CuratorLoadCardProps) {
         >
             <div className="flex items-center gap-3">
                 {curator.avatar_url ? (
-                    <img
+                    <Image
                         src={curator.avatar_url}
                         alt={curator.name}
+                        width={40}
+                        height={40}
                         className="h-10 w-10 rounded-full object-cover"
                     />
                 ) : (

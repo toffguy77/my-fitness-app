@@ -187,7 +187,7 @@ export const RecommendationsSkeleton = memo(function RecommendationsSkeleton() {
     );
 });
 
-export default {
+const LoadingSkeletons = {
     Skeleton,
     KBZHUSummarySkeleton,
     MealSlotSkeleton,
@@ -197,3 +197,5 @@ export default {
     FoodTrackerPageSkeleton,
     RecommendationsSkeleton,
 };
+
+export default LoadingSkeletons

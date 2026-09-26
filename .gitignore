@@ -44,7 +44,11 @@ apps/api/cleanup-food-data
 # CLAUDE.md files are tracked already, and a tracked file ignores this.
 CLAUDE.md
 AGENTS.md
-.claude/
+# Локальное — секреты, настройки, рабочие копии — не в git.
+# Исключение: навыки. Ими пользуются вдвоём, и жить они должны в репозитории,
+# а не на одной машине.
+.claude/*
+!.claude/skills/
 
 # OS
 .DS_Store

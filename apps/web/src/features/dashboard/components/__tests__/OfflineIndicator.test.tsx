@@ -3,11 +3,12 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OfflineIndicator } from '../OfflineIndicator';
 import { useDashboardStore } from '../../store/dashboardStore';
-import { addToQueue, clearQueue } from '../../utils/offlineQueue';
+import { getQueueSize } from '../../utils/offlineQueue';
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore');
@@ -20,6 +21,7 @@ jest.mock('../../utils/offlineQueue', () => ({
 }));
 
 const mockUseDashboardStore = useDashboardStore as jest.MockedFunction<typeof useDashboardStore>;
+const mockGetQueueSize = getQueueSize as jest.MockedFunction<typeof getQueueSize>;
 
 describe('OfflineIndicator', () => {
     const mockSyncWhenOnline = jest.fn();
@@ -28,14 +30,12 @@ describe('OfflineIndicator', () => {
         jest.clearAllMocks();
         jest.useFakeTimers();
 
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             isOffline: false,
             syncWhenOnline: mockSyncWhenOnline,
-        } as any);
+        }));
 
-        // Mock getQueueSize
-        const { getQueueSize } = require('../../utils/offlineQueue');
-        getQueueSize.mockReturnValue(0);
+        mockGetQueueSize.mockReturnValue(0);
     });
 
     afterEach(() => {
@@ -50,10 +50,10 @@ describe('OfflineIndicator', () => {
         });
 
         it('should render when offline', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             expect(screen.getByRole('status')).toBeInTheDocument();
@@ -61,8 +61,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should render when online but has pending changes', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(3);
+            mockGetQueueSize.mockReturnValue(3);
 
             render(<OfflineIndicator />);
 
@@ -77,10 +76,10 @@ describe('OfflineIndicator', () => {
 
     describe('Offline state', () => {
         beforeEach(() => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
         });
 
         it('should display offline icon', () => {
@@ -96,8 +95,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should show pending changes count when offline', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(5);
+            mockGetQueueSize.mockReturnValue(5);
 
             render(<OfflineIndicator />);
 
@@ -109,8 +107,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should show singular form for 1 change', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(1);
+            mockGetQueueSize.mockReturnValue(1);
 
             render(<OfflineIndicator />);
 
@@ -129,8 +126,7 @@ describe('OfflineIndicator', () => {
 
     describe('Online state with pending changes', () => {
         beforeEach(() => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(3);
+            mockGetQueueSize.mockReturnValue(3);
         });
 
         it('should display online icon', () => {
@@ -216,8 +212,7 @@ describe('OfflineIndicator', () => {
 
     describe('Queue size updates', () => {
         it('should update queue size periodically', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(2);
+            mockGetQueueSize.mockReturnValue(2);
 
             render(<OfflineIndicator />);
 
@@ -228,7 +223,7 @@ describe('OfflineIndicator', () => {
             expect(screen.getByText(/Синхронизация \(2\)/)).toBeInTheDocument();
 
             // Update queue size
-            getQueueSize.mockReturnValue(5);
+            mockGetQueueSize.mockReturnValue(5);
 
             act(() => {
                 jest.advanceTimersByTime(1000);
@@ -238,8 +233,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should hide indicator when queue becomes empty', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(2);
+            mockGetQueueSize.mockReturnValue(2);
 
             const { container } = render(<OfflineIndicator />);
 
@@ -250,7 +244,7 @@ describe('OfflineIndicator', () => {
             expect(screen.getByRole('status')).toBeInTheDocument();
 
             // Clear queue
-            getQueueSize.mockReturnValue(0);
+            mockGetQueueSize.mockReturnValue(0);
 
             act(() => {
                 jest.advanceTimersByTime(1000);
@@ -262,20 +256,20 @@ describe('OfflineIndicator', () => {
 
     describe('Accessibility', () => {
         it('should have role="status"', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             expect(screen.getByRole('status')).toBeInTheDocument();
         });
 
         it('should have aria-live="polite"', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             const status = screen.getByRole('status');
@@ -283,10 +277,10 @@ describe('OfflineIndicator', () => {
         });
 
         it('should have aria-atomic="true"', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             const status = screen.getByRole('status');
@@ -294,8 +288,7 @@ describe('OfflineIndicator', () => {
         });
 
         it('should have aria-label on sync button', () => {
-            const { getQueueSize } = require('../../utils/offlineQueue');
-            getQueueSize.mockReturnValue(3);
+            mockGetQueueSize.mockReturnValue(3);
 
             render(<OfflineIndicator />);
 
@@ -308,10 +301,10 @@ describe('OfflineIndicator', () => {
         });
 
         it('should hide icons from screen readers', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator />);
             const icons = screen.getByRole('status').querySelectorAll('svg');
@@ -323,10 +316,10 @@ describe('OfflineIndicator', () => {
 
     describe('Custom className', () => {
         it('should apply custom className', () => {
-            mockUseDashboardStore.mockReturnValue({
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 isOffline: true,
                 syncWhenOnline: mockSyncWhenOnline,
-            } as any);
+            }));
 
             render(<OfflineIndicator className="custom-class" />);
             const indicator = screen.getByRole('status');

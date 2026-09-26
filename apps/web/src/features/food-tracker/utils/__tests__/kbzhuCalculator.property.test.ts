@@ -8,18 +8,8 @@
  */
 
 import fc from 'fast-check';
-import {
-    calculateKBZHU,
-    roundToOneDecimal,
-    getProgressColor,
-    getPercentage,
-    calculateMacroGoals,
-    EMPTY_KBZHU,
-    MACRO_DISTRIBUTION,
-    CALORIES_PER_GRAM,
-} from '../kbzhuCalculator';
+import { calculateKBZHU, roundToOneDecimal, getProgressColor, getPercentage, calculateMacroGoals, MACRO_DISTRIBUTION, CALORIES_PER_GRAM } from '../kbzhuCalculator';
 import type { KBZHU } from '../../types';
-import { kbzhuGenerator, validPortionGenerator } from '../../testing/generators';
 
 // ============================================================================
 // Test Configuration
@@ -926,11 +916,10 @@ describe('Feature: food-tracker, Property 15: Percentage Calculation', () => {
                         // Ensure current * 2 doesn't cause overflow issues
                         if (current * 2 > 10000) return true;
 
-                        const percentage1 = getPercentage(current, target);
                         const percentage2 = getPercentage(current * 2, target);
 
-                        // Due to rounding, allow for small differences
-                        // percentage2 should be approximately 2 * percentage1
+                        // Due to rounding, compare against the doubled value
+                        // computed the same way rather than against 2 * percentage.
                         const expectedDouble = Math.round((current * 2 / target) * 100);
 
                         return percentage2 === expectedDouble;

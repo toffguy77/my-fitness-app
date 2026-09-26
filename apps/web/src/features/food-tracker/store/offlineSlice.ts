@@ -5,6 +5,7 @@
 import { StateCreator } from 'zustand';
 import toast from 'react-hot-toast';
 import type { FoodTrackerStore } from './types';
+import type { CreateFoodEntryRequest, MealType, UpdateFoodEntryRequest } from '../types';
 import {
     DEFAULT_WATER_GOAL,
     DEFAULT_GLASS_SIZE,
@@ -19,13 +20,24 @@ import { t } from '@/shared/i18n';
 // Slice Interface
 // ============================================================================
 
+/**
+ * An operation waiting for the connection to come back, with the arguments it
+ * will be replayed with.
+ *
+ * `data` used to be `any`, so the replay loop read `op.data.mealType` for one
+ * kind and `op.data.glasses` for another with nothing checking that whoever
+ * queued it had put them there.
+ */
+export type PendingOperation =
+    | { type: 'add'; data: { mealType: MealType; entryData: CreateFoodEntryRequest } }
+    | { type: 'update'; data: { id: string; updates: UpdateFoodEntryRequest } }
+    | { type: 'delete'; data: { id: string; mealType: MealType } }
+    | { type: 'water'; data: { glasses: number; date: string } };
+
 export interface OfflineSlice {
     // State
     isOffline: boolean;
-    pendingOperations: Array<{
-        type: 'add' | 'update' | 'delete' | 'water';
-        data: any;
-    }>;
+    pendingOperations: PendingOperation[];
 
     // Actions
     setOfflineStatus: (isOffline: boolean) => void;

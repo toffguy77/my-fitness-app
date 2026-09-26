@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event'
 import { WeightBlock } from '../WeightBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import toast from 'react-hot-toast'
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock dependencies
 jest.mock('../../store/dashboardStore')
@@ -24,17 +25,17 @@ describe('WeightBlock - Core Functionality', () => {
         jest.clearAllMocks()
         mockUpdateMetric.mockResolvedValue(undefined)
 
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             dailyData: {},
             updateMetric: mockUpdateMetric,
-        } as any)
+        }))
 
         mockToast.success = jest.fn()
         mockToast.error = jest.fn()
     })
 
     it('displays weight decrease indicator', () => {
-        mockUseDashboardStore.mockReturnValue({
+        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
             dailyData: {
                 '2024-01-14': {
                     weight: 80.0,
@@ -44,7 +45,7 @@ describe('WeightBlock - Core Functionality', () => {
                 },
             },
             updateMetric: mockUpdateMetric,
-        } as any)
+        }))
 
         const { container } = render(<WeightBlock date={mockDate} />)
 

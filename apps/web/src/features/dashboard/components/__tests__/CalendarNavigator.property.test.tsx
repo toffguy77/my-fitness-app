@@ -3,15 +3,12 @@
  * Tests universal properties that should hold for all inputs
  */
 
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import fc from 'fast-check';
 import { CalendarNavigator } from '../CalendarNavigator';
 import { useDashboardStore } from '../../store/dashboardStore';
-import {
-    dailyMetricsWithCompletionArbitrary,
-    weekOfDailyMetricsArbitrary,
-} from '../../testing/generators';
 import type { DailyMetrics, CompletionStatus } from '../../types';
+import { dashboardStoreValue } from '../../testing/storeValue'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore');
@@ -107,7 +104,7 @@ describe('CalendarNavigator - Property Tests', () => {
                         const selectedDay = date.getDay() === 1 ? new Date(weekStart.getTime() + 86400000) : weekStart;
 
                         // Mock store
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             selectedDate: selectedDay,
                             selectedWeek: { start: weekStart, end: weekEnd },
                             dailyData,
@@ -135,7 +132,7 @@ describe('CalendarNavigator - Property Tests', () => {
                             setOfflineStatus: jest.fn(),
                             loadFromCache: jest.fn(),
                             syncWhenOnline: jest.fn(),
-                        });
+                        }));
 
                         const { container } = render(<CalendarNavigator />);
 
@@ -232,7 +229,7 @@ describe('CalendarNavigator - Property Tests', () => {
                         // Select a different day from the same week to avoid selected styling
                         const selectedDay = date.getDay() === 1 ? new Date(weekStart.getTime() + 86400000) : weekStart;
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             selectedDate: selectedDay,
                             selectedWeek: { start: weekStart, end: weekEnd },
                             dailyData,
@@ -260,7 +257,7 @@ describe('CalendarNavigator - Property Tests', () => {
                             setOfflineStatus: jest.fn(),
                             loadFromCache: jest.fn(),
                             syncWhenOnline: jest.fn(),
-                        });
+                        }));
 
                         const { container } = render(<CalendarNavigator />);
 
@@ -343,7 +340,7 @@ describe('CalendarNavigator - Property Tests', () => {
                             };
                         }
 
-                        mockUseDashboardStore.mockReturnValue({
+                        mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                             selectedDate: date,
                             selectedWeek: { start: weekStart, end: weekEnd },
                             dailyData,
@@ -371,7 +368,7 @@ describe('CalendarNavigator - Property Tests', () => {
                             setOfflineStatus: jest.fn(),
                             loadFromCache: jest.fn(),
                             syncWhenOnline: jest.fn(),
-                        });
+                        }));
 
                         const { container } = render(<CalendarNavigator />);
 

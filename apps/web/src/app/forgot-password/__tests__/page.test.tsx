@@ -23,8 +23,6 @@ jest.mock('react-hot-toast', () => ({
 // Mock fetch
 global.fetch = jest.fn()
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-
 describe('ForgotPasswordPage', () => {
     beforeEach(() => {
         jest.clearAllMocks()

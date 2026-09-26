@@ -22,7 +22,7 @@ import { formatLocalDate } from '@/shared/utils/format'
 import { CheckCircle, Calendar } from 'lucide-react'
 import { Card, CardTitle } from '@/shared/components/ui/Card'
 import { useDashboardStore } from '../store/dashboardStore'
-import type { WeeklyPlan } from '../types'
+import type { DailyMetrics, WeeklyPlan } from '../types'
 import { AttentionIcon } from './AttentionBadge'
 import { t } from '@/shared/i18n'
 
@@ -63,7 +63,7 @@ function formatDate(date: Date): string {
  * Helper: Calculate adherence percentage for a day
  */
 function calculateDayAdherence(
-    dailyMetrics: any,
+    dailyMetrics: DailyMetrics | undefined,
     weeklyPlan: WeeklyPlan
 ): number {
     if (!dailyMetrics || !weeklyPlan) return 0
@@ -105,7 +105,7 @@ function calculateDayAdherence(
  * Helper: Check if adherence is low for 2+ consecutive days
  */
 function hasLowAdherence(
-    dailyData: Record<string, any> | undefined,
+    dailyData: Record<string, DailyMetrics> | undefined,
     weeklyPlan: WeeklyPlan
 ): boolean {
     // Return false if no daily data available

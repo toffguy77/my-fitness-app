@@ -9,6 +9,7 @@ import { PasswordInput } from '@/shared/components/forms/PasswordInput'
 import toast from 'react-hot-toast'
 import { validateResetToken, resetPassword as resetPasswordApi } from '@/features/auth/api/passwordReset'
 import { passwordSchema } from '@/features/auth/utils/validation'
+import { isApiError, serverMessageFrom } from '@/shared/errors/apiErrors'
 
 function ResetPasswordContent() {
     const router = useRouter()
@@ -30,9 +31,8 @@ function ResetPasswordContent() {
         try {
             await validateResetToken(token)
             setIsTokenValid(true)
-        } catch (err: any) {
-            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
-            setTokenError(serverMessage || 'Неверная или истекшая ссылка')
+        } catch (err) {
+            setTokenError(serverMessageFrom(err) || 'Неверная или истекшая ссылка')
             setIsTokenValid(false)
         } finally {
             setIsValidating(false)
@@ -94,12 +94,12 @@ function ResetPasswordContent() {
             setTimeout(() => {
                 router.push('/auth')
             }, 2000)
-        } catch (err: any) {
-            const serverMessage = err?.response?.data?.error || err?.response?.data?.message
+        } catch (err) {
+            const serverMessage = serverMessageFrom(err)
             let errorMessage: string
             if (serverMessage) {
                 errorMessage = serverMessage
-            } else if (err?.response !== undefined) {
+            } else if (isApiError(err)) {
                 errorMessage = 'Не удалось сбросить пароль'
             } else {
                 errorMessage = 'Произошла ошибка'

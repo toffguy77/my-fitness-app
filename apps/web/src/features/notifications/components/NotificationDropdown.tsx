@@ -104,7 +104,7 @@ export function NotificationDropdown({ onClose }: NotificationDropdownProps) {
             groups,
             ungroupedNotifications: [...ungroupedFromRecent, ...rest],
         }
-    }, [recentNotifications])
+    }, [recentNotifications, mountTime])
 
     const handleNotificationClick = (notification: Notification) => {
         if (!notification.readAt) {

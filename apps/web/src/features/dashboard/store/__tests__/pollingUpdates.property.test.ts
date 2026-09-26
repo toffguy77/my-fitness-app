@@ -5,7 +5,7 @@
  * Validates: Requirements 8.7
  */
 
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import fc from 'fast-check';
 import { useDashboardStore, clearMemoryCache } from '../dashboardStore';
 import { apiClient } from '@/shared/utils/api-client';
@@ -264,34 +264,26 @@ describe('Property 17: Plan Polling Updates', () => {
     /**
      * Verify that polling stops when going offline
      */
+    // Not property-based: the behaviour does not depend on any random input,
+    // and the generator this test used to take was never read.
     it('Feature: dashboard, Property 17: polling stops when going offline', () => {
-        fc.assert(
-            fc.property(
-                fc.boolean(), // Initial online status
-                (initialOnline) => {
-                    const { result } = renderHook(() => useDashboardStore());
+        const { result } = renderHook(() => useDashboardStore());
 
-                    // Start polling
-                    act(() => {
-                        result.current.startPolling(1000);
-                    });
+        // Start polling
+        act(() => {
+            result.current.startPolling(1000);
+        });
 
-                    const wasPolling = result.current.pollingIntervalId !== null;
+        expect(result.current.pollingIntervalId).not.toBeNull();
 
-                    // Set offline status
-                    act(() => {
-                        result.current.setOfflineStatus(true);
-                    });
+        // Set offline status
+        act(() => {
+            result.current.setOfflineStatus(true);
+        });
 
-                    // Verify polling is stopped
-                    expect(result.current.pollingIntervalId).toBeNull();
-                    expect(result.current.isOffline).toBe(true);
-
-                    return true;
-                }
-            ),
-            { numRuns: 20 }
-        );
+        // Verify polling is stopped
+        expect(result.current.pollingIntervalId).toBeNull();
+        expect(result.current.isOffline).toBe(true);
     });
 
     /**

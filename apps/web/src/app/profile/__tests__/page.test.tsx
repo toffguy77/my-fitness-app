@@ -124,7 +124,11 @@ describe('ProfilePage', () => {
 
         await waitFor(() => {
             const img = screen.getByAltText('Test User')
-            expect(img).toHaveAttribute('src', 'https://example.com/avatar.jpg')
+            // next/image отдаёт картинку через свой оптимизатор, поэтому в src
+// лежит ссылка на него с исходным адресом внутри.
+            expect(img?.getAttribute('src')).toContain(
+                encodeURIComponent('https://example.com/avatar.jpg'),
+            )
         })
     })
 

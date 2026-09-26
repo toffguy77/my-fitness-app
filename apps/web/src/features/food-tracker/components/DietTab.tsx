@@ -42,10 +42,6 @@ export interface DietTabProps {
     };
     /** Loading state */
     isLoading: boolean;
-    /** Callback to add a new entry */
-    onAddEntry: (mealType: MealType, entry: any) => Promise<FoodEntry | null>;
-    /** Callback to update an entry */
-    onUpdateEntry: (id: string, updates: any) => Promise<FoodEntry | null>;
     /** Callback to delete an entry */
     onDeleteEntry: (id: string, mealType: MealType) => Promise<boolean>;
     /** Additional CSS classes */
@@ -67,8 +63,6 @@ export function DietTab({
     dailyTotals,
     targetGoals,
     isLoading,
-    onAddEntry,
-    onUpdateEntry,
     onDeleteEntry,
     className = '',
 }: DietTabProps): React.ReactElement {

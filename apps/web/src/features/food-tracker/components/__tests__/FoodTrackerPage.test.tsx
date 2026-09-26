@@ -2,8 +2,9 @@
  * Unit tests for FoodTrackerPage component
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { FoodTrackerPage } from '../FoodTrackerPage';
+import type { DatePickerProps } from '../DatePicker';
 import { useFoodTracker } from '../../hooks/useFoodTracker';
 
 // Mock the hooks
@@ -20,7 +21,7 @@ jest.mock('next/navigation', () => ({
 
 // Mock child components to avoid deep rendering issues
 jest.mock('../DatePicker', () => ({
-    DatePicker: ({ selectedDate, onDateChange }: any) => (
+    DatePicker: ({ selectedDate, onDateChange }: Pick<DatePickerProps, 'selectedDate' | 'onDateChange'>) => (
         <div data-testid="date-picker">
             <span>Сегодня, 15 января</span>
             <button aria-label="Предыдущий день" onClick={() => {
@@ -343,7 +344,7 @@ describe('FoodTrackerPage', () => {
         it('formats date correctly for API call', () => {
             // Mock a specific date
             const mockDate = new Date('2024-01-15T12:00:00Z');
-            jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any);
+            jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
 
             render(<FoodTrackerPage />);
 

@@ -49,9 +49,7 @@ const safeIconUrlGenerator = (): fc.Arbitrary<string | null | undefined> => {
 /**
  * Generate a random notification
  */
-export const notificationGenerator = (
-    overrides?: Partial<Notification>
-): fc.Arbitrary<Notification> => {
+export const notificationGenerator = (): fc.Arbitrary<Notification> => {
     const minTime = new Date('2024-01-01').getTime();
     const maxTime = Date.now();
 

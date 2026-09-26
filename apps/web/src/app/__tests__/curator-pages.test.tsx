@@ -29,6 +29,9 @@ jest.mock('next/navigation', () => ({
 // Mock next/image
 jest.mock('next/image', () => ({
     __esModule: true,
+    // Подмена next/image: сам оптимизатор здесь и подменяется, а alt приходит
+    // из пропсов вызывающего кода.
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- подмена next/image
     default: (props: Record<string, unknown>) => <img {...props} />,
 }))
 
@@ -203,7 +206,7 @@ jest.mock('@/features/chat/components/FoodEntryForm', () => ({
 
 // Mock content feature components
 jest.mock('@/features/content/components/ArticleList', () => ({
-    ArticleList: (props: { basePath?: string }) => (
+    ArticleList: () => (
         <div data-testid="article-list">ArticleList</div>
     ),
 }))

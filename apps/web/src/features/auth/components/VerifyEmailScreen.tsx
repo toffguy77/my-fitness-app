@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { verifyEmail, resendVerificationCode } from '@/features/auth/api/verification'
 import { CodeInput } from './CodeInput'
 import { t } from '@/shared/i18n'
+import { serverMessageFrom } from '@/shared/errors/apiErrors'
 
 export function VerifyEmailScreen() {
     const router = useRouter()
@@ -53,8 +54,8 @@ export function VerifyEmailScreen() {
             } else {
                 router.push('/dashboard')
             }
-        } catch (err: any) {
-            const msg = err?.response?.data?.message || err?.message || t('auth.verify.checkFailed')
+        } catch (err) {
+            const msg = serverMessageFrom(err) || (err instanceof Error ? err.message : '') || t('auth.verify.checkFailed')
             setError(msg)
             setAttempts((a) => a + 1)
             setCode(Array(6).fill(''))
@@ -82,8 +83,8 @@ export function VerifyEmailScreen() {
             await resendVerificationCode()
             toast.success(t('auth.verify.resent'))
             setResendCooldown(60)
-        } catch (err: any) {
-            const msg = err?.response?.data?.message || t('auth.verify.resendFailed')
+        } catch (err) {
+            const msg = serverMessageFrom(err) || t('auth.verify.resendFailed')
             toast.error(msg)
         }
     }

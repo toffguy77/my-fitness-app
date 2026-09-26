@@ -106,7 +106,7 @@ export const createWaterSlice: StateCreator<
                 goal: response.goal,
                 glassSize: response.glass_size,
             });
-        } catch (error: any) {
+        } catch (error) {
             // Rollback optimistic update
             set({
                 waterIntake: originalIntake,

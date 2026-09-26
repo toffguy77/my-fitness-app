@@ -8,7 +8,7 @@
 import { renderHook, act } from '@testing-library/react';
 import fc from 'fast-check';
 import { useNotificationsStore } from '../notificationsStore';
-import type { Notification, NotificationCategory } from '../../types';
+import { NotificationCategory } from '../../types';
 import { notificationWithCategoryGenerator } from '../../testing/generators';
 
 describe('Property 15: New Notification Prepending', () => {
@@ -123,7 +123,7 @@ describe('Property 15: New Notification Prepending', () => {
                     const originalOrder = categoryExisting.map(n => n.id);
 
                     // Generate new notifications
-                    const categoryNew = Array.from({ length: newCount }, (_, i) =>
+                    const categoryNew = Array.from({ length: newCount }, () =>
                         fc.sample(notificationWithCategoryGenerator(category), 1)[0]
                     ).map((n, index) => ({
                         ...n,

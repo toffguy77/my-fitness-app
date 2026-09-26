@@ -81,20 +81,6 @@ const workoutArbitrary = fc.record({
     duration: fc.option(fc.integer({ min: 10, max: 180 }), { nil: undefined }),
 })
 
-// Generator for daily metrics
-const dailyMetricsArbitrary = (date: Date) => fc.record({
-    date: fc.constant(toDateStr(date)),
-    weight: weightArbitrary,
-    nutrition: nutritionArbitrary,
-    steps: stepsArbitrary,
-    workout: workoutArbitrary,
-    completionStatus: fc.record({
-        nutritionFilled: fc.boolean(),
-        weightLogged: fc.boolean(),
-        activityCompleted: fc.boolean(),
-    }),
-})
-
 describe('Property 39: Attention Indicator Display', () => {
     beforeEach(() => {
         jest.clearAllMocks()

@@ -11,7 +11,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DietTab } from '../DietTab';
 import { useFoodTrackerStore } from '../../store/foodTrackerStore';
-import type { FoodEntry, MealType, EntriesByMealType } from '../../types';
+import { FoodEntry, EntriesByMealType } from '../../types';
 
 // ============================================================================
 // Mocks

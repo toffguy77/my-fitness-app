@@ -10,7 +10,7 @@ import React from 'react';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PortionSelector } from '../PortionSelector';
-import type { FoodItem, PortionType, KBZHU } from '../../types';
+import type { FoodItem } from '../../types';
 
 // ============================================================================
 // Test Data
@@ -499,7 +499,6 @@ describe('PortionSelector', () => {
         });
 
         it('highlights selected quick button', async () => {
-            const user = userEvent.setup();
             render(
                 <PortionSelector
                     food={createMockFood()}

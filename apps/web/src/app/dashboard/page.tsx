@@ -22,7 +22,7 @@
 
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary'
 import { useEffect, useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { getProfile } from '@/features/settings/api/settings'
 import { CalendarNavigator } from '@/features/dashboard/components/CalendarNavigator'
@@ -42,7 +42,6 @@ import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
 import { messageForOr } from '@/shared/errors/apiErrors'
 import toast from 'react-hot-toast'
-import type { NavigationItemId } from '@/features/dashboard/types'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
 import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
@@ -58,7 +57,6 @@ interface UserData {
 }
 
 export default function DashboardPage() {
-    const router = useRouter()
     const searchParams = useSearchParams()
     const highlightTaskId = searchParams.get('task')
     // Who is looking at this page. The cache paints the first frame; the
@@ -72,7 +70,6 @@ export default function DashboardPage() {
     const {
         selectedDate,
         selectedWeek,
-        fetchDailyData,
         fetchWeekData,
         fetchWeeklyPlan,
         fetchTasks,
@@ -85,24 +82,30 @@ export default function DashboardPage() {
 
     // The profile carries the avatar and the display name; the identity itself
     // comes from the session above.
+    //
+    // Both effects below key off the id rather than the whole user: the cache
+    // paints the first frame and the server settles it, which replaces the
+    // object with an equal one, and a dependency on the object would fetch the
+    // profile and the history again every time that happens.
+    const userId = userData?.id
     const [profileName, setProfileName] = useState<string | undefined>(undefined)
     useEffect(() => {
-        if (!userData) return
+        if (!userId) return
         getProfile()
             .then((profile) => {
                 if (profile.avatar_url) setAvatarUrl(profile.avatar_url)
                 if (profile.name) setProfileName(profile.name)
             })
             .catch(() => {})
-    }, [userData?.id])
+    }, [userId])
 
     // Fetch KBJU weekly history (re-fetch after metric saves via targetsVersion)
     useEffect(() => {
-        if (!userData) return
+        if (!userId) return
         getHistory(7)
             .then(res => setKbjuHistory(res.days))
             .catch(() => {})
-    }, [userData?.id, targetsVersion])
+    }, [userId, targetsVersion])
 
     // Fetch dashboard data on mount
     useEffect(() => {

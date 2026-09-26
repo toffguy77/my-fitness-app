@@ -375,7 +375,7 @@ describe('Integration with Sections', () => {
             </section>
         );
 
-        const heading = screen.getByRole('heading');
+        screen.getByRole('heading');
         const badge = screen.getByRole('status');
         const button = screen.getByRole('button');
 

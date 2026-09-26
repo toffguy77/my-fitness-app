@@ -59,12 +59,6 @@ const viewportHeightGenerator = () =>
 const userNameGenerator = () =>
     fc.string({ minLength: 1, maxLength: 50 })
 
-/**
- * Generator for orientation values
- */
-const orientationGenerator = () =>
-    fc.constantFrom('portrait', 'landscape')
-
 describe('Property 23: Responsive Interaction Consistency', () => {
     beforeEach(() => {
         jest.clearAllMocks()
@@ -348,9 +342,6 @@ describe('Property 24: Content Viewport Fit', () => {
                             { container }
                         )
 
-                        const layout = renderContainer.querySelector('[data-testid="dashboard-layout"]')
-                        const mainContent = renderContainer.querySelector('[data-testid="main-content"]')
-
                         // Verify no elements exceed viewport width
                         const allElements = renderContainer.querySelectorAll('*')
                         allElements.forEach(element => {
@@ -449,8 +440,7 @@ describe('Property 25: Orientation Change Adaptation', () => {
                 viewportWidthGenerator(),
                 viewportHeightGenerator(),
                 userNameGenerator(),
-                orientationGenerator(),
-                async (width, height, userName, initialOrientation) => {
+                async (width, height, userName) => {
                     const container = document.createElement('div')
                     document.body.appendChild(container)
 
