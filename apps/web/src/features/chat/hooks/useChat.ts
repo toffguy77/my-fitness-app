@@ -9,7 +9,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { chatApi } from '../api/chatApi'
 import { useWebSocket } from './useWebSocket'
 import type { Message, WebSocketEvent } from '../types'
-import { EVENTS, track } from '@/shared/analytics'
 import toast from 'react-hot-toast'
 import { t } from '@/shared/i18n'
 import { messageForOr } from '@/shared/errors/apiErrors'
@@ -96,12 +95,10 @@ export function useChat(conversationId: string | null) {
                 type: 'text',
                 content,
             })
-            // Whether somebody ever writes to their curator at all is the
-            // question; the text of the message is none of analytics' business.
-            if (!hasWrittenToCurator()) {
-                markWrittenToCurator()
-                track(EVENTS.firstMessage)
-            }
+            // Здесь событий больше нет: «первое сообщение куратору» —
+            // серверный факт, и записывает его служба чата, которая знает, кто
+            // в переписке клиент. Отметка в localStorage отсутствовала на
+            // другом устройстве, и один человек считался новым дважды.
             setMessages((prev) => [...prev, msg])
         },
         [conversationId]
@@ -143,27 +140,4 @@ export function useChat(conversationId: string | null) {
     }
 }
 
-/**
- * Whether this browser has already recorded its owner's first message to a
- * curator. The interesting number is how many people ever start that
- * conversation, and that is only interesting once.
- */
-const FIRST_MESSAGE_KEY = 'first_curator_message_logged'
 
-function hasWrittenToCurator(): boolean {
-    try {
-        return localStorage.getItem(FIRST_MESSAGE_KEY) === '1'
-    } catch {
-        // Storage refused: the event is sent again, and the report counts
-        // distinct users rather than events.
-        return false
-    }
-}
-
-function markWrittenToCurator(): void {
-    try {
-        localStorage.setItem(FIRST_MESSAGE_KEY, '1')
-    } catch {
-        // Nothing to remember it with; see above.
-    }
-}
