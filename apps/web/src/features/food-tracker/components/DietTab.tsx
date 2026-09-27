@@ -16,7 +16,7 @@ import { MealSlot } from './MealSlot';
 import { WaterTracker } from './WaterTracker';
 import { FoodEntryModal } from './FoodEntryModal';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
-import type { MealType, FoodEntry, WaterLog } from '../types';
+import type { MealType, FoodEntry, WaterLog, EntryMethodTab } from '../types';
 import { CalculateTargetPrompt } from '@/features/nutrition-calc/components/CalculateTargetPrompt';
 import type { MissingTargetInputs } from '@/features/nutrition-calc/types';
 import { t } from '@/shared/i18n';
@@ -51,6 +51,11 @@ export interface DietTabProps {
     isLoading: boolean;
     /** Callback to delete an entry */
     onDeleteEntry: (id: string, mealType: MealType) => Promise<boolean>;
+    /**
+     * Вкладка окна записи, на которой его следует открыть сразу при появлении
+     * вкладки рациона. Пусто — окно не открывается само.
+     */
+    openEntryOn?: EntryMethodTab | null;
     /** Additional CSS classes */
     className?: string;
 }
@@ -72,6 +77,7 @@ export function DietTab({
     missingTargetInputs = null,
     isLoading,
     onDeleteEntry,
+    openEntryOn = null,
     className = '',
 }: DietTabProps): React.ReactElement {
     // Store state for water tracking
@@ -85,7 +91,12 @@ export function DietTab({
     } = useFoodTrackerStore();
 
     // Local state for modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(openEntryOn !== null);
+
+    // Ссылка вида /food-tracker?add=photo должна привести прямо к распознаванию.
+    // Начальное состояние выше берёт указание сразу, поэтому окно открывается
+    // первым же рендером, а не эффектом после него.
+    
     const [selectedMealType, setSelectedMealType] = useState<MealType>('breakfast');
     const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
 
@@ -202,6 +213,7 @@ export function DietTab({
                 onClose={handleModalClose}
                 mealType={selectedMealType}
                 editingEntry={editingEntry}
+                initialTab={openEntryOn ?? undefined}
             />
 
             {/* Loading Overlay */}

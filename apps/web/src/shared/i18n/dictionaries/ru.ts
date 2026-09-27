@@ -437,6 +437,28 @@ export const ru = {
         },
     },
     dashboard: {
+        firstWeek: {
+            title: 'Первая неделя',
+            progress: '{done} из {total}',
+            done: 'Готово',
+            steps: {
+                profile: 'Заполнить профиль',
+                firstMeal: 'Записать первый приём пищи',
+                platePhoto: 'Сфотографировать тарелку',
+                curatorHello: 'Познакомиться с куратором',
+            },
+        },
+        curatorCard: {
+            title: 'Ваш куратор',
+            youWrote: 'Вы:',
+            noMessages: 'Напишите первым',
+            unread: 'непрочитанных: {count}',
+            openChat: 'Открыть переписку с куратором',
+            notAssigned: 'Куратор пока не назначен',
+            notAssignedHint: 'Напишите в поддержку — разберёмся',
+            loadFailed: 'Не удалось загрузить куратора',
+            retry: 'Повторить',
+        },
         workoutTypes: {
             strength: 'Силовая',
             cardio: 'Кардио',

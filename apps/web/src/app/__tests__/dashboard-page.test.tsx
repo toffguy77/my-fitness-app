@@ -89,9 +89,6 @@ jest.mock('@/features/nutrition-calc/components/KBJUWeeklyChart', () => ({
     KBJUWeeklyChart: () => <div data-testid="kbju-chart">KBJUWeeklyChart</div>,
 }))
 
-jest.mock('@/features/nutrition-calc/components/ProfileCompletionBanner', () => ({
-    ProfileCompletionBanner: () => <div data-testid="profile-banner">ProfileCompletionBanner</div>,
-}))
 
 jest.mock('@/features/nutrition-calc/api/nutritionCalc', () => ({
     getHistory: jest.fn().mockResolvedValue({ days: [] }),

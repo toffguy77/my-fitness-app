@@ -481,3 +481,46 @@ export interface CuratorFeedback {
     summary: string
     recommendations?: string
 }
+
+/**
+ * Пункт чек-листа первой недели.
+ *
+ * Состав присылает сервер: пункт, требующий отключённой способности, в ответе
+ * отсутствует. Поэтому список перебирается как есть, а не сверяется с
+ * объявленным здесь набором — иначе фронтенд начал бы решать за сервер, что
+ * человеку показать.
+ */
+export type OnboardingStepKey = 'profile' | 'first_meal' | 'plate_photo' | 'curator_hello'
+
+export interface OnboardingStep {
+    key: OnboardingStepKey
+    done: boolean
+}
+
+/** Последнее сообщение переписки с куратором. */
+export interface CuratorLastMessage {
+    text: string
+    created_at: string
+    from_curator: boolean
+}
+
+/** Куратор, как его показывает дашборд. */
+export interface CuratorPresence {
+    conversation_id: string
+    name: string
+    avatar_url?: string
+    unread_count: number
+    last_message?: CuratorLastMessage
+}
+
+/**
+ * Состояние первого экрана.
+ *
+ * `curator` равен `null`, когда куратор не назначен — это утверждение, которое
+ * дашборд произносит вслух, а не отсутствие данных.
+ */
+export interface OnboardingState {
+    active: boolean
+    steps: OnboardingStep[]
+    curator: CuratorPresence | null
+}

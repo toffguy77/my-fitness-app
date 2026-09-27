@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { DatePicker } from './DatePicker';
 import { FoodTrackerTabs } from './FoodTrackerTabs';
 import { DietTab } from './DietTab';
@@ -21,7 +22,7 @@ import { NutrientDetailPanel } from './NutrientDetailPanel';
 import { useFoodTracker } from '../hooks/useFoodTracker';
 import { useRecommendations } from '../hooks/useRecommendations';
 import { formatLocalDate } from '@/shared/utils/format';
-import type { CustomRecommendation, FoodTrackerTab, NutrientRecommendation } from '../types';
+import type { CustomRecommendation, EntryMethodTab, FoodTrackerTab, NutrientRecommendation } from '../types';
 import { t } from '@/shared/i18n';
 
 // ============================================================================
@@ -37,9 +38,29 @@ export interface FoodTrackerPageProps {
 // Component
 // ============================================================================
 
+/**
+ * Способы записи, на которые можно привести ссылкой.
+ *
+ * Объявлены списком, а не приняты как есть: `?add=` приходит из адресной строки,
+ * и подставлять оттуда произвольную строку во внутреннее состояние значит
+ * доверять ей больше, чем следует.
+ */
+const LINKABLE_ENTRY_TABS: Record<string, EntryMethodTab> = {
+    photo: 'photo',
+    barcode: 'barcode',
+    manual: 'manual',
+    search: 'search',
+};
+
 export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
     const [activeTab, setActiveTab] = useState<FoodTrackerTab>('diet');
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+    // Пункт чек-листа «фото тарелки» ведёт сюда с ?add=photo: распознавание
+    // живёт внутри окна записи, и без этого ссылка приводила бы на вкладку
+    // рациона, откуда нужное искать три клика вглубь.
+    const searchParams = useSearchParams();
+    const openEntryOn = LINKABLE_ENTRY_TABS[searchParams?.get('add') ?? ''] ?? null;
 
     const {
         entries,
@@ -156,6 +177,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                             missingTargetInputs={missingTargetInputs}
                             isLoading={isLoading}
                             onDeleteEntry={deleteEntry}
+                            openEntryOn={openEntryOn}
                         />
                     )}
 
