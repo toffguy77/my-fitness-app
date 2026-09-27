@@ -12,6 +12,8 @@ import { useDashboardStore } from '../../store/dashboardStore'
 import type { DailyMetrics, NutritionData, WeeklyPlan } from '../../types'
 import { dashboardStoreValue } from '../../testing/storeValue'
 import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc'
+import { MACRO_COLORS } from '@/shared/constants/macros'
+import { hexToRgb } from '@/shared/testing/cssColor'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')
@@ -444,6 +446,36 @@ describe('NutritionBlock', () => {
             expect(screen.getByText('Посчитать норму')).toBeInTheDocument()
         })
 
+        // Серый экран новичка и был жалобой, с которой всё началось: до расчёта
+        // нормы в блоке питания не было ни одного цвета. Цвет нутриента доли от
+        // нормы не сообщает, поэтому показывать его без нормы можно — а кольцо и
+        // проценты нельзя, они именно доля.
+        it('без нормы съеденное по нутриентам окрашено, но доли от нормы нет', () => {
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
+                ...mockStoreDefaults,
+                dailyData: { [mockDateStr]: mockDailyData },
+                weeklyPlan: null,
+            }))
+
+            const { container } = render(<NutritionBlock date={mockDate} />)
+
+            const amounts = container.querySelector('[data-testid="macros-without-target"]')
+            expect(amounts).not.toBeNull()
+
+            const dots = Array.from(
+                amounts!.querySelectorAll<HTMLElement>('span[aria-hidden="true"]')
+            ).map((el) => el.style.backgroundColor)
+            expect(dots).toEqual([
+                hexToRgb(MACRO_COLORS.protein),
+                hexToRgb(MACRO_COLORS.fat),
+                hexToRgb(MACRO_COLORS.carbs),
+            ])
+
+            // Ни полос выполнения, ни кольца: и то и другое показывает долю.
+            expect(container.querySelectorAll('[role="progressbar"]')).toHaveLength(0)
+            expect(container.querySelector('[role="img"]')).toBeNull()
+        })
+
         it('норма появляется, как только её стало из чего посчитать', async () => {
             // targetsVersion бампится после сохранения метрики: заполнил вес —
             // норма приехала, и приглашение ушло без перезагрузки страницы.
@@ -547,36 +579,58 @@ describe('NutritionBlock', () => {
     })
 
     describe('Visual States', () => {
-        it('applies correct color classes for different percentage ranges', () => {
-            // Test different calorie scenarios
-            const scenarios = [
-                { calories: 1000, expectedClass: 'text-red-500' },    // 50% - red
-                { calories: 1600, expectedClass: 'text-yellow-500' }, // 80% - yellow
-                { calories: 2000, expectedClass: 'text-green-500' },  // 100% - green
-                { calories: 2200, expectedClass: 'text-orange-500' }, // 110% - orange
-            ]
+        // Раньше здесь проверялся светофор на калориях: красный при 50% нормы,
+        // жёлтый при 80%, зелёный при 100%, оранжевый при превышении. Он снят
+        // намеренно. Цвет в блоке питания опознаёт нутриент, и пока он же
+        // оценивал выполнение нормы, две работы сталкивались: с одного взгляда
+        // не читалась ни та, ни другая. Доля от нормы по-прежнему видна —
+        // процентом под числом и пометкой о превышении.
+        it('не окрашивает калории оценкой доли от нормы', () => {
+            const shares = [1000, 1600, 2000, 2200] // 50%, 80%, 100%, 110% нормы
+            const seen = new Set<string>()
 
-            scenarios.forEach(({ calories, expectedClass }) => {
-                const testData = {
-                    ...mockDailyData,
-                    nutrition: {
-                        ...mockDailyData.nutrition,
-                        calories,
-                    },
-                }
-
+            shares.forEach((calories) => {
                 mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                     ...mockStoreDefaults,
-                    dailyData: { [mockDateStr]: testData },
+                    dailyData: {
+                        [mockDateStr]: {
+                            ...mockDailyData,
+                            nutrition: { ...mockDailyData.nutrition, calories },
+                        },
+                    },
                     weeklyPlan: mockWeeklyPlan,
                 }))
 
-                const { container } = render(<NutritionBlock date={mockDate} />)
-
-                // Check that the calorie value text has the appropriate color class
+                const { container, unmount } = render(<NutritionBlock date={mockDate} />)
                 const calorieValue = container.querySelector('[data-testid="calorie-value"]')
-                expect(calorieValue).toHaveClass(expectedClass)
+                expect(calorieValue).not.toBeNull()
+                seen.add(calorieValue!.className)
+                unmount()
             })
+
+            expect(seen.size).toBe(1)
+        })
+
+        // Цвет каждой полосы — цвет её нутриента, а не общий синий. Ожидаемое
+        // значение берётся из того же модуля, что и реализация: второй цвет
+        // жиров, появившись где угодно, уронит этот тест, а не доживёт до прода.
+        it('красит заливку каждой полосы цветом её нутриента', () => {
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
+                ...mockStoreDefaults,
+                dailyData: { [mockDateStr]: mockDailyData },
+                weeklyPlan: mockWeeklyPlan,
+            }))
+
+            const { container } = render(<NutritionBlock date={mockDate} />)
+            const fills = Array.from(
+                container.querySelectorAll<HTMLElement>('[role="progressbar"]')
+            ).map((el) => el.style.backgroundColor)
+
+            expect(fills).toEqual([
+                hexToRgb(MACRO_COLORS.protein),
+                hexToRgb(MACRO_COLORS.fat),
+                hexToRgb(MACRO_COLORS.carbs),
+            ])
         })
 
         it('caps visual progress at 150% for very high values', () => {

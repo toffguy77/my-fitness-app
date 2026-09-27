@@ -19,6 +19,7 @@ import type { EntryMethodTab, FoodEntry, FoodItem, MealType, PortionType, KBZHU,
 import { SearchTab } from './SearchTab';
 import { BarcodeTab } from './BarcodeTab';
 import { AIPhotoTab } from './AIPhotoTab';
+import { MACRO_COLORS } from '@/shared/constants/macros';
 import { ChatTab } from './ChatTab';
 import { recognizeFood } from '../api/recognizeFood';
 import { PortionSelector } from './PortionSelector';
@@ -42,6 +43,13 @@ export interface FoodEntryModalProps {
     mealType?: MealType;
     /** Entry being edited (null for new entry) */
     editingEntry?: FoodEntry | null;
+    /**
+     * Вкладка, на которой окно открывается. Нужна, чтобы ссылка могла привести
+     * человека прямо к распознаванию по фото: без неё пункт чек-листа
+     * «фото тарелки» высаживал бы его на поиск, откуда нужное искать три клика
+     * вглубь.
+     */
+    initialTab?: EntryMethodTab;
     /** Additional CSS classes */
     className?: string;
 }
@@ -90,6 +98,7 @@ export function FoodEntryModal({
     onClose,
     mealType = 'breakfast',
     editingEntry,
+    initialTab,
     className = '',
 }: FoodEntryModalProps) {
     // Initial state, computed once at mount.
@@ -98,7 +107,7 @@ export function FoodEntryModal({
     // true, which meant a render with the previous entry's data before the
     // correction landed. The parent now remounts it with a key instead, so
     // "opening" and "having the right state" are the same event.
-    const [activeTab, setActiveTab] = useState<EntryMethodTab>(DEFAULT_TAB);
+    const [activeTab, setActiveTab] = useState<EntryMethodTab>(initialTab ?? DEFAULT_TAB);
     const [step, setStep] = useState<ModalStep>(editingEntry ? 'select-portion' : 'select-food');
     const [selectedFood, setSelectedFood] = useState<FoodItem | null>(
         editingEntry
@@ -538,7 +547,14 @@ export function FoodEntryModal({
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.protein')}</label>
+                                                    <label className="flex items-center gap-1 text-[10px] text-gray-500 mb-0.5">
+                                                        <span
+                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                                            style={{ backgroundColor: MACRO_COLORS.protein }}
+                                                            aria-hidden="true"
+                                                        />
+                                                        {t('macros.protein')}
+                                                    </label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.protein || ''}
@@ -549,7 +565,14 @@ export function FoodEntryModal({
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.fat')}</label>
+                                                    <label className="flex items-center gap-1 text-[10px] text-gray-500 mb-0.5">
+                                                        <span
+                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                                            style={{ backgroundColor: MACRO_COLORS.fat }}
+                                                            aria-hidden="true"
+                                                        />
+                                                        {t('macros.fat')}
+                                                    </label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.fat || ''}
@@ -560,7 +583,14 @@ export function FoodEntryModal({
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-[10px] text-gray-400 mb-0.5">{t('macros.carbs')}</label>
+                                                    <label className="flex items-center gap-1 text-[10px] text-gray-500 mb-0.5">
+                                                        <span
+                                                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                                            style={{ backgroundColor: MACRO_COLORS.carbs }}
+                                                            aria-hidden="true"
+                                                        />
+                                                        {t('macros.carbs')}
+                                                    </label>
                                                     <input
                                                         type="number"
                                                         value={editedNutritionPer100.carbs || ''}

@@ -25,6 +25,7 @@ import { CalculateTargetPrompt } from '@/features/nutrition-calc/components/Calc
 import type { MissingTargetInputs } from '@/features/nutrition-calc/types'
 import type { CalculatedTargets } from '@/features/nutrition-calc/types'
 import { t } from '@/shared/i18n'
+import { MACRO_COLORS } from '@/shared/constants/macros'
 
 /**
  * Props for NutritionBlock component
@@ -32,13 +33,6 @@ import { t } from '@/shared/i18n'
 export interface NutritionBlockProps {
     date: Date
     className?: string
-}
-
-// Macro colors matching the ring segments
-const MACRO_COLORS = {
-    protein: '#3b82f6', // blue-500
-    fat: '#f59e0b',     // amber-500
-    carbs: '#22c55e',   // green-500
 }
 
 /**
@@ -176,12 +170,13 @@ const MacroProgressBar = memo(function MacroProgressBar({
                 </span>
             </div>
             <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                {/* Заливка окрашена цветом своего нутриента, а не общим синим:
+                    цвет опознаёт нутриент. Превышение нормы сообщается
+                    выделением числа выше, а не перекрашиванием полосы — иначе
+                    цвет работает двумя работами сразу и не читается ни одна. */}
                 <div
-                    className={cn(
-                        'h-full transition-all duration-300 rounded-full',
-                        percentage <= 100 ? 'bg-blue-500' : 'bg-orange-500'
-                    )}
-                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                    className="h-full transition-all duration-300 rounded-full"
+                    style={{ width: `${Math.min(percentage, 100)}%`, backgroundColor: color }}
                     role="progressbar"
                     aria-valuenow={current}
                     aria-valuemin={0}
@@ -192,6 +187,37 @@ const MacroProgressBar = memo(function MacroProgressBar({
             <div className="text-xs text-gray-500 text-right">
                 {percentage.toFixed(1)}%
             </div>
+        </div>
+    )
+})
+
+/**
+ * Съеденное по одному нутриенту, когда нормы нет.
+ *
+ * Показывает количество и опознаёт нутриент цветом. Доли от нормы здесь нет
+ * намеренно: нормы не существует, а показать долю от несуществующего можно
+ * только выдумав её.
+ */
+const MacroAmount = memo(function MacroAmount({
+    label,
+    value,
+    color,
+}: {
+    label: string
+    value: number
+    color: string
+}) {
+    return (
+        <div className="flex items-center gap-1.5 text-xs">
+            <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: color }}
+                aria-hidden="true"
+            />
+            <span className="text-gray-500">{label}</span>
+            <span className="font-semibold text-gray-900">
+                {value}{t('units.gram')}
+            </span>
         </div>
     )
 })
@@ -248,14 +274,6 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
     // Проценты и превышение имеют смысл только относительно нормы.
     const caloriesPercentage = goals ? calculatePercentage(nutrition.calories, goals.caloriesGoal) : 0
     const isOverCalorieGoal = goals ? nutrition.calories > goals.caloriesGoal : false
-
-    // Determine calorie text color based on percentage
-    const getCalorieColor = (pct: number) => {
-        if (pct <= 50) return 'text-red-500'
-        if (pct <= 80) return 'text-yellow-500'
-        if (pct <= 100) return 'text-green-500'
-        return 'text-orange-500'
-    }
 
     // Ring segments for macros
     const segments = useMemo<Segment[]>(() => goals ? [
@@ -320,10 +338,10 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                             segments={segments}
                         >
                             <div className="text-center">
-                                <div className={cn(
-                                    'text-base font-bold',
-                                    getCalorieColor(caloriesPercentage)
-                                )} data-testid="calorie-value">
+                                {/* Калории без цветовой оценки доли от нормы: она
+                                    сообщается процентом ниже и пометкой о
+                                    превышении. */}
+                                <div className="text-base font-bold text-gray-900" data-testid="calorie-value">
                                     {nutrition.calories}
                                 </div>
                                 <div className="text-xs text-gray-500 leading-tight">
@@ -339,15 +357,27 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                         </SegmentedRing>
                     </div>
                 ) : (
-                    <div className="text-center">
-                        <div
-                            className="text-base font-bold text-gray-900"
-                            data-testid="calorie-value"
-                            aria-label={t('foodTracker.noTarget.eatenAria', { calories: nutrition.calories })}
-                        >
-                            {nutrition.calories}
+                    <div className="space-y-2">
+                        <div className="text-center">
+                            <div
+                                className="text-base font-bold text-gray-900"
+                                data-testid="calorie-value"
+                                aria-label={t('foodTracker.noTarget.eatenAria', { calories: nutrition.calories })}
+                            >
+                                {nutrition.calories}
+                            </div>
+                            <div className="text-xs text-gray-500">{t('macros.calories')}</div>
                         </div>
-                        <div className="text-xs text-gray-500">{t('macros.calories')}</div>
+
+                        {/* Съеденное по нутриентам — цветом, но без доли от нормы.
+                            Цвет здесь опознаёт нутриент и ничего не утверждает о
+                            выполнении нормы, которой нет; кольцо и проценты
+                            показывали бы именно долю, и поэтому отсутствуют. */}
+                        <div className="flex items-center justify-center gap-3" data-testid="macros-without-target">
+                            <MacroAmount label={t('macros.proteinShort')} value={nutrition.protein} color={MACRO_COLORS.protein} />
+                            <MacroAmount label={t('macros.fatShort')} value={nutrition.fat} color={MACRO_COLORS.fat} />
+                            <MacroAmount label={t('macros.carbsShort')} value={nutrition.carbs} color={MACRO_COLORS.carbs} />
+                        </div>
                     </div>
                 )}
 
