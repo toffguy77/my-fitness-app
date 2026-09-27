@@ -1,8 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
-
-import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
+import { RoleShell } from '@/shared/components/RoleShell'
 import { useSession } from '@/shared/hooks/useSession'
 
 export default function ContentLayout({ children }: { children: React.ReactNode }) {
@@ -12,23 +10,9 @@ export default function ContentLayout({ children }: { children: React.ReactNode 
     // and it does not flash navigation at somebody who has none.
     const session = useSession()
 
-    const userName = useMemo(() => {
-        if (typeof window === 'undefined') return ''
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}')
-            return user.name || user.email || ''
-        } catch {
-            return ''
-        }
-    }, [])
-
     if (session !== 'authenticated') {
         return <>{children}</>
     }
 
-    return (
-        <DashboardLayout userName={userName} activeNavItem="content">
-            {children}
-        </DashboardLayout>
-    )
+    return <RoleShell activeNavItem="content">{children}</RoleShell>
 }

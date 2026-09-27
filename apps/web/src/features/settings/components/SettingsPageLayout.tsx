@@ -1,8 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
 import Link from 'next/link'
-import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
+import { RoleShell } from '@/shared/components/RoleShell'
 import { useSettings } from '../hooks/useSettings'
 import { ArrowLeft } from 'lucide-react'
 import { t } from '@/shared/i18n'
@@ -18,27 +17,10 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
 
     // The guard lives in middleware.ts now, before the page renders.
 
-    const userName = useMemo(() => {
-        if (profile) {
-            return profile.name || profile.email
-        }
-        if (typeof window !== 'undefined') {
-            const userStr = localStorage.getItem('user')
-            if (userStr) {
-                try {
-                    const user = JSON.parse(userStr)
-                    return user.name || user.email || ''
-                } catch {
-                    // Молчим намеренно: это не отказ сервера, а испорченный
-                    // локальный слепок профиля. Показывать причину нечему —
-                    // причина в самом браузере, — а запасной путь работает:
-                    // ниже вернётся пустое имя, и настоящий профиль приедет
-                    // с сервера через useSettings.
-                }
-            }
-        }
-        return ''
-    }, [profile])
+    // Имя берётся из профиля, когда он приехал, иначе его подставит RoleShell
+    // из сессии. Локальный слепок здесь больше не читается: в браузере с
+    // очищенным хранилищем он давал пустой заголовок.
+    const userName = profile ? profile.name || profile.email : undefined
 
     if (isLoading) {
         return (
@@ -49,7 +31,7 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
     }
 
     return (
-        <DashboardLayout
+        <RoleShell
             userName={userName}
             avatarUrl={profile?.avatar_url || undefined}
         >
@@ -69,7 +51,7 @@ export function SettingsPageLayout({ title, children }: SettingsPageLayoutProps)
                 {/* Page content */}
                 {children(settingsHook)}
             </div>
-        </DashboardLayout>
+        </RoleShell>
     )
 }
 
