@@ -173,6 +173,14 @@ func (m *MockService) GetProgressData(ctx context.Context, userID int64, weeks i
 	return args.Get(0).(*ProgressData), args.Error(1)
 }
 
+func (m *MockService) GetOnboardingState(ctx context.Context, userID int64, plateRecognitionEnabled bool) (*OnboardingState, error) {
+	args := m.Called(ctx, userID, plateRecognitionEnabled)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*OnboardingState), args.Error(1)
+}
+
 func setupTestHandlerWithMock() (*Handler, *MockService) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{

@@ -42,6 +42,7 @@ type ServiceInterface interface {
 	UploadPhoto(ctx context.Context, userID int64, weekIdentifier string, fileData io.Reader, fileSize int, mimeType string) (*PhotoData, error)
 	GetProgressData(ctx context.Context, userID int64, weeks int) (*ProgressData, error)
 	GetReportFeedback(ctx context.Context, userID int64, reportID string) (*ReportFeedback, error)
+	GetOnboardingState(ctx context.Context, userID int64, plateRecognitionEnabled bool) (*OnboardingState, error)
 }
 
 // Handler handles dashboard requests
