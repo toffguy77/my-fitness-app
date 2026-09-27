@@ -29,6 +29,22 @@ jest.mock('@/shared/hooks/useSession', () => ({
     useSession: jest.fn(() => 'anonymous'),
 }))
 
+jest.mock('@/features/curator', () => ({
+    CuratorLayout: ({ children, userName }: { children: React.ReactNode; userName: string }) => (
+        <div data-testid="curator-layout" data-user={userName}>{children}</div>
+    ),
+}))
+
+jest.mock('@/features/admin', () => ({
+    AdminLayout: ({ children, userName }: { children: React.ReactNode; userName: string }) => (
+        <div data-testid="admin-layout" data-user={userName}>{children}</div>
+    ),
+}))
+
+jest.mock('@/shared/hooks/useCurrentUser', () => ({
+    useCurrentUser: jest.fn(),
+}))
+
 jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
     DashboardLayout: ({ children, userName, activeNavItem }: {
         children: React.ReactNode
@@ -42,6 +58,7 @@ jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
 }))
 
 import { useSession } from '@/shared/hooks/useSession'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 import DashboardLayout from '../dashboard/layout'
 import FoodTrackerLayout from '../food-tracker/layout'
 import ContentLayout from '../content/layout'
@@ -49,11 +66,21 @@ import NotificationsLayout from '../notifications/layout'
 import LegalLayout from '../legal/layout'
 
 const mockSession = useSession as jest.Mock
+const currentUser = useCurrentUser as jest.Mock
+
+/** Роль и имя приходят из сессии, а не из локального слепка. */
+function sessionOf(role: string, name = 'Из сессии') {
+    currentUser.mockReturnValue({
+        user: { id: '1', email: 'u@example.com', full_name: name, role },
+        state: 'ready',
+    })
+}
 
 describe('Light Layouts', () => {
     beforeEach(() => {
         jest.clearAllMocks()
         localStorage.clear()
+        sessionOf('client')
     })
 
     describe('DashboardLayout', () => {
@@ -70,8 +97,6 @@ describe('Light Layouts', () => {
 
     describe('FoodTrackerLayout', () => {
         it('renders with DashboardLayout and food-tracker nav', () => {
-            localStorage.setItem('user', JSON.stringify({ name: 'Test User' }))
-
             render(
                 <FoodTrackerLayout>
                     <div data-testid="page">Food Tracker</div>
@@ -82,8 +107,11 @@ describe('Light Layouts', () => {
             expect(screen.getByTestId('page')).toBeInTheDocument()
         })
 
-        it('reads user name from localStorage', () => {
-            localStorage.setItem('user', JSON.stringify({ name: 'Alice' }))
+        // Раньше имя читалось из localStorage, а пустое хранилище давало пустой
+        // заголовок. Слепок больше не участвует.
+        it('берёт имя из сессии, а слепок в браузере игнорирует', () => {
+            localStorage.setItem('user', JSON.stringify({ name: 'Из слепка' }))
+            sessionOf('client', 'Из сессии')
 
             render(
                 <FoodTrackerLayout>
@@ -91,17 +119,19 @@ describe('Light Layouts', () => {
                 </FoodTrackerLayout>
             )
 
-            expect(screen.getByTestId('dashboard-layout')).toHaveAttribute('data-user', 'Alice')
+            expect(screen.getByTestId('dashboard-layout')).toHaveAttribute('data-user', 'Из сессии')
         })
 
-        it('handles missing user gracefully', () => {
+        it('при пустом хранилище имя всё равно есть', () => {
+            sessionOf('client', 'Из сессии')
+
             render(
                 <FoodTrackerLayout>
                     <div>Content</div>
                 </FoodTrackerLayout>
             )
 
-            expect(screen.getByTestId('dashboard-layout')).toHaveAttribute('data-user', '')
+            expect(screen.getByTestId('dashboard-layout')).toHaveAttribute('data-user', 'Из сессии')
         })
     })
 
@@ -121,7 +151,6 @@ describe('Light Layouts', () => {
 
         it('renders with DashboardLayout when authenticated', () => {
             mockSession.mockReturnValue('authenticated')
-            localStorage.setItem('user', JSON.stringify({ name: 'Author' }))
 
             render(
                 <ContentLayout>
@@ -135,8 +164,6 @@ describe('Light Layouts', () => {
 
     describe('NotificationsLayout', () => {
         it('renders with DashboardLayout', () => {
-            localStorage.setItem('user', JSON.stringify({ name: 'User' }))
-
             render(
                 <NotificationsLayout>
                     <div data-testid="page">Notifications</div>
@@ -145,6 +172,33 @@ describe('Light Layouts', () => {
 
             expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
             expect(screen.getByTestId('page')).toBeInTheDocument()
+        })
+
+        // Сюда попадают по колокольчику из кураторской оболочки — и получали
+        // клиентскую навигацию.
+        it('даёт куратору кураторскую оболочку', () => {
+            sessionOf('coordinator')
+
+            render(
+                <NotificationsLayout>
+                    <div data-testid="page">Notifications</div>
+                </NotificationsLayout>
+            )
+
+            expect(screen.getByTestId('curator-layout')).toBeInTheDocument()
+            expect(screen.queryByTestId('dashboard-layout')).not.toBeInTheDocument()
+        })
+
+        it('даёт администратору административную оболочку', () => {
+            sessionOf('super_admin')
+
+            render(
+                <NotificationsLayout>
+                    <div data-testid="page">Notifications</div>
+                </NotificationsLayout>
+            )
+
+            expect(screen.getByTestId('admin-layout')).toBeInTheDocument()
         })
     })
 

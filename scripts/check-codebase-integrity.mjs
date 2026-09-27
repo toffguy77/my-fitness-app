@@ -13,6 +13,24 @@ import { join, extname, basename, relative } from 'node:path'
 
 const problems = []
 
+/**
+ * Читает файл, найденный обходом дерева.
+ *
+ * Между обходом и чтением файл может исчезнуть — так `next dev` переписывает
+ * свои артефакты, и так делают собственные тесты этого скрипта, подкладывая
+ * образцы. Раньше это роняло проверку стектрейсом `ENOENT` внутри задачи, к
+ * исчезнувшему файлу отношения не имевшей. Файла нет — проверять в нём нечего;
+ * любая другая ошибка чтения по-прежнему поднимается.
+ */
+function readScanned(file) {
+    try {
+        return readFileSync(file, 'utf8')
+    } catch (error) {
+        if (error.code === 'ENOENT') return ''
+        throw error
+    }
+}
+
 function walk(dir, filter, out = []) {
     if (!existsSync(dir)) return out
     for (const entry of readdirSync(dir)) {
@@ -30,7 +48,7 @@ function walk(dir, filter, out = []) {
 // --- Rule 1: every NEXT_PUBLIC_* declared is actually read ------------------
 const envFiles = ['apps/web/.env.local'].filter(existsSync)
 const webSources = walk('apps/web/src', (f) => ['.ts', '.tsx'].includes(extname(f)))
-const webText = webSources.map((f) => readFileSync(f, 'utf8')).join('\n')
+const webText = webSources.map(readScanned).join('\n')
 
 const declared = new Set()
 for (const file of envFiles) {
@@ -72,7 +90,7 @@ if (configs.length !== 1) {
 // --- Rule 4: no unimplemented handlers behind registered routes -------------
 const goServices = walk('apps/api/internal/modules', (f) => f.endsWith('.go') && !f.endsWith('_test.go'))
 for (const file of goServices) {
-    const text = readFileSync(file, 'utf8')
+    const text = readScanned(file)
     if (/\/\/\s*TODO:\s*Implement/i.test(text)) {
         problems.push(
             `Unimplemented handler in a shipped module: ${file}\n` +
@@ -97,7 +115,7 @@ for (const file of goServices) {
 // answered 503 to. Neither failed loudly.
 const handlerFiles = walk('apps/api/internal/modules', (f) => basename(f) === 'handler.go')
 for (const file of handlerFiles) {
-    const source = readFileSync(file, 'utf8')
+    const source = readScanned(file)
     const constructor = source.match(/func New[A-Za-z]*Handler\([^)]*\)[^{]*\{[\s\S]*?\n\}/)
     if (!constructor || !/\bNew[A-Za-z]*Service\(/.test(constructor[0])) continue
 
@@ -105,7 +123,7 @@ for (const file of handlerFiles) {
     const moduleDir = join(file, '..')
     const goFiles = walk(moduleDir, (f) => extname(f) === '.go' && !f.endsWith('_test.go'))
     const configurable = goFiles.some((f) =>
-        /func \(s \*Service\) With[A-Za-z]+\(/.test(readFileSync(f, 'utf8')),
+        /func \(s \*Service\) With[A-Za-z]+\(/.test(readScanned(f)),
     )
     if (!configurable) continue
 
@@ -118,6 +136,96 @@ for (const file of handlerFiles) {
     )
 }
 
+// Роль из локального слепка.
+//
+// `localStorage['user']` — кэш первой отрисовки, а не источник истины: сессия,
+// поднятая из cookie в браузере с очищенным хранилищем, слепка не имеет вовсе.
+// Экраны, выбиравшие по нему оболочку, показывали куратору и администратору
+// клиентскую навигацию, а `'client'` в качестве запасного значения превращал
+// пустой кэш в понижение роли. `/curator` и `/admin` от этого вылечили, а
+// `/profile`, `/settings/*`, `/notifications`, `/content` и `/food-tracker`
+// остались — и нашёл это пользователь, а не сборка.
+//
+// Правило узкое намеренно: срабатывает только когда рядом и ключ `user`, и
+// слово `role`. Чтение имени или почты для заголовка под него не попадает —
+// это другой дефект, и он лечится тем же переходом на сессию, но ломать
+// сборку из-за него сторож не должен.
+const roleReaders = [
+    ...walk('apps/web/src/app', (f) => ['.ts', '.tsx'].includes(extname(f))),
+    ...walk('apps/web/src/features', (f) => ['.ts', '.tsx'].includes(extname(f))),
+]
+for (const file of roleReaders) {
+    if (file.includes('__tests__') || file.includes('.test.')) continue
+    const source = readScanned(file)
+    for (const match of source.matchAll(/localStorage\.getItem\(\s*['"`]user['"`]\s*\)/g)) {
+        // Окно после обращения: разбор слепка и взятие поля обычно стоят рядом,
+        // в той же строке или в следующих двух-трёх.
+        const window = source.slice(match.index, match.index + 200)
+        if (!/\brole\b/.test(window)) continue
+
+        const line = source.slice(0, match.index).split('\n').length
+        problems.push(
+            `Роль читается из локального хранилища: ${relative(process.cwd(), file)}:${line}\n` +
+                `  Слепок в localStorage — кэш первой отрисовки, а не источник истины:\n` +
+                `  в браузере с очищенным хранилищем его нет, и роль оттуда приходит\n` +
+                `  пустой. Куратор получал клиентскую оболочку именно так.\n` +
+                `  Возьмите роль из сессии — useCurrentUser(), или оберните экран\n` +
+                `  в RoleShell, который это уже делает.`,
+        )
+    }
+}
+
+/**
+ * Затирает комментарии, сохраняя длину и переводы строк.
+ *
+ * Нужно правилу ниже: сторож сработал на комментарии, который объясняет
+ * исправленный дефект и цитирует прежний код. Правило, падающее на объяснении
+ * самого себя, — первое, что отключат.
+ */
+function withoutComments(source) {
+    return source
+        .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
+        .replace(/\/\/[^\n]*/g, (line) => ' '.repeat(line.length))
+}
+
+// Придуманная норма КБЖУ.
+//
+// `calcTargets?.calories || 2000` — валидный TypeScript и ровно тот дефект,
+// который человек нашёл раньше сборки: при незаполненном профиле 2000 ккал и
+// 150 г белка показывались как его личная норма, а от них считались проценты
+// выполнения, цвет калорий и алерты куратору. На проде такую норму видели 16
+// клиентов из 18. Углеводов при том же «по умолчанию» было 200 в трекере и 250
+// в дашборде — одна и та же норма на двух экранах разная.
+//
+// Тип `TargetGoals | null` ловит пропущенную ветвь, но не запрещает заполнить
+// её неправдой. Это и есть второй слой: числовой литерал после `||` или `??`
+// рядом с именем макронутриента.
+const targetOwners = [
+    ...walk('apps/web/src/features/food-tracker', (f) => ['.ts', '.tsx'].includes(extname(f))),
+    ...walk('apps/web/src/features/dashboard', (f) => ['.ts', '.tsx'].includes(extname(f))),
+    ...walk('apps/web/src/features/nutrition-calc', (f) => ['.ts', '.tsx'].includes(extname(f))),
+]
+const inventedTarget = /\b(calories|protein|fat|carbs|caloriesGoal|proteinGoal|fatGoal|carbsGoal)\b[^\n;,)]{0,40}(\?\?|\|\|)\s*(\d+)/g
+for (const file of targetOwners) {
+    if (file.includes('__tests__') || file.includes('.test.') || file.includes('/testing/')) continue
+    const source = withoutComments(readScanned(file))
+    for (const match of source.matchAll(inventedTarget)) {
+        // Ноль запасным значением — не придуманная норма, а честный ноль:
+        // «съедено нисколько» это измерение, «норма 2000» — нет.
+        if (match[3] === '0') continue
+
+        const line = source.slice(0, match.index).split('\n').length
+        problems.push(
+            `Придуманная норма КБЖУ: ${relative(process.cwd(), file)}:${line}\n` +
+                `  ${match[0].trim()}\n` +
+                `  Число на месте нормы показывается человеку как его собственная,\n` +
+                `  и от него считаются проценты, цвета и алерты куратору.\n` +
+                `  Нормы может не быть — это состояние, а не повод для догадки:\n` +
+                `  оставьте null и покажите приглашение её посчитать.`,
+        )
+    }
+}
+
 // A page that ships invented data.
 //
 // /food-tracker/nutrient/[id] served two hard-coded vitamins, including a
@@ -128,7 +236,7 @@ for (const file of handlerFiles) {
 const appPages = walk('apps/web/src/app', (f) => ['.ts', '.tsx'].includes(extname(f)))
 for (const file of appPages) {
     if (file.includes('__tests__') || file.includes('.test.')) continue
-    const source = readFileSync(file, 'utf8')
+    const source = readScanned(file)
     const mock = source.match(/\b(?:const|let)\s+(MOCK_[A-Z0-9_]+|[A-Za-z]*_MOCK)\b/)
     if (!mock) continue
 
@@ -234,11 +342,11 @@ const apiText = walk(
     'apps/api/internal',
     (f) => f.endsWith('.go') && !f.endsWith('_test.go') && !f.endsWith('dictionary.go'),
 )
-    .map((f) => readFileSync(f, 'utf8'))
+    .map(readScanned)
     .join('\n')
 // Без тестов намеренно: вызов track() внутри проверки — не отправка события.
 const productionWebText = walk('apps/web/src', (f) => /\.tsx?$/.test(f) && !f.includes('__tests__'))
-    .map((f) => readFileSync(f, 'utf8'))
+    .map(readScanned)
     .join('\n')
 
 // Считается отправкой любая ссылка вне словаря: сервер шлёт факты именем

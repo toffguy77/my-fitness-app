@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { apiClient } from '@/shared/utils/api-client';
 import { getApiUrl } from '@/config/api';
 import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc';
+import type { MissingTargetInputs } from '@/features/nutrition-calc/types';
 import type {
     FoodEntry,
     MealType,
@@ -46,7 +47,18 @@ export interface EntriesSlice {
     isLoading: boolean;
     error: FoodTrackerError | null;
     dailyTotals: KBZHU;
-    targetGoals: TargetGoals;
+    /**
+     * Норма дня — или её отсутствие.
+     *
+     * `null` означает «посчитать не из чего», и это не то же самое, что нули.
+     * Раньше тип был обязательным, и единственным способом его удовлетворить
+     * было придуманное число: 2000 ккал и 150 г белка показывались как личная
+     * норма человека, а от них считались проценты, цвет калорий и алерты
+     * куратору. На проде такую норму видели 16 из 18 клиентов.
+     */
+    targetGoals: TargetGoals | null;
+    /** Чего не хватает для расчёта, когда нормы нет. */
+    missingTargetInputs: MissingTargetInputs | null;
 
     // Actions
     setSelectedDate: (date: string) => void;
@@ -69,13 +81,8 @@ const initialEntriesState = {
     isLoading: false,
     error: null as FoodTrackerError | null,
     dailyTotals: { ...EMPTY_KBZHU },
-    targetGoals: {
-        calories: 2000,
-        protein: 150,
-        fat: 67,
-        carbs: 200,
-        isCustom: false,
-    } as TargetGoals,
+    targetGoals: null as TargetGoals | null,
+    missingTargetInputs: null as MissingTargetInputs | null,
 };
 
 // ============================================================================
@@ -147,7 +154,7 @@ export const createEntriesSlice: StateCreator<
             const entriesUrl = getApiUrl(`/food-tracker/entries?date=${date}`);
             const waterUrl = getApiUrl(`/food-tracker/water?date=${date}`);
 
-            const [entriesResponse, waterResponse, calcTargets] = await Promise.all([
+            const [entriesResponse, waterResponse, targetsAnswer] = await Promise.all([
                 retryWithBackoff(() => apiClient.get<GetFoodEntriesResponse>(entriesUrl), 3, 1000),
                 retryWithBackoff(
                     () => apiClient.get<{ glasses: number; goal: number; glass_size: number; enabled: boolean }>(waterUrl),
@@ -196,14 +203,22 @@ export const createEntriesSlice: StateCreator<
                 error: null,
             };
 
-            if (calcTargets) {
+            if (targetsAnswer?.targets) {
+                const calculated = targetsAnswer.targets;
                 updatedState.targetGoals = {
-                    calories: Math.round(calcTargets.calories),
-                    protein: Math.round(calcTargets.protein),
-                    fat: Math.round(calcTargets.fat),
-                    carbs: Math.round(calcTargets.carbs),
-                    isCustom: calcTargets.source === 'curator_override',
+                    calories: Math.round(calculated.calories),
+                    protein: Math.round(calculated.protein),
+                    fat: Math.round(calculated.fat),
+                    carbs: Math.round(calculated.carbs),
+                    isCustom: calculated.source === 'curator_override',
                 };
+                updatedState.missingTargetInputs = null;
+            } else {
+                // Нормы нет — и на её месте не появляется число. Вместо неё
+                // экран предлагает её посчитать, а для этого ему нужно знать,
+                // чего именно не хватает.
+                updatedState.targetGoals = null;
+                updatedState.missingTargetInputs = targetsAnswer?.missing ?? null;
             }
 
             set(updatedState);
@@ -557,11 +572,16 @@ export const createEntriesSlice: StateCreator<
      */
     setTargetGoals: (goals: Partial<TargetGoals>) => {
         set((state) => ({
+            // Человек задал норму руками — значит она есть, даже если расчёта
+            // не было. Нули как основа взяты потому, что незаполненное поле
+            // нормы это ноль, а не придуманное число.
             targetGoals: {
+                ...EMPTY_KBZHU,
                 ...state.targetGoals,
                 ...goals,
                 isCustom: true,
             },
+            missingTargetInputs: null,
         }));
     },
 

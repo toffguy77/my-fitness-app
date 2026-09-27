@@ -114,6 +114,31 @@ func (s *Service) RecalculateForDate(ctx context.Context, userID int64, date tim
 	return &targets, nil
 }
 
+// MissingInputsFor reports which of the calculation's two conditions are not
+// met, or nil when the calculation is possible.
+//
+// Deliberately separate from RecalculateForDate rather than folded into its
+// return: that function has five callers, four of which only need to know
+// whether a number came out. The conditions themselves are read from the same
+// two places the calculation reads them, so the two cannot drift.
+func (s *Service) MissingInputsFor(ctx context.Context, userID int64, date time.Time) (*MissingInputs, error) {
+	profile, err := s.getUserProfile(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	weight, err := s.getLatestWeight(ctx, userID, date)
+	if err != nil {
+		return nil, err
+	}
+
+	missing := MissingInputs{Profile: profile == nil, Weight: weight == 0}
+	if !missing.Profile && !missing.Weight {
+		return nil, nil
+	}
+	return &missing, nil
+}
+
 // GetTargetsForDate returns the stored calculated targets for a date.
 func (s *Service) GetTargetsForDate(ctx context.Context, userID int64, date string) (*DailyTargetRecord, error) {
 	query := `

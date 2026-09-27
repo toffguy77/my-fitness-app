@@ -21,6 +21,8 @@ import { calculatePercentage } from '../utils/calculations'
 import { formatLocalDate } from '@/shared/utils/format'
 import { AttentionBadge } from './AttentionBadge'
 import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc'
+import { CalculateTargetPrompt } from '@/features/nutrition-calc/components/CalculateTargetPrompt'
+import type { MissingTargetInputs } from '@/features/nutrition-calc/types'
 import type { CalculatedTargets } from '@/features/nutrition-calc/types'
 import { t } from '@/shared/i18n'
 
@@ -201,6 +203,7 @@ const MacroProgressBar = memo(function MacroProgressBar({
 export const NutritionBlock = memo(function NutritionBlock({ date, className }: NutritionBlockProps) {
     const [isNavigating, setIsNavigating] = useState(false)
     const [calcTargets, setCalcTargets] = useState<CalculatedTargets | null>(null)
+    const [missingTargetInputs, setMissingTargetInputs] = useState<MissingTargetInputs | null>(null)
 
     // Get data from store
     const { dailyData, weeklyPlan, targetsVersion } = useDashboardStore()
@@ -210,7 +213,12 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
     // Fetch calculated targets for the selected date
     // Re-fetch when targetsVersion changes (bumped after successful metric save)
     useEffect(() => {
-        getTargets(dateStr).then(setCalcTargets).catch(() => {})
+        getTargets(dateStr)
+            .then((answer) => {
+                setCalcTargets(answer.targets)
+                setMissingTargetInputs(answer.missing)
+            })
+            .catch(() => {})
     }, [dateStr, targetsVersion])
 
     // Get nutrition data and goals - memoized to prevent recalculation
@@ -219,16 +227,27 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
         [dayData?.nutrition]
     )
 
-    const goals = useMemo(() => ({
-        caloriesGoal: weeklyPlan?.caloriesGoal || calcTargets?.calories || 2000,
-        proteinGoal: weeklyPlan?.proteinGoal || calcTargets?.protein || 150,
-        fatGoal: weeklyPlan?.fatGoal || calcTargets?.fat || 67,
-        carbsGoal: weeklyPlan?.carbsGoal || calcTargets?.carbs || 250,
-    }), [weeklyPlan?.caloriesGoal, weeklyPlan?.proteinGoal, weeklyPlan?.fatGoal, weeklyPlan?.carbsGoal, calcTargets])
+    /**
+     * Норма дня — или её отсутствие.
+     *
+     * Запасных чисел здесь нет намеренно. Раньше стояло
+     * `calcTargets?.calories || 2000`, и человеку с незаполненным профилем
+     * показывали 2000 ккал как его норму — причём в трекере углеводов при том же
+     * «по умолчанию» было 200, а здесь 250. Одна и та же норма на двух экранах
+     * разная — доказательство, что её никто не считал.
+     */
+    const goals = useMemo(() => {
+        const caloriesGoal = weeklyPlan?.caloriesGoal || calcTargets?.calories
+        const proteinGoal = weeklyPlan?.proteinGoal || calcTargets?.protein
+        const fatGoal = weeklyPlan?.fatGoal || calcTargets?.fat
+        const carbsGoal = weeklyPlan?.carbsGoal || calcTargets?.carbs
+        if (!caloriesGoal) return null
+        return { caloriesGoal, proteinGoal, fatGoal, carbsGoal }
+    }, [weeklyPlan?.caloriesGoal, weeklyPlan?.proteinGoal, weeklyPlan?.fatGoal, weeklyPlan?.carbsGoal, calcTargets])
 
-    // Calculate percentages
-    const caloriesPercentage = calculatePercentage(nutrition.calories, goals.caloriesGoal)
-    const isOverCalorieGoal = nutrition.calories > goals.caloriesGoal
+    // Проценты и превышение имеют смысл только относительно нормы.
+    const caloriesPercentage = goals ? calculatePercentage(nutrition.calories, goals.caloriesGoal) : 0
+    const isOverCalorieGoal = goals ? nutrition.calories > goals.caloriesGoal : false
 
     // Determine calorie text color based on percentage
     const getCalorieColor = (pct: number) => {
@@ -239,11 +258,11 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
     }
 
     // Ring segments for macros
-    const segments = useMemo<Segment[]>(() => [
-        { percentage: calculatePercentage(nutrition.protein, goals.proteinGoal), color: MACRO_COLORS.protein, label: 'protein' },
-        { percentage: calculatePercentage(nutrition.fat, goals.fatGoal), color: MACRO_COLORS.fat, label: 'fat' },
-        { percentage: calculatePercentage(nutrition.carbs, goals.carbsGoal), color: MACRO_COLORS.carbs, label: 'carbs' },
-    ], [nutrition.protein, nutrition.fat, nutrition.carbs, goals.proteinGoal, goals.fatGoal, goals.carbsGoal])
+    const segments = useMemo<Segment[]>(() => goals ? [
+        { percentage: calculatePercentage(nutrition.protein, goals.proteinGoal ?? 0), color: MACRO_COLORS.protein, label: 'protein' },
+        { percentage: calculatePercentage(nutrition.fat, goals.fatGoal ?? 0), color: MACRO_COLORS.fat, label: 'fat' },
+        { percentage: calculatePercentage(nutrition.carbs, goals.carbsGoal ?? 0), color: MACRO_COLORS.carbs, label: 'carbs' },
+    ] : [], [nutrition.protein, nutrition.fat, nutrition.carbs, goals])
 
     // Handle quick add navigation
     const handleQuickAdd = async () => {
@@ -290,32 +309,49 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
             </CardHeader>
 
             <CardContent className="space-y-3">
-                {/* Segmented ring for macro progress */}
-                <div className="flex justify-center">
-                    <SegmentedRing
-                        size={72}
-                        strokeWidth={6}
-                        segments={segments}
-                    >
-                        <div className="text-center">
-                            <div className={cn(
-                                'text-base font-bold',
-                                getCalorieColor(caloriesPercentage)
-                            )} data-testid="calorie-value">
-                                {nutrition.calories}
+                {/* Без нормы не показывается доля от неё: съеденное — числом,
+                    без процента, без кольца и без цветовой оценки. Ниже стоит
+                    приглашение норму посчитать. */}
+                {goals ? (
+                    <div className="flex justify-center">
+                        <SegmentedRing
+                            size={72}
+                            strokeWidth={6}
+                            segments={segments}
+                        >
+                            <div className="text-center">
+                                <div className={cn(
+                                    'text-base font-bold',
+                                    getCalorieColor(caloriesPercentage)
+                                )} data-testid="calorie-value">
+                                    {nutrition.calories}
+                                </div>
+                                <div className="text-xs text-gray-500 leading-tight">
+                                    {t('dashboard.nutrition.ofCalories', { calories: goals.caloriesGoal })}
+                                </div>
+                                <div className={cn(
+                                    'text-xs font-medium',
+                                    isOverCalorieGoal ? 'text-orange-600' : 'text-gray-600'
+                                )}>
+                                    {caloriesPercentage.toFixed(1)}%
+                                </div>
                             </div>
-                            <div className="text-xs text-gray-500 leading-tight">
-                                {t('dashboard.nutrition.ofCalories', { calories: goals.caloriesGoal })}
-                            </div>
-                            <div className={cn(
-                                'text-xs font-medium',
-                                isOverCalorieGoal ? 'text-orange-600' : 'text-gray-600'
-                            )}>
-                                {caloriesPercentage.toFixed(1)}%
-                            </div>
+                        </SegmentedRing>
+                    </div>
+                ) : (
+                    <div className="text-center">
+                        <div
+                            className="text-base font-bold text-gray-900"
+                            data-testid="calorie-value"
+                            aria-label={t('foodTracker.noTarget.eatenAria', { calories: nutrition.calories })}
+                        >
+                            {nutrition.calories}
                         </div>
-                    </SegmentedRing>
-                </div>
+                        <div className="text-xs text-gray-500">{t('macros.calories')}</div>
+                    </div>
+                )}
+
+                {!goals && <CalculateTargetPrompt missing={missingTargetInputs} />}
 
                 {/* Warning when goal exceeded */}
                 {isOverCalorieGoal && (
@@ -331,32 +367,34 @@ export const NutritionBlock = memo(function NutritionBlock({ date, className }: 
                     </div>
                 )}
 
-                {/* Macro breakdown - compact */}
-                <div className="space-y-2">
-                    <MacroProgressBar
-                        label={t('macros.protein')}
-                        current={nutrition.protein}
-                        goal={goals.proteinGoal}
-                        unit={t('units.gram')}
-                        color={MACRO_COLORS.protein}
-                    />
+                {/* Macro breakdown - compact. Полосы прогресса требуют нормы. */}
+                {goals && (
+                    <div className="space-y-2">
+                        <MacroProgressBar
+                            label={t('macros.protein')}
+                            current={nutrition.protein}
+                            goal={goals.proteinGoal ?? 0}
+                            unit={t('units.gram')}
+                            color={MACRO_COLORS.protein}
+                        />
 
-                    <MacroProgressBar
-                        label={t('macros.fat')}
-                        current={nutrition.fat}
-                        goal={goals.fatGoal}
-                        unit={t('units.gram')}
-                        color={MACRO_COLORS.fat}
-                    />
+                        <MacroProgressBar
+                            label={t('macros.fat')}
+                            current={nutrition.fat}
+                            goal={goals.fatGoal ?? 0}
+                            unit={t('units.gram')}
+                            color={MACRO_COLORS.fat}
+                        />
 
-                    <MacroProgressBar
-                        label={t('macros.carbs')}
-                        current={nutrition.carbs}
-                        goal={goals.carbsGoal}
-                        unit={t('units.gram')}
-                        color={MACRO_COLORS.carbs}
-                    />
-                </div>
+                        <MacroProgressBar
+                            label={t('macros.carbs')}
+                            current={nutrition.carbs}
+                            goal={goals.carbsGoal ?? 0}
+                            unit={t('units.gram')}
+                            color={MACRO_COLORS.carbs}
+                        />
+                    </div>
+                )}
 
                 {/* Empty state */}
                 {nutrition.calories === 0 && (

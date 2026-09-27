@@ -77,7 +77,18 @@ func (h *Handler) GetTargets(c *gin.Context) {
 			return
 		}
 		if targets == nil {
-			response.Success(c, http.StatusOK, gin.H{"targets": nil, "message": "Профиль не заполнен или нет данных о весе"})
+			// Чего именно не хватает, знает тот, кто считает: два условия
+			// заполняются на разных экранах, и «профиль не заполнен или нет
+			// данных о весе» одной фразой некуда адресовать.
+			missing, missingErr := h.service.MissingInputsFor(c.Request.Context(), userID, date)
+			if missingErr != nil {
+				h.log.Errorw("Failed to determine missing inputs", "error", missingErr, "user_id", userID)
+			}
+			response.Success(c, http.StatusOK, gin.H{
+				"targets": nil,
+				"message": "Профиль не заполнен или нет данных о весе",
+				"missing": missing,
+			})
 			return
 		}
 		// Re-fetch the stored record after calculation

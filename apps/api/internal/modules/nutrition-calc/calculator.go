@@ -5,6 +5,17 @@ import (
 	"time"
 )
 
+// BMRFormulaName — название формулы, по которой считается базовый метаболизм.
+//
+// Объявлено здесь, рядом с самой формулой, потому что руководство пользователя
+// обязано называть ту формулу, которая действительно применяется, и это
+// проверяется тестом (`internal/modules/support`). Раньше «Частые вопросы»
+// говорили «Харриса-Бенедикта» — другую формулу, — и телеграм-бот поддержки,
+// отвечающий строго по руководству, повторял это каждому спросившему.
+//
+// Переименование формулы здесь ломает тест документации. Так и задумано.
+const BMRFormulaName = "Mifflin-St Jeor"
+
 // CalculateBMR returns Basal Metabolic Rate using Mifflin-St Jeor formula.
 func CalculateBMR(profile UserProfile) float64 {
 	age := calculateAge(profile.BirthDate)

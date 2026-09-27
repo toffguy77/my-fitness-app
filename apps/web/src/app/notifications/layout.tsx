@@ -1,24 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
-import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
+import { RoleShell } from '@/shared/components/RoleShell'
 
 export default function NotificationsLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    const userName = useMemo(() => {
-        if (typeof window === 'undefined') return ''
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}')
-            return user.name || user.email || ''
-        } catch { return '' }
-    }, [])
-
-    return (
-        <DashboardLayout userName={userName}>
-            {children}
-        </DashboardLayout>
-    )
+    // Сюда попадают по колокольчику из любой оболочки, включая кураторскую и
+    // административную, — значит оболочку выбирает роль, а не эта страница.
+    return <RoleShell>{children}</RoleShell>
 }

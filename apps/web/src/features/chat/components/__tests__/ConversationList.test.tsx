@@ -230,6 +230,181 @@ describe('ConversationList', () => {
         })
     })
 
+    // Способность chat-list-activity: время в строке означает последнее
+    // сообщение, и у пустого разговора его нет.
+    describe('время в строке', () => {
+        it('показывает время последнего сообщения, когда сообщения есть', async () => {
+            mockChatApi.getConversations.mockResolvedValue([
+                makeConversation({
+                    id: 'c1',
+                    participant: { id: 1, name: 'Анна' },
+                    last_message: {
+                        id: 'm1',
+                        conversation_id: 'c1',
+                        sender_id: 1,
+                        type: 'text',
+                        content: 'привет',
+                        created_at: new Date().toISOString(),
+                    },
+                }),
+            ])
+
+            render(<ConversationList onSelectConversation={mockOnSelect} />)
+
+            expect(await screen.findByText('только что')).toBeInTheDocument()
+        })
+
+        it('у разговора без сообщений времени нет — раньше там стояла дата создания', async () => {
+            // Запись о разговоре создана вчера; сообщений нет ни одного.
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+            mockChatApi.getConversations.mockResolvedValue([
+                makeConversation({
+                    id: 'c1',
+                    participant: { id: 1, name: 'Анна' },
+                    created_at: yesterday,
+                    updated_at: yesterday,
+                }),
+            ])
+
+            render(<ConversationList onSelectConversation={mockOnSelect} />)
+
+            expect(await screen.findByText('Нет сообщений')).toBeInTheDocument()
+            expect(screen.queryByText('вчера')).not.toBeInTheDocument()
+            expect(screen.queryByText(/назад/)).not.toBeInTheDocument()
+        })
+
+        it('после первого сообщения время появляется', async () => {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+            mockChatApi.getConversations.mockResolvedValue([
+                makeConversation({
+                    id: 'c1',
+                    participant: { id: 1, name: 'Анна' },
+                    created_at: yesterday,
+                    updated_at: new Date().toISOString(),
+                    last_message: {
+                        id: 'm1',
+                        conversation_id: 'c1',
+                        sender_id: 1,
+                        type: 'text',
+                        content: 'первое',
+                        created_at: new Date().toISOString(),
+                    },
+                }),
+            ])
+
+            render(<ConversationList onSelectConversation={mockOnSelect} />)
+
+            expect(await screen.findByText('только что')).toBeInTheDocument()
+        })
+    })
+
+    describe('порядок списка', () => {
+        function names() {
+            return screen.getAllByRole('button').map((b) => b.textContent || '')
+        }
+
+        it('пустой разговор, созданный позже переписки, стоит ниже её', async () => {
+            const now = Date.now()
+            mockChatApi.getConversations.mockResolvedValue([
+                // Пустой, создан только что — по updated_at был бы первым.
+                makeConversation({
+                    id: 'empty',
+                    participant: { id: 1, name: 'Пустой' },
+                    created_at: new Date(now).toISOString(),
+                    updated_at: new Date(now).toISOString(),
+                }),
+                makeConversation({
+                    id: 'talked',
+                    participant: { id: 2, name: 'Переписка' },
+                    updated_at: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+                    last_message: {
+                        id: 'm1',
+                        conversation_id: 'talked',
+                        sender_id: 2,
+                        type: 'text',
+                        content: 'позавчера',
+                        created_at: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+                    },
+                }),
+            ])
+
+            render(<ConversationList onSelectConversation={mockOnSelect} />)
+            await screen.findByText('Переписка')
+
+            const order = names()
+            expect(order[0]).toContain('Переписка')
+            expect(order[1]).toContain('Пустой')
+        })
+
+        it('несколько пустых разговоров идут после всех, в устойчивом порядке', async () => {
+            const now = Date.now()
+            mockChatApi.getConversations.mockResolvedValue([
+                makeConversation({ id: 'e2', participant: { id: 1, name: 'Яков' } }),
+                makeConversation({
+                    id: 'talked',
+                    participant: { id: 3, name: 'Переписка' },
+                    last_message: {
+                        id: 'm1',
+                        conversation_id: 'talked',
+                        sender_id: 3,
+                        type: 'text',
+                        content: 'было',
+                        created_at: new Date(now - 60_000).toISOString(),
+                    },
+                }),
+                makeConversation({ id: 'e1', participant: { id: 2, name: 'Алла' } }),
+            ])
+
+            render(<ConversationList onSelectConversation={mockOnSelect} />)
+            await screen.findByText('Переписка')
+
+            const order = names()
+            expect(order[0]).toContain('Переписка')
+            expect(order[1]).toContain('Алла')
+            expect(order[2]).toContain('Яков')
+        })
+
+        it('непрочитанные остаются первыми, в том числе выше пустых', async () => {
+            const now = Date.now()
+            mockChatApi.getConversations.mockResolvedValue([
+                makeConversation({ id: 'empty', participant: { id: 1, name: 'Пустой' } }),
+                makeConversation({
+                    id: 'unread',
+                    participant: { id: 2, name: 'Непрочитанный' },
+                    unread_count: 2,
+                    last_message: {
+                        id: 'm1',
+                        conversation_id: 'unread',
+                        sender_id: 2,
+                        type: 'text',
+                        content: 'давно',
+                        created_at: new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString(),
+                    },
+                }),
+                makeConversation({
+                    id: 'recent',
+                    participant: { id: 3, name: 'Свежий' },
+                    last_message: {
+                        id: 'm2',
+                        conversation_id: 'recent',
+                        sender_id: 3,
+                        type: 'text',
+                        content: 'только что',
+                        created_at: new Date(now).toISOString(),
+                    },
+                }),
+            ])
+
+            render(<ConversationList onSelectConversation={mockOnSelect} />)
+            await screen.findByText('Непрочитанный')
+
+            const order = names()
+            expect(order[0]).toContain('Непрочитанный')
+            expect(order[1]).toContain('Свежий')
+            expect(order[2]).toContain('Пустой')
+        })
+    })
+
     it('shows empty state when no conversations', async () => {
         mockChatApi.getConversations.mockResolvedValue([])
 
