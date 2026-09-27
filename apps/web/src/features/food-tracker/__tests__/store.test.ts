@@ -116,13 +116,11 @@ describe('foodTrackerStore', () => {
                 fat: 0,
                 carbs: 0,
             },
-            targetGoals: {
-                calories: 2000,
-                protein: 150,
-                fat: 67,
-                carbs: 200,
-                isCustom: false,
-            },
+            // Норма не выдумывается: до ответа сервера её нет. Раньше здесь
+            // стояли 2000/150/67/200, и человек с незаполненным профилем видел
+            // их как свою норму.
+            targetGoals: null,
+            missingTargetInputs: null,
             waterIntake: 0,
             waterGoal: 8,
             glassSize: 250,
@@ -1122,9 +1120,9 @@ describe('foodTrackerStore', () => {
                 });
             });
 
-            expect(result.current.targetGoals.calories).toBe(2500);
-            expect(result.current.targetGoals.protein).toBe(180);
-            expect(result.current.targetGoals.isCustom).toBe(true);
+            expect(result.current.targetGoals?.calories).toBe(2500);
+            expect(result.current.targetGoals?.protein).toBe(180);
+            expect(result.current.targetGoals?.isCustom).toBe(true);
         });
 
         it('should preserve existing goals when setting partial update', () => {
@@ -1147,10 +1145,10 @@ describe('foodTrackerStore', () => {
                 });
             });
 
-            expect(result.current.targetGoals.calories).toBe(3000);
-            expect(result.current.targetGoals.protein).toBe(180);
-            expect(result.current.targetGoals.fat).toBe(80);
-            expect(result.current.targetGoals.carbs).toBe(300);
+            expect(result.current.targetGoals?.calories).toBe(3000);
+            expect(result.current.targetGoals?.protein).toBe(180);
+            expect(result.current.targetGoals?.fat).toBe(80);
+            expect(result.current.targetGoals?.carbs).toBe(300);
         });
     });
 

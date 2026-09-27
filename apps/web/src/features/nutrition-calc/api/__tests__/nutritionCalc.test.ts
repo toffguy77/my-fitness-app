@@ -34,15 +34,31 @@ describe('nutritionCalc API', () => {
             const result = await getTargets()
 
             expect(mockGet).toHaveBeenCalledWith('/api/v1/nutrition-calc/targets')
-            expect(result).toEqual(targets)
+            expect(result).toEqual({ targets, missing: null })
         })
 
-        it('returns null when response is { targets: null }', async () => {
+        it('передаёт, чего не хватает, когда нормы нет', async () => {
+            // Сервер называет условия по отдельности: пол, дата рождения и рост
+            // заполняются в «Теле и целях», вес — на главной. Одной фразой на
+            // оба случая кнопку «Посчитать норму» некуда адресовать.
+            mockGet.mockResolvedValueOnce({
+                targets: null,
+                missing: { profile: false, weight: true },
+            } as never)
+
+            const result = await getTargets()
+
+            expect(result.targets).toBeNull()
+            expect(result.missing).toEqual({ profile: false, weight: true })
+        })
+
+        it('нормы нет и сервер не сказал почему — недостающее неизвестно, но нормы всё равно нет', async () => {
             mockGet.mockResolvedValueOnce({ targets: null } as never)
 
             const result = await getTargets()
 
-            expect(result).toBeNull()
+            expect(result.targets).toBeNull()
+            expect(result.missing).toBeNull()
         })
 
         it('passes date as query param', async () => {
@@ -71,7 +87,7 @@ describe('nutritionCalc API', () => {
 
             const result = await getTargets()
 
-            expect(result).toEqual(inner)
+            expect(result).toEqual({ targets: inner, missing: null })
         })
     })
 

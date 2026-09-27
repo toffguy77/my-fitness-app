@@ -45,6 +45,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
         entries,
         dailyTotals,
         targetGoals,
+        missingTargetInputs,
         isLoading,
         error,
         isOffline,
@@ -152,6 +153,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                             entries={entries}
                             dailyTotals={dailyTotals}
                             targetGoals={targetGoals}
+                            missingTargetInputs={missingTargetInputs}
                             isLoading={isLoading}
                             onDeleteEntry={deleteEntry}
                         />

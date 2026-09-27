@@ -97,6 +97,21 @@ type CalculatedTargets struct {
 	Source       string  `json:"source"`
 }
 
+// MissingInputs says what a calculation is waiting for.
+//
+// The two conditions live in two different screens — profile fields in "Body and
+// goals", weight in the day's metrics — so "profile not filled in or no weight
+// data" as one sentence could not be pointed anywhere. The frontend offers a
+// "Calculate my target" button, and a button that leads to the wrong screen is
+// worse than none: weight is read-only in "Body and goals", so somebody sent
+// there for it will not find where to enter it.
+type MissingInputs struct {
+	/** Пол, дата рождения или рост не заполнены. */
+	Profile bool `json:"profile"`
+	/** Ни одного замера веса нет. */
+	Weight bool `json:"weight"`
+}
+
 // DailyTargetRecord is the DB row for daily_calculated_targets
 type DailyTargetRecord struct {
 	ID           int64     `json:"id" db:"id"`

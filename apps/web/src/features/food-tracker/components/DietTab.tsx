@@ -17,6 +17,8 @@ import { WaterTracker } from './WaterTracker';
 import { FoodEntryModal } from './FoodEntryModal';
 import { useFoodTrackerStore } from '../store/foodTrackerStore';
 import type { MealType, FoodEntry, WaterLog } from '../types';
+import { CalculateTargetPrompt } from '@/features/nutrition-calc/components/CalculateTargetPrompt';
+import type { MissingTargetInputs } from '@/features/nutrition-calc/types';
 import { t } from '@/shared/i18n';
 
 // ============================================================================
@@ -33,13 +35,18 @@ export interface DietTabProps {
         fat: number;
         carbs: number;
     };
-    /** Target goals for КБЖУ */
+    /** Норма КБЖУ, или null — посчитать её не из чего. */
     targetGoals: {
         calories: number;
         protein: number;
         fat: number;
         carbs: number;
-    };
+    } | null;
+    /**
+     * Чего не хватает для расчёта нормы, когда её нет. Необязательно: при
+     * заданной норме приглашение не показывается, и знать нечего.
+     */
+    missingTargetInputs?: MissingTargetInputs | null;
     /** Loading state */
     isLoading: boolean;
     /** Callback to delete an entry */
@@ -62,6 +69,7 @@ export function DietTab({
     entries,
     dailyTotals,
     targetGoals,
+    missingTargetInputs = null,
     isLoading,
     onDeleteEntry,
     className = '',
@@ -136,11 +144,14 @@ export function DietTab({
 
     return (
         <div className={`space-y-3 pb-20 sm:space-y-4 sm:pb-24 ${className}`}>
-            {/* КБЖУ Summary */}
+            {/* КБЖУ Summary. Без нормы сводка показывает съеденное числом, а
+                рядом стоит приглашение её посчитать — вместо придуманных цифр. */}
             <KBZHUSummary
                 current={dailyTotals}
                 target={targetGoals}
             />
+
+            {!targetGoals && <CalculateTargetPrompt missing={missingTargetInputs} />}
 
             {/* Meal Slots - responsive grid on larger screens */}
             <div className="space-y-3 sm:space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">

@@ -118,6 +118,57 @@ for (const file of handlerFiles) {
     )
 }
 
+/**
+ * Затирает комментарии, сохраняя длину и переводы строк.
+ *
+ * Нужно правилу ниже: сторож сработал на комментарии, который объясняет
+ * исправленный дефект и цитирует прежний код. Правило, падающее на объяснении
+ * самого себя, — первое, что отключат.
+ */
+function withoutComments(source) {
+    return source
+        .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
+        .replace(/\/\/[^\n]*/g, (line) => ' '.repeat(line.length))
+}
+
+// Придуманная норма КБЖУ.
+//
+// `calcTargets?.calories || 2000` — валидный TypeScript и ровно тот дефект,
+// который человек нашёл раньше сборки: при незаполненном профиле 2000 ккал и
+// 150 г белка показывались как его личная норма, а от них считались проценты
+// выполнения, цвет калорий и алерты куратору. На проде такую норму видели 16
+// клиентов из 18. Углеводов при том же «по умолчанию» было 200 в трекере и 250
+// в дашборде — одна и та же норма на двух экранах разная.
+//
+// Тип `TargetGoals | null` ловит пропущенную ветвь, но не запрещает заполнить
+// её неправдой. Это и есть второй слой: числовой литерал после `||` или `??`
+// рядом с именем макронутриента.
+const targetOwners = [
+    ...walk('apps/web/src/features/food-tracker', (f) => ['.ts', '.tsx'].includes(extname(f))),
+    ...walk('apps/web/src/features/dashboard', (f) => ['.ts', '.tsx'].includes(extname(f))),
+    ...walk('apps/web/src/features/nutrition-calc', (f) => ['.ts', '.tsx'].includes(extname(f))),
+]
+const inventedTarget = /\b(calories|protein|fat|carbs|caloriesGoal|proteinGoal|fatGoal|carbsGoal)\b[^\n;,)]{0,40}(\?\?|\|\|)\s*(\d+)/g
+for (const file of targetOwners) {
+    if (file.includes('__tests__') || file.includes('.test.') || file.includes('/testing/')) continue
+    const source = withoutComments(readFileSync(file, 'utf8'))
+    for (const match of source.matchAll(inventedTarget)) {
+        // Ноль запасным значением — не придуманная норма, а честный ноль:
+        // «съедено нисколько» это измерение, «норма 2000» — нет.
+        if (match[3] === '0') continue
+
+        const line = source.slice(0, match.index).split('\n').length
+        problems.push(
+            `Придуманная норма КБЖУ: ${relative(process.cwd(), file)}:${line}\n` +
+                `  ${match[0].trim()}\n` +
+                `  Число на месте нормы показывается человеку как его собственная,\n` +
+                `  и от него считаются проценты, цвета и алерты куратору.\n` +
+                `  Нормы может не быть — это состояние, а не повод для догадки:\n` +
+                `  оставьте null и покажите приглашение её посчитать.`,
+        )
+    }
+}
+
 // A page that ships invented data.
 //
 // /food-tracker/nutrient/[id] served two hard-coded vitamins, including a

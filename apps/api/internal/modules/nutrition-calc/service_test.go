@@ -287,3 +287,92 @@ func TestGetHistory(t *testing.T) {
 		assert.Equal(t, 500.0, history[0].Actual.Calories)
 	})
 }
+
+// Сервер обязан сказать, чего не хватает для расчёта: пол, дата рождения и рост
+// заполняются в «Теле и целях», а вес — в метриках дня. Одна фраза «профиль не
+// заполнен или нет данных о весе» на оба случая не даёт кнопке «Посчитать норму»
+// адреса, а кнопка, ведущая не туда, хуже её отсутствия — вес в «Теле и целях»
+// показан только для чтения.
+func TestMissingInputsFor(t *testing.T) {
+	ctx := context.Background()
+	date := time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)
+
+	profileColumns := []string{"birth_date", "biological_sex", "height", "activity_level", "fitness_goal"}
+
+	t.Run("профиль неполон, вес есть", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery(`FROM user_settings`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows(profileColumns).
+				AddRow(nil, "male", 180.0, "moderate", "loss"))
+		mock.ExpectQuery(`SELECT weight FROM daily_metrics`).
+			WithArgs(int64(1), "2026-09-27").
+			WillReturnRows(sqlmock.NewRows([]string{"weight"}).AddRow(80.0))
+
+		missing, err := service.MissingInputsFor(ctx, 1, date)
+
+		require.NoError(t, err)
+		require.NotNil(t, missing)
+		assert.True(t, missing.Profile)
+		assert.False(t, missing.Weight, "вес есть — незачем отправлять человека его вводить")
+	})
+
+	t.Run("профиль полон, веса нет", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery(`FROM user_settings`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows(profileColumns).
+				AddRow(time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC), "male", 180.0, "moderate", "loss"))
+		mock.ExpectQuery(`SELECT weight FROM daily_metrics`).
+			WithArgs(int64(1), "2026-09-27").
+			WillReturnRows(sqlmock.NewRows([]string{"weight"}))
+
+		missing, err := service.MissingInputsFor(ctx, 1, date)
+
+		require.NoError(t, err)
+		require.NotNil(t, missing)
+		assert.False(t, missing.Profile)
+		assert.True(t, missing.Weight)
+	})
+
+	t.Run("не хватает и того, и другого", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery(`FROM user_settings`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows(profileColumns))
+		mock.ExpectQuery(`SELECT weight FROM daily_metrics`).
+			WithArgs(int64(1), "2026-09-27").
+			WillReturnRows(sqlmock.NewRows([]string{"weight"}))
+
+		missing, err := service.MissingInputsFor(ctx, 1, date)
+
+		require.NoError(t, err)
+		require.NotNil(t, missing)
+		assert.True(t, missing.Profile)
+		assert.True(t, missing.Weight)
+	})
+
+	t.Run("расчёт возможен — о недостающем не сообщается", func(t *testing.T) {
+		service, mock, cleanup := setupTestService(t)
+		defer cleanup()
+
+		mock.ExpectQuery(`FROM user_settings`).
+			WithArgs(int64(1)).
+			WillReturnRows(sqlmock.NewRows(profileColumns).
+				AddRow(time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC), "male", 180.0, "moderate", "loss"))
+		mock.ExpectQuery(`SELECT weight FROM daily_metrics`).
+			WithArgs(int64(1), "2026-09-27").
+			WillReturnRows(sqlmock.NewRows([]string{"weight"}).AddRow(80.0))
+
+		missing, err := service.MissingInputsFor(ctx, 1, date)
+
+		require.NoError(t, err)
+		assert.Nil(t, missing)
+	})
+}
