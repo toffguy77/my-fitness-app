@@ -1,8 +1,12 @@
 # curator-analytics-parallel-fetch Specification
 
 ## Purpose
-TBD - created by archiving change parallelize-get-analytics. Update Purpose after archive.
+Держит подсчёт сводки куратора быстрым и его результат независимым от того, каким
+способом он получен: независимые величины считаются параллельно, а набор активных
+клиентов — до них и один раз. Смысл самих величин задаёт `curator-summary-consistency`.
+
 ## Requirements
+
 ### Requirement: GetAnalytics independent queries run concurrently
 After the mandatory 2-query sequential preamble, `GetAnalytics` SHALL fetch the 6 independent analytics data sets (attention alerts, average KBZHU, unread counts, active tasks, overdue tasks, completed-today count) in parallel using `errgroup`.
 
@@ -16,19 +20,24 @@ After the mandatory 2-query sequential preamble, `GetAnalytics` SHALL fetch the 
 - **THEN** no race conditions are reported
 
 ### Requirement: Sequential preamble is preserved
-The first two queries in `GetAnalytics` SHALL remain sequential: count clients first, then fetch clientIDs. The clientIDs slice SHALL be available to all parallel goroutines before any goroutine starts.
+Набор активных клиентов SHALL определяться до запуска параллельного блока, одним запросом: он даёт и число клиентов, и их идентификаторы. Отдельный подсчёт MUST NOT существовать — это второе определение слова «активный», и оно расходилось с тем, по которому строится список клиентов. Идентификаторы SHALL быть готовы до старта всех горутин.
 
 #### Scenario: Preamble runs before parallel block
-- **WHEN** `GetAnalytics` is called
-- **THEN** the total-clients count query completes before the clientIDs query runs
-- **THEN** the clientIDs query completes before the errgroup goroutines are launched
+- **WHEN** вызван подсчёт сводки
+- **THEN** запрос активных клиентов завершается до запуска горутин
+- **AND** число активных клиентов равно размеру полученного набора
+- **AND** отдельного запроса, считающего клиентов, не выполняется
 
 ### Requirement: GetAnalytics response contract is unchanged
-`GetAnalytics` SHALL return the same `AnalyticsSummary` struct with the same field names and semantics as before the parallelization change.
+`GetAnalytics` SHALL return the same `AnalyticsSummary` struct with the same field names as before the parallelization change. Семантика полей `AttentionClients` и `TotalClients` SHALL определяться способностью `curator-summary-consistency`; распараллеливание MUST NOT её менять.
 
 #### Scenario: Response fields are present and correctly typed
 - **WHEN** `GetAnalytics` returns successfully
-- **THEN** `AnalyticsSummary` includes TotalClients, ClientsNeedingAttention, AtRiskClients, AverageKBZHU, TotalUnread, ClientsWaiting, ActiveTasks, OverdueTasks, TasksCompletedToday
+- **THEN** `AnalyticsSummary` includes TotalClients, AttentionClients, AvgKBZHUPercent, TotalUnread, ClientsWaiting, ActiveTasks, OverdueTasks, CompletedToday
+
+#### Scenario: Смысл величин не зависит от способа их получения
+- **WHEN** величины сводки получены параллельно
+- **THEN** `AttentionClients` и `TotalClients` совпадают с теми, что даёт последовательный подсчёт по тем же данным
 
 ### Requirement: Unread counts error is non-fatal in analytics
 If `getUnreadCounts` returns an error inside the analytics errgroup, `GetAnalytics` SHALL log the error and leave `TotalUnread` and `ClientsWaiting` as zero rather than returning an error to the caller.
@@ -48,4 +57,3 @@ The sub-tests of `TestGetAnalytics` and `TestCollectDailySnapshot` that exercise
 #### Scenario: TestCollectDailySnapshot passes consistently
 - **WHEN** `TestCollectDailySnapshot`'s "collects and upserts daily snapshot" sub-test runs repeatedly
 - **THEN** it passes on every run without mock expectation order failures
-
