@@ -43,6 +43,14 @@ export interface UseRecommendations {
     customRecommendations: CustomRecommendation[];
     currentIntakes: Record<string, number>;
     /**
+     * По скольким записям дня посчитано потребление.
+     *
+     * Справочник продуктов знает содержание микронутриентов не у всех продуктов,
+     * поэтому величина — нижняя граница, и показывать её без покрытия значит
+     * выдавать её за итог дня.
+     */
+    intakeCoverage: RecommendationsData['intakeCoverage'];
+    /**
      * Справочник нутриентов пуст.
      *
      * Это не то же самое, что «нечего показать»: справочник
@@ -75,6 +83,7 @@ const EMPTY: RecommendationsData = {
     trackedIds: [],
     customRecommendations: [],
     currentIntakes: {},
+    intakeCoverage: {},
 };
 
 export function useRecommendations({
@@ -170,6 +179,7 @@ export function useRecommendations({
         trackedIds: data.trackedIds,
         customRecommendations: data.customRecommendations,
         currentIntakes: data.currentIntakes,
+        intakeCoverage: data.intakeCoverage,
         catalogueEmpty: loaded && data.nutrients.length === 0,
         isLoading,
         error,

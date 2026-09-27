@@ -65,6 +65,7 @@ const DATA: RecommendationsData = {
     trackedIds: ['a'],
     customRecommendations: [],
     currentIntakes: { a: 45, b: 0 },
+    intakeCoverage: {},
 };
 
 function openRecommendations(): Promise<void> {
@@ -120,6 +121,7 @@ describe('Страница дневника: вкладка рекомендац
             trackedIds: [],
             customRecommendations: [],
             currentIntakes: {},
+            intakeCoverage: {},
         });
 
         render(<FoodTrackerPage />);
