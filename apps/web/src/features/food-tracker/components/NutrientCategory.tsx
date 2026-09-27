@@ -28,6 +28,8 @@ export interface NutrientCategoryProps {
     recommendations: NutrientRecommendation[];
     /** Current intakes by recommendation ID */
     currentIntakes: Record<string, number>;
+    /** Покрытие по идентификатору нутриента. */
+    intakeCoverage?: Record<string, { counted: number; total: number }>;
     /** Whether the category is expanded */
     isExpanded: boolean;
     /** Callback when toggle button clicked */
@@ -47,6 +49,7 @@ export function NutrientCategory({
     label,
     recommendations,
     currentIntakes,
+    intakeCoverage,
     isExpanded,
     onToggle,
     onRecommendationClick,
@@ -95,6 +98,7 @@ export function NutrientCategory({
                             recommendation={rec}
                             // Отсутствие записи означает «неизвестно», а не ноль.
                             currentIntake={currentIntakes[rec.id]}
+                            intakeCoverage={intakeCoverage?.[rec.id]}
                             onClick={() => onRecommendationClick(rec)}
                         />
                     ))}

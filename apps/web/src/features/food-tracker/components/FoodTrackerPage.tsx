@@ -162,6 +162,7 @@ export function FoodTrackerPage({ className = '' }: FoodTrackerPageProps) {
                             recommendations={recommendations.trackedNutrients}
                             customRecommendations={recommendations.customRecommendations}
                             currentIntakes={recommendations.currentIntakes}
+                            intakeCoverage={recommendations.intakeCoverage}
                             isLoading={recommendations.isLoading}
                             catalogueEmpty={recommendations.catalogueEmpty}
                             hasEntriesToday={showsToday ? hasEntries : undefined}

@@ -217,6 +217,8 @@ export interface NutrientDetail {
     normSource?: string;
     normNote?: string;
     normNeedsProfile?: boolean;
+    /** По скольким записям дня посчитано потребление. */
+    intakeCoverage?: { counted: number; total: number };
     sourcesInDiet: NutrientFoodSource[];
 }
 

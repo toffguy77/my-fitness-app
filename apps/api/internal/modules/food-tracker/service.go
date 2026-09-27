@@ -1937,18 +1937,23 @@ func better(candidate, current NutrientNorm, profile normProfile) bool {
 	return candidate.MinAge > current.MinAge
 }
 
-// intakeFor — потребление нутриента, если продукт умеет его считать.
+// intakeFor — потребление нутриента из дневных итогов КБЖУ.
 //
-// До этой правки потребление подставлялось по карте русских названий
-// ("Белок", "Жиры", "Углеводы", "Калории"). В справочнике из МР 2.3.1.0253-21
-// таких строк нет, то есть карта была бы мёртвой, а переименование нутриента
-// молча выключало бы измерение. Теперь это данные: колонка intake_source.
+// Откуда брать величину, говорит справочник (`intake_source` вида
+// `механизм:ключ`), а не карта русских названий: переименование нутриента иначе
+// молча выключало бы измерение. Микронутриенты считаются не здесь, а по записям
+// дня — см. intake.go.
 func intakeFor(source *string, totals *KBZHU) *float64 {
 	if source == nil || totals == nil {
 		return nil
 	}
+	mechanism, key, ok := splitIntakeSource(*source)
+	if !ok || mechanism != intakeFromKBZHU {
+		return nil
+	}
+
 	var value float64
-	switch *source {
+	switch key {
 	case "calories":
 		value = totals.Calories
 	case "protein":
@@ -1958,8 +1963,6 @@ func intakeFor(source *string, totals *KBZHU) *float64 {
 	case "carbs":
 		value = totals.Carbs
 	default:
-		// Клетчатка и натрий объявлены в схеме, но ещё не считаются. Пусто
-		// честнее нуля: см. предложение micronutrient-intake.
 		return nil
 	}
 	return &value
@@ -1971,12 +1974,28 @@ func withProgress(
 	norms []NutrientNorm,
 	profile normProfile,
 	totals *KBZHU,
+	entries []dayEntry,
 	isTracked bool,
 ) NutrientRecommendationWithProgress {
 	item := NutrientRecommendationWithProgress{
 		NutrientRecommendation: rec,
 		IsTracked:              isTracked,
 		CurrentIntake:          intakeFor(rec.IntakeSource, totals),
+	}
+
+	// Микронутриенты: сумма по записям дня, у которых содержание известно.
+	// Вместе с величиной приходит покрытие — без него нижнюю границу прочитают
+	// как итог дня.
+	if item.CurrentIntake == nil && rec.IntakeSource != nil {
+		if measured := intakeFromEntries(entries, *rec.IntakeSource); measured != nil {
+			if factor, ok := intakeUnitFactor(rec.Unit); ok {
+				value := roundToOneDecimal(measured.Value * factor)
+				counted, total := measured.CountedEntries, measured.TotalEntries
+				item.CurrentIntake = &value
+				item.IntakeCountedEntries = &counted
+				item.IntakeTotalEntries = &total
+			}
+		}
 	}
 
 	norm, needsProfile := resolveNorm(norms, profile)
@@ -2064,6 +2083,15 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 		dailyTotals = nil
 	}
 
+	// Записи дня с содержанием нутриентов: по ним считается потребление
+	// микронутриентов. Отказ здесь означает нормы без прогресса, а не отказ
+	// страницы.
+	entries, err := s.dayEntries(ctx, userID, time.Now())
+	if err != nil {
+		s.log.Warn("Failed to read day entries for recommendations", "error", err)
+		entries = nil
+	}
+
 	var weekly []NutrientRecommendationWithProgress
 	for rows.Next() {
 		var rec NutrientRecommendation
@@ -2086,7 +2114,7 @@ func (s *Service) GetRecommendations(ctx context.Context, userID int64) (*GetRec
 			continue
 		}
 
-		item := withProgress(rec, norms[rec.ID], profile, dailyTotals, isTracked)
+		item := withProgress(rec, norms[rec.ID], profile, dailyTotals, entries, isTracked)
 		if rec.IsWeekly {
 			weekly = append(weekly, item)
 			continue
@@ -2221,7 +2249,13 @@ func (s *Service) GetRecommendationDetail(ctx context.Context, nutrientID string
 		dailyTotals = nil
 	}
 
-	item := withProgress(rec, norms[rec.ID], profile, dailyTotals, true)
+	entries, err := s.dayEntries(ctx, userID, time.Now())
+	if err != nil {
+		s.log.Warn("Failed to read day entries for nutrient detail", "error", err)
+		entries = nil
+	}
+
+	item := withProgress(rec, norms[rec.ID], profile, dailyTotals, entries, true)
 
 	return &NutrientDetailResponse{
 		NutrientRecommendation: rec,
@@ -2232,6 +2266,8 @@ func (s *Service) GetRecommendationDetail(ctx context.Context, nutrientID string
 		NormNote:               item.NormNote,
 		NormNeedsProfile:       item.NormNeedsProfile,
 		CurrentIntake:          item.CurrentIntake,
+		IntakeCountedEntries:   item.IntakeCountedEntries,
+		IntakeTotalEntries:     item.IntakeTotalEntries,
 		// Вклад продуктов рациона требует содержания нутриента в продукте;
 		// продукт этого пока не читает (см. micronutrient-intake).
 		Sources: []FoodSourceInDiet{},

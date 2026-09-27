@@ -31,6 +31,13 @@ export interface NutrientRecommendationItemProps {
      * это как «вы не добрали», хотя никто ничего не измерял.
      */
     currentIntake?: number;
+    /**
+     * По скольким записям дня посчитано потребление.
+     *
+     * Содержание микронутриентов известно не у всех продуктов справочника, и
+     * величина — нижняя граница. Без этой подписи её прочитают как итог дня.
+     */
+    intakeCoverage?: { counted: number; total: number };
     /** Callback when item clicked */
     onClick: () => void;
     /** Additional CSS classes */
@@ -76,6 +83,7 @@ function formatNumber(value: number): string {
 export function NutrientRecommendationItem({
     recommendation,
     currentIntake,
+    intakeCoverage,
     onClick,
     className = '',
 }: NutrientRecommendationItemProps): React.ReactElement {
@@ -99,29 +107,49 @@ export function NutrientRecommendationItem({
     const displayPercentage = Math.min(percentage, 100);
 
     /**
-     * Что показать справа от названия — три разных положения:
+     * Что показать справа от названия — четыре положения:
      *
-     *   потребление и норма известны → «45 / 100 мг»;
+     *   потребление и норма известны → «45 / 100 мг» с полосой;
+     *   известно только потребление  → «45 мг»: норму выбрать нельзя, но
+     *                                  съеденное мы знаем, и терять его нельзя;
      *   известна только норма        → «100 мг» без полосы;
-     *   норму выбрать нельзя         → сказано, чего не хватает.
+     *   не известно ничего           → сказано, чего не хватает.
      */
     const valueText = hasProgress
         ? `${formatNumber(currentIntake)} / ${formatNumber(dailyTarget)} ${unitLabel(unit)}`
-        : dailyTarget !== undefined
-            ? `${formatNumber(dailyTarget)} ${unitLabel(unit)}`
-            : normNeedsProfile
-                ? t('foodTracker.nutrientItem.normNeedsProfile')
-                : t('foodTracker.nutrientItem.normUnknown');
+        : currentIntake !== undefined
+            ? `${formatNumber(currentIntake)} ${unitLabel(unit)}`
+            : dailyTarget !== undefined
+                ? `${formatNumber(dailyTarget)} ${unitLabel(unit)}`
+                : normNeedsProfile
+                    ? t('foodTracker.nutrientItem.normNeedsProfile')
+                    : t('foodTracker.nutrientItem.normUnknown');
 
     const ariaLabel = hasProgress
-        ? t('foodTracker.nutrientItem.aria', {
-            name,
-            current: formatNumber(currentIntake),
-            target: formatNumber(dailyTarget),
-            unit: unitLabel(unit),
-            percentage: Math.round(percentage),
-        })
-        : `${name}. ${valueText}`;
+        ? [
+            t('foodTracker.nutrientItem.aria', {
+                name,
+                current: formatNumber(currentIntake),
+                target: formatNumber(dailyTarget),
+                unit: unitLabel(unit),
+                percentage: Math.round(percentage),
+            }),
+            intakeCoverage && intakeCoverage.counted < intakeCoverage.total
+                ? t('foodTracker.nutrientItem.coverageAria', {
+                    counted: String(intakeCoverage.counted),
+                    total: String(intakeCoverage.total),
+                })
+                : '',
+        ].filter(Boolean).join('. ')
+        : [
+            `${name}. ${valueText}`,
+            currentIntake !== undefined && intakeCoverage && intakeCoverage.counted < intakeCoverage.total
+                ? t('foodTracker.nutrientItem.coverageAria', {
+                    counted: String(intakeCoverage.counted),
+                    total: String(intakeCoverage.total),
+                })
+                : '',
+        ].filter(Boolean).join('. ');
 
     return (
         <button
@@ -145,6 +173,16 @@ export function NutrientRecommendationItem({
                         aria-hidden="true"
                     >
                         {valueText}
+                        {/* Неполное покрытие видно рядом с числом, а не в подсказке:
+                            число без него читается как итог дня. */}
+                        {currentIntake !== undefined && intakeCoverage && intakeCoverage.counted < intakeCoverage.total && (
+                            <span className="ml-1 text-gray-400">
+                                {t('foodTracker.nutrientItem.coverage', {
+                                    counted: String(intakeCoverage.counted),
+                                    total: String(intakeCoverage.total),
+                                })}
+                            </span>
+                        )}
                     </span>
                 </div>
 

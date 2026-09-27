@@ -126,7 +126,8 @@ describe('Панель подробностей: норма и её источн
         await waitFor(() => expect(screen.getByText('Витамин C')).toBeInTheDocument());
 
         expect(screen.getByText('90 мг')).toBeInTheDocument();
-        expect(screen.getByText(/потребление по этому нутриенту мы пока не считаем/i)).toBeInTheDocument();
+        expect(screen.getByText(/содержание этого нутриента в съеденных продуктах неизвестно/i))
+            .toBeInTheDocument();
         expect(screen.queryByText(/0 из 90/)).not.toBeInTheDocument();
     });
 
@@ -145,5 +146,30 @@ describe('Панель подробностей: норма и её источн
         await waitFor(() => expect(screen.getByText('Железо')).toBeInTheDocument());
 
         expect(screen.getByText(/норма зависит от пола и возраста/i)).toBeInTheDocument();
+    });
+});
+
+describe('Панель подробностей: покрытие', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('говорит, по какой части дня посчитано, и что это не меньше настоящего', async () => {
+        load.mockResolvedValue({ ...FULL, intakeCoverage: { counted: 2, total: 5 } });
+
+        render(<NutrientDetailPanel nutrientId="a" onClose={jest.fn()} />);
+        await waitFor(() => screen.getByText('Витамин C'));
+
+        expect(screen.getByText(/посчитано по 2 из 5 записей/i)).toBeInTheDocument();
+        expect(screen.getByText(/не меньше, чем получилось на самом деле/i)).toBeInTheDocument();
+    });
+
+    it('молчит про покрытие, когда посчитано по всем записям', async () => {
+        load.mockResolvedValue({ ...FULL, intakeCoverage: { counted: 5, total: 5 } });
+
+        render(<NutrientDetailPanel nutrientId="a" onClose={jest.fn()} />);
+        await waitFor(() => screen.getByText('Витамин C'));
+
+        expect(screen.queryByText(/посчитано по/i)).not.toBeInTheDocument();
     });
 });
