@@ -1,6 +1,7 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { SettingsPageLayout } from '../SettingsPageLayout'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
 const mockPush = jest.fn()
 jest.mock('next/navigation', () => ({
@@ -16,7 +17,19 @@ jest.mock('next/link', () => {
 })
 
 jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
-  DashboardLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="dashboard-layout">{children}</div>,
+  DashboardLayout: ({ children, userName }: { children: React.ReactNode; userName: string }) => <div data-testid="dashboard-layout" data-user={userName}>{children}</div>,
+}))
+
+jest.mock('@/features/curator', () => ({
+  CuratorLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="curator-layout">{children}</div>,
+}))
+
+jest.mock('@/features/admin', () => ({
+  AdminLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="admin-layout">{children}</div>,
+}))
+
+jest.mock('@/shared/hooks/useCurrentUser', () => ({
+  useCurrentUser: jest.fn(),
 }))
 
 jest.mock('lucide-react', () => ({
@@ -47,9 +60,19 @@ const mockProfile = {
   settings: baseSettings,
 }
 
+const currentUser = useCurrentUser as jest.Mock
+
+function sessionOf(role: string, name = 'Test User') {
+  currentUser.mockReturnValue({
+    user: { id: '1', email: 'test@example.com', full_name: name, role },
+    state: 'ready',
+  })
+}
+
 describe('SettingsPageLayout', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    sessionOf('client')
     Object.defineProperty(window, 'localStorage', {
       value: {
         getItem: jest.fn().mockReturnValue('test-token'),
@@ -121,6 +144,62 @@ describe('SettingsPageLayout', () => {
     render(<SettingsPageLayout title="My Title">{() => <div />}</SettingsPageLayout>)
 
     expect(mockPush).not.toHaveBeenCalledWith('/auth')
+  })
+
+  it('даёт куратору кураторскую оболочку, а не клиентскую', () => {
+    // До этой правки настройки всегда оборачивались в DashboardLayout, и
+    // куратор на любом экране настроек получал клиентскую навигацию.
+    sessionOf('coordinator')
+    mockUseSettings.mockReturnValue({
+      profile: mockProfile,
+      isLoading: false,
+      loadProfile: jest.fn(),
+      saveName: jest.fn(),
+      saveSettings: jest.fn(),
+      handleAvatarUpload: jest.fn(),
+      handleAvatarDelete: jest.fn(),
+    })
+
+    render(<SettingsPageLayout title="Test">{() => <div />}</SettingsPageLayout>)
+
+    expect(screen.getByTestId('curator-layout')).toBeInTheDocument()
+    expect(screen.queryByTestId('dashboard-layout')).not.toBeInTheDocument()
+  })
+
+  it('даёт администратору административную оболочку', () => {
+    sessionOf('super_admin')
+    mockUseSettings.mockReturnValue({
+      profile: mockProfile,
+      isLoading: false,
+      loadProfile: jest.fn(),
+      saveName: jest.fn(),
+      saveSettings: jest.fn(),
+      handleAvatarUpload: jest.fn(),
+      handleAvatarDelete: jest.fn(),
+    })
+
+    render(<SettingsPageLayout title="Test">{() => <div />}</SettingsPageLayout>)
+
+    expect(screen.getByTestId('admin-layout')).toBeInTheDocument()
+  })
+
+  it('берёт имя из сессии, когда локальное хранилище пусто', () => {
+    // Слепок в localStorage здесь больше не читается: раньше пустое хранилище
+    // давало пустой заголовок.
+    sessionOf('client', 'Из сессии')
+    mockUseSettings.mockReturnValue({
+      profile: null,
+      isLoading: false,
+      loadProfile: jest.fn(),
+      saveName: jest.fn(),
+      saveSettings: jest.fn(),
+      handleAvatarUpload: jest.fn(),
+      handleAvatarDelete: jest.fn(),
+    })
+
+    render(<SettingsPageLayout title="Test">{() => <div />}</SettingsPageLayout>)
+
+    expect(screen.getByTestId('dashboard-layout')).toHaveAttribute('data-user', 'Из сессии')
   })
 
   it('renders back link to /profile', () => {

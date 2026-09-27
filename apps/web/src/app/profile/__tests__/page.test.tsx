@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import ProfilePage from '../page'
 import { getProfile } from '@/features/settings/api/settings'
 import { apiClient } from '@/shared/utils/api-client'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 
 // --- Mocks ---
 
@@ -40,7 +41,20 @@ jest.mock('@/features/admin', () => ({
     ),
 }))
 
+jest.mock('@/shared/hooks/useCurrentUser', () => ({
+    useCurrentUser: jest.fn(),
+}))
+
 const mockGetProfile = getProfile as jest.MockedFunction<typeof getProfile>
+const currentUser = useCurrentUser as jest.Mock
+
+/** Роль приходит из сессии: слепок в браузере на выбор оболочки не влияет. */
+function sessionOf(role: string) {
+    currentUser.mockReturnValue({
+        user: { id: '1', email: 'test@example.com', full_name: 'Test User', role },
+        state: 'ready',
+    })
+}
 
 const baseProfile = {
     name: 'Test User',
@@ -57,6 +71,7 @@ describe('ProfilePage', () => {
         localStorage.clear()
         localStorage.setItem('auth_token', 'test-token')
         localStorage.setItem('user', JSON.stringify({ role: 'client' }))
+        sessionOf('client')
         mockGetProfile.mockResolvedValue(baseProfile as never)
     })
 
@@ -98,9 +113,8 @@ describe('ProfilePage', () => {
         })
     })
 
-    // Branch: coordinator role -> CuratorLayout (line 118-119)
     it('renders with CuratorLayout for coordinator role', async () => {
-        localStorage.setItem('user', JSON.stringify({ role: 'coordinator' }))
+        sessionOf('coordinator')
         render(<ProfilePage />)
 
         await waitFor(() => {
@@ -108,9 +122,8 @@ describe('ProfilePage', () => {
         })
     })
 
-    // Branch: super_admin role -> AdminLayout (line 122-123)
     it('renders with AdminLayout for super_admin role', async () => {
-        localStorage.setItem('user', JSON.stringify({ role: 'super_admin' }))
+        sessionOf('super_admin')
         render(<ProfilePage />)
 
         await waitFor(() => {
@@ -198,24 +211,38 @@ describe('ProfilePage', () => {
         expect(mockPush).toHaveBeenCalledWith('/auth')
     })
 
-    // Branch: invalid JSON in localStorage user (line 35-38 catch)
-    it('uses default role when user JSON is invalid', async () => {
+    // Эти два теста раньше закрепляли запасное значение роли: испорченный или
+    // безролевой слепок давал клиентскую оболочку. Именно это и показывало
+    // куратору клиентскую навигацию. Роль больше не берётся из слепка, и
+    // «клиент» не является значением по умолчанию.
+    it('испорченный слепок роль не решает — она приходит из сессии', async () => {
         localStorage.setItem('user', 'invalid-json')
+        sessionOf('coordinator')
         render(<ProfilePage />)
 
         await waitFor(() => {
-            expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
+            expect(screen.getByTestId('curator-layout')).toBeInTheDocument()
+        })
+        expect(screen.queryByTestId('dashboard-layout')).not.toBeInTheDocument()
+    })
+
+    it('слепок без роли не делает куратора клиентом', async () => {
+        localStorage.setItem('user', JSON.stringify({}))
+        sessionOf('coordinator')
+        render(<ProfilePage />)
+
+        await waitFor(() => {
+            expect(screen.getByTestId('curator-layout')).toBeInTheDocument()
         })
     })
 
-    // Branch: user in localStorage has no role (line 37 - parsed is falsy)
-    it('uses default role when user has no role field', async () => {
-        localStorage.setItem('user', JSON.stringify({}))
+    it('пока роль неизвестна, оболочка не показана', async () => {
+        currentUser.mockReturnValue({ user: null, state: 'loading' })
         render(<ProfilePage />)
 
-        await waitFor(() => {
-            expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
-        })
+        await waitFor(() => expect(mockGetProfile).toHaveBeenCalled())
+        expect(screen.queryByTestId('dashboard-layout')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('curator-layout')).not.toBeInTheDocument()
     })
 
     // Branch: menu items render correctly
@@ -233,7 +260,7 @@ describe('ProfilePage', () => {
 
     // Branch: profile.name || profile.email for layout userName prop (line 119, 123, 128)
     it('passes email as userName when profile has no name for coordinator', async () => {
-        localStorage.setItem('user', JSON.stringify({ role: 'coordinator' }))
+        sessionOf('coordinator')
         mockGetProfile.mockResolvedValue({
             ...baseProfile,
             name: '',

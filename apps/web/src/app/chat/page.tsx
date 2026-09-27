@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { chatApi } from '@/features/chat/api/chatApi'
@@ -9,6 +9,7 @@ import { useChat } from '@/features/chat/hooks/useChat'
 import { MessageList } from '@/features/chat/components/MessageList'
 import { ChatInput } from '@/features/chat/components/ChatInput'
 import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 import type { Conversation } from '@/features/chat/types'
 
 import { t } from '@/shared/i18n'
@@ -19,13 +20,10 @@ export default function ChatPage() {
     const [isTyping, setIsTyping] = useState(false)
     const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    const userName = useMemo(() => {
-        if (typeof window === 'undefined') return ''
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}')
-            return user.name || user.email || ''
-        } catch { return '' }
-    }, [])
+    // Имя из сессии, а не из локального слепка: в браузере с очищенным
+    // хранилищем слепка нет, и заголовок оставался пустым.
+    const { user } = useCurrentUser()
+    const userName = user ? user.full_name || user.name || user.email : ''
 
     useEffect(() => {
         chatApi
@@ -33,8 +31,6 @@ export default function ChatPage() {
             .then((convs) => {
                 if (convs.length > 0) {
                     setConversation(convs[0])
-                    chatApi.markAsRead(convs[0].id)
-                    useChatStore.getState().resetUnread(convs[0].id)
                 } else {
                     setNoConversation(true)
                 }
@@ -46,6 +42,18 @@ export default function ChatPage() {
 
     const { messages, isLoading, hasMore, loadMore, sendMessage, sendFile, sendTyping, lastEvent } =
         useChat(conversation?.id ?? null)
+
+    // Прочитанным разговор становится после показа сообщений, а не после того,
+    // как он нашёлся в списке. См. тот же комментарий на экране куратора.
+    const markedRef = useRef<string | null>(null)
+    useEffect(() => {
+        const id = conversation?.id
+        if (!id || isLoading || messages.length === 0) return
+        if (markedRef.current === id) return
+        markedRef.current = id
+        chatApi.markAsRead(id)
+        useChatStore.getState().resetUnread(id)
+    }, [conversation?.id, isLoading, messages.length])
 
     // Handle typing indicator from WebSocket events
     useEffect(() => {

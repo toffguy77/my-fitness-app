@@ -16,9 +16,16 @@ jest.mock('next/navigation', () => ({
 }))
 
 // Mock dashboard layout
+jest.mock('@/shared/hooks/useCurrentUser', () => ({
+    useCurrentUser: jest.fn(() => ({
+        user: { id: '1', email: 'u@example.com', full_name: 'Из сессии', role: 'client' },
+        state: 'ready',
+    })),
+}))
+
 jest.mock('@/features/dashboard/components/DashboardLayout', () => ({
-    DashboardLayout: ({ children }: { children: React.ReactNode }) => (
-        <div data-testid="dashboard-layout">{children}</div>
+    DashboardLayout: ({ children, userName }: { children: React.ReactNode; userName: string }) => (
+        <div data-testid="dashboard-layout" data-user={userName}>{children}</div>
     ),
 }))
 
@@ -81,5 +88,13 @@ describe('ChatPage', () => {
     it('renders within DashboardLayout', () => {
         render(<ChatPage />)
         expect(screen.getByTestId('dashboard-layout')).toBeInTheDocument()
+    })
+
+    it('берёт имя из сессии, а не из локального слепка', () => {
+        // Раньше имя читалось из localStorage: в браузере с очищенным
+        // хранилищем заголовок оставался пустым.
+        localStorage.clear()
+        render(<ChatPage />)
+        expect(screen.getByTestId('dashboard-layout')).toHaveAttribute('data-user', 'Из сессии')
     })
 })

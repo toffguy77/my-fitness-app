@@ -4,9 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
-import { CuratorLayout } from '@/features/curator'
-import { AdminLayout } from '@/features/admin'
+import { RoleShell } from '@/shared/components/RoleShell'
 import { apiClient } from '@/shared/utils/api-client'
 import { getProfile } from '@/features/settings/api/settings'
 import type { FullProfile } from '@/features/settings/api/settings'
@@ -25,20 +23,11 @@ export default function ProfilePage() {
     const router = useRouter()
     const [profile, setProfile] = useState<FullProfile | null>(null)
     const [loading, setLoading] = useState(true)
-    const [userRole, setUserRole] = useState<string>('client')
 
+    // Роль здесь не читается: её знает RoleShell, и знает от сервера.
     useEffect(() => {
-        let role = 'client'
-        try {
-            const parsed = JSON.parse(localStorage.getItem('user') || '{}').role
-            if (parsed) role = parsed
-        } catch { /* use default */ }
-
         getProfile()
-            .then((p) => {
-                setUserRole(role)
-                setProfile(p)
-            })
+            .then(setProfile)
             .catch(() => {
                 router.push('/auth')
             })
@@ -114,20 +103,12 @@ export default function ProfilePage() {
         </div>
     )
 
-    if (userRole === 'coordinator') {
-        return <CuratorLayout userName={profile.name || profile.email}>{content}</CuratorLayout>
-    }
-
-    if (userRole === 'super_admin') {
-        return <AdminLayout userName={profile.name || profile.email}>{content}</AdminLayout>
-    }
-
     return (
-        <DashboardLayout
+        <RoleShell
             userName={profile.name || profile.email}
             avatarUrl={profile.avatar_url || undefined}
         >
             {content}
-        </DashboardLayout>
+        </RoleShell>
     )
 }
