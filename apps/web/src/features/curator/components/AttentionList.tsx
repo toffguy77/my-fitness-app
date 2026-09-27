@@ -78,6 +78,12 @@ export function AttentionList({ items }: AttentionListProps) {
                     <button
                         key={group.clientId}
                         type="button"
+                        // Строка на клиента, а не на причину: список сгруппирован
+                        // выше. По этой зацепке набор E2E сверяет число в
+                        // карточке «требуют внимания» с тем, что нарисовано под
+                        // ней, — раньше эти два числа считались разными
+                        // правилами и расходились.
+                        data-testid="attention-item"
                         onClick={() => router.push(group.actionUrl)}
                         className={cn(
                             'w-full rounded-xl bg-white p-3 shadow-sm border border-gray-100',
@@ -102,7 +108,10 @@ export function AttentionList({ items }: AttentionListProps) {
                         )}
 
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">
+                            <p
+                                className="text-sm font-semibold text-gray-900 truncate"
+                                data-testid="attention-client-name"
+                            >
                                 {group.clientName}
                             </p>
                             <p className="text-xs text-gray-500 truncate">
