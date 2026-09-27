@@ -259,6 +259,9 @@ func main() {
 
 	// Ensure conversations exist for all active curator-client relationships.
 	chatService := chat.NewService(db, log)
+	// Первое сообщение куратору — серверный факт: служба чата знает, кто в
+	// переписке клиент, а обработчик знает только «другого участника».
+	// Подключается ниже, когда служба аналитики уже создана.
 	adminService := admin.NewService(db, log)
 	telegramLinkHandler := telegramlink.NewHandler(telegramlink.NewService(db.DB), log, cfg.TelegramBotUsername)
 	if err := chatService.EnsureConversationsExist(context.Background()); err != nil {
@@ -358,6 +361,12 @@ func main() {
 			db.DB, log, cfg.MetrikaOAuthToken, cfg.MetrikaCounterID)
 		analyticsService = analyticsService.WithConversions(metrikaService)
 	}
+
+	chatService = chatService.WithAnalytics(analyticsService)
+	// Первая запись о еде — тоже серверный факт, и записывает его служба
+	// трекера: путь куратора через чат в неё не заходит, поэтому
+	// принадлежность записи человеку обеспечена самим местом вызова.
+	foodTrackerService := foodtracker.NewService(db, log).WithAnalytics(analyticsService)
 
 	// Leads outlive the browser session they were created in, so their resume
 	// links are signed with the same secret that signs sessions.
@@ -623,7 +632,7 @@ func main() {
 		Notifications: notifications.NewHandler(notificationsSvc, cfg, log),
 		Leads:         leads.NewHandler(leadsService, log),
 		Logs:          logs.NewHandler(cfg, log),
-		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient),
+		FoodTracker:   foodtracker.NewHandler(cfg, log, db, foodPhotosS3, orClient, foodTrackerService),
 		NutritionCalc: nutritioncalc.NewHandler(cfg, log, db),
 		Dashboard:     dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc).WithAnalytics(analyticsService),
 		Chat:          chat.NewHandler(cfg, log, db, chatService, chatS3, wsHub).WithTickets(authService),

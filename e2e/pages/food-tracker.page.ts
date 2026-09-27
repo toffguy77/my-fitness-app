@@ -83,8 +83,17 @@ export class FoodTrackerPage {
     await options.first().click()
   }
 
+  /**
+   * Подтверждает запись в открытом окне.
+   *
+   * Поиск внутри окна, а не по странице: на самой странице «Добавить» стоит на
+   * каждом приёме пищи, и общий селектор находил десять кнопок сразу. Помощник
+   * в таком виде не работал и не звался ниоткуда — работающие проверки писали
+   * этот шаг у себя вручную.
+   */
   async submitFoodEntry() {
-    await this.page.getByRole('button', { name: /Добавить/ }).click()
+    await this.foodModal.getByRole('button', { name: /Добавить/ }).click()
+    await this.foodModal.waitFor({ state: 'hidden', timeout: 10000 })
   }
 
   // --- AI photo recognition tab ---

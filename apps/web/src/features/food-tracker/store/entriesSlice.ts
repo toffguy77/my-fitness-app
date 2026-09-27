@@ -89,32 +89,6 @@ const initialEntriesState = {
 // Slice Creator
 // ============================================================================
 
-/**
- * Whether this browser has already recorded its owner's first food entry.
- *
- * Activation — did registering lead to anything — is the one number worth
- * knowing, and it is only interesting the first time.
- */
-const FIRST_ENTRY_KEY = 'first_food_entry_logged';
-
-function hasLoggedFirstEntry(): boolean {
-    try {
-        return localStorage.getItem(FIRST_ENTRY_KEY) === '1';
-    } catch {
-        // Storage refused: the event is sent again, and the report counts
-        // distinct users rather than events.
-        return false;
-    }
-}
-
-function markFirstEntryLogged(): void {
-    try {
-        localStorage.setItem(FIRST_ENTRY_KEY, '1');
-    } catch {
-        // Nothing to remember it with; see above.
-    }
-}
-
 export const createEntriesSlice: StateCreator<
     FoodTrackerStore,
     [],
@@ -317,11 +291,12 @@ export const createEntriesSlice: StateCreator<
 
             // The meal type is categorical and says which slot people actually
             // use; nothing about the food itself is sent.
+            // Только это событие и только здесь. «Первая запись» переехала на
+            // сервер: отметка в localStorage терялась вместе с хранилищем и
+            // отсутствовала на другом устройстве, а сам вызов вдобавок нёс
+            // meal_type, которого для того имени никогда не объявляли, — и
+            // отвергался вместе со всем пакетом.
             track(EVENTS.foodEntryCreated, { meal_type: mealType });
-            if (!hasLoggedFirstEntry()) {
-                markFirstEntryLogged();
-                track(EVENTS.firstFoodEntry, { meal_type: mealType });
-            }
 
             toast.success(t('foodTracker.entries.added'));
             return response;

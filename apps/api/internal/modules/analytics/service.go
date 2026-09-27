@@ -138,34 +138,113 @@ func Validate(event Event, fromClient bool) error {
 	return nil
 }
 
+// Outcome reports what happened to a batch.
+//
+// Two numbers rather than one: a batch where part of the events were refused
+// used to answer with the size of what was sent, which is the same answer it
+// gives when everything was accepted.
+type Outcome struct {
+	Recorded int
+	Refused  int
+}
+
 // Record stores a batch from a browser.
-func (s *Service) Record(ctx context.Context, batch Batch, userID *int64) error {
+//
+// A refused event no longer takes the batch down with it.
+//
+// It used to: the loop below validated everything and returned on the first
+// error, before a single insert. One undeclared property therefore discarded
+// every event sent alongside it — and a batch collects events from different
+// places, so the lead died together with the contact capture, and the first
+// food entry together with the entry itself. Neither neighbour was faulty.
+//
+// Nothing could be learnt about it either: the client empties its queue before
+// sending and sendBeacon cannot report a status code, so the refusal reached
+// nobody. Hence the log line per refused event — the server's journal is the
+// only place where such a mismatch can be noticed at all.
+func (s *Service) Record(ctx context.Context, batch Batch, userID *int64) (Outcome, error) {
 	if len(batch.Events) == 0 {
-		return nil
+		return Outcome{}, nil
 	}
+	// A malformed request is still a refusal of the whole request: too many
+	// events is a transport problem, not a question about one event's quality.
 	if len(batch.Events) > MaxBatch {
-		return fmt.Errorf("batch of %d exceeds %d: %w", len(batch.Events), MaxBatch, apperrors.ErrValidation)
+		return Outcome{}, fmt.Errorf("batch of %d exceeds %d: %w", len(batch.Events), MaxBatch, apperrors.ErrValidation)
 	}
 
+	accepted := make([]Event, 0, len(batch.Events))
+	outcome := Outcome{}
 	for _, event := range batch.Events {
 		if err := Validate(event, true); err != nil {
-			return err
+			outcome.Refused++
+			// WARN rather than ERROR: right after a deployment that turns an
+			// event into a server-side fact, tabs still open on the previous
+			// build keep sending it and are refused correctly. An ERROR on
+			// predictable transitional noise devalues the level, and the
+			// condition is recoverable now that the batch survives.
+			s.log.Warn("Refused an analytics event", "event", event.Name, "error", err)
+			continue
 		}
+		accepted = append(accepted, event)
+	}
+
+	if len(accepted) == 0 {
+		return outcome, nil
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin analytics batch: %w", err)
+		return outcome, fmt.Errorf("begin analytics batch: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	for _, event := range batch.Events {
+	for _, event := range accepted {
 		if err := insertEvent(ctx, tx, event, batch, userID); err != nil {
-			return err
+			return Outcome{Refused: outcome.Refused}, err
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return Outcome{Refused: outcome.Refused}, fmt.Errorf("commit analytics batch: %w", err)
+	}
+
+	outcome.Recorded = len(accepted)
+	return outcome, nil
+}
+
+// RecordFirstTimeEvent stores a fact that happens once in an account's life.
+//
+// Nothing is kept anywhere to remember that it already happened: the recorded
+// events are that memory. A stored flag — a column, or the localStorage key
+// these two events used to rely on — is a second copy of the answer, and the
+// browser copy disagreed with reality every time somebody changed device or
+// cleared storage, so the same person counted as new twice and as counted-once
+// never.
+//
+// Best effort like RecordServerEvent: analytics must never be why a meal or a
+// message fails to save.
+//
+// Two simultaneous first actions can both pass the NOT EXISTS and both insert.
+// Left as is deliberately: the reports count distinct people rather than
+// events, so a duplicate changes no answer, and closing it would need a unique
+// partial index and therefore a migration.
+func (s *Service) RecordFirstTimeEvent(ctx context.Context, name string, userID int64) {
+	if err := Validate(Event{Name: name}, false); err != nil {
+		s.log.Error("Refused a first-time analytics event", "error", err, "event", name)
+		return
+	}
+
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO analytics_events (name, visitor_id, user_id, platform, properties)
+		SELECT $1,
+		       COALESCE((SELECT visitor_id FROM analytics_identities WHERE user_id = $2 LIMIT 1),
+		                gen_random_uuid()),
+		       $2, 'server', '{}'::jsonb
+		WHERE NOT EXISTS (
+		    SELECT 1 FROM analytics_events WHERE user_id = $2 AND name = $1
+		)`, name, userID); err != nil {
+		s.log.Error("Failed to record first-time analytics event", "error", err, "event", name)
+	}
 }
 
 // RecordServerEvent stores a fact, from the place it happened.

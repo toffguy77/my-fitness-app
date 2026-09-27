@@ -75,10 +75,19 @@ var Dictionary = map[string]Definition{
 		Required: []string{"depth"},
 		Values:   map[string][]string{"depth": {"25", "50", "75", "100"}},
 	},
-	EventOnboardingStarted:  {Optional: []string{"source"}},
-	EventOnboardingStep:     {Required: []string{"step"}},
-	EventOnboardingResult:   {Optional: []string{"goal", "activity_level"}},
-	EventLeadSaved:          {Optional: []string{"contact_consent"}},
+	EventOnboardingStarted: {Optional: []string{"source"}},
+	EventOnboardingStep:    {Required: []string{"step"}},
+	EventOnboardingResult:  {Optional: []string{"goal", "activity_level"}},
+	// capture_source says where the contact was left. It was missing here while
+	// the client had been sending it since ee5a0aac, so every lead_saved was
+	// refused at the door: two real leads in the table, not one event about
+	// them — and contact_captured, sent a line later, died in the same batch.
+	// Constrained like depth: a typo in the value would be a row no report
+	// matches. The three values are the ones documented on leads.capture_source.
+	EventLeadSaved: {
+		Optional: []string{"contact_consent", "capture_source"},
+		Values:   map[string][]string{"capture_source": {"result", "contact_step", "bot"}},
+	},
 	EventRegistrationOpened: {Optional: []string{"method"}},
 	EventRegistrationFailed: {Required: []string{"reason"}, Optional: []string{"method"}},
 
@@ -105,10 +114,18 @@ var Dictionary = map[string]Definition{
 	EventCuratorAssign: {ServerOnly: true},
 	EventWeeklyReport:  {ServerOnly: true},
 
-	EventFirstFoodEntry:   {Optional: []string{"method"}},
+	// Facts too, for the same reason as the group above. Both used to be
+	// decided in the browser by a localStorage key: lost behind a blocker,
+	// absent on another device, and first_food_entry never arrived at all
+	// because the client sent meal_type, which was never declared for it.
+	//
+	// method is gone rather than moved: the server does not know which tab was
+	// used, and the property had been sent zero times. The breakdown lives on
+	// food_entry_created, which stays a client event.
+	EventFirstFoodEntry:   {ServerOnly: true},
 	EventFoodEntryCreated: {Optional: []string{"method", "meal_type"}},
 	EventFoodRecognition:  {Optional: []string{"outcome"}},
-	EventFirstMessage:     {},
+	EventFirstMessage:     {ServerOnly: true},
 
 	EventSupportOpened:    {Optional: []string{"from"}},
 	EventSupportEscalated: {Optional: []string{"reason"}, ServerOnly: true},
