@@ -1,4 +1,4 @@
-import { test, expect, signIn, asUser } from '../fixtures/session'
+import { test, expect, asUser } from '../fixtures/session'
 import { freshAddress } from '../fixtures/mail'
 
 /**
@@ -97,24 +97,76 @@ test.describe('норма КБЖУ', () => {
         await expect(page.getByText(/из 2000 ккал/)).toHaveCount(0)
     })
 
-    test('у профиля с данными показывается посчитанная норма, а не круглое число', async ({
+    test('норма появляется, как только её стало из чего посчитать', async ({
         page,
         context,
         baseURL,
     }) => {
-        const token = await signIn(context, baseURL!, 'client')
+        // Проверка заводит собственную учётную запись и сама заполняет
+        // недостающее. Засеянная клиентская учётка стенда профиля не имеет —
+        // первая версия этой проверки опиралась на то, что он у неё есть, и
+        // упала на `targets: null`, который для такой учётки как раз верен.
+        const address = freshAddress()
+        const registered = await context.request.post(`${baseURL}/api/v1/auth/register`, {
+            data: {
+                email: address,
+                password: PASSWORD,
+                name: 'Проверка нормы',
+                consents: {
+                    terms_of_service: true,
+                    privacy_policy: true,
+                    data_processing: true,
+                    marketing: false,
+                },
+            },
+        })
+        expect(registered.status(), await registered.text()).toBe(201)
+        const token = (await registered.json())?.data?.token
+
+        await page.goto('/food-tracker')
+        await expect(page.getByText('Норма не посчитана')).toBeVisible({ timeout: 20000 })
+
+        // Пол, дата рождения и рост — «Тело и цели».
+        const settings = await context.request.put(`${baseURL}/api/v1/users/settings`, {
+            headers: asUser(token),
+            data: {
+                birth_date: '1990-05-17',
+                biological_sex: 'male',
+                height: 180,
+                activity_level: 'moderate',
+                fitness_goal: 'maintain',
+            },
+        })
+        expect(settings.ok(), await settings.text()).toBeTruthy()
+
+        // Пока веса нет, считать всё ещё не из чего — и сервер обязан сказать
+        // именно про вес, потому что кнопка ведёт по адресу.
+        const halfway = await context.request.get(`${baseURL}/api/v1/nutrition-calc/targets`, {
+            headers: asUser(token),
+        })
+        const halfwayAnswer = (await halfway.json()).data
+        expect(halfwayAnswer.targets).toBeNull()
+        expect(halfwayAnswer.missing).toMatchObject({ profile: false, weight: true })
+
+        const today = new Date().toISOString().slice(0, 10)
+        const weight = await context.request.post(`${baseURL}/api/v1/dashboard/daily`, {
+            headers: asUser(token),
+            data: { date: today, metric: { type: 'weight', data: { weight: 75.5 } } },
+        })
+        expect(weight.ok(), await weight.text()).toBeTruthy()
 
         const targets = await context.request.get(`${baseURL}/api/v1/nutrition-calc/targets`, {
             headers: asUser(token),
         })
         const answer = (await targets.json()).data
         const calories = answer?.calories ?? answer?.targets?.calories
-        expect(calories, 'у заполненного профиля норма обязана считаться').toBeTruthy()
+        expect(calories, 'всех данных достаточно — норма обязана посчитаться').toBeTruthy()
+        expect(calories, 'посчитанная норма не должна совпасть с прежним придуманным числом').not.toBe(
+            2000,
+        )
 
         await page.goto('/food-tracker')
         await expect(page.getByText('Норма не посчитана')).toHaveCount(0)
-
-        // Показано именно посчитанное значение. Округление — как на экране.
         await expect(page.getByText(String(Math.round(calories))).first()).toBeVisible({
             timeout: 20000,
         })
