@@ -118,6 +118,45 @@ for (const file of handlerFiles) {
     )
 }
 
+// Роль из локального слепка.
+//
+// `localStorage['user']` — кэш первой отрисовки, а не источник истины: сессия,
+// поднятая из cookie в браузере с очищенным хранилищем, слепка не имеет вовсе.
+// Экраны, выбиравшие по нему оболочку, показывали куратору и администратору
+// клиентскую навигацию, а `'client'` в качестве запасного значения превращал
+// пустой кэш в понижение роли. `/curator` и `/admin` от этого вылечили, а
+// `/profile`, `/settings/*`, `/notifications`, `/content` и `/food-tracker`
+// остались — и нашёл это пользователь, а не сборка.
+//
+// Правило узкое намеренно: срабатывает только когда рядом и ключ `user`, и
+// слово `role`. Чтение имени или почты для заголовка под него не попадает —
+// это другой дефект, и он лечится тем же переходом на сессию, но ломать
+// сборку из-за него сторож не должен.
+const roleReaders = [
+    ...walk('apps/web/src/app', (f) => ['.ts', '.tsx'].includes(extname(f))),
+    ...walk('apps/web/src/features', (f) => ['.ts', '.tsx'].includes(extname(f))),
+]
+for (const file of roleReaders) {
+    if (file.includes('__tests__') || file.includes('.test.')) continue
+    const source = readFileSync(file, 'utf8')
+    for (const match of source.matchAll(/localStorage\.getItem\(\s*['"`]user['"`]\s*\)/g)) {
+        // Окно после обращения: разбор слепка и взятие поля обычно стоят рядом,
+        // в той же строке или в следующих двух-трёх.
+        const window = source.slice(match.index, match.index + 200)
+        if (!/\brole\b/.test(window)) continue
+
+        const line = source.slice(0, match.index).split('\n').length
+        problems.push(
+            `Роль читается из локального хранилища: ${relative(process.cwd(), file)}:${line}\n` +
+                `  Слепок в localStorage — кэш первой отрисовки, а не источник истины:\n` +
+                `  в браузере с очищенным хранилищем его нет, и роль оттуда приходит\n` +
+                `  пустой. Куратор получал клиентскую оболочку именно так.\n` +
+                `  Возьмите роль из сессии — useCurrentUser(), или оберните экран\n` +
+                `  в RoleShell, который это уже делает.`,
+        )
+    }
+}
+
 // A page that ships invented data.
 //
 // /food-tracker/nutrient/[id] served two hard-coded vitamins, including a

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/features/dashboard/components/DashboardLayout'
 import { chatApi } from '@/features/chat/api/chatApi'
@@ -9,6 +9,7 @@ import { useChat } from '@/features/chat/hooks/useChat'
 import { MessageList } from '@/features/chat/components/MessageList'
 import { ChatInput } from '@/features/chat/components/ChatInput'
 import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
+import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
 import type { Conversation } from '@/features/chat/types'
 
 import { t } from '@/shared/i18n'
@@ -19,13 +20,10 @@ export default function ChatPage() {
     const [isTyping, setIsTyping] = useState(false)
     const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    const userName = useMemo(() => {
-        if (typeof window === 'undefined') return ''
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}')
-            return user.name || user.email || ''
-        } catch { return '' }
-    }, [])
+    // Имя из сессии, а не из локального слепка: в браузере с очищенным
+    // хранилищем слепка нет, и заголовок оставался пустым.
+    const { user } = useCurrentUser()
+    const userName = user ? user.full_name || user.name || user.email : ''
 
     useEffect(() => {
         chatApi
