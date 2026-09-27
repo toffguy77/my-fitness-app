@@ -99,6 +99,13 @@ export default defineConfig<SessionOptions>({
         'tests/chat-curator.spec.ts',
         'tests/content-curator.spec.ts',
         'tests/curator-tasks.spec.ts',
+        // Проверки вместо ручного просмотра после обратной связи по багам:
+        // какая оболочка достаётся куратору на профиле и в настройках, что
+        // строка пустого чата говорит об активности, и совпадает ли сводка на
+        // главной с тем, что нарисовано под ней.
+        'tests/role-aware-shell.spec.ts',
+        'tests/chat-empty-conversation.spec.ts',
+        'tests/curator-summary-consistency.spec.ts',
       ],
     },
     {
@@ -129,6 +136,9 @@ export default defineConfig<SessionOptions>({
         // Соседний account-deletion.spec.ts подменяет сам запрос — иначе он
         // удалял бы данные учётки, под которой ходит остальной набор.
         'tests/account-deletion-for-real.spec.ts',
+        // Заводит свежую учётную запись: пустой профиль — и есть состояние, в
+        // котором показывали придуманную норму 2000 ккал.
+        'tests/nutrition-target-honesty.spec.ts',
         // Заводит сессии под несколько ролей за один файл (клиент, два
         // куратора, супер-администратор), поэтому живёт здесь, а не в
         // проекте с одной предустановленной ролью.

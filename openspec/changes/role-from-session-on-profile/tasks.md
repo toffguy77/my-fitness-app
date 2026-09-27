@@ -23,4 +23,4 @@
 
 - [x] 4.1 Прогнать фронтенд целиком. Проверка: `cd apps/web && npx jest`, `npm run type-check`, `npm run lint`.
 - [x] 4.2 Прогнать все восемь проверок целостности из корня репозитория. Проверка: каждая завершается успехом; `node --test scripts/__tests__/*.test.mjs`.
-- [ ] 4.3 Снять поведение руками на dev через `dev-proxy` на 3070 по плану из `design.md` (Migration Plan) и записать в `verification.md`. Проверка: файл содержит, что показано куратору на `/curator`, `/profile`, `/settings/profile` и что показано после очистки `localStorage`.
+- [x] 4.3 Заменить ручную проверку набором Playwright: `e2e/tests/role-aware-shell.spec.ts`. Проверка: куратор на `/profile`, `/settings/profile`, `/settings/body` и `/notifications` получает кураторскую оболочку; клиентской нет ни на одном шаге пути `/curator` → `/profile` → `/settings/profile`; очистка `localStorage` и слепок с чужой ролью на выбор не влияют.
