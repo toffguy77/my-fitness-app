@@ -26,8 +26,11 @@ describe('AnalyticsSummaryCards', () => {
         expect(screen.getByText('КБЖУ выполнение')).toBeInTheDocument()
         expect(screen.getByText('95%')).toBeInTheDocument()
 
-        // Messages
-        expect(screen.getByText('Сообщения')).toBeInTheDocument()
+        // Непрочитанное. Подпись «Сообщения» над этим числом читалась как
+        // «сообщений нет»: ноль над существующей перепиской выглядит потерей
+        // данных, а величина всегда была про непрочитанное.
+        expect(screen.getByText('Непрочитанные')).toBeInTheDocument()
+        expect(screen.queryByText('Сообщения')).not.toBeInTheDocument()
         expect(screen.getByText('7')).toBeInTheDocument()
         expect(screen.getByText('от 4 клиентов')).toBeInTheDocument()
 
@@ -46,6 +49,17 @@ describe('AnalyticsSummaryCards', () => {
         )
         expect(screen.getByText('все в норме')).toBeInTheDocument()
         expect(screen.queryByText(/требуют внимания/)).not.toBeInTheDocument()
+    })
+
+    it('ноль непрочитанного подписан непрочитанным, а не сообщениями', () => {
+        // Случай из обращения: в чатах сообщение есть, непрочитанного нет.
+        render(
+            <AnalyticsSummaryCards
+                analytics={{ ...baseAnalytics, total_unread: 0, clients_waiting: 0 }}
+            />
+        )
+        expect(screen.getByText('Непрочитанные')).toBeInTheDocument()
+        expect(screen.getByText('от 0 клиентов')).toBeInTheDocument()
     })
 
     it('does not show overdue text when overdue_tasks is 0', () => {

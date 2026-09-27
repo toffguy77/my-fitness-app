@@ -33,8 +33,6 @@ export default function ChatPage() {
             .then((convs) => {
                 if (convs.length > 0) {
                     setConversation(convs[0])
-                    chatApi.markAsRead(convs[0].id)
-                    useChatStore.getState().resetUnread(convs[0].id)
                 } else {
                     setNoConversation(true)
                 }
@@ -46,6 +44,18 @@ export default function ChatPage() {
 
     const { messages, isLoading, hasMore, loadMore, sendMessage, sendFile, sendTyping, lastEvent } =
         useChat(conversation?.id ?? null)
+
+    // Прочитанным разговор становится после показа сообщений, а не после того,
+    // как он нашёлся в списке. См. тот же комментарий на экране куратора.
+    const markedRef = useRef<string | null>(null)
+    useEffect(() => {
+        const id = conversation?.id
+        if (!id || isLoading || messages.length === 0) return
+        if (markedRef.current === id) return
+        markedRef.current = id
+        chatApi.markAsRead(id)
+        useChatStore.getState().resetUnread(id)
+    }, [conversation?.id, isLoading, messages.length])
 
     // Handle typing indicator from WebSocket events
     useEffect(() => {

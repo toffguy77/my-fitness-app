@@ -189,7 +189,7 @@ func (s *Service) GetClients(ctx context.Context, curatorID int64) ([]ClientCard
 
 	eg.Go(func() error {
 		var err error
-		unreadMap, err = s.getUnreadCounts(egCtx, curatorID, clientIDs)
+		unreadMap, err = s.getUnreadCounts(egCtx, curatorID)
 		if err != nil {
 			s.log.Error("Failed to get unread counts, continuing with zeros", "error", err)
 			unreadMap = make(map[int64]int)
@@ -584,7 +584,7 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 	}
 
 	// Get unread count for this client
-	unreadMap, err := s.getUnreadCounts(ctx, curatorID, []int64{clientID})
+	unreadMap, err := s.getUnreadCounts(ctx, curatorID)
 	if err != nil {
 		s.log.Error("Failed to get unread counts", "error", err)
 		unreadMap = make(map[int64]int)
@@ -713,12 +713,22 @@ func (s *Service) GetClientDetail(ctx context.Context, curatorID int64, clientID
 }
 
 // getUnreadCounts returns unread message counts per client for the given curator
-func (s *Service) getUnreadCounts(ctx context.Context, curatorID int64, clientIDs []int64) (map[int64]int, error) {
+// getUnreadCounts returns unread message counts per client across **all** of the
+// curator's conversations — the same set the chat list shows them.
+//
+// The scope is deliberate and it is the whole point of this function's shape.
+// The previous signature took `clientIDs` and then ignored it: the query has
+// only ever filtered by `c.curator_id`. That left the scope unstated, and the
+// two readers of this map disagreed about it — the summary card zeroed itself
+// whenever the curator had no active relationships, while the chat list went on
+// showing the unread badges. On production one curator had three unread
+// messages visible in their chats and a summary reading zero.
+//
+// So: unread is about conversations. Whoever needs it narrowed to active
+// clients — the attention list does — narrows it at the point of use, where
+// that choice is visible.
+func (s *Service) getUnreadCounts(ctx context.Context, curatorID int64) (map[int64]int, error) {
 	result := make(map[int64]int)
-
-	if len(clientIDs) == 0 {
-		return result, nil
-	}
 
 	// Query unread messages: count messages in conversations with each client
 	// that were sent after the curator's last_read_at
@@ -1946,50 +1956,35 @@ func (s *Service) getStreakDays(ctx context.Context, clientIDs []int64) map[int6
 	return result
 }
 
-// GetAnalytics returns aggregate analytics summary for a curator
+// GetAnalytics returns aggregate analytics summary for a curator.
+//
+// Every value here is also drawn under it on the same screen, so each one is
+// computed by the rule that draws the thing below it — not by a second rule that
+// resembles it. Three of them used to have their own:
+//
+//   - "requires attention" had a query of its own that only counted clients with
+//     an active curator plan and only looked at calories. No curator on
+//     production has such a plan, so the card said "all fine" to everybody,
+//     always — above a list naming eight clients with no activity.
+//   - "active clients" was a bare COUNT(*) over relationships with no deletion
+//     window filter, while the list below applies one.
+//   - unread was zeroed along with everything else whenever the curator had no
+//     active relationships, while the chat list went on showing the badges.
 func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*AnalyticsSummary, error) {
 	startTime := time.Now()
 	summary := &AnalyticsSummary{}
 
-	// Total active clients
-	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM curator_client_relationships WHERE curator_id = $1 AND status = 'active'`,
-		curatorID,
-	).Scan(&summary.TotalClients)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count clients: %w", err)
-	}
-
-	if summary.TotalClients == 0 {
-		return summary, nil
-	}
-
-	// Get client IDs
+	// The preamble stays sequential and is now a single query: the set of active
+	// clients is both the count and the list of ids, so counting them separately
+	// only created a second definition of "active". It is the same set the client
+	// list is built from, deletion window included.
 	clientIDs, err := s.getActiveClientIDs(ctx, curatorID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get active clients: %w", err)
 	}
+	summary.TotalClients = len(clientIDs)
 
-	// Attention clients: count clients with red/yellow alert conditions
-	// (today's calories <50% or >120% of plan, or no food entries with a plan)
 	inClause, args := buildPlaceholders(clientIDs, 0)
-	attentionQuery := fmt.Sprintf(`
-		SELECT COUNT(DISTINCT sub.client_id) FROM (
-			SELECT u.id AS client_id,
-				COALESCE(SUM(fe.calories), 0) AS today_cal,
-				wp.calories_goal AS plan_cal
-			FROM users u
-			LEFT JOIN food_entries fe ON fe.user_id = u.id AND fe.date = CURRENT_DATE
-			LEFT JOIN weekly_plans wp ON wp.user_id = u.id
-				AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
-				AND wp.is_active = true
-			WHERE u.id IN %s
-			GROUP BY u.id, wp.calories_goal
-		) sub
-		WHERE sub.plan_cal IS NOT NULL AND sub.plan_cal > 0
-			AND (sub.today_cal < sub.plan_cal * 0.5 OR sub.today_cal > sub.plan_cal * 1.2
-				OR (sub.today_cal = 0))
-	`, inClause)
 
 	// Avg KBZHU percent across all clients this week
 	avgQuery := fmt.Sprintf(`
@@ -2008,22 +2003,10 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 
 	eg, egCtx := errgroup.WithContext(ctx)
 
+	// Непрочитанное считается всегда, в том числе когда активных клиентов нет:
+	// оно про разговоры, а не про связи, и куратор видит их все в списке чатов.
 	eg.Go(func() error {
-		if err := s.db.QueryRowContext(egCtx, attentionQuery, args...).Scan(&summary.AttentionClients); err != nil {
-			s.log.Error("Failed to count attention clients", "error", err)
-		}
-		return nil
-	})
-
-	eg.Go(func() error {
-		if err := s.db.QueryRowContext(egCtx, avgQuery, args...).Scan(&summary.AvgKBZHUPercent); err != nil {
-			s.log.Error("Failed to compute avg kbzhu percent", "error", err)
-		}
-		return nil
-	})
-
-	eg.Go(func() error {
-		unreadMap, err := s.getUnreadCounts(egCtx, curatorID, clientIDs)
+		unreadMap, err := s.getUnreadCounts(egCtx, curatorID)
 		if err != nil {
 			s.log.Error("Failed to get unread counts for analytics", "error", err)
 			return nil
@@ -2037,35 +2020,60 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 		return nil
 	})
 
-	eg.Go(func() error {
-		if err := s.db.QueryRowContext(egCtx,
-			`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active'`,
-			curatorID,
-		).Scan(&summary.ActiveTasks); err != nil {
-			s.log.Error("Failed to count active tasks", "error", err)
-		}
-		return nil
-	})
+	// Остальное считается по клиентам: без них считать нечего, и величины
+	// остаются нулями.
+	if len(clientIDs) > 0 {
+		// Требующие внимания — это те, кто попал в список внимания. Одно
+		// правило на карточку и на список под ней; считается по полному
+		// набору, до отсечения списка двадцатью строками, иначе карточка
+		// показывала бы не то, что есть, а то, что уместилось.
+		eg.Go(func() error {
+			items := s.collectAttention(egCtx, curatorID, clientIDs)
+			seen := make(map[int64]struct{}, len(items))
+			for _, item := range items {
+				seen[item.ClientID] = struct{}{}
+			}
+			summary.AttentionClients = len(seen)
+			return nil
+		})
 
-	eg.Go(func() error {
-		if err := s.db.QueryRowContext(egCtx,
-			`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active' AND due_date < CURRENT_DATE AND completed_at IS NULL`,
-			curatorID,
-		).Scan(&summary.OverdueTasks); err != nil {
-			s.log.Error("Failed to count overdue tasks", "error", err)
-		}
-		return nil
-	})
+		eg.Go(func() error {
+			if err := s.db.QueryRowContext(egCtx, avgQuery, args...).Scan(&summary.AvgKBZHUPercent); err != nil {
+				s.log.Error("Failed to compute avg kbzhu percent", "error", err)
+			}
+			return nil
+		})
 
-	eg.Go(func() error {
-		if err := s.db.QueryRowContext(egCtx,
-			`SELECT COUNT(*) FROM task_completions tc JOIN tasks t ON tc.task_id = t.id WHERE t.curator_id = $1 AND tc.completed_date = CURRENT_DATE`,
-			curatorID,
-		).Scan(&summary.CompletedToday); err != nil {
-			s.log.Error("Failed to count completed today", "error", err)
-		}
-		return nil
-	})
+		eg.Go(func() error {
+			if err := s.db.QueryRowContext(egCtx,
+				`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active'`,
+				curatorID,
+			).Scan(&summary.ActiveTasks); err != nil {
+				s.log.Error("Failed to count active tasks", "error", err)
+			}
+			return nil
+		})
+
+		eg.Go(func() error {
+			if err := s.db.QueryRowContext(egCtx,
+				`SELECT COUNT(*) FROM tasks WHERE curator_id = $1 AND status = 'active' AND due_date < CURRENT_DATE AND completed_at IS NULL`,
+				curatorID,
+			).Scan(&summary.OverdueTasks); err != nil {
+				s.log.Error("Failed to count overdue tasks", "error", err)
+			}
+			return nil
+		})
+
+		eg.Go(func() error {
+			if err := s.db.QueryRowContext(egCtx,
+				`SELECT COUNT(*) FROM task_completions tc JOIN tasks t ON tc.task_id = t.id WHERE t.curator_id = $1 AND tc.completed_date = CURRENT_DATE`,
+				curatorID,
+			).Scan(&summary.CompletedToday); err != nil {
+				s.log.Error("Failed to count completed today", "error", err)
+			}
+			return nil
+		})
+	}
 
 	eg.Wait() //nolint:errcheck
 
@@ -2077,7 +2085,14 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 	return summary, nil
 }
 
-// GetAttentionList returns a prioritized list of items requiring curator attention
+// GetAttentionList returns a prioritized list of items requiring curator
+// attention, capped at the twenty most urgent.
+//
+// The cap is why the counting lives in collectAttention rather than here: the
+// summary card counts distinct clients over the full set. Counting the capped
+// list would put the card back in the business of reporting what fitted on the
+// screen instead of what is there — on production one curator already has
+// fifteen rows.
 func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]AttentionItem, error) {
 	startTime := time.Now()
 
@@ -2090,6 +2105,34 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 		return []AttentionItem{}, nil
 	}
 
+	items := s.collectAttention(ctx, curatorID, clientIDs)
+
+	// Limit to 20
+	if len(items) > 20 {
+		items = items[:20]
+	}
+
+	s.log.LogDatabaseQuery("GetAttentionList", time.Since(startTime), nil, map[string]any{
+		"curator_id": curatorID,
+		"count":      len(items),
+	})
+
+	return items, nil
+}
+
+// collectAttention builds every attention item for the given clients, sorted by
+// priority and never truncated.
+//
+// This is the single definition of "requires attention". It used to have a
+// rival: GetAnalytics counted the card's number with a query of its own that saw
+// only clients with an active curator plan and only looked at calories. Nobody
+// on production has such a plan, so the card read "all fine" to every curator
+// always, directly above this list naming every one of their clients.
+//
+// Failures of individual reasons are logged and skipped rather than returned: a
+// curator who cannot be told about overdue tasks should still be told about the
+// rest.
+func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientIDs []int64) []AttentionItem {
 	// Build a map of client info (name, avatar)
 	type clientInfo struct {
 		name   string
@@ -2103,7 +2146,10 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 	infoQuery := fmt.Sprintf(`SELECT id, COALESCE(name, ''), COALESCE(avatar_url, '') FROM users WHERE id IN %s`, inClause)
 	infoRows, err := s.db.QueryContext(ctx, infoQuery, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query client info: %w", err)
+		// Без имён список бесполезен, а падать целиком незачем: карточка
+		// считает по этим же записям, и ноль в ней был бы неправдой.
+		s.log.Error("Failed to query client info for attention", "error", err)
+		return []AttentionItem{}
 	}
 	defer infoRows.Close()
 	for infoRows.Next() {
@@ -2233,7 +2279,7 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 			items = append(items, AttentionItem{
 				ClientID: clientID, ClientName: info.name, ClientAvatar: info.avatar,
 				Reason:   AttentionReasonInactive,
-				Detail:   "Нет записей о питании более 2 дней",
+				Detail:   "Нет записей о питании сегодня и вчера",
 				Priority: 3, ActionURL: fmt.Sprintf("/curator/clients/%d", clientID),
 			})
 		}
@@ -2242,12 +2288,27 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 		}
 	}
 
-	// Priority 4: Unread messages
-	unreadMap, err := s.getUnreadCounts(ctx, curatorID, clientIDs)
+	// Priority 4: Unread messages.
+	//
+	// Narrowed to active clients on purpose, and this is the one place that
+	// narrows it. The summary card counts unread across all of the curator's
+	// conversations, because that is what their chat list shows; this list is
+	// about working with a client, and somebody who is no longer their client
+	// has no business demanding attention. Their message still waits, and is
+	// still counted in the card and visible in the chats.
+	active := make(map[int64]struct{}, len(clientIDs))
+	for _, id := range clientIDs {
+		active[id] = struct{}{}
+	}
+
+	unreadMap, err := s.getUnreadCounts(ctx, curatorID)
 	if err != nil {
 		s.log.Error("Failed to get unread counts for attention", "error", err)
 	} else {
 		for clientID, count := range unreadMap {
+			if _, ok := active[clientID]; !ok {
+				continue
+			}
 			if count > 0 {
 				info := clientInfoMap[clientID]
 				items = append(items, AttentionItem{
@@ -2365,17 +2426,7 @@ func (s *Service) GetAttentionList(ctx context.Context, curatorID int64) ([]Atte
 		return items[i].ClientName < items[j].ClientName
 	})
 
-	// Limit to 20
-	if len(items) > 20 {
-		items = items[:20]
-	}
-
-	s.log.LogDatabaseQuery("GetAttentionList", time.Since(startTime), nil, map[string]any{
-		"curator_id": curatorID,
-		"count":      len(items),
-	})
-
-	return items, nil
+	return items
 }
 
 // sendPlanUpdatedNotification sends a plan_updated notification to the client

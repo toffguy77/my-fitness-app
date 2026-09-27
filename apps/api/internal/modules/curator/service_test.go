@@ -1277,32 +1277,60 @@ func TestGetAnalytics(t *testing.T) {
 
 		curatorID := int64(100)
 
-		// Total clients count
-		mock.ExpectQuery(`SELECT COUNT`).
-			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
-
-		// Active client IDs
+		// Активные клиенты — один запрос: он же даёт и число, и список
+		// идентификаторов. Отдельный COUNT(*) был вторым определением слова
+		// «активный» и обходился без фильтра окна удаления.
 		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
 				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
-
-		// Attention clients count
-		mock.ExpectQuery(`SELECT COUNT`).
-			WithArgs(int64(1), int64(2), int64(3)).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 
 		// Avg KBZHU percent
 		mock.ExpectQuery(`SELECT COALESCE\(AVG`).
 			WithArgs(int64(1), int64(2), int64(3)).
 			WillReturnRows(sqlmock.NewRows([]string{"avg"}).AddRow(85.5))
 
-		// Unread counts
-		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
-			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
-				AddRow(int64(1), 5).AddRow(int64(2), 3))
+		// Непрочитанное: спрашивается дважды — для сводки и для причины
+		// «сообщение» в списке внимания, — и оба раза по всем разговорам
+		// куратора.
+		for i := 0; i < 2; i++ {
+			mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
+				WithArgs(curatorID).
+				WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
+					AddRow(int64(1), 5).AddRow(int64(2), 3))
+		}
+
+		// Подсчёт внимания идёт теми же запросами, что и список: одно правило
+		// на карточку и на список под ней. Здесь они отвечают пусто, кроме
+		// непрочитанного — сколько именно клиентов требуют внимания, проверяет
+		// интеграционный тест на настоящей базе, потому что правило выражено
+		// в SQL и сверять его подменой значит проверять подмену.
+		mock.ExpectQuery(`SELECT id, COALESCE\(name, ''\)`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
+				AddRow(int64(1), "Первый", "").
+				AddRow(int64(2), "Второй", "").
+				AddRow(int64(3), "Третий", ""))
+
+		mock.ExpectQuery(`daily_calculated_targets dct`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "today_cal", "plan_cal"}))
+
+		mock.ExpectQuery(`SELECT t\.user_id, t\.title, t\.due_date`).
+			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "title", "due_date"}))
+
+		mock.ExpectQuery(`SELECT u\.id FROM users u`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+		mock.ExpectQuery(`SELECT wr\.user_id, wr\.week_start`).
+			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "week_start"}))
+
+		mock.ExpectQuery(`LEFT JOIN user_settings us`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "no_birth_date", "no_sex", "no_height", "no_weight"}))
 
 		// Overdue tasks (most specific: unique completed_at clause)
 		mock.ExpectQuery(`completed_at`).
@@ -1324,7 +1352,9 @@ func TestGetAnalytics(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, analytics)
 		assert.Equal(t, 3, analytics.TotalClients)
-		assert.Equal(t, 1, analytics.AttentionClients)
+		// Двое клиентов с непрочитанным — двое требующих внимания. Раньше это
+		// число приходило отдельным запросом со своим правилом.
+		assert.Equal(t, 2, analytics.AttentionClients)
 		assert.Equal(t, 85.5, analytics.AvgKBZHUPercent)
 		assert.Equal(t, 8, analytics.TotalUnread)
 		assert.Equal(t, 2, analytics.ClientsWaiting)
@@ -1334,22 +1364,34 @@ func TestGetAnalytics(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("returns empty analytics when no clients", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+	// Раньше отсутствие активных связей обнуляло сводку целиком, включая
+	// непрочитанное, — и на проде куратор с тремя непрочитанными сообщениями,
+	// видимыми в списке чатов, получал сводку из нулей.
+	t.Run("без активных клиентов непрочитанное всё равно считается", func(t *testing.T) {
+		service, mock, cleanup := setupTestServiceUnordered(t)
 		defer cleanup()
 
 		curatorID := int64(100)
 
-		mock.ExpectQuery(`SELECT COUNT`).
+		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+			WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
+
+		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
+			WithArgs(curatorID).
+			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
+				AddRow(int64(7), 2).AddRow(int64(8), 1))
 
 		analytics, err := service.GetAnalytics(ctx, curatorID)
 
 		require.NoError(t, err)
 		require.NotNil(t, analytics)
 		assert.Equal(t, 0, analytics.TotalClients)
+		assert.Equal(t, 3, analytics.TotalUnread, "сообщения ждут ответа независимо от статуса связи")
+		assert.Equal(t, 2, analytics.ClientsWaiting)
+		// Остальное считать не по кому.
 		assert.Equal(t, 0, analytics.ActiveTasks)
+		assert.Equal(t, 0, analytics.AttentionClients)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
@@ -1631,32 +1673,52 @@ func TestCollectDailySnapshot(t *testing.T) {
 		curatorID := int64(100)
 
 		// GetAnalytics expectations (reused from GetAnalytics flow)
-		// Total clients count
-		mock.ExpectQuery(`SELECT COUNT`).
-			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(3))
-
-		// Active client IDs (for GetAnalytics)
+		// Активные клиенты — один запрос на число и на список идентификаторов.
 		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
 			WithArgs(curatorID).
 			WillReturnRows(sqlmock.NewRows([]string{"client_id"}).
 				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
-
-		// Attention clients count
-		mock.ExpectQuery(`SELECT COUNT`).
+		// Подсчёт внимания — теми же запросами, что и список внимания.
+		mock.ExpectQuery(`SELECT id, COALESCE\(name, ''\)`).
 			WithArgs(int64(1), int64(2), int64(3)).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
+				AddRow(int64(1), "Первый", "").
+				AddRow(int64(2), "Второй", "").
+				AddRow(int64(3), "Третий", ""))
+
+		mock.ExpectQuery(`daily_calculated_targets dct`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "today_cal", "plan_cal"}))
+
+		mock.ExpectQuery(`SELECT t\.user_id, t\.title, t\.due_date`).
+			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "title", "due_date"}))
+
+		mock.ExpectQuery(`SELECT u\.id FROM users u`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}))
+
+		mock.ExpectQuery(`SELECT wr\.user_id, wr\.week_start`).
+			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"user_id", "week_start"}))
+
+		mock.ExpectQuery(`LEFT JOIN user_settings us`).
+			WithArgs(int64(1), int64(2), int64(3)).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "no_birth_date", "no_sex", "no_height", "no_weight"}))
 
 		// Avg KBZHU percent
 		mock.ExpectQuery(`SELECT COALESCE\(AVG`).
 			WithArgs(int64(1), int64(2), int64(3)).
 			WillReturnRows(sqlmock.NewRows([]string{"avg"}).AddRow(85.5))
 
-		// Unread counts
-		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
-			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
-				AddRow(int64(1), 5))
+		// Непрочитанное спрашивается дважды: для сводки и для причины
+		// «сообщение» в списке внимания.
+		for i := 0; i < 2; i++ {
+			mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
+				WithArgs(curatorID).
+				WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}).
+					AddRow(int64(1), 5))
+		}
 
 		// Overdue tasks (most specific: unique completed_at clause)
 		mock.ExpectQuery(`completed_at`).
@@ -1696,20 +1758,23 @@ func TestCollectDailySnapshot(t *testing.T) {
 	})
 
 	t.Run("handles zero clients", func(t *testing.T) {
-		service, mock, cleanup := setupTestService(t)
+		service, mock, cleanup := setupTestServiceUnordered(t)
 		defer cleanup()
 
 		curatorID := int64(100)
 
-		// Total clients count = 0
-		mock.ExpectQuery(`SELECT COUNT`).
-			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+		// Активные клиенты — пусто; запрос делается дважды: в GetAnalytics и
+		// затем для серий.
+		for i := 0; i < 2; i++ {
+			mock.ExpectQuery(`FROM curator_client_relationships ccr`).
+				WithArgs(curatorID).
+				WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
+		}
 
-		// Active client IDs (for streaks) - empty
-		mock.ExpectQuery(`FROM curator_client_relationships ccr`).
+		// Непрочитанное считается и здесь: оно про разговоры, а не про связи.
+		mock.ExpectQuery(`SELECT c\.client_id, COUNT`).
 			WithArgs(curatorID).
-			WillReturnRows(sqlmock.NewRows([]string{"client_id"}))
+			WillReturnRows(sqlmock.NewRows([]string{"client_id", "unread_count"}))
 
 		// INSERT ... ON CONFLICT
 		mock.ExpectExec(`INSERT INTO curator_daily_snapshots`).
