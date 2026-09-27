@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/burcev/api/internal/modules/analytics"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/google/uuid"
@@ -45,6 +46,25 @@ type Service struct {
 	log *logger.Logger
 	// bridge может быть nil: без моста зеркалить некуда.
 	bridge TopicBridge
+	// events записывает первое сообщение куратору. Необязателен: nil в тестах
+	// и там, где аналитики нет, и ничего здесь от него не зависит.
+	events FirstTimeRecorder
+}
+
+// FirstTimeRecorder записывает факт, случающийся однажды за всё время.
+//
+// Объявлен здесь как самое узкое, что нужно этому модулю. Запись живёт в
+// службе, а не в обработчике, потому что обработчик знает только «другого
+// участника» — а нужно знать, что написал именно клиент переписки: полученное
+// приветствие знакомством не считается.
+type FirstTimeRecorder interface {
+	RecordFirstTimeEvent(ctx context.Context, name string, userID int64)
+}
+
+// WithAnalytics подключает получателя.
+func (s *Service) WithAnalytics(recorder FirstTimeRecorder) *Service {
+	s.events = recorder
+	return s
 }
 
 // NewService creates a new chat service
@@ -485,6 +505,18 @@ func (s *Service) SendMessage(ctx context.Context, conversationID string, sender
 		"sender_id":       senderID,
 		"type":            req.Type,
 	})
+
+	// Знакомство с куратором — отправленное человеком сообщение, а не
+	// полученное приветствие. Поэтому условие именно на клиента переписки;
+	// сообщение куратора события не порождает.
+	if s.events != nil {
+		var clientID int64
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT client_id FROM conversations WHERE id = $1 AND anonymized_at IS NULL`,
+			conversationID).Scan(&clientID); err == nil && clientID == senderID {
+			s.events.RecordFirstTimeEvent(ctx, analytics.EventFirstMessage, senderID)
+		}
+	}
 
 	return &msg, nil
 }

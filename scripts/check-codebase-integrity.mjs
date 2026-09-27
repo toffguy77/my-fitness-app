@@ -319,7 +319,10 @@ for (const name of envFileNames) {
 const goDictionary = readFileSync('apps/api/internal/modules/analytics/dictionary.go', 'utf8')
 const tsDictionary = readFileSync('apps/web/src/shared/analytics/events.ts', 'utf8')
 
-const declaredEvents = [...goDictionary.matchAll(/Event[A-Za-z]+\s*=\s*"([a-z_]+)"/g)].map((m) => m[1])
+const declaredEventConstants = new Map(
+    [...goDictionary.matchAll(/(Event[A-Za-z]+)\s*=\s*"([a-z_]+)"/g)].map((m) => [m[2], m[1]]),
+)
+const declaredEvents = [...declaredEventConstants.keys()]
 const tsNames = new Map(
     [...tsDictionary.matchAll(/(\w+):\s*'([a-z_]+)'/g)].map((m) => [m[2], m[1]]),
 )
@@ -350,11 +353,24 @@ const productionWebText = walk('apps/web/src', (f) => /\.tsx?$/.test(f) && !f.in
     .join('\n')
 
 // Считается отправкой любая ссылка вне словаря: сервер шлёт факты именем
-// строкой, клиент — ключом словаря, и отправить можно как через track(), так и
-// через <TrackView>. Проверять способ значило бы ловить форму записи, а вопрос
-// здесь другой — существует ли вообще место, где событие рождается.
+// строкой или объявленной для него константой, клиент — ключом словаря, и
+// отправить можно как через track(), так и через <TrackView>. Проверять способ
+// значило бы ловить форму записи, а вопрос здесь другой — существует ли вообще
+// место, где событие рождается.
+//
+// Константа учитывается наравне с литералом: `analytics.EventFirstMessage` —
+// такая же отправка, как `"first_curator_message"`, и притом защищённая от
+// опечатки. Без этого верная отправка через константу считалась отсутствующей.
+//
+// Чего проверка не умеет: отличить отправку от упоминания. `first_food_entry`
+// проходил её и будучи мёртвым, потому что его литерал есть в списке рекламных
+// конверсий (`modules/metrika`), где событие только перечислено. Строже сделать
+// нельзя, не научившись разбирать вызовы, — но об этом стоит помнить, читая
+// зелёный отчёт.
 const unsent = declaredEvents.filter((name) => {
     if (apiText.includes(`"${name}"`)) return false
+    const constant = declaredEventConstants.get(name)
+    if (constant && new RegExp(`\\b${constant}\\b`).test(apiText)) return false
     const key = tsNames.get(name)
     if (key && new RegExp(`EVENTS\\.${key}\\b`).test(productionWebText)) return false
     return true
