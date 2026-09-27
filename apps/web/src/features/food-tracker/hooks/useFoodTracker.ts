@@ -21,6 +21,7 @@ import type {
     TargetGoals,
     FoodTrackerError,
 } from '../types';
+import type { MissingTargetInputs } from '@/features/nutrition-calc/types';
 
 // ============================================================================
 // Types
@@ -31,8 +32,10 @@ export interface UseFoodTrackerState {
     entries: EntriesByMealType;
     /** Daily totals for КБЖУ */
     dailyTotals: KBZHU;
-    /** Target goals for КБЖУ */
-    targetGoals: TargetGoals;
+    /** Норма КБЖУ, или null — посчитать не из чего. Нули на её место не ставятся. */
+    targetGoals: TargetGoals | null;
+    /** Чего не хватает для расчёта нормы, когда её нет. */
+    missingTargetInputs: MissingTargetInputs | null;
     /** Currently selected date (YYYY-MM-DD) */
     selectedDate: string;
     /** Loading state */
@@ -111,6 +114,7 @@ export function useFoodTracker(options: UseFoodTrackerOptions = {}): UseFoodTrac
     const entries = useFoodTrackerStore((state) => state.entries);
     const dailyTotals = useFoodTrackerStore((state) => state.dailyTotals);
     const targetGoals = useFoodTrackerStore((state) => state.targetGoals);
+    const missingTargetInputs = useFoodTrackerStore((state) => state.missingTargetInputs);
     const selectedDate = useFoodTrackerStore((state) => state.selectedDate);
     const isLoading = useFoodTrackerStore((state) => state.isLoading);
     const error = useFoodTrackerStore((state) => state.error);
@@ -196,6 +200,7 @@ export function useFoodTracker(options: UseFoodTrackerOptions = {}): UseFoodTrac
         entries,
         dailyTotals,
         targetGoals,
+        missingTargetInputs,
         selectedDate,
         isLoading,
         error,

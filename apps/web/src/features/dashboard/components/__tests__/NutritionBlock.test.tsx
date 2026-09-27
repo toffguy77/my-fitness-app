@@ -11,15 +11,27 @@ import { NutritionBlock } from '../NutritionBlock'
 import { useDashboardStore } from '../../store/dashboardStore'
 import type { DailyMetrics, NutritionData, WeeklyPlan } from '../../types'
 import { dashboardStoreValue } from '../../testing/storeValue'
+import { getTargets } from '@/features/nutrition-calc/api/nutritionCalc'
 
 // Mock the dashboard store
 jest.mock('../../store/dashboardStore')
 const mockUseDashboardStore = useDashboardStore as jest.MockedFunction<typeof useDashboardStore>
 
+jest.mock('@/features/nutrition-calc/api/nutritionCalc', () => ({
+    getTargets: jest.fn(),
+}))
+const mockGetTargets = getTargets as jest.MockedFunction<typeof getTargets>
+
 // jest-environment-jsdom 30 uses http://localhost/ as the default URL, so
 // window.location.href works without a custom override.
 
 describe('NutritionBlock', () => {
+    beforeEach(() => {
+        // По умолчанию норма не посчитана: ровно состояние 16 из 18 клиентов
+        // на проде.
+        mockGetTargets.mockResolvedValue({ targets: null, missing: { profile: true, weight: false } })
+    })
+
     const mockDate = new Date('2024-01-15')
     const mockDateStr = '2024-01-15'
 
@@ -158,7 +170,9 @@ describe('NutritionBlock', () => {
             expect(screen.getByText('125.0%')).toBeInTheDocument()
         })
 
-        it('handles zero calorie goal gracefully', () => {
+        it('нулевая норма — это не норма: доля от неё не показывается', () => {
+            // Ноль калорий как цель давал деление на ноль в процентах и красный
+            // цвет «ниже нормы» на любом дне. Такой план — отсутствие нормы.
             const zeroGoalPlan = {
                 ...mockWeeklyPlan,
                 caloriesGoal: 0,
@@ -172,7 +186,8 @@ describe('NutritionBlock', () => {
 
             render(<NutritionBlock date={mockDate} />)
 
-            expect(screen.getByText(/из.*0.*ккал/)).toBeInTheDocument()
+            expect(screen.queryByText(/из.*ккал/)).not.toBeInTheDocument()
+            expect(screen.getByText('Норма не посчитана')).toBeInTheDocument()
         })
     })
 
@@ -406,7 +421,10 @@ describe('NutritionBlock', () => {
             expect(screen.getByText('из 2000 ккал')).toBeInTheDocument()
         })
 
-        it('handles missing weekly plan gracefully', () => {
+        // Этот тест закреплял дефект: без плана куратора и без расчёта
+        // показывались 2000/150/67/250 — придуманные числа, выданные за личную
+        // норму человека. На проде их видели 16 клиентов из 18.
+        it('без плана и без расчёта нормы нет, и придуманная не подставляется', () => {
             mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
                 ...mockStoreDefaults,
                 dailyData: { [mockDateStr]: mockDailyData },
@@ -415,11 +433,58 @@ describe('NutritionBlock', () => {
 
             render(<NutritionBlock date={mockDate} />)
 
-            // Should use default goals
-            expect(screen.getByText('из 2000 ккал')).toBeInTheDocument() // Default calorie goal
-            expect(screen.getByText('120г / 150г')).toBeInTheDocument()  // Default protein goal
-            expect(screen.getByText('50г / 67г')).toBeInTheDocument()    // Default fat goal
-            expect(screen.getByText('180г / 250г')).toBeInTheDocument()  // Default carbs goal
+            expect(screen.queryByText('из 2000 ккал')).not.toBeInTheDocument()
+            expect(screen.queryByText('120г / 150г')).not.toBeInTheDocument()
+            expect(screen.queryByText('50г / 67г')).not.toBeInTheDocument()
+            expect(screen.queryByText('180г / 250г')).not.toBeInTheDocument()
+
+            // Вместо нормы — съеденное числом и приглашение её посчитать.
+            expect(screen.getByTestId('calorie-value')).toHaveTextContent('1500')
+            expect(screen.getByText('Норма не посчитана')).toBeInTheDocument()
+            expect(screen.getByText('Посчитать норму')).toBeInTheDocument()
+        })
+
+        it('норма появляется, как только её стало из чего посчитать', async () => {
+            // targetsVersion бампится после сохранения метрики: заполнил вес —
+            // норма приехала, и приглашение ушло без перезагрузки страницы.
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
+                ...mockStoreDefaults,
+                dailyData: { [mockDateStr]: mockDailyData },
+                weeklyPlan: null,
+            }))
+
+            const { rerender } = render(<NutritionBlock date={mockDate} />)
+            expect(await screen.findByText('Норма не посчитана')).toBeInTheDocument()
+
+            mockGetTargets.mockResolvedValue({
+                targets: {
+                    calories: 2345,
+                    protein: 140,
+                    fat: 65,
+                    carbs: 240,
+                    bmr: 1600,
+                    tdee: 2200,
+                    workout_bonus: 0,
+                    weight_used: 75,
+                    source: 'calculated',
+                },
+                missing: null,
+            })
+            mockUseDashboardStore.mockReturnValue(dashboardStoreValue({
+                ...mockStoreDefaults,
+                dailyData: { [mockDateStr]: mockDailyData },
+                weeklyPlan: null,
+                targetsVersion: 1,
+            }))
+            // Тот же день, но новый объект: компонент под `memo`, а стор здесь
+            // подменён, и о смене `targetsVersion` React сам не узнает. В
+            // приложении об этом сообщает подписка Zustand. Дата не меняется,
+            // поэтому эффект перезапускается именно из-за версии целей.
+            rerender(<NutritionBlock date={new Date('2024-01-15')} />)
+
+            await waitFor(() => expect(mockGetTargets).toHaveBeenCalledTimes(2))
+            expect(await screen.findByText('из 2345 ккал')).toBeInTheDocument()
+            expect(screen.queryByText('Норма не посчитана')).not.toBeInTheDocument()
         })
 
         it('handles missing nutrition data in daily data', () => {

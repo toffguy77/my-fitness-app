@@ -25,6 +25,7 @@ jest.mock('../../store/foodTrackerStore', () => ({
 // Mock lucide-react icons (all icons used by DietTab and its child components)
 jest.mock('lucide-react', () => ({
     Plus: () => <span data-testid="plus-icon">+</span>,
+    Calculator: () => <span data-testid="calculator-icon">🧮</span>,
     Sunrise: () => <span data-testid="sunrise-icon">☀</span>,
     Sun: () => <span data-testid="sun-icon">☀</span>,
     Moon: () => <span data-testid="moon-icon">🌙</span>,
@@ -391,6 +392,45 @@ describe('DietTab', () => {
         it('has accessible water tracker', () => {
             render(<DietTab {...createDefaultProps()} />);
             expect(screen.getByLabelText(/отслеживание воды/i)).toBeInTheDocument();
+        });
+    });
+
+    // Способность nutrition-targets: норма показывается только если посчитана.
+    describe('когда нормы нет', () => {
+        it('показывает приглашение её посчитать вместо придуманных чисел', () => {
+            render(
+                <DietTab
+                    {...createDefaultProps({
+                        targetGoals: null,
+                        missingTargetInputs: { profile: true, weight: false },
+                    })}
+                />,
+            );
+
+            expect(screen.getByText('Норма не посчитана')).toBeInTheDocument();
+            expect(screen.queryByText(/2000/)).not.toBeInTheDocument();
+            expect(screen.queryByText(/150/)).not.toBeInTheDocument();
+        });
+
+        it('показывает съеденное числом, без процента и без полосы прогресса', () => {
+            render(
+                <DietTab
+                    {...createDefaultProps({
+                        targetGoals: null,
+                        dailyTotals: { calories: 1234, protein: 60, fat: 30, carbs: 120 },
+                    })}
+                />,
+            );
+
+            // KBZHUSummary без нормы печатает «съедено / -» и не рисует процент.
+            expect(screen.getByText('1234 / -')).toBeInTheDocument();
+            expect(screen.queryByText(/^\d+%$/)).not.toBeInTheDocument();
+        });
+
+        it('с нормой приглашения нет', () => {
+            render(<DietTab {...createDefaultProps()} />);
+
+            expect(screen.queryByText('Норма не посчитана')).not.toBeInTheDocument();
         });
     });
 
