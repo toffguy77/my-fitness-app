@@ -3,7 +3,16 @@
  *
  * Fetches and renders all conversations for the curator.
  * Shows avatar, client name, last message preview, timestamp, and unread badge.
- * Sorted: unread conversations first, then by updated_at descending.
+ *
+ * Время в строке означает одно: когда здесь последний раз писали. У разговора
+ * без сообщений его нет вовсе — раньше на его месте печаталась дата создания
+ * записи, и пустой чат выглядел как чат, в котором что-то было. Строка при этом
+ * противоречила сама себе: «вчера» рядом с «Нет сообщений».
+ *
+ * Порядок: непрочитанные первыми, затем по времени последнего сообщения, и
+ * разговоры без сообщений — группой в конце, по имени участника. Раньше
+ * сортировка шла по `updated_at`, и только что созданный пустой разговор
+ * вставал выше переписки, в которой писали позавчера.
  */
 
 'use client'
@@ -120,16 +129,27 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
             })
     }, [])
 
-    // Sort: unread first, then by updated_at descending
     const sorted = useMemo(() => {
         return [...conversations].sort((a, b) => {
-            // Unread conversations first
+            // Непрочитанные первыми.
             const aUnread = a.unread_count > 0 ? 1 : 0
             const bUnread = b.unread_count > 0 ? 1 : 0
             if (bUnread !== aUnread) return bUnread - aUnread
 
-            // Then by updated_at descending
-            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+            // Затем те, в которых писали, — по времени последнего сообщения.
+            // Разговоры без сообщений уходят группой в конец: дата создания
+            // записи о разговоре — не активность и за верх списка не
+            // соревнуется.
+            const aTime = a.last_message ? new Date(a.last_message.created_at).getTime() : null
+            const bTime = b.last_message ? new Date(b.last_message.created_at).getTime() : null
+            if (aTime === null && bTime === null) {
+                // Внутри группы — по имени, иначе порядок меняется между
+                // загрузками и список переставляется сам собой.
+                return a.participant.name.localeCompare(b.participant.name, 'ru')
+            }
+            if (aTime === null) return 1
+            if (bTime === null) return -1
+            return bTime - aTime
         })
     }, [conversations])
 
@@ -180,11 +200,11 @@ export function ConversationList({ onSelectConversation }: ConversationListProps
                                 <span className="text-sm font-medium text-gray-900 truncate">
                                     {conv.participant.name}
                                 </span>
-                                <span className="text-xs text-gray-400 shrink-0 ml-2">
-                                    {conv.last_message
-                                        ? formatRelativeTime(conv.last_message.created_at)
-                                        : formatRelativeTime(conv.updated_at)}
-                                </span>
+                                {conv.last_message && (
+                                    <span className="text-xs text-gray-400 shrink-0 ml-2">
+                                        {formatRelativeTime(conv.last_message.created_at)}
+                                    </span>
+                                )}
                             </div>
                             <div className="flex items-center justify-between mt-0.5">
                                 <p className="text-sm text-gray-500 truncate">
