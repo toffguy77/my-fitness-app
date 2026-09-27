@@ -8,7 +8,7 @@
 
 import { apiClient } from '@/shared/utils/api-client'
 import { getApiUrl } from '@/config/api'
-import type { ClientTaskView, CuratorFeedback } from '../types'
+import type { ClientTaskView, CuratorFeedback, OnboardingState } from '../types'
 
 /**
  * A task as the API sends it.
@@ -80,4 +80,14 @@ export const dashboardApi = {
             week_start: weekStart,
             week_end: weekEnd,
         }),
+
+    /**
+     * Состояние первого экрана: чек-лист первой недели и куратор.
+     *
+     * Один запрос на оба блока намеренно: они показываются и скрываются вместе,
+     * и два запроса дали бы состояние, в котором один блок уже знает ответ, а
+     * второй ещё нет.
+     */
+    getOnboardingState: () =>
+        apiClient.get<OnboardingState>(getApiUrl('/dashboard/onboarding')),
 }

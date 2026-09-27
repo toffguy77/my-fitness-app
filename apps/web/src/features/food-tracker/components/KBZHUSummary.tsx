@@ -10,8 +10,9 @@
  */
 
 import { useMemo } from 'react';
-import type { KBZHU, ProgressColor } from '../types';
-import { getPercentage, getProgressColor } from '../utils/kbzhuCalculator';
+import type { KBZHU } from '../types';
+import { getPercentage } from '../utils/kbzhuCalculator';
+import { MACRO_COLORS } from '@/shared/constants/macros';
 import { t } from '@/shared/i18n';
 
 // ============================================================================
@@ -51,21 +52,17 @@ interface MacroItemProps {
 /**
  * Macro configuration with Russian labels
  */
-const MACRO_CONFIG = [
-    { key: 'calories' as const, label: t('macros.calories'), unit: '', colorClass: 'bg-orange-500' },
-    { key: 'protein' as const, label: t('macros.protein'), unit: t('units.gram'), colorClass: 'bg-blue-500' },
-    { key: 'fat' as const, label: t('macros.fat'), unit: t('units.gram'), colorClass: 'bg-yellow-500' },
-    { key: 'carbs' as const, label: t('macros.carbs'), unit: t('units.gram'), colorClass: 'bg-green-500' },
-] as const;
+// Калории — не нутриент, и опознавать их цветом нечем: это сумма остальных.
+// Поэтому у них нейтральная заливка. Раньше здесь стоял `bg-orange-500`, и он
+// читался как оценка, хотя ничего не оценивал.
+const CALORIES_COLOR = '#6b7280'; // gray-500
 
-/**
- * Progress color to Tailwind class mapping
- */
-const PROGRESS_COLOR_CLASSES: Record<ProgressColor, string> = {
-    green: 'bg-green-500',
-    yellow: 'bg-yellow-500',
-    red: 'bg-red-500',
-};
+const MACRO_CONFIG = [
+    { key: 'calories' as const, label: t('macros.calories'), unit: '', color: CALORIES_COLOR },
+    { key: 'protein' as const, label: t('macros.protein'), unit: t('units.gram'), color: MACRO_COLORS.protein },
+    { key: 'fat' as const, label: t('macros.fat'), unit: t('units.gram'), color: MACRO_COLORS.fat },
+    { key: 'carbs' as const, label: t('macros.carbs'), unit: t('units.gram'), color: MACRO_COLORS.carbs },
+] as const;
 
 // ============================================================================
 // Helper Components
@@ -77,7 +74,6 @@ const PROGRESS_COLOR_CLASSES: Record<ProgressColor, string> = {
 function MacroItem({ label, current, target, unit, color }: MacroItemProps) {
     const hasTarget = target !== undefined && target > 0;
     const percentage = hasTarget ? getPercentage(current, target) : 0;
-    const progressColor = hasTarget ? getProgressColor(current, target) : 'green';
     const isExceeding = percentage > 100;
 
     // Format display values
@@ -112,17 +108,17 @@ function MacroItem({ label, current, target, unit, color }: MacroItemProps) {
                 aria-valuemax={100}
                 aria-label={t('foodTracker.summary.progressAria', { label, percentage })}
             >
-                {hasTarget ? (
-                    <div
-                        className={`h-full rounded-full transition-all duration-300 ${PROGRESS_COLOR_CLASSES[progressColor]}`}
-                        style={{ width: `${Math.min(percentage, 100)}%` }}
-                    />
-                ) : (
-                    <div
-                        className={`h-full rounded-full ${color}`}
-                        style={{ width: '0%' }}
-                    />
-                )}
+                {/* Заливка — цвет своего нутриента, а не светофор по доле от
+                    нормы. Превышение сообщается красным числом и стрелкой выше:
+                    перекрашивать ради этого полосу значит отобрать у цвета его
+                    единственную работу — опознание. */}
+                <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                        width: hasTarget ? `${Math.min(percentage, 100)}%` : '0%',
+                        backgroundColor: color,
+                    }}
+                />
             </div>
 
             {/* Percentage display */}
@@ -151,13 +147,13 @@ export function KBZHUSummary({
 }: KBZHUSummaryProps) {
     // Memoize macro items to avoid recalculation
     const macroItems = useMemo(() => {
-        return MACRO_CONFIG.map(({ key, label, unit, colorClass }) => ({
+        return MACRO_CONFIG.map(({ key, label, unit, color }) => ({
             key,
             label,
             current: current[key],
             target: target?.[key],
             unit,
-            colorClass,
+            color,
         }));
     }, [current, target]);
 
@@ -173,14 +169,14 @@ export function KBZHUSummary({
 
             {/* Macro grid - responsive: 2 cols on mobile, 4 cols on tablet+ */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
-                {macroItems.map(({ key, label, current: currentValue, target: targetValue, unit, colorClass }) => (
+                {macroItems.map(({ key, label, current: currentValue, target: targetValue, unit, color }) => (
                     <MacroItem
                         key={key}
                         label={label}
                         current={currentValue}
                         target={targetValue}
                         unit={unit}
-                        color={colorClass}
+                        color={color}
                     />
                 ))}
             </div>

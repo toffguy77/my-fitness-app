@@ -15,6 +15,7 @@ import type { MealType, FoodEntry, KBZHU } from '../types';
 import { getMealSlotLabel, calculateSlotSubtotal, getFirstEntryTime } from '../utils/mealSlotUtils';
 import { FoodEntryItem } from './FoodEntryItem';
 import { t } from '@/shared/i18n';
+import { MACRO_COLORS } from '@/shared/constants/macros';
 
 // ============================================================================
 // Types
@@ -69,15 +70,51 @@ interface SubtotalDisplayProps {
     subtotal: KBZHU;
 }
 
+function MacroSubtotal({
+    label,
+    value,
+    color,
+}: {
+    label: string;
+    value: number;
+    color: string;
+}) {
+    return (
+        <span className="inline-flex items-center gap-1">
+            <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: color }}
+                aria-hidden="true"
+            />
+            {label}: {Math.round(value)}{t('units.gram')}
+        </span>
+    );
+}
+
 function SubtotalDisplay({ subtotal }: SubtotalDisplayProps) {
     return (
         <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-100 sm:gap-3 sm:text-xs">
             <span className="font-medium">{t('foodTracker.mealSlot.subtotal')}</span>
             <span>{Math.round(subtotal.calories)} {t('units.kcal')}</span>
             <span className="text-gray-300 hidden sm:inline">|</span>
-            <span>{t('macros.proteinShort')}: {Math.round(subtotal.protein)}{t('units.gram')}</span>
-            <span>{t('macros.fatShort')}: {Math.round(subtotal.fat)}{t('units.gram')}</span>
-            <span>{t('macros.carbsShort')}: {Math.round(subtotal.carbs)}{t('units.gram')}</span>
+            {/* Подытог приёма пищи — то, что новичок видит чаще кольца, и до
+                этого он был целиком серым. Цвет опознаёт нутриент и ничего не
+                утверждает о норме, поэтому уместен и здесь, где нормы нет. */}
+            <MacroSubtotal
+                label={t('macros.proteinShort')}
+                value={subtotal.protein}
+                color={MACRO_COLORS.protein}
+            />
+            <MacroSubtotal
+                label={t('macros.fatShort')}
+                value={subtotal.fat}
+                color={MACRO_COLORS.fat}
+            />
+            <MacroSubtotal
+                label={t('macros.carbsShort')}
+                value={subtotal.carbs}
+                color={MACRO_COLORS.carbs}
+            />
         </div>
     );
 }

@@ -10,6 +10,8 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { KBZHUSummary } from '../KBZHUSummary';
 import type { KBZHU } from '../../types';
+import { MACRO_COLORS } from '@/shared/constants/macros';
+import { hexToRgb } from '@/shared/testing/cssColor';
 
 // ============================================================================
 // Test Helpers
@@ -120,93 +122,70 @@ describe('KBZHUSummary', () => {
         });
     });
 
-    describe('Color Coding at Boundary Values', () => {
-        it('shows green progress bar at 80% (boundary)', () => {
-            const current = createKBZHU(1600, 120, 64, 200); // 80% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
+    // Прежде здесь проверялся светофор: заливка зеленела, желтела и краснела по
+    // доле от нормы. Он снят намеренно — цвет опознаёт нутриент, и пока он же
+    // оценивал выполнение нормы, две работы сталкивались. Выполнение нормы
+    // по-прежнему видно: уровнем заполнения, процентом, красным числом и
+    // стрелкой при превышении.
+    describe('Цвет опознаёт нутриент', () => {
+        // Ожидаемые значения берутся из того же модуля, что и реализация. Второй
+        // цвет жиров, появившись где угодно, уронит этот тест: именно так и
+        // дожило до прода расхождение `#f59e0b` на дашборде против `#eab308`
+        // здесь.
+        function fills(container: HTMLElement): string[] {
+            return Array.from(
+                container.querySelectorAll<HTMLElement>('[role="progressbar"] > div')
+            ).map((el) => el.style.backgroundColor);
+        }
 
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
+        it('красит заливку цветом нутриента', () => {
+            const { container } = render(
+                <KBZHUSummary
+                    current={createKBZHU(1600, 120, 64, 200)}
+                    target={createKBZHU(2000, 150, 80, 250)}
+                />
+            );
 
-            // Check for green progress bars
-            const greenBars = container.querySelectorAll('.bg-green-500');
-            expect(greenBars.length).toBeGreaterThan(0);
+            // Первая полоса — калории: они не нутриент и опознанию не подлежат.
+            expect(fills(container).slice(1)).toEqual([
+                hexToRgb(MACRO_COLORS.protein),
+                hexToRgb(MACRO_COLORS.fat),
+                hexToRgb(MACRO_COLORS.carbs),
+            ]);
         });
 
-        it('shows green progress bar at 100% (boundary)', () => {
-            const current = createKBZHU(2000, 150, 80, 250); // 100% of targets
+        it('не меняет цвет при любой доле от нормы', () => {
             const target = createKBZHU(2000, 150, 80, 250);
+            const shares = [
+                createKBZHU(800, 60, 32, 100), // 40%
+                createKBZHU(1600, 120, 64, 200), // 80%
+                createKBZHU(2000, 150, 80, 250), // 100%
+                createKBZHU(2500, 190, 100, 320), // свыше 120%
+            ];
 
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
+            const seen = new Set<string>();
+            shares.forEach((current) => {
+                const { container, unmount } = render(
+                    <KBZHUSummary current={current} target={target} />
+                );
+                seen.add(fills(container).join('|'));
+                unmount();
+            });
 
-            // Check for green progress bars
-            const greenBars = container.querySelectorAll('.bg-green-500');
-            expect(greenBars.length).toBeGreaterThan(0);
+            expect(seen.size).toBe(1);
         });
 
-        it('shows yellow progress bar at 50% (boundary)', () => {
-            const current = createKBZHU(1000, 75, 40, 125); // 50% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
+        it('не оставляет светофорных классов на полосах', () => {
+            const { container } = render(
+                <KBZHUSummary
+                    current={createKBZHU(2500, 190, 100, 320)}
+                    target={createKBZHU(2000, 150, 80, 250)}
+                />
+            );
 
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Check for yellow progress bars
-            const yellowBars = container.querySelectorAll('.bg-yellow-500');
-            expect(yellowBars.length).toBeGreaterThan(0);
-        });
-
-        it('shows yellow progress bar at 79% (boundary)', () => {
-            const current = createKBZHU(1580, 118.5, 63.2, 197.5); // ~79% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Check for yellow progress bars
-            const yellowBars = container.querySelectorAll('.bg-yellow-500');
-            expect(yellowBars.length).toBeGreaterThan(0);
-        });
-
-        it('shows yellow progress bar at 101% (boundary)', () => {
-            const current = createKBZHU(2020, 151.5, 80.8, 252.5); // ~101% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Check for yellow progress bars
-            const yellowBars = container.querySelectorAll('.bg-yellow-500');
-            expect(yellowBars.length).toBeGreaterThan(0);
-        });
-
-        it('shows yellow progress bar at 120% (boundary)', () => {
-            const current = createKBZHU(2400, 180, 96, 300); // 120% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Check for yellow progress bars
-            const yellowBars = container.querySelectorAll('.bg-yellow-500');
-            expect(yellowBars.length).toBeGreaterThan(0);
-        });
-
-        it('shows red progress bar below 50%', () => {
-            const current = createKBZHU(800, 60, 32, 100); // 40% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Check for red progress bars
-            const redBars = container.querySelectorAll('.bg-red-500');
-            expect(redBars.length).toBeGreaterThan(0);
-        });
-
-        it('shows red progress bar above 120%', () => {
-            const current = createKBZHU(2500, 190, 100, 320); // >120% of targets
-            const target = createKBZHU(2000, 150, 80, 250);
-
-            const { container } = render(<KBZHUSummary current={current} target={target} />);
-
-            // Check for red progress bars
-            const redBars = container.querySelectorAll('.bg-red-500');
-            expect(redBars.length).toBeGreaterThan(0);
+            expect(container.querySelectorAll('.bg-red-500')).toHaveLength(0);
+            expect(container.querySelectorAll('.bg-yellow-500')).toHaveLength(0);
+            expect(container.querySelectorAll('.bg-green-500')).toHaveLength(0);
         });
     });
 

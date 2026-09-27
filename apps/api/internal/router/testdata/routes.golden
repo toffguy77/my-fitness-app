@@ -43,6 +43,7 @@ GET /api/v1/curator/leads
 GET /api/v1/curator/support/conversations
 GET /api/v1/curator/support/conversations/:id
 GET /api/v1/dashboard/daily/:date
+GET /api/v1/dashboard/onboarding
 GET /api/v1/dashboard/progress
 GET /api/v1/dashboard/tasks
 GET /api/v1/dashboard/week

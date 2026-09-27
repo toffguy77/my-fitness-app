@@ -48,7 +48,17 @@ jest.mock('@/features/dashboard/components/CalendarNavigator', () => ({
 }))
 
 jest.mock('@/features/dashboard/api/dashboardApi', () => ({
-    dashboardApi: { submitWeeklyReport: jest.fn().mockResolvedValue({ id: 'r1', week_number: 3 }) },
+    dashboardApi: {
+        submitWeeklyReport: jest.fn().mockResolvedValue({ id: 'r1', week_number: 3 }),
+        // Первый экран запрашивает состояние первой недели. Здесь оно пустое и
+        // неактивное: эти тесты про заведённого человека, а не про новичка,
+        // поэтому прогресс и график должны остаться на месте.
+        getOnboardingState: jest.fn().mockResolvedValue({
+            active: false,
+            steps: [],
+            curator: null,
+        }),
+    },
 }))
 
 jest.mock('react-hot-toast', () => ({
@@ -71,9 +81,7 @@ jest.mock('@/features/nutrition-calc/components/KBJUWeeklyChart', () => ({
     KBJUWeeklyChart: () => <div data-testid="kbju-weekly-chart">KBJU Weekly Chart</div>,
 }))
 
-jest.mock('@/features/nutrition-calc/components/ProfileCompletionBanner', () => ({
-    ProfileCompletionBanner: () => <div data-testid="profile-completion-banner">Profile Completion Banner</div>,
-}))
+
 
 jest.mock('@/features/settings/api/settings', () => ({
     getProfile: jest.fn().mockResolvedValue({ settings: {} }),
@@ -466,5 +474,151 @@ describe('Недельный отчёт со страницы дашборда',
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalled()
         })
+    })
+})
+
+/**
+ * Первый экран: что видит новичок и что видит человек со стажем.
+ *
+ * Жалоба, с которой всё началось: новичок встречал пустой блок «Недостаточно
+ * данных» на пол-экрана, а куратор — главное отличие продукта — лежал в самом
+ * низу страницы. Здесь проверяется, что порядок блоков и их наличие зависят от
+ * ответа сервера, и что сбой этого ответа не отбирает блоки у остальных.
+ */
+describe('Первый экран дашборда', () => {
+    const newcomerState = {
+        active: true,
+        steps: [
+            { key: 'profile', done: false },
+            { key: 'first_meal', done: false },
+            { key: 'plate_photo', done: false },
+            { key: 'curator_hello', done: false },
+        ],
+        curator: {
+            conversation_id: 'conv-1',
+            name: 'Анна Петрова',
+            avatar_url: '',
+            unread_count: 0,
+            last_message: null,
+        },
+    }
+
+    function onboardingAnswers() {
+        return jest.requireMock('@/features/dashboard/api/dashboardApi').dashboardApi
+            .getOnboardingState
+    }
+
+    it('куратор показан раньше календаря', async () => {
+        onboardingAnswers().mockResolvedValueOnce(newcomerState)
+        const { container } = render(<DashboardPage />)
+
+        expect(await screen.findByText('Анна Петрова')).toBeInTheDocument()
+
+        const order = Array.from(
+            container.querySelectorAll('[data-testid="calendar-navigator"], [data-testid="curator-initials"]')
+        ).map((el) => el.getAttribute('data-testid'))
+        expect(order).toEqual(['curator-initials', 'calendar-navigator'])
+    })
+
+    it('новичку показан чек-лист, а прогресс и график скрыты', async () => {
+        onboardingAnswers().mockResolvedValueOnce(newcomerState)
+        render(<DashboardPage />)
+
+        expect(await screen.findByText('Первая неделя')).toBeInTheDocument()
+        expect(screen.queryByTestId('progress-section')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('kbju-weekly-chart')).not.toBeInTheDocument()
+    })
+
+    it('человеку со стажем показаны прогресс и график, а чек-листа нет', async () => {
+        onboardingAnswers().mockResolvedValueOnce({ active: false, steps: [], curator: null })
+        render(<DashboardPage />)
+
+        expect(await screen.findByTestId('progress-section')).toBeInTheDocument()
+        expect(screen.getByTestId('kbju-weekly-chart')).toBeInTheDocument()
+        expect(screen.queryByText('Первая неделя')).not.toBeInTheDocument()
+    })
+
+    // Пока ответа нет, решения тоже нет: показать и скрыть по ответу — мигание у
+    // новичка, скрыть и показать — у всех остальных.
+    it('до ответа на месте блоков держится скелетон', async () => {
+        onboardingAnswers().mockReturnValueOnce(new Promise(() => {}))
+        render(<DashboardPage />)
+
+        expect(await screen.findByText('Loading Progress...')).toBeInTheDocument()
+        expect(screen.queryByTestId('progress-section')).not.toBeInTheDocument()
+        expect(screen.queryByText('Первая неделя')).not.toBeInTheDocument()
+    })
+
+    describe('когда состояние получить не удалось', () => {
+        it('прогресс и график остаются, как до изменения', async () => {
+            onboardingAnswers().mockRejectedValueOnce(new Error('сеть недоступна'))
+            render(<DashboardPage />)
+
+            expect(await screen.findByTestId('progress-section')).toBeInTheDocument()
+            expect(screen.getByTestId('kbju-weekly-chart')).toBeInTheDocument()
+        })
+
+        // Непроставленная отметка — сообщение «ты этого не сделал». На упавшем
+        // запросе оно было бы ложью о действиях человека.
+        it('чек-лист не рисуется ни пустым, ни частичным', async () => {
+            onboardingAnswers().mockRejectedValueOnce(new Error('сеть недоступна'))
+            render(<DashboardPage />)
+
+            await screen.findByTestId('progress-section')
+            expect(screen.queryByText('Первая неделя')).not.toBeInTheDocument()
+            expect(screen.queryByText('Заполнить профиль')).not.toBeInTheDocument()
+        })
+
+        it('а карточка куратора предлагает повтор, не сообщая об отсутствии куратора', async () => {
+            onboardingAnswers().mockRejectedValueOnce(new Error('сеть недоступна'))
+            render(<DashboardPage />)
+
+            expect(await screen.findByText('Не удалось загрузить куратора')).toBeInTheDocument()
+            expect(screen.queryByText('Куратор пока не назначен')).not.toBeInTheDocument()
+        })
+    })
+})
+
+/**
+ * Клиентский дашборд, открытый не клиентом.
+ *
+ * `middleware` проверяет наличие сессии, но не роль, поэтому куратор может
+ * оказаться здесь. Ручка состояния первой недели адресована клиенту и остальным
+ * отвечает отказом — и без условия по роли куратор увидел бы в карточке вечную
+ * ошибку загрузки с кнопкой повтора, которая никогда не сработает.
+ */
+describe('Первый экран не клиенту', () => {
+    function signedInAs(role: 'client' | 'coordinator' | 'super_admin') {
+        const { apiClient } = jest.requireMock('@/shared/utils/api-client')
+        apiClient.get.mockResolvedValue({
+            user: { id: '9', email: 'kurator@example.com', name: 'Куратор', role },
+        })
+    }
+
+    afterEach(() => {
+        signedInAs('client')
+    })
+
+    it('куратор не видит ни карточки куратора, ни чек-листа', async () => {
+        signedInAs('coordinator')
+        render(<DashboardPage />)
+
+        expect(await screen.findByTestId('progress-section')).toBeInTheDocument()
+        expect(screen.queryByTestId('curator-card')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('curator-card-error')).not.toBeInTheDocument()
+        expect(screen.queryByText('Первая неделя')).not.toBeInTheDocument()
+    })
+
+    // Запрос, который заведомо кончится отказом, не отправляется вовсе: иначе в
+    // журнале копились бы 403 от собственного интерфейса.
+    it('и состояние первой недели у сервера не спрашивается', async () => {
+        signedInAs('super_admin')
+        const { dashboardApi } = jest.requireMock('@/features/dashboard/api/dashboardApi')
+        dashboardApi.getOnboardingState.mockClear()
+
+        render(<DashboardPage />)
+        await screen.findByTestId('progress-section')
+
+        expect(dashboardApi.getOnboardingState).not.toHaveBeenCalled()
     })
 })

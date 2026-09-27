@@ -38,12 +38,14 @@ import {
 } from '@/features/dashboard'
 import { ClientTasksSection } from '@/features/dashboard/components/ClientTasksSection'
 import { CuratorFeedbackSection } from '@/features/dashboard/components/CuratorFeedbackSection'
+import { CuratorCard } from '@/features/dashboard/components/CuratorCard'
+import { FirstWeekChecklist } from '@/features/dashboard/components/FirstWeekChecklist'
+import { useOnboardingState } from '@/features/dashboard/hooks/useOnboardingState'
 import { useDashboardStore } from '@/features/dashboard/store/dashboardStore'
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi'
 import { messageForOr } from '@/shared/errors/apiErrors'
 import toast from 'react-hot-toast'
 import { KBJUWeeklyChart } from '@/features/nutrition-calc/components/KBJUWeeklyChart'
-import { ProfileCompletionBanner } from '@/features/nutrition-calc/components/ProfileCompletionBanner'
 import { getHistory } from '@/features/nutrition-calc/api/nutritionCalc'
 import type { TargetVsActual } from '@/features/nutrition-calc/types'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
@@ -66,6 +68,17 @@ export default function DashboardPage() {
     const isLoading = userState === 'loading'
     const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
     const [kbjuHistory, setKbjuHistory] = useState<TargetVsActual[]>([])
+
+    // Состояние первого экрана: один запрос на карточку куратора и чек-лист.
+    // Он же решает, показывать ли прогресс и график — решение принимает сервер
+    // полем active, чтобы правило «7 дней» не существовало в двух местах.
+    //
+    // Спрашивается только для клиентской роли. Ручка остальным отвечает отказом,
+    // а middleware проверяет вход, но не роль: куратор сюда попасть может, и без
+    // этого условия увидел бы в карточке вечную ошибку загрузки.
+    const isClient = userData?.role === 'client'
+    const onboarding = useOnboardingState(isClient)
+    const showsFirstWeek = onboarding.state?.active === true
 
     const {
         selectedDate,
@@ -215,8 +228,22 @@ export default function DashboardPage() {
             activeNavItem="dashboard"
         >
             <div className="w-full max-w-7xl mx-auto space-y-4 sm:space-y-5 md:space-y-6 p-3 sm:p-4 md:p-6">
-                {/* Profile Completion Banner */}
-                <ProfileCompletionBanner />
+                {/* Куратор — первым блоком.
+                    Это главное отличие продукта от бесплатного счётчика калорий,
+                    и до сих пор он лежал в самом низу страницы, свёрнутый, а у
+                    новичка не рисовался вовсе. Показывается всем и всегда, а не
+                    только первую неделю. */}
+                {isClient && (
+                <ErrorBoundary variant="inline" label="dashboard-curator-card">
+                    <CuratorCard
+                        curator={onboarding.state?.curator ?? null}
+                        isLoading={onboarding.isLoading}
+                        hasError={onboarding.hasError}
+                        onRetry={onboarding.reload}
+                        className="w-full"
+                    />
+                </ErrorBoundary>
+                )}
 
                 {/* Calendar Navigator */}
                 <CalendarNavigator
@@ -224,10 +251,29 @@ export default function DashboardPage() {
                     className="w-full"
                 />
 
-                {/* Progress Section — adherence */}
-                <Suspense fallback={<ProgressSectionSkeleton className="w-full" />}>
-                    <LazyProgressSection className="w-full" />
-                </Suspense>
+                {/* Чек-лист первой недели — вместо баннера профиля, который
+                    удалён: его смысл целиком в первом пункте чек-листа. Сам
+                    чек-лист молчит, когда ответа нет. */}
+                <ErrorBoundary variant="inline" label="dashboard-first-week">
+                    <FirstWeekChecklist state={onboarding.state} className="w-full" />
+                </ErrorBoundary>
+
+                {/* Прогресс и график КБЖУ — не новичку.
+                    «Недостаточно данных» на пол-экрана и пустые оси новичку
+                    ничего не сообщают; вместо них говорит чек-лист. Оба блока
+                    ждут ответа за скелетоном: показать и скрыть по ответу — это
+                    мигание у новичка, скрыть и показать — у всех остальных.
+                    Если ответ не пришёл, оба показываются, как до изменения:
+                    терять их из-за сбоя нельзя. */}
+                {onboarding.isLoading ? (
+                    <ProgressSectionSkeleton className="w-full" />
+                ) : (
+                    !showsFirstWeek && (
+                        <Suspense fallback={<ProgressSectionSkeleton className="w-full" />}>
+                            <LazyProgressSection className="w-full" />
+                        </Suspense>
+                    )
+                )}
 
                 {/* Daily Tracking Grid: Питание | Шаги | Тренировки */}
                 <DailyTrackingGrid
@@ -241,10 +287,12 @@ export default function DashboardPage() {
                     className="w-full"
                 />
 
-                {/* KBJU Weekly Chart */}
-                <ErrorBoundary variant="inline" label="dashboard-kbju-chart">
-                    <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
-                </ErrorBoundary>
+                {/* KBJU Weekly Chart — по той же причине не новичку */}
+                {!onboarding.isLoading && !showsFirstWeek && (
+                    <ErrorBoundary variant="inline" label="dashboard-kbju-chart">
+                        <KBJUWeeklyChart data={kbjuHistory} className="w-full" />
+                    </ErrorBoundary>
+                )}
 
                 {/* Curator-assigned tasks (renders nothing when empty) */}
                 <ErrorBoundary variant="inline" label="dashboard-tasks">
