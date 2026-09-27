@@ -133,13 +133,26 @@ export function NutrientDetailPanel({
                         {/* Три положения, как и в списке: измерено, только норма,
                             норму выбрать нельзя. Ноль не показывается ни в одном. */}
                         {detail.currentIntake !== undefined && detail.dailyTarget !== undefined ? (
-                            <p className="text-xs text-gray-900 sm:text-sm">
-                                {t('foodTracker.nutrientDetail.progress', {
-                                    intake: String(detail.currentIntake),
-                                    target: String(detail.dailyTarget),
-                                    unit,
-                                })}
-                            </p>
+                            <>
+                                <p className="text-xs text-gray-900 sm:text-sm">
+                                    {t('foodTracker.nutrientDetail.progress', {
+                                        intake: String(detail.currentIntake),
+                                        target: String(detail.dailyTarget),
+                                        unit,
+                                    })}
+                                </p>
+                                {/* Величина — нижняя граница: содержание известно не у
+                                    всех съеденных продуктов. Об этом говорится рядом. */}
+                                {detail.intakeCoverage &&
+                                    detail.intakeCoverage.counted < detail.intakeCoverage.total && (
+                                        <p className="text-xs text-gray-500 sm:text-sm">
+                                            {t('foodTracker.nutrientDetail.coverage', {
+                                                counted: String(detail.intakeCoverage.counted),
+                                                total: String(detail.intakeCoverage.total),
+                                            })}
+                                        </p>
+                                    )}
+                            </>
                         ) : detail.dailyTarget !== undefined ? (
                             <>
                                 <p className="text-xs text-gray-900 sm:text-sm">
@@ -150,9 +163,18 @@ export function NutrientDetailPanel({
                                 </p>
                             </>
                         ) : (
-                            <p className="text-xs text-gray-600 sm:text-sm">
-                                {t('foodTracker.nutrientDetail.normNeedsProfile')}
-                            </p>
+                            <>
+                                {/* Норму выбрать нельзя, но съеденное мы знаем —
+                                    терять его из-за незаполненного профиля незачем. */}
+                                {detail.currentIntake !== undefined && (
+                                    <p className="text-xs text-gray-900 sm:text-sm">
+                                        {String(detail.currentIntake)} {unit}
+                                    </p>
+                                )}
+                                <p className="text-xs text-gray-600 sm:text-sm">
+                                    {t('foodTracker.nutrientDetail.normNeedsProfile')}
+                                </p>
+                            </>
                         )}
 
                         {/* Границы нормы показываются только те, что заведены. */}

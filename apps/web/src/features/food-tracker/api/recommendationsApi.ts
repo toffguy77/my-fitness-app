@@ -61,6 +61,16 @@ export interface ServerNutrient {
     norm_source?: string | null
     norm_note?: string | null
     norm_needs_profile: boolean
+
+    /**
+     * По чему посчитано потребление.
+     *
+     * Справочник продуктов знает содержание микронутриентов не у всех продуктов:
+     * у железа примерно у 14 %, у витамина E у 2 %. Поэтому `current_intake` —
+     * нижняя граница, и без покрытия её прочитают как итог дня.
+     */
+    intake_counted_entries?: number | null
+    intake_total_entries?: number | null
 }
 
 /** Своя рекомендация, как её отдаёт сервер. Потребления по ней сервер не считает. */
@@ -90,6 +100,12 @@ export interface ServerRecommendationsResponse {
 // Форма вкладки
 // ============================================================================
 
+/** Покрытие: по скольким записям дня посчитана величина. */
+export interface IntakeCoverage {
+    counted: number
+    total: number
+}
+
 /** То, что вкладка и экран настроек умеют принимать. */
 export interface RecommendationsData {
     /** Все нутриенты справочника — и отслеживаемые, и выключенные. */
@@ -100,6 +116,8 @@ export interface RecommendationsData {
     customRecommendations: CustomRecommendation[]
     /** Потребление по идентификатору нутриента. */
     currentIntakes: Record<string, number>
+    /** Покрытие по идентификатору нутриента — только там, где потребление посчитано. */
+    intakeCoverage: Record<string, IntakeCoverage>
 }
 
 function toNutrient(server: ServerNutrient, isWeekly: boolean): NutrientRecommendation {
@@ -149,6 +167,7 @@ export function toRecommendationsData(
     const nutrients: NutrientRecommendation[] = []
     const trackedIds: string[] = []
     const currentIntakes: Record<string, number> = {}
+    const intakeCoverage: Record<string, IntakeCoverage> = {}
 
     const collect = (list: ServerNutrient[] | null | undefined, isWeekly: boolean): void => {
         for (const item of list ?? []) {
@@ -158,6 +177,15 @@ export function toRecommendationsData(
             // значением 0 была бы неотличима от измеренного нуля.
             if (item.current_intake !== null && item.current_intake !== undefined) {
                 currentIntakes[item.id] = item.current_intake
+                if (
+                    item.intake_counted_entries !== null && item.intake_counted_entries !== undefined &&
+                    item.intake_total_entries !== null && item.intake_total_entries !== undefined
+                ) {
+                    intakeCoverage[item.id] = {
+                        counted: item.intake_counted_entries,
+                        total: item.intake_total_entries,
+                    }
+                }
             }
         }
     }
@@ -175,6 +203,7 @@ export function toRecommendationsData(
         trackedIds,
         customRecommendations: (response.custom ?? []).map(toCustom),
         currentIntakes,
+        intakeCoverage,
     }
 }
 
@@ -234,6 +263,8 @@ export interface ServerNutrientDetail {
     norm_source?: string | null
     norm_note?: string | null
     norm_needs_profile?: boolean
+    intake_counted_entries?: number | null
+    intake_total_entries?: number | null
     description?: string | null
     benefits?: string | null
     effects?: string | null
@@ -279,6 +310,11 @@ export function toNutrientDetail(server: ServerNutrientDetail): NutrientDetail {
         normSource: server.norm_source ?? undefined,
         normNote: server.norm_note ?? undefined,
         normNeedsProfile: server.norm_needs_profile ?? false,
+        intakeCoverage:
+            server.intake_counted_entries !== null && server.intake_counted_entries !== undefined &&
+            server.intake_total_entries !== null && server.intake_total_entries !== undefined
+                ? { counted: server.intake_counted_entries, total: server.intake_total_entries }
+                : undefined,
         sourcesInDiet: (server.sources ?? []).map(toFoodSource),
     }
 }

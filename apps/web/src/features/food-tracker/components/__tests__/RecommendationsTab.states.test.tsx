@@ -66,7 +66,7 @@ describe('Вкладка рекомендаций: состояния', () => {
     it('говорит, что потребление не считается, когда его неоткуда взять', () => {
         render(<RecommendationsTab recommendations={[VITAMIN_C]} hasEntriesToday={false} />);
 
-        expect(screen.getByText(/потребление витаминов и минералов мы пока не считаем/i))
+        expect(screen.getByText(/содержание витаминов и минералов там известно не у всех/i))
             .toBeInTheDocument();
         // Про записи здесь говорить нельзя: они могут быть, а считать по ним
         // микронутриенты продукт всё равно не умеет.
@@ -188,5 +188,116 @@ describe('Вкладка рекомендаций: состояния', () => {
 
             expect(screen.getByText('2 / 5 г')).toBeInTheDocument();
         });
+    });
+});
+
+// ============================================================================
+// Покрытие
+// ============================================================================
+//
+// Содержание микронутриентов известно не у всех продуктов справочника: у железа
+// примерно у 14 %, у витамина E у 2 %. Поэтому величина — нижняя граница, и без
+// подписи её прочитают как итог дня.
+
+describe('Вкладка рекомендаций: покрытие', () => {
+    const IRON = {
+        id: 'fe',
+        name: 'Железо',
+        category: 'minerals' as const,
+        unit: 'mg',
+        isWeekly: false,
+        isCustom: false,
+        dailyTarget: 18,
+    };
+
+    it('показывает, по какой части дня посчитано', () => {
+        render(
+            <RecommendationsTab
+                recommendations={[IRON]}
+                currentIntakes={{ fe: 6.7 }}
+                intakeCoverage={{ fe: { counted: 1, total: 3 } }}
+            />
+        );
+
+        expect(screen.getByText(/6\.7 \/ 18 мг/)).toBeInTheDocument();
+        expect(screen.getByText('по 1 из 3')).toBeInTheDocument();
+    });
+
+    it('молчит про покрытие, когда посчитано по всем записям', () => {
+        render(
+            <RecommendationsTab
+                recommendations={[IRON]}
+                currentIntakes={{ fe: 6.7 }}
+                intakeCoverage={{ fe: { counted: 3, total: 3 } }}
+            />
+        );
+
+        expect(screen.queryByText(/по 3 из 3/)).not.toBeInTheDocument();
+    });
+
+    // Прогресс появился — значит оговорка про «не считаем» больше не нужна.
+    it('не говорит «не считаем», когда что-то посчитано', () => {
+        render(
+            <RecommendationsTab
+                recommendations={[IRON]}
+                currentIntakes={{ fe: 6.7 }}
+                intakeCoverage={{ fe: { counted: 1, total: 3 } }}
+            />
+        );
+
+        expect(screen.queryByText(/известно не у всех/i)).not.toBeInTheDocument();
+    });
+
+    it('называет покрытие для чтения с экрана', () => {
+        render(
+            <RecommendationsTab
+                recommendations={[IRON]}
+                currentIntakes={{ fe: 6.7 }}
+                intakeCoverage={{ fe: { counted: 1, total: 3 } }}
+            />
+        );
+
+        expect(screen.getByRole('listitem', { name: /посчитано по 1 из 3 записей/i }))
+            .toBeInTheDocument();
+    });
+});
+
+describe('Вкладка рекомендаций: знаем потребление, но не норму', () => {
+    // Норму железа без пола выбрать нельзя, а съеденное известно. Потерять его
+    // из-за незаполненного профиля — та же ошибка, только наоборот.
+    const IRON_NO_NORM = {
+        id: 'fe',
+        name: 'Железо',
+        category: 'minerals' as const,
+        unit: 'mg',
+        isWeekly: false,
+        isCustom: false,
+        normNeedsProfile: true,
+    };
+
+    it('показывает съеденное, когда норма не выбрана', () => {
+        render(
+            <RecommendationsTab
+                recommendations={[IRON_NO_NORM]}
+                currentIntakes={{ fe: 6 }}
+                intakeCoverage={{ fe: { counted: 1, total: 2 } }}
+            />
+        );
+
+        expect(screen.getByText(/6 мг/)).toBeInTheDocument();
+        expect(screen.getByText('по 1 из 2')).toBeInTheDocument();
+        // И всё равно объясняет, чего не хватает для нормы.
+        expect(screen.getByText(/зависят от пола и возраста/i)).toBeInTheDocument();
+    });
+
+    it('не рисует полосу прогресса без нормы', () => {
+        const { container } = render(
+            <RecommendationsTab
+                recommendations={[IRON_NO_NORM]}
+                currentIntakes={{ fe: 6 }}
+            />
+        );
+
+        expect(container.querySelector('[role="progressbar"]')).toBeNull();
     });
 });

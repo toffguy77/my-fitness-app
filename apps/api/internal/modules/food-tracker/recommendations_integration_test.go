@@ -410,3 +410,177 @@ func TestEmptyCatalogueDoesNotBreakTheRest(t *testing.T) {
 	}
 	assert.Empty(t, resp.Weekly)
 }
+
+// ============================================================================
+// Потребление микронутриентов
+// ============================================================================
+//
+// Содержание лежит в `food_items.additional_nutrients` — jsonb, граммы на 100 г.
+// На подмене это не проверить: разбор jsonb, тип колонок и пересчёт на съеденное
+// видит только настоящая база.
+
+// Продукт с содержанием нутриентов в jsonb.
+func foodWithNutrients(t *testing.T, db *database.DB, name string, nutrients string) string {
+	t.Helper()
+	var id string
+	require.NoError(t, db.QueryRowContext(context.Background(),
+		`INSERT INTO food_items (name, category, calories_per_100, protein_per_100, fat_per_100, carbs_per_100,
+		                         fiber_per_100, additional_nutrients)
+		 VALUES ($1, 'grains', 340, 13, 3, 66, 10, $2::jsonb) RETURNING id::text`, name, nutrients).Scan(&id))
+	return id
+}
+
+func eat(t *testing.T, service *foodtracker.Service, userID int64, foodID string, grams float64) {
+	t.Helper()
+	_, err := service.CreateEntry(context.Background(), userID, &foodtracker.CreateEntryRequest{
+		FoodID:        foodID,
+		MealType:      foodtracker.MealBreakfast,
+		PortionType:   foodtracker.PortionGrams,
+		PortionAmount: grams,
+		Time:          "08:30",
+		Date:          time.Now().Format("2006-01-02"),
+	})
+	require.NoError(t, err)
+}
+
+func TestIronIntakeIsCountedFromTheDay(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "female", 30)
+
+	// 0,00333 г железа на 100 г, съедено 200 г → 6,66 мг.
+	eat(t, service, userID, foodWithNutrients(t, db, "Гречка", `{"iron": 0.00333}`), 200)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	iron := find(resp, "Железо")
+	require.NotNil(t, iron)
+	require.NotNil(t, iron.CurrentIntake, "потребление железа должно считаться")
+	assert.InDelta(t, 6.7, *iron.CurrentIntake, 0.05, "миллиграммы, а не граммы")
+	require.NotNil(t, iron.Percentage)
+	assert.InDelta(t, 37.2, *iron.Percentage, 0.5, "от женской нормы 18 мг")
+}
+
+// То, ради чего изменение и делается: содержание известно у части записей, и
+// рядом с числом видно, по какой части дня оно посчитано.
+func TestIntakeReportsItsCoverage(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "male", 30)
+
+	eat(t, service, userID, foodWithNutrients(t, db, "С железом", `{"iron": 0.002}`), 100)
+	eat(t, service, userID, foodWithNutrients(t, db, "Без железа", `{"calcium": 0.1}`), 100)
+	eat(t, service, userID, foodWithNutrients(t, db, "Пусто", `{}`), 100)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	iron := find(resp, "Железо")
+	require.NotNil(t, iron)
+	require.NotNil(t, iron.IntakeCountedEntries)
+	require.NotNil(t, iron.IntakeTotalEntries)
+	assert.Equal(t, 1, *iron.IntakeCountedEntries)
+	assert.Equal(t, 3, *iron.IntakeTotalEntries)
+	assert.InDelta(t, 2.0, *iron.CurrentIntake, 0.05)
+}
+
+func TestMicrogramsAreConvertedFromGrams(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "male", 30)
+
+	// 0,00008536 г фолатов на 100 г, съедено 100 г → 85,4 мкг.
+	eat(t, service, userID, foodWithNutrients(t, db, "Хлеб", `{"vitamin_b9": 0.00008536}`), 100)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	folates := find(resp, "Фолаты")
+	require.NotNil(t, folates)
+	require.NotNil(t, folates.CurrentIntake)
+	assert.InDelta(t, 85.4, *folates.CurrentIntake, 0.1, "микрограммы")
+}
+
+func TestFiberIntakeComesFromItsOwnColumn(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "male", 30)
+
+	// fiber_per_100 = 10 г (см. foodWithNutrients), съедено 150 г → 15 г.
+	eat(t, service, userID, foodWithNutrients(t, db, "Гречка", `{}`), 150)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	fiber := find(resp, "Пищевые волокна")
+	require.NotNil(t, fiber)
+	require.NotNil(t, fiber.CurrentIntake)
+	assert.InDelta(t, 15.0, *fiber.CurrentIntake, 0.05, "граммы")
+}
+
+// В справочнике продуктов есть 1 200 000 г витамина C на 100 г. Часть не тяжелее
+// целого, поэтому такая запись считается записью без известного содержания.
+func TestImpossibleContentDoesNotInflateTheDay(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "male", 30)
+
+	eat(t, service, userID, foodWithNutrients(t, db, "Мусор", `{"vitamin_c": 1200000}`), 100)
+	eat(t, service, userID, foodWithNutrients(t, db, "Шиповник", `{"vitamin_c": 0.05}`), 100)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	c := find(resp, "Витамин C")
+	require.NotNil(t, c)
+	require.NotNil(t, c.CurrentIntake)
+	assert.InDelta(t, 50.0, *c.CurrentIntake, 0.5, "50 мг из шиповника, мусор не посчитан")
+	assert.Equal(t, 1, *c.IntakeCountedEntries)
+	assert.Equal(t, 2, *c.IntakeTotalEntries)
+}
+
+// Семнадцать нутриентов остаются без данных: показать ноль было бы ложью.
+func TestNutrientWithoutDataStaysWithoutIntake(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "male", 30)
+	eat(t, service, userID, foodWithNutrients(t, db, "Гречка", `{"iron": 0.002}`), 100)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	for _, name := range []string{"Селен", "Биотин", "Витамин K"} {
+		item := find(resp, name)
+		require.NotNil(t, item, name)
+		assert.Nil(t, item.CurrentIntake, "%s: данных о содержании нет, ноль был бы ложью", name)
+		assert.Nil(t, item.Percentage, name)
+	}
+}
+
+func TestIntakeIsAbsentWithoutEntries(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "male", 30)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	iron := find(resp, "Железо")
+	require.NotNil(t, iron)
+	assert.Nil(t, iron.CurrentIntake, "без записей считать нечего")
+}
+
+// Ноль в колонке — не измерение: у гречки из таблицы products `fiber` равна нулю
+// при десяти граммах клетчатки на 100 г. Проверяется на настоящей базе, потому
+// что значение по умолчанию у колонки задаёт именно она.
+func TestZeroFiberIsNotShownAsMeasured(t *testing.T) {
+	service, db, userID := recommendationFixtures(t)
+	setProfile(t, db, userID, "male", 30)
+
+	var id string
+	require.NoError(t, db.QueryRowContext(context.Background(),
+		`INSERT INTO food_items (name, category, calories_per_100, protein_per_100, fat_per_100, carbs_per_100, fiber_per_100)
+		 VALUES ('Креветки', 'other', 100, 20, 1, 0, 0) RETURNING id::text`).Scan(&id))
+	eat(t, service, userID, id, 250)
+
+	resp, err := service.GetRecommendations(context.Background(), userID)
+	require.NoError(t, err)
+
+	fiber := find(resp, "Пищевые волокна")
+	require.NotNil(t, fiber)
+	assert.Nil(t, fiber.CurrentIntake, "ноль в колонке человек прочитал бы как «я не добрал»")
+}

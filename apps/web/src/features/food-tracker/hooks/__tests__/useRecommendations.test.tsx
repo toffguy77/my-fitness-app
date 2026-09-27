@@ -48,6 +48,7 @@ const DATA: RecommendationsData = {
     trackedIds: ['a'],
     customRecommendations: [{ id: 'c', name: 'Коллаген', dailyTarget: 5, unit: 'g' }],
     currentIntakes: { a: 45, b: 0 },
+    intakeCoverage: {},
 };
 
 describe('useRecommendations', () => {
@@ -91,6 +92,7 @@ describe('useRecommendations', () => {
             trackedIds: [],
             customRecommendations: [],
             currentIntakes: {},
+            intakeCoverage: {},
         });
 
         const { result } = renderHook(() => useRecommendations());

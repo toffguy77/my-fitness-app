@@ -33,6 +33,13 @@ export interface RecommendationsTabProps {
     customRecommendations?: CustomRecommendation[];
     /** Current nutrient intakes by nutrient ID */
     currentIntakes?: Record<string, number>;
+    /**
+     * По скольким записям дня посчитано потребление, по идентификатору нутриента.
+     *
+     * Содержание микронутриентов известно не у всех продуктов справочника, и
+     * величина — нижняя граница.
+     */
+    intakeCoverage?: Record<string, { counted: number; total: number }>;
     /** Whether data is loading */
     isLoading?: boolean;
     /**
@@ -95,6 +102,7 @@ export function RecommendationsTab({
     recommendations = [],
     customRecommendations = [],
     currentIntakes = {},
+    intakeCoverage = {},
     isLoading = false,
     catalogueEmpty = false,
     hasEntriesToday,
@@ -297,6 +305,7 @@ export function RecommendationsTab({
                                         label={CATEGORY_LABELS[category]}
                                         recommendations={categoryRecs}
                                         currentIntakes={currentIntakes}
+                                        intakeCoverage={intakeCoverage}
                                         isExpanded={isExpanded}
                                         onToggle={() => toggleCategory(category)}
                                         onRecommendationClick={handleRecommendationClick}
@@ -355,7 +364,8 @@ export function RecommendationsTab({
                                         <NutrientRecommendationItem
                                             key={rec.id}
                                             recommendation={rec}
-                                            currentIntake={currentIntakes[rec.id] || 0}
+                                            currentIntake={currentIntakes[rec.id]}
+                                            intakeCoverage={intakeCoverage[rec.id]}
                                             onClick={() => handleRecommendationClick(rec)}
                                         />
                                     ))}

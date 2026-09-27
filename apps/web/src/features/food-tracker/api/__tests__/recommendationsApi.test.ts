@@ -326,6 +326,8 @@ describe('Образец не расходится с ответом серве�
             'norm_source',
             'norm_note',
             'intake_source',
+            'intake_counted_entries',
+            'intake_total_entries',
         ]
         const sample = Object.keys(MADE_UP_RESPONSE.daily!.vitamins![0])
 
@@ -347,7 +349,10 @@ describe('Образец не расходится с ответом серве�
     it('подробности несут все поля, которые отдаёт сервер', () => {
         const expected = jsonFields(goTypes, 'NutrientDetailResponse')
         // omitempty: сервер не присылает их, когда нечего присылать.
-        const optional = ['min_value', 'optimal_value', 'norm_source', 'norm_note']
+        const optional = [
+            'min_value', 'optimal_value', 'norm_source', 'norm_note',
+            'intake_counted_entries', 'intake_total_entries',
+        ]
         const sample = Object.keys(full())
 
         for (const field of expected) {
@@ -373,4 +378,51 @@ describe('Образец не расходится с ответом серве�
             sources: [],
         }
     }
+})
+
+describe('Покрытие приходит вместе с величиной', () => {
+    it('собирает покрытие только там, где потребление посчитано', () => {
+        const data = toRecommendationsData({
+            daily: {
+                minerals: [
+                    {
+                        id: 'fe',
+                        name: 'Железо',
+                        category: 'minerals',
+                        unit: 'mg',
+                        is_weekly: false,
+                        is_tracked: true,
+                        source: 'МР 2.3.1.0253-21',
+                        source_version: '2021-07-22',
+                        daily_target: 18,
+                        current_intake: 6.7,
+                        percentage: 37.2,
+                        norm_needs_profile: false,
+                        intake_counted_entries: 1,
+                        intake_total_entries: 3,
+                    },
+                    {
+                        id: 'se',
+                        name: 'Селен',
+                        category: 'minerals',
+                        unit: 'mcg',
+                        is_weekly: false,
+                        is_tracked: true,
+                        source: 'МР 2.3.1.0253-21',
+                        source_version: '2021-07-22',
+                        daily_target: 70,
+                        current_intake: null,
+                        percentage: null,
+                        norm_needs_profile: false,
+                    },
+                ],
+            },
+            weekly: null,
+            custom: null,
+        })
+
+        expect(data.intakeCoverage).toEqual({ fe: { counted: 1, total: 3 } })
+        // У нутриента без потребления покрытия нет: нечего покрывать.
+        expect('se' in data.intakeCoverage).toBe(false)
+    })
 })

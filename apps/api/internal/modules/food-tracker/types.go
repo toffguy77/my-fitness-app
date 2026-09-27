@@ -858,6 +858,13 @@ type NutrientRecommendationWithProgress struct {
 	CurrentIntake *float64 `json:"current_intake"`
 	Percentage    *float64 `json:"percentage"`
 
+	// По чему посчитано потребление. Справочник продуктов знает содержание
+	// микронутриентов не у всех продуктов — у железа примерно у 14 %, у витамина
+	// E у 2 %, — поэтому величина выше это нижняя граница, и без покрытия её
+	// прочитают как итог дня.
+	IntakeCountedEntries *int `json:"intake_counted_entries,omitempty"`
+	IntakeTotalEntries   *int `json:"intake_total_entries,omitempty"`
+
 	IsTracked bool `json:"is_tracked"`
 }
 
@@ -878,8 +885,13 @@ type NutrientDetailResponse struct {
 
 	NormNeedsProfile bool `json:"norm_needs_profile"`
 
-	CurrentIntake *float64           `json:"current_intake"`
-	Sources       []FoodSourceInDiet `json:"sources"`
+	CurrentIntake *float64 `json:"current_intake"`
+
+	// См. NutrientRecommendationWithProgress: величина — нижняя граница.
+	IntakeCountedEntries *int `json:"intake_counted_entries,omitempty"`
+	IntakeTotalEntries   *int `json:"intake_total_entries,omitempty"`
+
+	Sources []FoodSourceInDiet `json:"sources"`
 }
 
 // FoodSourceInDiet represents a food source contributing to nutrient intake
