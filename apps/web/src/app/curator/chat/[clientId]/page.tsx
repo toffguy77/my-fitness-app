@@ -7,7 +7,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { chatApi } from '@/features/chat/api/chatApi'
@@ -33,8 +33,6 @@ export default function CuratorChatPage() {
             const conv = convs.find((c) => c.participant.id === clientId)
             if (conv) {
                 setConversation(conv)
-                chatApi.markAsRead(conv.id)
-                useChatStore.getState().resetUnread(conv.id)
             }
         })
     }, [clientId])
@@ -49,6 +47,21 @@ export default function CuratorChatPage() {
         sendTyping,
         lastEvent,
     } = useChat(conversation?.id ?? null)
+
+    // Прочитанным разговор становится, когда его сообщения показаны, а не когда
+    // он найден в списке. Прежний порядок обнулял непрочитанное сразу после
+    // поиска: куратор заходил в чат, сообщения не успевали прийти, он уходил —
+    // и непрочитанное было потеряно, а сводка честно показывала ноль над
+    // перепиской, которую никто не читал.
+    const markedRef = useRef<string | null>(null)
+    useEffect(() => {
+        const id = conversation?.id
+        if (!id || isLoading || messages.length === 0) return
+        if (markedRef.current === id) return
+        markedRef.current = id
+        chatApi.markAsRead(id)
+        useChatStore.getState().resetUnread(id)
+    }, [conversation?.id, isLoading, messages.length])
 
     // Detect typing from client
     const [isTyping, setIsTyping] = useState(false)
