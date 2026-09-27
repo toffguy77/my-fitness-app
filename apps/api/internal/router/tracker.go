@@ -61,6 +61,11 @@ func registerDashboardRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.POST("/daily", d.Dashboard.SaveMetric)
 	g.GET("/week", d.Dashboard.GetWeekMetrics)
 	g.GET("/progress", d.Dashboard.GetProgress)
+
+	// Состояние первой недели адресовано клиенту: у куратора и администратора
+	// своя оболочка, и чек-лист новичка там бессмыслен. Роль проверяется здесь,
+	// а не в обработчике, чтобы ограничение было видно там, где маршрут заведён.
+	g.GET("/onboarding", middleware.RequireRole("client"), d.Dashboard.GetOnboarding)
 	g.GET("/weekly-plan", d.Dashboard.GetWeeklyPlan)
 	g.POST("/weekly-plan", d.Dashboard.CreateWeeklyPlan)
 	g.GET("/tasks", d.Dashboard.GetTasks)

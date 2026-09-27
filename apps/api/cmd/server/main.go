@@ -344,6 +344,10 @@ func main() {
 		WithCodeVerifier(verificationService)
 
 	analyticsService := analytics.NewService(db.DB, log)
+	// Назначение куратора происходит в сервисе аутентификации на всех трёх
+	// путях внутрь, поэтому запись события подключается к нему, а не к
+	// обработчику.
+	authService = authService.WithAnalytics(analyticsService)
 
 	// Telling the advertising account what happened after the browser closed.
 	// Nil wherever no account is configured, which is every environment except

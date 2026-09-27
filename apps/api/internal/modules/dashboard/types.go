@@ -407,3 +407,62 @@ type ProgressData struct {
 	NutritionAdherence float64            `json:"nutrition_adherence"`
 	TargetWeight       *float64           `json:"target_weight"`
 }
+
+// OnboardingStepKey names one task of the first week.
+//
+// The keys are part of the response contract: the frontend maps each to the
+// screen where the task is carried out.
+type OnboardingStepKey string
+
+const (
+	OnboardingStepProfile      OnboardingStepKey = "profile"
+	OnboardingStepFirstMeal    OnboardingStepKey = "first_meal"
+	OnboardingStepPlatePhoto   OnboardingStepKey = "plate_photo"
+	OnboardingStepCuratorHello OnboardingStepKey = "curator_hello"
+)
+
+// OnboardingWindow is how long the first-week checklist stays on the dashboard
+// when its tasks are left unfinished.
+//
+// The rule lives here alone. Computing it on the client as well would put the
+// same rule in two places, where the two drift apart on the first edit of one.
+const OnboardingWindow = 7 * 24 * time.Hour
+
+// OnboardingStep is one task of the first week and whether it is done.
+//
+// Done is derived from what the person actually did — there is no stored
+// onboarding progress to disagree with the product's own tables.
+type OnboardingStep struct {
+	Key  OnboardingStepKey `json:"key"`
+	Done bool              `json:"done"`
+}
+
+// CuratorLastMessage is the latest message of the conversation, with who wrote
+// it. The author matters: the dashboard says "you wrote" or "your curator
+// wrote", and getting it backwards misreports the conversation.
+type CuratorLastMessage struct {
+	Text        string    `json:"text"`
+	CreatedAt   time.Time `json:"created_at"`
+	FromCurator bool      `json:"from_curator"`
+}
+
+// CuratorPresence is what the dashboard shows about the assigned curator
+// without the client opening the chat.
+type CuratorPresence struct {
+	ConversationID string              `json:"conversation_id"`
+	Name           string              `json:"name"`
+	AvatarURL      string              `json:"avatar_url,omitempty"`
+	UnreadCount    int                 `json:"unread_count"`
+	LastMessage    *CuratorLastMessage `json:"last_message,omitempty"`
+}
+
+// OnboardingState answers what the first screen shows a newcomer.
+//
+// Curator carries no omitempty on purpose: "no curator assigned" is a fact the
+// dashboard states out loud, so it must arrive as an explicit null rather than
+// as a missing field indistinguishable from an older response shape.
+type OnboardingState struct {
+	Active  bool             `json:"active"`
+	Steps   []OnboardingStep `json:"steps"`
+	Curator *CuratorPresence `json:"curator"`
+}

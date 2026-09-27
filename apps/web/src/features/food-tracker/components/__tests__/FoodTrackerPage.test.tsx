@@ -17,6 +17,9 @@ jest.mock('next/navigation', () => ({
         replace: jest.fn(),
         prefetch: jest.fn(),
     }),
+    // Страница читает ?add=, чтобы ссылка могла привести прямо к нужному
+    // способу записи. Без этого в подмене хук отсутствует, и падает вся страница.
+    useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock child components to avoid deep rendering issues

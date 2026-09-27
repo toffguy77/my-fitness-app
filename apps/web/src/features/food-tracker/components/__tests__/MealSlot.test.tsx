@@ -10,6 +10,8 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MealSlot } from '../MealSlot';
 import type { FoodEntry, MealType } from '../../types';
+import { MACRO_COLORS } from '@/shared/constants/macros';
+import { hexToRgb } from '@/shared/testing/cssColor';
 
 // ============================================================================
 // Test Helpers
@@ -208,6 +210,30 @@ describe('MealSlot', () => {
 
             fireEvent.click(screen.getByLabelText('Добавить в Обед'));
             expect(mockOnAddEntry).toHaveBeenCalledWith('lunch');
+        });
+    });
+
+    describe('Цвет нутриента в подытоге', () => {
+        // Подытог приёма пищи был целиком серым — вероятный источник жалобы на
+        // серые макросы: его видно чаще, чем кольцо на дашборде.
+        it('опознаёт каждый нутриент своим цветом', () => {
+            const { container } = render(
+                <MealSlot
+                    mealType="breakfast"
+                    entries={[createEntry('1', 'Овсянка', 300)]}
+                    onAddEntry={mockOnAddEntry}
+                />
+            );
+
+            const dots = Array.from(
+                container.querySelectorAll<HTMLElement>('span[aria-hidden="true"]')
+            ).map((el) => el.style.backgroundColor).filter(Boolean);
+
+            expect(dots).toEqual([
+                hexToRgb(MACRO_COLORS.protein),
+                hexToRgb(MACRO_COLORS.fat),
+                hexToRgb(MACRO_COLORS.carbs),
+            ]);
         });
     });
 

@@ -68,6 +68,25 @@ type Service struct {
 	// that is the normal state in an environment with no SMTP credentials —
 	// not an error.
 	emailService MagicLinkSender
+	// events records curator assignment. Optional: nil in tests and in any
+	// environment without analytics, and nothing here depends on it.
+	events AssignmentRecorder
+}
+
+// AssignmentRecorder records the assignment of a curator.
+//
+// Declared here as the narrowest thing this service needs. The event belongs to
+// the service rather than the handler because assignment happens on three
+// different paths in — the form, the magic link, the external provider — and
+// only assignCurator sees all three.
+type AssignmentRecorder interface {
+	RecordServerEvent(ctx context.Context, name string, userID int64, properties map[string]any)
+}
+
+// WithAnalytics attaches the recorder.
+func (s *Service) WithAnalytics(recorder AssignmentRecorder) *Service {
+	s.events = recorder
+	return s
 }
 
 // SessionCache is the narrow part of middleware.TokenVersions this service
@@ -756,6 +775,14 @@ func (s *Service) assignCurator(ctx context.Context, clientID int64, clientEmail
 	}
 
 	s.log.Infow("Auto-assigned curator to new client", "curator_id", curatorID, "client_id", clientID)
+
+	// Сервер обязан сообщить о назначении куратора — требование спеки
+	// product-analytics о фактах, формируемых на сервере. Раньше событие уходило
+	// только из админки, то есть главный путь получения куратора не измерялся
+	// вовсе, и судить об изменениях в этом месте было нечем.
+	if s.events != nil {
+		s.events.RecordServerEvent(ctx, "curator_assigned", clientID, nil)
+	}
 }
 
 // generateToken generates JWT token for user (15 min expiry)
