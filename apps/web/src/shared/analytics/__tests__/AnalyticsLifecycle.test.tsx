@@ -9,6 +9,8 @@
  */
 
 import React from 'react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render } from '@testing-library/react'
 import { AnalyticsLifecycle } from '../AnalyticsLifecycle'
 
@@ -40,10 +42,7 @@ describe('корневой макет', () => {
     // на отдельной странице. Возвращение к старому — по экрану — должно ронять
     // тест, а не обнаруживаться пропавшими событиями.
     it('монтирует его в корне, рядом со сшивкой посетителя', () => {
-        const source = require('node:fs').readFileSync(
-            require('node:path').join(__dirname, '../../../app/layout.tsx'),
-            'utf8',
-        )
+        const source = readFileSync(join(__dirname, '../../../app/layout.tsx'), 'utf8')
 
         expect(source).toContain('<AnalyticsLifecycle />')
         expect(source).toContain('<AnalyticsIdentity />')
