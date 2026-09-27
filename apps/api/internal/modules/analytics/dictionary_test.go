@@ -31,6 +31,13 @@ func TestEventDictionariesMatch(t *testing.T) {
 			// email_verified...) is never sent by a browser — there is
 			// nothing for the client dictionary to declare, and requiring
 			// one would mean inventing a name nobody calls track() with.
+			//
+			// Требуется именно отсутствие, а не безразличие: объявленное на
+			// клиенте имя серверного факта — приглашение позвать с ним
+			// track(), и такой вызов молча отвергнется на входе. Так и жил
+			// first_food_entry, только по другой причине.
+			assert.False(t, fromClient[name],
+				"имя %q — серверный факт и не должно быть объявлено на клиенте", name)
 			continue
 		}
 		assert.True(t, fromClient[name], "имя %q объявлено на сервере и отсутствует на клиенте", name)
@@ -112,4 +119,66 @@ func TestValidate_RequiresTheScrollDepth(t *testing.T) {
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrValidation)
+}
+
+// Заявка несёт точку захвата, и словарь обязан её принимать.
+//
+// Свойство `capture_source` появилось вместе с захватом контакта на экране
+// результата: его добавили в таблицу `leads`, в типы и службу модуля — и в
+// клиентский вызов, но не сюда. Поэтому **каждое** событие `lead_saved`
+// отвергалось на входе, а вместе с ним погибал `contact_captured`,
+// отправляемый строкой ниже в том же пакете. В таблице лежали две настоящие
+// заявки, а в аналитике по ним не было ни одного события.
+//
+// Тест падает на прежнем словаре.
+func TestValidate_AcceptsALeadWithItsCaptureSource(t *testing.T) {
+	for _, source := range []string{"result", "contact_step", "bot"} {
+		err := Validate(Event{
+			Name: EventLeadSaved,
+			Properties: map[string]any{
+				"contact_consent": true,
+				"capture_source":  source,
+			},
+		}, true)
+		assert.NoError(t, err, "точка захвата %q объявлена в столбце leads.capture_source", source)
+	}
+}
+
+// Опечатка в значении — отказ, а не строка, по которой не сойдётся ни один
+// запрос. То же рассуждение, что у `depth`.
+func TestValidate_RefusesAnUnknownCaptureSource(t *testing.T) {
+	err := Validate(Event{
+		Name:       EventLeadSaved,
+		Properties: map[string]any{"capture_source": "результат"},
+	}, true)
+
+	assert.ErrorIs(t, err, apperrors.ErrValidation)
+}
+
+// Перенесённые события — серверные факты: из браузера их не принять.
+//
+// Иначе переход дал бы двойной счёт: уже открытая вкладка старой сборки
+// продолжает присылать `first_food_entry`, и рядом его же записывает сервер.
+func TestValidate_RefusesTheMovedFactsFromTheBrowser(t *testing.T) {
+	for _, name := range []string{EventFirstFoodEntry, EventFirstMessage} {
+		assert.ErrorIs(t, Validate(Event{Name: name}, true), apperrors.ErrValidation,
+			"%q объявлено серверным фактом", name)
+		assert.NoError(t, Validate(Event{Name: name}, false),
+			"%q обязано приниматься от сервера", name)
+	}
+}
+
+// `method` у первой записи о еде убран, а не перенесён: сервер не знает, какой
+// вкладкой воспользовались, и отправлялось это свойство ноль раз — клиент всё
+// время посылал `meal_type`. Разбивка живёт на `food_entry_created`.
+func TestFirstFoodEntry_DeclaresNoProperties(t *testing.T) {
+	definition := Dictionary[EventFirstFoodEntry]
+
+	assert.Empty(t, definition.Required)
+	assert.Empty(t, definition.Optional)
+	assert.True(t, definition.ServerOnly)
+
+	// А у соседа разбивка на месте.
+	assert.Contains(t, Dictionary[EventFoodEntryCreated].Optional, "method")
+	assert.Contains(t, Dictionary[EventFoodEntryCreated].Optional, "meal_type")
 }

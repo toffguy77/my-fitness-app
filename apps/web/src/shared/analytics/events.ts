@@ -4,6 +4,10 @@
  * Mirrors apps/api/internal/modules/analytics/dictionary.go. The server refuses
  * anything it does not know, so a name invented here is a name that quietly
  * never arrives — which is why both sides declare the same list.
+ *
+ * Server-side facts are absent on purpose, and a test holds them out: declaring
+ * one here is an invitation to call track() with it, and that call is refused at
+ * the door. Первая запись о еде и первое сообщение куратору — среди них.
  */
 
 export const EVENTS = {
@@ -18,10 +22,8 @@ export const EVENTS = {
     contactCaptured: 'contact_captured',
     magicLinkRequested: 'magic_link_requested',
     magicLinkConsumed: 'magic_link_consumed',
-    firstFoodEntry: 'first_food_entry',
     foodEntryCreated: 'food_entry_created',
     foodRecognition: 'food_recognition_used',
-    firstMessage: 'first_curator_message',
     supportOpened: 'support_chat_opened',
 } as const
 

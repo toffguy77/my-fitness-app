@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/burcev/api/internal/modules/analytics"
 	"github.com/burcev/api/internal/shared/apperrors"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/llm"
@@ -22,6 +23,27 @@ type Service struct {
 	db        *database.DB
 	log       *logger.Logger
 	offClient *openfoodfacts.Client
+	// events records that somebody reached their first entry. Optional: nil in
+	// tests and wherever analytics is absent, and nothing here depends on it.
+	events FirstTimeRecorder
+}
+
+// FirstTimeRecorder records a fact that happens once in an account's life.
+//
+// Declared here as the narrowest thing this module needs. The recording lives in
+// the service rather than the handler because this is the only path by which a
+// person logs food themselves: a curator turning a chat message into an entry
+// writes to food_entries from modules/chat and never comes through here. So the
+// entry's belonging to the person is guaranteed by the call site instead of by a
+// created_by condition somebody could forget.
+type FirstTimeRecorder interface {
+	RecordFirstTimeEvent(ctx context.Context, name string, userID int64)
+}
+
+// WithAnalytics attaches the recorder.
+func (s *Service) WithAnalytics(recorder FirstTimeRecorder) *Service {
+	s.events = recorder
+	return s
 }
 
 // NewService creates a new food tracker service
@@ -288,6 +310,14 @@ func (s *Service) CreateEntry(ctx context.Context, userID int64, req *CreateEntr
 
 	// Sync nutrition totals to daily_metrics for dashboard
 	s.syncNutritionToDailyMetrics(ctx, userID, entry.Date)
+
+	// Дошёл ли человек до того, ради чего пришёл. Записывается однажды за всё
+	// время, и решает это аналитика, а не отметка в браузере: прежняя отметка в
+	// localStorage отсутствовала на другом устройстве, а сам вызов вдобавок нёс
+	// meal_type, необъявленный для того имени, — и событие не приходило ни разу.
+	if s.events != nil {
+		s.events.RecordFirstTimeEvent(ctx, analytics.EventFirstFoodEntry, userID)
+	}
 
 	return &entry, nil
 }

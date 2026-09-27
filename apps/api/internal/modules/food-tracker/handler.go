@@ -74,9 +74,13 @@ type Handler struct {
 	extras    FoodExtrasService
 }
 
-// NewHandler creates a new food tracker handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client, orClient *llm.Client) *Handler {
-	svc := NewService(db, log)
+// NewHandler creates a new food tracker handler.
+//
+// Служба приходит параметром, а не создаётся здесь: с тех пор как её можно
+// настраивать (получателем событий), собственная копия означала бы, что
+// настроенная на старте служба и та, которой пользуются ручки, — разные
+// объекты. Именно это и сторожит check-codebase-integrity.
+func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, s3 *storage.S3Client, orClient *llm.Client, svc *Service) *Handler {
 	return &Handler{
 		cfg:       cfg,
 		log:       log,

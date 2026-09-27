@@ -104,7 +104,7 @@ func TestRecord_StoresABatch(t *testing.T) {
 	mock.ExpectExec("INSERT INTO analytics_events").WillReturnResult(sqlmock.NewResult(2, 1))
 	mock.ExpectCommit()
 
-	err := service.Record(context.Background(), Batch{
+	outcome, err := service.Record(context.Background(), Batch{
 		VisitorID: "3f0c2b7e-6b1a-4e4e-9a4d-2f5a5f0c1b22",
 		Platform:  "web",
 		Events: []Event{
@@ -114,25 +114,99 @@ func TestRecord_StoresABatch(t *testing.T) {
 	}, nil)
 
 	require.NoError(t, err)
+	assert.Equal(t, Outcome{Recorded: 2}, outcome)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// One bad event fails the batch rather than being quietly dropped: a client
-// sending events nobody accepts should find out at development time, not by
-// wondering why the funnel is empty.
-func TestRecord_RefusesTheWholeBatchOnOneBadEvent(t *testing.T) {
+// A bad event no longer takes its neighbours down with it.
+//
+// This test used to assert the opposite, on the grounds that a client sending
+// events nobody accepts should find out at development time. The cost of that
+// rule turned out to be paid by the wrong events: a batch collects whatever
+// happened nearby, so one undeclared property discarded the lead together with
+// the contact capture, and the first food entry together with the entry. The
+// refusal is named in the log instead, and a guard against the mismatch itself
+// belongs to the dictionary, not to the batch.
+func TestRecord_KeepsTheGoodEventsBesideABadOne(t *testing.T) {
 	service, mock := setupAnalytics(t)
 
-	err := service.Record(context.Background(), Batch{
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO analytics_events").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO analytics_events").WillReturnResult(sqlmock.NewResult(2, 1))
+	mock.ExpectCommit()
+
+	outcome, err := service.Record(context.Background(), Batch{
 		VisitorID: "3f0c2b7e-6b1a-4e4e-9a4d-2f5a5f0c1b22",
 		Events: []Event{
 			{Name: EventLandingViewed},
 			{Name: "made_up"},
+			{Name: EventOnboardingStep, Properties: map[string]any{"step": "goal"}},
 		},
 	}, nil)
 
-	assert.ErrorIs(t, err, apperrors.ErrValidation)
-	// Nothing was written; a transaction was never opened.
+	require.NoError(t, err)
+	assert.Equal(t, Outcome{Recorded: 2, Refused: 1}, outcome)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// The exact shape of the defect this change was written for: the property is
+// declared for a neighbouring event but not for this one.
+func TestRecord_KeepsTheGoodEventsBesideAnUndeclaredProperty(t *testing.T) {
+	service, mock := setupAnalytics(t)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT INTO analytics_events").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	outcome, err := service.Record(context.Background(), Batch{
+		VisitorID: "3f0c2b7e-6b1a-4e4e-9a4d-2f5a5f0c1b22",
+		Events: []Event{
+			// meal_type is declared for food_entry_created and was never
+			// declared for first_food_entry.
+			{Name: EventFoodEntryCreated, Properties: map[string]any{"meal_type": "breakfast"}},
+			{Name: EventLandingViewed, Properties: map[string]any{"meal_type": "breakfast"}},
+		},
+	}, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, Outcome{Recorded: 1, Refused: 1}, outcome)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// Nothing acceptable means nothing written — and no transaction opened. Not an
+// error either: the request itself was well formed, and its answer says so.
+func TestRecord_WritesNothingWhenEveryEventIsRefused(t *testing.T) {
+	service, mock := setupAnalytics(t)
+
+	outcome, err := service.Record(context.Background(), Batch{
+		VisitorID: "3f0c2b7e-6b1a-4e4e-9a4d-2f5a5f0c1b22",
+		Events: []Event{
+			{Name: "made_up"},
+			{Name: "also_made_up"},
+		},
+	}, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, Outcome{Refused: 2}, outcome)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// A browser claiming a server-side fact is refused, so the transition to
+// server-recorded facts cannot double-count: an old tab still sending
+// first_food_entry adds nothing.
+func TestRecord_RefusesAServerFactFromTheBrowser(t *testing.T) {
+	service, mock := setupAnalytics(t)
+
+	outcome, err := service.Record(context.Background(), Batch{
+		VisitorID: "3f0c2b7e-6b1a-4e4e-9a4d-2f5a5f0c1b22",
+		Events: []Event{
+			{Name: EventFirstFoodEntry, Properties: map[string]any{"meal_type": "breakfast"}},
+			{Name: EventFirstMessage},
+		},
+	}, nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, Outcome{Refused: 2}, outcome)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -144,12 +218,14 @@ func TestRecord_RefusesAnImplausiblyLargeBatch(t *testing.T) {
 		events[i] = Event{Name: EventLandingViewed}
 	}
 
-	err := service.Record(context.Background(), Batch{
+	outcome, err := service.Record(context.Background(), Batch{
 		VisitorID: "3f0c2b7e-6b1a-4e4e-9a4d-2f5a5f0c1b22",
 		Events:    events,
 	}, nil)
 
+	// Transport-level: the whole request is refused, and nothing is recorded.
 	assert.ErrorIs(t, err, apperrors.ErrValidation)
+	assert.Equal(t, Outcome{}, outcome)
 }
 
 // Without this the funnel breaks exactly where it is most interesting: at the

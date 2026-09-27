@@ -40,13 +40,13 @@ func (h *Handler) Collect(c *gin.Context) {
 		}
 	}
 
-	err := h.service.Record(c.Request.Context(), batch, userID)
+	outcome, err := h.service.Record(c.Request.Context(), batch, userID)
 	switch {
 	case err == nil:
 	case errors.Is(err, apperrors.ErrValidation):
-		// Named rather than swallowed: a client sending events nobody accepts
-		// should find out at development time, not by wondering why the funnel
-		// is empty.
+		// Only transport-level problems reach here now — a malformed body or a
+		// batch over the limit. A single unacceptable event is reported in the
+		// answer's counters instead, and named in the log by the service.
 		h.log.Info("Refused an analytics batch", "error", err)
 		response.Error(c, http.StatusBadRequest, err.Error())
 		return
@@ -56,7 +56,12 @@ func (h *Handler) Collect(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusAccepted, gin.H{"recorded": len(batch.Events)})
+	// Both numbers: answering with the size of what was sent would be the same
+	// answer whether everything was accepted or half of it was thrown away.
+	response.Success(c, http.StatusAccepted, gin.H{
+		"recorded": outcome.Recorded,
+		"refused":  outcome.Refused,
+	})
 }
 
 // Link handles POST /api/v1/analytics/identify.
