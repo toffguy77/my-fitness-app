@@ -33,6 +33,7 @@ INDEX conversion_uploads conversion_uploads_user_id_event_name_key btree (user_i
 INDEX conversion_uploads idx_conversion_uploads_pending btree (occurred_at) WHERE (sent_at IS NULL)
 INDEX curator_client_relationships coach_client_relationships_coach_id_client_id_key btree (curator_id, client_id)
 INDEX curator_client_relationships coach_client_relationships_pkey btree (id)
+INDEX curator_client_relationships idx_curator_client_access_expiry btree (access_expires_at) WHERE ((status = 'active'::text) AND (access_expires_at IS NOT NULL))
 INDEX curator_client_relationships idx_curator_client_client btree (client_id, status)
 INDEX curator_client_relationships idx_curator_client_curator btree (curator_id, status)
 INDEX curator_daily_snapshots curator_daily_snapshots_curator_id_date_key btree (curator_id, date)
@@ -267,6 +268,7 @@ conversion_uploads.metrika_client_id text NOT NULL
 conversion_uploads.occurred_at timestamp with time zone NOT NULL
 conversion_uploads.sent_at timestamp with time zone
 conversion_uploads.user_id bigint NOT NULL
+curator_client_relationships.access_expires_at date
 curator_client_relationships.client_id bigint NOT NULL
 curator_client_relationships.created_at timestamp with time zone DEFAULT now()
 curator_client_relationships.curator_id bigint NOT NULL
