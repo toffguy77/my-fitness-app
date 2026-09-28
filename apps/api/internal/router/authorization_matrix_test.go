@@ -66,6 +66,10 @@ var protectedRoutes = map[string]protection{
 
 	// Chat — both participants share the endpoints, so membership is checked
 	// per conversation inside each handler.
+	//
+	// Запись в переписку закрыта ещё и RequireCuratorAccess на подгруппе, но это
+	// не способ защиты чужих данных, а платный доступ: участие остаётся тем, что
+	// отделяет одного человека от другого.
 	"GET /api/v1/conversations/:id/messages":                    protParticipant,
 	"POST /api/v1/conversations/:id/messages":                   protParticipant,
 	"POST /api/v1/conversations/:id/read":                       protParticipant,

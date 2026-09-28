@@ -24,12 +24,13 @@ const (
 	// and "the password you typed to confirm it is you is wrong" are different
 	// sentences to the person reading them — and the client must be able to
 	// tell an expired session from either.
-	CodePasswordIncorrect  = "password_incorrect"
-	CodeEmailUnavailable   = "email_unavailable"
-	CodeConflict           = "conflict"
-	CodeGone               = "gone"
-	CodeValidation         = "validation"
-	CodeFeatureUnavailable = "feature_unavailable"
+	CodePasswordIncorrect     = "password_incorrect"
+	CodeEmailUnavailable      = "email_unavailable"
+	CodeConflict              = "conflict"
+	CodeGone                  = "gone"
+	CodeValidation            = "validation"
+	CodeFeatureUnavailable    = "feature_unavailable"
+	CodeCuratorAccessRequired = "curator_access_required"
 	// Distinct from token_expired: a refresh will not help, because the token
 	// was invalidated deliberately — a password change, or signing out every
 	// device. A client that cannot tell them apart either loops refreshing or

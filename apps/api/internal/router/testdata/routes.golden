@@ -27,6 +27,7 @@ GET /api/v1/content/feed
 GET /api/v1/content/feed/:id
 GET /api/v1/conversations
 GET /api/v1/conversations/:id/messages
+GET /api/v1/conversations/access
 GET /api/v1/conversations/unread
 GET /api/v1/curator/analytics
 GET /api/v1/curator/analytics/benchmark
