@@ -89,7 +89,11 @@ func TestAutoAssignmentRecordsTheEvent(t *testing.T) {
 		`INSERT INTO users (email, password, name, role, email_verified)
 		 VALUES ('live@example.test', 'x', 'Живой', 'coordinator', true) RETURNING id`).Scan(&curatorID))
 
-	clientID := enterByLink(t, ctx, db, service, "by-link@example.test")
+	// Адрес служебный: живому клиенту куратор при регистрации больше не
+	// достаётся — работа с куратором стала платной услугой. Автоназначение
+	// осталось ровно у служебных учётных записей прогона, и записывать событие
+	// нужно по-прежнему: без него главный путь получения куратора не измеряется.
+	clientID := enterByLink(t, ctx, db, service, "e2e-client@burcev.team")
 
 	recorded := spy.named("curator_assigned")
 	require.Len(t, recorded, 1, "назначение куратора должно быть записано ровно один раз")
@@ -105,8 +109,9 @@ func TestNoCuratorMeansNoEvent(t *testing.T) {
 	spy := &eventSpy{}
 	service := auth.NewService(db.DB, &config.Config{}, logger.New()).WithAnalytics(spy)
 
-	// Ни одного куратора в базе: назначать некого.
-	clientID := enterByLink(t, ctx, db, service, "no-curator@example.test")
+	// Ни одного куратора в базе: назначать некого. Адрес служебный, иначе до
+	// поиска куратора дело не дойдёт вовсе и проверка выродится.
+	clientID := enterByLink(t, ctx, db, service, "e2e-no-curator@burcev.team")
 	require.NotZero(t, clientID)
 
 	assert.Empty(t, spy.named("curator_assigned"))

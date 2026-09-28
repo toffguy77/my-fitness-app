@@ -60,10 +60,9 @@ func TestRegister(t *testing.T) {
 			WithArgs(int64(1)).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		// Auto-assign curator query (no coordinators available)
-		mock.ExpectQuery("SELECT u.id").
-			WillReturnRows(sqlmock.NewRows([]string{"id"}))
-
+		// Куратора регистрация больше не подбирает: работа с куратором — платная
+		// услуга, и право выдаёт администратор после оплаты. Запроса выбора
+		// здесь поэтому нет, и ожидания идут подряд.
 		mock.ExpectExec("INSERT INTO refresh_tokens").
 			WithArgs(int64(1), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), false).
 			WillReturnResult(sqlmock.NewResult(1, 1))

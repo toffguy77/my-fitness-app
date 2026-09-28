@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/shared/curators"
+	"github.com/burcev/api/internal/shared/testaccounts"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/burcev/api/internal/config"
@@ -742,6 +743,21 @@ func (s *Service) revokeAllUserRefreshTokens(ctx context.Context, userID int64) 
 // Creates both the curator_client_relationship and a conversation.
 // Best-effort: registration succeeds even if no coordinator exists.
 func (s *Service) assignCurator(ctx context.Context, clientID int64, clientEmail string) {
+	// Живому клиенту куратор при регистрации не достаётся: работа с куратором —
+	// платная услуга, и право выдаёт администратор после оплаты.
+	//
+	// Служебные учётные записи прогона назначение сохраняют и получают
+	// бессрочное право: без этого набор сквозных проверок упёрся бы в
+	// собственный платный доступ.
+	//
+	// Проверка стоит здесь, а не в трёх местах вызова, по той же причине, по
+	// которой здесь же живёт запись события: путей внутрь три — форма, ссылка,
+	// внешний провайдер, — и только эта функция видит все три. Путь,
+	// добавленный мимо неё, куратора и так не назначит.
+	if !testaccounts.IsTest(clientEmail) {
+		return
+	}
+
 	// Pick coordinator with fewest active clients
 	// Кого нельзя ставить куратором и почему — в curators.LeastLoaded.
 	// Тот же выбор делает понижение куратора в admin: два одинаковых
