@@ -147,6 +147,24 @@ func TestSendMessage_КураторуКлиентаБезПраваТожеНе�
 
 	assert.Equal(t, http.StatusForbidden, w.Code,
 		"куратор, не знающий о прекращении, работал бы бесплатно")
+
+	// Куратор, прочитавший «входит в платную подписку» о своём же действии, идёт
+	// спрашивать в поддержку, что сломалось.
+	assert.Contains(t, w.Body.String(), "У клиента закончился доступ",
+		"куратору адресована другая фраза, хотя код отказа тот же")
+	assert.NotContains(t, w.Body.String(), "входит в платную подписку")
+}
+
+func TestSendMessage_КлиентуАдресованаСвояФраза(t *testing.T) {
+	f := newAccessFixture(t, "router_access_client_wording")
+	yesterday := curatoraccess.Today().AddDate(0, 0, -1)
+	f.link(t, curatoraccess.StatusActive, &yesterday)
+
+	w := f.do(t, http.MethodPost, "/api/v1/conversations/"+f.conversation+"/messages", sendBody, f.clientID, "client")
+
+	require.Equal(t, http.StatusForbidden, w.Code)
+	assert.Contains(t, w.Body.String(), "входит в платную подписку",
+		"клиенту нужно знать, что положение исправимо, а не что ему отказано")
 }
 
 func TestSendMessage_СДействующимПравомПринимается(t *testing.T) {

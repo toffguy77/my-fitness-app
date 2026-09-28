@@ -65,8 +65,19 @@ func RequireCuratorAccess(db *database.DB, log *logger.Logger) gin.HandlerFunc {
 		if !state.Allowed() {
 			log.Warn("Write to a conversation without curator access",
 				"conversation_id", conversationID, "client_id", clientID)
+
+			// Код один, а фраза разная: куратор, прочитавший «входит в платную
+			// подписку» о своём же действии, идёт спрашивать в поддержку, что
+			// сломалось. Отличить их можно только здесь — дальше известен лишь
+			// отказ.
+			message := "Работа с куратором входит в платную подписку"
+			if requesterID, ok := c.Get("user_id"); ok {
+				if id, isInt := requesterID.(int64); isInt && id != clientID {
+					message = "У клиента закончился доступ к куратору"
+				}
+			}
 			response.ErrorCode(c, http.StatusForbidden, apperrors.CodeCuratorAccessRequired,
-				"Работа с куратором входит в платную подписку", nil)
+				message, nil)
 			c.Abort()
 			return
 		}
