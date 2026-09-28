@@ -94,7 +94,7 @@ var Dictionary = map[string]Definition{
 	// matches. The three values are the ones documented on leads.capture_source.
 	EventLeadSaved: {
 		Optional: []string{"contact_consent", "capture_source"},
-		Values:   map[string][]string{"capture_source": {"result", "contact_step", "bot"}},
+		Values:   map[string][]string{"capture_source": {"result", "contact_step", "bot", "pricing"}},
 	},
 	EventRegistrationOpened: {Optional: []string{"method"}},
 	EventRegistrationFailed: {Required: []string{"reason"}, Optional: []string{"method"}},

@@ -14,7 +14,8 @@
 
 import { render, screen, within } from '@testing-library/react'
 import '@testing-library/jest-dom'
-import Home, { READY_TIMEOUT_MS } from '../page'
+import Home from '../page'
+import { READY_TIMEOUT_MS } from '@/shared/api/features'
 
 jest.mock('@/shared/components/JsonLd', () => ({
     JsonLd: () => null,

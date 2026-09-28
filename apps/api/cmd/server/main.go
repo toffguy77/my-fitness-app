@@ -654,7 +654,7 @@ func main() {
 		NutritionCalc: nutritioncalc.NewHandler(cfg, log, db),
 		Dashboard:     dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc).WithAnalytics(analyticsService),
 		Chat:          chat.NewHandler(cfg, log, db, chatService, chatS3, wsHub).WithTickets(authService),
-		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
+		Curator:       curator.NewHandler(cfg, log, curatorService),
 		Admin:         admin.NewHandler(cfg, log, adminService).WithAnalytics(analyticsService),
 		AdminJobs:     admin.NewJobsHandler(scheduler),
 		Support:       support.NewHandler(cfg, log, supportService),

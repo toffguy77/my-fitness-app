@@ -17,6 +17,9 @@ import (
 const (
 	CaptureCuratorOfferChat      = "curator_offer_chat"
 	CaptureCuratorOfferDashboard = "curator_offer_dashboard"
+	// Со страницы тарифов заявку оставляют и гости, и вошедшие. Значение одно:
+	// оператору важно, что человек пришёл со страницы тарифов, а не вошёл ли он.
+	CapturePricingPage = "pricing"
 )
 
 // ErrUnknownCaptureSource: точка захвата не из перечисленных.
@@ -45,7 +48,7 @@ var ErrUnknownCaptureSource = fmt.Errorf("unknown capture source: %w", apperrors
 // это безобиднее блокировки на горячем пути.
 func (s *Service) CreateCuratorRequest(ctx context.Context, userID int64, captureSource string) (*Lead, error) {
 	switch captureSource {
-	case CaptureCuratorOfferChat, CaptureCuratorOfferDashboard:
+	case CaptureCuratorOfferChat, CaptureCuratorOfferDashboard, CapturePricingPage:
 	default:
 		return nil, ErrUnknownCaptureSource
 	}
