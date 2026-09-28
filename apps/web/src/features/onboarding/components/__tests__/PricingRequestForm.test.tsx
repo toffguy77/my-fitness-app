@@ -50,7 +50,24 @@ describe('PricingRequestForm — гость', () => {
     })
 
     it('сохраняет заявку с точкой захвата pricing', async () => {
-        mockGuest.createLead.mockResolvedValue({ token: 't', lead: { id: '1', email: 'a@b.test' } })
+        mockGuest.createLead.mockResolvedValue({
+            token: 't',
+            lead: {
+                id: '1',
+                email: 'a@b.test',
+                // Параметров тела заявка со страницы тарифов не несёт: заявка на
+                // услугу не требует ни роста, ни веса.
+                parameters: {
+                    sex: '',
+                    birth_date: '',
+                    height_cm: null,
+                    weight_kg: null,
+                    activity_level: 'moderate',
+                    goal: 'maintain',
+                },
+                last_step: 'pricing',
+            },
+        })
 
         render(<PricingRequestForm />)
         fireEvent.change(screen.getByLabelText('Электронная почта'), {
