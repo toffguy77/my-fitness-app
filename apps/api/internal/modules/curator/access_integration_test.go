@@ -5,83 +5,179 @@ package curator_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/burcev/api/internal/modules/curator"
-	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/modules/notifications"
+	"github.com/burcev/api/internal/shared/curatoraccess"
+	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/testsupport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Row-level security was switched off by migration 015, so a curator reaching
-// somebody else's client is stopped by the relationship check and nothing else.
-// A mock cannot show that the check is wired into each route's service call —
-// it answers whatever the test tells it to.
-func TestCuratorReachesOnlyTheirOwnClients(t *testing.T) {
-	db := testsupport.SchemaWithMigrations(t, "curator")
+// Прекращение права и предупреждение о нём — против настоящей схемы.
+//
+// Уведомления проверяются по строкам в таблице, а не по подмене: перечисление
+// типов охраняется ограничением базы, и незаявленный тип — отказ вставки, то
+// есть уведомление, которое не придёт никому. Подмена показала бы зелёное
+// именно в этом случае.
+
+type expirySpy struct {
+	events []spiedEvent
+}
+
+type spiedEvent struct {
+	name   string
+	userID int64
+	props  map[string]any
+}
+
+func (s *expirySpy) RecordServerEvent(_ context.Context, name string, userID int64, props map[string]any) {
+	s.events = append(s.events, spiedEvent{name: name, userID: userID, props: props})
+}
+
+type expiryFixture struct {
+	db      *database.DB
+	service *curator.Service
+	spy     *expirySpy
+	curator int64
+	client  int64
+}
+
+func newExpiryFixture(t *testing.T, name string) expiryFixture {
+	t.Helper()
 	ctx := context.Background()
-	service := curator.NewService(db, logger.New(), nil)
+	db := testsupport.SchemaWithMigrations(t, name)
+	log := logger.New()
+	spy := &expirySpy{}
+	service := curator.NewService(db, log, notifications.NewService(db, log)).WithAccessEvents(spy)
 
-	newUser := func(email, role string) int64 {
-		var id int64
-		require.NoError(t, db.QueryRowContext(ctx,
-			`INSERT INTO users (email, password, name, role) VALUES ($1, 'x', $1, $2) RETURNING id`,
-			email, role).Scan(&id))
-		return id
-	}
+	var curatorID, clientID int64
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password, name, role, email_verified)
+		 VALUES ('curator@example.test', 'x', 'Куратор', 'coordinator', true) RETURNING id`).Scan(&curatorID))
+	require.NoError(t, db.QueryRowContext(ctx,
+		`INSERT INTO users (email, password, name, role, email_verified)
+		 VALUES ('client@example.test', 'x', 'Клиент', 'client', true) RETURNING id`).Scan(&clientID))
 
-	mine := newUser("mine-curator@example.test", "coordinator")
-	other := newUser("other-curator@example.test", "coordinator")
-	client := newUser("their-client@example.test", "client")
+	return expiryFixture{db: db, service: service, spy: spy, curator: curatorID, client: clientID}
+}
 
-	_, err := db.ExecContext(ctx,
-		`INSERT INTO curator_client_relationships (curator_id, client_id, status)
-		 VALUES ($1, $2, 'active')`, mine, client)
+// linkUntil выдаёт право со сроком, отсчитанным от сегодняшнего дня.
+func (f expiryFixture) linkUntil(t *testing.T, offsetDays int) {
+	t.Helper()
+	until := curatoraccess.Today().AddDate(0, 0, offsetDays)
+	_, err := f.db.ExecContext(context.Background(),
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status, access_expires_at)
+		 VALUES ($1, $2, 'active', $3)`, f.curator, f.client, until)
+	require.NoError(t, err)
+}
+
+func (f expiryFixture) notificationsOf(t *testing.T, userID int64, kind string) int {
+	t.Helper()
+	var count int
+	require.NoError(t, f.db.QueryRowContext(context.Background(),
+		`SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND type = $2`,
+		userID, kind).Scan(&count))
+	return count
+}
+
+func TestExpireCuratorAccess_СнимаетПросроченное(t *testing.T) {
+	ctx := context.Background()
+	f := newExpiryFixture(t, "curator_expire")
+	f.linkUntil(t, -1)
+
+	count, err := f.service.ExpireCuratorAccess(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+
+	state, err := curatoraccess.Of(ctx, f.db.DB, f.client)
+	require.NoError(t, err)
+	assert.False(t, state.Allowed())
+	assert.Equal(t, curatoraccess.StatusInactive, state.Status,
+		"статус приведён в соответствие с датой: от него зависят десятки запросов о работе куратора")
+}
+
+// Последний день действует целиком: ошибка здесь стоит денег тому, кто заплатил.
+func TestExpireCuratorAccess_ПоследнийДеньНеТрогает(t *testing.T) {
+	ctx := context.Background()
+	f := newExpiryFixture(t, "curator_expire_last_day")
+	f.linkUntil(t, 0)
+
+	count, err := f.service.ExpireCuratorAccess(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, count)
+
+	state, err := curatoraccess.Of(ctx, f.db.DB, f.client)
+	require.NoError(t, err)
+	assert.True(t, state.Allowed())
+}
+
+func TestExpireCuratorAccess_БессрочноеНеТрогает(t *testing.T) {
+	ctx := context.Background()
+	f := newExpiryFixture(t, "curator_expire_perpetual")
+	_, err := f.db.ExecContext(ctx,
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status, access_expires_at)
+		 VALUES ($1, $2, 'active', NULL)`, f.curator, f.client)
 	require.NoError(t, err)
 
-	plan := curator.CreateWeeklyPlanRequest{
-		Calories:  2000,
-		Protein:   150,
-		Fat:       60,
-		Carbs:     200,
-		StartDate: time.Now().Format("2006-01-02"),
-		EndDate:   time.Now().AddDate(0, 0, 7).Format("2006-01-02"),
-	}
+	count, err := f.service.ExpireCuratorAccess(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, count, "служебные учётные записи прогона живут бессрочно")
+}
 
-	t.Run("their own client is reachable", func(t *testing.T) {
-		created, err := service.CreateWeeklyPlan(ctx, mine, client, plan)
-		require.NoError(t, err)
-		require.NotNil(t, created)
+// Молча исчезнувший куратор читается как поломка сервиса, а куратор, не знающий
+// о прекращении, продолжает работу бесплатно.
+func TestExpireCuratorAccess_УведомляетОбеСтороны(t *testing.T) {
+	ctx := context.Background()
+	f := newExpiryFixture(t, "curator_expire_notifies")
+	f.linkUntil(t, -1)
 
-		plans, err := service.GetWeeklyPlans(ctx, mine, client)
-		require.NoError(t, err)
-		assert.Len(t, plans, 1)
-	})
+	_, err := f.service.ExpireCuratorAccess(ctx)
+	require.NoError(t, err)
 
-	t.Run("somebody else's client is not", func(t *testing.T) {
-		_, err := service.CreateWeeklyPlan(ctx, other, client, plan)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden)
+	assert.Equal(t, 1, f.notificationsOf(t, f.client, string(notifications.TypeCuratorAccessEnded)),
+		"клиент должен узнать о прекращении")
+	assert.Equal(t, 1, f.notificationsOf(t, f.curator, string(notifications.TypeCuratorAccessEnded)),
+		"куратор должен узнать о прекращении")
+}
 
-		_, err = service.GetWeeklyPlans(ctx, other, client)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden)
+func TestExpireCuratorAccess_ЗаписываетСобытиеСПричиной(t *testing.T) {
+	ctx := context.Background()
+	f := newExpiryFixture(t, "curator_expire_event")
+	f.linkUntil(t, -1)
 
-		target := 70.0
-		assert.ErrorIs(t, service.SetTargetWeight(ctx, other, client, &target), apperrors.ErrForbidden)
+	_, err := f.service.ExpireCuratorAccess(ctx)
+	require.NoError(t, err)
 
-		_, err = service.GetClientDetail(ctx, other, client, time.Now().Format("2006-01-02"), 7)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden)
-	})
+	require.Len(t, f.spy.events, 1)
+	assert.Equal(t, "curator_access_ended", f.spy.events[0].name)
+	assert.Equal(t, f.client, f.spy.events[0].userID)
+	assert.Equal(t, "expired", f.spy.events[0].props["reason"],
+		"истечение срока и снятие вручную — разные причины оттока")
+}
 
-	t.Run("an ended relationship stops being a key", func(t *testing.T) {
-		_, err := db.ExecContext(ctx,
-			`UPDATE curator_client_relationships SET status = 'inactive'
-			 WHERE curator_id = $1 AND client_id = $2`, mine, client)
-		require.NoError(t, err)
+func TestWarnExpiringCuratorAccess_РовноЗаТриДня(t *testing.T) {
+	ctx := context.Background()
+	f := newExpiryFixture(t, "curator_warn")
+	f.linkUntil(t, 3)
 
-		_, err = service.GetWeeklyPlans(ctx, mine, client)
-		assert.ErrorIs(t, err, apperrors.ErrForbidden,
-			"a curator who no longer works with somebody must lose access to them")
-	})
+	warned, err := f.service.WarnExpiringCuratorAccess(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, warned)
+	assert.Equal(t, 1, f.notificationsOf(t, f.client, string(notifications.TypeCuratorAccessEnding)))
+}
+
+// Ровно за три дня, а не «не позже чем за три»: иначе предупреждение уходило бы
+// каждый день до самого конца срока и перестало бы читаться.
+func TestWarnExpiringCuratorAccess_НеКаждыйДень(t *testing.T) {
+	ctx := context.Background()
+	f := newExpiryFixture(t, "curator_warn_once")
+	f.linkUntil(t, 2)
+
+	warned, err := f.service.WarnExpiringCuratorAccess(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, warned)
+	assert.Zero(t, f.notificationsOf(t, f.client, string(notifications.TypeCuratorAccessEnding)))
 }

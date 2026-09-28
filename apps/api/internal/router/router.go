@@ -30,6 +30,7 @@ import (
 	"github.com/burcev/api/internal/modules/support"
 	"github.com/burcev/api/internal/modules/telegramlink"
 	"github.com/burcev/api/internal/modules/users"
+	"github.com/burcev/api/internal/shared/curatoraccess"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/middleware"
@@ -179,6 +180,30 @@ func registerHealth(engine *gin.Engine, d Deps) {
 			ready = false
 		} else {
 			checks["database"] = "ok"
+		}
+
+		// Права на куратора, оставшиеся действующими при истёкшей дате.
+		//
+		// Истина о праве — статус связи, а меняет его ночная задача. Значит
+		// отказ задачи означает бесплатный платный доступ, и узнать о нём иначе
+		// нечем: история запусков отвечает на вопрос «запускалась ли задача», а
+		// не «остался ли кто-то с истёкшим правом» — задача может завершиться
+		// успешно и пропустить строку.
+		//
+		// Стоит здесь, а не в /health: тот намеренно не трогает ни одной
+		// зависимости, потому что перезапуск контейнера из-за недоступной базы
+		// возвращает его в тот же отказ.
+		//
+		// На готовность не влияет: служба исправна, а вынимать её из балансира
+		// из-за незапустившейся задачи — лечить не то.
+		if overdue, err := curatoraccess.Overdue(c.Request.Context(), d.DB.DB, curatoraccess.Today()); err != nil {
+			checks["curator_access"] = "unknown"
+		} else if overdue > 0 {
+			d.Log.Warn("Curator access past its expiry is still active — the expiry job did not run",
+				"count", overdue)
+			checks["curator_access"] = fmt.Sprintf("overdue: %d", overdue)
+		} else {
+			checks["curator_access"] = "ok"
 		}
 
 		status := http.StatusOK

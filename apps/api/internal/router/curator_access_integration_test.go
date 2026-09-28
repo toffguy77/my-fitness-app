@@ -234,3 +234,33 @@ func TestGetAccess_БезКуратораНеПутаетсяСИстёкшим(
 	assert.Contains(t, w.Body.String(), `"expired":false`,
 		"куратора никогда не было — это предложение купить, а не продлить")
 }
+
+// Несработавшее прекращение обязано быть заметно: истина о праве — статус, а
+// меняет его ночная задача, поэтому её отказ означает бесплатный платный
+// доступ, о котором иначе не узнают.
+func TestReady_СообщаетОПросроченныхПравах(t *testing.T) {
+	f := newAccessFixture(t, "router_ready_overdue")
+	yesterday := curatoraccess.Today().AddDate(0, 0, -1)
+	f.link(t, curatoraccess.StatusActive, &yesterday)
+
+	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
+	w := httptest.NewRecorder()
+	f.engine.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code,
+		"служба исправна: вынимать её из балансира из-за незапустившейся задачи — лечить не то")
+	assert.Contains(t, w.Body.String(), `"curator_access":"overdue: 1"`)
+}
+
+func TestReady_БезПросроченныхПравМолчит(t *testing.T) {
+	f := newAccessFixture(t, "router_ready_clean")
+	future := curatoraccess.Today().AddDate(0, 0, 30)
+	f.link(t, curatoraccess.StatusActive, &future)
+
+	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
+	w := httptest.NewRecorder()
+	f.engine.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"curator_access":"ok"`)
+}

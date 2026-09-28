@@ -114,6 +114,34 @@ func Register(registry *jobs.Registry, d Deps) {
 		},
 	})
 
+	// Прекращение права на работу с куратором. Пять минут после полуночи по
+	// московскому времени: последний оплаченный день кончается по МСК, пояс
+	// объявлен в публичной оферте, и держать право дольше обещанного нельзя.
+	//
+	// Само право сверяет и дату, а не только статус, поэтому задержка запуска
+	// доступа не продлевает. Задача приводит статус в соответствие с датой —
+	// от него зависят десятки запросов о работе куратора с клиентом.
+	registry.MustRegister(jobs.Job{
+		Name:    "curator.expire-access",
+		RunAt:   jobs.At(0, 5),
+		Period:  jobs.PeriodDaily,
+		Timeout: 5 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Curator.ExpireCuratorAccess(ctx)
+		},
+	})
+
+	// Предупреждение об окончании — утром, когда его прочтут, а не ночью.
+	registry.MustRegister(jobs.Job{
+		Name:    "curator.warn-access-ending",
+		RunAt:   jobs.At(10, 0),
+		Period:  jobs.PeriodDaily,
+		Timeout: 5 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Curator.WarnExpiringCuratorAccess(ctx)
+		},
+	})
+
 	// Password reset attempts back the rate limiter. CleanupOldAttempts existed
 	// but nothing called it, so the table grew for the lifetime of the service.
 	registry.MustRegister(jobs.Job{

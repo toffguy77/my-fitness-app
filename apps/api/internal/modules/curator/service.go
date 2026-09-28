@@ -75,6 +75,9 @@ type Service struct {
 	db               *database.DB
 	log              *logger.Logger
 	notificationsSvc *notifications.Service
+	// accessEvents записывает прекращение права на куратора. Необязателен: без
+	// аналитики прекращение работает по-прежнему.
+	accessEvents AccessEventRecorder
 }
 
 // NewService creates a new curator service

@@ -32,6 +32,9 @@ const (
 	EventSignedIn      = "signed_in"
 	EventCuratorAssign = "curator_assigned"
 	EventWeeklyReport  = "weekly_report_submitted"
+	// Прекращение права на куратора — свершившийся факт, и происходит он без
+	// участия браузера вовсе: чаще всего ночью, задачей.
+	EventCuratorAccessEnded = "curator_access_ended"
 
 	// Reaching the point where the product does something for them.
 	EventFirstFoodEntry   = "first_food_entry"
@@ -42,6 +45,11 @@ const (
 	// Support, before there is a curator to ask.
 	EventSupportOpened    = "support_chat_opened"
 	EventSupportEscalated = "support_escalated"
+
+	// Спрос на куратора. Без этих двух решение о цене и о составе платной части
+	// принимается на глаз: сколько людей вообще хочет куратора — неизвестно.
+	EventCuratorOfferShown   = "curator_offer_shown"
+	EventCuratorOfferClicked = "curator_offer_clicked"
 )
 
 // Definition declares one event.
@@ -113,6 +121,13 @@ var Dictionary = map[string]Definition{
 	EventSignedIn:      {Required: []string{"method"}, ServerOnly: true},
 	EventCuratorAssign: {ServerOnly: true},
 	EventWeeklyReport:  {ServerOnly: true},
+	// reason отличает истечение срока от снятия вручную: это разные причины
+	// оттока, и складывать их в одно число нельзя.
+	EventCuratorAccessEnded: {
+		Optional:   []string{"reason"},
+		ServerOnly: true,
+		Values:     map[string][]string{"reason": {"expired", "revoked"}},
+	},
 
 	// Facts too, for the same reason as the group above. Both used to be
 	// decided in the browser by a localStorage key: lost behind a blocker,
@@ -129,6 +144,17 @@ var Dictionary = map[string]Definition{
 
 	EventSupportOpened:    {Optional: []string{"from"}},
 	EventSupportEscalated: {Optional: []string{"reason"}, ServerOnly: true},
+
+	// place — где предложение показано. Значения перечислены: опечатка в
+	// значении дала бы строку, которой не соответствует ни один отчёт.
+	EventCuratorOfferShown: {
+		Required: []string{"place"},
+		Values:   map[string][]string{"place": {"chat", "dashboard"}},
+	},
+	EventCuratorOfferClicked: {
+		Required: []string{"place"},
+		Values:   map[string][]string{"place": {"chat", "dashboard"}},
+	},
 }
 
 // AllEventNames returns every event name in the dictionary, sorted so the
