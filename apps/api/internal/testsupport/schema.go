@@ -44,8 +44,7 @@ func SchemaWithMigrations(t *testing.T, prefix string) *database.DB {
 	// owns it and every other package's search_path cannot see it. Putting it
 	// in public first makes the migration's IF NOT EXISTS a no-op and keeps
 	// gin_trgm_ops reachable from everywhere.
-	_, err = admin.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")
-	require.NoError(t, err)
+	require.NoError(t, ensurePgTrgm(admin))
 
 	schema := fmt.Sprintf("%s_test_%d", prefix, os.Getpid())
 	_, err = admin.Exec(fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema))
@@ -73,4 +72,29 @@ func SchemaWithMigrations(t *testing.T, prefix string) *database.DB {
 	require.NoError(t, database.NewMigrator(db, migrations.FS, logger.New()).
 		Run(context.Background(), 0))
 	return db
+}
+
+// ensurePgTrgm ставит pg_trgm в public, выдерживая одновременную установку.
+//
+// `CREATE EXTENSION IF NOT EXISTS` от гонки не защищает: два пакета,
+// начинающие одновременно, оба проходят проверку существования, и второй
+// получает нарушение уникальности pg_extension_name_index. В CI пакеты идут
+// параллельно, так что это не теория — так падал прогон, когда пакетов,
+// зовущих SchemaWithMigrations, стало на один больше.
+//
+// Поэтому отказ не считается отказом, если расширение на месте: чего мы хотели,
+// то и получилось, безразлично чьими руками.
+func ensurePgTrgm(admin *sql.DB) error {
+	if _, err := admin.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public"); err != nil {
+		var present bool
+		if check := admin.QueryRow(
+			"SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm')",
+		).Scan(&present); check != nil {
+			return fmt.Errorf("установить pg_trgm (%v) и проверить установку: %w", err, check)
+		}
+		if !present {
+			return fmt.Errorf("установить pg_trgm: %w", err)
+		}
+	}
+	return nil
 }
