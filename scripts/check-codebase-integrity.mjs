@@ -10,6 +10,7 @@
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, extname, basename, relative } from 'node:path'
+import ts from 'typescript'
 
 const problems = []
 
@@ -429,6 +430,241 @@ for (const name of [...readByServer].sort()) {
     )
 }
 
+// ---------------------------------------------------------------------------
+// Свойства события сверяются с его объявлением
+// ---------------------------------------------------------------------------
+//
+// Свойство, не объявленное для имени события, отвергается сервером — и до
+// 2026-09-27 уносило с собой весь пакет. Так умерли два события, каждое с нуля
+// и навсегда: `first_food_entry` слал `meal_type` при объявленном `method`, а
+// `lead_saved` — `capture_source`, добавленный в таблицу, в службу и в
+// клиентский вызов, но не в словарь. Ноль событий в отчёте выглядел ровно как
+// «этого никто не делал», и оба раза вывод звучал бы уверенно.
+//
+// Разбор идёт по дереву TypeScript, а не регуляркой: свойства пишут и
+// `{ step: NAMES[step] ?? 'unknown' }`, и с переносами, и регулярка на таком
+// ошибается. Сторож, который врёт, отключают.
+
+/** Тело объявления события из dictionary.go — от `{` до парной `}`. */
+function definitionBody(source, startIndex) {
+    let depth = 0
+    for (let i = startIndex; i < source.length; i++) {
+        if (source[i] === '{') depth++
+        else if (source[i] === '}') {
+            depth--
+            if (depth === 0) return source.slice(startIndex + 1, i)
+        }
+    }
+    return ''
+}
+
+/** Объявления из dictionary.go: какие свойства у имени разрешены и с чем. */
+function parseDefinitions(goSource, constants) {
+    const byName = new Map()
+    for (const [name, constant] of constants) {
+        const at = goSource.indexOf(`${constant}:`)
+        if (at === -1) continue
+        const brace = goSource.indexOf('{', at)
+        if (brace === -1) continue
+        const body = definitionBody(goSource, brace)
+
+        const list = (label) => {
+            const m = body.match(new RegExp(`${label}:\\s*\\[\\]string\\{([^}]*)\\}`))
+            return m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : []
+        }
+
+        const values = {}
+        const valuesAt = body.indexOf('Values:')
+        if (valuesAt !== -1) {
+            const mapBrace = body.indexOf('{', body.indexOf('string', valuesAt))
+            const mapBody = definitionBody(body, mapBrace)
+            for (const entry of mapBody.matchAll(/"([^"]+)":\s*\{([^}]*)\}/g)) {
+                values[entry[1]] = [...entry[2].matchAll(/"([^"]+)"/g)].map((x) => x[1])
+            }
+        }
+
+        byName.set(name, {
+            required: list('Required'),
+            optional: list('Optional'),
+            values,
+            serverOnly: /ServerOnly:\s*true/.test(body),
+        })
+    }
+    return byName
+}
+
+const definitions = parseDefinitions(goDictionary, declaredEventConstants)
+
+/** Ключ словаря клиента (`leadSaved`) → имя события (`lead_saved`). */
+const eventByKey = new Map([...tsNames].map(([name, key]) => [key, name]))
+
+/**
+ * Обёртка, чья динамичность — её назначение: она принимает имя и свойства
+ * снаружи и передаёт дальше. Единственное исключение, и оно по имени файла, а
+ * не по форме вызова.
+ */
+const WRAPPER = join('apps', 'web', 'src', 'shared', 'analytics', 'AnalyticsProvider.tsx')
+
+/** Имя события из выражения `EVENTS.leadSaved`, иначе null. */
+function eventNameOf(node) {
+    if (!node || !ts.isPropertyAccessExpression(node)) return null
+    if (!ts.isIdentifier(node.expression) || node.expression.text !== 'EVENTS') return null
+    return eventByKey.get(node.name.text) ?? null
+}
+
+/**
+ * Свойства объектного литерала: ключ и, когда значение — литерал, его текст.
+ * `null` означает, что разобрать не удалось, — и это отдельный отказ, а не
+ * молчаливый пропуск.
+ */
+function propertiesOf(node) {
+    if (node === undefined) return new Map()
+    if (!ts.isObjectLiteralExpression(node)) return null
+
+    const found = new Map()
+    for (const property of node.properties) {
+        if (ts.isSpreadAssignment(property)) return null
+        if (!property.name) return null
+        const key = ts.isIdentifier(property.name)
+            ? property.name.text
+            : ts.isStringLiteral(property.name)
+              ? property.name.text
+              : null
+        if (key === null) return null
+
+        let literal = null
+        if (ts.isPropertyAssignment(property)) {
+            const value = property.initializer
+            if (ts.isStringLiteral(value)) literal = value.text
+            else if (ts.isNumericLiteral(value)) literal = value.text
+            else if (value.kind === ts.SyntaxKind.TrueKeyword) literal = 'true'
+            else if (value.kind === ts.SyntaxKind.FalseKeyword) literal = 'false'
+        }
+        found.set(key, literal)
+    }
+    return found
+}
+
+/** Сверяет один разобранный вызов с объявлением. */
+function checkCallSite(file, line, eventName, properties) {
+    const definition = definitions.get(eventName)
+    if (!definition) return
+
+    if (definition.serverOnly) {
+        problems.push(
+            `Серверный факт отправляется из браузера: ${eventName} в ${file}:${line}\n` +
+                `  Такое событие сервер отвергает, и в воронке на его месте дыра.\n` +
+                `  Факт записывает та служба, где действие произошло.`,
+        )
+        return
+    }
+
+    const allowed = new Set([...definition.required, ...definition.optional])
+    for (const [key, literal] of properties) {
+        if (!allowed.has(key)) {
+            problems.push(
+                `Свойство не объявлено для события: ${key} у ${eventName} в ${file}:${line}\n` +
+                    `  Сервер отвергнет это событие, и ноль в отчёте будет неотличим\n` +
+                    `  от «этого никто не делал». Объявите свойство в dictionary.go\n` +
+                    `  или уберите его из вызова.`,
+            )
+            continue
+        }
+        const constrained = definition.values[key]
+        if (constrained && literal !== null && !constrained.includes(literal)) {
+            problems.push(
+                `Значение вне объявленного набора: ${key}="${literal}" у ${eventName} в ${file}:${line}\n` +
+                    `  Объявлено: ${constrained.join(', ')}.\n` +
+                    `  Сервер отвергнет событие, а опечатка в значении дала бы строку,\n` +
+                    `  по которой не сойдётся ни один запрос.`,
+            )
+        }
+    }
+
+    for (const key of definition.required) {
+        if (!properties.has(key)) {
+            problems.push(
+                `Обязательное свойство отсутствует: ${key} у ${eventName} в ${file}:${line}\n` +
+                    `  Сервер отвергнет событие целиком.`,
+            )
+        }
+    }
+}
+
+// Считается и печатается в итоге: «проверка прошла» и «проверка ничего не
+// нашла» выглядят одинаково, и отличить их можно только числом.
+let checkedCallSites = 0
+
+for (const file of walk('apps/web/src', (f) => /\.tsx?$/.test(f) && !f.includes('__tests__'))) {
+    if (file.endsWith(WRAPPER) || file.endsWith('AnalyticsProvider.tsx')) continue
+    const text = readScanned(file)
+    if (!text.includes('track(') && !text.includes('TrackView')) continue
+
+    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    const where = (node) => source.getLineAndCharacterOfPosition(node.getStart()).line + 1
+    const shown = relative(process.cwd(), file)
+
+    const unresolved = (node, what) =>
+        problems.push(
+            `Отправку события не удалось разобрать: ${shown}:${where(node)}\n` +
+                `  ${what}\n` +
+                `  Сверить такой вызов со словарём нельзя, а несверенный вызов — это\n` +
+                `  ровно та слепота, из-за которой два события не приходили ни разу.\n` +
+                `  Запишите имя и свойства литералами.`,
+        )
+
+    const visit = (node) => {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'track') {
+            const name = eventNameOf(node.arguments[0])
+            if (name === null) unresolved(node, 'Имя события не записано как EVENTS.<ключ>.')
+            else {
+                const properties = propertiesOf(node.arguments[1])
+                if (properties === null) unresolved(node, 'Свойства заданы не объектным литералом.')
+                else {
+                    checkedCallSites++
+                    checkCallSite(shown, where(node), name, properties)
+                }
+            }
+        }
+
+        if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
+            const tag = node.tagName.getText()
+            if (tag === 'TrackView') {
+                const attribute = (wanted) =>
+                    node.attributes.properties.find(
+                        (a) => ts.isJsxAttribute(a) && a.name.getText() === wanted,
+                    )
+                const eventAttribute = attribute('event')
+                const expression =
+                    eventAttribute && eventAttribute.initializer && ts.isJsxExpression(eventAttribute.initializer)
+                        ? eventAttribute.initializer.expression
+                        : undefined
+                const name = eventNameOf(expression)
+                if (name === null) unresolved(node, 'Имя события не записано как EVENTS.<ключ>.')
+                else {
+                    const propertiesAttribute = attribute('properties')
+                    const propertiesExpression =
+                        propertiesAttribute &&
+                        propertiesAttribute.initializer &&
+                        ts.isJsxExpression(propertiesAttribute.initializer)
+                            ? propertiesAttribute.initializer.expression
+                            : undefined
+                    const properties = propertiesOf(propertiesExpression)
+                    if (properties === null) unresolved(node, 'Свойства заданы не объектным литералом.')
+                    else {
+                        checkedCallSites++
+                        checkCallSite(shown, where(node), name, properties)
+                    }
+                }
+            }
+        }
+
+        node.forEachChild(visit)
+    }
+
+    visit(source)
+}
+
 if (problems.length > 0) {
     console.error('Codebase integrity check failed:\n')
     for (const p of problems) console.error(p + '\n')
@@ -441,5 +677,6 @@ console.log(
         `${appPages.length} app files free of fixture data, ` +
         `${specFiles.length} e2e specs all in a project, ` +
         `${declaredEvents.length} analytics events all sent, ` +
+        `${checkedCallSites} track() call sites match the dictionary, ` +
             `${readByServer.size} server env vars all forwarded by compose.`,
 )
