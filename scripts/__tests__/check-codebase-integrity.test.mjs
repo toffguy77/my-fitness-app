@@ -177,3 +177,123 @@ test('комментарий, объясняющий прежний дефект
         },
     )
 })
+
+// --- Свойства события сверяются с его объявлением -----------------------------
+//
+// Свойство, не объявленное для имени события, сервер отвергает — и до
+// 2026-09-27 уносило с собой весь пакет. Так умерли два события, каждое с нуля
+// и навсегда: `first_food_entry` слал `meal_type` при объявленном `method`, а
+// `lead_saved` — `capture_source`, добавленный в таблицу, в службу и в
+// клиентский вызов, но не в словарь. Ноль в отчёте выглядел ровно как «этого
+// никто не делал».
+
+const ANALYTICS_FIXTURE = 'apps/web/src/features/food-tracker/__integrity_fixture__'
+
+test('необъявленное свойство ломает сборку и называет место', () => {
+    withFixture(
+        ANALYTICS_FIXTURE,
+        'sender.tsx',
+        "'use client'\n" +
+            "import { EVENTS, track } from '@/shared/analytics'\n" +
+            'export function Sender() {\n' +
+            "    track(EVENTS.supportOpened, { from: 'no_lead', meal_type: 'breakfast' })\n" +
+            '    return null\n' +
+            '}\n',
+        ({ status, out }) => {
+            assert.equal(status, 1, out)
+            assert.match(out, /Свойство не объявлено для события: meal_type у support_chat_opened/)
+            assert.match(out, /__integrity_fixture__\/sender\.tsx:4/)
+        },
+    )
+})
+
+test('отсутствие обязательного свойства ломает сборку', () => {
+    withFixture(
+        ANALYTICS_FIXTURE,
+        'sender.tsx',
+        "'use client'\n" +
+            "import { EVENTS, track } from '@/shared/analytics'\n" +
+            'export function Sender() {\n' +
+            '    track(EVENTS.contactCaptured)\n' +
+            '    return null\n' +
+            '}\n',
+        ({ status, out }) => {
+            assert.equal(status, 1, out)
+            assert.match(out, /Обязательное свойство отсутствует: source у contact_captured/)
+        },
+    )
+})
+
+test('значение вне объявленного набора ломает сборку и перечисляет допустимые', () => {
+    withFixture(
+        ANALYTICS_FIXTURE,
+        'sender.tsx',
+        "'use client'\n" +
+            "import { EVENTS, track } from '@/shared/analytics'\n" +
+            'export function Sender() {\n' +
+            "    track(EVENTS.leadSaved, { capture_source: 'результат' })\n" +
+            '    return null\n' +
+            '}\n',
+        ({ status, out }) => {
+            assert.equal(status, 1, out)
+            assert.match(out, /Значение вне объявленного набора: capture_source="результат"/)
+            assert.match(out, /result, contact_step, bot/)
+        },
+    )
+})
+
+// Несверенный вызов — это ровно та слепота, из-за которой два события не
+// приходили ни разу. Поэтому он отказ, а не молчаливый пропуск.
+test('неразбираемый вызов ломает сборку, а не пропускается', () => {
+    withFixture(
+        ANALYTICS_FIXTURE,
+        'sender.tsx',
+        "'use client'\n" +
+            "import { EVENTS, track } from '@/shared/analytics'\n" +
+            'export function Sender({ extra }: { extra: Record<string, string> }) {\n' +
+            "    track(EVENTS.supportOpened, { from: 'no_lead', ...extra })\n" +
+            '    return null\n' +
+            '}\n',
+        ({ status, out }) => {
+            assert.equal(status, 1, out)
+            assert.match(out, /Отправку события не удалось разобрать/)
+            assert.match(out, /Свойства заданы не объектным литералом/)
+        },
+    )
+})
+
+// Серверный факт браузер отправить не может: его отвергнут на входе.
+test('отправка серверного факта из браузера ломает сборку', () => {
+    withFixture(
+        ANALYTICS_FIXTURE,
+        'sender.tsx',
+        "'use client'\n" +
+            "import { track } from '@/shared/analytics'\n" +
+            'export function Sender() {\n' +
+            "    track({ first: 'first_food_entry' }.first)\n" +
+            '    return null\n' +
+            '}\n',
+        ({ status, out }) => {
+            assert.equal(status, 1, out)
+            assert.match(out, /Отправку события не удалось разобрать/)
+        },
+    )
+})
+
+// Годный вызов проходит — иначе сторож ловил бы всё подряд и его бы отключили.
+test('правильный вызов сборку не ломает', () => {
+    withFixture(
+        ANALYTICS_FIXTURE,
+        'sender.tsx',
+        "'use client'\n" +
+            "import { EVENTS, track } from '@/shared/analytics'\n" +
+            'export function Sender() {\n' +
+            "    track(EVENTS.leadSaved, { contact_consent: true, capture_source: 'contact_step' })\n" +
+            "    track(EVENTS.magicLinkRequested)\n" +
+            '    return null\n' +
+            '}\n',
+        ({ status, out }) => {
+            assert.equal(status, 0, out)
+        },
+    )
+})
