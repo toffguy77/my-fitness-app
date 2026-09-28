@@ -352,9 +352,9 @@ func TestAssignCurator(t *testing.T) {
 		ctx := context.Background()
 
 		// Verify client
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(100)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "live@example.test"))
 
 		// Verify curator
 		mock.ExpectQuery("SELECT role FROM users WHERE id").
@@ -368,7 +368,7 @@ func TestAssignCurator(t *testing.T) {
 
 		// Create new relationship
 		mock.ExpectExec("INSERT INTO curator_client_relationships").
-			WithArgs(int64(10), int64(100)).
+			WithArgs(int64(10), int64(100), assignUntil).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		// Create conversation
@@ -376,7 +376,7 @@ func TestAssignCurator(t *testing.T) {
 			WithArgs(int64(100), int64(10)).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
-		err := service.AssignCurator(ctx, 100, 10)
+		err := service.AssignCurator(ctx, 100, 10, &assignUntil)
 		assert.NoError(t, err)
 	})
 
@@ -385,11 +385,11 @@ func TestAssignCurator(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(999)).
 			WillReturnError(sql.ErrNoRows)
 
-		err := service.AssignCurator(ctx, 999, 10)
+		err := service.AssignCurator(ctx, 999, 10, &assignUntil)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 	})
@@ -399,15 +399,15 @@ func TestAssignCurator(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(100)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "live@example.test"))
 
 		mock.ExpectQuery("SELECT role FROM users WHERE id").
 			WithArgs(int64(999)).
 			WillReturnError(sql.ErrNoRows)
 
-		err := service.AssignCurator(ctx, 100, 999)
+		err := service.AssignCurator(ctx, 100, 999, &assignUntil)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, apperrors.ErrNotFound))
 	})
@@ -417,11 +417,11 @@ func TestAssignCurator(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(100)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("coordinator"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("coordinator", "live@example.test"))
 
-		err := service.AssignCurator(ctx, 100, 10)
+		err := service.AssignCurator(ctx, 100, 10, &assignUntil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not a client")
 	})
@@ -431,19 +431,63 @@ func TestAssignCurator(t *testing.T) {
 		defer cleanup()
 		ctx := context.Background()
 
-		mock.ExpectQuery("SELECT role FROM users WHERE id").
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
 			WithArgs(int64(100)).
-			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "live@example.test"))
 
 		mock.ExpectQuery("SELECT role FROM users WHERE id").
 			WithArgs(int64(10)).
 			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("client"))
 
-		err := service.AssignCurator(ctx, 100, 10)
+		err := service.AssignCurator(ctx, 100, 10, &assignUntil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not a coordinator")
 	})
+
+	// Бессрочное право у живого человека неотличимо от забытой даты: оно не
+	// кончается никогда и никому об этом не сообщает.
+	t.Run("живому клиенту без даты окончания отказ", func(t *testing.T) {
+		service, mock, _, cleanup := setupTestService(t)
+		defer cleanup()
+		ctx := context.Background()
+
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
+			WithArgs(int64(100)).
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "live@example.test"))
+
+		err := service.AssignCurator(ctx, 100, 10, nil)
+		assert.True(t, errors.Is(err, ErrAccessExpiryRequired))
+	})
+
+	// Служебные учётные записи прогона остаются бессрочными: без них набор
+	// сквозных проверок упёрся бы в собственный платный доступ.
+	t.Run("служебной учётке без даты окончания можно", func(t *testing.T) {
+		service, mock, _, cleanup := setupTestService(t)
+		defer cleanup()
+		ctx := context.Background()
+
+		mock.ExpectQuery("SELECT role, email FROM users WHERE id").
+			WithArgs(int64(100)).
+			WillReturnRows(sqlmock.NewRows([]string{"role", "email"}).AddRow("client", "e2e-client@burcev.team"))
+		mock.ExpectQuery("SELECT role FROM users WHERE id").
+			WithArgs(int64(10)).
+			WillReturnRows(sqlmock.NewRows([]string{"role"}).AddRow("coordinator"))
+		mock.ExpectExec("UPDATE curator_client_relationships SET status").
+			WithArgs(int64(100)).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+		mock.ExpectExec("INSERT INTO curator_client_relationships").
+			WithArgs(int64(10), int64(100), nil).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO conversations").
+			WithArgs(int64(100), int64(10)).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		assert.NoError(t, service.AssignCurator(ctx, 100, 10, nil))
+	})
 }
+
+// assignUntil — предельная дата, с которой идут подслучаи выдачи.
+var assignUntil = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
 
 func TestGetConversations(t *testing.T) {
 	t.Run("returns conversation list", func(t *testing.T) {

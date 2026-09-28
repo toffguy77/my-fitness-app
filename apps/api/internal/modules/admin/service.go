@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/burcev/api/internal/shared/apperrors"
+	"github.com/burcev/api/internal/shared/curatoraccess"
 	"github.com/burcev/api/internal/shared/curators"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
@@ -30,7 +31,9 @@ type ServiceInterface interface {
 	GetUser(ctx context.Context, userID int64) (*AdminUser, error)
 	GetCurators(ctx context.Context) ([]CuratorLoad, error)
 	ChangeRole(ctx context.Context, userID int64, newRole string) error
-	AssignCurator(ctx context.Context, clientID, curatorID int64) error
+	AssignCurator(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error
+	SetCuratorAccessExpiry(ctx context.Context, clientID int64, expiresAt time.Time) error
+	RevokeCuratorAccess(ctx context.Context, clientID int64) error
 	GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error)
 	GetConversationMessages(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error)
 }
@@ -171,6 +174,7 @@ func (s *Service) GetUser(ctx context.Context, userID int64) (*AdminUser, error)
 		       COALESCE(u.avatar_url, '') AS avatar_url,
 		       COALESCE(curator.name, '') AS curator_name,
 		       ccr_client.curator_id,
+		       ccr_client.access_expires_at,
 		       COALESCE(client_counts.cnt, 0) AS client_count,
 		       u.created_at,
 		       (SELECT MAX(rt.created_at) FROM refresh_tokens rt WHERE rt.user_id = u.id) AS last_login
@@ -191,11 +195,12 @@ func (s *Service) GetUser(ctx context.Context, userID int64) (*AdminUser, error)
 	var u AdminUser
 	var curatorName sql.NullString
 	var curatorID sql.NullInt64
+	var accessExpires sql.NullTime
 	var lastLogin sql.NullTime
 
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&u.ID, &u.Email, &u.Name, &u.Role, &u.AvatarURL,
-		&curatorName, &curatorID, &u.ClientCount, &u.CreatedAt, &lastLogin,
+		&curatorName, &curatorID, &accessExpires, &u.ClientCount, &u.CreatedAt, &lastLogin,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("user not found: %w", apperrors.ErrNotFound)
@@ -209,6 +214,9 @@ func (s *Service) GetUser(ctx context.Context, userID int64) (*AdminUser, error)
 	}
 	if curatorID.Valid {
 		u.CuratorID = &curatorID.Int64
+	}
+	if accessExpires.Valid {
+		u.CuratorAccessExpiresAt = accessExpires.Time.Format(time.DateOnly)
 	}
 	if lastLogin.Valid {
 		u.LastLoginAt = &lastLogin.Time
@@ -518,13 +526,30 @@ func (s *Service) demoteCurator(ctx context.Context, curatorID int64) error {
 	return nil
 }
 
+// ErrAccessExpiryRequired: выдать живому клиенту бессрочное право нельзя.
+//
+// Бессрочное право у живого человека неотличимо от забытой даты: оно не
+// кончается никогда и никому об этом не сообщает. Бессрочными остаются только
+// служебные учётные записи прогона — без них набор сквозных проверок упёрся бы
+// в собственный платный доступ.
+var ErrAccessExpiryRequired = fmt.Errorf("access expiry date is required for a live client: %w", apperrors.ErrValidation)
+
+// ErrNoActiveAccess: продлевать или снимать нечего — действующей связи нет.
+var ErrNoActiveAccess = fmt.Errorf("client has no active curator relationship: %w", apperrors.ErrNotFound)
+
 // AssignCurator creates a new curator-client relationship and conversation
-func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) error {
+//
+// expiresAt — последний день действия права; nil означает бессрочно и допустим
+// только для служебных учётных записей.
+func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error {
 	startTime := time.Now()
 
 	// Verify client exists and is a client
-	var clientRole string
-	err := s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = $1`, clientID).Scan(&clientRole)
+	var (
+		clientRole  string
+		clientEmail string
+	)
+	err := s.db.QueryRowContext(ctx, `SELECT role, email FROM users WHERE id = $1`, clientID).Scan(&clientRole, &clientEmail)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("AssignCurator.client: %w", apperrors.ErrNotFound)
@@ -533,6 +558,9 @@ func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) 
 	}
 	if clientRole != "client" {
 		return fmt.Errorf("user %d is not a client (role: %s)", clientID, clientRole)
+	}
+	if expiresAt == nil && !testaccounts.IsTest(clientEmail) {
+		return ErrAccessExpiryRequired
 	}
 
 	// Verify curator exists and is a coordinator
@@ -558,11 +586,19 @@ func (s *Service) AssignCurator(ctx context.Context, clientID, curatorID int64) 
 	}
 
 	// Create new relationship
+	//
+	// Повторная выдача тому же куратору обновляет ту же строку, а не заводит
+	// новую: тогда прежняя переписка и её история остаются на месте.
+	var expiry any
+	if expiresAt != nil {
+		expiry = curatoraccess.DateOf(*expiresAt)
+	}
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO curator_client_relationships (curator_id, client_id, status)
-		VALUES ($1, $2, 'active')
-		ON CONFLICT (curator_id, client_id) DO UPDATE SET status = 'active'
-	`, curatorID, clientID)
+		INSERT INTO curator_client_relationships (curator_id, client_id, status, access_expires_at)
+		VALUES ($1, $2, 'active', $3)
+		ON CONFLICT (curator_id, client_id)
+		DO UPDATE SET status = 'active', access_expires_at = $3, updated_at = now()
+	`, curatorID, clientID, expiry)
 	if err != nil {
 		return fmt.Errorf("failed to create relationship: %w", err)
 	}
@@ -738,4 +774,58 @@ func (s *Service) GetConversationMessages(ctx context.Context, conversationID st
 	}
 
 	return messages, nil
+}
+
+// SetCuratorAccessExpiry продлевает право: меняет предельную дату действующей
+// связи, не трогая ни куратора, ни переписку.
+//
+// Отдельная операция, а не повторное назначение: назначение выбирает куратора,
+// а продление к выбору куратора отношения не имеет, и повторное назначение
+// «того же» куратора требовало бы от администратора помнить, кто это был.
+func (s *Service) SetCuratorAccessExpiry(ctx context.Context, clientID int64, expiresAt time.Time) error {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE curator_client_relationships
+		   SET access_expires_at = $2, updated_at = now()
+		 WHERE client_id = $1 AND status = 'active'`, clientID, curatoraccess.DateOf(expiresAt))
+	if err != nil {
+		return fmt.Errorf("продлить право на куратора: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("продлить право на куратора: %w", err)
+	}
+	if affected == 0 {
+		return ErrNoActiveAccess
+	}
+
+	s.log.LogBusinessEvent("curator_access_extended", map[string]interface{}{
+		"client_id":  clientID,
+		"expires_at": curatoraccess.DateOf(expiresAt).Format(time.DateOnly),
+	})
+	return nil
+}
+
+// RevokeCuratorAccess снимает право немедленно — возврат денег, ошибка выдачи,
+// решение владельца.
+//
+// Переписка не удаляется: написанное человеком не становится недоступным ему
+// из-за окончания оплаты, запрещается только запись.
+func (s *Service) RevokeCuratorAccess(ctx context.Context, clientID int64) error {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE curator_client_relationships
+		   SET status = 'inactive', updated_at = now()
+		 WHERE client_id = $1 AND status = 'active'`, clientID)
+	if err != nil {
+		return fmt.Errorf("снять право на куратора: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("снять право на куратора: %w", err)
+	}
+	if affected == 0 {
+		return ErrNoActiveAccess
+	}
+
+	s.log.LogBusinessEvent("curator_access_revoked", map[string]interface{}{"client_id": clientID})
+	return nil
 }

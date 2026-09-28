@@ -20,8 +20,23 @@ export const adminApi = {
     changeRole: (userId: number, role: string) =>
         apiClient.post<void>(`${BASE}/users/${userId}/role`, { role }),
 
-    assignCurator: (clientId: number, curatorId: number) =>
-        apiClient.post<void>(`${BASE}/assignments`, { client_id: clientId, curator_id: curatorId }),
+    // accessExpiresAt обязателен для живого клиента: сервер отвергает выдачу
+    // без даты, потому что бессрочное право неотличимо от забытой даты.
+    assignCurator: (clientId: number, curatorId: number, accessExpiresAt: string) =>
+        apiClient.post<void>(`${BASE}/assignments`, {
+            client_id: clientId,
+            curator_id: curatorId,
+            access_expires_at: accessExpiresAt,
+        }),
+
+    // Продление меняет только дату: куратор и переписка сохраняются.
+    setCuratorAccessExpiry: (clientId: number, accessExpiresAt: string) =>
+        apiClient.put<void>(`${BASE}/assignments/${clientId}/expiry`, {
+            access_expires_at: accessExpiresAt,
+        }),
+
+    revokeCuratorAccess: (clientId: number) =>
+        apiClient.delete<void>(`${BASE}/assignments/${clientId}`),
 
     // Paginated: the list joins an aggregate over every message ever sent, so
     // an unbounded version gets slower with every conversation the product has.

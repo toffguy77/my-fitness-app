@@ -22,6 +22,23 @@ export interface UserDetailProps {
     userId: number
 }
 
+/** Месяц вперёд — то, что продаётся; вводится как ГГГГ-ММ-ДД. */
+function defaultAccessUntil(): string {
+    const day = new Date()
+    day.setDate(day.getDate() + 30)
+    return day.toISOString().slice(0, 10)
+}
+
+/**
+ * Три состояния называются прямо. Бессрочное право у живого клиента — признак
+ * ошибки выдачи, и молчание о нём скрыло бы именно её.
+ */
+function accessSummary(user: AdminUser): string {
+    if (!user.curator_id) return t('admin.user.accessNone')
+    if (!user.curator_access_expires_at) return t('admin.user.accessPerpetual')
+    return t('admin.user.accessUntil', { date: user.curator_access_expires_at })
+}
+
 export function UserDetail({ userId }: UserDetailProps) {
     const router = useRouter()
     const [user, setUser] = useState<AdminUser | null>(null)
@@ -30,6 +47,10 @@ export function UserDetail({ userId }: UserDetailProps) {
     const [error, setError] = useState<string | null>(null)
     const { confirm, dialog } = useConfirm()
     const [actionLoading, setActionLoading] = useState(false)
+    // Дата по умолчанию — месяц вперёд: месячный срок и есть то, что продаётся.
+    // Поле обязательно: сервер отвергает выдачу без даты, потому что бессрочное
+    // право у живого клиента неотличимо от забытой даты.
+    const [accessUntil, setAccessUntil] = useState(defaultAccessUntil)
 
     useEffect(() => {
         Promise.all([
@@ -84,10 +105,14 @@ export function UserDetail({ userId }: UserDetailProps) {
 
     const handleAssignCurator = async (curatorId: number) => {
         if (!user) return
+        if (!accessUntil) {
+            toast.error(t('admin.user.accessDateRequired'))
+            return
+        }
 
         setActionLoading(true)
         try {
-            await adminApi.assignCurator(user.id, curatorId)
+            await adminApi.assignCurator(user.id, curatorId, accessUntil)
             toast.success(t('admin.user.curatorAssigned'))
             // Refresh data
             setUser(await adminApi.getUser(userId))
@@ -96,6 +121,49 @@ export function UserDetail({ userId }: UserDetailProps) {
         } finally {
             setActionLoading(false)
         }
+    }
+
+    // Продление меняет только дату: куратор и переписка сохраняются, поэтому это
+    // отдельная операция, а не повторное назначение того же куратора.
+    const handleExtendAccess = async () => {
+        if (!user) return
+        if (!accessUntil) {
+            toast.error(t('admin.user.accessDateRequired'))
+            return
+        }
+
+        setActionLoading(true)
+        try {
+            await adminApi.setCuratorAccessExpiry(user.id, accessUntil)
+            toast.success(t('admin.user.accessExtended'))
+            setUser(await adminApi.getUser(userId))
+        } catch (err) {
+            toast.error(messageForOr(err, t('admin.user.accessExtendFailed')))
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleRevokeAccess = () => {
+        if (!user) return
+
+        confirm({
+            title: t('admin.user.accessRevokeTitle'),
+            description: t('admin.user.accessRevokeConfirm'),
+            confirmLabel: t('admin.user.accessRevokeAction'),
+            onConfirm: async () => {
+                setActionLoading(true)
+                try {
+                    await adminApi.revokeCuratorAccess(user.id)
+                    toast.success(t('admin.user.accessRevoked'))
+                    setUser(await adminApi.getUser(userId))
+                } catch (err) {
+                    toast.error(messageForOr(err, t('admin.user.accessRevokeFailed')))
+                } finally {
+                    setActionLoading(false)
+                }
+            },
+        })
     }
 
     if (loading) {
@@ -210,6 +278,45 @@ export function UserDetail({ userId }: UserDetailProps) {
                             {t('admin.roles.coordinator')}
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* Доступ к куратору — платная услуга, поэтому срок виден всегда */}
+            {user.role === 'client' && (
+                <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100 space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-900">{t('admin.user.accessTitle')}</h3>
+                    <p className="text-sm text-gray-600">{accessSummary(user)}</p>
+
+                    <label className="block space-y-1">
+                        <span className="text-xs font-medium text-gray-500">{t('admin.user.accessDateLabel')}</span>
+                        <input
+                            type="date"
+                            value={accessUntil}
+                            onChange={(e) => setAccessUntil(e.target.value)}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                        />
+                    </label>
+
+                    {user.curator_id && (
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                disabled={actionLoading}
+                                onClick={handleExtendAccess}
+                                className="flex-1 rounded-lg bg-blue-100 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-200 disabled:opacity-50"
+                            >
+                                {t('admin.user.accessExtend')}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={actionLoading}
+                                onClick={handleRevokeAccess}
+                                className="flex-1 rounded-lg bg-red-100 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+                            >
+                                {t('admin.user.accessRevoke')}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 

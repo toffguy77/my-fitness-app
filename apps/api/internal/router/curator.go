@@ -61,6 +61,11 @@ func registerAdminRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/curators", d.Admin.GetCurators)
 	g.POST("/users/:id/role", d.Admin.ChangeRole)
 	g.POST("/assignments", d.Admin.AssignCurator)
+	// Продление меняет только дату, снятие — только статус. Обе операции
+	// сохраняют переписку: написанное человеком не становится недоступным ему
+	// из-за окончания оплаты.
+	g.PUT("/assignments/:id/expiry", d.Admin.SetCuratorAccessExpiry)
+	g.DELETE("/assignments/:id", d.Admin.RevokeCuratorAccess)
 	g.GET("/conversations", d.Admin.GetConversations)
 	g.GET("/conversations/:id/messages", d.Admin.GetConversationMessages)
 

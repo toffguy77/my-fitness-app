@@ -92,6 +92,10 @@ var protectedRoutes = map[string]protection{
 
 	// Privileged roles that are meant to see other users' data.
 	"GET /api/v1/admin/conversations/:id/messages": protRole,
+	// Выдача и снятие права на куратора: роль super_admin по устройству видит
+	// чужие учётные записи.
+	"PUT /api/v1/admin/assignments/:id/expiry": protRole,
+	"DELETE /api/v1/admin/assignments/:id":     protRole,
 	// :name is a job identifier from a fixed registry, not another user's
 	// resource, and the group already requires super_admin.
 	"POST /api/v1/admin/jobs/:name/run":           protRole,
