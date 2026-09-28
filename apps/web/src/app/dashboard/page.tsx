@@ -237,6 +237,7 @@ export default function DashboardPage() {
                 <ErrorBoundary variant="inline" label="dashboard-curator-card">
                     <CuratorCard
                         curator={onboarding.state?.curator ?? null}
+                        access={onboarding.state?.curator_access}
                         isLoading={onboarding.isLoading}
                         hasError={onboarding.hasError}
                         onRetry={onboarding.reload}

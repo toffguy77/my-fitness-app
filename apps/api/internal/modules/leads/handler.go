@@ -27,6 +27,52 @@ func NewHandler(service *Service, log *logger.Logger) *Handler {
 }
 
 // Create handles POST /api/v1/public/leads.
+// CuratorRequestInput — откуда пришла заявка на куратора.
+type CuratorRequestInput struct {
+	CaptureSource string `json:"capture_source" binding:"required"`
+}
+
+// CreateCuratorRequest handles POST /api/v1/leads/curator-request
+//
+// Адрес не принимается телом: человек вошёл, и его учётная запись — источник
+// правдивее всего, что он наберёт заново.
+func (h *Handler) CreateCuratorRequest(c *gin.Context) {
+	userIDValue, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+	userID, ok := userIDValue.(int64)
+	if !ok {
+		response.Unauthorized(c, "Пользователь не аутентифицирован")
+		return
+	}
+
+	var in CuratorRequestInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.Error(c, http.StatusBadRequest, "Не указано, откуда заявка")
+		return
+	}
+
+	lead, err := h.service.CreateCuratorRequest(c.Request.Context(), userID, in.CaptureSource)
+	switch {
+	case err == nil:
+	case errors.Is(err, apperrors.ErrValidation):
+		response.ErrorCode(c, http.StatusBadRequest, apperrors.CodeValidation,
+			"Неизвестная точка заявки", nil)
+		return
+	case errors.Is(err, apperrors.ErrNotFound):
+		response.NotFound(c, "Учётная запись не найдена")
+		return
+	default:
+		h.log.Error("Failed to save curator request", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось отправить заявку")
+		return
+	}
+
+	response.SuccessWithMessage(c, http.StatusCreated, "Заявка отправлена", gin.H{"id": lead.ID})
+}
+
 func (h *Handler) Create(c *gin.Context) {
 	var in CreateInput
 	if err := c.ShouldBindJSON(&in); err != nil {
