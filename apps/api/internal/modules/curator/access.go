@@ -72,6 +72,11 @@ func (s *Service) ExpireCuratorAccess(ctx context.Context) (int, error) {
 // Ровно через, а не «не позже чем через»: иначе предупреждение уходило бы каждый
 // день до самого конца срока и перестало бы читаться.
 func (s *Service) WarnExpiringCuratorAccess(ctx context.Context) (int, error) {
+	// Без уведомлений предупреждать нечем, и обходить список незачем.
+	if s.notificationsSvc == nil {
+		return 0, nil
+	}
+
 	soon, err := curatoraccess.Expiring(ctx, s.db.DB, curatoraccess.Today(), warnBefore)
 	if err != nil {
 		return 0, err
@@ -79,9 +84,6 @@ func (s *Service) WarnExpiringCuratorAccess(ctx context.Context) (int, error) {
 
 	warned := 0
 	for _, e := range soon {
-		if s.notificationsSvc == nil {
-			break
-		}
 		if err := s.notificationsSvc.Notify(ctx, e.ClientID,
 			string(notifications.TypeCuratorAccessEnding),
 			"Доступ к куратору скоро закончится",
