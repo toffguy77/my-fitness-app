@@ -297,8 +297,8 @@ func Load() (*Config, error) {
 		// здесь — для локального запуска, а не для прода. Прод на дефолте
 		// 2026-09-29 упёрся в них: десяти соединений не хватило, когда человек
 		// открыл дашборд, который дёргает около десятка запросов сразу.
-		MaxOpenConns:     getEnvAsInt("DB_MAX_OPEN_CONNS", 30),
-		MaxIdleConns:     getEnvAsInt("DB_MAX_IDLE_CONNS", 10),
+		MaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 30),
+		MaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 10),
 
 		// Supabase (optional)
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
