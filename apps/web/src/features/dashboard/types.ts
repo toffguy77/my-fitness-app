@@ -519,8 +519,22 @@ export interface CuratorPresence {
  * `curator` равен `null`, когда куратор не назначен — это утверждение, которое
  * дашборд произносит вслух, а не отсутствие данных.
  */
+/**
+ * Состояние права клиента на работу с куратором.
+ *
+ * Три состояния карточки куратора различаются именно здесь: у кого куратора
+ * никогда не было — предложение купить; у кого право кончилось — предложение
+ * продлить; у кого право есть, а куратора нет — дефект, за который он заплатил.
+ */
+export interface CuratorAccessState {
+    allowed: boolean
+    expired: boolean
+    expires_at?: string
+}
+
 export interface OnboardingState {
     active: boolean
     steps: OnboardingStep[]
     curator: CuratorPresence | null
+    curator_access: CuratorAccessState
 }

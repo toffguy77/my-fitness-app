@@ -17,6 +17,25 @@ type Conversation struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// Access — состояние права клиента на работу с куратором.
+//
+// Нужно экрану переписки: без права он показывает описание услуги и заявку
+// вместо пустого поля ввода. Отключённая кнопка читалась бы как поломка и
+// ничего не продавала бы, поэтому вход остаётся живым, а различает состояния
+// этот ответ.
+type Access struct {
+	Allowed bool `json:"allowed"`
+	// Expired означает, что куратор был, а право кончилось: тогда предлагается
+	// продлить, а не купить, и прежняя переписка остаётся открытой для чтения.
+	Expired bool `json:"expired"`
+	// ExpiresAt — последний день действия права, YYYY-MM-DD по московскому
+	// времени. Пусто у бессрочного права и там, где права нет.
+	ExpiresAt string `json:"expires_at,omitempty"`
+	// ConversationID прежней переписки, если она есть: без права её всё равно
+	// можно читать.
+	ConversationID string `json:"conversation_id,omitempty"`
+}
+
 // Message represents a single message in a conversation
 type Message struct {
 	ID             string              `json:"id"`

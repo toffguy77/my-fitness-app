@@ -26,6 +26,7 @@ type mockHandlerService struct {
 	sendMessageFunc         func(ctx context.Context, conversationID string, senderID int64, req SendMessageRequest) (*Message, error)
 	markAsReadFunc          func(ctx context.Context, conversationID string, userID int64) error
 	getUnreadCountFunc      func(ctx context.Context, userID int64) (int, error)
+	curatorAccessFunc       func(ctx context.Context, clientID int64) (Access, error)
 	validateParticipantFunc func(ctx context.Context, conversationID string, userID int64) error
 	createFoodEntryFunc     func(ctx context.Context, conversationID string, curatorID int64, req CreateFoodEntryRequest) (*Message, error)
 	getOrCreateConvFunc     func(ctx context.Context, clientID, curatorID int64) (*Conversation, error)
@@ -38,6 +39,13 @@ func (m *mockHandlerService) GetConversations(ctx context.Context, userID int64)
 		return m.getConversationsFunc(ctx, userID)
 	}
 	return []Conversation{}, nil
+}
+
+func (m *mockHandlerService) CuratorAccess(ctx context.Context, clientID int64) (Access, error) {
+	if m.curatorAccessFunc != nil {
+		return m.curatorAccessFunc(ctx, clientID)
+	}
+	return Access{Allowed: true}, nil
 }
 
 func (m *mockHandlerService) GetOrCreateConversation(ctx context.Context, clientID, curatorID int64) (*Conversation, error) {

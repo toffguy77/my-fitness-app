@@ -13,7 +13,7 @@ describe('TermsPage', () => {
         expect(screen.getByRole('heading', { name: /1\. общие положения/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: /2\. предмет договора/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: /3\. права и обязанности сторон/i })).toBeInTheDocument();
-        expect(screen.getByRole('heading', { name: /4\. стоимость услуг и порядок расчетов/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /4\. стоимость услуг, порядок расчетов и возврат оплаты/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: /5\. ответственность сторон/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: /6\. срок действия и расторжение договора/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: /7\. заключительные положения/i })).toBeInTheDocument();
@@ -33,11 +33,67 @@ describe('TermsPage', () => {
         expect(screen.getByText(/дата последнего обновления: 26 января 2026 г\./i)).toBeInTheDocument();
     });
 
-    it('mentions free and premium tiers', () => {
+    it('называет состав платной услуги', () => {
         render(<TermsPage />);
 
-        expect(screen.getByText(/базовый функционал платформы предоставляется бесплатно/i)).toBeInTheDocument();
-        expect(screen.getByText(/расширенный функционал \(премиум-подписка\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/работа с куратором является отдельной платной услугой/i)).toBeInTheDocument();
+        expect(screen.getByText(/недельного плана калорийности/i)).toBeInTheDocument();
+        expect(screen.getByText(/письменный разбор недели/i)).toBeInTheDocument();
+    });
+
+    it('называет бесплатной всё, кроме работы с куратором', () => {
+        render(<TermsPage />);
+
+        expect(screen.getByText(/предоставляется бесплатно, за исключением услуги/i)).toBeInTheDocument();
+    });
+
+    // Обещанный вслепую срок придётся либо нарушать, либо выполнять в убыток, а
+    // нарушение становится основанием для возврата. Пропускная способность
+    // куратора не измерена.
+    it('не обещает срок ответа куратора', () => {
+        const { container } = render(<TermsPage />);
+
+        expect(container.textContent).not.toMatch(/в течение \d+\s*(час|ч\.)/i);
+        expect(container.textContent).not.toMatch(/ответ.{0,40}\d+\s*час/i);
+    });
+
+    // Цена, повторённая в двух местах, расходится, и какое из двух
+    // обязательство — неизвестно.
+    it('не приводит цену числом и ссылается на страницу тарифов', () => {
+        const { container } = render(<TermsPage />);
+
+        expect(container.textContent).not.toMatch(/\d[\d\s]*₽/);
+        expect(container.textContent).not.toMatch(/\d[\d\s]*руб/i);
+        expect(screen.getByRole('link', { name: /странице тарифов/i })).toHaveAttribute('href', '/pricing');
+    });
+
+    it('даёт безусловный возврат в первые семь дней', () => {
+        render(<TermsPage />);
+
+        expect(screen.getByText(/в течение\s+7 \(семи\) календарных дней/i)).toBeInTheDocument();
+        expect(screen.getByText(/не обусловлен тем, пользовался ли Пользователь/i)).toBeInTheDocument();
+    });
+
+    // При предоплате за несколько месяцев ограничение семью днями создаёт спор,
+    // в котором обязательство всё равно возникает.
+    it('даёт возврат за неиспользованный период в любой момент', () => {
+        render(<TermsPage />);
+
+        expect(screen.getByText(/пропорционально количеству неиспользованных дней/i)).toBeInTheDocument();
+    });
+
+    it('фиксирует цену на оплаченный период', () => {
+        render(<TermsPage />);
+
+        expect(screen.getByText(/сохраняется до окончания\s+оплаченного периода/i)).toBeInTheDocument();
+    });
+
+    // Не объявленный пояс делает момент прекращения доступа неизвестным тому,
+    // кто заплатил.
+    it('называет часовой пояс окончания оплаченного периода', () => {
+        render(<TermsPage />);
+
+        expect(screen.getByText(/по\s+московскому времени \(UTC\+3\)/i)).toBeInTheDocument();
     });
 
     it('has correct metadata', () => {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/modules/auth"
+	"github.com/burcev/api/internal/shared/curators"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/testsupport"
 	"github.com/stretchr/testify/require"
@@ -25,7 +26,6 @@ import (
 func TestAssignCuratorSkipsTestAndDepartingCurators(t *testing.T) {
 	db := testsupport.SchemaWithMigrations(t, "assign_curator")
 	ctx := context.Background()
-	service := auth.NewService(db.DB, &config.Config{}, logger.New())
 
 	// Три негодных кандидата, все с нулём клиентов, и один живой с клиентом —
 	// то есть заведомо более загруженный.
@@ -57,21 +57,19 @@ func TestAssignCuratorSkipsTestAndDepartingCurators(t *testing.T) {
 		 VALUES ($1, $2, 'active')`, liveCuratorID, existingClientID)
 	require.NoError(t, err)
 
-	result, err := service.Register(ctx, "newcomer@example.test", "Passw0rd!x", "Новичок",
-		"127.0.0.1", "test", &auth.ConsentsInput{
-			TermsOfService: true, PrivacyPolicy: true, DataProcessing: true,
-		})
-	require.NoError(t, err)
-	require.NotNil(t, result.User)
+	// Спрашиваем правило у его владельца, а не через регистрацию: живому
+	// клиенту куратор при регистрации больше не назначается вовсе — работа с
+	// куратором стала платной услугой. Само правило никуда не делось: по нему
+	// по-прежнему выбирают куратора понижение прежнего и заведение служебной
+	// учётной записи прогона.
+	picked, err := curators.LeastLoaded(ctx, db.DB, "newcomer@example.test", 0)
+	require.NoError(t, err, "годный кандидат не найден")
 
-	var assignedEmail string
-	err = db.QueryRowContext(ctx, `
-		SELECT u.email FROM curator_client_relationships r
-		  JOIN users u ON u.id = r.curator_id
-		 WHERE r.client_id = $1 AND r.status = 'active'`, result.User.ID).Scan(&assignedEmail)
-	require.NoError(t, err, "новичок остался без куратора")
+	var pickedEmail string
+	require.NoError(t, db.QueryRowContext(ctx,
+		`SELECT email FROM users WHERE id = $1`, picked).Scan(&pickedEmail))
 
-	require.Equal(t, "live@example.test", assignedEmail,
+	require.Equal(t, "live@example.test", pickedEmail,
 		"куратором стал не живой человек, хотя он единственный годный кандидат")
 }
 

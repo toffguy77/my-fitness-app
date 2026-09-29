@@ -34,6 +34,7 @@ import (
 	"github.com/burcev/api/internal/modules/telegramlink"
 	"github.com/burcev/api/internal/modules/users"
 	"github.com/burcev/api/internal/router"
+	"github.com/burcev/api/internal/shared/curatoraccess"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/email"
 	"github.com/burcev/api/internal/shared/jobs"
@@ -146,6 +147,20 @@ func main() {
 			log.Warn("За служебными учётками числятся живые клиенты — "+
 				"переназначьте их на настоящего куратора", "curators", serving)
 		}
+	}
+
+	// Права, оставшиеся действующими при истёкшей дате, — след несработавшего
+	// прекращения. Смотрим во всех средах, а не только в проде: на стенде это
+	// признак того, что задача не зарегистрирована или падает, и узнать об этом
+	// до прода дешевле.
+	//
+	// Предупреждение, а не отказ: доступ, отданный на день дольше, хуже не
+	// становится от того, что прод не поднялся.
+	if overdue, err := curatoraccess.Overdue(context.Background(), db.DB, curatoraccess.Today()); err != nil {
+		log.Warn("Не удалось проверить просроченные права на куратора", "error", err)
+	} else if overdue > 0 {
+		log.Warn("Права на куратора с истёкшей датой всё ещё действуют — "+
+			"задача curator.expire-access не сработала", "count", overdue)
 	}
 
 	// Email is an optional capability. In production the config validation
@@ -351,6 +366,9 @@ func main() {
 	// путях внутрь, поэтому запись события подключается к нему, а не к
 	// обработчику.
 	authService = authService.WithAnalytics(analyticsService)
+	// Прекращение права на куратора происходит задачей, без участия браузера:
+	// записывать его может только служба.
+	curatorService = curatorService.WithAccessEvents(analyticsService)
 
 	// Telling the advertising account what happened after the browser closed.
 	// Nil wherever no account is configured, which is every environment except
@@ -636,7 +654,7 @@ func main() {
 		NutritionCalc: nutritioncalc.NewHandler(cfg, log, db),
 		Dashboard:     dashboard.NewHandler(cfg, log, db, s3Client, notificationsSvc, nutritionCalcSvc).WithAnalytics(analyticsService),
 		Chat:          chat.NewHandler(cfg, log, db, chatService, chatS3, wsHub).WithTickets(authService),
-		Curator:       curator.NewHandler(cfg, log, db, notificationsSvc),
+		Curator:       curator.NewHandler(cfg, log, curatorService),
 		Admin:         admin.NewHandler(cfg, log, adminService).WithAnalytics(analyticsService),
 		AdminJobs:     admin.NewJobsHandler(scheduler),
 		Support:       support.NewHandler(cfg, log, supportService),

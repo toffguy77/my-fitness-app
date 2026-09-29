@@ -17,6 +17,12 @@ export interface AdminUser {
     avatar_url?: string
     curator_name?: string
     curator_id?: number
+    /**
+     * Последний день действия права на куратора, ГГГГ-ММ-ДД. Пусто означает
+     * бессрочно: у живого клиента это признак ошибки выдачи, поэтому
+     * администратор обязан видеть разницу.
+     */
+    curator_access_expires_at?: string
     client_count: number
     created_at: string
     last_login_at?: string

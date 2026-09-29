@@ -7,8 +7,6 @@ import (
 	"strconv"
 
 	"github.com/burcev/api/internal/config"
-	"github.com/burcev/api/internal/modules/notifications"
-	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/burcev/api/internal/shared/response"
 	"github.com/gin-gonic/gin"
@@ -22,11 +20,16 @@ type Handler struct {
 }
 
 // NewHandler creates a new curator handler
-func NewHandler(cfg *config.Config, log *logger.Logger, db *database.DB, notificationsSvc *notifications.Service) *Handler {
+//
+// Принимает службу, а не собирает свою. Собранная здесь была бы другим
+// объектом: всё, что подключили к службе при старте — запись событий о
+// прекращении права, — до этих endpoint'ов не дошло бы. На это есть охранник в
+// scripts/check-codebase-integrity.mjs, и он это поймал.
+func NewHandler(cfg *config.Config, log *logger.Logger, service *Service) *Handler {
 	return &Handler{
 		cfg:     cfg,
 		log:     log,
-		service: NewService(db, log, notificationsSvc),
+		service: service,
 	}
 }
 

@@ -26,6 +26,19 @@ func registerLeadRoutes(v1 *gin.RouterGroup, d Deps) {
 	g.GET("/leads/unsubscribe", d.Leads.Unsubscribe)
 }
 
+// registerCuratorRequestRoute wires the request for a curator from inside the
+// product.
+//
+// Требует входа и живёт вне /public: адрес берётся из учётной записи, а не из
+// тела, поэтому ограничения по адресу здесь не нужно — тело не содержит ничего,
+// чем можно засорить очередь от чужого имени. Идентификатора в пути нет, значит
+// и записи в protectedRoutes тоже.
+func registerCuratorRequestRoute(v1 *gin.RouterGroup, d Deps) {
+	g := v1.Group("/leads")
+	g.Use(middleware.RequireAuth(d.Cfg, d.TokenVersions))
+	g.POST("/curator-request", d.Leads.CreateCuratorRequest)
+}
+
 // registerCuratorLeadRoutes wires the lead queue.
 //
 // Deliberately NOT inside /curator/clients/:id: that group is guarded by

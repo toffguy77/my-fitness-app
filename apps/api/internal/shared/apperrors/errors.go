@@ -28,4 +28,9 @@ var (
 	// ErrRateLimited не только текстом — "попробуйте через секунду" тут не
 	// поможет и подталкивает нажать ещё раз без толку, ждать нужно до завтра.
 	ErrDailyLimitReached = errors.New("daily limit reached")
+	// ErrCuratorAccessRequired: работа с куратором — платная услуга, и права на
+	// неё у этого клиента сейчас нет. Отличается от ErrForbidden тем, что
+	// положение исправимо самим человеком, а не является ошибкой обращения:
+	// клиент видит предложение купить или продлить, а не отказ.
+	ErrCuratorAccessRequired = errors.New("curator access required")
 )

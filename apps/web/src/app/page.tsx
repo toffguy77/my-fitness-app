@@ -5,46 +5,9 @@ import { JsonLd } from '@/shared/components/JsonLd'
 import { AuthRedirect } from './_components/AuthRedirect'
 import { SupportLink } from '@/shared/components/SupportLink'
 import { SupportWidget } from '@/features/support/components/SupportWidget'
+import { enabledFeatures } from '@/shared/api/features'
 import { TrackView, TrackScrollDepth, EVENTS } from '@/shared/analytics'
 import { t } from '@/shared/i18n'
-
-const API_URL = process.env.INTERNAL_API_URL || 'http://api:4000'
-
-// Сколько ждать /ready, прежде чем рендерить лендинг без утверждений о
-// способностях. Тот же приём, что у ARTICLE_FETCH_TIMEOUT_MS в
-// apps/web/src/app/sitemap.ts:7 — граница на ожидание, а не зависание.
-// Этот лендинг динамический (корневой layout зовёт headers() ради nonce),
-// значит рендерится заново на каждый заход: не ограничь мы /ready сроком,
-// зависший ответ (сеть есть, ответа нет — ровно как в инциденте с DNS)
-// задержал бы каждого посетителя, а не только сборку.
-//
-// Экспортирована ради теста ниже (page.test.tsx) — тест сверяется с
-// реальным значением, а не дублирует магическое число рядом.
-export const READY_TIMEOUT_MS = 2000
-
-/**
- * Способности этого развёртывания, по мнению самого API.
- *
- * Строятся не из переменной сборки, а из живого `/ready`: способность
- * выводится на бэкенде из наличия учётных данных (`config.Features`), и
- * второй источник правды здесь молча разошёлся бы с первым. Пустой объект
- * при любом отказе — не перестраховка, а единственный честный вариант:
- * обещание, которое некому подтвердить, не даётся. Лендинг при этом всё
- * равно открывается — он и без тезисов о способностях работает.
- */
-async function enabledFeatures(): Promise<Record<string, boolean>> {
-    try {
-        const res = await fetch(`${API_URL}/ready`, {
-            next: { revalidate: 60 },
-            signal: AbortSignal.timeout(READY_TIMEOUT_MS),
-        })
-        if (!res.ok) return {}
-        const data = await res.json()
-        return data?.features || {}
-    } catch {
-        return {}
-    }
-}
 
 export const metadata: Metadata = {
     title: t('landing.meta.title'),
@@ -200,6 +163,18 @@ export default async function Home({
                             <p className="mt-4 text-lg text-gray-600">
                                 {t('landing.curator.description')}
                             </p>
+                            {/* Граница названа прямо, цена — нет: она живёт на
+                                одной странице, и повторённое число расходится с
+                                ней, после чего непонятно, какое обязательство. */}
+                            <p className="mt-4 text-base font-medium text-gray-900">
+                                {t('landing.curator.boundary')}
+                            </p>
+                            <Link
+                                href="/pricing"
+                                className="mt-3 inline-block text-base font-semibold text-blue-600 underline hover:text-blue-700"
+                            >
+                                {t('landing.curator.pricingLink')}
+                            </Link>
                         </div>
                     </section>
 

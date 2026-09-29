@@ -27,6 +27,10 @@ const allFour: OnboardingState = {
         { key: 'curator_hello', done: false },
     ],
     curator: null,
+    // Пункт знакомства с куратором приходит только тому, у кого есть право на
+    // работу с ним: сервер решает состав, и здесь набор такой же, как у
+    // оплатившего.
+    curator_access: { allowed: true, expired: false },
 }
 
 describe('FirstWeekChecklist', () => {

@@ -49,6 +49,14 @@ const (
 	// anybody: in the list of what happened, and by email or push if that is
 	// how they have asked to be told.
 	TypeSupportEscalated NotificationType = "support_escalated"
+
+	// Право на работу с куратором скоро кончится. Предупреждение заранее — это
+	// разница между продлением и обращением в поддержку с вопросом, что
+	// сломалось.
+	TypeCuratorAccessEnding NotificationType = "curator_access_ending"
+	// Право кончилось. Уходит обеим сторонам: куратор, не знающий о
+	// прекращении, продолжит работу, за которую больше не платят.
+	TypeCuratorAccessEnded NotificationType = "curator_access_ended"
 )
 
 // IsValid checks if the notification type is valid
@@ -56,7 +64,8 @@ func (t NotificationType) IsValid() bool {
 	switch t {
 	case TypeTrainerFeedback, TypeAchievement, TypeReminder, TypeSystemUpdate, TypeNewFeature, TypeGeneral, TypeNewContent,
 		TypePlanUpdated, TypeTaskAssigned, TypeTaskOverdue, TypeFeedbackReceived,
-		TypeExportReady, TypeClientLeft, TypeSupportEscalated:
+		TypeExportReady, TypeClientLeft, TypeSupportEscalated,
+		TypeCuratorAccessEnding, TypeCuratorAccessEnded:
 		return true
 	}
 	return false

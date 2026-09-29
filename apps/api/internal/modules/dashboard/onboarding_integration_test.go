@@ -121,6 +121,18 @@ func conversation(t *testing.T, db *database.DB, clientID, curatorID int64, anon
 	return id
 }
 
+// grantAccess выдаёт право на работу с куратором — то, что теперь покупается.
+//
+// Без него пункт знакомства с куратором в чек-лист не попадает вовсе: задание,
+// заведомо оканчивающееся отказом, человеку не предлагается.
+func grantAccess(t *testing.T, db *database.DB, clientID, curatorID int64) {
+	t.Helper()
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status, access_expires_at)
+		 VALUES ($1, $2, 'active', CURRENT_DATE + 30)`, curatorID, clientID)
+	require.NoError(t, err)
+}
+
 func say(t *testing.T, db *database.DB, conversationID string, senderID int64, text string) {
 	t.Helper()
 	_, err := db.ExecContext(context.Background(),
@@ -241,6 +253,7 @@ func TestOnboarding_OnlyTheCuratorWrote(t *testing.T) {
 	db := onboardingSchema(t)
 	userID := client(t, db)
 	curatorID := account(t, db, "coordinator", time.Hour)
+	grantAccess(t, db, userID, curatorID)
 	conv := conversation(t, db, userID, curatorID, false)
 	say(t, db, conv, curatorID, "Здравствуйте!")
 
@@ -255,6 +268,7 @@ func TestOnboarding_ClientWrote(t *testing.T) {
 	db := onboardingSchema(t)
 	userID := client(t, db)
 	curatorID := account(t, db, "coordinator", time.Hour)
+	grantAccess(t, db, userID, curatorID)
 	conv := conversation(t, db, userID, curatorID, false)
 	say(t, db, conv, curatorID, "Здравствуйте!")
 	say(t, db, conv, userID, "Здравствуйте, я готов")
@@ -269,6 +283,7 @@ func TestOnboarding_MessagesOnlyInAnonymisedConversation(t *testing.T) {
 	db := onboardingSchema(t)
 	userID := client(t, db)
 	curatorID := account(t, db, "coordinator", time.Hour)
+	grantAccess(t, db, userID, curatorID)
 	conv := conversation(t, db, userID, curatorID, true)
 	say(t, db, conv, userID, "Это было в прошлой жизни")
 
@@ -290,7 +305,9 @@ func TestOnboarding_PlatePhotoAbsentWhenCapabilityOff(t *testing.T) {
 
 	assert.False(t, hasStep(state, OnboardingStepPlatePhoto),
 		"a task that would end in the capability's 503 must not be offered")
-	assert.Len(t, state.Steps, 3)
+	// Два пункта, а не три: у этого клиента нет права на куратора, значит нет и
+	// пункта знакомства с ним.
+	assert.Len(t, state.Steps, 2)
 }
 
 // The other direction is the one that matters: a guard tested only in its
@@ -303,7 +320,7 @@ func TestOnboarding_PlatePhotoPresentWhenCapabilityOn(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, hasStep(state, OnboardingStepPlatePhoto))
-	assert.Len(t, state.Steps, 4)
+	assert.Len(t, state.Steps, 3, "пункта знакомства с куратором нет: права на куратора у клиента нет")
 	assert.False(t, stepDone(t, state, OnboardingStepPlatePhoto))
 }
 
@@ -455,4 +472,63 @@ func TestOnboarding_AnonymisedConversationIsNotACurator(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Nil(t, state.Curator)
+}
+
+// --- право на куратора определяет и состав чек-листа, и состояние карточки ---
+
+// Задание, заведомо оканчивающееся отказом, человеку не предлагается — тем же
+// правилом, каким из состава выпадает пункт отключённой способности.
+func TestOnboarding_CuratorHelloAbsentWithoutAccess(t *testing.T) {
+	db := onboardingSchema(t)
+	userID := client(t, db)
+	curatorID := account(t, db, "coordinator", time.Hour)
+	// Переписка есть, а права нет: так выглядит клиент, у которого оплата
+	// кончилась. Пункт всё равно не предлагается.
+	conv := conversation(t, db, userID, curatorID, false)
+	say(t, db, conv, curatorID, "Здравствуйте!")
+
+	state, err := onboardingService(db).GetOnboardingState(context.Background(), userID, true)
+	require.NoError(t, err)
+
+	assert.False(t, hasStep(state, OnboardingStepCuratorHello))
+	assert.False(t, state.CuratorAccess.Allowed)
+}
+
+func TestOnboarding_CuratorHelloPresentWithAccess(t *testing.T) {
+	db := onboardingSchema(t)
+	userID := client(t, db)
+	curatorID := account(t, db, "coordinator", time.Hour)
+	grantAccess(t, db, userID, curatorID)
+
+	state, err := onboardingService(db).GetOnboardingState(context.Background(), userID, true)
+	require.NoError(t, err)
+
+	assert.True(t, hasStep(state, OnboardingStepCuratorHello))
+	assert.True(t, state.CuratorAccess.Allowed)
+	assert.NotEmpty(t, state.CuratorAccess.ExpiresAt, "срок нужен, чтобы предложить продление вовремя")
+}
+
+// Отсутствие куратора и истёкшее право — разные состояния: первому нужно
+// предложение купить, второму — предложение продлить и доступ к переписке.
+func TestOnboarding_ExpiredAccessDiffersFromNever(t *testing.T) {
+	db := onboardingSchema(t)
+	ctx := context.Background()
+
+	never := client(t, db)
+	neverState, err := onboardingService(db).GetOnboardingState(ctx, never, true)
+	require.NoError(t, err)
+	assert.False(t, neverState.CuratorAccess.Allowed)
+	assert.False(t, neverState.CuratorAccess.Expired, "куратора никогда не было")
+
+	expired := client(t, db)
+	curatorID := account(t, db, "coordinator", time.Hour)
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO curator_client_relationships (curator_id, client_id, status, access_expires_at)
+		 VALUES ($1, $2, 'active', CURRENT_DATE - 1)`, curatorID, expired)
+	require.NoError(t, err)
+
+	expiredState, err := onboardingService(db).GetOnboardingState(ctx, expired, true)
+	require.NoError(t, err)
+	assert.False(t, expiredState.CuratorAccess.Allowed)
+	assert.True(t, expiredState.CuratorAccess.Expired)
 }
