@@ -390,25 +390,14 @@ func (s *Service) getAttachmentsForMessages(ctx context.Context, messageIDs []st
 		return nil, nil
 	}
 
-	// Build placeholders for IN clause
-	placeholders := ""
-	args := make([]interface{}, len(messageIDs))
-	for i, id := range messageIDs {
-		if i > 0 {
-			placeholders += ", "
-		}
-		placeholders += fmt.Sprintf("$%d", i+1)
-		args[i] = id
-	}
-
-	query := fmt.Sprintf(`
+	const query = `
 		SELECT id, message_id, file_url, file_name, file_size, mime_type
 		FROM message_attachments
-		WHERE message_id IN (%s)
+		WHERE message_id = ANY($1)
 		ORDER BY created_at ASC
-	`, placeholders)
+	`
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.db.QueryContext(ctx, query, messageIDs)
 	if err != nil {
 		return nil, err
 	}

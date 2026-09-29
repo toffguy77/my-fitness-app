@@ -196,31 +196,21 @@ func (s *Service) markDeliveries(ctx context.Context, ids []int64, status, failu
 		return nil
 	}
 
-	placeholders := make([]string, len(ids))
-	args := make([]interface{}, 0, len(ids)+1)
-	for i, id := range ids {
-		placeholders[i] = "$" + strconv.Itoa(i+1)
-		args = append(args, id)
-	}
-
 	var query string
+	args := []interface{}{ids}
 	if status != "" {
+		query = `UPDATE notification_deliveries
+			 SET status = $2, attempts = attempts + 1, updated_at = NOW()
+			 WHERE id = ANY($1)`
 		args = append(args, status)
-		query = fmt.Sprintf(
-			`UPDATE notification_deliveries
-			 SET status = $%d, attempts = attempts + 1, updated_at = NOW()
-			 WHERE id IN (%s)`,
-			len(args), strings.Join(placeholders, ", "))
 	} else {
-		args = append(args, failure, maxAttempts)
-		query = fmt.Sprintf(
-			`UPDATE notification_deliveries
+		query = `UPDATE notification_deliveries
 			 SET attempts = attempts + 1,
-			     last_error = $%d,
-			     status = CASE WHEN attempts + 1 >= $%d THEN 'failed' ELSE status END,
+			     last_error = $2,
+			     status = CASE WHEN attempts + 1 >= $3 THEN 'failed' ELSE status END,
 			     updated_at = NOW()
-			 WHERE id IN (%s)`,
-			len(args)-1, len(args), strings.Join(placeholders, ", "))
+			 WHERE id = ANY($1)`
+		args = append(args, failure, maxAttempts)
 	}
 
 	if _, err := s.db.ExecContext(ctx, query, args...); err != nil {
