@@ -1053,15 +1053,16 @@ func (s *Service) SearchFoods(ctx context.Context, userID int64, query string, l
 			       COALESCE(verified, false) AS verified,
 			       COALESCE(created_at, NOW()) AS created_at,
 			       COALESCE(updated_at, NOW()) AS updated_at,
-			       ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
-			              plainto_tsquery('russian', $1)) AS rank,
+			       ts_rank(search_vector, plainto_tsquery('russian', $1)) AS rank,
 			       CASE WHEN verified = true THEN 0
 			            WHEN source = 'database' THEN 1
 			            ELSE 2 END AS source_priority
 			FROM food_items
-			WHERE to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')) @@ plainto_tsquery('russian', $1)
-			ORDER BY ts_rank(to_tsvector('russian', coalesce(name, '') || ' ' || coalesce(brand, '')),
-			              plainto_tsquery('russian', $1)) DESC
+			-- search_vector — хранимая колонка с тем же выражением. Выражение
+			-- вычислялось дважды на каждую отобранную строку, и на широком
+			-- слове это и было всей стоимостью запроса (миграция 087).
+			WHERE search_vector @@ plainto_tsquery('russian', $1)
+			ORDER BY ts_rank(search_vector, plainto_tsquery('russian', $1)) DESC
 			LIMIT 200)
 		)
 		SELECT *

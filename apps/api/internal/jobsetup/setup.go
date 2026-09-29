@@ -46,12 +46,15 @@ const supportEmail = "support@burcev.team"
 
 // Deps are the services the jobs act on.
 type Deps struct {
-	Account   *account.Service
-	Auth      *auth.Service
-	Content   *content.Service
-	Curator   *curator.Service
-	Analytics *analytics.Service
-	Leads     *leads.Service
+	Account *account.Service
+	Auth    *auth.Service
+	// Verification выдаёт и проверяет коды из письма; его задача чистит
+	// таблицу этих кодов.
+	Verification *auth.VerificationService
+	Content      *content.Service
+	Curator      *curator.Service
+	Analytics    *analytics.Service
+	Leads        *leads.Service
 	// Notifications is nil in a deployment that does not run the digest.
 	Notifications *notifications.Service
 	// Support is nil when the bot is not configured; its cleanup job then has
@@ -269,6 +272,32 @@ func Register(registry *jobs.Registry, d Deps) {
 		Run: func(ctx context.Context) (int, error) {
 			deleted, err := d.Auth.PurgeExpiredPendingLinks(ctx)
 			return int(deleted), err
+		},
+	})
+
+	// Ссылки для входа с посадочной. Погасить можно только непогашенную и
+	// неистёкшую, так что после истечения строку не читает никто — а писать
+	// её продолжает каждый вход.
+	registry.MustRegister(jobs.Job{
+		Name:    "cleanup.magic-links",
+		RunAt:   jobs.At(3, 10),
+		Period:  jobs.PeriodDaily,
+		Timeout: 2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Auth.PurgeExpiredMagicLinks(ctx)
+		},
+	})
+
+	// Коды подтверждения из письма. Запас в сутки взят не для кода, а ради
+	// окна ограничения повторной отправки: оно считает строки по created_at,
+	// и слишком ранняя чистка вернула бы уже потраченные попытки.
+	registry.MustRegister(jobs.Job{
+		Name:    "cleanup.verification-codes",
+		RunAt:   jobs.At(3, 20),
+		Period:  jobs.PeriodDaily,
+		Timeout: 2 * time.Minute,
+		Run: func(ctx context.Context) (int, error) {
+			return d.Verification.PurgeExpiredVerificationCodes(ctx)
 		},
 	})
 

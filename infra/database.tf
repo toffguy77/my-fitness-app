@@ -4,6 +4,11 @@ resource "yandex_mdb_postgresql_user" "app" {
   name       = var.pg_user_name
   password   = var.pg_user_password
 
+  # Не оставлять умолчанию провайдера: оно равно 50, и это был настоящий
+  # потолок прода, о котором ниоткуда не следовало. Пул приложения обязан
+  # умещаться сюда с учётом всех инстансов сразу.
+  conn_limit = var.pg_user_conn_limit
+
   dynamic "permission" {
     for_each = var.pg_user_permissions
     content {
@@ -12,6 +17,21 @@ resource "yandex_mdb_postgresql_user" "app" {
   }
 
   grants = var.pg_user_grants
+
+  # Замена пользователя недопустима: он владеет боевой базой
+  # (pg_db_owner = burcev-web), его пересоздание означает смену владельца, а
+  # смена владельца в YC MDB заменяет саму базу — то есть удаляет данные.
+  #
+  # У базы такая защита стоит с 2026-09-15, когда plan на проде показал
+  # «must be replaced». У пользователя её не было, хотя путь к тем же
+  # последствиям короче: достаточно правки любого поля, которое провайдер
+  # считает неизменяемым.
+  #
+  # Смысл не в том, чтобы запретить изменения, а в том, чтобы опасное
+  # изменение падало на plan, а не выполнялось на apply.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # PostgreSQL database

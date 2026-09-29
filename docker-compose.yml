@@ -148,8 +148,8 @@ services:
       # Pool and migration knobs. They have working defaults; being able to
       # change them without a code change is the point — the connection limit
       # is what a slow night looks like from the outside.
-      - DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS:-10}
-      - DB_MAX_IDLE_CONNS=${DB_MAX_IDLE_CONNS:-5}
+      - DB_MAX_OPEN_CONNS=${DB_MAX_OPEN_CONNS:-30}
+      - DB_MAX_IDLE_CONNS=${DB_MAX_IDLE_CONNS:-10}
       - DB_MIGRATION_BASELINE=${DB_MIGRATION_BASELINE:-0}
       - APP_ENV=${APP_ENV}
       - LOG_LEVEL=${LOG_LEVEL}

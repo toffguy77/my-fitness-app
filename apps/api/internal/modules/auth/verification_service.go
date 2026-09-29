@@ -283,3 +283,19 @@ func (vs *VerificationService) VerifyDeletionCode(ctx context.Context, userID in
 	vs.log.Infow("Deletion code verified", "user_id", userID)
 	return nil
 }
+
+// PurgeExpiredVerificationCodes drops codes that can no longer be entered.
+//
+// The margin matters here: issueCode counts rows created within
+// resendWindowDuration to limit resends, so deleting too eagerly would hand
+// back attempts the caller had already spent. A day is far longer than that
+// window and far longer than any code lives.
+func (vs *VerificationService) PurgeExpiredVerificationCodes(ctx context.Context) (int, error) {
+	result, err := vs.db.ExecContext(ctx,
+		`DELETE FROM email_verification_codes WHERE expires_at < NOW() - INTERVAL '1 day'`)
+	if err != nil {
+		return 0, fmt.Errorf("purge expired verification codes: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	return int(affected), nil
+}
