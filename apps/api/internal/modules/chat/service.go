@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/burcev/api/internal/modules/analytics"
+	"github.com/burcev/api/internal/shared/curatoraccess"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
 	"github.com/google/uuid"
@@ -25,6 +27,7 @@ type ServiceInterface interface {
 	CreateFoodEntryFromChat(ctx context.Context, conversationID string, curatorID int64, req CreateFoodEntryRequest) (*Message, error)
 	ValidateParticipant(ctx context.Context, conversationID string, userID int64) error
 	EnsureConversationsExist(ctx context.Context) error
+	CuratorAccess(ctx context.Context, clientID int64) (Access, error)
 }
 
 // Service handles chat business logic
@@ -836,4 +839,37 @@ func (s *Service) EnsureConversationsExist(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// CuratorAccess сообщает, есть ли у клиента право на работу с куратором.
+//
+// Идентификатор прежней переписки возвращается и без права: читать её можно
+// всегда, запрещена только запись.
+func (s *Service) CuratorAccess(ctx context.Context, clientID int64) (Access, error) {
+	state, err := curatoraccess.Of(ctx, s.db, clientID)
+	if err != nil {
+		return Access{}, err
+	}
+
+	out := Access{Allowed: state.Allowed(), Expired: state.Expired()}
+	if state.ExpiresAt != nil {
+		out.ExpiresAt = state.ExpiresAt.Format(time.DateOnly)
+	}
+
+	var conversationID string
+	err = s.db.QueryRowContext(ctx, `
+		SELECT id FROM conversations
+		 WHERE client_id = $1 AND anonymized_at IS NULL
+		 ORDER BY updated_at DESC
+		 LIMIT 1`, clientID).Scan(&conversationID)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		// Переписки нет — обычное состояние того, у кого куратора не было.
+	case err != nil:
+		return Access{}, fmt.Errorf("прежняя переписка клиента: %w", err)
+	default:
+		out.ConversationID = conversationID
+	}
+
+	return out, nil
 }

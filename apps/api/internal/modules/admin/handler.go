@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/burcev/api/internal/config"
 	"github.com/burcev/api/internal/shared/logger"
@@ -142,6 +143,21 @@ func (h *Handler) ChangeRole(c *gin.Context) {
 	response.SuccessWithMessage(c, http.StatusOK, "Роль успешно изменена", nil)
 }
 
+// parseAccessDay разбирает предельную дату из запроса.
+//
+// Формат один — YYYY-MM-DD. У «последнего оплаченного дня» нет времени суток, и
+// принимать метку времени значило бы обещать точность, которой нет.
+func parseAccessDay(value string) (*time.Time, error) {
+	if value == "" {
+		return nil, nil
+	}
+	day, err := time.Parse(time.DateOnly, value)
+	if err != nil {
+		return nil, err
+	}
+	return &day, nil
+}
+
 // AssignCurator handles POST /api/v1/admin/assignments
 func (h *Handler) AssignCurator(c *gin.Context) {
 	var req AssignCuratorRequest
@@ -150,13 +166,23 @@ func (h *Handler) AssignCurator(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.AssignCurator(c.Request.Context(), req.ClientID, req.CuratorID); err != nil {
+	expiresAt, err := parseAccessDay(req.AccessExpiresAt)
+	if err != nil {
+		response.ErrorCode(c, http.StatusBadRequest, apperrors.CodeValidation,
+			"Дата окончания доступа указывается как ГГГГ-ММ-ДД", nil)
+		return
+	}
+
+	if err := h.service.AssignCurator(c.Request.Context(), req.ClientID, req.CuratorID, expiresAt); err != nil {
 		h.log.Error("Failed to assign curator", "error", err, "client_id", req.ClientID, "curator_id", req.CuratorID)
 
-		errMsg := err.Error()
-		if errMsg == "client not found" || errMsg == "curator not found" {
-			response.NotFound(c, errMsg)
-		} else {
+		switch {
+		case errors.Is(err, ErrAccessExpiryRequired):
+			response.ErrorCode(c, http.StatusBadRequest, apperrors.CodeValidation,
+				"Укажите, до какого дня действует доступ к куратору", nil)
+		case errors.Is(err, apperrors.ErrNotFound):
+			response.NotFound(c, "Клиент или куратор не найден")
+		default:
 			response.InternalError(c, "Не удалось назначить куратора")
 		}
 		return
@@ -167,6 +193,65 @@ func (h *Handler) AssignCurator(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, http.StatusOK, "Куратор успешно назначен", nil)
+}
+
+// SetCuratorAccessExpiry handles PUT /api/v1/admin/assignments/:id/expiry
+func (h *Handler) SetCuratorAccessExpiry(c *gin.Context) {
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	var req SetAccessExpiryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверные данные: требуется access_expires_at")
+		return
+	}
+	day, err := parseAccessDay(req.AccessExpiresAt)
+	if err != nil || day == nil {
+		response.ErrorCode(c, http.StatusBadRequest, apperrors.CodeValidation,
+			"Дата окончания доступа указывается как ГГГГ-ММ-ДД", nil)
+		return
+	}
+
+	if err := h.service.SetCuratorAccessExpiry(c.Request.Context(), clientID, *day); err != nil {
+		if errors.Is(err, ErrNoActiveAccess) {
+			response.NotFound(c, "У клиента нет действующего доступа к куратору")
+			return
+		}
+		h.log.Error("Failed to extend curator access", "error", err, "client_id", clientID)
+		response.InternalError(c, "Не удалось продлить доступ")
+		return
+	}
+
+	response.SuccessWithMessage(c, http.StatusOK, "Доступ продлён", nil)
+}
+
+// RevokeCuratorAccess handles DELETE /api/v1/admin/assignments/:id
+func (h *Handler) RevokeCuratorAccess(c *gin.Context) {
+	clientID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Неверный идентификатор клиента")
+		return
+	}
+
+	if err := h.service.RevokeCuratorAccess(c.Request.Context(), clientID); err != nil {
+		if errors.Is(err, ErrNoActiveAccess) {
+			response.NotFound(c, "У клиента нет действующего доступа к куратору")
+			return
+		}
+		h.log.Error("Failed to revoke curator access", "error", err, "client_id", clientID)
+		response.InternalError(c, "Не удалось снять доступ")
+		return
+	}
+
+	if h.analytics != nil {
+		h.analytics.RecordServerEvent(c.Request.Context(), "curator_access_ended", clientID,
+			map[string]any{"reason": "revoked"})
+	}
+
+	response.SuccessWithMessage(c, http.StatusOK, "Доступ к куратору снят", nil)
 }
 
 // GetConversations handles GET /api/v1/admin/conversations

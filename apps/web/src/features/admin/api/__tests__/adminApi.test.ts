@@ -5,6 +5,8 @@ jest.mock('@/shared/utils/api-client', () => ({
     apiClient: {
         get: jest.fn(),
         post: jest.fn(),
+        put: jest.fn(),
+        delete: jest.fn(),
     },
 }))
 
@@ -53,15 +55,38 @@ describe('adminApi', () => {
     })
 
     describe('assignCurator', () => {
-        it('calls POST with client_id and curator_id', async () => {
+        it('calls POST with client_id, curator_id and the access expiry', async () => {
             mockApiClient.post.mockResolvedValue(undefined)
 
-            await adminApi.assignCurator(10, 20)
+            await adminApi.assignCurator(10, 20, '2026-12-31')
 
             expect(mockApiClient.post).toHaveBeenCalledWith(
                 '/api/v1/admin/assignments',
-                { client_id: 10, curator_id: 20 }
+                { client_id: 10, curator_id: 20, access_expires_at: '2026-12-31' }
             )
+        })
+    })
+
+    describe('setCuratorAccessExpiry', () => {
+        it('calls PUT with the new expiry', async () => {
+            mockApiClient.put.mockResolvedValue(undefined)
+
+            await adminApi.setCuratorAccessExpiry(10, '2027-01-31')
+
+            expect(mockApiClient.put).toHaveBeenCalledWith(
+                '/api/v1/admin/assignments/10/expiry',
+                { access_expires_at: '2027-01-31' }
+            )
+        })
+    })
+
+    describe('revokeCuratorAccess', () => {
+        it('calls DELETE on the assignment', async () => {
+            mockApiClient.delete.mockResolvedValue(undefined)
+
+            await adminApi.revokeCuratorAccess(10)
+
+            expect(mockApiClient.delete).toHaveBeenCalledWith('/api/v1/admin/assignments/10')
         })
     })
 

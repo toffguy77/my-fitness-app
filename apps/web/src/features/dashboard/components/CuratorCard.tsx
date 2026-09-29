@@ -7,11 +7,15 @@
  * этого блока он лежал в самом низу страницы, свёрнутый, а у новичка не
  * рисовался вовсе: отзыв на недельный отчёт без отчёта не существует.
  *
- * Три состояния различаются намеренно и до конца:
+ * Состояния различаются намеренно и до конца:
  *   — куратор есть: имя, изображение, последнее сообщение, непрочитанные;
- *   — куратора нет: так и сказано. Молчащая карточка спрятала бы дефект, из-за
- *     которого путь регистрации, забывший назначить куратора, оставляет человека
- *     без него навсегда;
+ *   — права на куратора нет: описание услуги и заявка. Это штатное состояние
+ *     бесплатного пользователя, и предложение обратиться в поддержку здесь
+ *     отправляло бы человека спрашивать о том, что должно быть написано на
+ *     месте;
+ *   — право есть, а куратор не назначен: так и сказано, плюс поддержка. Это
+ *     дефект — человек заплатил и остался без куратора. Молчащая карточка
+ *     спрятала бы его, как прятала прежде дефект назначения при регистрации;
  *   — ответ не получен: ошибка с повтором. «Куратора нет» — утверждение о
  *     учётной записи, и на упавшем запросе оно было бы ложью.
  */
@@ -22,10 +26,16 @@ import { MessageCircle, AlertCircle, UserX } from 'lucide-react'
 import { Card, CardContent } from '@/shared/components/ui/Card'
 import { cn } from '@/shared/utils/cn'
 import { t } from '@/shared/i18n'
-import type { CuratorPresence } from '../types'
+import { CuratorOffer } from '@/shared/components/CuratorOffer'
+import type { CuratorAccessState, CuratorPresence } from '../types'
 
 export interface CuratorCardProps {
     curator: CuratorPresence | null
+    /**
+     * Право на куратора. Отсутствие означает «ответ ещё не получен», а не
+     * «права нет»: предложение купить на неизвестном состоянии было бы ложью.
+     */
+    access?: CuratorAccessState
     isLoading: boolean
     hasError: boolean
     onRetry: () => void
@@ -77,6 +87,7 @@ const CuratorAvatar = memo(function CuratorAvatar({
 
 export const CuratorCard = memo(function CuratorCard({
     curator,
+    access,
     isLoading,
     hasError,
     onRetry,
@@ -114,6 +125,22 @@ export const CuratorCard = memo(function CuratorCard({
                     </button>
                 </CardContent>
             </Card>
+        )
+    }
+
+    // Права нет — значит куратора не покупали или оплата кончилась. Предложение
+    // стоит раньше проверки на наличие куратора: у того, чьё право кончилось,
+    // куратор в ответе ещё есть, и без этой ветки он увидел бы обычную карточку
+    // с переписки, в которую не может писать.
+    if (access && !access.allowed) {
+        return (
+            <CuratorOffer
+                place="dashboard"
+                expired={access.expired}
+                expiresAt={access.expires_at}
+                compact
+                className={cn('w-full', className)}
+            />
         )
     }
 

@@ -103,6 +103,28 @@ func (h *Handler) GetConversations(c *gin.Context) {
 	response.Success(c, http.StatusOK, conversations)
 }
 
+// GetAccess handles GET /api/v1/conversations/access
+//
+// Отвечает о праве обращающегося, а не о чужом: куратору здесь нечего спрашивать
+// — платный доступ принадлежит клиенту, и у куратора он всегда отсутствует.
+// Экран переписки клиента различает по этому ответу три состояния: право есть,
+// права не было, право кончилось.
+func (h *Handler) GetAccess(c *gin.Context) {
+	userID, ok := h.getUserID(c)
+	if !ok {
+		return
+	}
+
+	access, err := h.service.CuratorAccess(c.Request.Context(), userID)
+	if err != nil {
+		h.log.Error("Failed to read curator access", "error", err, "user_id", userID)
+		response.InternalError(c, "Не удалось проверить доступ к переписке")
+		return
+	}
+
+	response.Success(c, http.StatusOK, access)
+}
+
 // GetMessages handles GET /api/v1/conversations/:id/messages?cursor=&limit=
 func (h *Handler) GetMessages(c *gin.Context) {
 	userID, ok := h.getUserID(c)

@@ -15,6 +15,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             priority: 1.0,
         },
         {
+            // Единственная страница, где сказано, что продаётся, — значит
+            // приоритет сразу за посадочной.
+            url: `${SITE_URL}/pricing`,
+            lastModified: new Date(),
+            changeFrequency: 'monthly',
+            priority: 0.9,
+        },
+        {
             url: `${SITE_URL}/auth`,
             lastModified: new Date(),
             changeFrequency: 'monthly',

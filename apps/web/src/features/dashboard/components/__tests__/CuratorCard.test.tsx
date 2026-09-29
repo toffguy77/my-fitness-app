@@ -1,10 +1,15 @@
 /**
- * Карточка куратора: три состояния, которые нельзя путать.
+ * Карточка куратора: состояния, которые нельзя путать.
  *
  * Отдельно проверяется, что «куратор не назначен» и «ответ не получен» — разные
  * утверждения. Первое говорит о учётной записи человека, и произнести его на
  * упавшем запросе значит соврать ему ровно там, где карточка и заводилась ради
  * доверия.
+ *
+ * С появлением платного доступа к ним добавились «права нет» и «право
+ * кончилось». Их тоже нельзя свести в одно: первому нужно предложение купить,
+ * второму — продлить, а «куратор не назначен» при наличии права означает
+ * дефект, за который человек заплатил.
  */
 
 import React from 'react'
@@ -19,6 +24,23 @@ jest.mock('next/link', () => ({
         <a href={href} {...rest}>{children}</a>
     ),
 }))
+
+jest.mock('@/shared/api/curatorAccess', () => ({
+    curatorAccessApi: { getAccess: jest.fn(), requestCurator: jest.fn() },
+}))
+
+jest.mock('@/shared/analytics', () => ({
+    track: jest.fn(),
+    EVENTS: jest.requireActual('@/shared/analytics/events').EVENTS,
+}))
+
+jest.mock('react-hot-toast', () => ({
+    __esModule: true,
+    default: { success: jest.fn(), error: jest.fn() },
+}))
+
+/** Право есть: состояние оплатившего, с которым идут прежние проверки. */
+const allowed = { allowed: true, expired: false }
 
 const curator: CuratorPresence = {
     conversation_id: 'conv-1',
@@ -36,6 +58,7 @@ function renderCard(props: Partial<React.ComponentProps<typeof CuratorCard>> = {
     return render(
         <CuratorCard
             curator={curator}
+            access={allowed}
             isLoading={false}
             hasError={false}
             onRetry={jest.fn()}
@@ -134,5 +157,51 @@ describe('CuratorCard', () => {
         expect(screen.queryByText('Куратор пока не назначен')).not.toBeInTheDocument()
         expect(screen.queryByText('Не удалось загрузить куратора')).not.toBeInTheDocument()
         expect(screen.getByRole('status')).toBeInTheDocument()
+    })
+})
+
+describe('CuratorCard и платный доступ', () => {
+    it('без права показывает предложение купить, а не отсутствие куратора', () => {
+        renderCard({ curator: null, access: { allowed: false, expired: false } })
+
+        expect(screen.getByTestId('curator-offer')).toBeInTheDocument()
+        expect(screen.queryByText('Куратор пока не назначен')).not.toBeInTheDocument()
+        // Отправлять человека в поддержку за тем, что должно быть написано на
+        // месте, — худшее из возможного.
+        expect(screen.queryByText('Напишите в поддержку — разберёмся')).not.toBeInTheDocument()
+    })
+
+    it('после окончания оплаты предлагает продлить, а не купить', () => {
+        renderCard({ access: { allowed: false, expired: true, expires_at: '2026-09-01' } })
+
+        expect(screen.getByText('Продлить доступ')).toBeInTheDocument()
+        expect(screen.getByText('Доступ действовал до 2026-09-01')).toBeInTheDocument()
+    })
+
+    // Куратор в ответе ещё есть — связь остаётся, меняется только статус. Без
+    // проверки права человек увидел бы обычную карточку с переписки, писать в
+    // которую не может.
+    it('не показывает обычную карточку при истёкшем праве', () => {
+        renderCard({ access: { allowed: false, expired: true } })
+
+        expect(screen.queryByText('Анна Петрова')).not.toBeInTheDocument()
+        expect(screen.getByTestId('curator-offer')).toBeInTheDocument()
+    })
+
+    it('право есть, а куратора нет — это дефект, и о нём говорят прямо', () => {
+        renderCard({ curator: null, access: allowed })
+
+        expect(screen.getByText('Куратор пока не назначен')).toBeInTheDocument()
+        expect(screen.getByText('Напишите в поддержку — разберёмся')).toBeInTheDocument()
+        expect(screen.queryByTestId('curator-offer')).not.toBeInTheDocument()
+    })
+
+    // Неизвестное состояние права — не то же самое, что его отсутствие:
+    // предложение купить на неполученном ответе было бы ложью.
+    it('без ответа о праве ведёт себя как прежде', () => {
+        renderCard({ access: undefined })
+
+        expect(screen.getByText('Анна Петрова')).toBeInTheDocument()
+        expect(screen.queryByTestId('curator-offer')).not.toBeInTheDocument()
     })
 })

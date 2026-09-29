@@ -87,7 +87,7 @@ describe('sitemap', () => {
 
         const result = await sitemap()
 
-        expect(result).toHaveLength(5)
+        expect(result).toHaveLength(6)
         expect(result.every((entry) => !entry.url.includes('/content/'))).toBeTruthy()
     })
 
@@ -95,7 +95,7 @@ describe('sitemap', () => {
         ;(global.fetch as jest.Mock).mockResolvedValue({ ok: false })
 
         const result = await sitemap()
-        expect(result).toHaveLength(5)
+        expect(result).toHaveLength(6)
     })
 
     it('handles empty articles array from API', async () => {
@@ -105,7 +105,7 @@ describe('sitemap', () => {
         })
 
         const result = await sitemap()
-        expect(result).toHaveLength(5)
+        expect(result).toHaveLength(6)
     })
 
     // The build must not stall on an API that is not there. Without a deadline

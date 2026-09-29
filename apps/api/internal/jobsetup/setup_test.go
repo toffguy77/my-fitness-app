@@ -28,6 +28,8 @@ func TestRegister_DeclaresEveryJobValidly(t *testing.T) {
 		"content.publish-scheduled",
 		"curator.daily-snapshot",
 		"curator.weekly-snapshot",
+		"curator.expire-access",
+		"curator.warn-access-ending",
 		"cleanup.password-reset-attempts",
 		"account.purge-files",
 		"cleanup.data-exports",

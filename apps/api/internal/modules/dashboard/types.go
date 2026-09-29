@@ -456,13 +456,34 @@ type CuratorPresence struct {
 	LastMessage    *CuratorLastMessage `json:"last_message,omitempty"`
 }
 
+// CuratorAccess — состояние права клиента на работу с куратором.
+//
+// Три состояния карточки куратора различаются именно здесь, и различать их
+// обязательно: тому, у кого куратора никогда не было, нужно предложение купить;
+// тому, у кого право кончилось, — предложение продлить и доступ к прежней
+// переписке; тому, у кого право есть, а куратор не назначен, — сообщение о
+// дефекте, потому что он заплатил и остался без куратора.
+type CuratorAccess struct {
+	Allowed bool `json:"allowed"`
+	// Expired означает, что куратор был, а право кончилось. Отсутствие куратора
+	// с самого начала — не истёкшее право.
+	Expired bool `json:"expired"`
+	// ExpiresAt — последний день действия права, YYYY-MM-DD по московскому
+	// времени. Пусто у бессрочного права и там, где права нет.
+	ExpiresAt string `json:"expires_at,omitempty"`
+}
+
 // OnboardingState answers what the first screen shows a newcomer.
 //
 // Curator carries no omitempty on purpose: "no curator assigned" is a fact the
 // dashboard states out loud, so it must arrive as an explicit null rather than
 // as a missing field indistinguishable from an older response shape.
+//
+// CuratorAccess по той же причине не omitempty: «права нет» — утверждение, а не
+// отсутствие ответа.
 type OnboardingState struct {
-	Active  bool             `json:"active"`
-	Steps   []OnboardingStep `json:"steps"`
-	Curator *CuratorPresence `json:"curator"`
+	Active        bool             `json:"active"`
+	Steps         []OnboardingStep `json:"steps"`
+	Curator       *CuratorPresence `json:"curator"`
+	CuratorAccess CuratorAccess    `json:"curator_access"`
 }

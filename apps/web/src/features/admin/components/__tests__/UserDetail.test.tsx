@@ -11,6 +11,8 @@ jest.mock('../../api/adminApi', () => ({
         getCurators: jest.fn(),
         changeRole: jest.fn(),
         assignCurator: jest.fn(),
+        setCuratorAccessExpiry: jest.fn(),
+        revokeCuratorAccess: jest.fn(),
     },
 }))
 
@@ -262,9 +264,127 @@ describe('UserDetail', () => {
         fireEvent.click(curatorButtons[0])
 
         await waitFor(() => {
-            expect(mockAdminApi.assignCurator).toHaveBeenCalledWith(1, 10)
+            expect(mockAdminApi.assignCurator).toHaveBeenCalledWith(
+                1, 10, expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
             expect(mockToast.success).toHaveBeenCalledWith('Куратор назначен')
         })
+    })
+
+    // Бессрочное право у живого клиента неотличимо от забытой даты, поэтому
+    // выдача без даты не уходит на сервер вовсе.
+    it('не назначает куратора без даты окончания доступа', async () => {
+        const curator = makeCurator({ id: 10 })
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
+        mockAdminApi.getCurators.mockResolvedValue([curator])
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Куратор Один')).toBeInTheDocument()
+        })
+
+        fireEvent.change(screen.getByLabelText('Доступ действует до'), { target: { value: '' } })
+        const curatorButtons = screen.getAllByRole('button').filter(
+            btn => btn.textContent?.includes('Куратор Один')
+        )
+        fireEvent.click(curatorButtons[0])
+
+        await waitFor(() => {
+            expect(mockToast.error).toHaveBeenCalledWith('Укажите, до какого дня действует доступ')
+        })
+        expect(mockAdminApi.assignCurator).not.toHaveBeenCalled()
+    })
+
+    it('называет срок действия доступа', async () => {
+        mockAdminApi.getUser.mockResolvedValue(
+            makeUser({ id: 1, role: 'client', curator_id: 10, curator_access_expires_at: '2026-12-31' }))
+        mockAdminApi.getCurators.mockResolvedValue([])
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Доступ до 2026-12-31')).toBeInTheDocument()
+        })
+    })
+
+    // Бессрочное право у живого клиента — признак ошибки выдачи, и молчание о
+    // нём скрыло бы именно её.
+    it('называет бессрочный доступ отдельно от срочного', async () => {
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client', curator_id: 10 }))
+        mockAdminApi.getCurators.mockResolvedValue([])
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Доступ бессрочный')).toBeInTheDocument()
+        })
+    })
+
+    it('называет отсутствие доступа', async () => {
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
+        mockAdminApi.getCurators.mockResolvedValue([])
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Доступа к куратору нет')).toBeInTheDocument()
+        })
+    })
+
+    it('продлевает доступ', async () => {
+        mockAdminApi.getUser.mockResolvedValue(
+            makeUser({ id: 1, role: 'client', curator_id: 10, curator_access_expires_at: '2026-12-31' }))
+        mockAdminApi.getCurators.mockResolvedValue([])
+        mockAdminApi.setCuratorAccessExpiry.mockResolvedValue(undefined)
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Продлить')).toBeInTheDocument()
+        })
+
+        fireEvent.change(screen.getByLabelText('Доступ действует до'), { target: { value: '2027-03-31' } })
+        fireEvent.click(screen.getByText('Продлить'))
+
+        await waitFor(() => {
+            expect(mockAdminApi.setCuratorAccessExpiry).toHaveBeenCalledWith(1, '2027-03-31')
+            expect(mockToast.success).toHaveBeenCalledWith('Доступ продлён')
+        })
+    })
+
+    it('снимает доступ после подтверждения', async () => {
+        mockAdminApi.getUser.mockResolvedValue(
+            makeUser({ id: 1, role: 'client', curator_id: 10, curator_access_expires_at: '2026-12-31' }))
+        mockAdminApi.getCurators.mockResolvedValue([])
+        mockAdminApi.revokeCuratorAccess.mockResolvedValue(undefined)
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Снять доступ')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByText('Снять доступ'))
+        fireEvent.click(await screen.findByText('Снять'))
+
+        await waitFor(() => {
+            expect(mockAdminApi.revokeCuratorAccess).toHaveBeenCalledWith(1)
+            expect(mockToast.success).toHaveBeenCalledWith('Доступ к куратору снят')
+        })
+    })
+
+    // Продление и снятие бессмысленны там, где доступа нет: продлевать нечего.
+    it('не предлагает продление и снятие без куратора', async () => {
+        mockAdminApi.getUser.mockResolvedValue(makeUser({ id: 1, role: 'client' }))
+        mockAdminApi.getCurators.mockResolvedValue([])
+
+        render(<UserDetail userId={1} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('Доступа к куратору нет')).toBeInTheDocument()
+        })
+        expect(screen.queryByText('Продлить')).not.toBeInTheDocument()
+        expect(screen.queryByText('Снять доступ')).not.toBeInTheDocument()
     })
 
     it('shows "Текущий" label for assigned curator', async () => {

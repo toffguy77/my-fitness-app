@@ -25,6 +25,8 @@ export const EVENTS = {
     foodEntryCreated: 'food_entry_created',
     foodRecognition: 'food_recognition_used',
     supportOpened: 'support_chat_opened',
+    curatorOfferShown: 'curator_offer_shown',
+    curatorOfferClicked: 'curator_offer_clicked',
 } as const
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS]

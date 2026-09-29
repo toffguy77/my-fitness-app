@@ -1,3 +1,4 @@
+DELETE /api/v1/admin/assignments/:id
 DELETE /api/v1/auth/providers/:provider
 DELETE /api/v1/content/articles/:id
 DELETE /api/v1/curator/clients/:id/tasks/:taskId
@@ -27,6 +28,7 @@ GET /api/v1/content/feed
 GET /api/v1/content/feed/:id
 GET /api/v1/conversations
 GET /api/v1/conversations/:id/messages
+GET /api/v1/conversations/access
 GET /api/v1/conversations/unread
 GET /api/v1/curator/analytics
 GET /api/v1/curator/analytics/benchmark
@@ -126,6 +128,7 @@ POST /api/v1/food-tracker/recommendations/custom
 POST /api/v1/food-tracker/user-foods
 POST /api/v1/food-tracker/user-foods/clone
 POST /api/v1/food-tracker/water
+POST /api/v1/leads/curator-request
 POST /api/v1/logs
 POST /api/v1/notifications/:id/read
 POST /api/v1/notifications/mark-all-read
@@ -147,6 +150,7 @@ POST /api/v1/users/me/deletion
 POST /api/v1/users/me/deletion/code
 POST /api/v1/users/me/export
 POST /api/v1/users/me/telegram
+PUT /api/v1/admin/assignments/:id/expiry
 PUT /api/v1/content/articles/:id
 PUT /api/v1/curator/clients/:id/target-weight
 PUT /api/v1/curator/clients/:id/tasks/:taskId

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/burcev/api/internal/shared/curatoraccess"
 )
 
 // GetOnboardingState reports what the dashboard's first screen shows a client:
@@ -16,7 +18,16 @@ import (
 // the task is absent from the answer rather than present-but-unreachable. A task
 // that would end in the capability's 503 is never offered.
 func (s *Service) GetOnboardingState(ctx context.Context, userID int64, plateRecognitionEnabled bool) (*OnboardingState, error) {
-	steps, registeredAt, err := s.onboardingSteps(ctx, userID, plateRecognitionEnabled)
+	// Право читается раньше шагов: от него зависит состав чек-листа. Пункт
+	// знакомства с куратором у того, кому куратор не положен, — задание,
+	// заведомо оканчивающееся отказом, тем же правилом, каким из состава
+	// выпадает пункт отключённой способности.
+	access, err := curatoraccess.Of(ctx, s.db.DB, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	steps, registeredAt, err := s.onboardingSteps(ctx, userID, plateRecognitionEnabled, access.Allowed())
 	if err != nil {
 		return nil, err
 	}
@@ -27,10 +38,20 @@ func (s *Service) GetOnboardingState(ctx context.Context, userID int64, plateRec
 	}
 
 	return &OnboardingState{
-		Active:  onboardingActive(steps, registeredAt, time.Now()),
-		Steps:   steps,
-		Curator: curator,
+		Active:        onboardingActive(steps, registeredAt, time.Now()),
+		Steps:         steps,
+		Curator:       curator,
+		CuratorAccess: curatorAccessOf(access),
 	}, nil
+}
+
+// curatorAccessOf переводит состояние права в то, что видит интерфейс.
+func curatorAccessOf(state curatoraccess.State) CuratorAccess {
+	out := CuratorAccess{Allowed: state.Allowed(), Expired: state.Expired()}
+	if state.ExpiresAt != nil {
+		out.ExpiresAt = state.ExpiresAt.Format(time.DateOnly)
+	}
+	return out
 }
 
 // onboardingActive decides whether the checklist still belongs on the screen.
@@ -55,7 +76,7 @@ func onboardingActive(steps []OnboardingStep, registeredAt time.Time, now time.T
 // One query, all conditions as EXISTS over an indexed user_id. Nothing here is
 // stored: a saved "profile done" flag can outlive the profile being emptied,
 // and then the checklist argues with the settings screen.
-func (s *Service) onboardingSteps(ctx context.Context, userID int64, plateRecognitionEnabled bool) ([]OnboardingStep, time.Time, error) {
+func (s *Service) onboardingSteps(ctx context.Context, userID int64, plateRecognitionEnabled, curatorAccessAllowed bool) ([]OnboardingStep, time.Time, error) {
 	// first_meal counts only entries the person made themselves.
 	//
 	// food_entries.created_by is filled by exactly one path — a curator turning
@@ -120,7 +141,12 @@ func (s *Service) onboardingSteps(ctx context.Context, userID int64, plateRecogn
 	if plateRecognitionEnabled {
 		steps = append(steps, OnboardingStep{Key: OnboardingStepPlatePhoto, Done: platePhotoDone})
 	}
-	steps = append(steps, OnboardingStep{Key: OnboardingStepCuratorHello, Done: curatorHello})
+	// Знакомство с куратором предлагается только тому, у кого есть право на
+	// работу с ним: иначе продукт выдаёт задачу, которую сам же не даёт
+	// выполнить, и завершённость чек-листа становится недостижимой.
+	if curatorAccessAllowed {
+		steps = append(steps, OnboardingStep{Key: OnboardingStepCuratorHello, Done: curatorHello})
+	}
 
 	return steps, registeredAt, nil
 }

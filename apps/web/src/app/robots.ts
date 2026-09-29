@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
         rules: [
             {
                 userAgent: '*',
-                allow: ['/', '/auth', '/legal/', '/content/'],
+                allow: ['/', '/auth', '/legal/', '/content/', '/pricing'],
                 disallow: [
                     '/dashboard',
                     '/food-tracker',
@@ -23,7 +23,7 @@ export default function robots(): MetadataRoute.Robots {
             },
             {
                 userAgent: 'Yandex',
-                allow: ['/', '/auth', '/legal/', '/content/'],
+                allow: ['/', '/auth', '/legal/', '/content/', '/pricing'],
                 disallow: [
                     '/dashboard',
                     '/food-tracker',

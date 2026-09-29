@@ -24,7 +24,9 @@ type mockService struct {
 	getUserFunc             func(ctx context.Context, userID int64) (*AdminUser, error)
 	getCuratorsFunc         func(ctx context.Context) ([]CuratorLoad, error)
 	changeRoleFunc          func(ctx context.Context, userID int64, newRole string) error
-	assignCuratorFunc       func(ctx context.Context, clientID, curatorID int64) error
+	assignCuratorFunc       func(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error
+	setAccessExpiryFunc     func(ctx context.Context, clientID int64, expiresAt time.Time) error
+	revokeAccessFunc        func(ctx context.Context, clientID int64) error
 	getConversationsFunc    func(ctx context.Context) ([]AdminConversation, error)
 	getConversationMsgsFunc func(ctx context.Context, conversationID string, cursor string, limit int) ([]AdminMessage, error)
 }
@@ -45,8 +47,22 @@ func (m *mockService) ChangeRole(ctx context.Context, userID int64, newRole stri
 	return m.changeRoleFunc(ctx, userID, newRole)
 }
 
-func (m *mockService) AssignCurator(ctx context.Context, clientID, curatorID int64) error {
-	return m.assignCuratorFunc(ctx, clientID, curatorID)
+func (m *mockService) AssignCurator(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error {
+	return m.assignCuratorFunc(ctx, clientID, curatorID, expiresAt)
+}
+
+func (m *mockService) SetCuratorAccessExpiry(ctx context.Context, clientID int64, expiresAt time.Time) error {
+	if m.setAccessExpiryFunc == nil {
+		return nil
+	}
+	return m.setAccessExpiryFunc(ctx, clientID, expiresAt)
+}
+
+func (m *mockService) RevokeCuratorAccess(ctx context.Context, clientID int64) error {
+	if m.revokeAccessFunc == nil {
+		return nil
+	}
+	return m.revokeAccessFunc(ctx, clientID)
 }
 
 func (m *mockService) GetConversations(ctx context.Context, limit, offset int) ([]AdminConversation, int, error) {
@@ -285,7 +301,7 @@ func TestHandlerAssignCurator(t *testing.T) {
 	t.Run("successful assignment", func(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
-		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64) error {
+		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error {
 			assert.Equal(t, int64(100), clientID)
 			assert.Equal(t, int64(10), curatorID)
 			return nil
@@ -324,8 +340,11 @@ func TestHandlerAssignCurator(t *testing.T) {
 	t.Run("client not found", func(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
-		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64) error {
-			return fmt.Errorf("client not found")
+		// Так ошибку возвращает служба: обёрнутым сентинелом, а не текстом.
+		// Обработчик различает её через errors.Is — сравнение текста ошибки для
+		// решения о коде ответа в этой кодовой базе запрещено.
+		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error {
+			return fmt.Errorf("AssignCurator.client: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -342,8 +361,8 @@ func TestHandlerAssignCurator(t *testing.T) {
 	t.Run("curator not found", func(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
-		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64) error {
-			return fmt.Errorf("curator not found")
+		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error {
+			return fmt.Errorf("AssignCurator.curator: %w", apperrors.ErrNotFound)
 		}
 
 		w := httptest.NewRecorder()
@@ -360,7 +379,7 @@ func TestHandlerAssignCurator(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		handler, mock := setupTestHandler(t)
 
-		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64) error {
+		mock.assignCuratorFunc = func(ctx context.Context, clientID, curatorID int64, expiresAt *time.Time) error {
 			return fmt.Errorf("failed to create relationship")
 		}
 

@@ -10,6 +10,8 @@ import { MessageList } from '@/features/chat/components/MessageList'
 import { ChatInput } from '@/features/chat/components/ChatInput'
 import { TypingIndicator } from '@/features/chat/components/TypingIndicator'
 import { useCurrentUser } from '@/shared/hooks/useCurrentUser'
+import { CuratorOffer } from '@/shared/components/CuratorOffer'
+import { curatorAccessApi, type CuratorAccess } from '@/shared/api/curatorAccess'
 import type { Conversation } from '@/features/chat/types'
 
 import { t } from '@/shared/i18n'
@@ -17,6 +19,9 @@ export default function ChatPage() {
     const router = useRouter()
     const [conversation, setConversation] = useState<Conversation | null>(null)
     const [noConversation, setNoConversation] = useState(false)
+    // Право читается отдельно от списка переписок: переписка остаётся и после
+    // окончания оплаты — читать её можно всегда, писать нельзя.
+    const [access, setAccess] = useState<CuratorAccess | null>(null)
     const [isTyping, setIsTyping] = useState(false)
     const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -24,6 +29,16 @@ export default function ChatPage() {
     // хранилищем слепка нет, и заголовок оставался пустым.
     const { user } = useCurrentUser()
     const userName = user ? user.full_name || user.name || user.email : ''
+
+    useEffect(() => {
+        curatorAccessApi
+            .getAccess()
+            .then(setAccess)
+            // Неизвестное состояние права — не то же самое, что его отсутствие:
+            // на упавшем запросе предложение купить было бы ложью. Тогда экран
+            // ведёт себя как прежде, а запись отобьёт сервер.
+            .catch(() => setAccess({ allowed: true, expired: false }))
+    }, [])
 
     useEffect(() => {
         chatApi
@@ -76,7 +91,31 @@ export default function ChatPage() {
         }
     }, [])
 
-    const content = noConversation ? (
+    // Вход в переписку остаётся живым, а на её месте стоит предложение купить:
+    // отключённая кнопка читалась бы как поломка и ничего не продавала бы.
+    //
+    // У того, чьё право кончилось, под предложением остаётся прежняя переписка
+    // для чтения — написанное человеком не становится недоступным ему из-за
+    // окончания оплаты.
+    const content = access && !access.allowed ? (
+        <div className="flex flex-col gap-4 px-4 py-6">
+            <CuratorOffer
+                place="chat"
+                expired={access.expired}
+                expiresAt={access.expires_at}
+            />
+            {access.expired && conversation && (
+                <div className="flex flex-col" style={{ height: 'calc(100dvh - 24rem)' }}>
+                    <MessageList
+                        messages={messages}
+                        isLoading={isLoading}
+                        hasMore={hasMore}
+                        onLoadMore={loadMore}
+                    />
+                </div>
+            )}
+        </div>
+    ) : noConversation ? (
         <div className="flex flex-col items-center justify-center px-4 py-20">
             <p className="text-gray-500">{t('chat.noCurator')}</p>
         </div>
