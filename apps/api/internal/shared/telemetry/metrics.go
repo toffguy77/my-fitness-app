@@ -26,7 +26,9 @@ type Metrics struct {
 	dbConnsOpen  prometheus.GaugeFunc
 	dbConnsInUse prometheus.GaugeFunc
 	dbConnsIdle  prometheus.GaugeFunc
+	dbConnsMax   prometheus.GaugeFunc
 	dbWaitCount  prometheus.CounterFunc
+	dbWaitTime   prometheus.CounterFunc
 
 	jobDuration *prometheus.HistogramVec
 	jobTotal    *prometheus.CounterVec
@@ -141,12 +143,27 @@ func New(namespace string, stats DBStatsFunc) *Metrics {
 			func() float64 { return float64(stats().InUse) })
 		m.dbConnsIdle = gauge(namespace, "db_connections_idle", "Idle database connections.",
 			func() float64 { return float64(stats().Idle) })
+		// Предел пула — рядом с числом открытых соединений, иначе по графику
+		// не видно, близко ли к потолку. Оповещение о ожиданиях было заведено
+		// с оговоркой «верхней границы пула среди метрик нет, и сравнивать не
+		// с чем» — вот она.
+		m.dbConnsMax = gauge(namespace, "db_connections_max", "Upper bound of the connection pool.",
+			func() float64 { return float64(stats().MaxOpenConnections) })
 		m.dbWaitCount = prometheus.NewCounterFunc(prometheus.CounterOpts{
 			Namespace: namespace,
 			Name:      "db_connection_waits_total",
 			Help:      "Times a caller waited for a connection — the signal that the pool is too small.",
 		}, func() float64 { return float64(stats().WaitCount) })
-		m.registry.MustRegister(m.dbConnsOpen, m.dbConnsInUse, m.dbConnsIdle, m.dbWaitCount)
+		// Сколько ждали суммарно. Без этого «подождали» неотличимо от
+		// «подождали долго»: счётчик срабатываний растёт одинаково и на две
+		// миллисекунды, и на секунду, а решать по нему приходится разное.
+		m.dbWaitTime = prometheus.NewCounterFunc(prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "db_connection_wait_seconds_total",
+			Help:      "Total time callers spent waiting for a connection.",
+		}, func() float64 { return stats().WaitDuration.Seconds() })
+		m.registry.MustRegister(m.dbConnsOpen, m.dbConnsInUse, m.dbConnsIdle,
+			m.dbConnsMax, m.dbWaitCount, m.dbWaitTime)
 	}
 
 	return m

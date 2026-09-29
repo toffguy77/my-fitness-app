@@ -4,6 +4,11 @@ resource "yandex_mdb_postgresql_user" "app" {
   name       = var.pg_user_name
   password   = var.pg_user_password
 
+  # Не оставлять умолчанию провайдера: оно равно 50, и это был настоящий
+  # потолок прода, о котором ниоткуда не следовало. Пул приложения обязан
+  # умещаться сюда с учётом всех инстансов сразу.
+  conn_limit = var.pg_user_conn_limit
+
   dynamic "permission" {
     for_each = var.pg_user_permissions
     content {

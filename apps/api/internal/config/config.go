@@ -293,8 +293,12 @@ func Load() (*Config, error) {
 		DatabaseUser:     getEnv("DB_USER", "web-app-user"),
 		DatabasePassword: getEnv("DB_PASSWORD", ""),
 		DatabaseSSLMode:  getEnv("DB_SSL_MODE", "require"),
-		MaxOpenConns:     getEnvAsInt("DB_MAX_OPEN_CONNS", 10),
-		MaxIdleConns:     getEnvAsInt("DB_MAX_IDLE_CONNS", 3),
+		// Размер пула задаётся окружением на каждом развёртывании; значения
+		// здесь — для локального запуска, а не для прода. Прод на дефолте
+		// 2026-09-29 упёрся в них: десяти соединений не хватило, когда человек
+		// открыл дашборд, который дёргает около десятка запросов сразу.
+		MaxOpenConns:     getEnvAsInt("DB_MAX_OPEN_CONNS", 30),
+		MaxIdleConns:     getEnvAsInt("DB_MAX_IDLE_CONNS", 10),
 
 		// Supabase (optional)
 		SupabaseURL:        getEnv("SUPABASE_URL", ""),
