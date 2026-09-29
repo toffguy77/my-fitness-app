@@ -27,6 +27,10 @@ type TokenVersions struct {
 	db  *sql.DB
 	ttl time.Duration
 
+	// sweepAt is how many entries may accumulate before expired ones are
+	// dropped. A field rather than the constant so a test can reach it.
+	sweepAt int
+
 	mu     sync.RWMutex
 	cached map[int64]cachedVersion
 }
@@ -41,9 +45,27 @@ type cachedVersion struct {
 // perform the revocation, against a database read on every request otherwise.
 const versionTTL = 30 * time.Second
 
+// sweepThreshold is how many entries accumulate before expired ones are
+// dropped.
+//
+// An expired entry used to be overwritten but never removed, so the map held
+// every account that had made a request since the process started, for as long
+// as it ran. Nothing read those entries again; they were simply never let go.
+//
+// Sweeping on write, past a threshold, keeps it to the accounts actually
+// asking — which is what the cache is for. If more than this many are active
+// within one TTL the sweep frees nothing and the map grows: that is a real
+// working set, not a leak, and it shrinks on its own when they stop.
+const sweepThreshold = 4096
+
 // NewTokenVersions builds the cache.
 func NewTokenVersions(db *sql.DB) *TokenVersions {
-	return &TokenVersions{db: db, ttl: versionTTL, cached: map[int64]cachedVersion{}}
+	return &TokenVersions{
+		db:      db,
+		ttl:     versionTTL,
+		sweepAt: sweepThreshold,
+		cached:  map[int64]cachedVersion{},
+	}
 }
 
 // Current returns the account's version, from cache when it is fresh.
@@ -66,10 +88,35 @@ func (t *TokenVersions) Current(ctx context.Context, userID int64) (int, error) 
 		return 0, err
 	}
 
-	t.mu.Lock()
-	t.cached[userID] = cachedVersion{version: version, until: time.Now().Add(t.ttl)}
-	t.mu.Unlock()
+	t.remember(userID, version)
 	return version, nil
+}
+
+// remember stores the version, dropping expired entries once enough have piled
+// up to be worth walking the map for.
+func (t *TokenVersions) remember(userID int64, version int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	now := time.Now()
+	if len(t.cached) >= t.sweepAt {
+		for id, entry := range t.cached {
+			if now.After(entry.until) {
+				delete(t.cached, id)
+			}
+		}
+	}
+
+	t.cached[userID] = cachedVersion{version: version, until: now.Add(t.ttl)}
+}
+
+// Size reports how many entries the cache holds. For tests: the sweep is
+// invisible from the outside otherwise, and a cache that never lets go looks
+// exactly like one that does until the process runs out of memory.
+func (t *TokenVersions) Size() int {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return len(t.cached)
 }
 
 // BumpVersion invalidates every access token issued so far for this account.

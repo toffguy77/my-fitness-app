@@ -9,13 +9,14 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/testsupport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // setupTestService creates a test service with a mock database
 func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
-	mockDB, mock, err := sqlmock.New()
+	mockDB, mock, err := sqlmock.New(sqlmock.ValueConverterOption(testsupport.SliceConverter{}))
 	require.NoError(t, err)
 
 	db := &database.DB{DB: mockDB}
@@ -33,7 +34,7 @@ func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
 // setupTestServiceUnordered creates a test service with a mock database that
 // matches expectations in any order, for use with parallel helper calls.
 func setupTestServiceUnordered(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
-	mockDB, mock, err := sqlmock.New()
+	mockDB, mock, err := sqlmock.New(sqlmock.ValueConverterOption(testsupport.SliceConverter{}))
 	require.NoError(t, err)
 	mock.MatchExpectationsInOrder(false)
 	db := &database.DB{DB: mockDB}
@@ -94,39 +95,39 @@ func TestGetClients(t *testing.T) {
 		// Weight data query (getWeightData)
 		weightDataColumns := []string{"user_id", "weight", "date"}
 		mock.ExpectQuery(`SELECT user_id, weight, date FROM`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows(weightDataColumns))
 
 		// Target weights query (getTargetWeights)
 		targetWeightColumns := []string{"user_id", "target_weight"}
 		mock.ExpectQuery(`SELECT user_id, target_weight FROM user_settings`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows(targetWeightColumns))
 
 		// Today water query (getTodayWater)
 		todayWaterColumns := []string{"user_id", "glasses", "goal", "glass_size"}
 		mock.ExpectQuery(`SELECT user_id, glasses, goal, glass_size FROM water_logs`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows(todayWaterColumns))
 
 		// Active/overdue task counts (getActiveTaskCounts)
 		mock.ExpectQuery(`SELECT user_id`).
-			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WithArgs(curatorID, []int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "active_count", "overdue_count"}))
 
 		// Weekly KBZHU percent (getWeeklyKBZHUPercent)
 		mock.ExpectQuery(`SELECT fe\.user_id`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "actual_cal", "plan_cal_total"}))
 
 		// Last activity dates (getLastActivityDates)
 		mock.ExpectQuery(`SELECT user_id, MAX`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "max"}))
 
 		// Streak days (getStreakDays)
 		mock.ExpectQuery(`SELECT user_id, date FROM food_entries`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "date"}))
 
 		clients, err := service.GetClients(ctx, curatorID)
@@ -199,37 +200,37 @@ func TestGetClients(t *testing.T) {
 
 		// Weight data query (getWeightData)
 		mock.ExpectQuery(`SELECT user_id, weight, date FROM`).
-			WithArgs(int64(1)).
+			WithArgs([]int64{1}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "weight", "date"}))
 
 		// Target weights query (getTargetWeights)
 		mock.ExpectQuery(`SELECT user_id, target_weight FROM user_settings`).
-			WithArgs(int64(1)).
+			WithArgs([]int64{1}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "target_weight"}))
 
 		// Today water query (getTodayWater)
 		mock.ExpectQuery(`SELECT user_id, glasses, goal, glass_size FROM water_logs`).
-			WithArgs(int64(1)).
+			WithArgs([]int64{1}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "glasses", "goal", "glass_size"}))
 
 		// Active/overdue task counts (getActiveTaskCounts)
 		mock.ExpectQuery(`SELECT user_id`).
-			WithArgs(curatorID, int64(1)).
+			WithArgs(curatorID, []int64{1}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "active_count", "overdue_count"}))
 
 		// Weekly KBZHU percent (getWeeklyKBZHUPercent)
 		mock.ExpectQuery(`SELECT fe\.user_id`).
-			WithArgs(int64(1)).
+			WithArgs([]int64{1}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "actual_cal", "plan_cal_total"}))
 
 		// Last activity dates (getLastActivityDates)
 		mock.ExpectQuery(`SELECT user_id, MAX`).
-			WithArgs(int64(1)).
+			WithArgs([]int64{1}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "max"}))
 
 		// Streak days (getStreakDays)
 		mock.ExpectQuery(`SELECT user_id, date FROM food_entries`).
-			WithArgs(int64(1)).
+			WithArgs([]int64{1}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "date"}))
 
 		clients, err := service.GetClients(ctx, curatorID)
@@ -1047,7 +1048,7 @@ func TestGetTasks(t *testing.T) {
 
 		// Completions query
 		mock.ExpectQuery("SELECT task_id, completed_date").
-			WithArgs("task-1", "task-2").
+			WithArgs([]string{"task-1", "task-2"}).
 			WillReturnRows(sqlmock.NewRows([]string{"task_id", "completed_date"}).
 				AddRow("task-1", time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)).
 				AddRow("task-1", time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)))
@@ -1111,7 +1112,7 @@ func TestGetTasks(t *testing.T) {
 
 		// Completions query
 		mock.ExpectQuery("SELECT task_id, completed_date").
-			WithArgs("task-1").
+			WithArgs([]string{"task-1"}).
 			WillReturnRows(sqlmock.NewRows([]string{"task_id", "completed_date"}))
 
 		tasks, err := service.GetTasks(ctx, 1, 2, "active")
@@ -1287,7 +1288,7 @@ func TestGetAnalytics(t *testing.T) {
 
 		// Avg KBZHU percent
 		mock.ExpectQuery(`SELECT COALESCE\(AVG`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"avg"}).AddRow(85.5))
 
 		// Непрочитанное: спрашивается дважды — для сводки и для причины
@@ -1306,30 +1307,30 @@ func TestGetAnalytics(t *testing.T) {
 		// интеграционный тест на настоящей базе, потому что правило выражено
 		// в SQL и сверять его подменой значит проверять подмену.
 		mock.ExpectQuery(`SELECT id, COALESCE\(name, ''\)`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
 				AddRow(int64(1), "Первый", "").
 				AddRow(int64(2), "Второй", "").
 				AddRow(int64(3), "Третий", ""))
 
 		mock.ExpectQuery(`daily_calculated_targets dct`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "today_cal", "plan_cal"}))
 
 		mock.ExpectQuery(`SELECT t\.user_id, t\.title, t\.due_date`).
-			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WithArgs(curatorID, []int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "title", "due_date"}))
 
 		mock.ExpectQuery(`SELECT u\.id FROM users u`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 		mock.ExpectQuery(`SELECT wr\.user_id, wr\.week_start`).
-			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WithArgs(curatorID, []int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "week_start"}))
 
 		mock.ExpectQuery(`LEFT JOIN user_settings us`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "no_birth_date", "no_sex", "no_height", "no_weight"}))
 
 		// Overdue tasks (most specific: unique completed_at clause)
@@ -1417,26 +1418,26 @@ func TestGetAttentionList(t *testing.T) {
 
 		// Client info
 		mock.ExpectQuery(`SELECT id, COALESCE`).
-			WithArgs(int64(1), int64(2)).
+			WithArgs([]int64{1, 2}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
 				AddRow(int64(1), "Alice", "").
 				AddRow(int64(2), "Bob", "https://avatar.example.com/bob.jpg"))
 
 		// Alert query (priority 1)
 		mock.ExpectQuery(`SELECT u\.id`).
-			WithArgs(int64(1), int64(2)).
+			WithArgs([]int64{1, 2}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "today_cal", "plan_cal"}).
 				AddRow(int64(1), 500.0, sql.NullFloat64{Float64: 2000.0, Valid: true}).
 				AddRow(int64(2), 1900.0, sql.NullFloat64{Float64: 2000.0, Valid: true}))
 
 		// Overdue tasks (priority 2)
 		mock.ExpectQuery(`SELECT t\.user_id, t\.title, t\.due_date`).
-			WithArgs(curatorID, int64(1), int64(2)).
+			WithArgs(curatorID, []int64{1, 2}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "title", "due_date"}))
 
 		// Inactive clients (priority 3)
 		mock.ExpectQuery(`SELECT u\.id FROM users`).
-			WithArgs(int64(1), int64(2)).
+			WithArgs([]int64{1, 2}).
 			WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 		// Unread messages (priority 4)
@@ -1447,12 +1448,12 @@ func TestGetAttentionList(t *testing.T) {
 
 		// Awaiting feedback (priority 5)
 		mock.ExpectQuery(`SELECT wr\.user_id, wr\.week_start`).
-			WithArgs(curatorID, int64(1), int64(2)).
+			WithArgs(curatorID, []int64{1, 2}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "week_start"}))
 
 		// Incomplete profiles (priority 6)
 		mock.ExpectQuery(`SELECT u\.id`).
-			WithArgs(int64(1), int64(2)).
+			WithArgs([]int64{1, 2}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "no_birth_date", "no_sex", "no_height", "no_weight"}))
 
 		items, err := service.GetAttentionList(ctx, curatorID)
@@ -1680,35 +1681,35 @@ func TestCollectDailySnapshot(t *testing.T) {
 				AddRow(int64(1)).AddRow(int64(2)).AddRow(int64(3)))
 		// Подсчёт внимания — теми же запросами, что и список внимания.
 		mock.ExpectQuery(`SELECT id, COALESCE\(name, ''\)`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "avatar_url"}).
 				AddRow(int64(1), "Первый", "").
 				AddRow(int64(2), "Второй", "").
 				AddRow(int64(3), "Третий", ""))
 
 		mock.ExpectQuery(`daily_calculated_targets dct`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "today_cal", "plan_cal"}))
 
 		mock.ExpectQuery(`SELECT t\.user_id, t\.title, t\.due_date`).
-			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WithArgs(curatorID, []int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "title", "due_date"}))
 
 		mock.ExpectQuery(`SELECT u\.id FROM users u`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id"}))
 
 		mock.ExpectQuery(`SELECT wr\.user_id, wr\.week_start`).
-			WithArgs(curatorID, int64(1), int64(2), int64(3)).
+			WithArgs(curatorID, []int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "week_start"}))
 
 		mock.ExpectQuery(`LEFT JOIN user_settings us`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "no_birth_date", "no_sex", "no_height", "no_weight"}))
 
 		// Avg KBZHU percent
 		mock.ExpectQuery(`SELECT COALESCE\(AVG`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"avg"}).AddRow(85.5))
 
 		// Непрочитанное спрашивается дважды: для сводки и для причины
@@ -1743,7 +1744,7 @@ func TestCollectDailySnapshot(t *testing.T) {
 
 		// Streak query
 		mock.ExpectQuery(`SELECT user_id, date FROM food_entries`).
-			WithArgs(int64(1), int64(2), int64(3)).
+			WithArgs([]int64{1, 2, 3}).
 			WillReturnRows(sqlmock.NewRows([]string{"user_id", "date"}))
 
 		// INSERT ... ON CONFLICT

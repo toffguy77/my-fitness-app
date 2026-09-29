@@ -258,3 +258,21 @@ func (s *Service) createAccountFromMagicLink(ctx context.Context, recipient stri
 
 	return s.issueTokensForUser(ctx, userID, ip, ua)
 }
+
+// PurgeExpiredMagicLinks drops links that can no longer be redeemed.
+//
+// A link is redeemable only while consumed_at IS NULL AND expires_at > NOW(),
+// so once it has expired nothing reads it again. Nothing was deleting them
+// either, and every sign-in through the landing page leaves one behind.
+//
+// The day of margin is not for the code, which needs none, but for anyone
+// looking into how an account was reached.
+func (s *Service) PurgeExpiredMagicLinks(ctx context.Context) (int, error) {
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM magic_links WHERE expires_at < NOW() - INTERVAL '1 day'`)
+	if err != nil {
+		return 0, fmt.Errorf("purge expired magic links: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	return int(affected), nil
+}

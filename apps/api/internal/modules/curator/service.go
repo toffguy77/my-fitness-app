@@ -35,17 +35,6 @@ func parseIntArray(s string) []int {
 	return result
 }
 
-// buildPlaceholders returns "($1,$2,$3,...)" and []any args from int64 slice
-func buildPlaceholders(ids []int64, offset int) (string, []any) {
-	placeholders := make([]string, len(ids))
-	args := make([]any, len(ids))
-	for i, id := range ids {
-		placeholders[i] = fmt.Sprintf("$%d", i+1+offset)
-		args[i] = id
-	}
-	return "(" + strings.Join(placeholders, ",") + ")", args
-}
-
 // ServiceInterface defines the interface for curator service operations
 type ServiceInterface interface {
 	GetClients(ctx context.Context, curatorID int64) ([]ClientCard, error)
@@ -865,18 +854,17 @@ func (s *Service) getWeightData(ctx context.Context, clientIDs []int64) (map[int
 	}
 
 	// Get last 2 weight entries per client to compute trend
-	inClause, args := buildPlaceholders(clientIDs, 0)
-	query := fmt.Sprintf(`
+	const query = `
 		SELECT user_id, weight, date FROM (
 			SELECT user_id, weight, date,
 				ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY date DESC) as rn
 			FROM daily_metrics
-			WHERE user_id IN %s AND weight IS NOT NULL
+			WHERE user_id = ANY($1) AND weight IS NOT NULL
 		) sub WHERE rn <= 2
 		ORDER BY user_id, date DESC
-	`, inClause)
+	`
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query weight data for clients", "error", err)
 		return weightMap, trendMap
@@ -932,9 +920,8 @@ func (s *Service) getTargetWeights(ctx context.Context, clientIDs []int64) map[i
 		return result
 	}
 
-	inClause, args := buildPlaceholders(clientIDs, 0)
-	query := fmt.Sprintf(`SELECT user_id, target_weight FROM user_settings WHERE user_id IN %s AND target_weight IS NOT NULL`, inClause)
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	const query = `SELECT user_id, target_weight FROM user_settings WHERE user_id = ANY($1) AND target_weight IS NOT NULL`
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query target weights", "error", err)
 		return result
@@ -965,9 +952,8 @@ func (s *Service) getTodayWater(ctx context.Context, clientIDs []int64) map[int6
 		return result
 	}
 
-	inClause, args := buildPlaceholders(clientIDs, 0)
-	query := fmt.Sprintf(`SELECT user_id, glasses, goal, glass_size FROM water_logs WHERE user_id IN %s AND date = CURRENT_DATE`, inClause)
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	const query = `SELECT user_id, glasses, goal, glass_size FROM water_logs WHERE user_id = ANY($1) AND date = CURRENT_DATE`
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query today water", "error", err)
 		return result
@@ -1414,21 +1400,14 @@ func (s *Service) GetTasks(ctx context.Context, curatorID, clientID int64, statu
 	// Get completions for all tasks (last 30 days)
 	completionMap := make(map[string][]string)
 	if len(taskIDs) > 0 {
-		placeholders := make([]string, len(taskIDs))
-		completionArgs := make([]any, len(taskIDs))
-		for i, id := range taskIDs {
-			placeholders[i] = fmt.Sprintf("$%d", i+1)
-			completionArgs[i] = id
-		}
-
-		completionQuery := fmt.Sprintf(`
+		const completionQuery = `
 			SELECT task_id, completed_date
 			FROM task_completions
-			WHERE task_id IN (%s) AND completed_date >= CURRENT_DATE - INTERVAL '30 days'
+			WHERE task_id = ANY($1) AND completed_date >= CURRENT_DATE - INTERVAL '30 days'
 			ORDER BY completed_date DESC
-		`, strings.Join(placeholders, ","))
+		`
 
-		completionRows, err := s.db.QueryContext(ctx, completionQuery, completionArgs...)
+		completionRows, err := s.db.QueryContext(ctx, completionQuery, taskIDs)
 		if err != nil {
 			s.log.Error("Failed to query task completions", "error", err)
 		} else {
@@ -1794,18 +1773,16 @@ func (s *Service) getActiveTaskCounts(ctx context.Context, curatorID int64, clie
 		return
 	}
 
-	inClause, args := buildPlaceholders(clientIDs, 1)
-	query := fmt.Sprintf(`
+	const query = `
 		SELECT user_id,
 			COUNT(*) FILTER (WHERE status = 'active') AS active_count,
 			COUNT(*) FILTER (WHERE status = 'active' AND due_date < CURRENT_DATE AND completed_at IS NULL) AS overdue_count
 		FROM tasks
-		WHERE curator_id = $1 AND user_id IN %s
+		WHERE curator_id = $1 AND user_id = ANY($2)
 		GROUP BY user_id
-	`, inClause)
+	`
 
-	allArgs := append([]any{curatorID}, args...)
-	rows, err := s.db.QueryContext(ctx, query, allArgs...)
+	rows, err := s.db.QueryContext(ctx, query, curatorID, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query task counts", "error", err)
 		return
@@ -1834,8 +1811,7 @@ func (s *Service) getWeeklyKBZHUPercent(ctx context.Context, clientIDs []int64) 
 		return result
 	}
 
-	inClause, args := buildPlaceholders(clientIDs, 0)
-	query := fmt.Sprintf(`
+	const query = `
 		SELECT fe.user_id,
 			SUM(fe.calories) AS actual_cal,
 			wp.calories_goal * (EXTRACT(DOW FROM CURRENT_DATE) - EXTRACT(DOW FROM date_trunc('week', CURRENT_DATE))::int + 1) AS plan_cal_total
@@ -1843,13 +1819,13 @@ func (s *Service) getWeeklyKBZHUPercent(ctx context.Context, clientIDs []int64) 
 		JOIN weekly_plans wp ON wp.user_id = fe.user_id
 			AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
 			AND wp.is_active = true
-		WHERE fe.user_id IN %s
+		WHERE fe.user_id = ANY($1)
 			AND fe.date >= date_trunc('week', CURRENT_DATE)::date
 			AND fe.date <= CURRENT_DATE
 		GROUP BY fe.user_id, wp.calories_goal
-	`, inClause)
+	`
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query weekly kbzhu percent", "error", err)
 		return result
@@ -1880,9 +1856,8 @@ func (s *Service) getLastActivityDates(ctx context.Context, clientIDs []int64) m
 		return result
 	}
 
-	inClause, args := buildPlaceholders(clientIDs, 0)
-	query := fmt.Sprintf(`SELECT user_id, MAX(date) FROM food_entries WHERE user_id IN %s GROUP BY user_id`, inClause)
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	const query = `SELECT user_id, MAX(date) FROM food_entries WHERE user_id = ANY($1) GROUP BY user_id`
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query last activity dates", "error", err)
 		return result
@@ -1911,16 +1886,15 @@ func (s *Service) getStreakDays(ctx context.Context, clientIDs []int64) map[int6
 		return result
 	}
 
-	inClause, args := buildPlaceholders(clientIDs, 0)
 	// Get distinct dates per client for the last 60 days
-	query := fmt.Sprintf(`
+	const query = `
 		SELECT user_id, date FROM food_entries
-		WHERE user_id IN %s AND date >= CURRENT_DATE - INTERVAL '60 days' AND date <= CURRENT_DATE
+		WHERE user_id = ANY($1) AND date >= CURRENT_DATE - INTERVAL '60 days' AND date <= CURRENT_DATE
 		GROUP BY user_id, date
 		ORDER BY user_id, date DESC
-	`, inClause)
+	`
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.db.QueryContext(ctx, query, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query streak days", "error", err)
 		return result
@@ -1987,22 +1961,20 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 	}
 	summary.TotalClients = len(clientIDs)
 
-	inClause, args := buildPlaceholders(clientIDs, 0)
-
 	// Avg KBZHU percent across all clients this week
-	avgQuery := fmt.Sprintf(`
+	const avgQuery = `
 		SELECT COALESCE(AVG(sub.pct), 0) FROM (
 			SELECT fe.user_id, SUM(fe.calories) / NULLIF(wp.calories_goal * COUNT(DISTINCT fe.date), 0) * 100 AS pct
 			FROM food_entries fe
 			JOIN weekly_plans wp ON wp.user_id = fe.user_id
 				AND wp.start_date <= CURRENT_DATE AND wp.end_date >= CURRENT_DATE
 				AND wp.is_active = true
-			WHERE fe.user_id IN %s
+			WHERE fe.user_id = ANY($1)
 				AND fe.date >= date_trunc('week', CURRENT_DATE)::date
 				AND fe.date <= CURRENT_DATE
 			GROUP BY fe.user_id, wp.calories_goal
 		) sub
-	`, inClause)
+	`
 
 	eg, egCtx := errgroup.WithContext(ctx)
 
@@ -2041,7 +2013,7 @@ func (s *Service) GetAnalytics(ctx context.Context, curatorID int64) (*Analytics
 		})
 
 		eg.Go(func() error {
-			if err := s.db.QueryRowContext(egCtx, avgQuery, args...).Scan(&summary.AvgKBZHUPercent); err != nil {
+			if err := s.db.QueryRowContext(egCtx, avgQuery, clientIDs).Scan(&summary.AvgKBZHUPercent); err != nil {
 				s.log.Error("Failed to compute avg kbzhu percent", "error", err)
 			}
 			return nil
@@ -2142,12 +2114,8 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 		avatar string
 	}
 	clientInfoMap := make(map[int64]clientInfo)
-	inClause, args := buildPlaceholders(clientIDs, 0)
-	// For queries that bind curatorID as $1, client IDs must start at $2.
-	inClauseOffset, clientOffsetArgs := buildPlaceholders(clientIDs, 1)
-
-	infoQuery := fmt.Sprintf(`SELECT id, COALESCE(name, ''), COALESCE(avatar_url, '') FROM users WHERE id IN %s`, inClause)
-	infoRows, err := s.db.QueryContext(ctx, infoQuery, args...)
+	const infoQuery = `SELECT id, COALESCE(name, ''), COALESCE(avatar_url, '') FROM users WHERE id = ANY($1)`
+	infoRows, err := s.db.QueryContext(ctx, infoQuery, clientIDs)
 	if err != nil {
 		// Без имён список бесполезен, а падать целиком незачем: карточка
 		// считает по этим же записям, и ноль в ней был бы неправдой.
@@ -2170,7 +2138,7 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 	items := make([]AttentionItem, 0)
 
 	// Priority 1: Red alerts — calories <50% or >120% of plan (curator plan or auto-calculated)
-	alertQuery := fmt.Sprintf(`
+	alertQuery := `
 		SELECT u.id,
 			COALESCE(SUM(fe.calories), 0) AS today_cal,
 			COALESCE(wp.calories_goal, dct.calories) AS plan_cal
@@ -2181,10 +2149,10 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 			AND wp.is_active = true
 		LEFT JOIN daily_calculated_targets dct ON dct.user_id = u.id
 			AND dct.date = CURRENT_DATE
-		WHERE u.id IN %s
+		WHERE u.id = ANY($1)
 		GROUP BY u.id, wp.calories_goal, dct.calories
-	`, inClause)
-	alertRows, err := s.db.QueryContext(ctx, alertQuery, args...)
+	`
+	alertRows, err := s.db.QueryContext(ctx, alertQuery, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query attention alerts", "error", err)
 	} else {
@@ -2226,15 +2194,15 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 	}
 
 	// Priority 2: Overdue tasks
-	overdueQuery := fmt.Sprintf(`
+	overdueQuery := `
 		SELECT t.user_id, t.title, t.due_date
 		FROM tasks t
 		WHERE t.curator_id = $1 AND t.status = 'active' AND t.due_date < CURRENT_DATE AND t.completed_at IS NULL
-			AND t.user_id IN %s
+			AND t.user_id = ANY($2)
 		ORDER BY t.due_date ASC
 		LIMIT 20
-	`, inClauseOffset)
-	overdueRows, err := s.db.QueryContext(ctx, overdueQuery, append([]any{curatorID}, clientOffsetArgs...)...)
+	`
+	overdueRows, err := s.db.QueryContext(ctx, overdueQuery, curatorID, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query overdue tasks", "error", err)
 	} else {
@@ -2260,15 +2228,15 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 	}
 
 	// Priority 3: Inactive clients (no food entries in last 2 days)
-	inactiveQuery := fmt.Sprintf(`
+	inactiveQuery := `
 		SELECT u.id FROM users u
-		WHERE u.id IN %s
+		WHERE u.id = ANY($1)
 			AND NOT EXISTS (
 				SELECT 1 FROM food_entries fe
 				WHERE fe.user_id = u.id AND fe.date >= CURRENT_DATE - INTERVAL '1 day'
 			)
-	`, inClause)
-	inactiveRows, err := s.db.QueryContext(ctx, inactiveQuery, args...)
+	`
+	inactiveRows, err := s.db.QueryContext(ctx, inactiveQuery, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query inactive clients", "error", err)
 	} else {
@@ -2325,15 +2293,15 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 	}
 
 	// Priority 5: Awaiting feedback on weekly reports
-	feedbackQuery := fmt.Sprintf(`
+	feedbackQuery := `
 		SELECT wr.user_id, wr.week_start
 		FROM weekly_reports wr
 		WHERE wr.curator_id = $1 AND wr.curator_feedback IS NULL AND wr.submitted_at IS NOT NULL
-			AND wr.user_id IN %s
+			AND wr.user_id = ANY($2)
 		ORDER BY wr.submitted_at ASC
 		LIMIT 20
-	`, inClauseOffset)
-	feedbackRows, err := s.db.QueryContext(ctx, feedbackQuery, append([]any{curatorID}, clientOffsetArgs...)...)
+	`
+	feedbackRows, err := s.db.QueryContext(ctx, feedbackQuery, curatorID, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query awaiting feedback", "error", err)
 	} else {
@@ -2358,7 +2326,7 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 	}
 
 	// Priority 6: Incomplete profile (missing data needed for KBJU calculation)
-	profileQuery := fmt.Sprintf(`
+	profileQuery := `
 		SELECT u.id,
 			us.birth_date IS NULL AS no_birth_date,
 			(us.biological_sex IS NULL OR us.biological_sex = '') AS no_sex,
@@ -2369,7 +2337,7 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 			) AS no_weight
 		FROM users u
 		LEFT JOIN user_settings us ON us.user_id = u.id
-		WHERE u.id IN %s
+		WHERE u.id = ANY($1)
 			AND (
 				us.user_id IS NULL
 				OR us.birth_date IS NULL
@@ -2380,8 +2348,8 @@ func (s *Service) collectAttention(ctx context.Context, curatorID int64, clientI
 					WHERE dm.user_id = u.id AND dm.weight IS NOT NULL
 				)
 			)
-	`, inClause)
-	profileRows, err := s.db.QueryContext(ctx, profileQuery, args...)
+	`
+	profileRows, err := s.db.QueryContext(ctx, profileQuery, clientIDs)
 	if err != nil {
 		s.log.Error("Failed to query incomplete profiles", "error", err)
 	} else {

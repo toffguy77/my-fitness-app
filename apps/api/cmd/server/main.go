@@ -592,6 +592,7 @@ func main() {
 	jobsetup.Register(jobRegistry, jobsetup.Deps{
 		Account:       accountService,
 		Auth:          authService,
+		Verification:  verificationService,
 		Content:       contentService,
 		Curator:       curatorService,
 		Analytics:     analyticsService,

@@ -1438,7 +1438,8 @@ func (s *Service) CompleteTaskForDate(ctx context.Context, userID int64, taskID 
 // AutoCompleteMatchingTasks finds active tasks matching the given type for the
 // specified date and marks them as completed. This enables Direction 2 sync:
 // when a user logs a metric (workout, weight), matching curator tasks are
-// automatically completed. Errors are logged but not propagated.
+// automatically completed. A failed write is returned rather than logged and
+// dropped; the caller decides what it means for the request.
 func (s *Service) AutoCompleteMatchingTasks(ctx context.Context, userID int64, taskType string, date time.Time) error {
 	dateStr := date.Format("2006-01-02")
 	weekday := int(date.Weekday()) // 0=Sun..6=Sat — matches JS convention used in recurrence_days
@@ -1453,36 +1454,63 @@ func (s *Service) AutoCompleteMatchingTasks(ctx context.Context, userID int64, t
 		       OR (t.recurrence = 'weekly' AND $4 = ANY(t.recurrence_days)))
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, userID, taskType, dateStr, weekday)
+	// The cursor is drained and closed before anything is written.
+	//
+	// An open *sql.Rows pins its connection, so a write issued from inside the
+	// loop takes a *second* connection out of the pool. A request holding one
+	// connection while waiting for another is how a pool deadlocks: under load
+	// every connection ends up held by a request waiting for one nobody will
+	// release. It presents as a slow database rather than as an error.
+	once, recurring, err := func() (once, recurring []string, err error) {
+		rows, qErr := s.db.QueryContext(ctx, query, userID, taskType, dateStr, weekday)
+		if qErr != nil {
+			return nil, nil, fmt.Errorf("failed to query matching tasks: %w", qErr)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var taskID, recurrence string
+			if scanErr := rows.Scan(&taskID, &recurrence); scanErr != nil {
+				return nil, nil, fmt.Errorf("failed to scan matching task: %w", scanErr)
+			}
+			if recurrence == "once" {
+				once = append(once, taskID)
+			} else {
+				recurring = append(recurring, taskID)
+			}
+		}
+		return once, recurring, rows.Err()
+	}()
 	if err != nil {
-		return fmt.Errorf("failed to query matching tasks: %w", err)
+		return err
 	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var taskID string
-		var recurrence string
-		if err := rows.Scan(&taskID, &recurrence); err != nil {
-			s.log.Error("Failed to scan matching task", "error", err)
-			continue
+	// One statement each, whether there are three tasks or thirty. Ownership is
+	// already settled by the WHERE above, which is scoped to this user; both
+	// statements repeat the scope anyway so neither can reach past it.
+	if len(recurring) > 0 {
+		if _, err := s.db.ExecContext(ctx, `
+			INSERT INTO task_completions (task_id, completed_date)
+			SELECT unnest($1::uuid[]), $2::date
+			ON CONFLICT (task_id, completed_date) DO NOTHING
+		`, recurring, dateStr); err != nil {
+			return fmt.Errorf("failed to auto-complete recurring tasks: %w", err)
 		}
+	}
 
-		if recurrence == "once" {
-			if _, err := s.UpdateTaskStatus(ctx, userID, taskID, TaskStatusCompleted); err != nil {
-				s.log.Error("Failed to auto-complete once task", "error", err, "task_id", taskID)
-			}
-		} else {
-			// Recurring: insert completion record
-			insertQuery := `
-				INSERT INTO task_completions (task_id, completed_date)
-				VALUES ($1, $2)
-				ON CONFLICT (task_id, completed_date) DO NOTHING
-			`
-			if _, err := s.db.ExecContext(ctx, insertQuery, taskID, dateStr); err != nil {
-				s.log.Error("Failed to auto-complete recurring task", "error", err, "task_id", taskID)
-			}
+	if len(once) > 0 {
+		if _, err := s.db.ExecContext(ctx, `
+			UPDATE tasks
+			SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+			WHERE id = ANY($1::uuid[]) AND user_id = $2
+		`, once, userID); err != nil {
+			return fmt.Errorf("failed to auto-complete once tasks: %w", err)
 		}
+	}
 
+	// After the write, not before: the old code logged the event and then
+	// swallowed the error that meant it had not happened.
+	for _, taskID := range append(append([]string{}, once...), recurring...) {
 		s.log.LogBusinessEvent("task_auto_completed", map[string]interface{}{
 			"task_id":   taskID,
 			"user_id":   userID,
@@ -1491,7 +1519,7 @@ func (s *Service) AutoCompleteMatchingTasks(ctx context.Context, userID int64, t
 		})
 	}
 
-	return rows.Err()
+	return nil
 }
 
 // GetReportFeedback retrieves curator feedback for a specific weekly report

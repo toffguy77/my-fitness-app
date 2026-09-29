@@ -10,6 +10,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/burcev/api/internal/shared/database"
 	"github.com/burcev/api/internal/shared/logger"
+	"github.com/burcev/api/internal/testsupport"
 	"github.com/google/uuid"
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
@@ -20,7 +21,7 @@ import (
 
 // Helper function to create a test service with mock database
 func setupTestService(t *testing.T) (*Service, sqlmock.Sqlmock, func()) {
-	mockDB, mock, err := sqlmock.New()
+	mockDB, mock, err := sqlmock.New(sqlmock.ValueConverterOption(testsupport.SliceConverter{}))
 	require.NoError(t, err)
 
 	db := &database.DB{DB: mockDB}
