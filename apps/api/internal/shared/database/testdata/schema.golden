@@ -61,7 +61,7 @@ INDEX food_entries idx_food_entries_user_date_meal btree (user_id, date, meal_ty
 INDEX food_items food_items_pkey btree (id)
 INDEX food_items idx_food_items_barcode_unique btree (barcode) WHERE (barcode IS NOT NULL)
 INDEX food_items idx_food_items_category btree (category)
-INDEX food_items idx_food_items_name_brand_fts gin (to_tsvector('russian'::regconfig, ((COALESCE(name, ''::text) || ' '::text) || COALESCE(brand, ''::text))))
+INDEX food_items idx_food_items_search gin (search_vector)
 INDEX food_items idx_food_items_source btree (source)
 INDEX food_recognition_usage food_recognition_usage_pkey btree (id)
 INDEX food_recognition_usage idx_food_recognition_usage_user_date btree (user_id, used_at)
@@ -379,6 +379,7 @@ food_items.fiber_per_100 numeric DEFAULT 0
 food_items.id uuid NOT NULL DEFAULT gen_random_uuid()
 food_items.name text NOT NULL
 food_items.protein_per_100 numeric NOT NULL DEFAULT 0
+food_items.search_vector tsvector
 food_items.serving_size numeric NOT NULL DEFAULT 100
 food_items.serving_unit text NOT NULL DEFAULT 'g'
 food_items.sodium_per_100 numeric DEFAULT 0
