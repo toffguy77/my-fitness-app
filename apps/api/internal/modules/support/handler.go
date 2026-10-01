@@ -83,34 +83,16 @@ func (h *Handler) Webhook(c *gin.Context) {
 		return
 	}
 
-	// Фотография или файл от клиента.
-	//
-	// Раньше здесь стояло «nothing to answer» и на фотографию не приходило
-	// ничего: ни ответа, ни отказа. Молчание в ответ на отправленный файл
-	// читается как поломка, а не как «не умею».
-	if fileID, fileName := attachmentOf(&update); fileID != "" {
-		if err := h.service.HandleAttachment(c.Request.Context(), Attachment{
-			ChatID:   update.Message.Chat.ID,
-			FileID:   fileID,
-			FileName: fileName,
-			Caption:  update.Message.Caption,
-		}); err != nil {
-			h.log.Error("Failed to handle a support attachment", "error", err)
-		}
+	switch classify(&update, h.cfg.TelegramSupportGroupID) {
+	case kindIgnore:
+		// Служебные обновления, стикеры, разговор кураторов между собой:
+		// отвечать нечему и некому.
 		response.Success(c, http.StatusOK, gin.H{"ok": true})
 		return
-	}
 
-	if update.Message.Text == "" {
-		// Стикеры и прочее без текста: отвечать не на что.
-		response.Success(c, http.StatusOK, gin.H{"ok": true})
-		return
-	}
-
-	// Сообщение из группы кураторов — это ответ куратора, а не вопрос клиента.
-	// Разводится до всего остального: иначе ответ куратора уехал бы в модель как
-	// обращение, а сам куратор завёл бы себе тему.
-	if h.cfg.TelegramSupportGroupID != 0 && update.Message.Chat.ID == h.cfg.TelegramSupportGroupID {
+	// Сообщение из группы кураторов — это ответ куратора, а не вопрос клиента:
+	// иначе он уехал бы в модель как обращение, а сам куратор завёл бы себе тему.
+	case kindCuratorReply:
 		var replyTo int64
 		if update.Message.ReplyToMessage != nil {
 			replyTo = update.Message.ReplyToMessage.MessageID
@@ -120,19 +102,33 @@ func (h *Handler) Webhook(c *gin.Context) {
 			operatorID = update.Message.From.ID
 		}
 		fileID, fileName := attachmentOf(&update)
-		text := update.Message.Text
-		if text == "" {
-			text = update.Message.Caption
-		}
 		if err := h.service.HandleCuratorReply(c.Request.Context(), CuratorReply{
 			ThreadID:         update.Message.MessageThreadID,
 			ReplyToMessageID: replyTo,
 			TelegramUserID:   operatorID,
-			Text:             text,
+			Text:             messageText(&update),
 			FileID:           fileID,
 			FileName:         fileName,
 		}); err != nil {
 			h.log.Error("Failed to deliver a curator reply", "error", err)
+		}
+		response.Success(c, http.StatusOK, gin.H{"ok": true})
+		return
+
+	// Фотография или файл от клиента.
+	//
+	// Раньше здесь стояло «nothing to answer» и на фотографию не приходило
+	// ничего: ни ответа, ни отказа. Молчание в ответ на отправленный файл
+	// читается как поломка, а не как «не умею».
+	case kindAttachment:
+		fileID, fileName := attachmentOf(&update)
+		if err := h.service.HandleAttachment(c.Request.Context(), Attachment{
+			ChatID:   update.Message.Chat.ID,
+			FileID:   fileID,
+			FileName: fileName,
+			Caption:  update.Message.Caption,
+		}); err != nil {
+			h.log.Error("Failed to handle a support attachment", "error", err)
 		}
 		response.Success(c, http.StatusOK, gin.H{"ok": true})
 		return
@@ -490,6 +486,81 @@ func (h *Handler) CloseConversation(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, gin.H{"closed": true})
+}
+
+// updateKind — что делать с обновлением.
+//
+// Порядок решения живёт в одной функции, а не в цепочке ветвлений по ходу
+// обработчика, потому что ошибкой был именно порядок: ветка вложений стояла
+// раньше ветки группы кураторов. Фотография из группы до проверки группы не
+// доживала — бот отвечал «нужен аккаунт» в служебном треде, фотография
+// куратора не доходила до клиента, а на chat_id группы заводилось обращение.
+type updateKind int
+
+const (
+	// kindIgnore — отвечать нечему: служебное обновление, сообщение без текста
+	// и файла, чужая группа, разговор кураторов между собой.
+	kindIgnore updateKind = iota
+	// kindCuratorReply — сообщение из группы кураторов, любое: текст, файл или
+	// файл с подписью. Кому его вернуть (и нужно ли), решает мост по теме.
+	kindCuratorReply
+	// kindAttachment — файл от клиента в личном чате с ботом.
+	kindAttachment
+	// kindQuestion — вопрос клиента словами.
+	kindQuestion
+)
+
+// classify решает судьбу обновления.
+func classify(update *telegram.Update, supportGroupID int64) updateKind {
+	if update.Message == nil {
+		return kindIgnore
+	}
+
+	fileID, _ := attachmentOf(update)
+
+	if supportGroupID != 0 && update.Message.Chat.ID == supportGroupID {
+		if messageText(update) == "" && fileID == "" {
+			// Вход в группу, закрепление, стикер: доставлять нечего, а пустое
+			// сообщение клиенту — сообщение ни о чём.
+			return kindIgnore
+		}
+		return kindCuratorReply
+	}
+
+	// Любой другой групповой чат: бот в нём не участник разговора. Ни ответа,
+	// ни обращения — иначе он отвечает коллегам в служебном треде и заводит
+	// тикет на chat_id группы. Проверка идёт по известным групповым типам, а не
+	// по «не private»: тип Telegram присылает всегда, но если его вдруг не
+	// окажется, живой человек должен остаться с ответом, а не без него.
+	if isGroupChat(update.Message.Chat.Type) {
+		return kindIgnore
+	}
+
+	if fileID != "" {
+		return kindAttachment
+	}
+	if update.Message.Text == "" {
+		// Стикеры и прочее без текста: отвечать не на что.
+		return kindIgnore
+	}
+	return kindQuestion
+}
+
+// isGroupChat — чат, в котором бот не ведёт обращение.
+func isGroupChat(chatType string) bool {
+	switch chatType {
+	case "group", "supergroup", "channel":
+		return true
+	}
+	return false
+}
+
+// messageText — то, что человек написал: текст или подпись к файлу.
+func messageText(update *telegram.Update) string {
+	if update.Message.Text != "" {
+		return update.Message.Text
+	}
+	return update.Message.Caption
 }
 
 // attachmentOf достаёт присланный файл из обновления.
